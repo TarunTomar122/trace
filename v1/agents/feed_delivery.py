@@ -12,6 +12,7 @@ import argparse
 import hashlib
 import json
 import os
+import random
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -158,6 +159,71 @@ def search_personal_signal(query: str, max_results: int = 5) -> list[dict[str, A
         return []
 
 
+def search_missing_interest(interest: str, umbrella_id: str, max_results: int = 3) -> list[dict[str, Any]]:
+    """
+    On-demand search for an interest that has no items in the pool.
+    
+    This is the "top-up" mechanism for Option F: Hybrid approach.
+    Only called when pool has 0 items for a user's interest.
+    
+    Args:
+        interest: The original interest name (e.g., "Running")
+        umbrella_id: The umbrella ID (e.g., "running")
+        max_results: Maximum results to return (default 3)
+    
+    Returns:
+        List of items from search
+    """
+    try:
+        from tavily import TavilyClient
+        
+        tavily_key = os.getenv("TAVILY_API_KEY")
+        if not tavily_key:
+            return []
+        
+        client = TavilyClient(api_key=tavily_key)
+        
+        # Search for recent content about this interest
+        query = f"{interest} latest news trends"
+        
+        response = client.search(
+            query=query,
+            max_results=max_results,
+            search_depth="basic"
+        )
+        
+        items = []
+        for result in response.get("results", []):
+            url = result.get("url", "")
+            item_id = f"topup_{hashlib.md5(url.encode()).hexdigest()[:12]}"
+            
+            item = {
+                "id": item_id,
+                "url": url,
+                "title": result.get("title", ""),
+                "description": result.get("content", "")[:500],
+                "type": "blog",
+                "source": "tavily",
+                "tags": [umbrella_id],
+                "umbrella_id": umbrella_id,
+                "fetched_at": datetime.utcnow().isoformat(),
+                "quality_signals": {},
+                "metadata": {
+                    "from_topup": True,
+                    "original_interest": interest
+                }
+            }
+            items.append(item)
+        
+        return items
+        
+    except ImportError:
+        return []
+    except Exception as e:
+        print(f"  Error in top-up search for {interest}: {e}")
+        return []
+
+
 def deliver_feed(user_id: str, max_items: int = 20) -> list[dict[str, Any]]:
     """
     Deliver a personalized feed for a user from the retrieval pool.
@@ -235,16 +301,61 @@ def deliver_feed(user_id: str, max_items: int = 20) -> list[dict[str, Any]]:
     interests = user_profile.get("interests", [])
     umbrella_ids = [i.lower().replace(" ", "-").replace("&", "and") for i in interests]
     
+    # Create mapping of interest name to umbrella_id
+    interest_to_umbrella = {
+        interests[i]: umbrella_ids[i] for i in range(len(interests))
+    }
+    
     # Calculate how many pool items we need
     pool_items_needed = max_items - len(personal_items)
     
     # Query pool for items matching user's umbrellas
+    # Track which umbrellas have items and which don't
     print(f"Querying pool for umbrellas: {umbrella_ids[:5]}...")
     
     all_items = []
-    for umbrella_id in umbrella_ids:
+    umbrellas_with_items = set()
+    umbrellas_without_items = []
+    
+    for i, umbrella_id in enumerate(umbrella_ids):
         items = store.get_retrieval_pool(umbrella_id=umbrella_id)
-        all_items.extend(items)
+        if items:
+            umbrellas_with_items.add(umbrella_id)
+            all_items.extend(items)
+        else:
+            # Track the original interest name too for search query
+            umbrellas_without_items.append((interests[i], umbrella_id))
+    
+    print(f"  Pool coverage: {len(umbrellas_with_items)}/{len(umbrella_ids)} interests have items")
+    
+    # =========================================================================
+    # TOP-UP: On-demand search for missing interests (max 3)
+    # =========================================================================
+    topup_items = []
+    if umbrellas_without_items:
+        # Select up to 3 random interests to top-up
+        max_topup = 3
+        interests_to_topup = random.sample(
+            umbrellas_without_items, 
+            min(max_topup, len(umbrellas_without_items))
+        )
+        
+        print(f"  Top-up: Searching for {len(interests_to_topup)} missing interests...")
+        
+        for interest_name, umbrella_id in interests_to_topup:
+            results = search_missing_interest(interest_name, umbrella_id, max_results=3)
+            # Filter out already seen URLs
+            for item in results:
+                if item.get("url") not in seen_urls:
+                    topup_items.append(item)
+            
+            if results:
+                print(f"    ✓ {interest_name}: found {len(results)} items")
+            else:
+                print(f"    ✗ {interest_name}: no items found")
+        
+        # Add topup items to pool items
+        all_items.extend(topup_items)
     
     # Also get some general items if we don't have enough
     if len(all_items) < pool_items_needed * 2:
@@ -253,7 +364,7 @@ def deliver_feed(user_id: str, max_items: int = 20) -> list[dict[str, Any]]:
             if item.get("url") not in [i.get("url") for i in all_items]:
                 all_items.append(item)
     
-    print(f"  Found {len(all_items)} candidate items from pool")
+    print(f"  Found {len(all_items)} candidate items from pool (including {len(topup_items)} top-up)")
     
     # Filter out seen URLs and personal item URLs
     personal_urls = {p.get("url") for p in personal_items}
@@ -341,7 +452,8 @@ def deliver_feed(user_id: str, max_items: int = 20) -> list[dict[str, Any]]:
     # Log final mix
     pool_count = len(filtered_pool_items)
     personal_count = len(personal_items)
-    print(f"Feed mix: {pool_count} pool items + {personal_count} personal items = {len(feed_items)} total")
+    topup_count = len(topup_items)
+    print(f"Feed mix: {pool_count} pool items ({topup_count} from top-up) + {personal_count} personal items = {len(feed_items)} total")
     
     return feed_items
 

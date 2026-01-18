@@ -113,7 +113,9 @@ def run_daily_batch() -> int:
     log("-" * 40)
     
     try:
-        stats = harvest_pool(max_queries=20, items_per_query=2)
+        # Increased from 20 to 50 to cover more interests from shared pool
+        # Top-up mechanism in feed_delivery handles remaining gaps
+        stats = harvest_pool(max_queries=50, items_per_query=2)
         log(f"Pool Harvesting complete: {stats}")
     except Exception as e:
         log(f"✗ Pool Harvesting failed: {e}")

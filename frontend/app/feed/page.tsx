@@ -257,6 +257,7 @@ export default function FeedPage() {
   const [interactions, setInteractions] = useState<Record<string, 'upvote' | 'downvote'>>({});
   const [feedDates, setFeedDates] = useState<string[]>([]);
   const [selectedFeedDate, setSelectedFeedDate] = useState<string>('');
+  const [showMobileDatePicker, setShowMobileDatePicker] = useState(false);
 
   const filteredFeed = activeFilter === 'all' 
     ? feed 
@@ -416,8 +417,6 @@ export default function FeedPage() {
       </div>
     );
   }
-
-  const [showMobileDatePicker, setShowMobileDatePicker] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
