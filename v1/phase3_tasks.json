@@ -1,0 +1,147 @@
+{
+  "phase": 3,
+  "name": "Personalization Layer",
+  "description": "Add personal_signals extraction, personal searches, enhanced Reflection Agent",
+  "dependencies": [
+    "Phase 2 complete (feeds generating for all users)",
+    "Users can upvote/downvote in frontend",
+    "user_interactions collection has data"
+  ],
+  "tasks": [
+    {
+      "id": "3.1",
+      "title": "Create signal extraction tool",
+      "description": "Create v1/tools/extract_signal.py that uses LLM to extract a specific follow-up query from user's note on an upvoted item.",
+      "acceptance_criteria": [
+        "Takes item_title and user_note as input",
+        "Uses OpenAI API to extract specific topic/query (2-5 words)",
+        "Returns: {'query': 'GRPO reinforcement learning', 'confidence': 0.9}",
+        "Returns None if note is too generic or unrelated",
+        "Can be run: python v1/tools/extract_signal.py --title 'DeepSeek R1' --note 'GRPO is fascinating'",
+        "Outputs: {\"query\": \"GRPO deep dive\", \"confidence\": 0.85}"
+      ],
+      "files_to_create": ["v1/tools/extract_signal.py"],
+      "files_to_reference": ["AGENT_ARCHITECTURE.md (Reflection Agent section)"],
+      "verifiable": true,
+      "verification_command": "python v1/tools/extract_signal.py --title 'LLM Finetuning' --note 'LoRA is so cool' | grep -q 'LoRA' && echo '✓ Signal extracted'"
+    },
+    {
+      "id": "3.2",
+      "title": "Enhance Reflection Agent",
+      "description": "Create v1/agents/reflection.py that reads interactions, updates tag scores (like v0), AND creates personal_signals from notes.",
+      "acceptance_criteria": [
+        "Reads user_interactions/{uid}/daily/{date}",
+        "Updates user_patterns/{uid}/tags scores (+5 upvote, -15 downvote)",
+        "For interactions with notes: calls extract_signal.py",
+        "Creates personal_signals in user_patterns: [{signal_id, query, priority, created_at, expires_at}]",
+        "Signals expire after 72 hours",
+        "Can be run: python v1/agents/reflection.py --user_id abc123 --date 2026-01-18",
+        "Outputs: 'Updated 8 tags, created 2 personal signals'"
+      ],
+      "files_to_create": ["v1/agents/reflection.py"],
+      "files_to_reference": ["v0/scripts/reflection.py", "v1/tools/extract_signal.py", "AGENT_ARCHITECTURE.md"],
+      "verifiable": true,
+      "verification_command": "python v1/agents/reflection.py --user_id test_user --date 2026-01-18 && echo '✓ Reflection complete'"
+    },
+    {
+      "id": "3.3",
+      "title": "Add personal search to Feed Delivery",
+      "description": "Enhance v1/agents/feed_delivery.py to check for personal_signals and run targeted searches for those queries.",
+      "acceptance_criteria": [
+        "Reads user_patterns/{uid}/personal_signals",
+        "Filters out expired signals (> 72 hours old)",
+        "For each active signal: runs Tavily search for signal.query (max 5 results)",
+        "Merges personal items (20%) with pool items (80%)",
+        "Total feed still 20 items",
+        "Personal items are marked with metadata: {from_personal_signal: true}",
+        "Logs: 'Found 2 active signals, added 4 personal items'"
+      ],
+      "files_to_create": [],
+      "files_to_modify": ["v1/agents/feed_delivery.py"],
+      "files_to_reference": ["AGENT_ARCHITECTURE.md (Feed Delivery section)", "v1/agents/reflection.py"],
+      "verifiable": true,
+      "verification_command": "python v1/agents/feed_delivery.py --user_id test_user | python -c 'import sys, json; data=json.load(sys.stdin); personal=[i for i in data if i.get(\"metadata\",{}).get(\"from_personal_signal\")]; print(\"✓ Personal items:\", len(personal))'"
+    },
+    {
+      "id": "3.4",
+      "title": "Create daily reflection job",
+      "description": "Create v1/run_daily_reflection.py that runs reflection for all users at end of day (11 PM).",
+      "acceptance_criteria": [
+        "Queries user_profiles where onboarded=true",
+        "For each user, runs reflection.py with today's date",
+        "Handles errors gracefully",
+        "Logs progress: 'Running reflection for 150 users... [50/150]'",
+        "Can be run: python v1/run_daily_reflection.py",
+        "Outputs: 'Reflection complete for 150 users in 45s'"
+      ],
+      "files_to_create": ["v1/run_daily_reflection.py"],
+      "files_to_reference": ["v1/agents/reflection.py", "v1/storage.py"],
+      "verifiable": true,
+      "verification_command": "python v1/run_daily_reflection.py && echo '✓ Daily reflection complete'"
+    },
+    {
+      "id": "3.5",
+      "title": "Test personalization flow end-to-end",
+      "description": "Manual verification that personal_signals work correctly. This is NOT code - just a checklist.",
+      "acceptance_criteria": [
+        "Upvote an item in frontend with note: 'Vector databases are cool'",
+        "Run: python v1/agents/reflection.py --user_id {your_uid} --date {today}",
+        "Check Firestore: user_patterns/{uid} has personal_signals with 'vector databases' query",
+        "Run: python v1/generate_feed.py --user_id {your_uid}",
+        "Frontend shows new feed with some items about vector databases",
+        "After 3 days, signal expires and those items stop appearing"
+      ],
+      "files_to_create": [],
+      "files_to_reference": ["frontend/app/api/interactions/route.ts", "CONTEXT.md"],
+      "verifiable": false,
+      "manual_verification": true
+    },
+    {
+      "id": "3.6",
+      "title": "Add signal cleanup job",
+      "description": "Create v1/scripts/cleanup_expired_signals.py that removes expired signals from all users. Runs daily.",
+      "acceptance_criteria": [
+        "Queries user_patterns for all users",
+        "For each user, filters personal_signals where expires_at < now",
+        "Updates user_patterns to remove expired signals",
+        "Logs: 'Cleaned 47 expired signals from 23 users'",
+        "Can be run: python v1/scripts/cleanup_expired_signals.py"
+      ],
+      "files_to_create": ["v1/scripts/cleanup_expired_signals.py"],
+      "files_to_reference": ["v1/storage.py"],
+      "verifiable": true,
+      "verification_command": "python v1/scripts/cleanup_expired_signals.py && echo '✓ Signals cleaned'"
+    },
+    {
+      "id": "3.7",
+      "title": "Create master scheduler",
+      "description": "Create v1/scheduler.py that orchestrates all daily jobs in correct order. This is the ONE script to run via cron.",
+      "acceptance_criteria": [
+        "4:00 AM: run_daily_batch.py (Trend Discovery + Pool Harvest)",
+        "5:00 AM: run_user_feeds.py (Generate feeds for all users)",
+        "11:00 PM: run_daily_reflection.py (Process day's interactions)",
+        "11:30 PM: cleanup_expired_signals.py",
+        "Each step logs start/end times",
+        "Errors in one step don't block others",
+        "Can be run: python v1/scheduler.py --jobs all",
+        "Outputs summary: 'Daily pipeline complete: 4 jobs succeeded, 0 failed, 6m 42s total'"
+      ],
+      "files_to_create": ["v1/scheduler.py"],
+      "files_to_reference": ["v1/run_daily_batch.py", "v1/run_user_feeds.py", "v1/run_daily_reflection.py"],
+      "verifiable": true,
+      "verification_command": "python v1/scheduler.py --jobs all && echo '✓ Full pipeline complete'"
+    }
+  ],
+  "completion_criteria": [
+    "All 7 tasks marked complete",
+    "Personal signals are extracted from user notes",
+    "Feeds include personal search results",
+    "Reflection updates both tag scores AND creates signals",
+    "Manual personalization test passes",
+    "scheduler.py runs all jobs successfully",
+    "All verification commands pass"
+  ],
+  "estimated_time": "4-5 hours",
+  "promise": "<promise>PHASE3_COMPLETE</promise>"
+}
+

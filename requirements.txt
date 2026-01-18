@@ -1,0 +1,11 @@
+openai-agents
+arxiv
+yt-dlp
+requests
+flask
+flask-cors
+pydantic
+python-dotenv
+schedule
+exa_py
+firebase-admin

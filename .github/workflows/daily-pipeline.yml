@@ -1,0 +1,86 @@
+name: Daily Pipeline
+
+on:
+  schedule:
+    # Morning jobs: 4 AM UTC (Trend Discovery + Pool Harvest + Feed Generation)
+    - cron: '0 4 * * *'
+    # Evening jobs: 23:00 UTC (Reflection + Cleanup)
+    - cron: '0 23 * * *'
+  
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      jobs:
+        description: 'Jobs to run (all/morning/evening/batch/feeds/reflection/cleanup)'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - morning
+          - evening
+          - batch
+          - feeds
+          - reflection
+          - cleanup
+
+env:
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+  FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+
+jobs:
+  morning-pipeline:
+    if: github.event.schedule == '0 4 * * *' || (github.event_name == 'workflow_dispatch' && (inputs.jobs == 'all' || inputs.jobs == 'morning' || inputs.jobs == 'batch' || inputs.jobs == 'feeds'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      
+      - name: Run morning jobs
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            python v1/scheduler.py --jobs ${{ inputs.jobs }}
+          else
+            python v1/scheduler.py --jobs morning
+          fi
+
+  evening-pipeline:
+    if: github.event.schedule == '0 23 * * *' || (github.event_name == 'workflow_dispatch' && (inputs.jobs == 'all' || inputs.jobs == 'evening' || inputs.jobs == 'reflection' || inputs.jobs == 'cleanup'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      
+      - name: Run evening jobs
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            python v1/scheduler.py --jobs ${{ inputs.jobs }}
+          else
+            python v1/scheduler.py --jobs evening
+          fi
+

@@ -1,0 +1,50 @@
+name: User Onboard
+
+on:
+  # Triggered via GitHub API from frontend
+  repository_dispatch:
+    types: [user-onboard]
+  
+  # Manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      user_id:
+        description: 'User ID to onboard'
+        required: true
+        type: string
+
+env:
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+  FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+
+jobs:
+  onboard-user:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      
+      - name: Run onboarding hook
+        run: |
+          # Get user_id from either dispatch type
+          if [ "${{ github.event_name }}" == "repository_dispatch" ]; then
+            USER_ID="${{ github.event.client_payload.user_id }}"
+          else
+            USER_ID="${{ inputs.user_id }}"
+          fi
+          
+          echo "Running onboarding for user: $USER_ID"
+          python v1/hooks/on_user_onboard.py --user_id "$USER_ID"
+

@@ -1,0 +1,131 @@
+{
+  "phase": 2,
+  "name": "User Integration",
+  "description": "Connect users to the pool: onboarding hooks, Feed Delivery Agent (Concierge), feed generation",
+  "dependencies": [
+    "Phase 1 complete (umbrellas, pool_harvester working)",
+    "Firestore has data in retrieval_pool",
+    "Frontend onboarding flow unchanged"
+  ],
+  "tasks": [
+    {
+      "id": "2.1",
+      "title": "Create Feed Delivery Agent (Concierge)",
+      "description": "Create v1/agents/feed_delivery.py with scoring system that pulls items from pool and ranks them for a specific user. Implements the Multi-Signal Scoring from AGENT_ARCHITECTURE.md.",
+      "acceptance_criteria": [
+        "Reads user_profiles/{uid}, user_preferences/{uid}, user_patterns/{uid}",
+        "Queries retrieval_pool for items matching user's umbrellas",
+        "Implements 8-signal scoring: tag affinity, source type, query specificity, freshness, quality, trending, novelty, content depth",
+        "Applies diversity filter (max 3 per domain, max 8 per type)",
+        "Returns top 20 items sorted by score",
+        "Deduplicates against user_seen_urls (last 14 days)",
+        "Can be run: python v1/agents/feed_delivery.py --user_id abc123"
+      ],
+      "files_to_create": [
+        "v1/agents/feed_delivery.py",
+        "v1/scoring.py"
+      ],
+      "files_to_reference": ["AGENT_ARCHITECTURE.md (Multi-Signal Scoring section)", "v1/storage.py"],
+      "verifiable": true,
+      "verification_command": "python v1/agents/feed_delivery.py --user_id test_user | python -c 'import sys, json; data=json.load(sys.stdin); assert len(data)<=20; print(\"✓ Generated feed with\", len(data), \"items\")'"
+    },
+    {
+      "id": "2.2",
+      "title": "Create feed generation script for one user",
+      "description": "Create v1/generate_feed.py that runs Feed Delivery Agent for one user and saves result to user_feeds/{uid}/daily/{date}. Must match exact schema frontend expects.",
+      "acceptance_criteria": [
+        "Takes --user_id as argument",
+        "Runs feed_delivery.py to get scored items",
+        "Formats items to match frontend schema: {id, type, title, description, url, tags, source, metadata: {why_relevant}}",
+        "Saves to: user_feeds/{uid}/daily/{date} with structure: {date, items, generated_at}",
+        "Updates user_seen_urls/{uid} with new URLs",
+        "Can be run: python v1/generate_feed.py --user_id abc123",
+        "Frontend can load this feed without errors"
+      ],
+      "files_to_create": ["v1/generate_feed.py"],
+      "files_to_reference": ["v1/agents/feed_delivery.py", "frontend/lib/firestore.ts", "CONTEXT.md"],
+      "verifiable": true,
+      "verification_command": "python v1/generate_feed.py --user_id test_user && echo '✓ Feed saved to Firestore'"
+    },
+    {
+      "id": "2.3",
+      "title": "Create bulk feed generator",
+      "description": "Create v1/run_user_feeds.py that generates feeds for ALL onboarded users. This runs after daily batch (5 AM).",
+      "acceptance_criteria": [
+        "Queries user_profiles where onboarded=true",
+        "For each user, calls generate_feed.py",
+        "Handles errors gracefully (logs failure, continues to next user)",
+        "Logs progress: 'Generating feeds for 150 users... [50/150]'",
+        "Can be run: python v1/run_user_feeds.py",
+        "Outputs: 'Generated feeds for 150 users in 2m 34s'"
+      ],
+      "files_to_create": ["v1/run_user_feeds.py"],
+      "files_to_reference": ["v1/generate_feed.py", "v1/storage.py"],
+      "verifiable": true,
+      "verification_command": "python v1/run_user_feeds.py && echo '✓ Bulk feeds generated'"
+    },
+    {
+      "id": "2.4",
+      "title": "Test feed display in frontend",
+      "description": "Manual verification that frontend can display v1-generated feeds. This is NOT code - just a checklist to verify.",
+      "acceptance_criteria": [
+        "Run: python v1/generate_feed.py --user_id {your_actual_uid}",
+        "Start frontend: cd frontend && npm run dev",
+        "Login and navigate to /feed",
+        "Feed displays items without errors",
+        "Items have correct icons (video/blog/paper)",
+        "Clicking items opens URLs",
+        "Can upvote/downvote items",
+        "No console errors related to feed data"
+      ],
+      "files_to_create": [],
+      "files_to_reference": ["frontend/app/feed/page.tsx", "CONTEXT.md"],
+      "verifiable": false,
+      "manual_verification": true
+    },
+    {
+      "id": "2.5",
+      "title": "Create onboarding hook",
+      "description": "Create v1/hooks/on_user_onboard.py that runs when a new user completes onboarding. Creates umbrella if needed, maps user to queries.",
+      "acceptance_criteria": [
+        "Takes --user_id as argument",
+        "Reads user_profiles/{uid} to get interests",
+        "For each interest: check if umbrella exists, create if not (run Trend Discovery)",
+        "Adds user to query_users for all sub_queries in their umbrellas",
+        "Generates first feed immediately (emergency search if pool empty)",
+        "Can be called from external script or API",
+        "Outputs: 'User onboarded: created 1 umbrella, mapped to 8 queries, generated initial feed'"
+      ],
+      "files_to_create": ["v1/hooks/on_user_onboard.py"],
+      "files_to_reference": ["v1/agents/trend_discovery.py", "v1/scripts/map_users_to_queries.py", "v1/generate_feed.py"],
+      "verifiable": true,
+      "verification_command": "python v1/hooks/on_user_onboard.py --user_id test_user_new && echo '✓ User onboarded'"
+    },
+    {
+      "id": "2.6",
+      "title": "Update existing users to v1 schema",
+      "description": "Create v1/scripts/migrate_existing_users.py that takes existing users and creates umbrella/query mappings for them.",
+      "acceptance_criteria": [
+        "Runs init_umbrellas.py first",
+        "Runs map_users_to_queries.py to connect users",
+        "Generates initial feeds for all existing users",
+        "Idempotent: safe to run multiple times",
+        "Outputs: 'Migrated 100 existing users to v1 schema'"
+      ],
+      "files_to_create": ["v1/scripts/migrate_existing_users.py"],
+      "files_to_reference": ["v1/scripts/init_umbrellas.py", "v1/scripts/map_users_to_queries.py", "v1/run_user_feeds.py"],
+      "verifiable": true,
+      "verification_command": "python v1/scripts/migrate_existing_users.py && echo '✓ Users migrated'"
+    }
+  ],
+  "completion_criteria": [
+    "All 6 tasks marked complete",
+    "run_user_feeds.py generates feeds for all users",
+    "Frontend displays v1 feeds correctly (manual test passes)",
+    "New users can onboard and get feeds immediately",
+    "All verification commands pass"
+  ],
+  "estimated_time": "4-5 hours",
+  "promise": "<promise>PHASE2_COMPLETE</promise>"
+}
+

@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+.env
+agent/feeds/
+agent/memory/daily/
+*.log
+*.md
+anybrew-7c6c1-firebase-adminsdk-fbsvc-fe164fd73a.json
+*.json
+*-firebase-adminsdk-*.json

@@ -1,0 +1,581 @@
+import { 
+  doc, 
+  getDoc, 
+  setDoc, 
+  serverTimestamp,
+  Timestamp,
+  collection,
+  getDocs
+} from 'firebase/firestore';
+import { firestore } from './firebase';
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Timestamp | null;
+}
+
+export const COLLECTIONS = {
+  userProfiles: 'user_profiles',
+  userPreferences: 'user_preferences',
+  userPatterns: 'user_patterns',
+  userFeeds: 'user_feeds',
+  userInteractions: 'user_interactions',
+  userSeenUrls: 'user_seen_urls',
+  retrievalPool: 'retrieval_pool',
+  trendingQueries: 'trending_queries',
+} as const;
+
+export interface UserPreferences {
+  source_distribution: {
+    video: number;
+    repo: number;
+    paper: number;
+    blog: number;
+    discussion: number;
+    launch: number;
+    tweet: number;
+    model: number;
+  };
+  enabled_sources: {
+    youtube: boolean;
+    github: boolean;
+    arxiv: boolean;
+    exa_blog: boolean;
+    exa_discussion: boolean;
+    exa_launch: boolean;
+    exa_tweet: boolean;
+    exa_model: boolean;
+    exa_repo?: boolean;
+  };
+  min_popularity?: {
+    stars?: number;
+    views?: number;
+  };
+  format: {
+    max_items: number;
+  };
+}
+
+// Default preferences for new users (used by the agent)
+export const DEFAULT_USER_PREFERENCES: UserPreferences = {
+  source_distribution: {
+    video: 40,      // YouTube - primary source
+    blog: 35,       // Technical articles
+    discussion: 15, // HN threads
+    repo: 5,        // GitHub repos
+    paper: 0,       // Disabled for most users
+    launch: 3,      // Product Hunt
+    tweet: 2,       // Twitter/X
+    model: 0,       // HuggingFace models
+  },
+  enabled_sources: {
+    youtube: true,
+    github: false,  // Disabled by default
+    arxiv: false,   // Disabled - too academic for most users
+    exa_blog: true,
+    exa_discussion: true,
+    exa_launch: true,
+    exa_tweet: true,
+    exa_model: false, // Disabled by default
+    exa_repo: false,  // Disabled by default
+  },
+  min_popularity: {
+    stars: 50,
+    views: 1000,
+  },
+  format: {
+    max_items: 20,
+  },
+};
+
+// Initialize user preferences in the user_preferences collection (for agent to read)
+export async function initializeUserPreferences(uid: string): Promise<void> {
+  try {
+    const docRef = doc(firestore, COLLECTIONS.userPreferences, uid);
+    await setDoc(docRef, {
+      ...DEFAULT_USER_PREFERENCES,
+      updated_at: new Date().toISOString(),
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error initializing user preferences:', error);
+    throw error;
+  }
+}
+
+// Initialize user patterns (empty defaults for agent to read)
+export async function initializeUserPatterns(uid: string, interests: string[], hobbies: string[]): Promise<void> {
+  try {
+    // Create initial tag scores from interests
+    const tags: Record<string, { score: number; shown: number }> = {};
+    for (const interest of interests) {
+      tags[interest.toLowerCase().replace(/\s+/g, '-')] = { score: 50, shown: 0 };
+    }
+    
+    const docRef = doc(firestore, COLLECTIONS.userPatterns, uid);
+    await setDoc(docRef, {
+      tags,
+      exclude_tags: [],
+      exploration: {
+        adjacent_searches: interests.slice(0, 4).map(i => `${i} latest trends`),
+        serendipity_queries: hobbies.slice(0, 2).map(h => `${h} tips and ideas`),
+      },
+      history: [],
+      updated: new Date().toISOString(),
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error initializing user patterns:', error);
+    throw error;
+  }
+}
+
+export interface UserPatterns {
+  tags: Record<string, { score: number; up?: number; down?: number; shown?: number }>;
+  exclude_tags: string[];
+  exploration: {
+    adjacent_searches: string[];
+    serendipity_queries: string[];
+  };
+  history?: Array<{
+    date: string;
+    summary: string;
+    insights?: string;
+    suggested_explorations?: string[];
+  }>;
+  updated?: string;
+}
+
+export interface UserFeed {
+  date: string;
+  items: unknown[];
+  metadata?: {
+    source_counts?: Record<string, number>;
+    freshness_ratio?: number;
+    generated_at?: string;
+    version?: string;
+  };
+}
+
+export interface UserInteraction {
+  item_id: string;
+  action: 'upvote' | 'downvote' | 'click';
+  timestamp: string;
+  item_metadata?: Record<string, unknown>;
+}
+
+export interface UserSeenUrls {
+  urls: Record<string, string>;
+  updated_at?: string;
+}
+
+export interface RetrievalPoolEntry {
+  topic: string;
+  items: Array<Record<string, unknown>>;
+  updated_at: string;
+  expires_at?: string;
+}
+
+export interface TrendingQueries {
+  updated_at: string;
+  queries: string[];
+}
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL: string | null;
+  
+  // Onboarding data
+  onboarded: boolean;
+  name: string;
+  role: string;
+  company?: string;
+  location?: string;
+  experienceYears?: number | null;
+  currentWork?: {
+    project?: string;
+    focus?: string;
+    company?: string;
+  };
+  projects?: string[];
+  goals?: {
+    shortTerm?: string;
+    longTerm?: string;
+  };
+  learningStyle?: string;
+  attentionConstraints?: string;
+  motivationTriggers?: string[];
+  interests: string[]; // Free-form interest tags
+  hobbies: string[]; // Free-form hobby tags
+  skills: string[]; // Free-form skill tags
+  dislikedTopics: string[]; // Topics to avoid
+  
+  // Content source preferences (percentages, should sum to ~100)
+  sourcePreferences: {
+    youtube: number; // 0-100
+    articles: number; // 0-100
+    papers: number; // 0-100
+    repos: number; // 0-100
+    tweets: number; // 0-100
+    discussions: number; // 0-100
+  };
+  
+  // Content preferences
+  contentDepth: 'quick' | 'deep' | 'surprise' | null;
+  contentPreferences?: {
+    likes?: string[];
+    dislikes?: string[];
+  };
+  favoriteSources?: string[];
+  personalityTraits?: string[];
+  petPeeves?: string[];
+  
+  // AI-gathered insights (added progressively through chat)
+  insights?: {
+    currentProjects?: string[];
+    goals?: string[];
+    skillLevel?: string;
+    learningStyle?: string;
+    preferredSources?: string[];
+    additionalContext?: string;
+  };
+  
+  // Chat history with profile agent
+  chatHistory?: ChatMessage[];
+  
+  // Timestamps
+  createdAt: Timestamp | null;
+  updatedAt: Timestamp | null;
+  onboardedAt: Timestamp | null;
+}
+
+export const INTERESTS = [
+  { id: 'ai-ml', label: 'AI & ML', emoji: '🤖' },
+  { id: 'performance', label: 'Performance', emoji: '⚡' },
+  { id: 'design', label: 'Design', emoji: '🎨' },
+  { id: 'frontend', label: 'Frontend', emoji: '💻' },
+  { id: 'backend', label: 'Backend', emoji: '🔧' },
+  { id: 'mobile', label: 'Mobile', emoji: '📱' },
+  { id: 'startups', label: 'Startups', emoji: '🚀' },
+  { id: 'finance', label: 'Finance', emoji: '💰' },
+  { id: 'content-creation', label: 'Content Creation', emoji: '🎬' },
+  { id: 'data', label: 'Data', emoji: '📊' },
+  { id: 'security', label: 'Security', emoji: '🔐' },
+  { id: 'gaming', label: 'Gaming', emoji: '🎮' },
+  { id: 'writing', label: 'Writing', emoji: '✍️' },
+  { id: 'growth', label: 'Growth', emoji: '📈' },
+  { id: 'productivity', label: 'Productivity', emoji: '🧠' },
+  { id: 'cloud-infra', label: 'Cloud/Infra', emoji: '☁️' },
+  { id: 'research', label: 'Research', emoji: '🔬' },
+  { id: 'web3', label: 'Web3', emoji: '🌐' },
+];
+
+export const ROLES = [
+  'Software Engineer',
+  'Designer',
+  'Product Manager',
+  'Marketing',
+  'Creator',
+  'Student',
+  'Founder',
+  'Data Scientist',
+  'Other'
+];
+
+// Get user profile from Firestore
+export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+  try {
+    const docRef = doc(firestore, 'user_profiles', uid);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      return docSnap.data() as UserProfile;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting user profile:', error);
+    return null;
+  }
+}
+
+export async function getLatestUserFeed(uid: string): Promise<UserFeed | null> {
+  try {
+    const feedRef = collection(firestore, COLLECTIONS.userFeeds, uid, 'daily');
+    // Get all docs and sort client-side (avoids needing Firestore index)
+    const snapshot = await getDocs(feedRef);
+    if (snapshot.empty) return null;
+    
+    // Sort by document ID (which is the date string YYYY-MM-DD) descending
+    const sortedDocs = snapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
+    return sortedDocs[0].data() as UserFeed;
+  } catch (error) {
+    console.error('Error getting latest feed:', error);
+    return null;
+  }
+}
+
+export async function getUserFeedDates(uid: string, limit = 10): Promise<string[]> {
+  try {
+    const feedRef = collection(firestore, COLLECTIONS.userFeeds, uid, 'daily');
+    const snapshot = await getDocs(feedRef);
+    if (snapshot.empty) return [];
+
+    const sortedDocs = snapshot.docs
+      .map(docSnap => docSnap.id)
+      .sort((a, b) => b.localeCompare(a));
+    return sortedDocs.slice(0, limit);
+  } catch (error) {
+    console.error('Error getting feed dates:', error);
+    return [];
+  }
+}
+
+export async function getUserFeedByDate(uid: string, date: string): Promise<UserFeed | null> {
+  try {
+    const docRef = doc(firestore, COLLECTIONS.userFeeds, uid, 'daily', date);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) return null;
+    return docSnap.data() as UserFeed;
+  } catch (error) {
+    console.error('Error getting feed by date:', error);
+    return null;
+  }
+}
+
+// Create initial user profile after sign in
+export async function createUserProfile(
+  uid: string,
+  email: string,
+  displayName: string,
+  photoURL: string | null
+): Promise<UserProfile> {
+  const profile: UserProfile = {
+    uid,
+    email,
+    displayName,
+    photoURL,
+    onboarded: false,
+    name: displayName || '',
+    role: '',
+    company: '',
+    location: '',
+    experienceYears: null,
+    currentWork: {},
+    projects: [],
+    goals: {},
+    learningStyle: '',
+    attentionConstraints: '',
+    motivationTriggers: [],
+    interests: [],
+    hobbies: [],
+    skills: [],
+    dislikedTopics: [],
+    sourcePreferences: {
+      youtube: 30,
+      articles: 25,
+      papers: 10,
+      repos: 15,
+      tweets: 10,
+      discussions: 10,
+    },
+    contentDepth: null,
+    contentPreferences: { likes: [], dislikes: [] },
+    favoriteSources: [],
+    personalityTraits: [],
+    petPeeves: [],
+    createdAt: serverTimestamp() as Timestamp,
+    updatedAt: serverTimestamp() as Timestamp,
+    onboardedAt: null,
+  };
+
+  try {
+    const docRef = doc(firestore, 'user_profiles', uid);
+    await setDoc(docRef, profile);
+    return profile;
+  } catch (error) {
+    console.error('Error creating user profile:', error);
+    throw error;
+  }
+}
+
+// Update user profile with onboarding data
+export async function completeOnboarding(
+  uid: string,
+  data: {
+    name: string;
+    role: string;
+    company?: string;
+    location?: string;
+    experienceYears?: number | null;
+    currentWork?: {
+      project?: string;
+      focus?: string;
+      company?: string;
+    };
+    projects?: string[];
+    goals?: {
+      shortTerm?: string;
+      longTerm?: string;
+    };
+    learningStyle?: string;
+    attentionConstraints?: string;
+    motivationTriggers?: string[];
+    interests: string[];
+    hobbies: string[];
+    skills: string[];
+    dislikedTopics: string[];
+    sourcePreferences: {
+      youtube: number;
+      articles: number;
+      papers: number;
+      repos: number;
+      tweets: number;
+      discussions: number;
+    };
+    contentDepth?: 'quick' | 'deep' | 'surprise' | null;
+    contentPreferences?: {
+      likes?: string[];
+      dislikes?: string[];
+    };
+    favoriteSources?: string[];
+    personalityTraits?: string[];
+    petPeeves?: string[];
+    insights?: Partial<UserProfile['insights']>;
+    chatHistory?: ChatMessage[];
+  }
+): Promise<void> {
+  try {
+    const docRef = doc(firestore, 'user_profiles', uid);
+    
+    // Remove undefined values from data
+    const cleanData = Object.fromEntries(
+      Object.entries(data).filter(([, value]) => value !== undefined)
+    );
+    
+    // Use setDoc with merge to create if doesn't exist or update if it does
+    await setDoc(docRef, {
+      ...cleanData,
+      uid,
+      onboarded: true,
+      updatedAt: serverTimestamp(),
+      onboardedAt: serverTimestamp(),
+    }, { merge: true });
+    
+    // Initialize user_preferences collection (for agent to read)
+    await initializeUserPreferences(uid);
+    
+    // Initialize user_patterns collection with interests/hobbies
+    await initializeUserPatterns(uid, data.interests, data.hobbies);
+    
+  } catch (error) {
+    console.error('Error completing onboarding:', error);
+    throw error;
+  }
+}
+
+// Update user profile
+export async function updateUserProfile(
+  uid: string,
+  data: Partial<UserProfile>
+): Promise<void> {
+  try {
+    const docRef = doc(firestore, 'user_profiles', uid);
+    
+    // Filter out undefined values to prevent Firestore errors
+    const cleanData = JSON.parse(JSON.stringify({
+      ...data,
+      updatedAt: serverTimestamp(),
+    }));
+    
+    // Use setDoc with merge to handle cases where doc might not exist
+    await setDoc(docRef, cleanData, { merge: true });
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    throw error;
+  }
+}
+
+// Get or create user profile (used after sign in)
+export async function getOrCreateUserProfile(
+  uid: string,
+  email: string,
+  displayName: string,
+  photoURL: string | null
+): Promise<UserProfile> {
+  const existing = await getUserProfile(uid);
+  if (existing) {
+    return existing;
+  }
+  return createUserProfile(uid, email, displayName, photoURL);
+}
+
+// Add a chat message to the profile
+export async function addChatMessage(
+  uid: string,
+  message: { role: 'user' | 'assistant'; content: string }
+): Promise<void> {
+  try {
+    const profile = await getUserProfile(uid);
+    const chatHistory = profile?.chatHistory || [];
+    
+    // Don't use serverTimestamp inside array - use Date instead
+    chatHistory.push({
+      ...message,
+      timestamp: new Date() as unknown as Timestamp,
+    });
+
+    const docRef = doc(firestore, 'user_profiles', uid);
+    await setDoc(docRef, {
+      chatHistory,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error adding chat message:', error);
+    throw error;
+  }
+}
+
+// Clear chat history to start a fresh session
+export async function clearChatHistory(uid: string): Promise<void> {
+  try {
+    const docRef = doc(firestore, 'user_profiles', uid);
+    await setDoc(docRef, {
+      chatHistory: [],
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error clearing chat history:', error);
+    throw error;
+  }
+}
+
+// Update user insights from AI chat
+export async function updateUserInsights(
+  uid: string,
+  insights: Partial<UserProfile['insights']>
+): Promise<void> {
+  try {
+    const profile = await getUserProfile(uid);
+    const currentInsights = profile?.insights || {};
+    
+    const mergedInsights = {
+      ...currentInsights,
+      ...insights,
+      // Merge arrays instead of replacing
+      currentProjects: [...(currentInsights.currentProjects || []), ...(insights?.currentProjects || [])].filter((v, i, a) => a.indexOf(v) === i),
+      goals: [...(currentInsights.goals || []), ...(insights?.goals || [])].filter((v, i, a) => a.indexOf(v) === i),
+      preferredSources: [...(currentInsights.preferredSources || []), ...(insights?.preferredSources || [])].filter((v, i, a) => a.indexOf(v) === i),
+    };
+
+    const docRef = doc(firestore, 'user_profiles', uid);
+    await setDoc(docRef, {
+      insights: mergedInsights,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error updating user insights:', error);
+    throw error;
+  }
+}
+
