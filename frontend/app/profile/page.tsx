@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   User,
@@ -14,21 +14,34 @@ import {
   Send,
   Sparkles,
   MessageCircle,
-  Bot
+  Bot,
+  CreditCard
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserProfile, updateUserProfile, updateUserInsights, addChatMessage, clearChatHistory, UserProfile, INTERESTS, ROLES, ChatMessage } from '@/lib/firestore';
 import { isAlphaMode } from '@/lib/alpha';
 import Header from '@/components/Header';
+import SubscriptionManager from '@/components/SubscriptionManager';
 
-export default function ProfilePage() {
+function ProfileContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading, signOut } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
-  const [activeTab, setActiveTab] = useState<'profile' | 'chat'>('profile');
+  
+  const [activeTab, setActiveTab] = useState<'profile' | 'chat' | 'subscription'>('profile');
+  
+  // Switch to subscription tab if coming from onboarding or feed redirect
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    const subscriptionParam = searchParams.get('subscription');
+    if (tabParam === 'subscription' || subscriptionParam === 'required' || subscriptionParam === 'success') {
+      setActiveTab('subscription');
+    }
+  }, [searchParams]);
   
   // Chat state
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
@@ -357,30 +370,43 @@ export default function ProfilePage() {
           </div>
 
           {/* Tab Switcher */}
-          <div className="flex border border-border">
+          <div className="flex gap-2">
             <button
               onClick={() => setActiveTab('profile')}
-              className={`px-6 py-3 text-[10px] font-mono uppercase tracking-widest transition-colors flex items-center gap-2 ${
-                activeTab === 'profile' ? 'bg-primary text-primary-foreground' : 'hover:bg-border/50'
+              className={`px-4 md:px-6 py-2.5 md:py-3 text-[10px] font-mono uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'profile' 
+                  ? 'bg-primary text-primary-foreground border-2 border-primary' 
+                  : 'bg-background text-secondary border-2 border-border hover:border-primary/50'
               }`}
             >
-              <User size={12} />
-              Profile
+              <User size={14} />
+              <span className="hidden sm:inline">Profile</span>
             </button>
             <button
-              onClick={() => setActiveTab('chat')}
-              className={`px-6 py-3 text-[10px] font-mono uppercase tracking-widest transition-colors flex items-center gap-2 ${
-                activeTab === 'chat' ? 'bg-primary text-primary-foreground' : 'hover:bg-border/50'
+              onClick={() => setActiveTab('subscription')}
+              className={`px-4 md:px-6 py-2.5 md:py-3 text-[10px] font-mono uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'subscription' 
+                  ? 'bg-primary text-primary-foreground border-2 border-primary' 
+                  : 'bg-background text-secondary border-2 border-border hover:border-primary/50'
               }`}
             >
-              <MessageCircle size={12} />
-              Tell Me More
+              <CreditCard size={14} />
+              <span className="hidden sm:inline">Subscription</span>
             </button>
           </div>
         </div>
 
         <AnimatePresence mode="wait">
-          {activeTab === 'profile' ? (
+          {activeTab === 'subscription' ? (
+            <motion.div
+              key="subscription"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <SubscriptionManager />
+            </motion.div>
+          ) : (
             <motion.div
               key="profile"
               initial={{ opacity: 0, x: -20 }}
@@ -874,107 +900,21 @@ export default function ProfilePage() {
                 </section>
               )}
             </motion.div>
-          ) : (
-            <motion.div
-              key="chat"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="border border-border"
-            >
-              {/* Chat Header */}
-              <div className="p-6 border-b border-border">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center">
-                      <Bot size={20} />
-                    </div>
-                    <div>
-                      <h2 className="font-serif font-bold">Trace</h2>
-                      <p className="text-[10px] font-mono uppercase tracking-widest text-secondary">
-                        Profile Assistant
-                      </p>
-                    </div>
-                  </div>
-                  {chatMessages.length > 0 && (
-                    <button
-                      onClick={async () => {
-                        if (user) {
-                          await clearChatHistory(user.uid);
-                          setChatMessages([]);
-                          startChat();
-                        }
-                      }}
-                      className="flex items-center gap-2 px-3 py-2 border border-border hover:border-red-500 text-[10px] font-mono uppercase tracking-widest text-secondary hover:text-red-500 transition-colors"
-                    >
-                      <Trash2 size={12} />
-                      New Chat
-                    </button>
-                  )}
-                </div>
-                <p className="mt-4 text-sm font-mono text-secondary">
-                  Chat with me to help personalize your feed even more. The more I know about you, the better your recommendations get!
-                </p>
-              </div>
-
-              {/* Chat Messages */}
-              <div className="h-[400px] overflow-y-auto p-6 space-y-4">
-                {chatMessages.map((msg, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`max-w-[80%] p-4 ${
-                      msg.role === 'user' 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'bg-border'
-                    }`}>
-                      <p className="text-sm font-mono whitespace-pre-wrap">{msg.content}</p>
-                    </div>
-                  </motion.div>
-                ))}
-                
-                {isChatLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-border p-4">
-                      <div className="flex gap-1">
-                        <div className="w-2 h-2 bg-secondary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="w-2 h-2 bg-secondary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <div className="w-2 h-2 bg-secondary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <div ref={chatEndRef} />
-              </div>
-
-              {/* Chat Input */}
-              <div className="p-4 border-t border-border">
-                <div className="flex gap-3">
-                  <input
-                    type="text"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-                    placeholder="Type your message..."
-                    disabled={isChatLoading}
-                    className="flex-1 bg-transparent border border-border px-4 py-3 text-sm font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/50"
-                  />
-                  <button
-                    onClick={sendMessage}
-                    disabled={!chatInput.trim() || isChatLoading}
-                    className="px-6 py-3 bg-primary text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Send size={16} />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
           )}
         </AnimatePresence>
       </main>
     </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <ProfileContent />
+    </Suspense>
   );
 }

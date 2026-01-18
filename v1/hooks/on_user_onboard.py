@@ -1,7 +1,8 @@
 """
-Onboarding hook - runs when a new user completes onboarding.
+Onboarding/Subscription hook - runs when a user completes onboarding or subscribes.
 
-Creates umbrellas if needed, maps user to queries, and generates first feed.
+Creates umbrellas if needed, maps user to queries, and generates feed.
+Safe to run multiple times (idempotent).
 
 Usage:
     python v1/hooks/on_user_onboard.py --user_id abc123
@@ -140,7 +141,7 @@ def emergency_search_and_populate(store: FirestoreStore, interest: str) -> int:
         print("    Warning: TAVILY_API_KEY not set, skipping emergency search")
         return 0
     
-    query = f"{interest} latest news tutorials"
+    query = f"{interest} latest news trends insights -tutorial -beginner -guide"
     
     try:
         resp = requests.post(
@@ -200,12 +201,16 @@ def emergency_search_and_populate(store: FirestoreStore, interest: str) -> int:
 
 def on_user_onboard(user_id: str) -> dict[str, Any]:
     """
-    Handle user onboarding completion.
+    Handle user onboarding or subscription.
+    
+    Runs when a user completes onboarding OR subscribes.
+    Generates feed regardless of subscription status (for initial preview).
+    Daily feeds are gated behind subscriptions via run_user_feeds.py.
     
     1. Reads user interests
     2. Creates umbrellas if needed
     3. Maps user to queries
-    4. Generates first feed
+    4. Generates feed
     
     Args:
         user_id: The user's ID

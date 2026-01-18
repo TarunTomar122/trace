@@ -82,13 +82,13 @@ def job_daily_batch():
 
 
 def job_user_feeds():
-    """Generate feeds for all onboarded users."""
+    """Generate feeds for all subscribed users (trial or paid)."""
     from v1.run_user_feeds import run_user_feeds
     return run_user_feeds()
 
 
 def job_daily_reflection():
-    """Run reflection for all users."""
+    """Run reflection for all subscribed users (trial or paid)."""
     from v1.run_daily_reflection import run_daily_reflection
     return run_daily_reflection()
 

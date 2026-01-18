@@ -106,8 +106,8 @@ def generate_feed(user_id: str, date: str | None = None) -> dict[str, Any]:
     
     print(f"Generating feed for user {user_id} on {date}...")
     
-    # Get scored items from Feed Delivery Agent
-    items = deliver_feed(user_id)
+    # Get scored items from Feed Delivery Agent (no limit - return all related)
+    items = deliver_feed(user_id, max_items=None)
     
     if not items:
         print(f"  Warning: No items generated for user {user_id}")

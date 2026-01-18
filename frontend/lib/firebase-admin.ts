@@ -11,6 +11,7 @@ try {
     const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
     
     if (serviceAccountKey) {
+      console.log('Initializing Firebase Admin with service account key');
       // Option 1: Inline JSON string
       const serviceAccount = JSON.parse(serviceAccountKey);
       initializeApp({
@@ -18,26 +19,31 @@ try {
         projectId: 'anybrew-7c6c1',
       });
     } else if (serviceAccountPath) {
+      console.log('Initializing Firebase Admin with service account path');
       // Option 2: Path to JSON file
       initializeApp({
         credential: cert(serviceAccountPath),
         projectId: 'anybrew-7c6c1',
       });
     } else {
-      // Option 3: Default credentials (won't work locally)
-      initializeApp({
-        projectId: 'anybrew-7c6c1',
-      });
+      console.error('No Firebase credentials found - FIREBASE_SERVICE_ACCOUNT_KEY or FIREBASE_SERVICE_ACCOUNT_PATH required');
+      throw new Error('Firebase credentials not configured');
     }
   }
   
   adminAuth = getAuth();
   adminFirestore = getFirestore();
+  console.log('Firebase Admin initialized successfully');
 } catch (error) {
   console.error('Firebase Admin initialization error:', error);
+  if (error instanceof Error) {
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+  }
   adminAuth = null;
   adminFirestore = null;
 }
 
 export { adminAuth, adminFirestore };
+export const adminDb = adminFirestore; // Alias for consistency
 

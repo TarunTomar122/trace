@@ -1,0 +1,221 @@
+"use client";
+
+import React from 'react';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { Shield, ArrowLeft } from 'lucide-react';
+
+export default function PrivacyPolicyPage() {
+    return (
+        <div className="min-h-screen bg-background text-foreground">
+            {/* Header */}
+            <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
+                <div className="container mx-auto px-4 max-w-7xl">
+                    <div className="flex items-center justify-between py-4">
+                        <Link href="/" className="flex items-center gap-2 text-sm font-mono uppercase tracking-wider text-secondary hover:text-primary transition-colors">
+                            <ArrowLeft size={16} />
+                            Back to Home
+                        </Link>
+                        <div className="text-lg text-foreground uppercase flex items-center gap-3 tracking-[0.15em] font-serif font-black">
+                            <img
+                                src="/trace.png"
+                                alt="Trace Logo"
+                                className="h-6 w-auto object-contain"
+                            />
+                            TRACE
+                        </div>
+                        <div className="w-24"></div>
+                    </div>
+                </div>
+            </nav>
+
+            {/* Main Content */}
+            <main className="pt-32 pb-20">
+                <div className="container mx-auto px-4 max-w-4xl">
+                    {/* Hero Section */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6 }}
+                        className="mb-12"
+                    >
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-12 h-12 bg-primary/10 border-2 border-primary flex items-center justify-center">
+                                <Shield className="text-primary" size={18} strokeWidth={1.5} />
+                            </div>
+                            <div>
+                                <h1 className="text-4xl md:text-6xl font-serif font-light tracking-tighter text-foreground uppercase">
+                                    Privacy Policy
+                                </h1>
+                            </div>
+                        </div>
+                        <p className="text-xs font-mono uppercase tracking-widest text-secondary mt-2">
+                            Last Updated: January 18, 2026
+                        </p>
+                    </motion.div>
+
+                    {/* Content */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.1 }}
+                        className="prose prose-sm md:prose-base max-w-none"
+                    >
+                        <div className="space-y-8 font-mono text-sm leading-relaxed text-secondary">
+                            <section>
+                                <h2 className="text-2xl font-serif font-light text-foreground uppercase mb-4">Introduction</h2>
+                                <p>
+                                    Welcome to Trace. We respect your privacy and are committed to protecting your personal data.
+                                    This privacy policy explains how we collect, use, disclose, and safeguard your information when
+                                    you use our service.
+                                </p>
+                            </section>
+
+                            <section>
+                                <h2 className="text-2xl font-serif font-light text-foreground uppercase mb-4">Information We Collect</h2>
+                                <h3 className="text-lg font-serif font-light text-foreground uppercase mb-3">Personal Information</h3>
+                                <p className="mb-4">When you sign in with Google, we collect:</p>
+                                <ul className="list-disc pl-6 space-y-2 mb-4">
+                                    <li>Your name</li>
+                                    <li>Email address</li>
+                                    <li>Profile picture</li>
+                                    <li>Google account ID</li>
+                                </ul>
+
+                                <h3 className="text-lg font-serif font-light text-foreground uppercase mb-3">Profile Information</h3>
+                                <p className="mb-4">You may provide us with:</p>
+                                <ul className="list-disc pl-6 space-y-2 mb-4">
+                                    <li>Your interests and preferences</li>
+                                    <li>Learning goals</li>
+                                    <li>Content preferences</li>
+                                    <li>Hobbies and professional information</li>
+                                </ul>
+
+                                <h3 className="text-lg font-serif font-light text-foreground uppercase mb-3">Usage Data</h3>
+                                <p className="mb-4">We automatically collect:</p>
+                                <ul className="list-disc pl-6 space-y-2">
+                                    <li>Interaction data (content you like, skip, or bookmark)</li>
+                                    <li>Reading/viewing patterns</li>
+                                    <li>Time spent on different content types</li>
+                                    <li>Device and browser information</li>
+                                    <li>IP address and general location</li>
+                                </ul>
+                            </section>
+
+                            <section>
+                                <h2 className="text-2xl font-serif font-light text-foreground uppercase mb-4">How We Use Your Information</h2>
+                                <p className="mb-4">We use your information to:</p>
+                                <ul className="list-disc pl-6 space-y-2">
+                                    <li>Provide and personalize your content feed</li>
+                                    <li>Improve our AI algorithms and content curation</li>
+                                    <li>Understand your preferences and adapt to your interests</li>
+                                    <li>Communicate with you about service updates</li>
+                                    <li>Analyze and improve our service</li>
+                                    <li>Ensure security and prevent fraud</li>
+                                    <li>Comply with legal obligations</li>
+                                </ul>
+                            </section>
+
+                            <section>
+                                <h2 className="text-2xl font-serif font-light text-foreground uppercase mb-4">Data Sharing and Disclosure</h2>
+                                <p className="mb-4">We do not sell your personal information. We may share your data with:</p>
+                                <ul className="list-disc pl-6 space-y-2">
+                                    <li><strong>Service Providers:</strong> Third-party services that help us operate (e.g., Firebase, cloud hosting)</li>
+                                    <li><strong>Analytics Partners:</strong> To understand usage patterns (anonymized where possible)</li>
+                                    <li><strong>Legal Requirements:</strong> When required by law or to protect our rights</li>
+                                </ul>
+                            </section>
+
+                            <section>
+                                <h2 className="text-2xl font-serif font-light text-foreground uppercase mb-4">Data Security</h2>
+                                <p>
+                                    We implement appropriate technical and organizational measures to protect your personal data.
+                                    However, no method of transmission over the internet is 100% secure. While we strive to protect
+                                    your information, we cannot guarantee absolute security.
+                                </p>
+                            </section>
+
+                            <section>
+                                <h2 className="text-2xl font-serif font-light text-foreground uppercase mb-4">Your Rights</h2>
+                                <p className="mb-4">You have the right to:</p>
+                                <ul className="list-disc pl-6 space-y-2">
+                                    <li>Access your personal data</li>
+                                    <li>Correct inaccurate data</li>
+                                    <li>Request deletion of your data</li>
+                                    <li>Export your data</li>
+                                    <li>Opt out of certain data collection</li>
+                                    <li>Withdraw consent at any time</li>
+                                </ul>
+                                <p className="mt-4">
+                                    To exercise these rights, please contact us at tomartarun2001@gmail.com
+                                </p>
+                            </section>
+
+                            <section>
+                                <h2 className="text-2xl font-serif font-light text-foreground uppercase mb-4">Cookies and Tracking</h2>
+                                <p>
+                                    We use cookies and similar tracking technologies to maintain your session, remember your preferences,
+                                    and analyze usage patterns. You can control cookies through your browser settings.
+                                </p>
+                            </section>
+
+                            <section>
+                                <h2 className="text-2xl font-serif font-light text-foreground uppercase mb-4">Third-Party Links</h2>
+                                <p>
+                                    Our service contains links to external content (YouTube, GitHub, research papers, etc.). We are not
+                                    responsible for the privacy practices of these external sites. We encourage you to review their
+                                    privacy policies.
+                                </p>
+                            </section>
+
+                            <section>
+                                <h2 className="text-2xl font-serif font-light text-foreground uppercase mb-4">Children&apos;s Privacy</h2>
+                                <p>
+                                    Our service is not intended for children under 13 years of age. We do not knowingly collect personal
+                                    information from children under 13. If you believe we have collected such information, please contact us.
+                                </p>
+                            </section>
+
+                            <section>
+                                <h2 className="text-2xl font-serif font-light text-foreground uppercase mb-4">Changes to This Policy</h2>
+                                <p>
+                                    We may update this privacy policy from time to time. We will notify you of significant changes by
+                                    posting the new policy on this page and updating the &quot;Last Updated&quot; date. We encourage you to review
+                                    this policy periodically.
+                                </p>
+                            </section>
+
+                            <section>
+                                <h2 className="text-2xl font-serif font-light text-foreground uppercase mb-4">Contact Us</h2>
+                                <p className="mb-4">
+                                    If you have questions or concerns about this privacy policy, please contact us:
+                                </p>
+                                <div className="border border-border p-6 bg-background">
+                                    <p className="mb-2"><strong>Email:</strong> tomartarun2001@gmail.com</p>
+                                    <p className="mb-2"><strong>Twitter:</strong> <a href="https://x.com/tarat_211" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@tarat_211</a></p>
+                                    <p><strong>GitHub:</strong> <a href="https://github.com/TarunTomar122" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">TarunTomar122</a></p>
+                                </div>
+                            </section>
+
+                            <section className="border-t border-border pt-8 mt-12">
+                                <p className="text-xs uppercase tracking-widest text-secondary/60">
+                                    By using Trace, you acknowledge that you have read and understood this Privacy Policy.
+                                </p>
+                            </section>
+                        </div>
+                    </motion.div>
+                </div>
+            </main>
+
+            {/* Footer */}
+            <footer className="py-8 bg-background border-t border-border">
+                <div className="container mx-auto px-4 max-w-4xl text-center">
+                    <p className="text-xs font-mono uppercase tracking-widest text-secondary">
+                        © 2026 TRACE // BUILT WITH INTENTION
+                    </p>
+                </div>
+            </footer>
+        </div>
+    );
+}
+

@@ -1,7 +1,8 @@
 """
-Daily Reflection Job - runs reflection for all onboarded users.
+Daily Reflection Job - runs reflection for all subscribed users.
 
 Processes the day's interactions to update tag scores and create personal signals.
+Only runs for users with active subscriptions (trial or paid).
 Typically runs at 11 PM after users have finished interacting with their feeds.
 
 Usage:
@@ -27,7 +28,7 @@ from v1.agents.reflection import run_reflection
 
 def run_daily_reflection(date: str | None = None, limit: int | None = None) -> dict:
     """
-    Run reflection for all onboarded users.
+    Run reflection for all subscribed users (trial or paid).
     
     Args:
         date: Optional date string (YYYY-MM-DD), defaults to today
@@ -43,21 +44,21 @@ def run_daily_reflection(date: str | None = None, limit: int | None = None) -> d
     
     start_time = time.time()
     
-    # Query all onboarded users
+    # Query all users with active subscriptions
     print(f"Running reflection for {date}...")
-    print("Loading onboarded users...")
+    print("Loading subscribed users...")
     
-    users = store.get_onboarded_users()
+    users = store.get_onboarded_users()  # Now returns users with trial/active subscriptions
     
     total_users = len(users)
     if limit:
         users = users[:limit]
-        print(f"Found {total_users} onboarded users, processing {len(users)} (limited)")
+        print(f"Found {total_users} subscribed users (trial + active), processing {len(users)} (limited)")
     else:
-        print(f"Found {total_users} onboarded users")
+        print(f"Found {total_users} subscribed users (trial + active)")
     
     if not users:
-        print("No onboarded users found.")
+        print("No subscribed users found.")
         return {
             "users_processed": 0,
             "success_count": 0,
@@ -74,6 +75,7 @@ def run_daily_reflection(date: str | None = None, limit: int | None = None) -> d
     error_count = 0
     total_tags_updated = 0
     total_signals_created = 0
+    total_exclude_tags_added = 0
     total_interactions = 0
     errors = []
     
@@ -93,11 +95,13 @@ def run_daily_reflection(date: str | None = None, limit: int | None = None) -> d
                 success_count += 1
                 total_tags_updated += result.get("tags_updated", 0)
                 total_signals_created += result.get("signals_created", 0)
+                total_exclude_tags_added += result.get("exclude_tags_added", 0)
                 total_interactions += result.get("total_interactions", 0)
                 
                 # Only log if there were interactions
                 if result.get("total_interactions", 0) > 0:
-                    print(f"  [{i}/{len(users)}] {user_name}: {result['tags_updated']} tags, {result['signals_created']} signals")
+                    exclude_info = f", {result.get('exclude_tags_added', 0)} exclude tags" if result.get('exclude_tags_added', 0) > 0 else ""
+                    print(f"  [{i}/{len(users)}] {user_name}: {result['tags_updated']} tags, {result['signals_created']} signals{exclude_info}")
             else:
                 error_count += 1
                 errors.append({"user_id": user_id, "error": result.get("message", "Unknown error")})
@@ -115,6 +119,7 @@ def run_daily_reflection(date: str | None = None, limit: int | None = None) -> d
     print(f"  Total interactions processed: {total_interactions}")
     print(f"  Total tags updated: {total_tags_updated}")
     print(f"  Total signals created: {total_signals_created}")
+    print(f"  Total exclude tags added: {total_exclude_tags_added}")
     
     if errors:
         print(f"\nErrors ({len(errors)}):")
@@ -129,6 +134,7 @@ def run_daily_reflection(date: str | None = None, limit: int | None = None) -> d
         "error_count": error_count,
         "total_tags_updated": total_tags_updated,
         "total_signals_created": total_signals_created,
+        "total_exclude_tags_added": total_exclude_tags_added,
         "total_interactions": total_interactions,
         "duration_seconds": duration,
         "date": date

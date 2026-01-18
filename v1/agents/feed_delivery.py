@@ -183,8 +183,8 @@ def search_missing_interest(interest: str, umbrella_id: str, max_results: int = 
         
         client = TavilyClient(api_key=tavily_key)
         
-        # Search for recent content about this interest
-        query = f"{interest} latest news trends"
+        # Search for recent content about this interest (exclude tutorials)
+        query = f"{interest} latest news trends insights -tutorial -beginner -guide"
         
         response = client.search(
             query=query,
@@ -224,15 +224,16 @@ def search_missing_interest(interest: str, umbrella_id: str, max_results: int = 
         return []
 
 
-def deliver_feed(user_id: str, max_items: int = 20) -> list[dict[str, Any]]:
+def deliver_feed(user_id: str, max_items: int | None = None) -> list[dict[str, Any]]:
     """
     Deliver a personalized feed for a user from the retrieval pool.
     
-    Includes 80% pool items and 20% personal search items (from signals).
+    Includes pool items + personal search items (from signals).
+    No hard limit on items - returns all related content from pool.
     
     Args:
         user_id: The user's ID
-        max_items: Maximum items to return (default 20)
+        max_items: Optional maximum items (None = no limit, return all related)
     
     Returns:
         List of scored and filtered feed items
@@ -260,7 +261,7 @@ def deliver_feed(user_id: str, max_items: int = 20) -> list[dict[str, Any]]:
     # =========================================================================
     active_signals = get_active_signals(user_patterns)
     personal_items = []
-    max_personal_items = int(max_items * 0.2)  # 20% of feed
+    max_personal_items = 10  # Up to 10 personal signal items
     
     if active_signals:
         print(f"Found {len(active_signals)} active signals, searching...")
@@ -306,8 +307,8 @@ def deliver_feed(user_id: str, max_items: int = 20) -> list[dict[str, Any]]:
         interests[i]: umbrella_ids[i] for i in range(len(interests))
     }
     
-    # Calculate how many pool items we need
-    pool_items_needed = max_items - len(personal_items)
+    # No hard limit on pool items - we'll return all related content
+    pool_items_needed = max_items - len(personal_items) if max_items else None
     
     # Query pool for items matching user's umbrellas
     # Track which umbrellas have items and which don't
@@ -357,8 +358,9 @@ def deliver_feed(user_id: str, max_items: int = 20) -> list[dict[str, Any]]:
         # Add topup items to pool items
         all_items.extend(topup_items)
     
-    # Also get some general items if we don't have enough
-    if len(all_items) < pool_items_needed * 2:
+    # Also get some general items if we don't have many
+    min_items_threshold = pool_items_needed * 2 if pool_items_needed else 40
+    if len(all_items) < min_items_threshold:
         general_items = store.get_retrieval_pool()
         for item in general_items:
             if item.get("url") not in [i.get("url") for i in all_items]:
@@ -385,13 +387,14 @@ def deliver_feed(user_id: str, max_items: int = 20) -> list[dict[str, Any]]:
     # Sort by score descending
     scored_items.sort(key=lambda x: x.get("_score", 0), reverse=True)
     
-    # Apply diversity filter
+    # Apply diversity filter (no hard limit if max_items is None)
     print("Applying diversity filter...")
+    diversity_max = pool_items_needed if pool_items_needed else len(scored_items)
     filtered_pool_items = apply_diversity_filter(
         scored_items,
-        max_per_domain=3,
-        max_per_type=8,
-        max_items=pool_items_needed
+        max_per_domain=5,   # Allow more per domain since no hard limit
+        max_per_type=None,  # No type limit
+        max_items=diversity_max
     )
     
     print(f"  Selected {len(filtered_pool_items)} pool items")
@@ -461,7 +464,7 @@ def deliver_feed(user_id: str, max_items: int = 20) -> list[dict[str, Any]]:
 def main():
     parser = argparse.ArgumentParser(description="Deliver personalized feed for a user")
     parser.add_argument("--user_id", required=True, help="User ID to generate feed for")
-    parser.add_argument("--max-items", type=int, default=20, help="Maximum items to return")
+    parser.add_argument("--max-items", type=int, default=None, help="Maximum items to return (default: no limit)")
     args = parser.parse_args()
     
     items = deliver_feed(args.user_id, max_items=args.max_items)

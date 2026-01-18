@@ -197,9 +197,18 @@ class FirestoreStore:
         return None
     
     def get_onboarded_users(self) -> list[dict[str, Any]]:
-        """Get all onboarded user profiles."""
-        docs = self.db.collection("user_profiles").where("onboarded", "==", True).stream()
-        return [{"uid": doc.id, **_serialize_firestore(doc.to_dict())} for doc in docs]
+        """Get all users with active subscriptions (trial or paid)."""
+        # Get users with trial or active subscription status
+        trial_docs = self.db.collection("user_profiles").where("subscriptionStatus", "==", "trial").stream()
+        active_docs = self.db.collection("user_profiles").where("subscriptionStatus", "==", "active").stream()
+        
+        users = []
+        for doc in trial_docs:
+            users.append({"uid": doc.id, **_serialize_firestore(doc.to_dict())})
+        for doc in active_docs:
+            users.append({"uid": doc.id, **_serialize_firestore(doc.to_dict())})
+        
+        return users
 
 
 def get_store() -> FirestoreStore:

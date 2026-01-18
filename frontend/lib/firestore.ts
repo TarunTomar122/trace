@@ -244,6 +244,19 @@ export interface UserProfile {
   // Chat history with profile agent
   chatHistory?: ChatMessage[];
   
+  // Subscription fields (managed by Dodo Payments)
+  subscriptionStatus: 'none' | 'trial' | 'active' | 'on_hold' | 'cancelled' | 'expired';
+  subscriptionId: string | null; // Dodo subscription ID
+  dodoCustomerId: string | null; // Dodo customer ID
+  planId: string | null; // Product ID from Dodo
+  nextBillingDate: Timestamp | null;
+  trialEndDate: Timestamp | null;
+  lastPaymentDate: Timestamp | null;
+  lastCheckoutSessionId: string | null; // Track checkout attempts
+  lastCheckoutCreatedAt: Timestamp | null; // When checkout was created
+  cancelledAt: Timestamp | null; // When cancellation was requested
+  willCancelAt: Timestamp | null; // When subscription will actually end
+  
   // Timestamps
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;
@@ -384,6 +397,18 @@ export async function createUserProfile(
     favoriteSources: [],
     personalityTraits: [],
     petPeeves: [],
+    // Initialize without subscription
+    subscriptionStatus: 'none',
+    subscriptionId: null,
+    dodoCustomerId: null,
+    planId: null,
+    nextBillingDate: null,
+    trialEndDate: null,
+    lastPaymentDate: null,
+    lastCheckoutSessionId: null,
+    lastCheckoutCreatedAt: null,
+    cancelledAt: null,
+    willCancelAt: null,
     createdAt: serverTimestamp() as Timestamp,
     updatedAt: serverTimestamp() as Timestamp,
     onboardedAt: null,

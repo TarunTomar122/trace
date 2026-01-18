@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 import { 
   Youtube, 
   Github, 
@@ -125,14 +126,14 @@ const Nav = () => {
             <div className="hidden md:flex items-center gap-4 flex-1 justify-end">
               {user ? (
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-3">
+                  <Link href="/profile" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                     {user.photoURL && (
                       <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" />
                     )}
                     <span className="text-[10px] tracking-[0.2em] uppercase font-mono text-secondary">
                       {profile?.name?.split(' ')[0] || user.displayName?.split(' ')[0]}
                     </span>
-                  </div>
+                  </Link>
                   <button 
                     onClick={signOut}
                     className="flex items-center gap-2 border border-border text-foreground px-6 py-3 text-[10px] tracking-[0.25em] uppercase font-mono font-bold transition-all hover:border-primary active:scale-95"
@@ -154,11 +155,11 @@ const Nav = () => {
             {/* Mobile CTA */}
             <div className="md:hidden">
               {user ? (
-                <div className="flex items-center gap-2">
+                <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                   {user.photoURL && (
                     <img src={user.photoURL} alt="Profile" className="w-7 h-7 rounded-full" />
                   )}
-                </div>
+                </Link>
               ) : (
                 <button 
                   onClick={signInWithGoogle}
@@ -1273,6 +1274,111 @@ const HowItWorks = () => {
   );
 };
 
+// --- Pricing Section ---
+const Pricing = () => {
+  const { user } = useAuth();
+  
+  // Only show to non-signed-in users or show minimized version for signed-in
+  return (
+    <section className="py-16 md:py-24 lg:py-32 bg-background border-y border-border relative z-10">
+      <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
+        <div className="max-w-3xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12 md:mb-16"
+          >
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6">
+              Simple <span className="text-secondary/40">Pricing</span>
+            </h2>
+            <p className="text-secondary font-mono text-xs md:text-sm leading-relaxed">
+              Try it free for 3 days. Cancel anytime.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="border-2 border-primary bg-primary/5 p-8 md:p-12 lg:p-16"
+          >
+            <div className="text-center mb-8 md:mb-12">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <span className="text-5xl md:text-6xl lg:text-7xl font-serif font-light text-foreground">$4.99</span>
+                <span className="text-xl md:text-2xl font-mono text-secondary self-end pb-2">/month</span>
+              </div>
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground">
+                <Sparkles size={14} />
+                <span className="text-[10px] font-mono uppercase tracking-wider">3-Day Free Trial</span>
+              </div>
+            </div>
+
+            <div className="space-y-4 md:space-y-5 mb-8 md:mb-10">
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-2 h-2 bg-primary rounded-full"></div>
+                </div>
+                <div className="text-sm md:text-base font-mono text-foreground">
+                  Daily personalized feed tailored to your interests and goals
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-2 h-2 bg-primary rounded-full"></div>
+                </div>
+                <div className="text-sm md:text-base font-mono text-foreground">
+                  Smart content from YouTube, blogs, papers, repos & more
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-2 h-2 bg-primary rounded-full"></div>
+                </div>
+                <div className="text-sm md:text-base font-mono text-foreground">
+                  AI-curated based on your role, projects, and learning style
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-2 h-2 bg-primary rounded-full"></div>
+                </div>
+                <div className="text-sm md:text-base font-mono text-foreground">
+                  Fresh, relevant content—no repeats, no noise
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 md:p-6 bg-background border border-primary/20">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">💡</span>
+                <div className="text-xs md:text-sm font-mono text-secondary leading-relaxed">
+                  <span className="text-foreground font-bold">Try it risk-free.</span> Cancel anytime before your 3-day trial ends and you won't be charged. No commitment, no hassle.
+                </div>
+              </div>
+            </div>
+
+            {!user && (
+              <div className="mt-8 md:mt-10 text-center">
+                <a href="#get-started">
+                  <button className="bg-primary text-primary-foreground px-10 py-4 text-[10px] font-mono font-bold uppercase tracking-[0.3em] hover:bg-primary/90 transition-all active:scale-[0.98] w-full md:w-auto">
+                    Start Free Trial
+                  </button>
+                </a>
+              </div>
+            )}
+          </motion.div>
+
+          <div className="mt-8 text-center text-xs font-mono text-secondary">
+            Questions? Email us at <a href="mailto:tomartarun2001@gmail.com" className="text-primary hover:underline">tomartarun2001@gmail.com</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 // --- Get Started Section ---
 const GetStarted = () => {
   const { user, profile, signInWithGoogle } = useAuth();
@@ -1435,7 +1541,7 @@ const Footer = () => (
           </p>
         </div>
         
-        <div className="grid grid-cols-2 gap-8 md:gap-12 lg:gap-24 w-full md:w-auto">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-12 lg:gap-24 w-full md:w-auto">
           <div>
             <h4 className="text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-foreground mb-4 md:mb-6">Product</h4>
             <div className="flex flex-col gap-3 md:gap-4">
@@ -1445,7 +1551,14 @@ const Footer = () => (
             </div>
           </div>
           <div>
-            <h4 className="text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-foreground mb-4 md:mb-6">Developer Info</h4>
+            <h4 className="text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-foreground mb-4 md:mb-6">Legal</h4>
+            <div className="flex flex-col gap-3 md:gap-4">
+              <a href="/privacy-policy" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">Privacy Policy</a>
+              <a href="/terms" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">Terms of Service</a>
+            </div>
+          </div>
+          <div>
+            <h4 className="text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-foreground mb-4 md:mb-6">Connect</h4>
             <div className="flex flex-col gap-3 md:gap-4">
               <a href="https://x.com/tarat_211" target="_blank" rel="noopener noreferrer" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">Twitter</a>
               <a href="https://github.com/TarunTomar122" target="_blank" rel="noopener noreferrer" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">GitHub</a>
@@ -1480,6 +1593,7 @@ export default function LandingPage() {
       <Hero />
       <LivingFeed />
       <HowItWorks />
+      <Pricing />
       <GetStarted />
       <Footer />
     </div>

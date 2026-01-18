@@ -22,6 +22,7 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 from v1.storage import FirestoreStore
 from v1.tools.extract_signal import extract_signal
+from v1.tools.smart_reflection import run_smart_reflection, apply_smart_adjustments
 
 
 # Score update constants (from v0)
@@ -42,7 +43,8 @@ def get_user_interactions(store: FirestoreStore, user_id: str, date: str) -> lis
         doc = store.db.collection("user_interactions").document(user_id).collection("daily").document(date).get()
         if doc.exists:
             data = doc.to_dict()
-            return data.get("interactions", [])
+            # Frontend saves interactions as "items", not "interactions"
+            return data.get("items", [])
     except Exception as e:
         print(f"  Error fetching interactions: {e}")
     return []
@@ -57,6 +59,40 @@ def get_user_patterns(store: FirestoreStore, user_id: str) -> dict[str, Any]:
     except Exception:
         pass
     return {"tags": {}, "exclude_tags": [], "personal_signals": []}
+
+
+def get_user_profile(store: FirestoreStore, user_id: str) -> dict[str, Any]:
+    """Get user profile from Firestore."""
+    try:
+        doc = store.db.collection("user_profiles").document(user_id).get()
+        if doc.exists:
+            return doc.to_dict() or {}
+    except Exception:
+        pass
+    return {"interests": [], "learningStyle": "", "contentDepth": "deep"}
+
+
+def get_user_preferences(store: FirestoreStore, user_id: str) -> dict[str, Any]:
+    """Get user preferences from Firestore."""
+    try:
+        doc = store.db.collection("user_preferences").document(user_id).get()
+        if doc.exists:
+            return doc.to_dict() or {}
+    except Exception:
+        pass
+    return {
+        "source_distribution": {
+            "video": 40, "blog": 35, "discussion": 15,
+            "repo": 5, "paper": 0, "launch": 3, "tweet": 2
+        },
+        "contentDepth": "deep"
+    }
+
+
+def save_user_preferences(store: FirestoreStore, user_id: str, preferences: dict[str, Any]) -> None:
+    """Save updated user preferences to Firestore."""
+    preferences["updated_at"] = datetime.utcnow().isoformat()
+    store.db.collection("user_preferences").document(user_id).set(preferences, merge=True)
 
 
 def save_user_patterns(store: FirestoreStore, user_id: str, patterns: dict[str, Any]) -> None:
@@ -163,6 +199,83 @@ def apply_tag_updates(patterns: dict, updates: dict, date: str) -> dict:
     return patterns
 
 
+def extract_exclude_tag(title: str, note: str) -> str | None:
+    """
+    Extract a tag/topic to exclude from user's note on a downvoted item.
+    
+    Args:
+        title: The item title that was downvoted
+        note: The user's note about why they didn't like it
+    
+    Returns:
+        Tag string to exclude, or None if note is too generic
+    """
+    if not note or len(note.strip()) < 3:
+        return None
+    
+    # Use the same extract_signal function but interpret differently
+    result = extract_signal(title, note)
+    
+    if not result or not result.get("query"):
+        return None
+    
+    if result.get("confidence", 0) < MIN_CONFIDENCE:
+        return None
+    
+    # Extract the main topic/tag from the query
+    query = result["query"]
+    # Take first 1-2 words as the tag (simplified)
+    words = query.split()[:2]
+    tag = " ".join(words).lower()
+    
+    return tag
+
+
+def update_exclude_tags(downvoted_items: list, existing_exclude_tags: list) -> tuple[list, int]:
+    """
+    Update exclude_tags from notes on downvoted items.
+    
+    Args:
+        downvoted_items: List of downvote interactions with notes
+        existing_exclude_tags: Current list of excluded tags
+    
+    Returns:
+        Tuple of (updated_exclude_tags_list, new_exclude_count)
+    """
+    exclude_tags = list(existing_exclude_tags)  # Copy existing
+    new_count = 0
+    
+    existing_lower = {tag.lower() for tag in exclude_tags}
+    
+    for interaction in downvoted_items:
+        note = interaction.get("note", "")
+        if not note or len(note.strip()) < 3:
+            continue
+        
+        item_meta = interaction.get("item_metadata", {})
+        title = item_meta.get("title", "")
+        
+        if not title:
+            continue
+        
+        # Extract tag to exclude
+        exclude_tag = extract_exclude_tag(title, note)
+        
+        if not exclude_tag:
+            continue
+        
+        # Skip if already excluded
+        if exclude_tag.lower() in existing_lower:
+            continue
+        
+        # Add to exclude list
+        exclude_tags.append(exclude_tag)
+        existing_lower.add(exclude_tag.lower())
+        new_count += 1
+    
+    return exclude_tags, new_count
+
+
 def create_personal_signals(upvoted_items: list, existing_signals: list) -> tuple[list, int]:
     """
     Create personal signals from upvoted items with notes.
@@ -225,13 +338,18 @@ def create_personal_signals(upvoted_items: list, existing_signals: list) -> tupl
     return signals, new_count
 
 
-def run_reflection(user_id: str, date: str) -> dict[str, Any]:
+def run_reflection(user_id: str, date: str, use_smart_reflection: bool = True) -> dict[str, Any]:
     """
     Run reflection for a user on a specific date.
+    
+    Uses a two-phase approach:
+    1. Rule-based: Update tag scores based on upvotes/downvotes (reliable, fast)
+    2. Smart reflection: Use LLM to understand notes and adjust preferences (intelligent)
     
     Args:
         user_id: User ID to run reflection for
         date: Date string (YYYY-MM-DD)
+        use_smart_reflection: Whether to use LLM for note analysis (default True)
     
     Returns:
         Results dict with tags_updated, signals_created, etc.
@@ -256,53 +374,118 @@ def run_reflection(user_id: str, date: str) -> dict[str, Any]:
     
     print(f"  Found {len(interactions)} interactions")
     
-    # Load current patterns
+    # Load current data
     patterns = get_user_patterns(store, user_id)
+    user_profile = get_user_profile(store, user_id)
+    user_preferences = get_user_preferences(store, user_id)
     
-    # Calculate tag updates
+    # =========================================================================
+    # PHASE 1: Rule-based tag updates (always runs)
+    # =========================================================================
     updates = calculate_tag_updates(patterns, interactions)
     print(f"  Tags to update: {len(updates['tag_updates'])}")
     
     # Apply tag updates
     patterns = apply_tag_updates(patterns, updates, date)
     
-    # Create personal signals from notes on upvoted items
-    existing_signals = patterns.get("personal_signals", [])
-    
-    # Filter out expired signals first
+    # Filter out expired signals
     now = datetime.utcnow()
+    existing_signals = patterns.get("personal_signals", [])
     active_signals = [
         s for s in existing_signals
         if datetime.fromisoformat(s.get("expires_at", "2000-01-01")) > now
     ]
+    patterns["personal_signals"] = active_signals
     
-    print(f"  Active signals before: {len(active_signals)}")
-    print(f"  Upvoted items with potential signals: {len(updates['upvoted_items'])}")
+    # =========================================================================
+    # PHASE 2: Smart reflection for notes (LLM-powered)
+    # =========================================================================
+    smart_stats = {
+        "tags_adjusted": 0,
+        "exclude_tags_added": 0,
+        "signals_created": 0,
+        "source_adjusted": False,
+        "depth_adjusted": False,
+        "insights": None
+    }
     
-    # Create new signals from notes
-    updated_signals, new_signal_count = create_personal_signals(
-        updates["upvoted_items"],
-        active_signals
-    )
+    # Find interactions with notes
+    interactions_with_notes = [
+        i for i in interactions 
+        if i.get("note") and len(i.get("note", "").strip()) >= 3
+    ]
     
-    patterns["personal_signals"] = updated_signals
+    if interactions_with_notes and use_smart_reflection:
+        print(f"  Running smart reflection on {len(interactions_with_notes)} notes...")
+        
+        try:
+            # Run smart reflection
+            adjustments = run_smart_reflection(
+                interactions_with_notes,
+                user_profile,
+                patterns,
+                user_preferences
+            )
+            
+            if adjustments:
+                # Apply smart adjustments
+                patterns, user_preferences, smart_stats = apply_smart_adjustments(
+                    adjustments,
+                    patterns,
+                    user_preferences
+                )
+                
+                smart_stats["insights"] = adjustments.get("insights")
+                
+                print(f"  Smart reflection: {smart_stats['tags_adjusted']} tag adjustments, "
+                      f"{smart_stats['signals_created']} signals, "
+                      f"{smart_stats['exclude_tags_added']} exclude tags")
+                
+                if smart_stats.get("insights"):
+                    print(f"  Insights: {smart_stats['insights'][:100]}...")
+                
+                # Save updated preferences if changed
+                if smart_stats["source_adjusted"] or smart_stats["depth_adjusted"]:
+                    save_user_preferences(store, user_id, user_preferences)
+                    print(f"  Updated preferences (source: {smart_stats['source_adjusted']}, depth: {smart_stats['depth_adjusted']})")
+            else:
+                print(f"  Smart reflection: no adjustments suggested")
+                
+        except Exception as e:
+            print(f"  Smart reflection error (falling back to rule-based): {e}")
+    elif interactions_with_notes:
+        print(f"  Skipping smart reflection (disabled)")
+    else:
+        print(f"  No notes to analyze")
     
-    # Save updated patterns
+    # =========================================================================
+    # Save and return results
+    # =========================================================================
     save_user_patterns(store, user_id, patterns)
     
-    tags_updated = len(updates["tag_updates"])
+    tags_updated = len(updates["tag_updates"]) + smart_stats["tags_adjusted"]
+    signals_created = smart_stats["signals_created"]
+    exclude_tags_added = smart_stats["exclude_tags_added"]
     
-    print(f"Updated {tags_updated} tags, created {new_signal_count} personal signals")
+    print(f"Updated {tags_updated} tags, created {signals_created} signals, added {exclude_tags_added} exclude tags")
     
     return {
         "success": True,
         "user_id": user_id,
         "date": date,
         "tags_updated": tags_updated,
-        "signals_created": new_signal_count,
+        "signals_created": signals_created,
+        "exclude_tags_added": exclude_tags_added,
         "total_interactions": updates["total_interactions"],
         "upvotes": len(updates["upvoted_items"]),
-        "downvotes": len(updates["downvoted_items"])
+        "downvotes": len(updates["downvoted_items"]),
+        "smart_reflection": {
+            "used": use_smart_reflection and bool(interactions_with_notes),
+            "notes_analyzed": len(interactions_with_notes),
+            "insights": smart_stats.get("insights"),
+            "source_adjusted": smart_stats["source_adjusted"],
+            "depth_adjusted": smart_stats["depth_adjusted"]
+        }
     }
 
 

@@ -1,6 +1,7 @@
 """
-Bulk feed generator - generates feeds for ALL onboarded users.
+Bulk feed generator - generates feeds for ALL subscribed users.
 
+Only runs for users with active subscriptions (trial or paid).
 Runs after daily batch (5 AM) to create personalized feeds for each user.
 
 Usage:
@@ -25,7 +26,7 @@ from v1.generate_feed import generate_feed
 
 def run_user_feeds(date: str | None = None, limit: int | None = None) -> dict:
     """
-    Generate feeds for all onboarded users.
+    Generate feeds for all subscribed users (trial or paid).
     
     Args:
         date: Optional date string (YYYY-MM-DD), defaults to today
@@ -41,20 +42,21 @@ def run_user_feeds(date: str | None = None, limit: int | None = None) -> dict:
     
     start_time = time.time()
     
-    # Query all onboarded users
-    print("Loading onboarded users...")
-    users_ref = store.db.collection("user_profiles").where("onboarded", "==", True)
-    users = list(users_ref.stream())
+    # Query all users with active subscriptions (trial or paid)
+    print("Loading subscribed users...")
+    trial_users = list(store.db.collection("user_profiles").where("subscriptionStatus", "==", "trial").stream())
+    active_users = list(store.db.collection("user_profiles").where("subscriptionStatus", "==", "active").stream())
+    users = trial_users + active_users
     
     total_users = len(users)
     if limit:
         users = users[:limit]
-        print(f"Found {total_users} onboarded users, processing {len(users)} (limited)")
+        print(f"Found {total_users} subscribed users (trial + active), processing {len(users)} (limited)")
     else:
-        print(f"Found {total_users} onboarded users")
+        print(f"Found {total_users} subscribed users (trial + active)")
     
     if not users:
-        print("No onboarded users found. Run onboarding first.")
+        print("No subscribed users found.")
         return {
             "users_processed": 0,
             "success_count": 0,
@@ -111,7 +113,7 @@ def run_user_feeds(date: str | None = None, limit: int | None = None) -> dict:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate feeds for all onboarded users")
+    parser = argparse.ArgumentParser(description="Generate feeds for all subscribed users (trial or paid)")
     parser.add_argument("--date", help="Date string (YYYY-MM-DD), defaults to today")
     parser.add_argument("--limit", type=int, help="Limit number of users to process")
     args = parser.parse_args()

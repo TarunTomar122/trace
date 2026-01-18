@@ -181,14 +181,27 @@ def score_item_for_user(
     if hours_old > 72:
         score -= 10
     
+    # === TUTORIAL/BEGINNER CONTENT PENALTY ===
+    title = (item.get("title", "") or "").lower()
+    desc = (item.get("description", "") or "").lower()
+    
+    tutorial_keywords = ["tutorial", "beginner", "how to", "step by step", "for beginners", "getting started", "introduction to", "learn how"]
+    for keyword in tutorial_keywords:
+        if keyword in title:
+            score -= 40  # Heavy penalty for tutorial in title
+            break
+        elif keyword in desc:
+            score -= 15  # Lighter penalty for tutorial in description
+            break
+    
     return max(0, score)
 
 
 def apply_diversity_filter(
     scored_items: list[dict[str, Any]],
     max_per_domain: int = 3,
-    max_per_type: int = 8,
-    max_items: int = 20
+    max_per_type: int | None = 8,
+    max_items: int | None = None
 ) -> list[dict[str, Any]]:
     """
     Apply diversity filter to avoid feed monotony.
@@ -196,8 +209,8 @@ def apply_diversity_filter(
     Args:
         scored_items: List of items with 'score' field, sorted by score desc
         max_per_domain: Maximum items from same domain
-        max_per_type: Maximum items of same type
-        max_items: Maximum items to return
+        max_per_type: Maximum items of same type (None = no limit)
+        max_items: Maximum items to return (None = no limit)
     
     Returns:
         Filtered list of items
@@ -212,14 +225,14 @@ def apply_diversity_filter(
         
         if domain_counts.get(domain, 0) >= max_per_domain:
             continue
-        if type_counts.get(item_type, 0) >= max_per_type:
+        if max_per_type is not None and type_counts.get(item_type, 0) >= max_per_type:
             continue
         
         filtered.append(item)
         domain_counts[domain] = domain_counts.get(domain, 0) + 1
         type_counts[item_type] = type_counts.get(item_type, 0) + 1
         
-        if len(filtered) >= max_items:
+        if max_items is not None and len(filtered) >= max_items:
             break
     
     return filtered

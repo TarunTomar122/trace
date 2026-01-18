@@ -189,7 +189,6 @@ export default function OnboardingPage() {
     if (step === 2) return parseCommaSeparated(interestsText).length >= 2;
     if (step === 3) return parseCommaSeparated(skillsText).length >= 1;
     if (step === 4) return true;
-    if (step === 5) return true; // Chat is optional
     return true;
   };
 
@@ -289,9 +288,9 @@ export default function OnboardingPage() {
         console.warn('Onboard trigger failed:', e);
       }
       
-      // Redirect based on alpha mode
+      // Redirect to profile subscription tab to start subscription
       if (isAlphaMode()) {
-        router.push('/feed');
+        router.push('/profile?tab=subscription');
       } else {
         router.push('/waitlist');
       }
@@ -304,9 +303,9 @@ export default function OnboardingPage() {
   const nextStep = () => {
     if (!canProceed()) return;
     
-    if (step < 5) {
+    if (step < 4) {
       setStep(step + 1);
-    } else if (step === 5) {
+    } else if (step === 4) {
       handleSubmit();
     }
   };
@@ -329,8 +328,8 @@ export default function OnboardingPage() {
       <div className="fixed top-0 left-0 right-0 h-1 bg-border z-50">
         <motion.div 
           className="h-full bg-primary"
-          initial={{ width: '20%' }}
-          animate={{ width: `${(step / 5) * 100}%` }}
+          initial={{ width: '25%' }}
+          animate={{ width: `${(step / 4) * 100}%` }}
           transition={{ duration: 0.3 }}
         />
       </div>
@@ -346,7 +345,7 @@ export default function OnboardingPage() {
             TRACE
           </div>
           <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary">
-            Step {step} of 5
+            Step {step} of 4
           </p>
           <p className="text-xs text-secondary/60 mt-2 max-w-md mx-auto font-mono">
             🔒 Your data stays private and powers your personalized feed
@@ -509,7 +508,7 @@ export default function OnboardingPage() {
                   <textarea
                     value={interestsText}
                     onChange={(e) => setInterestsText(e.target.value)}
-                    placeholder="AI, design systems, frontend engineering, performance"
+                    placeholder="React performance, fintech APIs, product teardowns, typography"
                     rows={3}
                     className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
                   />
@@ -530,7 +529,7 @@ export default function OnboardingPage() {
                   <textarea
                     value={hobbiesText}
                     onChange={(e) => setHobbiesText(e.target.value)}
-                    placeholder="photography, cooking, running, painting"
+                    placeholder="marathon training, sourdough baking, film photography, ceramics"
                     rows={2}
                     className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
                   />
@@ -551,7 +550,7 @@ export default function OnboardingPage() {
                   <textarea
                     value={projectsText}
                     onChange={(e) => setProjectsText(e.target.value)}
-                    placeholder="portfolio site, side project, newsletter"
+                    placeholder="building a fintech app, redesigning checkout flows, crypto analytics tool"
                     rows={2}
                     className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
                   />
@@ -567,7 +566,7 @@ export default function OnboardingPage() {
                   <textarea
                     value={favoriteSourcesText}
                     onChange={(e) => setFavoriteSourcesText(e.target.value)}
-                    placeholder="Stratechery, Lenny's Newsletter, a YouTube channel"
+                    placeholder="Stratechery, Dan Luu's blog, The Generalist, Acquired podcast"
                     rows={2}
                     className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
                   />
@@ -608,7 +607,7 @@ export default function OnboardingPage() {
                   <textarea
                     value={skillsText}
                     onChange={(e) => setSkillsText(e.target.value)}
-                    placeholder="React, Python, UX research, Figma"
+                    placeholder="TypeScript, Figma, financial modeling, user interviews"
                     rows={3}
                     className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
                   />
@@ -629,7 +628,7 @@ export default function OnboardingPage() {
                   <textarea
                     value={dislikedTopicsText}
                     onChange={(e) => setDislikedTopicsText(e.target.value)}
-                    placeholder="crypto, blockchain, NFTs"
+                    placeholder="clickbait listicles, crypto shilling, overly basic content"
                     rows={2}
                     className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
                   />
@@ -647,7 +646,7 @@ export default function OnboardingPage() {
                   <textarea
                     value={goalsShortTerm}
                     onChange={(e) => setGoalsShortTerm(e.target.value)}
-                    placeholder="What are you trying to achieve in the next few months?"
+                    placeholder="Ship my side project, get promoted, learn system design"
                     rows={2}
                     className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
                   />
@@ -660,7 +659,7 @@ export default function OnboardingPage() {
                   <textarea
                     value={goalsLongTerm}
                     onChange={(e) => setGoalsLongTerm(e.target.value)}
-                    placeholder="Where do you want to be in a year or two?"
+                    placeholder="Lead a team, start a company, become a domain expert"
                     rows={2}
                     className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
                   />
@@ -699,7 +698,7 @@ export default function OnboardingPage() {
                   <textarea
                     value={motivationTriggersText}
                     onChange={(e) => setMotivationTriggersText(e.target.value)}
-                    placeholder="strong hooks, clear ROI, aesthetics"
+                    placeholder="contrarian takes, surprising insights, beautiful visuals"
                     rows={2}
                     className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
                   />
@@ -712,7 +711,7 @@ export default function OnboardingPage() {
                   <textarea
                     value={personalityTraitsText}
                     onChange={(e) => setPersonalityTraitsText(e.target.value)}
-                    placeholder="curious, detail-oriented, impatient with fluff"
+                    placeholder="systems thinker, skeptical of hype, loves first principles"
                     rows={2}
                     className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
                   />
@@ -725,7 +724,7 @@ export default function OnboardingPage() {
                   <textarea
                     value={petPeevesText}
                     onChange={(e) => setPetPeevesText(e.target.value)}
-                    placeholder="clickbait without value, overly corporate content"
+                    placeholder="listicles, LinkedIn-speak, self-promotional threads"
                     rows={2}
                     className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
                   />
@@ -816,7 +815,7 @@ export default function OnboardingPage() {
                   <textarea
                     value={contentLikesText}
                     onChange={(e) => setContentLikesText(e.target.value)}
-                    placeholder="case studies, product breakdowns, data-driven takes"
+                    placeholder="deep technical dives, founder interviews, market analysis"
                     rows={2}
                     className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
                   />
@@ -829,7 +828,7 @@ export default function OnboardingPage() {
                   <textarea
                     value={contentDislikesText}
                     onChange={(e) => setContentDislikesText(e.target.value)}
-                    placeholder="fluffy hype, overly long content, low context"
+                    placeholder="beginner tutorials, hype without substance, AI-generated fluff"
                     rows={2}
                     className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
                   />
@@ -838,105 +837,6 @@ export default function OnboardingPage() {
             </motion.div>
           )}
 
-          {/* Step 5: Optional Chat */}
-          {step === 5 && (
-            <motion.div
-              key="step5"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-8"
-            >
-              <div className="text-center mb-10">
-                <h1 className="text-4xl md:text-5xl font-serif font-light tracking-tight uppercase mb-3 flex items-center justify-center gap-3">
-                  <MessageCircle className="text-primary" size={40} />
-                  Chat <span className="text-secondary/40">with</span> Trace
-                </h1>
-                <p className="text-secondary font-mono text-sm">
-                  Let'ss have a quick conversation (100% optional)
-                </p>
-                <p className="text-xs text-secondary/60 mt-3 max-w-xl mx-auto font-mono">
-                  💬 I can learn more about your projects, goals, and preferences through natural conversation. Skip if you prefer!
-                </p>
-              </div>
-
-              {!skipChat ? (
-                <div className="border border-border p-6 min-h-[400px] flex flex-col">
-                  {/* Chat messages */}
-                  <div className="flex-1 overflow-y-auto space-y-4 mb-4">
-                    {chatMessages.length === 0 && (
-                      <div className="text-center text-secondary/60 font-mono text-sm py-12">
-                        <Sparkles className="mx-auto mb-3 text-primary" size={24} />
-                        Start the conversation by typing below...
-                      </div>
-                    )}
-                    {chatMessages.map((msg, idx) => (
-                      <div
-                        key={idx}
-                        className={`p-3 text-sm font-mono ${
-                          msg.role === 'user'
-                            ? 'bg-primary text-primary-foreground ml-8'
-                            : 'bg-secondary/10 mr-8'
-                        }`}
-                      >
-                        {msg.content}
-                      </div>
-                    ))}
-                    {isChatLoading && (
-                      <div className="p-3 text-sm font-mono bg-secondary/10 mr-8">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Chat input */}
-                  <div className="flex gap-2 border-t border-border pt-4">
-                    <input
-                      type="text"
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && !isChatLoading && sendChatMessage()}
-                      placeholder="Type your message..."
-                      disabled={isChatLoading}
-                      className="flex-1 bg-transparent border border-border px-4 py-3 text-sm font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 disabled:opacity-50"
-                    />
-                    <button
-                      onClick={sendChatMessage}
-                      disabled={!chatInput.trim() || isChatLoading}
-                      className="px-6 py-3 bg-primary text-primary-foreground text-sm font-mono disabled:opacity-50 disabled:cursor-not-allowed hover:tracking-wider transition-all"
-                    >
-                      Send
-                    </button>
-                  </div>
-
-                  <button
-                    onClick={() => setSkipChat(true)}
-                    className="mt-4 text-xs font-mono text-secondary/60 hover:text-secondary transition-colors text-center w-full"
-                  >
-                    Skip this step →
-                  </button>
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <Check className="mx-auto mb-4 text-primary" size={48} />
-                  <p className="text-secondary font-mono text-sm">
-                    No problem! You can always chat with me later from your profile.
-                  </p>
-                  <button
-                    onClick={() => setSkipChat(false)}
-                    className="mt-4 text-xs font-mono text-primary hover:underline"
-                  >
-                    Actually, let'ss chat
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          )}
         </AnimatePresence>
 
         {/* Navigation */}
@@ -968,7 +868,7 @@ export default function OnboardingPage() {
                 <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                 Saving...
               </>
-            ) : step === 5 ? (
+            ) : step === 4 ? (
               <>
                 Start Exploring
                 <Check size={14} />
