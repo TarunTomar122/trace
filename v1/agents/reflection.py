@@ -50,6 +50,25 @@ def get_user_interactions(store: FirestoreStore, user_id: str, date: str) -> lis
     return []
 
 
+def get_user_feed_seen_items(store: FirestoreStore, user_id: str, date: str) -> tuple[list[dict[str, Any]], set[str]]:
+    """
+    Get user feed items and which items were seen.
+    
+    Returns:
+        Tuple of (feed_items, seen_item_ids)
+    """
+    try:
+        doc = store.db.collection("user_feeds").document(user_id).collection("daily").document(date).get()
+        if doc.exists:
+            data = doc.to_dict()
+            items = data.get("items", [])
+            seen_ids = set(data.get("seen_item_ids", []))
+            return items, seen_ids
+    except Exception as e:
+        print(f"  Error fetching feed/seen items: {e}")
+    return [], set()
+
+
 def get_user_patterns(store: FirestoreStore, user_id: str) -> dict[str, Any]:
     """Get user patterns from Firestore."""
     try:
@@ -166,8 +185,18 @@ def calculate_tag_updates(patterns: dict, interactions: list) -> dict:
     }
 
 
-def apply_tag_updates(patterns: dict, updates: dict, date: str) -> dict:
-    """Apply calculated tag updates to patterns."""
+def apply_tag_updates(patterns: dict, updates: dict, date: str, seen_tags: set[str] | None = None) -> dict:
+    """
+    Apply calculated tag updates to patterns.
+    
+    Args:
+        patterns: User patterns dict
+        updates: Calculated tag updates from interactions
+        date: Date string
+        seen_tags: Set of tags from items that were SEEN (scrolled past).
+                   If provided, only decay tags that were seen but not interacted with.
+                   If None, decay all non-interacted tags (old behavior).
+    """
     tags = patterns.get("tags", {})
     
     # Apply updates from interactions
@@ -187,10 +216,20 @@ def apply_tag_updates(patterns: dict, updates: dict, date: str) -> dict:
         if tag in tags:
             tags[tag]["shown"] = tags[tag].get("shown", 0) + count
     
-    # Apply decay to tags NOT interacted with today
+    # Apply decay to tags that were SEEN but NOT interacted with
+    # This is fairer: we don't penalize topics the user never saw
     interacted_tags = set(updates["tag_updates"].keys())
-    for tag in tags:
-        if tag not in interacted_tags:
+    
+    if seen_tags is not None:
+        # New behavior: only decay tags from seen items that weren't interacted with
+        tags_to_decay = seen_tags - interacted_tags
+        print(f"  Decay: {len(tags_to_decay)} seen-but-not-interacted tags (skipping {len(tags) - len(tags_to_decay)} unseen)")
+    else:
+        # Old behavior: decay all non-interacted tags
+        tags_to_decay = set(tags.keys()) - interacted_tags
+    
+    for tag in tags_to_decay:
+        if tag in tags:
             tags[tag]["score"] = max(MIN_SCORE, int(tags[tag]["score"] * DECAY_RATE))
     
     patterns["tags"] = tags
@@ -374,6 +413,26 @@ def run_reflection(user_id: str, date: str, use_smart_reflection: bool = True) -
     
     print(f"  Found {len(interactions)} interactions")
     
+    # Load feed items and seen status
+    feed_items, seen_item_ids = get_user_feed_seen_items(store, user_id, date)
+    print(f"  Feed: {len(feed_items)} items, {len(seen_item_ids)} seen")
+    
+    # Extract tags from items that were SEEN (user scrolled past them)
+    seen_tags: set[str] = set()
+    for item in feed_items:
+        if item.get("id") in seen_item_ids:
+            # Extract tags from this seen item
+            item_tags = item.get("tags", [])
+            if not item_tags:
+                # Fallback: use umbrella_id or type
+                umbrella = item.get("umbrella_id", "")
+                if umbrella:
+                    item_tags = [umbrella.lower().replace("_", "-")]
+            for tag in item_tags:
+                seen_tags.add(tag.lower())
+    
+    print(f"  Tags from seen items: {len(seen_tags)}")
+    
     # Load current data
     patterns = get_user_patterns(store, user_id)
     user_profile = get_user_profile(store, user_id)
@@ -385,8 +444,8 @@ def run_reflection(user_id: str, date: str, use_smart_reflection: bool = True) -
     updates = calculate_tag_updates(patterns, interactions)
     print(f"  Tags to update: {len(updates['tag_updates'])}")
     
-    # Apply tag updates
-    patterns = apply_tag_updates(patterns, updates, date)
+    # Apply tag updates - only decay tags from SEEN items
+    patterns = apply_tag_updates(patterns, updates, date, seen_tags if seen_item_ids else None)
     
     # Filter out expired signals
     now = datetime.utcnow()

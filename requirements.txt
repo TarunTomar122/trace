@@ -9,3 +9,4 @@ python-dotenv
 schedule
 exa_py
 firebase-admin
+tavily-python

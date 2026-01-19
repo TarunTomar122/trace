@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { 
-  Youtube, 
-  Github, 
+import {
+  Youtube,
+  Github,
   BookOpen,
   Sparkles,
   Brain,
@@ -66,7 +66,7 @@ const Nav = () => {
   }, []);
 
   const showBanner = !isAlphaMode();
-  
+
   return (
     <nav className={cn(
       "fixed left-0 right-0 z-50 transition-all duration-700 ease-in-out",
@@ -74,20 +74,20 @@ const Nav = () => {
       scrolled || showBanner ? "translate-y-0" : "md:translate-y-4"
     )}>
       <div className="container mx-auto px-4 max-w-7xl">
-        <motion.div 
+        <motion.div
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
           className={cn(
             "bg-background/95 backdrop-blur-md w-full transition-all duration-700 ease-in-out",
-            scrolled 
-              ? "border-x border-b border-border shadow-sm p-4 py-3 rounded-none" 
+            scrolled
+              ? "border-x border-b border-border shadow-sm p-4 py-3 rounded-none"
               : "border-transparent py-6 md:py-8 rounded-sm p-4"
           )}
         >
           <div className="flex items-center justify-between w-full">
             {/* Mobile Menu Button */}
-            <button 
+            <button
               className="md:hidden p-2 text-foreground"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
@@ -114,9 +114,9 @@ const Nav = () => {
 
             {/* Logo - Centered */}
             <div className="text-lg md:text-xl text-foreground uppercase flex items-center gap-3 md:gap-4 tracking-[0.15em] font-serif font-black group cursor-default md:absolute md:left-1/2 md:-translate-x-1/2">
-              <img 
-                src="/trace.png" 
-                alt="Trace Logo" 
+              <img
+                src="/trace.png"
+                alt="Trace Logo"
                 className="h-6 md:h-7 w-auto object-contain"
               />
               TRACE
@@ -134,7 +134,7 @@ const Nav = () => {
                       {profile?.name?.split(' ')[0] || user.displayName?.split(' ')[0]}
                     </span>
                   </Link>
-                  <button 
+                  <button
                     onClick={signOut}
                     className="flex items-center gap-2 border border-border text-foreground px-6 py-3 text-[10px] tracking-[0.25em] uppercase font-mono font-bold transition-all hover:border-primary active:scale-95"
                   >
@@ -143,7 +143,7 @@ const Nav = () => {
                   </button>
                 </div>
               ) : (
-                <button 
+                <button
                   onClick={signInWithGoogle}
                   className="bg-primary text-primary-foreground px-8 py-3 text-[10px] tracking-[0.25em] uppercase font-mono font-bold transition-all hover:tracking-[0.4em] active:scale-95"
                 >
@@ -161,7 +161,7 @@ const Nav = () => {
                   )}
                 </Link>
               ) : (
-                <button 
+                <button
                   onClick={signInWithGoogle}
                   className="bg-primary text-primary-foreground px-4 py-2 text-[9px] tracking-[0.2em] uppercase font-mono font-bold"
                 >
@@ -183,8 +183,8 @@ const Nav = () => {
               >
                 <div className="pt-6 pb-2 flex flex-col gap-4 border-t border-border mt-4">
                   {!user && (
-                    <a 
-                      href="#how" 
+                    <a
+                      href="#how"
                       className="text-[10px] tracking-[0.3em] uppercase text-secondary font-mono hover:text-primary transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
@@ -192,16 +192,16 @@ const Nav = () => {
                     </a>
                   )}
                   {user ? (
-                    <a 
-                      href="/feed" 
+                    <a
+                      href="/feed"
                       className="text-[10px] tracking-[0.3em] uppercase text-secondary font-mono hover:text-primary transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Your Feed
                     </a>
                   ) : (
-                    <a 
-                      href="#feed" 
+                    <a
+                      href="#feed"
                       className="text-[10px] tracking-[0.3em] uppercase text-secondary font-mono hover:text-primary transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
@@ -237,7 +237,7 @@ const Nav = () => {
 // --- Grid Background ---
 const GridBackground = () => (
   <div className="fixed inset-0 pointer-events-none z-0 flex justify-center opacity-30">
-            <div className="grid-inner w-full h-full max-w-7xl flex justify-between px-4">
+    <div className="grid-inner w-full h-full max-w-7xl flex justify-between px-4">
       {[1, 2, 3, 4, 5].map((i) => (
         <div key={i} className="w-px h-full bg-border" />
       ))}
@@ -478,10 +478,11 @@ const FlowDiagram = () => {
 const Hero = () => {
   const { user, profile } = useAuth();
   const isLoggedIn = !!user;
-  
+
   return (
     <section className="relative pt-28 pb-16 md:pt-36 lg:pt-60 md:pb-24 lg:pb-40 overflow-hidden z-10">
       <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Left Side - Content */}
           <div className="flex flex-col sm:mt-4">
@@ -501,7 +502,7 @@ const Hero = () => {
                   </span>
                 </motion.div>
 
-                <motion.h1 
+                <motion.h1
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.3 }}
@@ -540,7 +541,7 @@ const Hero = () => {
             ) : (
               // New user view
               <>
-                <motion.h1 
+                <motion.h1
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.3 }}
@@ -556,8 +557,8 @@ const Hero = () => {
                   transition={{ duration: 0.8, delay: 0.4 }}
                   className="text-sm md:text-base lg:text-lg text-secondary font-mono leading-relaxed mb-6 md:mb-8 lg:mb-10 max-w-lg"
                 >
-                  {isAlphaMode() 
-                    ? "A living, breathing feed that learns from you. Curated content that matters—whether you're building, creating, learning, or leading."
+                  {isAlphaMode()
+                    ? "Trace brings content from across the web (like YouTube, Reddit, Hacker News, Medium, and X) into one quiet feed."
                     : "We're putting the finishing touches on Trace. Join our waitlist to be among the first to experience a feed that actually respects your attention."
                   }
                 </motion.p>
@@ -611,6 +612,21 @@ const Hero = () => {
             className="block"
           >
             <FlowDiagram />
+            <div className="flex flex-row justify-center items-center gap-2">
+              <a href="https://peerlist.io/tarat/project/trace--nurture-your-growth" target="_blank" rel="noreferrer">
+                <img
+                  src="https://peerlist.io/api/v1/projects/embed/PRJHBAR67J9LBKOG7FKPB97ARPBNKB?showUpvote=false&theme=light"
+                  alt="Trace - Nurture Your Growth"
+                  style={{ width: 'auto', height: '42px' }}
+                />
+              </a>
+              <a href="https://orynth.dev/projects/trace" target="_blank" rel="noopener">
+                <img src="https://orynth.dev/api/badge/trace?theme=light&style=default" alt="Featured on Orynth" style={{ width: 'auto', height: '42px' }} />
+              </a>
+              <a href="https://www.producthunt.com/products/trace-23?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-trace-529d0891-421d-450f-8263-879fe3b9370c" target="_blank" rel="noopener noreferrer">
+                <img alt="Trace - Trace brings content from across the web into one quiet feed | Product Hunt" style={{ width: 'auto', height: '42px' }} src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1064894&amp;theme=light&amp;t=1768817161765" />
+              </a>
+            </div>
           </motion.div>
         </div>
       </div>
@@ -667,7 +683,7 @@ const FeedCard = ({ title, source, description, index }: { title: string; source
 const LivingFeed = () => {
   const { user, profile } = useAuth();
   const isLoggedIn = !!user && profile?.onboarded;
-  
+
   const feedItems = [
     {
       title: "How AI is Reshaping UX Design Workflows",
@@ -691,24 +707,13 @@ const LivingFeed = () => {
     <section id="feed" className="py-16 md:py-24 lg:py-40 bg-background border-y border-border relative overflow-hidden z-10">
       <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
         <div className="text-center mb-12 md:mb-16 lg:mb-20">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-border bg-background mb-6 md:mb-8"
-          >
-            <Activity size={12} className="text-primary animate-pulse" />
-            <span className="text-[9px] md:text-[10px] font-mono uppercase tracking-[0.2em] text-secondary">
-              {isLoggedIn ? 'Your Feed Style' : 'Live Feed Preview'}
-            </span>
-          </motion.div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-serif font-light tracking-tighter text-foreground uppercase mb-3 md:mb-4 lg:mb-6 px-4">
             A Feed That <span className="text-secondary/40">Lives</span>
           </h2>
           <p className="text-secondary font-mono text-xs md:text-sm uppercase tracking-wider md:tracking-widest mb-4">
-            {isLoggedIn 
+            {isLoggedIn
               ? `Curated for ${profile?.interests.length || 0}+ interests // Real-time adaptation`
-              : 'Responsive // Adaptive // Personal'
+              : 'It learns from your interactions, understands your patterns, and updates itself daily.'
             }
           </p>
         </div>
@@ -776,7 +781,7 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
 
   // Mockup content for each step
   const getMockup = () => {
-    switch(step) {
+    switch (step) {
       case 1: // Create Profile - Clean and spacious
         return (
           <div className="w-full h-full bg-background border-2 border-border p-4 md:p-6 lg:p-8 overflow-hidden flex flex-col justify-between">
@@ -785,7 +790,7 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
                 <div className="text-[7px] md:text-[9px] font-mono uppercase tracking-widest text-primary mb-1 md:mb-2">STEP 1/4</div>
                 <div className="text-base md:text-lg lg:text-xl font-serif font-light">Create Your Profile</div>
               </div>
-              
+
               <div className="space-y-4 md:space-y-5 lg:space-y-6">
                 {/* Interests */}
                 <div>
@@ -798,7 +803,7 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
                     <div className="px-2 py-1 md:px-3 md:py-1.5 bg-primary text-primary-foreground text-[8px] md:text-[9px] lg:text-[10px] font-mono">Frontend</div>
                   </div>
                 </div>
-                
+
                 {/* Content Preference Slider */}
                 <div>
                   <div className="text-[7px] md:text-[8px] lg:text-[9px] font-mono uppercase tracking-wider text-secondary mb-2 md:mb-3">
@@ -827,14 +832,14 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
                 </div>
               </div>
             </div>
-            
+
             {/* Continue Button */}
             <div className="mt-4 md:mt-6">
               <div className="bg-primary text-primary-foreground py-2 md:py-3 text-[8px] md:text-[9px] font-mono uppercase tracking-wider md:tracking-widest text-center">Continue</div>
             </div>
           </div>
         );
-      
+
       case 2: // Feed Generation - AI working mockup
         return (
           <div className="w-full h-full bg-background border-2 border-border p-4 md:p-6 flex flex-col items-center justify-center">
@@ -849,7 +854,7 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
             </div>
             <div className="text-xs md:text-sm font-mono mb-2">Curating your feed...</div>
             <div className="w-full max-w-[150px] md:max-w-[200px] h-1 bg-border overflow-hidden">
-              <motion.div 
+              <motion.div
                 className="h-full bg-primary"
                 animate={{ width: ["0%", "100%"] }}
                 transition={{ duration: 1.5, repeat: Infinity }}
@@ -866,7 +871,7 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
             </div>
           </div>
         );
-      
+
       case 3: // Interact & Engage - Beautiful feed cards
         return (
           <div className="w-full h-full bg-background border-2 border-border overflow-hidden flex flex-col">
@@ -875,10 +880,10 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
               <div className="text-base md:text-lg lg:text-xl font-serif font-light">Your Feed</div>
               <div className="text-[6px] md:text-[7px] lg:text-[8px] font-mono uppercase tracking-[0.2em] text-secondary hidden md:block">CURATED</div>
             </div>
-            
+
             <div className="flex-1 p-3 md:p-4 lg:p-6 space-y-2 md:space-y-3 lg:space-y-4 overflow-hidden">
               {/* Feed Card 1 - Video */}
-              <motion.div 
+              <motion.div
                 className="border border-border bg-background p-3 md:p-4 lg:p-5 hover:border-primary/50 transition-colors relative"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -890,7 +895,7 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
                   <Bookmark size={14} className="hidden md:block lg:hidden text-foreground/60 hover:text-primary" strokeWidth={1.5} />
                   <Bookmark size={16} className="hidden lg:block text-foreground/60 hover:text-primary" strokeWidth={1.5} />
                 </button>
-                
+
                 <div className="flex gap-2 md:gap-3">
                   <div className="w-10 h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 bg-red-500/10 flex items-center justify-center shrink-0">
                     <Youtube size={16} className="md:hidden text-red-500" />
@@ -916,7 +921,7 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
               </motion.div>
 
               {/* Feed Card 2 - Article */}
-              <motion.div 
+              <motion.div
                 className="border border-border bg-background p-3 md:p-4 lg:p-5 hover:border-primary/50 transition-colors relative"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -928,7 +933,7 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
                   <Bookmark size={14} className="hidden md:block lg:hidden text-foreground/60 hover:text-primary" strokeWidth={1.5} />
                   <Bookmark size={16} className="hidden lg:block text-foreground/60 hover:text-primary" strokeWidth={1.5} />
                 </button>
-                
+
                 <div className="flex gap-2 md:gap-3">
                   <div className="w-10 h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 bg-blue-500/10 flex items-center justify-center shrink-0">
                     <BookOpen size={16} className="md:hidden text-blue-500" />
@@ -954,7 +959,7 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
               </motion.div>
 
               {/* Feed Card 3 - Repo */}
-              <motion.div 
+              <motion.div
                 className="border border-border bg-background p-3 md:p-4 lg:p-5 hover:border-primary/50 transition-colors relative"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -966,7 +971,7 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
                   <Bookmark size={14} className="hidden md:block lg:hidden text-foreground/60 hover:text-primary" strokeWidth={1.5} />
                   <Bookmark size={16} className="hidden lg:block text-foreground/60 hover:text-primary" strokeWidth={1.5} />
                 </button>
-                
+
                 <div className="flex gap-2 md:gap-3">
                   <div className="w-10 h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 bg-purple-500/10 flex items-center justify-center shrink-0">
                     <Github size={16} className="md:hidden text-purple-500" />
@@ -993,7 +998,7 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
             </div>
           </div>
         );
-      
+
       case 4: // Adaptive Learning - Real AI Intelligence
         return (
           <div className="w-full h-full bg-background border-2 border-border overflow-hidden flex flex-col">
@@ -1002,7 +1007,7 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
               <div className="text-[8px] md:text-[9px] lg:text-xs font-mono uppercase tracking-wider md:tracking-widest text-primary mb-0.5 md:mb-1">STEP 4/4</div>
               <div className="text-base md:text-xl lg:text-2xl font-serif font-light">Adaptive Learning</div>
             </div>
-            
+
             <div className="flex-1 p-4 md:p-6 lg:p-8 space-y-3 md:space-y-4 lg:space-y-6 overflow-hidden">
               {/* Learning Profile */}
               <motion.div
@@ -1037,7 +1042,7 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
                 <div className="space-y-2 md:space-y-2.5 lg:space-y-3">
                   <div className="flex items-center gap-2 md:gap-3">
                     <div className="w-full bg-border h-6 md:h-7 lg:h-8 relative overflow-hidden">
-                      <motion.div 
+                      <motion.div
                         className="h-full bg-primary/20"
                         initial={{ width: 0 }}
                         animate={{ width: '80%' }}
@@ -1051,7 +1056,7 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
                   </div>
                   <div className="flex items-center gap-2 md:gap-3">
                     <div className="w-full bg-border h-6 md:h-7 lg:h-8 relative overflow-hidden">
-                      <motion.div 
+                      <motion.div
                         className="h-full bg-primary/20"
                         initial={{ width: 0 }}
                         animate={{ width: '78%' }}
@@ -1065,7 +1070,7 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
                   </div>
                   <div className="flex items-center gap-2 md:gap-3">
                     <div className="w-full bg-border h-6 md:h-7 lg:h-8 relative overflow-hidden">
-                      <motion.div 
+                      <motion.div
                         className="h-full bg-primary/20"
                         initial={{ width: 0 }}
                         animate={{ width: '65%' }}
@@ -1119,7 +1124,7 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
             </div>
           </div>
         );
-      
+
       default:
         return null;
     }
@@ -1136,7 +1141,7 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
         >
           {getMockup()}
         </motion.div>
-        
+
         {/* Step indicator */}
         <div className="absolute -bottom-8 md:-bottom-12 left-0 right-0 text-center">
           <div className="text-[9px] md:text-[10px] font-mono uppercase tracking-[0.25em] md:tracking-[0.3em] text-primary">
@@ -1152,7 +1157,7 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
 const HowItWorks = () => {
   const [activeStep, setActiveStep] = useState(0);
   const sectionsRef = useRef<(HTMLDivElement | null)[]>([]);
-  
+
   const steps = [
     {
       icon: User,
@@ -1210,7 +1215,7 @@ const HowItWorks = () => {
             A simple four-step journey to a feed that actually serves you. Your attention deserves better than algorithmic chaos.
           </p>
         </div>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-16 lg:gap-20">
           {/* Sticky Left Side */}
           <div className="lg:sticky lg:top-60 lg:h-fit">
@@ -1231,19 +1236,19 @@ const HowItWorks = () => {
                     STEP 0{activeStep + 1}/04
                   </div>
                 </div>
-                
+
                 <h3 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tight text-foreground mb-4 md:mb-6 lg:mb-8 uppercase">
                   {steps[activeStep].title}
                 </h3>
-                
+
                 <p className="text-secondary font-mono text-sm md:text-base leading-relaxed max-w-lg mb-6 md:mb-8">
                   {steps[activeStep].description}
                 </p>
 
                 <div className="flex gap-2 md:gap-3">
                   {steps.map((_, i) => (
-                    <div 
-                      key={i} 
+                    <div
+                      key={i}
                       className={cn(
                         "h-1 flex-1 transition-all duration-500",
                         i === activeStep ? "bg-primary" : "bg-border"
@@ -1254,13 +1259,13 @@ const HowItWorks = () => {
               </motion.div>
             </AnimatePresence>
           </div>
-          
+
           {/* Scrolling Right Side */}
           <div className="space-y-0">
             {steps.map((step, i) => (
               <div key={i} ref={(el) => { sectionsRef.current[i] = el; }}>
-                <ScrollSection 
-                  step={i + 1} 
+                <ScrollSection
+                  step={i + 1}
                   icon={step.icon}
                   title={step.title}
                   index={i}
@@ -1277,90 +1282,205 @@ const HowItWorks = () => {
 // --- Pricing Section ---
 const Pricing = () => {
   const { user } = useAuth();
-  
+
   // Only show to non-signed-in users or show minimized version for signed-in
   return (
     <section className="py-16 md:py-24 lg:py-32 bg-background border-y border-border relative z-10">
       <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
-        <div className="max-w-3xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-12 md:mb-16 lg:mb-20"
+        >
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6">
+            Simple <span className="text-secondary/40">Pricing</span>
+          </h2>
+          <p className="text-secondary font-mono text-xs md:text-sm leading-relaxed">
+            Try it free for 3 days. Cancel anytime.
+          </p>
+        </motion.div>
+
+        {/* Comparison Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mb-12 md:mb-16 lg:mb-20 max-w-6xl mx-auto">
+          {/* Free User Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-12 md:mb-16"
+            transition={{ delay: 0.1 }}
+            className="border border-border bg-background p-6 md:p-8 lg:p-10 hover:border-border/60 transition-all"
           >
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6">
-              Simple <span className="text-secondary/40">Pricing</span>
-            </h2>
-            <p className="text-secondary font-mono text-xs md:text-sm leading-relaxed">
-              Try it free for 3 days. Cancel anytime.
-            </p>
+            <div className="mb-6 md:mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl md:text-3xl font-serif font-light tracking-tight text-foreground uppercase">
+                  Free
+                </h3>
+                <span className="text-3xl md:text-4xl font-serif font-light text-foreground">$0</span>
+              </div>
+              <p className="text-xs md:text-sm font-mono text-secondary leading-relaxed">
+                Basic feed based on your interests
+              </p>
+            </div>
+
+            <div className="space-y-4 md:space-y-5 mb-6 md:mb-8">
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-2 h-2 bg-foreground/40 rounded-full"></div>
+                </div>
+                <div className="text-sm md:text-base font-mono text-foreground">
+                  Get content from your selected interests
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-2 h-2 bg-foreground/40 rounded-full"></div>
+                </div>
+                <div className="text-sm md:text-base font-mono text-foreground/60 line-through">
+                  Upvote/downvote to refine your feed
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-2 h-2 bg-foreground/40 rounded-full"></div>
+                </div>
+                <div className="text-sm md:text-base font-mono text-foreground/60 line-through">
+                  Bookmark content for later
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-2 h-2 bg-foreground/40 rounded-full"></div>
+                </div>
+                <div className="text-sm md:text-base font-mono text-foreground/60 line-through">
+                  AI learns from your interactions
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-2 h-2 bg-foreground/40 rounded-full"></div>
+                </div>
+                <div className="text-sm md:text-base font-mono text-foreground/60 line-through">
+                  Follow niche interests deeply
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 md:p-5 bg-secondary/5 border border-border">
+              <div className="flex items-start gap-3">
+                <span className="text-xl">⚠️</span>
+                <div className="text-xs md:text-sm font-mono text-secondary leading-relaxed">
+                  Your feed won't grow with you. Without interactions, it stays static based on initial setup.
+                </div>
+              </div>
+            </div>
           </motion.div>
 
+          {/* Premium User Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
-            className="border-2 border-primary bg-primary/5 p-8 md:p-12 lg:p-16"
+            className="border-2 border-primary bg-primary/5 p-6 md:p-8 lg:p-10 relative"
           >
-            <div className="text-center mb-8 md:mb-12">
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <span className="text-5xl md:text-6xl lg:text-7xl font-serif font-light text-foreground">$4.99</span>
-                <span className="text-xl md:text-2xl font-mono text-secondary self-end pb-2">/month</span>
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-4 py-1 text-[9px] font-mono uppercase tracking-wider">
+              Recommended
+            </div>
+
+            <div className="mb-6 md:mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl md:text-3xl font-serif font-light tracking-tight text-foreground uppercase">
+                  Premium
+                </h3>
+                <div className="text-right">
+                  <span className="text-3xl md:text-4xl font-serif font-light text-foreground">$2.99</span>
+                  <span className="text-sm font-mono text-secondary">/mo</span>
+                </div>
               </div>
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground">
-                <Sparkles size={14} />
-                <span className="text-[10px] font-mono uppercase tracking-wider">3-Day Free Trial</span>
+              <p className="text-xs md:text-sm font-mono text-secondary leading-relaxed">
+                A feed that grows and adapts with you
+              </p>
+            </div>
+
+            <div className="space-y-4 md:space-y-5 mb-6 md:mb-8">
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-2 h-2 bg-primary rounded-full"></div>
+                </div>
+                <div className="text-sm md:text-base font-mono text-foreground">
+                  Daily personalized feed tailored to your interests
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-2 h-2 bg-primary rounded-full"></div>
+                </div>
+                <div className="text-sm md:text-base font-mono text-foreground">
+                  Upvote/downvote to refine and improve your feed
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-2 h-2 bg-primary rounded-full"></div>
+                </div>
+                <div className="text-sm md:text-base font-mono text-foreground">
+                  Bookmark content to read/watch later
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-2 h-2 bg-primary rounded-full"></div>
+                </div>
+                <div className="text-sm md:text-base font-mono text-foreground">
+                  AI learns from every interaction you make
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-2 h-2 bg-primary rounded-full"></div>
+                </div>
+                <div className="text-sm md:text-base font-mono text-foreground">
+                  Follow niche interests as they evolve
+                </div>
               </div>
             </div>
 
-            <div className="space-y-4 md:space-y-5 mb-8 md:mb-10">
+            <div className="p-4 md:p-5 bg-primary/10 border border-primary/40">
               <div className="flex items-start gap-3">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-primary rounded-full"></div>
-                </div>
-                <div className="text-sm md:text-base font-mono text-foreground">
-                  Daily personalized feed tailored to your interests and goals
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-primary rounded-full"></div>
-                </div>
-                <div className="text-sm md:text-base font-mono text-foreground">
-                  Smart content from YouTube, blogs, papers, repos & more
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-primary rounded-full"></div>
-                </div>
-                <div className="text-sm md:text-base font-mono text-foreground">
-                  AI-curated based on your role, projects, and learning style
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-primary rounded-full"></div>
-                </div>
-                <div className="text-sm md:text-base font-mono text-foreground">
-                  Fresh, relevant content—no repeats, no noise
+                <span className="text-xl">✨</span>
+                <div className="text-xs md:text-sm font-mono text-foreground leading-relaxed">
+                  <span className="font-bold">Your feed evolves.</span> The more you interact, the smarter it gets at understanding your unique interests.
                 </div>
               </div>
             </div>
+          </motion.div>
+        </div>
 
-            <div className="p-4 md:p-6 bg-background border border-primary/20">
-              <div className="flex items-start gap-3">
+        <div className="max-w-3xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+            className="text-center"
+          >
+            <div className="inline-flex items-center gap-2 px-5 py-3 bg-primary text-primary-foreground mb-6">
+              <Sparkles size={16} />
+              <span className="text-[10px] md:text-xs font-mono uppercase tracking-wider font-bold">3-Day Free Trial</span>
+            </div>
+
+            <div className="p-6 md:p-8 bg-background border border-primary/20 mb-6">
+              <div className="flex items-start gap-3 justify-center">
                 <span className="text-2xl">💡</span>
-                <div className="text-xs md:text-sm font-mono text-secondary leading-relaxed">
+                <div className="text-xs md:text-sm font-mono text-secondary leading-relaxed text-left max-w-lg">
                   <span className="text-foreground font-bold">Try it risk-free.</span> Cancel anytime before your 3-day trial ends and you won't be charged. No commitment, no hassle.
                 </div>
               </div>
             </div>
 
             {!user && (
-              <div className="mt-8 md:mt-10 text-center">
+              <div className="text-center">
                 <a href="#get-started">
                   <button className="bg-primary text-primary-foreground px-10 py-4 text-[10px] font-mono font-bold uppercase tracking-[0.3em] hover:bg-primary/90 transition-all active:scale-[0.98] w-full md:w-auto">
                     Start Free Trial
@@ -1419,10 +1539,10 @@ const GetStarted = () => {
               Get <span className="text-secondary/40">Started</span>
             </h2>
             <p className="text-secondary font-mono text-xs md:text-sm leading-relaxed max-w-2xl mx-auto px-4">
-              {user 
+              {user
                 ? !alphaMode
                   ? "Thanks for joining! We'll notify you via email as soon as Trace goes live."
-                  : profile?.onboarded 
+                  : profile?.onboarded
                     ? "You're all set! Your personalized feed awaits."
                     : "Just a few quick steps to personalize your experience."
                 : alphaMode
@@ -1476,7 +1596,7 @@ const GetStarted = () => {
                     )}
                   </div>
                   <p className="text-xs md:text-sm font-mono text-secondary text-center px-4">
-                    {alphaMode 
+                    {alphaMode
                       ? "Sign in with your Google account to get started"
                       : "Sign in with Google to join the waitlist. We'll email you when Trace goes live."
                     }
@@ -1503,10 +1623,10 @@ const GetStarted = () => {
                   className="w-full bg-primary text-primary-foreground py-4 md:py-6 text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.3em] md:tracking-[0.4em] hover:bg-primary/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 md:gap-3"
                 >
                   <svg className="w-4 h-4 md:w-5 md:h-5" viewBox="0 0 24 24">
-                    <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                    <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                   </svg>
                   Continue with Google
                 </button>
@@ -1529,18 +1649,18 @@ const Footer = () => (
       <div className="flex flex-col md:flex-row justify-between items-start gap-10 md:gap-12 lg:gap-16 mb-12 md:mb-16 lg:mb-20">
         <div className="flex flex-col gap-4 md:gap-6">
           <div className="text-xl md:text-2xl text-foreground uppercase flex items-center gap-3 md:gap-4 tracking-[0.15em] font-serif font-black">
-            <img 
-              src="/trace.png" 
-              alt="Trace Logo" 
+            <img
+              src="/trace.png"
+              alt="Trace Logo"
               className="h-7 md:h-9 w-auto object-contain"
             />
             TRACE
           </div>
           <p className="text-secondary font-mono text-[9px] md:text-[10px] uppercase tracking-wider md:tracking-widest leading-relaxed max-w-[200px] md:max-w-[240px]">
-            Nurture your growth with a living feed that blooms and evolves with you.
+            Trace brings content from across the web into one quiet feed.
           </p>
         </div>
-        
+
         <div className="grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-12 lg:gap-24 w-full md:w-auto">
           <div>
             <h4 className="text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-foreground mb-4 md:mb-6">Product</h4>
@@ -1567,7 +1687,7 @@ const Footer = () => (
           </div>
         </div>
       </div>
-      
+
       <div className="pt-8 md:pt-12 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6">
         <div className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary text-center md:text-left">
           © 2026 TRACE // BUILT WITH INTENTION

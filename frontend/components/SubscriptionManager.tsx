@@ -474,7 +474,7 @@ export default function SubscriptionManager() {
         <div className="space-y-2 text-sm font-mono text-secondary">
           <div className="flex justify-between">
             <span>Price:</span>
-            <span className="text-foreground">$4.99/month</span>
+            <span className="text-foreground">$2.99/month</span>
           </div>
           <div className="flex justify-between">
             <span>Trial Period:</span>

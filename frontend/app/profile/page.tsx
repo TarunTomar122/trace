@@ -15,7 +15,8 @@ import {
   Sparkles,
   MessageCircle,
   Bot,
-  CreditCard
+  CreditCard,
+  ChevronDown
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserProfile, updateUserProfile, updateUserInsights, addChatMessage, clearChatHistory, UserProfile, INTERESTS, ROLES, ChatMessage } from '@/lib/firestore';
@@ -33,6 +34,7 @@ function ProfileContent() {
   const [saveMessage, setSaveMessage] = useState('');
   
   const [activeTab, setActiveTab] = useState<'profile' | 'chat' | 'subscription'>('profile');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   
   // Switch to subscription tab if coming from onboarding or feed redirect
   useEffect(() => {
@@ -72,6 +74,19 @@ function ProfileContent() {
   const [contentDepth, setContentDepth] = useState<'quick' | 'deep' | 'surprise' | null>(null);
   const [customInterest, setCustomInterest] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
+  
+  // Additional fields from onboarding
+  const [hobbiesText, setHobbiesText] = useState('');
+  const [skillsText, setSkillsText] = useState('');
+  const [dislikedTopicsText, setDislikedTopicsText] = useState('');
+  const [sourcePreferences, setSourcePreferences] = useState({
+    youtube: 30,
+    articles: 25,
+    papers: 10,
+    repos: 15,
+    tweets: 10,
+    discussions: 10,
+  });
 
   useEffect(() => {
     // Alpha mode check: if not in alpha mode, redirect to waitlist
@@ -113,6 +128,13 @@ function ProfileContent() {
           setPetPeevesText(p.petPeeves?.join(', ') || '');
           setSelectedInterests(p.interests);
           setContentDepth(p.contentDepth);
+          // Load additional fields
+          setHobbiesText(p.hobbies?.join(', ') || '');
+          setSkillsText(p.skills?.join(', ') || '');
+          setDislikedTopicsText(p.dislikedTopics?.join(', ') || '');
+          if (p.sourcePreferences) {
+            setSourcePreferences(p.sourcePreferences);
+          }
           // Load chat history
           if (p.chatHistory) {
             setChatMessages(p.chatHistory.map(m => ({ role: m.role, content: m.content })));
@@ -225,6 +247,11 @@ function ProfileContent() {
     }
   };
 
+  // Slider helper
+  const updateSlider = (key: keyof typeof sourcePreferences, value: number) => {
+    setSourcePreferences(prev => ({ ...prev, [key]: value }));
+  };
+
   const handleSave = async () => {
     if (!user || !profile) return;
     
@@ -238,6 +265,9 @@ function ProfileContent() {
       const parsedFavoriteSources = parseCommaSeparated(favoriteSourcesText);
       const parsedPersonalityTraits = parseCommaSeparated(personalityTraitsText);
       const parsedPetPeeves = parseCommaSeparated(petPeevesText);
+      const parsedHobbies = parseCommaSeparated(hobbiesText);
+      const parsedSkills = parseCommaSeparated(skillsText);
+      const parsedDislikedTopics = parseCommaSeparated(dislikedTopicsText);
 
       // Helper to remove undefined values from an object
       const removeUndefined = (obj: any): any => {
@@ -265,6 +295,10 @@ function ProfileContent() {
         ...(attentionConstraints && { attentionConstraints }),
         motivationTriggers: parsedMotivationTriggers,
         interests: selectedInterests,
+        hobbies: parsedHobbies,
+        skills: parsedSkills,
+        dislikedTopics: parsedDislikedTopics,
+        sourcePreferences,
         contentDepth,
         contentPreferences: {
           likes: parsedContentLikes,
@@ -297,6 +331,10 @@ function ProfileContent() {
         attentionConstraints: attentionConstraints || undefined,
         motivationTriggers: parsedMotivationTriggers,
         interests: selectedInterests,
+        hobbies: parsedHobbies,
+        skills: parsedSkills,
+        dislikedTopics: parsedDislikedTopics,
+        sourcePreferences,
         contentDepth,
         contentPreferences: {
           likes: parsedContentLikes,
@@ -337,6 +375,36 @@ function ProfileContent() {
         showBackToFeed 
         onSignOut={handleSignOut}
       />
+
+      {/* Onboarding banner for non-onboarded users */}
+      {profile && !profile.onboarded && (
+        <div className="bg-gradient-to-r from-violet-500/10 via-indigo-500/10 to-violet-500/10 border-b border-violet-500/20">
+          <div className="container mx-auto px-4 max-w-4xl py-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-violet-500/20 flex items-center justify-center shrink-0">
+                  <Sparkles size={20} className="text-violet-500" />
+                </div>
+                <div>
+                  <p className="text-base font-serif text-foreground">
+                    <span className="font-bold">Finish setting up your profile</span>
+                  </p>
+                  <p className="text-xs font-mono text-secondary/70 mt-0.5">
+                    Complete onboarding to get a personalized feed curated just for your interests
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/onboarding"
+                className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 text-white text-[10px] font-mono uppercase tracking-widest hover:bg-violet-700 transition-colors shrink-0"
+              >
+                <Sparkles size={12} />
+                Complete Setup
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="container mx-auto px-4 max-w-4xl py-8 md:py-12">
         {/* Save message toast */}
@@ -414,38 +482,40 @@ function ProfileContent() {
               exit={{ opacity: 0, x: 20 }}
               className="space-y-8"
             >
-              {/* Edit Button */}
-              <div className="flex justify-end">
-                {!isEditing ? (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="px-6 py-3 border border-border text-[10px] font-mono uppercase tracking-widest hover:border-primary transition-colors"
-                  >
-                    Edit Profile
-                  </button>
-                ) : (
-                  <div className="flex gap-3">
+              {/* Edit Button - only show for onboarded users */}
+              {profile?.onboarded && (
+                <div className="flex justify-end">
+                  {!isEditing ? (
                     <button
-                      onClick={() => setIsEditing(false)}
-                      className="px-6 py-3 border border-border text-[10px] font-mono uppercase tracking-widest hover:border-red-500 hover:text-red-500 transition-colors"
+                      onClick={() => setIsEditing(true)}
+                      className="px-6 py-3 border border-border text-[10px] font-mono uppercase tracking-widest hover:border-primary transition-colors"
                     >
-                      Cancel
+                      Edit Profile
                     </button>
-                    <button
-                      onClick={handleSave}
-                      disabled={isSaving}
-                      className="px-6 py-3 bg-primary text-primary-foreground text-[10px] font-mono uppercase tracking-widest flex items-center gap-2"
-                    >
-                      {isSaving ? (
-                        <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Save size={12} />
-                      )}
-                      Save
-                    </button>
-                  </div>
-                )}
-              </div>
+                  ) : (
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setIsEditing(false)}
+                        className="px-6 py-3 border border-border text-[10px] font-mono uppercase tracking-widest hover:border-red-500 hover:text-red-500 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="px-6 py-3 bg-primary text-primary-foreground text-[10px] font-mono uppercase tracking-widest flex items-center gap-2"
+                      >
+                        {isSaving ? (
+                          <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Save size={12} />
+                        )}
+                        Save
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Basic Info */}
               <section className="border border-border p-6 md:p-8">
@@ -479,39 +549,19 @@ function ProfileContent() {
                   </div>
 
                   <div>
-                  <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
-                    Company <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
+                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">Current Focus</label>
                     {isEditing ? (
-                    <input type="text" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Acme, freelancing, stealth startup" className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30" />
+                      <input
+                        type="text"
+                        value={currentWorkFocus}
+                        onChange={(e) => setCurrentWorkFocus(e.target.value)}
+                        placeholder="Improve onboarding, boost retention"
+                        className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
+                      />
                     ) : (
-                      <p className="text-lg font-serif py-3 text-secondary">{profile?.company || 'Not set'}</p>
+                      <p className="text-lg font-serif py-3 text-secondary">{profile?.currentWork?.focus || 'Not set'}</p>
                     )}
                   </div>
-
-                <div>
-                  <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
-                    Location <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
-                  {isEditing ? (
-                    <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Bangalore, India" className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30" />
-                  ) : (
-                    <p className="text-lg font-serif py-3 text-secondary">{profile?.location || 'Not set'}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
-                    Experience (years) <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
-                  {isEditing ? (
-                    <input type="number" min="0" value={experienceYears} onChange={(e) => setExperienceYears(e.target.value)} placeholder="3" className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30" />
-                  ) : (
-                    <p className="text-lg font-serif py-3 text-secondary">
-                      {profile?.experienceYears !== undefined && profile?.experienceYears !== null ? profile.experienceYears : 'Not set'}
-                    </p>
-                  )}
-                </div>
                 </div>
               </section>
 
@@ -568,173 +618,150 @@ function ProfileContent() {
                 </div>
               </section>
 
-              {/* Work & Goals */}
+              {/* Hobbies */}
               <section className="border border-border p-6 md:p-8">
                 <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-6">
-                  Work & Goals
+                  Hobbies
                 </h2>
 
-                <div className="grid gap-6">
-                  <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
-                      Current project <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                    </label>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={currentWorkProject}
-                        onChange={(e) => setCurrentWorkProject(e.target.value)}
-                        placeholder="Design system revamp, creator newsletter"
-                        className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
-                      />
-                    ) : (
-                      <p className="text-lg font-serif py-3 text-secondary">{profile?.currentWork?.project || 'Not set'}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
-                      Current focus <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                    </label>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={currentWorkFocus}
-                        onChange={(e) => setCurrentWorkFocus(e.target.value)}
-                        placeholder="Improve onboarding, boost retention"
-                        className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
-                      />
-                    ) : (
-                      <p className="text-lg font-serif py-3 text-secondary">{profile?.currentWork?.focus || 'Not set'}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
-                      Projects <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                    </label>
-                    {isEditing ? (
-                      <textarea
-                        value={projectsText}
-                        onChange={(e) => setProjectsText(e.target.value)}
-                        placeholder="portfolio site, side project, newsletter"
-                        rows={2}
-                        className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                      />
-                    ) : (
-                      <p className="text-lg font-serif py-3 text-secondary">{profile?.projects?.length ? profile.projects.join(', ') : 'Not set'}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
-                      Short-term goals <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                    </label>
-                    {isEditing ? (
-                      <textarea
-                        value={goalsShortTerm}
-                        onChange={(e) => setGoalsShortTerm(e.target.value)}
-                        placeholder="Ship MVP, learn TypeScript"
-                        rows={2}
-                        className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                      />
-                    ) : (
-                      <p className="text-lg font-serif py-3 text-secondary">{profile?.goals?.shortTerm || 'Not set'}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
-                      Long-term goals <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                    </label>
-                    {isEditing ? (
-                      <textarea
-                        value={goalsLongTerm}
-                        onChange={(e) => setGoalsLongTerm(e.target.value)}
-                        placeholder="Lead a team, start a company"
-                        rows={2}
-                        className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                      />
-                    ) : (
-                      <p className="text-lg font-serif py-3 text-secondary">{profile?.goals?.longTerm || 'Not set'}</p>
-                    )}
-                  </div>
+                <div>
+                  <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                    Things you enjoy outside of work
+                  </label>
+                  {isEditing ? (
+                    <textarea
+                      value={hobbiesText}
+                      onChange={(e) => setHobbiesText(e.target.value)}
+                      placeholder="marathon training, sourdough baking, film photography, ceramics"
+                      rows={2}
+                      className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                    />
+                  ) : (
+                    <p className="text-lg font-serif py-3 text-secondary">{profile?.hobbies?.length ? profile.hobbies.join(', ') : 'Not set'}</p>
+                  )}
                 </div>
               </section>
 
-              {/* Learning & Motivation */}
+              {/* Projects */}
               <section className="border border-border p-6 md:p-8">
                 <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-6">
-                  Learning & Motivation
+                  Projects
                 </h2>
 
-                <div className="grid gap-6">
-                  <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
-                      Learning style <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                    </label>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={learningStyle}
-                        onChange={(e) => setLearningStyle(e.target.value)}
-                        placeholder="Visual examples > long text"
-                        className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
-                      />
-                    ) : (
-                      <p className="text-lg font-serif py-3 text-secondary">{profile?.learningStyle || 'Not set'}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
-                      Attention constraints <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                    </label>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={attentionConstraints}
-                        onChange={(e) => setAttentionConstraints(e.target.value)}
-                        placeholder="Low tolerance for long content"
-                        className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
-                      />
-                    ) : (
-                      <p className="text-lg font-serif py-3 text-secondary">{profile?.attentionConstraints || 'Not set'}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
-                      Motivation triggers <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                    </label>
-                    {isEditing ? (
-                      <textarea
-                        value={motivationTriggersText}
-                        onChange={(e) => setMotivationTriggersText(e.target.value)}
-                        placeholder="Strong hooks, clear ROI, aesthetics"
-                        rows={2}
-                        className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                      />
-                    ) : (
-                      <p className="text-lg font-serif py-3 text-secondary">{profile?.motivationTriggers?.length ? profile.motivationTriggers.join(', ') : 'Not set'}</p>
-                    )}
-                  </div>
+                <div>
+                  <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                    What are you building or working on?
+                  </label>
+                  {isEditing ? (
+                    <textarea
+                      value={projectsText}
+                      onChange={(e) => setProjectsText(e.target.value)}
+                      placeholder="portfolio site, side project, newsletter"
+                      rows={2}
+                      className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                    />
+                  ) : (
+                    <p className="text-lg font-serif py-3 text-secondary">{profile?.projects?.length ? profile.projects.join(', ') : 'Not set'}</p>
+                  )}
                 </div>
               </section>
 
-              {/* Content Preferences */}
+              {/* Skills */}
               <section className="border border-border p-6 md:p-8">
                 <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-6">
-                  Content Preferences
+                  Skills
                 </h2>
 
-                <div className="max-w-md">
-                  <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                <div>
+                  <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                    Your skills & expertise
+                  </label>
+                  {isEditing ? (
+                    <textarea
+                      value={skillsText}
+                      onChange={(e) => setSkillsText(e.target.value)}
+                      placeholder="TypeScript, Figma, financial modeling, user interviews"
+                      rows={2}
+                      className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                    />
+                  ) : (
+                    <p className="text-lg font-serif py-3 text-secondary">{profile?.skills?.length ? profile.skills.join(', ') : 'Not set'}</p>
+                  )}
+                </div>
+              </section>
+
+              {/* Short-term Goals */}
+              <section className="border border-border p-6 md:p-8">
+                <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-6">
+                  Short-term Goals
+                </h2>
+
+                <div>
+                  <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                    What do you want to achieve soon?
+                  </label>
+                  {isEditing ? (
+                    <textarea
+                      value={goalsShortTerm}
+                      onChange={(e) => setGoalsShortTerm(e.target.value)}
+                      placeholder="Ship MVP, learn TypeScript"
+                      rows={2}
+                      className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                    />
+                  ) : (
+                    <p className="text-lg font-serif py-3 text-secondary">{profile?.goals?.shortTerm || 'Not set'}</p>
+                  )}
+                </div>
+              </section>
+
+              {/* Content Mix - Source Preferences */}
+              <section className="border border-border p-6 md:p-8">
+                <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-6">
+                  Content Source Preferences
+                </h2>
+
+                <div className="space-y-6">
+                  {/* Sliders */}
+                  {(Object.keys(sourcePreferences) as Array<keyof typeof sourcePreferences>).map(key => (
+                    <div key={key}>
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="text-sm font-mono uppercase tracking-wide text-foreground/80 font-medium">
+                          {key === 'youtube' && '📹 YouTube Videos'}
+                          {key === 'articles' && '📰 Articles & Blogs'}
+                          {key === 'papers' && '📄 Research Papers'}
+                          {key === 'repos' && '💻 GitHub Repos'}
+                          {key === 'tweets' && '🐦 Tweets & Threads'}
+                          {key === 'discussions' && '💬 HN & Discussions'}
+                        </label>
+                        <span className="text-sm font-mono text-primary font-bold">{sourcePreferences[key]}</span>
+                      </div>
+                      {isEditing ? (
+                        <input
+                          type="range"
+                          min="0"
+                          max="10"
+                          value={sourcePreferences[key]}
+                          onChange={(e) => updateSlider(key, parseInt(e.target.value))}
+                          className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-primary"
+                        />
+                      ) : (
+                        <div className="w-full h-2 bg-border rounded-lg overflow-hidden">
+                          <div 
+                            className="h-full bg-primary transition-all" 
+                            style={{ width: `${(sourcePreferences[key] / 10) * 100}%` }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Content Depth */}
+                  <div className="pt-6 border-t border-border">
+                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-4">
                       Content Depth <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
                     </label>
                     {isEditing ? (
-                      <div className="flex flex-col gap-2">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         {[
                           { id: 'quick', label: '⚡ Quick Reads' },
                           { id: 'deep', label: '📚 Deep Dives' },
@@ -743,7 +770,7 @@ function ProfileContent() {
                           <button
                             key={opt.id}
                             onClick={() => setContentDepth(opt.id as 'quick' | 'deep' | 'surprise')}
-                            className={`px-3 py-2 border text-xs font-mono text-left transition-all ${
+                            className={`px-4 py-3 border text-sm font-mono transition-all ${
                               contentDepth === opt.id 
                                 ? 'border-primary bg-primary text-primary-foreground' 
                                 : 'border-border hover:border-primary/50'
@@ -757,105 +784,319 @@ function ProfileContent() {
                       <p className="text-sm font-mono py-2">
                         {contentDepth === 'quick' ? '⚡ Quick Reads' 
                           : contentDepth === 'deep' ? '📚 Deep Dives' 
-                          : '🎁 Surprise Me'}
+                          : contentDepth === 'surprise' ? '🎁 Surprise Me'
+                          : 'Not set'}
                       </p>
                     )}
                   </div>
                 </div>
               </section>
 
-              {/* Taste Signals */}
-              <section className="border border-border p-6 md:p-8">
-                <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-6">
-                  Taste Signals
-                </h2>
+              {/* Advanced Section - Accordion */}
+              <section className="border border-border">
+                <button
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="w-full p-6 md:p-8 flex items-center justify-between hover:bg-border/5 transition-colors"
+                >
+                  <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary">
+                    Advanced Settings <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
+                  </h2>
+                  <ChevronDown 
+                    size={16} 
+                    className={`text-secondary transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
+                  />
+                </button>
 
-                <div className="grid gap-6">
-                  <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
-                      Content you love <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                    </label>
-                    {isEditing ? (
-                      <textarea
-                        value={contentLikesText}
-                        onChange={(e) => setContentLikesText(e.target.value)}
-                        placeholder="Case studies, breakdowns, data-driven takes"
-                        rows={2}
-                        className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                      />
-                    ) : (
-                      <p className="text-lg font-serif py-3 text-secondary">{profile?.contentPreferences?.likes?.length ? profile.contentPreferences.likes.join(', ') : 'Not set'}</p>
-                    )}
-                  </div>
+                <AnimatePresence>
+                  {showAdvanced && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-6 md:px-8 pb-6 md:pb-8 space-y-8 border-t border-border pt-6">
+                        {/* Additional Info */}
+                        <div>
+                          <h3 className="text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-4">
+                            Additional Information
+                          </h3>
+                          <div className="grid gap-6">
+                            <div>
+                              <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                                Company
+                              </label>
+                              {isEditing ? (
+                                <input 
+                                  type="text" 
+                                  value={company} 
+                                  onChange={(e) => setCompany(e.target.value)} 
+                                  placeholder="Acme, freelancing, stealth startup" 
+                                  className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30" 
+                                />
+                              ) : (
+                                <p className="text-lg font-serif py-3 text-secondary">{profile?.company || 'Not set'}</p>
+                              )}
+                            </div>
 
-                  <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
-                      Content you dislike <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                    </label>
-                    {isEditing ? (
-                      <textarea
-                        value={contentDislikesText}
-                        onChange={(e) => setContentDislikesText(e.target.value)}
-                        placeholder="Fluffy hype, low context, clickbait"
-                        rows={2}
-                        className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                      />
-                    ) : (
-                      <p className="text-lg font-serif py-3 text-secondary">{profile?.contentPreferences?.dislikes?.length ? profile.contentPreferences.dislikes.join(', ') : 'Not set'}</p>
-                    )}
-                  </div>
+                            <div>
+                              <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                                Location
+                              </label>
+                              {isEditing ? (
+                                <input 
+                                  type="text" 
+                                  value={location} 
+                                  onChange={(e) => setLocation(e.target.value)} 
+                                  placeholder="Bangalore, India" 
+                                  className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30" 
+                                />
+                              ) : (
+                                <p className="text-lg font-serif py-3 text-secondary">{profile?.location || 'Not set'}</p>
+                              )}
+                            </div>
 
-                  <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
-                      Favorite sources <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                    </label>
-                    {isEditing ? (
-                      <textarea
-                        value={favoriteSourcesText}
-                        onChange={(e) => setFavoriteSourcesText(e.target.value)}
-                        placeholder="Stratechery, Lenny's, Ali Abdaal"
-                        rows={2}
-                        className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                      />
-                    ) : (
-                      <p className="text-lg font-serif py-3 text-secondary">{profile?.favoriteSources?.length ? profile.favoriteSources.join(', ') : 'Not set'}</p>
-                    )}
-                  </div>
+                            <div>
+                              <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                                Experience (years)
+                              </label>
+                              {isEditing ? (
+                                <input 
+                                  type="number" 
+                                  min="0" 
+                                  value={experienceYears} 
+                                  onChange={(e) => setExperienceYears(e.target.value)} 
+                                  placeholder="3" 
+                                  className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30" 
+                                />
+                              ) : (
+                                <p className="text-lg font-serif py-3 text-secondary">
+                                  {profile?.experienceYears !== undefined && profile?.experienceYears !== null ? profile.experienceYears : 'Not set'}
+                                </p>
+                              )}
+                            </div>
 
-                  <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
-                      Personality traits <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                    </label>
-                    {isEditing ? (
-                      <textarea
-                        value={personalityTraitsText}
-                        onChange={(e) => setPersonalityTraitsText(e.target.value)}
-                        placeholder="Curious, detail-oriented, impatient"
-                        rows={2}
-                        className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                      />
-                    ) : (
-                      <p className="text-lg font-serif py-3 text-secondary">{profile?.personalityTraits?.length ? profile.personalityTraits.join(', ') : 'Not set'}</p>
-                    )}
-                  </div>
+                            <div>
+                              <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                                Current Project
+                              </label>
+                              {isEditing ? (
+                                <input
+                                  type="text"
+                                  value={currentWorkProject}
+                                  onChange={(e) => setCurrentWorkProject(e.target.value)}
+                                  placeholder="Design system revamp, creator newsletter"
+                                  className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
+                                />
+                              ) : (
+                                <p className="text-lg font-serif py-3 text-secondary">{profile?.currentWork?.project || 'Not set'}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
 
-                  <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
-                      Pet peeves <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                    </label>
-                    {isEditing ? (
-                      <textarea
-                        value={petPeevesText}
-                        onChange={(e) => setPetPeevesText(e.target.value)}
-                        placeholder="Clickbait without value, corporate fluff"
-                        rows={2}
-                        className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                      />
-                    ) : (
-                      <p className="text-lg font-serif py-3 text-secondary">{profile?.petPeeves?.length ? profile.petPeeves.join(', ') : 'Not set'}</p>
-                    )}
-                  </div>
-                </div>
+                        {/* Long-term Goals */}
+                        <div>
+                          <h3 className="text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-4">
+                            Long-term Goals
+                          </h3>
+                          <div>
+                            <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                              What are your long-term aspirations?
+                            </label>
+                            {isEditing ? (
+                              <textarea
+                                value={goalsLongTerm}
+                                onChange={(e) => setGoalsLongTerm(e.target.value)}
+                                placeholder="Lead a team, start a company"
+                                rows={2}
+                                className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                              />
+                            ) : (
+                              <p className="text-lg font-serif py-3 text-secondary">{profile?.goals?.longTerm || 'Not set'}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Topics to Avoid */}
+                        <div>
+                          <h3 className="text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-4">
+                            Topics to Avoid
+                          </h3>
+                          <div>
+                            <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                              Content topics we should filter out
+                            </label>
+                            {isEditing ? (
+                              <textarea
+                                value={dislikedTopicsText}
+                                onChange={(e) => setDislikedTopicsText(e.target.value)}
+                                placeholder="clickbait listicles, crypto shilling, overly basic content"
+                                rows={2}
+                                className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                              />
+                            ) : (
+                              <p className="text-lg font-serif py-3 text-secondary">{profile?.dislikedTopics?.length ? profile.dislikedTopics.join(', ') : 'Not set'}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Learning Preferences */}
+                        <div>
+                          <h3 className="text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-4">
+                            Learning Preferences
+                          </h3>
+                          <div className="grid gap-6">
+                            <div>
+                              <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                                Learning Style
+                              </label>
+                              {isEditing ? (
+                                <input
+                                  type="text"
+                                  value={learningStyle}
+                                  onChange={(e) => setLearningStyle(e.target.value)}
+                                  placeholder="Visual examples > long text"
+                                  className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
+                                />
+                              ) : (
+                                <p className="text-lg font-serif py-3 text-secondary">{profile?.learningStyle || 'Not set'}</p>
+                              )}
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                                Attention Constraints
+                              </label>
+                              {isEditing ? (
+                                <input
+                                  type="text"
+                                  value={attentionConstraints}
+                                  onChange={(e) => setAttentionConstraints(e.target.value)}
+                                  placeholder="Low tolerance for long content"
+                                  className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
+                                />
+                              ) : (
+                                <p className="text-lg font-serif py-3 text-secondary">{profile?.attentionConstraints || 'Not set'}</p>
+                              )}
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                                Motivation Triggers
+                              </label>
+                              {isEditing ? (
+                                <textarea
+                                  value={motivationTriggersText}
+                                  onChange={(e) => setMotivationTriggersText(e.target.value)}
+                                  placeholder="Strong hooks, clear ROI, aesthetics"
+                                  rows={2}
+                                  className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                                />
+                              ) : (
+                                <p className="text-lg font-serif py-3 text-secondary">{profile?.motivationTriggers?.length ? profile.motivationTriggers.join(', ') : 'Not set'}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Content Preferences */}
+                        <div>
+                          <h3 className="text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-4">
+                            Content Preferences
+                          </h3>
+                          <div className="grid gap-6">
+                            <div>
+                              <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                                Content You Love
+                              </label>
+                              {isEditing ? (
+                                <textarea
+                                  value={contentLikesText}
+                                  onChange={(e) => setContentLikesText(e.target.value)}
+                                  placeholder="Case studies, breakdowns, data-driven takes"
+                                  rows={2}
+                                  className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                                />
+                              ) : (
+                                <p className="text-lg font-serif py-3 text-secondary">{profile?.contentPreferences?.likes?.length ? profile.contentPreferences.likes.join(', ') : 'Not set'}</p>
+                              )}
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                                Content You Dislike
+                              </label>
+                              {isEditing ? (
+                                <textarea
+                                  value={contentDislikesText}
+                                  onChange={(e) => setContentDislikesText(e.target.value)}
+                                  placeholder="Fluffy hype, low context, clickbait"
+                                  rows={2}
+                                  className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                                />
+                              ) : (
+                                <p className="text-lg font-serif py-3 text-secondary">{profile?.contentPreferences?.dislikes?.length ? profile.contentPreferences.dislikes.join(', ') : 'Not set'}</p>
+                              )}
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                                Favorite Sources
+                              </label>
+                              {isEditing ? (
+                                <textarea
+                                  value={favoriteSourcesText}
+                                  onChange={(e) => setFavoriteSourcesText(e.target.value)}
+                                  placeholder="Stratechery, Lenny&apos;s, Ali Abdaal"
+                                  rows={2}
+                                  className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                                />
+                              ) : (
+                                <p className="text-lg font-serif py-3 text-secondary">{profile?.favoriteSources?.length ? profile.favoriteSources.join(', ') : 'Not set'}</p>
+                              )}
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                                Personality Traits
+                              </label>
+                              {isEditing ? (
+                                <textarea
+                                  value={personalityTraitsText}
+                                  onChange={(e) => setPersonalityTraitsText(e.target.value)}
+                                  placeholder="Curious, detail-oriented, impatient"
+                                  rows={2}
+                                  className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                                />
+                              ) : (
+                                <p className="text-lg font-serif py-3 text-secondary">{profile?.personalityTraits?.length ? profile.personalityTraits.join(', ') : 'Not set'}</p>
+                              )}
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                                Pet Peeves
+                              </label>
+                              {isEditing ? (
+                                <textarea
+                                  value={petPeevesText}
+                                  onChange={(e) => setPetPeevesText(e.target.value)}
+                                  placeholder="Clickbait without value, corporate fluff"
+                                  rows={2}
+                                  className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                                />
+                              ) : (
+                                <p className="text-lg font-serif py-3 text-secondary">{profile?.petPeeves?.length ? profile.petPeeves.join(', ') : 'Not set'}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </section>
 
               {/* AI Insights */}

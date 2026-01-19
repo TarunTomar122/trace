@@ -28,7 +28,28 @@ export async function POST(request: NextRequest) {
     const email = userData?.email || decodedToken.email;
     const name = userData?.name || userData?.displayName || email?.split('@')[0];
 
-    // Check if user already has active subscription
+    // Check referer - if coming from success page, don't create checkout
+    const referer = request.headers.get('referer') || '';
+    if (referer.includes('subscription=success') || referer.includes('subscription_id=')) {
+      // They're coming from payment success page - webhook should process soon
+      // Check if subscription already exists
+      if (userData?.subscriptionId) {
+        return NextResponse.json({ 
+          error: 'Subscription already exists',
+          subscriptionId: userData.subscriptionId,
+          subscriptionStatus: userData.subscriptionStatus || 'pending',
+          message: 'Your subscription is being processed. Please refresh the page.'
+        }, { status: 400 });
+      }
+      // If no subscription ID yet, webhook is still processing
+      return NextResponse.json({ 
+        error: 'Subscription is being processed',
+        message: 'Your payment was successful. Please wait a moment and refresh the page.',
+        retryAfter: 10
+      }, { status: 429 });
+    }
+
+    // Check if user already has active subscription FIRST (before rate limit check)
     if (userData?.subscriptionStatus === 'active' || userData?.subscriptionStatus === 'trial') {
       return NextResponse.json({ 
         error: 'User already has an active subscription',
@@ -36,9 +57,21 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
     
+    // Check if they already have a subscription ID (webhook might have processed)
+    if (userData?.subscriptionId) {
+      return NextResponse.json({ 
+        error: 'Subscription already exists',
+        subscriptionId: userData.subscriptionId,
+        subscriptionStatus: userData.subscriptionStatus || 'pending'
+      }, { status: 400 });
+    }
+    
     // Check for recent checkout attempt (within last 2 minutes) to prevent duplicates
-    if (userData?.lastCheckoutCreatedAt) {
-      const lastCheckout = new Date((userData.lastCheckoutCreatedAt as any).toDate());
+    // But only if they don't have a subscription ID yet
+    if (userData?.lastCheckoutCreatedAt && !userData?.subscriptionId) {
+      const lastCheckout = userData.lastCheckoutCreatedAt.toDate 
+        ? userData.lastCheckoutCreatedAt.toDate() 
+        : new Date((userData.lastCheckoutCreatedAt as any).toDate());
       const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
       if (lastCheckout > twoMinutesAgo) {
         return NextResponse.json({ 
@@ -50,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     // Dodo Payments API configuration
     const DODO_API_KEY = process.env.DODO_API_KEY;
-    const DODO_PRODUCT_ID = process.env.DODO_PRODUCT_ID; // Your $4.99/month product ID
+    const DODO_PRODUCT_ID = process.env.DODO_PRODUCT_ID; // Your $2.99/month product ID
     const TRIAL_DAYS = 3; // 3-day free trial
 
     if (!DODO_API_KEY || !DODO_PRODUCT_ID || DODO_API_KEY === 'sk_your_key_here' || DODO_PRODUCT_ID === 'prod_your_product_id_here') {

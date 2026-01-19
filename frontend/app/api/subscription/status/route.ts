@@ -25,10 +25,33 @@ export async function GET(request: NextRequest) {
     }
 
     const userData = userDoc.data();
+    const subscriptionStatus = userData?.subscriptionStatus || 'none';
+    
+    // Check if they have active/trial status
+    let hasAccess = ['trial', 'active'].includes(subscriptionStatus);
+    
+    // If cancelled but still active, check if cancellation date has passed
+    if (hasAccess && userData?.cancelledAt) {
+      const now = new Date();
+      const willCancelAt = userData.willCancelAt 
+        ? (userData.willCancelAt.toDate ? userData.willCancelAt.toDate() : new Date(userData.willCancelAt))
+        : null;
+      const nextBilling = userData.nextBillingDate
+        ? (userData.nextBillingDate.toDate ? userData.nextBillingDate.toDate() : new Date(userData.nextBillingDate))
+        : null;
+      
+      // Use willCancelAt if available, otherwise nextBillingDate
+      const cancelDate = willCancelAt || nextBilling;
+      
+      // If cancellation date has passed, revoke access
+      if (cancelDate && now >= cancelDate) {
+        hasAccess = false;
+      }
+    }
 
     // Return subscription info
     return NextResponse.json({
-      subscriptionStatus: userData?.subscriptionStatus || 'none',
+      subscriptionStatus,
       subscriptionId: userData?.subscriptionId || null,
       planId: userData?.planId || null,
       trialEndDate: userData?.trialEndDate || null,
@@ -36,7 +59,7 @@ export async function GET(request: NextRequest) {
       lastPaymentDate: userData?.lastPaymentDate || null,
       cancelledAt: userData?.cancelledAt || null,
       willCancelAt: userData?.willCancelAt || null,
-      hasAccess: ['trial', 'active'].includes(userData?.subscriptionStatus),
+      hasAccess,
     });
 
   } catch (error) {

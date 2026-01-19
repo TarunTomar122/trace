@@ -80,13 +80,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!isAlphaMode()) {
           window.location.href = '/waitlist';
         } else {
-          // In alpha mode, check if onboarded
-          const userProfile = await getUserProfile(result.user.uid);
-          if (userProfile?.onboarded) {
-            window.location.href = '/feed';
-          } else {
-            window.location.href = '/onboarding';
-          }
+          // In alpha mode, always go to feed (non-onboarded users see general feed with callout)
+          window.location.href = '/feed';
         }
       }
     } catch (error) {

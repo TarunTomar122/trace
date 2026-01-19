@@ -211,14 +211,14 @@ export interface UserProfile {
   skills: string[]; // Free-form skill tags
   dislikedTopics: string[]; // Topics to avoid
   
-  // Content source preferences (percentages, should sum to ~100)
+  // Content source preferences (preference level 0-10, higher = more preferred)
   sourcePreferences: {
-    youtube: number; // 0-100
-    articles: number; // 0-100
-    papers: number; // 0-100
-    repos: number; // 0-100
-    tweets: number; // 0-100
-    discussions: number; // 0-100
+    youtube: number; // 0-10
+    articles: number; // 0-10
+    papers: number; // 0-10
+    repos: number; // 0-10
+    tweets: number; // 0-10
+    discussions: number; // 0-10
   };
   
   // Content preferences
@@ -385,12 +385,12 @@ export async function createUserProfile(
     skills: [],
     dislikedTopics: [],
     sourcePreferences: {
-      youtube: 30,
-      articles: 25,
-      papers: 10,
-      repos: 15,
-      tweets: 10,
-      discussions: 10,
+      youtube: 8,
+      articles: 8,
+      papers: 1,
+      repos: 1,
+      tweets: 5,
+      discussions: 5,
     },
     contentDepth: null,
     contentPreferences: { likes: [], dislikes: [] },

@@ -29,7 +29,10 @@ def normalize_interest(interest: str) -> str:
 
 def map_users_to_queries() -> dict:
     """
-    Map users to queries based on their interests.
+    Map subscribed users to queries based on their interests.
+    
+    Only maps users with active subscriptions (trial or active).
+    This ensures pool generation only fetches content for paying users.
     
     Returns:
         Stats dict with users_mapped and queries_active counts
@@ -39,7 +42,14 @@ def map_users_to_queries() -> dict:
     # Get all user profiles
     print("Loading user profiles...")
     profiles = store.get_all_user_profiles()
-    print(f"Found {len(profiles)} users")
+    print(f"Found {len(profiles)} total users")
+    
+    # Filter to only subscribed users (trial or active)
+    subscribed_profiles = [
+        p for p in profiles 
+        if p.get("subscriptionStatus") in ["trial", "active"]
+    ]
+    print(f"  {len(subscribed_profiles)} subscribed users (trial + active)")
     
     # Get all umbrellas
     print("Loading umbrellas...")
@@ -52,15 +62,17 @@ def map_users_to_queries() -> dict:
     umbrella_users: dict[str, set[str]] = defaultdict(set)  # umbrella_id -> set of user_ids
     
     users_mapped = 0
+    users_skipped = 0
     
-    # For each user, map their interests to queries
-    for profile in profiles:
+    # For each subscribed user, map their interests to queries
+    for profile in subscribed_profiles:
         uid = profile.get("uid")
         if not uid:
             continue
         
         interests = profile.get("interests", [])
         if not interests:
+            users_skipped += 1
             continue
         
         users_mapped += 1
@@ -105,12 +117,18 @@ def map_users_to_queries() -> dict:
     
     # Summary
     print()
-    print(f"Mapped {users_mapped} users to {len(query_users)} active queries")
+    print(f"Mapped {users_mapped} subscribed users to {len(query_users)} active queries")
+    print(f"  ({len(profiles) - len(subscribed_profiles)} unsubscribed users not mapped)")
+    if users_skipped > 0:
+        print(f"  ({users_skipped} subscribed users skipped - no interests)")
     
     return {
         "users_mapped": users_mapped,
+        "users_skipped": users_skipped,
         "queries_active": len(query_users),
-        "umbrellas_active": len(umbrella_users)
+        "umbrellas_active": len(umbrella_users),
+        "total_users": len(profiles),
+        "subscribed_users": len(subscribed_profiles)
     }
 
 

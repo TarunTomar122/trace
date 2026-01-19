@@ -204,12 +204,13 @@ def on_user_onboard(user_id: str) -> dict[str, Any]:
     Handle user onboarding or subscription.
     
     Runs when a user completes onboarding OR subscribes.
-    Generates feed regardless of subscription status (for initial preview).
-    Daily feeds are gated behind subscriptions via run_user_feeds.py.
+    - Always creates umbrellas (for pool organization)
+    - Only maps to queries if subscribed (controls pool generation)
+    - Generates feed regardless of subscription (preview for unsubscribed)
     
     1. Reads user interests
     2. Creates umbrellas if needed
-    3. Maps user to queries
+    3. Maps user to queries (only if subscribed)
     4. Generates feed
     
     Args:
@@ -227,6 +228,11 @@ def on_user_onboard(user_id: str) -> dict[str, Any]:
     if not profile:
         print(f"  Error: User {user_id} not found")
         return {"error": "User not found"}
+    
+    # Check subscription status
+    subscription_status = profile.get("subscriptionStatus", "none")
+    is_subscribed = subscription_status in ["trial", "active"]
+    print(f"  Subscription status: {subscription_status} ({'subscribed' if is_subscribed else 'unsubscribed'})")
     
     interests = profile.get("interests", [])
     if not interests:
@@ -256,20 +262,25 @@ def on_user_onboard(user_id: str) -> dict[str, Any]:
         else:
             umbrellas_existing += 1
         
-        # Map user to queries
-        queries_mapped = map_user_to_umbrella_queries(store, user_id, result_id)
-        total_queries_mapped += queries_mapped
-        print(f"  Mapped to {queries_mapped} queries in {result_id}")
+        # Map user to queries (only for subscribed users)
+        if is_subscribed:
+            queries_mapped = map_user_to_umbrella_queries(store, user_id, result_id)
+            total_queries_mapped += queries_mapped
+            print(f"  Mapped to {queries_mapped} queries in {result_id}")
     
-    # Update umbrella user counts
-    for interest in interests:
-        umbrella_id = normalize_interest(interest)
-        umbrella = store.get_umbrella(umbrella_id)
-        if umbrella:
-            current_count = umbrella.get("user_count", 0)
-            store.update_umbrella(umbrella_id, {"user_count": current_count + 1})
+    # Update umbrella user counts (only for subscribed users)
+    if is_subscribed:
+        for interest in interests:
+            umbrella_id = normalize_interest(interest)
+            umbrella = store.get_umbrella(umbrella_id)
+            if umbrella:
+                current_count = umbrella.get("user_count", 0)
+                store.update_umbrella(umbrella_id, {"user_count": current_count + 1})
+    else:
+        print(f"  Skipping query mapping and umbrella counts (user not subscribed)")
     
     # Check if pool has items for user's interests
+    # Only run emergency search for subscribed users
     print("\n  Checking pool availability...")
     pool_items = []
     for interest in interests:
@@ -277,10 +288,12 @@ def on_user_onboard(user_id: str) -> dict[str, Any]:
         items = store.get_retrieval_pool(umbrella_id=umbrella_id)
         pool_items.extend(items)
     
-    if len(pool_items) < 5:
+    if is_subscribed and len(pool_items) < 5:
         print(f"  Pool has only {len(pool_items)} items, running emergency search...")
         for interest in interests[:3]:  # Search top 3 interests
             emergency_search_and_populate(store, interest)
+    elif not is_subscribed and len(pool_items) < 5:
+        print(f"  Pool has only {len(pool_items)} items (skipping emergency search for unsubscribed user)")
     
     # Generate first feed
     print("\n  Generating initial feed...")

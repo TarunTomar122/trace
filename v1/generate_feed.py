@@ -144,11 +144,9 @@ def generate_feed(user_id: str, date: str | None = None) -> dict[str, Any]:
             }
         }
         
-        # Update seen URLs
-        urls = [item.get("url") for item in items if item.get("url")]
-        if urls:
-            print(f"  Updating seen URLs ({len(urls)} new)...")
-            update_seen_urls(store, user_id, urls)
+        # Don't mark items as seen during generation - only mark them when user actually views them
+        # This prevents deduplication issues when regenerating feeds
+        # The frontend will mark items as seen via the /api/feed/seen endpoint
     
     # Save to Firestore: user_feeds/{uid}/daily/{date}
     print(f"  Saving feed to user_feeds/{user_id}/daily/{date}...")

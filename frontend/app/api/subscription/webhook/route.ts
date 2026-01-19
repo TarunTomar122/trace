@@ -39,29 +39,59 @@ export async function POST(request: NextRequest) {
       subscriptionId: eventData.subscription_id,
       customerId: eventData.customer?.email,
       userId: eventData.metadata?.user_id,
+      nextBillingDate: eventData.next_billing_date,
+      status: eventData.status,
     });
 
+    if (!adminDb) throw new Error('Firestore not initialized');
+    
     // Get user ID from metadata
-    const userId = eventData.metadata?.user_id;
+    let userId = eventData.metadata?.user_id;
+    
+    // Fallback: If no user_id in metadata, try to find user by subscription_id
+    if (!userId && eventData.subscription_id) {
+      console.warn('No user_id in metadata, searching by subscription_id:', eventData.subscription_id);
+      try {
+        const usersSnapshot = await adminDb.collection('user_profiles')
+          .where('subscriptionId', '==', eventData.subscription_id)
+          .limit(1)
+          .get();
+        
+        if (!usersSnapshot.empty) {
+          userId = usersSnapshot.docs[0].id;
+          console.log(`Found user ${userId} by subscription_id`);
+        }
+      } catch (error) {
+        console.error('Error searching for user by subscription_id:', error);
+      }
+    }
+    
     if (!userId) {
-      console.error('No user_id in webhook metadata');
+      console.error('No user_id in webhook metadata and could not find by subscription_id');
       return NextResponse.json({ error: 'Missing user_id' }, { status: 400 });
     }
 
-    if (!adminDb) throw new Error('Firestore not initialized');
     const userRef = adminDb.collection('user_profiles').doc(userId);
 
     // Handle different subscription events
     switch (eventType) {
       case 'subscription.created':
         // Subscription created (in trial or active)
+        const hasTrial = eventData.trial_period_days && eventData.trial_period_days > 0;
+        let trialEndDate = null;
+        if (hasTrial && eventData.created_at) {
+          const trialEnd = new Date(eventData.created_at);
+          trialEnd.setDate(trialEnd.getDate() + eventData.trial_period_days);
+          trialEndDate = trialEnd;
+        }
+        
         await userRef.update({
-          subscriptionStatus: eventData.trial_end ? 'trial' : 'active',
+          subscriptionStatus: hasTrial ? 'trial' : 'active',
           subscriptionId: eventData.subscription_id,
-          dodoCustomerId: eventData.customer_id,
+          dodoCustomerId: eventData.customer_id || eventData.customer?.customer_id,
           planId: eventData.product_id,
-          trialEndDate: eventData.trial_end ? new Date(eventData.trial_end) : null,
-          nextBillingDate: eventData.current_period_end ? new Date(eventData.current_period_end) : null,
+          trialEndDate: trialEndDate,
+          nextBillingDate: eventData.next_billing_date ? new Date(eventData.next_billing_date) : null,
           updatedAt: new Date(),
         });
         console.log(`Subscription created for user ${userId}: ${eventData.subscription_id}`);
@@ -92,7 +122,9 @@ export async function POST(request: NextRequest) {
         await userRef.update({
           subscriptionStatus: 'active',
           subscriptionId: eventData.subscription_id,
-          nextBillingDate: eventData.current_period_end ? new Date(eventData.current_period_end) : null,
+          dodoCustomerId: eventData.customer_id || eventData.customer?.customer_id,
+          planId: eventData.product_id,
+          nextBillingDate: eventData.next_billing_date ? new Date(eventData.next_billing_date) : null,
           trialEndDate: null, // Trial is over
           updatedAt: new Date(),
         });
@@ -106,7 +138,7 @@ export async function POST(request: NextRequest) {
           await userRef.update({
             subscriptionStatus: 'active',
             lastPaymentDate: new Date(),
-            nextBillingDate: eventData.current_period_end ? new Date(eventData.current_period_end) : null,
+            nextBillingDate: eventData.next_billing_date ? new Date(eventData.next_billing_date) : null,
             updatedAt: new Date(),
           });
           console.log(`Subscription renewed for user ${userId}`);
@@ -136,9 +168,12 @@ export async function POST(request: NextRequest) {
         break;
 
       case 'subscription.cancelled':
-        // Subscription cancelled
+        // Subscription cancelled (immediate cancellation)
         await userRef.update({
           subscriptionStatus: 'cancelled',
+          cancelledAt: eventData.cancelled_at ? new Date(eventData.cancelled_at) : new Date(),
+          willCancelAt: null, // Immediate cancellation, no future cancel date
+          nextBillingDate: eventData.next_billing_date ? new Date(eventData.next_billing_date) : null,
           updatedAt: new Date(),
         });
         console.log(`Subscription cancelled for user ${userId}`);
@@ -153,6 +188,76 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date(),
         });
         console.log(`Subscription expired for user ${userId}`);
+        break;
+
+      case 'subscription.updated':
+        // Subscription updated (e.g., cancellation, status change, reactivation)
+        const cancelAtNextBilling = eventData.cancel_at_next_billing_date;
+        const subscriptionStatus = eventData.status;
+        
+        const updateData: Record<string, unknown> = {
+          subscriptionId: eventData.subscription_id,
+          dodoCustomerId: eventData.customer_id || eventData.customer?.customer_id,
+          planId: eventData.product_id,
+          nextBillingDate: eventData.next_billing_date ? new Date(eventData.next_billing_date) : null,
+          updatedAt: new Date(),
+        };
+
+        // Handle trial dates if present
+        if (eventData.trial_period_days && eventData.created_at) {
+          const trialEnd = new Date(eventData.created_at);
+          trialEnd.setDate(trialEnd.getDate() + eventData.trial_period_days);
+          updateData.trialEndDate = trialEnd;
+        } else if (eventData.expires_at && subscriptionStatus === 'active') {
+          // If expires_at is soon and status is active, might be trial end
+          const expiresAt = new Date(eventData.expires_at);
+          const now = new Date();
+          if (expiresAt.getTime() - now.getTime() < 7 * 24 * 60 * 60 * 1000) {
+            // Within 7 days, likely trial end
+            updateData.trialEndDate = expiresAt;
+          }
+        }
+
+        // Handle cancellation updates
+        if (cancelAtNextBilling) {
+          // Subscription set to cancel at period end
+          updateData.subscriptionStatus = 'active'; // Still active until period ends
+          // Use cancelled_at from payload if available, otherwise use current time
+          updateData.cancelledAt = eventData.cancelled_at 
+            ? new Date(eventData.cancelled_at) 
+            : new Date();
+          updateData.willCancelAt = eventData.next_billing_date ? new Date(eventData.next_billing_date) : null;
+          console.log(`Subscription set to cancel at period end for user ${userId}`);
+        } else if (subscriptionStatus === 'cancelled' || subscriptionStatus === 'expired') {
+          // Subscription cancelled or expired immediately
+          updateData.subscriptionStatus = subscriptionStatus === 'expired' ? 'expired' : 'cancelled';
+          // Use cancelled_at from payload if available, otherwise use current time
+          updateData.cancelledAt = eventData.cancelled_at 
+            ? new Date(eventData.cancelled_at) 
+            : new Date();
+          updateData.willCancelAt = null;
+          console.log(`Subscription ${subscriptionStatus} for user ${userId}`);
+        } else if (subscriptionStatus === 'active') {
+          // Active subscription (could be reactivation or status update)
+          updateData.subscriptionStatus = 'active';
+          // Clear cancellation flags if reactivated (not cancelling)
+          if (!cancelAtNextBilling) {
+            updateData.cancelledAt = null;
+            updateData.willCancelAt = null;
+          } else {
+            // Still cancelling but status is active - use cancelled_at if available
+            if (eventData.cancelled_at) {
+              updateData.cancelledAt = new Date(eventData.cancelled_at);
+            }
+          }
+          console.log(`Subscription active for user ${userId}`);
+        } else {
+          // Other status updates
+          updateData.subscriptionStatus = 'on_hold';
+          console.log(`Subscription status updated to ${subscriptionStatus} for user ${userId}`);
+        }
+
+        await userRef.update(updateData);
         break;
 
       default:

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { 
@@ -17,12 +17,13 @@ import {
   X,
   Brain,
   RefreshCw,
-  Lock,
-  Zap
+  Zap,
+  ChevronDown,
+  Eye
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { getLatestUserFeed, getUserProfile, getUserFeedByDate, getUserFeedDates } from '@/lib/firestore';
+import { getUserFeedDates } from '@/lib/firestore';
 import { isAlphaMode } from '@/lib/alpha';
 import Header from '@/components/Header';
 
@@ -40,6 +41,8 @@ type FeedItem = {
   metadata?: {
     why_relevant?: string;
   };
+  _seen?: boolean;
+  _originalIndex?: number;
 };
 
 type InteractionItem = {
@@ -58,7 +61,7 @@ const sourceConfig: Record<string, { icon: typeof Youtube; color: string; label:
   model: { icon: Sparkles, color: 'text-indigo-500', label: 'Model', accent: 'bg-indigo-500' },
 };
 
-function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, onDisabledClick }: { 
+function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, onDisabledClick, onVisible }: { 
   item: FeedItem; 
   onUpvote: (note?: string) => void;
   onDownvote: (note?: string) => void;
@@ -66,7 +69,10 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
   initialVote?: 'upvote' | 'downvote';
   disabled?: boolean;
   onDisabledClick?: () => void;
+  onVisible?: (itemId: string) => void;
 }) {
+  const cardRef = useRef<HTMLElement>(null);
+  const hasBeenSeen = useRef(false);
   const itemKind = item.type || item.source || 'blog';
   const config = sourceConfig[itemKind] || sourceConfig.blog;
   const Icon = config.icon;
@@ -75,7 +81,34 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
   const [bookmarked, setBookmarked] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const relevance = item.metadata?.why_relevant;
+  
+  // Check if description is long enough to need expansion (roughly > 2 lines worth)
+  const descriptionNeedsExpand = item.description && item.description.length > 50;
+
+  // Intersection Observer to track when item becomes visible
+  useEffect(() => {
+    if (!onVisible || hasBeenSeen.current || item._seen) return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !hasBeenSeen.current) {
+            hasBeenSeen.current = true;
+            onVisible(item.id);
+          }
+        });
+      },
+      { threshold: 0.5 } // Item is 50% visible
+    );
+
+    if (cardRef.current) {
+      observer.observe(cardRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [item.id, item._seen, onVisible]);
 
   useEffect(() => {
     setUpvoted(initialVote === 'upvote');
@@ -118,6 +151,7 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
 
   return (
     <motion.article
+      ref={cardRef}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, height: 0 }}
@@ -167,11 +201,21 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
             </p>
           )}
           
-          {/* Description - subtle */}
+          {/* Description - subtle, with expand option */}
           {item.description && (
-            <p className="text-sm text-secondary/70 leading-relaxed line-clamp-2 mb-3 md:mb-4 font-mono">
-              {item.description}
-            </p>
+            <div className="mb-3 md:mb-4">
+              <p className={`text-sm text-secondary/70 leading-relaxed font-mono ${!descriptionExpanded ? 'line-clamp-2' : ''}`}>
+                {item.description}
+              </p>
+              {descriptionNeedsExpand && (
+                <button
+                  onClick={() => setDescriptionExpanded(!descriptionExpanded)}
+                  className="text-xs font-mono text-primary hover:text-primary/80 mt-1 transition-colors"
+                >
+                  {descriptionExpanded ? '← Show less' : 'Read more →'}
+                </button>
+              )}
+            </div>
           )}
           
           {/* Actions row - compact */}
@@ -303,6 +347,19 @@ export default function FeedPage() {
   const [isLoadingGeneral, setIsLoadingGeneral] = useState(false);
   const [showSubscribePrompt, setShowSubscribePrompt] = useState(false);
   
+  // Pagination state
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [totalItems, setTotalItems] = useState(0);
+  const [unseenCount, setUnseenCount] = useState(0);
+  const cursorRef = useRef(0);
+  const isLoadingRef = useRef(false);
+  const hasLoadedInitialFeed = useRef(false);
+  
+  // Seen items tracking - batch updates
+  const seenItemsBuffer = useRef<Set<string>>(new Set());
+  const seenFlushTimeout = useRef<NodeJS.Timeout | null>(null);
+  
   // Check if user has seen the hint before
   useEffect(() => {
     const hasSeenHint = localStorage.getItem('feed-hint-dismissed');
@@ -324,8 +381,10 @@ export default function FeedPage() {
     setShowDevToggle(isDev || hasDevParam);
   }, []);
 
-  // Use pool items if dev mode is on, general feed for unsubscribed, otherwise personalized feed
-  const currentFeed = devShowPool ? poolItems : (!hasAccess ? generalFeed : feed);
+  // Use pool items if dev mode is on, personalized feed for onboarded users (subscribed or not), otherwise general feed
+  const isOnboarded = profile?.onboarded ?? false;
+  const showPersonalizedFeed = isOnboarded; // Show feed for ALL onboarded users
+  const currentFeed = devShowPool ? poolItems : (!showPersonalizedFeed ? generalFeed : feed);
   const filteredFeed = activeFilter === 'all' 
     ? currentFeed 
     : currentFeed.filter(item => (item.type || item.source) === activeFilter);
@@ -334,7 +393,36 @@ export default function FeedPage() {
   useEffect(() => {
     if (profile) {
       const subscriptionStatus = profile.subscriptionStatus || 'none';
-      const hasValidAccess = ['trial', 'active'].includes(subscriptionStatus);
+      
+      // Check if they have active/trial status
+      let hasValidAccess = ['trial', 'active'].includes(subscriptionStatus);
+      
+      // If cancelled but still active, check if cancellation date has passed
+      if (hasValidAccess && profile.cancelledAt) {
+        const now = new Date();
+        
+        // Helper to convert Firestore Timestamp to Date
+        const toDate = (ts: Date | { seconds: number } | null | undefined): Date | null => {
+          if (!ts) return null;
+          if (ts instanceof Date) return ts;
+          if (typeof ts === 'object' && 'seconds' in ts) {
+            return new Date(ts.seconds * 1000);
+          }
+          return null;
+        };
+        
+        const willCancelAt = toDate(profile.willCancelAt);
+        const nextBilling = toDate(profile.nextBillingDate);
+        
+        // Use willCancelAt if available, otherwise nextBillingDate
+        const cancelDate = willCancelAt || nextBilling;
+        
+        // If cancellation date has passed, revoke access
+        if (cancelDate && now >= cancelDate) {
+          hasValidAccess = false;
+        }
+      }
+      
       setHasAccess(hasValidAccess);
     }
   }, [profile]);
@@ -354,15 +442,7 @@ export default function FeedPage() {
       router.push('/');
       return;
     }
-    
-    if (user && hasAccess) {
-      getUserProfile(user.uid).then(p => {
-        if (p && !p.onboarded) {
-          router.push('/onboarding');
-        }
-      });
-    }
-  }, [user, loading, router, hasAccess]);
+  }, [user, loading, router]);
 
   const loadInteractions = useCallback(async (uid: string, feedGenDate: string) => {
     if (!feedGenDate) return;
@@ -400,20 +480,134 @@ export default function FeedPage() {
     }
   }, [user]);
 
-  const loadFeed = useCallback(async (uid: string, dateOverride?: string) => {
-    setIsFeedLoading(true);
-    const feedData = dateOverride
-      ? await getUserFeedByDate(uid, dateOverride)
-      : await getLatestUserFeed(uid);
-    setFeed(Array.isArray(feedData?.items) ? (feedData?.items as FeedItem[]) : []);
-    const resolvedDate = dateOverride || feedData?.date || '';
-    setFeedDate(resolvedDate);
-    setSelectedFeedDate(resolvedDate);
-    setIsFeedLoading(false);
-    if (resolvedDate) {
-      await loadInteractions(uid, resolvedDate);
+  // Flush seen items to server (batched)
+  const flushSeenItems = useCallback(async () => {
+    if (!user || !feedDate || seenItemsBuffer.current.size === 0) return;
+    
+    const itemIds = Array.from(seenItemsBuffer.current);
+    seenItemsBuffer.current.clear();
+    
+    try {
+      const token = await user.getIdToken();
+      await fetch('/api/feed/seen', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          date: feedDate,
+          item_ids: itemIds,
+        }),
+      });
+      
+      // Update unseen count locally
+      setUnseenCount(prev => Math.max(0, prev - itemIds.length));
+    } catch (error) {
+      console.error('Error marking items as seen:', error);
+      // Re-add failed items back to buffer
+      itemIds.forEach(id => seenItemsBuffer.current.add(id));
     }
-  }, [loadInteractions]);
+  }, [user, feedDate]);
+
+  // Handle item becoming visible
+  const handleItemVisible = useCallback((itemId: string) => {
+    seenItemsBuffer.current.add(itemId);
+    
+    // Update local feed state to mark as seen
+    setFeed(prev => prev.map(item => 
+      item.id === itemId ? { ...item, _seen: true } : item
+    ));
+    
+    // Debounce flush - wait 2 seconds after last seen item
+    if (seenFlushTimeout.current) {
+      clearTimeout(seenFlushTimeout.current);
+    }
+    seenFlushTimeout.current = setTimeout(flushSeenItems, 2000);
+  }, [flushSeenItems]);
+
+  // Flush on unmount
+  useEffect(() => {
+    const timeoutRef = seenFlushTimeout.current;
+    const bufferRef = seenItemsBuffer.current;
+    
+    return () => {
+      if (timeoutRef) {
+        clearTimeout(timeoutRef);
+      }
+      // Sync flush on unmount - copy buffer size to avoid ref access in cleanup
+      if (bufferRef.size > 0) {
+        flushSeenItems();
+      }
+    };
+  }, [flushSeenItems]);
+
+  // Load paginated feed
+  const loadFeed = useCallback(async (uid: string, dateOverride?: string, reset = true) => {
+    // Prevent concurrent loads
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
+    
+    if (reset) {
+      setIsFeedLoading(true);
+      setFeed([]);
+      cursorRef.current = 0;
+    } else {
+      setIsLoadingMore(true);
+    }
+    
+    try {
+      const token = await user?.getIdToken();
+      if (!token) {
+        isLoadingRef.current = false;
+        return;
+      }
+      
+      const params = new URLSearchParams();
+      if (dateOverride) params.set('date', dateOverride);
+      params.set('cursor', reset ? '0' : String(cursorRef.current));
+      params.set('limit', '10');
+      
+      const response = await fetch(`/api/feed/paginated?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (reset) {
+          setFeed(data.items || []);
+        } else {
+          setFeed(prev => [...prev, ...(data.items || [])]);
+        }
+        
+        cursorRef.current = data.cursor || 0;
+        setHasMore(data.hasMore || false);
+        setFeedDate(data.feedDate || '');
+        setSelectedFeedDate(data.feedDate || '');
+        setTotalItems(data.total || 0);
+        setUnseenCount(data.unseenCount || 0);
+        
+        if (data.feedDate) {
+          await loadInteractions(uid, data.feedDate);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading feed:', error);
+    } finally {
+      setIsFeedLoading(false);
+      setIsLoadingMore(false);
+      isLoadingRef.current = false;
+    }
+  }, [user, loadInteractions]);
+
+  // Load more items
+  const loadMore = useCallback(() => {
+    if (!user || !hasMore || isLoadingMore) return;
+    loadFeed(user.uid, feedDate, false);
+  }, [user, hasMore, isLoadingMore, loadFeed, feedDate]);
 
   // DEV: Load full pool items
   const loadPoolItems = useCallback(async () => {
@@ -436,13 +630,19 @@ export default function FeedPage() {
     setIsLoadingPool(false);
   }, [user]);
 
-  // Load general feed for unsubscribed users (top 10 by score)
+  // Load general feed for unsubscribed users
+  // If onboarded: personalized feed from pool (up to 40 items based on interests)
+  // If not onboarded: sample feed (diverse mix, 10 items)
   const loadGeneralFeed = useCallback(async () => {
     if (!user) return;
     setIsLoadingGeneral(true);
     try {
       const token = await user.getIdToken();
-      const response = await fetch('/api/feed/pool?mode=sample&limit=10', {
+      const isOnboarded = profile?.onboarded ?? false;
+      const mode = isOnboarded ? 'personalized' : 'sample';
+      const limit = isOnboarded ? 40 : 10;
+      
+      const response = await fetch(`/api/feed/pool?mode=${mode}&limit=${limit}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -455,7 +655,7 @@ export default function FeedPage() {
       console.error('Error loading general feed:', error);
     }
     setIsLoadingGeneral(false);
-  }, [user]);
+  }, [user, profile?.onboarded]);
 
   // Load pool when dev mode is toggled on
   useEffect(() => {
@@ -464,29 +664,33 @@ export default function FeedPage() {
     }
   }, [devShowPool, poolItems.length, loadPoolItems]);
 
-  // Load general feed for unsubscribed users
   useEffect(() => {
-    if (user && profile && !hasAccess && generalFeed.length === 0) {
-      loadGeneralFeed();
-    }
-  }, [user, profile, hasAccess, generalFeed.length, loadGeneralFeed]);
-
-  useEffect(() => {
-    if (user && hasAccess) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    // Load feed for ALL onboarded users (subscribed and unsubscribed)
+    // Feed content differs based on subscription (handled by backend)
+    if (user && profile?.onboarded && !hasLoadedInitialFeed.current) {
+      hasLoadedInitialFeed.current = true;
       loadFeed(user.uid);
     }
-  }, [user, hasAccess, loadFeed]);
+  }, [user, profile?.onboarded, loadFeed]);
+
+  // Fallback: Load general pool feed for non-onboarded users only
+  useEffect(() => {
+    const isNotOnboarded = profile && !profile.onboarded;
+    if (user && isNotOnboarded && generalFeed.length === 0 && feed.length === 0) {
+      loadGeneralFeed();
+    }
+  }, [user, profile, generalFeed.length, feed.length, loadGeneralFeed]);
 
   useEffect(() => {
-    if (!user || !hasAccess) return;
+    // Load feed dates for ALL onboarded users (subscribed and unsubscribed)
+    if (!user || !profile?.onboarded) return;
     getUserFeedDates(user.uid).then(dates => {
       setFeedDates(dates);
       if (!selectedFeedDate && dates.length) {
         setSelectedFeedDate(dates[0]);
       }
     });
-  }, [user, hasAccess, selectedFeedDate]);
+  }, [user, profile?.onboarded, selectedFeedDate]);
 
   const recordInteraction = async (itemId: string, action: 'upvote' | 'downvote' | 'remove', note?: string) => {
     if (!user || !feedDate) return;
@@ -554,21 +758,50 @@ export default function FeedPage() {
     <div className="min-h-screen bg-background text-foreground">
       <Header backHref="/" backLabel="Back" />
 
-      {/* Sticky banner for unsubscribed users */}
-      {!hasAccess && profile && (
+      {/* Callout banner - show ONE based on state */}
+      {profile && !profile.onboarded ? (
+        // Non-onboarded users: Show onboarding callout
+        <div className="sticky top-14 md:top-16 z-40 bg-gradient-to-r from-violet-500/10 via-indigo-500/10 to-violet-500/10 border-b border-violet-500/20 backdrop-blur-sm">
+          <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-3 md:py-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-violet-500/20 flex items-center justify-center shrink-0">
+                  <Brain size={16} className="text-violet-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-serif text-foreground">
+                    <span className="font-bold">Complete your profile</span> — tell us what you&apos;re into
+                  </p>
+                  <p className="text-xs font-mono text-secondary/70 mt-0.5">
+                    Finish onboarding to get your personalized feed
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/onboarding"
+                className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-[10px] font-mono uppercase tracking-widest hover:bg-violet-700 transition-colors shrink-0"
+              >
+                <Sparkles size={12} />
+                Complete Setup
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : !hasAccess && profile ? (
+        // Onboarded but not subscribed: Show subscribe callout
         <div className="sticky top-14 md:top-16 z-40 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border-b border-amber-500/20 backdrop-blur-sm">
           <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-3 md:py-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-amber-500/20 flex items-center justify-center shrink-0">
-                  <Sparkles size={16} className="text-amber-500" />
+                  <Brain size={16} className="text-amber-500" />
                 </div>
                 <div>
                   <p className="text-sm font-serif text-foreground">
-                    <span className="font-bold">General Feed</span> — a sampler across topics
+                    <span className="font-bold">Preview mode</span> — here&apos;s what Trace found for you
                   </p>
                   <p className="text-xs font-mono text-secondary/70 mt-0.5">
-                    Subscribe to unlock your personalized feed, curated for your interests
+                    Subscribe to interact with content & help Trace learn better from your feedback
                   </p>
                 </div>
               </div>
@@ -582,7 +815,7 @@ export default function FeedPage() {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Subscribe prompt modal */}
       <AnimatePresence>
@@ -603,12 +836,12 @@ export default function FeedPage() {
             >
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-primary/10 flex items-center justify-center">
-                  <Lock size={20} className="text-primary" />
+                  <Brain size={20} className="text-primary" />
                 </div>
-                <h3 className="text-lg font-serif">Unlock Interactions</h3>
+                <h3 className="text-lg font-serif">Subscribe to Unlock</h3>
               </div>
               <p className="text-sm font-mono text-secondary mb-6">
-                Subscribe to interact with content, save bookmarks, and get a personalized feed curated just for your interests.
+                Subscribe to interact with content and help Trace learn from your feedback. Your upvotes, downvotes, and comments help us personalize your daily feed better.
               </p>
               <div className="flex gap-3">
                 <button
@@ -659,15 +892,23 @@ export default function FeedPage() {
           </div>
         )} */}
 
-        {/* Mobile: Feed date with dropdown for history (only for subscribed users) */}
-        {hasAccess && (
+        {/* Mobile: Feed date with dropdown for history (only for subscribed AND onboarded users) */}
+        {showPersonalizedFeed && (
           <div className="md:hidden px-4 mb-4">
             <div className="flex items-center justify-between">
-              {feedDate && (
-                <span className="text-xs font-mono text-secondary/60">
-                  Feed: {feedDate}
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {feedDate && (
+                  <span className="text-xs font-mono text-secondary/60">
+                    Feed: {feedDate}
+                  </span>
+                )}
+                {unseenCount > 0 && (
+                  <span className="flex items-center gap-1 text-xs font-mono text-primary">
+                    <Eye size={10} />
+                    {unseenCount} new
+                  </span>
+                )}
+              </div>
               {feedDates.length > 1 && (
                 <button
                   onClick={() => setShowMobileDatePicker(!showMobileDatePicker)}
@@ -702,7 +943,9 @@ export default function FeedPage() {
                         <button
                           key={date}
                           onClick={() => {
-                            user && loadFeed(user.uid, date);
+                            if (user) {
+                              loadFeed(user.uid, date);
+                            }
                             setShowMobileDatePicker(false);
                           }}
                           className={`px-3 py-1.5 text-xs font-mono whitespace-nowrap transition-colors border ${
@@ -726,7 +969,7 @@ export default function FeedPage() {
         <div className="md:hidden overflow-x-auto mb-4 px-4 scrollbar-hide">
           <div className="flex items-center gap-2 pb-2">
             {[
-              { id: 'all', label: hasAccess ? 'For you' : 'Discover' },
+              { id: 'all', label: showPersonalizedFeed ? 'For you' : 'Discover' },
               { id: 'video', label: 'Videos' },
               { id: 'blog', label: 'Articles' },
               { id: 'paper', label: 'Papers' },
@@ -751,13 +994,6 @@ export default function FeedPage() {
           </div>
         </div>
 
-        {/* Desktop: Feed date (only for subscribed users) */}
-        {hasAccess && feedDate && (
-          <div className="hidden md:block max-w-6xl mx-auto mb-4 px-4 md:px-6 lg:px-8 text-xs font-mono text-secondary/60">
-            Feed from: {feedDate}
-          </div>
-        )}
-
         <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 md:flex md:gap-12">
           {/* Filters - left sidebar, sticky (desktop only) */}
           <aside className="hidden md:block w-48 shrink-0 sticky top-24 h-fit">
@@ -766,7 +1002,7 @@ export default function FeedPage() {
                 Filters
               </h2>
               {[
-                { id: 'all', label: hasAccess ? 'For you' : 'Discover' },
+                { id: 'all', label: showPersonalizedFeed ? 'For you' : 'Discover' },
                 { id: 'video', label: 'Videos' },
                 { id: 'blog', label: 'Articles' },
                 { id: 'paper', label: 'Papers' },
@@ -793,9 +1029,24 @@ export default function FeedPage() {
 
           {/* Feed content */}
           <div className="flex-1 max-w-2xl mx-auto md:mx-0 w-full">
-            {/* Hint about feedback (only for subscribed users) */}
+            {/* Desktop: Feed stats (only for subscribed users) */}
+            {/* {hasAccess && feedDate && (
+              <div className="hidden md:flex items-center gap-3 text-xs font-mono text-secondary/60 mb-6">
+                <span>Feed from: {feedDate}</span>
+                {unseenCount > 0 && (
+                  <span className="flex items-center gap-1 text-primary">
+                    <Eye size={12} />
+                    {unseenCount} new
+                  </span>
+                )}
+                <span className="text-secondary/40">·</span>
+                <span>{totalItems} items total</span>
+              </div>
+            )} */}
+
+            {/* Hint about feedback (only for subscribed AND onboarded users) */}
             <AnimatePresence>
-              {hasAccess && showHint && !isFeedLoading && filteredFeed.length > 0 && (
+              {showPersonalizedFeed && showHint && !isFeedLoading && filteredFeed.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -825,16 +1076,16 @@ export default function FeedPage() {
               )}
             </AnimatePresence>
 
-            {((hasAccess && isFeedLoading) || (devShowPool && isLoadingPool) || (!hasAccess && isLoadingGeneral)) ? (
+            {((showPersonalizedFeed && isFeedLoading) || (devShowPool && isLoadingPool) || (!showPersonalizedFeed && isLoadingGeneral)) ? (
               <div className="py-16 flex flex-col items-center justify-center">
                 <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-3" />
                 <p className="text-sm font-mono text-secondary">
-                  {devShowPool ? 'Loading pool items...' : (!hasAccess ? 'Loading general feed...' : 'Loading your feed...')}
+                  {devShowPool ? 'Loading pool items...' : (!showPersonalizedFeed ? 'Loading general feed...' : 'Loading your feed...')}
                 </p>
               </div>
             ) : (
               <>
-                <div className="divide-y divide-border/20 md:-mt-14">
+                <div className="divide-y divide-border/20">
                   <AnimatePresence>
                     {filteredFeed.map((item) => (
                       <FeedCard 
@@ -846,10 +1097,34 @@ export default function FeedPage() {
                         initialVote={interactions[item.id]}
                         disabled={!hasAccess}
                         onDisabledClick={() => setShowSubscribePrompt(true)}
+                        onVisible={showPersonalizedFeed ? handleItemVisible : undefined}
                       />
                     ))}
                   </AnimatePresence>
                 </div>
+
+                {/* Load More Button */}
+                {showPersonalizedFeed && hasMore && filteredFeed.length > 0 && (
+                  <div className="py-6 text-center">
+                    <button
+                      onClick={loadMore}
+                      disabled={isLoadingMore}
+                      className="inline-flex items-center gap-2 px-6 py-3 border border-border text-[10px] font-mono uppercase tracking-widest hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+                    >
+                      {isLoadingMore ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown size={14} />
+                          Load More ({totalItems - feed.length} remaining)
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
 
                 {filteredFeed.length === 0 && (
                   <motion.div 
@@ -957,7 +1232,7 @@ export default function FeedPage() {
 
           {/* Previous feeds - right sidebar (desktop only) */}
           <aside className="hidden md:block w-48 shrink-0 sticky top-24 h-fit">
-            {hasAccess ? (
+            {showPersonalizedFeed ? (
               <nav className="space-y-2">
                 <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-4 px-2">
                   Previous Feeds

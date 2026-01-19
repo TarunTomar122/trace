@@ -41,24 +41,27 @@ def create_trend_discovery_agent() -> Agent:
 
 def discover_trends(main_tag: str) -> list[str]:
     """
-    Discover trending queries for a main tag.
+    Discover diverse trending queries for a main tag covering different user types.
     
     Args:
         main_tag: The main topic tag (e.g., "AI", "Frontend", "Running")
     
     Returns:
-        List of 10 specific search queries
+        List of 5 diverse specific search queries
     """
     agent = create_trend_discovery_agent()
     
-    prompt = f"""Find the 5 most trending and specific topics within "{main_tag}" right now.
+    prompt = f"""Find 5 diverse and specific queries about "{main_tag}".
 
 Search the web for:
-- What's being discussed on HackerNews about {main_tag}
+- What's trending on HackerNews about {main_tag}
 - Trending {main_tag} repositories on GitHub
-- Recent {main_tag} blog posts and news
+- Recent {main_tag} blog posts and discussions
 
-Return ONLY a JSON array of 5 short, specific queries (2-4 words each).
+Make sure the queries cover different angles (trending, implementation, strategy, learning)
+so they appeal to developers, product people, and learners alike.
+
+Return ONLY a JSON array of 5 queries (2-5 words each).
 No markdown formatting, just the raw JSON array."""
 
     result = Runner.run_sync(agent, prompt)
@@ -79,9 +82,15 @@ No markdown formatting, just the raw JSON array."""
         if isinstance(queries, list) and len(queries) >= 5:
             return queries[:5]
         elif isinstance(queries, list):
-            # Pad if less than 5
-            while len(queries) < 5:
-                queries.append(f"{main_tag} developments")
+            # Pad if less than 5 with diverse fallbacks
+            fallback_queries = [
+                f"{main_tag} implementation patterns",
+                f"{main_tag} architecture design",
+                f"{main_tag} case studies",
+                f"{main_tag} production deployment",
+                f"{main_tag} deep dive"
+            ]
+            queries.extend(fallback_queries[:5 - len(queries)])
             return queries[:5]
         else:
             raise ValueError("Expected a list")
@@ -94,18 +103,18 @@ No markdown formatting, just the raw JSON array."""
                 queries = json.loads(match.group())
                 if isinstance(queries, list):
                     while len(queries) < 5:
-                        queries.append(f"{main_tag} developments")
+                        queries.append(f"{main_tag} use cases")
                     return queries[:5]
             except json.JSONDecodeError:
                 pass
         
-        # Fallback: return generic queries
+        # Fallback: return diverse generic queries
         return [
             f"{main_tag} latest developments",
-            f"{main_tag} new releases",
-            f"{main_tag} tools 2026",
-            f"{main_tag} frameworks",
-            f"{main_tag} open source",
+            f"{main_tag} implementation guide",
+            f"{main_tag} case studies",
+            f"{main_tag} architecture patterns",
+            f"{main_tag} deep dive",
         ]
 
 

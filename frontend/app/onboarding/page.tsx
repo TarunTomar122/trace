@@ -3,10 +3,66 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, ChevronLeft, Check, MessageCircle, Sparkles } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, MessageCircle, Sparkles, HelpCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLES, completeOnboarding, getUserProfile, addChatMessage } from '@/lib/firestore';
 import { isAlphaMode } from '@/lib/alpha';
+
+// Tooltip component - Desktop: hover popup, Mobile: inline accordion
+function HelpTooltip({ content }: { content: string }) {
+  const [isVisible, setIsVisible] = useState(false);
+
+  return (
+    <>
+      {/* Tooltip trigger button */}
+      <button
+        type="button"
+        onMouseEnter={() => setIsVisible(true)}
+        onMouseLeave={() => setIsVisible(false)}
+        onClick={(e) => {
+          e.preventDefault();
+          setIsVisible(!isVisible);
+        }}
+        className="inline-block ml-1.5 text-secondary/40 hover:text-primary transition-colors align-middle"
+        aria-label="Help"
+      >
+        <HelpCircle size={14} strokeWidth={1.5} />
+      </button>
+      
+      {/* Desktop: Floating tooltip */}
+      <AnimatePresence>
+        {isVisible && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 5 }}
+            transition={{ duration: 0.15 }}
+            className="hidden md:block absolute left-0 top-full mt-2 z-50 w-64 bg-background border border-border p-3 shadow-lg"
+          >
+            <p className="text-xs font-mono text-secondary leading-relaxed">{content}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* Mobile: Inline accordion */}
+      <AnimatePresence>
+        {isVisible && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="md:hidden overflow-hidden mt-2 mb-1"
+          >
+            <div className="bg-primary/5 border-l-2 border-primary/30 p-3">
+              <p className="text-xs font-mono text-secondary/80 leading-relaxed">{content}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -40,14 +96,14 @@ export default function OnboardingPage() {
   const [personalityTraitsText, setPersonalityTraitsText] = useState('');
   const [petPeevesText, setPetPeevesText] = useState('');
   
-  // Step 4: Content Preferences
+  // Step 4: Content Preferences (0-10 scale, will be normalized to percentages)
   const [sourcePreferences, setSourcePreferences] = useState({
-    youtube: 30,
-    articles: 25,
-    papers: 10,
-    repos: 15,
-    tweets: 10,
-    discussions: 10,
+    youtube: 6,
+    articles: 7,
+    papers: 2,
+    repos: 5,
+    tweets: 3,
+    discussions: 4,
   });
   const [contentDepth, setContentDepth] = useState<'quick' | 'deep' | 'surprise' | null>(null);
   const [contentLikesText, setContentLikesText] = useState('');
@@ -338,10 +394,11 @@ export default function OnboardingPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="text-lg text-foreground uppercase flex items-center justify-center gap-3 tracking-[0.15em] font-serif font-black mb-6">
-            <div className="flex flex-col gap-1">
-              <div className="w-5 h-[2px] bg-primary"></div>
-              <div className="w-6 h-[2px] bg-primary/30"></div>
-            </div>
+            <img 
+              src="/trace.png" 
+              alt="Trace" 
+              className="h-6 md:h-7 w-auto"
+            />
             TRACE
           </div>
           <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary">
@@ -368,7 +425,7 @@ export default function OnboardingPage() {
                   The <span className="text-secondary/40">Basics</span>
                 </h1>
                 <p className="text-secondary font-mono text-sm">
-                  Let'ss get to know you a bit
+                  Let&apos;s get to know you a bit
                 </p>
               </div>
 
@@ -387,9 +444,12 @@ export default function OnboardingPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono uppercase tracking-wider text-foreground/70 mb-3 font-medium">
-                    What do you do?
-                  </label>
+                  <div className="relative mb-3">
+                    <label className="block text-xs font-mono uppercase tracking-wider text-foreground/70 font-medium">
+                      What do you do?
+                      <HelpTooltip content="Helps us understand your professional context and match content difficulty to your expertise level" />
+                    </label>
+                  </div>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {ROLES.map((r) => (
                       <button
@@ -408,62 +468,12 @@ export default function OnboardingPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono uppercase tracking-wider text-foreground/70 mb-3 font-medium">
-                    Company / Context <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={company}
-                    onChange={(e) => setCompany(e.target.value)}
-                    placeholder="Where you work or what you're working on"
-                    className="w-full bg-transparent border-b-2 border-border py-4 text-lg font-serif text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-xs font-mono uppercase tracking-wider text-foreground/70 mb-3 font-medium">
-                    Location <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    placeholder="City, country"
-                    className="w-full bg-transparent border-b-2 border-border py-4 text-lg font-serif text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-mono uppercase tracking-wider text-foreground/70 mb-3 font-medium">
-                    Years of experience <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={experienceYears}
-                    onChange={(e) => setExperienceYears(e.target.value)}
-                    placeholder="e.g. 3"
-                    className="w-full bg-transparent border-b-2 border-border py-4 text-lg font-serif text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-mono uppercase tracking-wider text-foreground/70 mb-3 font-medium">
-                    Current work / project <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={currentWorkProject}
-                    onChange={(e) => setCurrentWorkProject(e.target.value)}
-                    placeholder="What are you working on right now?"
-                    className="w-full bg-transparent border-b-2 border-border py-4 text-lg font-serif text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-mono uppercase tracking-wider text-foreground/70 mb-3 font-medium">
-                    Current focus <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
+                  <div className="relative mb-3">
+                    <label className="block text-xs font-mono uppercase tracking-wider text-foreground/70 font-medium">
+                      Current focus <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
+                      <HelpTooltip content="Tells us what you're actively working on so we can surface timely, actionable content that helps you right now" />
+                    </label>
+                  </div>
                   <input
                     type="text"
                     value={currentWorkFocus}
@@ -491,16 +501,19 @@ export default function OnboardingPage() {
                   Interests <span className="text-secondary/40">&</span> Hobbies
                 </h1>
                 <p className="text-secondary font-mono text-sm">
-                  Help us curate content you'sll love
+                  Help us curate content you&apos;ll love
                 </p>
               </div>
 
               <div className="space-y-8">
                 {/* Interests */}
                 <div>
-                  <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 mb-2 font-medium">
-                    What are you interested in? <span className="text-primary">(min 2)</span>
-                  </label>
+                  <div className="relative mb-2">
+                    <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 font-medium">
+                      What are you interested in? <span className="text-primary">(minimum 2)</span>
+                      <HelpTooltip content="These create your content 'umbrellas' - Trace searches for articles, videos, repos, and discussions matching each interest daily" />
+                    </label>
+                  </div>
                   <p className="text-xs text-secondary/70 mb-4 font-mono">
                     💡 These drive 70% of your feed content
                   </p>
@@ -519,11 +532,14 @@ export default function OnboardingPage() {
 
                 {/* Hobbies */}
                 <div>
-                  <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 mb-2 font-medium">
-                    Hobbies <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
+                  <div className="relative mb-2">
+                    <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 font-medium">
+                      Hobbies <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
+                      <HelpTooltip content="Balances your professional feed with personal interests - helps you discover content outside your work bubble" />
+                    </label>
+                  </div>
                   <p className="text-xs text-secondary/70 mb-4 font-mono">
-                    ✨ We'sll sprinkle in some fun content (~20%)
+                    ✨ We&apos;ll sprinkle in some fun content (~20%)
                   </p>
                   
                   <textarea
@@ -541,11 +557,14 @@ export default function OnboardingPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 mb-2 font-medium">
-                    Projects <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
+                  <div className="relative mb-2">
+                    <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 font-medium">
+                      Projects <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
+                      <HelpTooltip content="Helps us find case studies, technical deep-dives, and tools specific to what you're actively building" />
+                    </label>
+                  </div>
                   <p className="text-xs text-secondary/70 mb-4 font-mono">
-                    🧩 Comma-separated list of things you're building
+                    🧩 Comma-separated list of things you&apos;re building
                   </p>
                   <textarea
                     value={projectsText}
@@ -556,21 +575,6 @@ export default function OnboardingPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 mb-2 font-medium">
-                    Favorite sources <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
-                  <p className="text-xs text-secondary/70 mb-4 font-mono">
-                    ⭐ Channels, blogs, newsletters, or communities you love
-                  </p>
-                  <textarea
-                    value={favoriteSourcesText}
-                    onChange={(e) => setFavoriteSourcesText(e.target.value)}
-                    placeholder="Stratechery, Dan Luu's blog, The Generalist, Acquired podcast"
-                    rows={2}
-                    className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                  />
-                </div>
               </div>
             </motion.div>
           )}
@@ -587,7 +591,7 @@ export default function OnboardingPage() {
             >
               <div className="text-center mb-10">
                 <h1 className="text-4xl md:text-5xl font-serif font-light tracking-tight uppercase mb-3">
-                  Skills <span className="text-secondary/40">&</span> Dislikes
+                  Skills <span className="text-secondary/40">&</span> Goals
                 </h1>
                 <p className="text-secondary font-mono text-sm">
                   Help us match content to your level
@@ -597,9 +601,12 @@ export default function OnboardingPage() {
               <div className="space-y-8">
                 {/* Skills */}
                 <div>
-                  <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 mb-2 font-medium">
-                    Your skills <span className="text-primary">(min 1)</span>
-                  </label>
+                  <div className="relative mb-2">
+                    <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 font-medium">
+                      Your skills <span className="text-primary">(minimum 1)</span>
+                      <HelpTooltip content="Calibrates content difficulty - experts get architecture deep-dives, beginners get practical tutorials" />
+                    </label>
+                  </div>
                   <p className="text-xs text-secondary/70 mb-4 font-mono">
                     🎯 Helps us calibrate content difficulty
                   </p>
@@ -617,32 +624,15 @@ export default function OnboardingPage() {
                 </div>
 
                 {/* Disliked Topics */}
-                <div>
-                  <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 mb-2 font-medium">
-                    Topics to avoid <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
-                  <p className="text-xs text-secondary/70 mb-4 font-mono">
-                    🚫 We'sll filter these out completely
-                  </p>
-                  
-                  <textarea
-                    value={dislikedTopicsText}
-                    onChange={(e) => setDislikedTopicsText(e.target.value)}
-                    placeholder="clickbait listicles, crypto shilling, overly basic content"
-                    rows={2}
-                    className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                  />
-                  {dislikedTopicsText.trim() && (
-                    <p className="text-xs text-secondary/60 mt-2 font-mono">
-                      {parseCommaSeparated(dislikedTopicsText).length} topics to filter
-                    </p>
-                  )}
-                </div>
+             
 
                 <div>
-                  <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 mb-2 font-medium">
-                    Short-term goals <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
+                  <div className="relative mb-2">
+                    <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 font-medium">
+                      Short-term goals <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
+                      <HelpTooltip content="Surfaces content aligned with your immediate objectives - like promotion prep, product launches, or skill acquisition" />
+                    </label>
+                  </div>
                   <textarea
                     value={goalsShortTerm}
                     onChange={(e) => setGoalsShortTerm(e.target.value)}
@@ -652,83 +642,10 @@ export default function OnboardingPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 mb-2 font-medium">
-                    Long-term goals <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
-                  <textarea
-                    value={goalsLongTerm}
-                    onChange={(e) => setGoalsLongTerm(e.target.value)}
-                    placeholder="Lead a team, start a company, become a domain expert"
-                    rows={2}
-                    className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                  />
-                </div>
+              
 
-                <div>
-                  <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 mb-2 font-medium">
-                    Learning style <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={learningStyle}
-                    onChange={(e) => setLearningStyle(e.target.value)}
-                    placeholder="e.g., visual examples > long text"
-                    className="w-full bg-transparent border-b-2 border-border py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
-                  />
-                </div>
+               
 
-                <div>
-                  <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 mb-2 font-medium">
-                    Attention constraints <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={attentionConstraints}
-                    onChange={(e) => setAttentionConstraints(e.target.value)}
-                    placeholder="e.g., low tolerance for long content"
-                    className="w-full bg-transparent border-b-2 border-border py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 mb-2 font-medium">
-                    Motivation triggers <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
-                  <textarea
-                    value={motivationTriggersText}
-                    onChange={(e) => setMotivationTriggersText(e.target.value)}
-                    placeholder="contrarian takes, surprising insights, beautiful visuals"
-                    rows={2}
-                    className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 mb-2 font-medium">
-                    Personality traits <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
-                  <textarea
-                    value={personalityTraitsText}
-                    onChange={(e) => setPersonalityTraitsText(e.target.value)}
-                    placeholder="systems thinker, skeptical of hype, loves first principles"
-                    rows={2}
-                    className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 mb-2 font-medium">
-                    Pet peeves <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
-                  <textarea
-                    value={petPeevesText}
-                    onChange={(e) => setPetPeevesText(e.target.value)}
-                    placeholder="listicles, LinkedIn-speak, self-promotional threads"
-                    rows={2}
-                    className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                  />
-                </div>
               </div>
             </motion.div>
           )}
@@ -753,9 +670,12 @@ export default function OnboardingPage() {
               </div>
 
               <div className="space-y-6">
-                <p className="text-sm text-secondary/80 mb-6 font-mono text-center">
-                  🎚️ Adjust the sliders to set your preferred content mix (total: {Object.values(sourcePreferences).reduce((a, b) => a + b, 0)}%)
-                </p>
+                <div className="relative mb-6 text-center">
+                  <p className="text-sm text-secondary/80 font-mono inline-flex items-center gap-2 flex-wrap justify-center">
+                    🎚️ Rate your preference for each content type (0 = skip, 10 = love it)
+                    <HelpTooltip content="Set your preference level for each content type - we'll automatically balance your feed based on these ratings" />
+                  </p>
+                </div>
 
                 {/* Sliders */}
                 {(Object.keys(sourcePreferences) as Array<keyof typeof sourcePreferences>).map(key => (
@@ -769,24 +689,35 @@ export default function OnboardingPage() {
                         {key === 'tweets' && '🐦 Tweets & Threads'}
                         {key === 'discussions' && '💬 HN & Discussions'}
                       </label>
-                      <span className="text-sm font-mono text-primary font-bold">{sourcePreferences[key]}%</span>
+                      <span className="text-sm font-mono text-primary font-bold flex items-center gap-2">
+                        <span className="text-secondary/50 text-xs">Preference:</span>
+                        {sourcePreferences[key]}/10
+                      </span>
                     </div>
                     <input
                       type="range"
                       min="0"
-                      max="100"
+                      max="10"
                       value={sourcePreferences[key]}
                       onChange={(e) => updateSlider(key, parseInt(e.target.value))}
                       className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-primary"
                     />
+                    <div className="flex justify-between text-[9px] font-mono text-secondary/40 mt-1">
+                      <span>Skip</span>
+                      <span>Some</span>
+                      <span>Love it</span>
+                    </div>
                   </div>
                 ))}
 
                 {/* Content Depth */}
                 <div className="pt-6 border-t border-border">
-                  <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 mb-4 font-medium">
-                    Content depth <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
+                  <div className="relative mb-4">
+                    <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 font-medium">
+                      Content depth <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
+                      <HelpTooltip content="'Quick' = actionable tips & tutorials. 'Deep' = architecture & systems thinking. 'Surprise' = we&apos;ll mix it up!" />
+                    </label>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {[
                       { value: 'quick', label: 'Quick & practical' },
@@ -806,32 +737,6 @@ export default function OnboardingPage() {
                       </button>
                     ))}
                   </div>
-                </div>
-
-                <div className="pt-6 border-t border-border">
-                  <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 mb-2 font-medium">
-                    Content you love <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
-                  <textarea
-                    value={contentLikesText}
-                    onChange={(e) => setContentLikesText(e.target.value)}
-                    placeholder="deep technical dives, founder interviews, market analysis"
-                    rows={2}
-                    className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                  />
-                </div>
-
-                <div className="pt-4">
-                  <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 mb-2 font-medium">
-                    Content you dislike <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                  </label>
-                  <textarea
-                    value={contentDislikesText}
-                    onChange={(e) => setContentDislikesText(e.target.value)}
-                    placeholder="beginner tutorials, hype without substance, AI-generated fluff"
-                    rows={2}
-                    className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                  />
                 </div>
               </div>
             </motion.div>

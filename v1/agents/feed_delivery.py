@@ -228,8 +228,8 @@ def deliver_feed(user_id: str, max_items: int | None = None) -> list[dict[str, A
     """
     Deliver a personalized feed for a user from the retrieval pool.
     
-    Includes pool items + personal search items (from signals).
-    No hard limit on items - returns all related content from pool.
+    For subscribed users: pool items + personal signals + on-demand searches
+    For unsubscribed users: only existing pool items matching their interests
     
     Args:
         user_id: The user's ID
@@ -248,6 +248,12 @@ def deliver_feed(user_id: str, max_items: int | None = None) -> list[dict[str, A
         print(f"  Error: User {user_id} not found")
         return []
     
+    # Check subscription status
+    subscription_status = user_profile.get("subscriptionStatus", "none")
+    is_subscribed = subscription_status in ["trial", "active"]
+    
+    print(f"  Subscription status: {subscription_status} ({'subscribed' if is_subscribed else 'unsubscribed'})")
+    
     user_preferences = get_user_preferences(store, user_id)
     user_patterns = get_user_patterns(store, user_id)
     seen_urls = get_user_seen_urls(store, user_id, days=14)
@@ -257,13 +263,13 @@ def deliver_feed(user_id: str, max_items: int | None = None) -> list[dict[str, A
     print(f"  Seen URLs: {len(seen_urls)} in last 14 days")
     
     # =========================================================================
-    # PERSONAL SIGNALS - Check for active signals and run targeted searches
+    # PERSONAL SIGNALS - Only for subscribed users
     # =========================================================================
-    active_signals = get_active_signals(user_patterns)
+    active_signals = get_active_signals(user_patterns) if is_subscribed else []
     personal_items = []
     max_personal_items = 10  # Up to 10 personal signal items
     
-    if active_signals:
+    if active_signals and is_subscribed:
         print(f"Found {len(active_signals)} active signals, searching...")
         
         for signal in active_signals:
@@ -293,6 +299,8 @@ def deliver_feed(user_id: str, max_items: int | None = None) -> list[dict[str, A
                     break
         
         print(f"  Found {len(active_signals)} active signals, added {len(personal_items)} personal items")
+    elif active_signals and not is_subscribed:
+        print(f"  Skipping {len(active_signals)} personal signals (user not subscribed)")
     
     # =========================================================================
     # POOL ITEMS - Get items from retrieval pool
@@ -301,11 +309,6 @@ def deliver_feed(user_id: str, max_items: int | None = None) -> list[dict[str, A
     # Get user's umbrella IDs from interests
     interests = user_profile.get("interests", [])
     umbrella_ids = [i.lower().replace(" ", "-").replace("&", "and") for i in interests]
-    
-    # Create mapping of interest name to umbrella_id
-    interest_to_umbrella = {
-        interests[i]: umbrella_ids[i] for i in range(len(interests))
-    }
     
     # No hard limit on pool items - we'll return all related content
     pool_items_needed = max_items - len(personal_items) if max_items else None
@@ -330,10 +333,10 @@ def deliver_feed(user_id: str, max_items: int | None = None) -> list[dict[str, A
     print(f"  Pool coverage: {len(umbrellas_with_items)}/{len(umbrella_ids)} interests have items")
     
     # =========================================================================
-    # TOP-UP: On-demand search for missing interests (max 3)
+    # TOP-UP: On-demand search for missing interests (only for subscribed users)
     # =========================================================================
     topup_items = []
-    if umbrellas_without_items:
+    if umbrellas_without_items and is_subscribed:
         # Select up to 3 random interests to top-up
         max_topup = 3
         interests_to_topup = random.sample(
@@ -357,6 +360,8 @@ def deliver_feed(user_id: str, max_items: int | None = None) -> list[dict[str, A
         
         # Add topup items to pool items
         all_items.extend(topup_items)
+    elif umbrellas_without_items and not is_subscribed:
+        print(f"  Skipping top-up for {len(umbrellas_without_items)} missing interests (user not subscribed)")
     
     # Also get some general items if we don't have many
     min_items_threshold = pool_items_needed * 2 if pool_items_needed else 40
@@ -387,14 +392,16 @@ def deliver_feed(user_id: str, max_items: int | None = None) -> list[dict[str, A
     # Sort by score descending
     scored_items.sort(key=lambda x: x.get("_score", 0), reverse=True)
     
-    # Apply diversity filter (no hard limit if max_items is None)
-    print("Applying diversity filter...")
+    # Apply diversity filter with topic interleaving
+    print("Applying diversity filter with topic interleaving...")
     diversity_max = pool_items_needed if pool_items_needed else len(scored_items)
     filtered_pool_items = apply_diversity_filter(
         scored_items,
-        max_per_domain=5,   # Allow more per domain since no hard limit
-        max_per_type=None,  # No type limit
-        max_items=diversity_max
+        max_per_domain=5,        # Allow more per domain since no hard limit
+        max_per_type=None,       # No type limit
+        max_per_umbrella=2,      # Max 2 consecutive items from same topic
+        max_items=diversity_max,
+        interleave_topics=True   # Enable topic interleaving for variety
     )
     
     print(f"  Selected {len(filtered_pool_items)} pool items")
