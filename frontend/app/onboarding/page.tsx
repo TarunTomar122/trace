@@ -278,20 +278,20 @@ export default function OnboardingPage() {
         }
       }
       if (currentWorkProject.trim() || currentWorkFocus.trim()) {
-        onboardingData.currentWork = {
-          project: currentWorkProject.trim() || undefined,
-          focus: currentWorkFocus.trim() || undefined,
-        };
+        const currentWork: { project?: string; focus?: string } = {};
+        if (currentWorkProject.trim()) currentWork.project = currentWorkProject.trim();
+        if (currentWorkFocus.trim()) currentWork.focus = currentWorkFocus.trim();
+        onboardingData.currentWork = currentWork;
       }
       const parsedProjects = parseCommaSeparated(projectsText);
       if (parsedProjects.length > 0) {
         onboardingData.projects = parsedProjects;
       }
       if (goalsShortTerm.trim() || goalsLongTerm.trim()) {
-        onboardingData.goals = {
-          shortTerm: goalsShortTerm.trim() || undefined,
-          longTerm: goalsLongTerm.trim() || undefined,
-        };
+        const goals: { shortTerm?: string; longTerm?: string } = {};
+        if (goalsShortTerm.trim()) goals.shortTerm = goalsShortTerm.trim();
+        if (goalsLongTerm.trim()) goals.longTerm = goalsLongTerm.trim();
+        onboardingData.goals = goals;
       }
       if (learningStyle.trim()) {
         onboardingData.learningStyle = learningStyle.trim();
@@ -306,10 +306,10 @@ export default function OnboardingPage() {
       const contentLikes = parseCommaSeparated(contentLikesText);
       const contentDislikes = parseCommaSeparated(contentDislikesText);
       if (contentLikes.length > 0 || contentDislikes.length > 0) {
-        onboardingData.contentPreferences = {
-          likes: contentLikes.length > 0 ? contentLikes : undefined,
-          dislikes: contentDislikes.length > 0 ? contentDislikes : undefined,
-        };
+        const contentPreferences: { likes?: string[]; dislikes?: string[] } = {};
+        if (contentLikes.length > 0) contentPreferences.likes = contentLikes;
+        if (contentDislikes.length > 0) contentPreferences.dislikes = contentDislikes;
+        onboardingData.contentPreferences = contentPreferences;
       }
       const parsedFavoriteSources = parseCommaSeparated(favoriteSourcesText);
       if (parsedFavoriteSources.length > 0) {

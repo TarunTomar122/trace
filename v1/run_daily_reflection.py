@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 from v1.storage import FirestoreStore
-from v1.agents.reflection import run_reflection
+from v1.core_agents.reflection import run_reflection
 
 
 def run_daily_reflection(date: str | None = None, limit: int | None = None) -> dict:

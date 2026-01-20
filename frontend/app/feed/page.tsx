@@ -307,7 +307,7 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
                     value={feedback}
                     onChange={(e) => setFeedback(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleFeedbackSubmit()}
-                    placeholder="Why isn't this relevant?"
+                    placeholder="Notes for Trace?"
                     className="flex-1 px-3 md:px-4 py-2.5 md:py-2 text-sm font-mono bg-transparent border border-border focus:border-primary focus:outline-none transition-colors"
                     autoFocus
                   />

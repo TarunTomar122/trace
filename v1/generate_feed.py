@@ -20,7 +20,7 @@ if project_root not in sys.path:
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env")
 
-from v1.agents.feed_delivery import deliver_feed
+from v1.core_agents.feed_delivery import deliver_feed
 from v1.storage import FirestoreStore
 
 
