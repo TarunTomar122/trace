@@ -20,10 +20,11 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 from collections import defaultdict
 from v1.storage import FirestoreStore
+from v1.tools.umbrella_mapper import map_interests_to_umbrellas
 
 
 def normalize_interest(interest: str) -> str:
-    """Normalize an interest string to an umbrella ID."""
+    """Normalize an interest string to an umbrella ID (fallback only)."""
     return interest.lower().strip().replace(" ", "-").replace("&", "and")
 
 
@@ -64,7 +65,7 @@ def map_users_to_queries() -> dict:
     users_mapped = 0
     users_skipped = 0
     
-    # For each subscribed user, map their interests to queries
+    # For each subscribed user, map their interests to queries using AI
     for profile in subscribed_profiles:
         uid = profile.get("uid")
         if not uid:
@@ -77,12 +78,14 @@ def map_users_to_queries() -> dict:
         
         users_mapped += 1
         
-        for interest in interests:
-            umbrella_id = normalize_interest(interest)
-            
+        # Use AI to smart-map interests to umbrellas
+        mapping_result = map_interests_to_umbrellas(interests, store)
+        interest_to_umbrella = mapping_result["mappings"]
+        
+        for interest, umbrella_id in interest_to_umbrella.items():
             # Check if umbrella exists
             if umbrella_id not in umbrella_map:
-                print(f"  Warning: No umbrella for interest '{interest}' (user {uid})")
+                print(f"  Warning: No umbrella for interest '{interest}' → {umbrella_id} (user {uid})")
                 continue
             
             umbrella = umbrella_map[umbrella_id]

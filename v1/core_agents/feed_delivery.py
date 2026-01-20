@@ -27,6 +27,7 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 from v1.storage import FirestoreStore
 from v1.scoring import score_item_for_user, apply_diversity_filter, generate_why_relevant
+from v1.tools.umbrella_mapper import map_interests_to_umbrellas
 
 
 def get_user_seen_urls(store: FirestoreStore, user_id: str, days: int = 14) -> set[str]:
@@ -306,9 +307,13 @@ def deliver_feed(user_id: str, max_items: int | None = None) -> list[dict[str, A
     # POOL ITEMS - Get items from retrieval pool
     # =========================================================================
     
-    # Get user's umbrella IDs from interests
+    # Get user's umbrella IDs from interests using smart AI mapping
     interests = user_profile.get("interests", [])
-    umbrella_ids = [i.lower().replace(" ", "-").replace("&", "and") for i in interests]
+    
+    # Use AI-powered smart mapping to find the right umbrellas
+    mapping_result = map_interests_to_umbrellas(interests, store)
+    interest_to_umbrella = mapping_result["mappings"]
+    umbrella_ids = list(set(interest_to_umbrella.values()))  # Unique umbrella IDs
     
     # No hard limit on pool items - we'll return all related content
     pool_items_needed = max_items - len(personal_items) if max_items else None
@@ -321,14 +326,15 @@ def deliver_feed(user_id: str, max_items: int | None = None) -> list[dict[str, A
     umbrellas_with_items = set()
     umbrellas_without_items = []
     
-    for i, umbrella_id in enumerate(umbrella_ids):
+    for umbrella_id in umbrella_ids:
         items = store.get_retrieval_pool(umbrella_id=umbrella_id)
         if items:
             umbrellas_with_items.add(umbrella_id)
             all_items.extend(items)
         else:
-            # Track the original interest name too for search query
-            umbrellas_without_items.append((interests[i], umbrella_id))
+            # Find the original interest that mapped to this umbrella for search query
+            original_interest = next((i for i, u in interest_to_umbrella.items() if u == umbrella_id), umbrella_id)
+            umbrellas_without_items.append((original_interest, umbrella_id))
     
     print(f"  Pool coverage: {len(umbrellas_with_items)}/{len(umbrella_ids)} interests have items")
     
@@ -373,13 +379,13 @@ def deliver_feed(user_id: str, max_items: int | None = None) -> list[dict[str, A
     
     print(f"  Found {len(all_items)} candidate items from pool (including {len(topup_items)} top-up)")
     
-    # Filter out seen URLs and personal item URLs
+    # Filter out only personal item URLs (skip seen URLs filtering - was too aggressive)
     personal_urls = {p.get("url") for p in personal_items}
     unseen_items = [
         item for item in all_items 
-        if item.get("url") not in seen_urls and item.get("url") not in personal_urls
+        if item.get("url") not in personal_urls
     ]
-    print(f"  After deduplication: {len(unseen_items)} items")
+    print(f"  After filtering personal URLs: {len(unseen_items)} items")
     
     # Score each pool item
     print("Scoring pool items...")

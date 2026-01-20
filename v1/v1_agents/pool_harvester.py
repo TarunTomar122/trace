@@ -174,12 +174,12 @@ def tavily_search(query: str, max_results: int = 10) -> list[dict[str, Any]]:
         return []
 
 
-def harvest_pool(max_queries: int = 20, items_per_query: int = 2) -> dict:
+def harvest_pool(max_queries: int | None = None, items_per_query: int = 2) -> dict:
     """
     Harvest content from active queries into the retrieval pool.
     
     Args:
-        max_queries: Maximum number of queries to search
+        max_queries: Maximum number of queries to search (None = all)
         items_per_query: Maximum items to fetch per query
     
     Returns:
@@ -197,11 +197,11 @@ def harvest_pool(max_queries: int = 20, items_per_query: int = 2) -> dict:
         print("No active queries found. Run map_users_to_queries.py first.")
         return {"queries_searched": 0, "items_stored": 0, "items_deleted": 0}
     
-    # Sort by user_count and limit
+    # Sort by user_count and optionally limit
     active_queries.sort(key=lambda q: q.get("user_count", 0), reverse=True)
-    queries_to_search = active_queries[:max_queries]
+    queries_to_search = active_queries[:max_queries] if max_queries else active_queries
     
-    print(f"Searching top {len(queries_to_search)} queries...")
+    print(f"Searching {len(queries_to_search)} queries...")
     
     queries_searched = 0
     items_stored = 0

@@ -47,21 +47,15 @@ def discover_trends(main_tag: str) -> list[str]:
         main_tag: The main topic tag (e.g., "AI", "Frontend", "Running")
     
     Returns:
-        List of 5 diverse specific search queries
+        List of 2 diverse specific search queries
     """
     agent = create_trend_discovery_agent()
     
-    prompt = f"""Find 5 diverse and specific queries about "{main_tag}".
+    prompt = f"""Find 2 diverse and specific queries about "{main_tag}".
 
-Search the web for:
-- What's trending on HackerNews about {main_tag}
-- Trending {main_tag} repositories on GitHub
-- Recent {main_tag} blog posts and discussions
+Search the web for what's currently trending about {main_tag}.
 
-Make sure the queries cover different angles (trending, implementation, strategy, learning)
-so they appeal to developers, product people, and learners alike.
-
-Return ONLY a JSON array of 5 queries (2-5 words each).
+Return ONLY a JSON array of 2 queries (2-5 words each).
 No markdown formatting, just the raw JSON array."""
 
     result = Runner.run_sync(agent, prompt)
@@ -79,19 +73,11 @@ No markdown formatting, just the raw JSON array."""
     
     try:
         queries = json.loads(output)
-        if isinstance(queries, list) and len(queries) >= 5:
-            return queries[:5]
-        elif isinstance(queries, list):
-            # Pad if less than 5 with diverse fallbacks
-            fallback_queries = [
-                f"{main_tag} implementation patterns",
-                f"{main_tag} architecture design",
-                f"{main_tag} case studies",
-                f"{main_tag} production deployment",
-                f"{main_tag} deep dive"
-            ]
-            queries.extend(fallback_queries[:5 - len(queries)])
-            return queries[:5]
+        if isinstance(queries, list) and len(queries) >= 2:
+            return queries[:2]
+        elif isinstance(queries, list) and len(queries) == 1:
+            queries.append(f"{main_tag} latest trends")
+            return queries[:2]
         else:
             raise ValueError("Expected a list")
     except json.JSONDecodeError:
@@ -102,19 +88,16 @@ No markdown formatting, just the raw JSON array."""
             try:
                 queries = json.loads(match.group())
                 if isinstance(queries, list):
-                    while len(queries) < 5:
-                        queries.append(f"{main_tag} use cases")
-                    return queries[:5]
+                    while len(queries) < 2:
+                        queries.append(f"{main_tag} latest trends")
+                    return queries[:2]
             except json.JSONDecodeError:
                 pass
         
-        # Fallback: return diverse generic queries
+        # Fallback: return 2 generic queries
         return [
             f"{main_tag} latest developments",
-            f"{main_tag} implementation guide",
-            f"{main_tag} case studies",
-            f"{main_tag} architecture patterns",
-            f"{main_tag} deep dive",
+            f"{main_tag} trends insights",
         ]
 
 

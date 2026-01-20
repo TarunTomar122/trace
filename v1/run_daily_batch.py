@@ -23,6 +23,7 @@ from v1.storage import FirestoreStore
 from v1.models import SubQuery
 from v1.v1_agents.trend_discovery import discover_trends
 from v1.v1_agents.pool_harvester import harvest_pool
+from v1.scripts.map_users_to_queries import map_users_to_queries
 
 
 def log(message: str):
@@ -106,16 +107,30 @@ def run_daily_batch() -> int:
     log(f"Trend Discovery complete: {success_count} succeeded, {fail_count} failed")
     
     # =========================================================================
-    # Phase 2: Pool Harvesting
+    # Phase 2: Map Users to Queries
     # =========================================================================
     log("")
-    log("PHASE 2: POOL HARVESTING")
+    log("PHASE 2: MAP USERS TO QUERIES")
     log("-" * 40)
     
     try:
-        # Increased from 20 to 50 to cover more interests from shared pool
-        # Top-up mechanism in feed_delivery handles remaining gaps
-        stats = harvest_pool(max_queries=50, items_per_query=2)
+        mapping_stats = map_users_to_queries()
+        log(f"Mapped {mapping_stats.get('users_mapped', 0)} users to {mapping_stats.get('queries_active', 0)} active queries")
+    except Exception as e:
+        log(f"Warning: User-query mapping failed: {e}")
+        # Don't fail the job - pool harvesting can still work with existing mappings
+    
+    # =========================================================================
+    # Phase 3: Pool Harvesting
+    # =========================================================================
+    log("")
+    log("PHASE 3: POOL HARVESTING")
+    log("-" * 40)
+    
+    try:
+        # Search all active queries to ensure all umbrellas get content
+        # With ~35 umbrellas × 2 queries = ~70 queries
+        stats = harvest_pool(max_queries=None, items_per_query=3)
         log(f"Pool Harvesting complete: {stats}")
     except Exception as e:
         log(f"✗ Pool Harvesting failed: {e}")

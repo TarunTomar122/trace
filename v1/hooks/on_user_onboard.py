@@ -24,6 +24,7 @@ from v1.storage import FirestoreStore
 from v1.models import Umbrella, SubQuery
 from v1.v1_agents.trend_discovery import discover_trends
 from v1.generate_feed import generate_feed
+from v1.tools.umbrella_mapper import map_interests_to_umbrellas
 
 
 def normalize_interest(interest: str) -> str:
@@ -241,37 +242,45 @@ def on_user_onboard(user_id: str) -> dict[str, Any]:
     
     print(f"  Interests: {interests}")
     
-    # Process each interest
+    # Use AI to smart-map interests to umbrellas
+    print("\n  Smart-mapping interests to umbrellas...")
+    mapping_result = map_interests_to_umbrellas(interests, store)
+    interest_to_umbrella = mapping_result["mappings"]
+    umbrellas_to_create = mapping_result["umbrellas_to_create"]
+    
+    # Process each interest with its mapped umbrella
     umbrellas_created = 0
     umbrellas_existing = 0
     total_queries_mapped = 0
     
-    for interest in interests:
-        umbrella_id = normalize_interest(interest)
-        
-        # Check if umbrella exists
-        was_new = not store.umbrella_exists(umbrella_id)
-        
-        # Ensure umbrella exists (create if needed)
-        result_id = ensure_umbrella_exists(store, interest)
-        if not result_id:
+    # First, create any new umbrellas that were identified
+    for new_umbrella in umbrellas_to_create:
+        umbrella_id = new_umbrella["id"]
+        if not store.umbrella_exists(umbrella_id):
+            # Get the original interest that triggered this umbrella
+            original_interest = next((i for i, u in interest_to_umbrella.items() if u == umbrella_id), umbrella_id)
+            result_id = ensure_umbrella_exists(store, original_interest)
+            if result_id:
+                umbrellas_created += 1
+    
+    # Now map users to queries for each unique umbrella
+    unique_umbrella_ids = set(interest_to_umbrella.values())
+    for umbrella_id in unique_umbrella_ids:
+        if not store.umbrella_exists(umbrella_id):
+            umbrellas_existing += 1  # Already existed before this run
             continue
         
-        if was_new:
-            umbrellas_created += 1
-        else:
-            umbrellas_existing += 1
+        umbrellas_existing += 1
         
         # Map user to queries (only for subscribed users)
         if is_subscribed:
-            queries_mapped = map_user_to_umbrella_queries(store, user_id, result_id)
+            queries_mapped = map_user_to_umbrella_queries(store, user_id, umbrella_id)
             total_queries_mapped += queries_mapped
-            print(f"  Mapped to {queries_mapped} queries in {result_id}")
+            print(f"  Mapped to {queries_mapped} queries in {umbrella_id}")
     
     # Update umbrella user counts (only for subscribed users)
     if is_subscribed:
-        for interest in interests:
-            umbrella_id = normalize_interest(interest)
+        for umbrella_id in unique_umbrella_ids:
             umbrella = store.get_umbrella(umbrella_id)
             if umbrella:
                 current_count = umbrella.get("user_count", 0)
@@ -279,21 +288,29 @@ def on_user_onboard(user_id: str) -> dict[str, Any]:
     else:
         print(f"  Skipping query mapping and umbrella counts (user not subscribed)")
     
-    # Check if pool has items for user's interests
+    # Check if pool has items for user's umbrella mappings
     # Only run emergency search for subscribed users
     print("\n  Checking pool availability...")
     pool_items = []
-    for interest in interests:
-        umbrella_id = normalize_interest(interest)
-        items = store.get_retrieval_pool(umbrella_id=umbrella_id)
-        pool_items.extend(items)
+    umbrellas_without_content = []
     
-    if is_subscribed and len(pool_items) < 5:
-        print(f"  Pool has only {len(pool_items)} items, running emergency search...")
-        for interest in interests[:3]:  # Search top 3 interests
+    for interest, umbrella_id in interest_to_umbrella.items():
+        items = store.get_retrieval_pool(umbrella_id=umbrella_id)
+        if items:
+            pool_items.extend(items)
+        else:
+            umbrellas_without_content.append((interest, umbrella_id))
+    
+    print(f"  Pool has {len(pool_items)} items across {len(unique_umbrella_ids)} umbrellas")
+    print(f"  {len(umbrellas_without_content)} umbrellas have no content")
+    
+    # Run emergency search for ALL umbrellas without content (not just if total < 5)
+    if is_subscribed and umbrellas_without_content:
+        print(f"  Running emergency search for {len(umbrellas_without_content)} empty umbrellas...")
+        for interest, umbrella_id in umbrellas_without_content:
             emergency_search_and_populate(store, interest)
-    elif not is_subscribed and len(pool_items) < 5:
-        print(f"  Pool has only {len(pool_items)} items (skipping emergency search for unsubscribed user)")
+    elif not is_subscribed and umbrellas_without_content:
+        print(f"  Skipping emergency search for {len(umbrellas_without_content)} empty umbrellas (user not subscribed)")
     
     # Generate first feed
     print("\n  Generating initial feed...")
