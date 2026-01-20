@@ -9,7 +9,7 @@ Usage:
 """
 import argparse
 import sys
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -94,7 +94,7 @@ def generate_feed(user_id: str, date: str | None = None) -> dict[str, Any]:
     
     Args:
         user_id: The user's ID
-        date: Optional date string (YYYY-MM-DD), defaults to today
+        date: Optional date string (YYYY-MM-DD), defaults to today in IST
     
     Returns:
         Feed data that was saved
@@ -102,7 +102,10 @@ def generate_feed(user_id: str, date: str | None = None) -> dict[str, Any]:
     store = FirestoreStore()
     
     if not date:
-        date = datetime.utcnow().strftime("%Y-%m-%d")
+        # Use IST (UTC+5:30) for feed dates since pipeline runs at 10:30 PM UTC
+        # which is 4:00 AM IST (next day)
+        ist_tz = timezone(timedelta(hours=5, minutes=30))
+        date = datetime.now(ist_tz).strftime("%Y-%m-%d")
     
     print(f"Generating feed for user {user_id} on {date}...")
     
@@ -144,9 +147,12 @@ def generate_feed(user_id: str, date: str | None = None) -> dict[str, Any]:
             }
         }
         
-        # Don't mark items as seen during generation - only mark them when user actually views them
-        # This prevents deduplication issues when regenerating feeds
-        # The frontend will mark items as seen via the /api/feed/seen endpoint
+        # Mark all URLs from today's feed as "seen" to avoid showing them again in future feeds
+        # This happens automatically during feed generation (non-blocking for user experience)
+        urls_in_feed = [item.get("url") for item in formatted_items if item.get("url")]
+        if urls_in_feed:
+            print(f"  Marking {len(urls_in_feed)} URLs as seen...")
+            update_seen_urls(store, user_id, urls_in_feed)
     
     # Save to Firestore: user_feeds/{uid}/daily/{date}
     print(f"  Saving feed to user_feeds/{user_id}/daily/{date}...")

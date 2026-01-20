@@ -12,7 +12,7 @@ Usage:
 import argparse
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 project_root = str(Path(__file__).parent.parent)
@@ -35,7 +35,7 @@ def run_user_feeds(date: str | None = None, limit: int | None = None) -> dict:
     - Unsubscribed: Pool-only preview feeds
     
     Args:
-        date: Optional date string (YYYY-MM-DD), defaults to today
+        date: Optional date string (YYYY-MM-DD), defaults to today in IST
         limit: Optional limit on number of users to process
     
     Returns:
@@ -44,7 +44,10 @@ def run_user_feeds(date: str | None = None, limit: int | None = None) -> dict:
     store = FirestoreStore()
     
     if not date:
-        date = datetime.utcnow().strftime("%Y-%m-%d")
+        # Use IST (UTC+5:30) for feed dates since pipeline runs at 10:30 PM UTC
+        # which is 4:00 AM IST (next day)
+        ist_tz = timezone(timedelta(hours=5, minutes=30))
+        date = datetime.now(ist_tz).strftime("%Y-%m-%d")
     
     start_time = time.time()
     

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
+import { cookies } from 'next/headers';
 
 // This endpoint creates a Dodo Payments checkout session for subscription
 export async function POST(request: NextRequest) {
@@ -103,6 +104,10 @@ export async function POST(request: NextRequest) {
     
     console.log('Creating Dodo checkout with:', { DODO_BASE_URL, DODO_PRODUCT_ID, email, userId });
     
+    // Get DataFast visitor ID from cookies
+    const cookieStore = await cookies();
+    const datafastVisitorId = cookieStore.get('datafast_visitor_id')?.value;
+    
     const checkoutResponse = await fetch(`${DODO_BASE_URL}/checkouts`, {
       method: 'POST',
       headers: {
@@ -126,6 +131,7 @@ export async function POST(request: NextRequest) {
         metadata: {
           user_id: userId,
           source: 'trace_app',
+          datafast_visitor_id: datafastVisitorId, // Pass DataFast visitor ID for conversion tracking
         },
         return_url: `${process.env.NEXT_PUBLIC_APP_URL}/profile?subscription=success`,
       }),

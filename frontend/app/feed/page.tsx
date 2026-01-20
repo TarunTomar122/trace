@@ -61,7 +61,7 @@ const sourceConfig: Record<string, { icon: typeof Youtube; color: string; label:
   model: { icon: Sparkles, color: 'text-indigo-500', label: 'Model', accent: 'bg-indigo-500' },
 };
 
-function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, onDisabledClick, onVisible }: { 
+function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, onDisabledClick, onVisible, initialBookmarked }: { 
   item: FeedItem; 
   onUpvote: (note?: string) => void;
   onDownvote: (note?: string) => void;
@@ -70,6 +70,7 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
   disabled?: boolean;
   onDisabledClick?: () => void;
   onVisible?: (itemId: string) => void;
+  initialBookmarked?: boolean;
 }) {
   const cardRef = useRef<HTMLElement>(null);
   const hasBeenSeen = useRef(false);
@@ -78,7 +79,7 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
   const Icon = config.icon;
   const [upvoted, setUpvoted] = useState(initialVote === 'upvote');
   const [downvoted, setDownvoted] = useState(initialVote === 'downvote');
-  const [bookmarked, setBookmarked] = useState(false);
+  const [bookmarked, setBookmarked] = useState(initialBookmarked || false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
@@ -114,6 +115,10 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
     setUpvoted(initialVote === 'upvote');
     setDownvoted(initialVote === 'downvote');
   }, [initialVote]);
+
+  useEffect(() => {
+    setBookmarked(initialBookmarked || false);
+  }, [initialBookmarked]);
 
   const handleUpvote = () => {
     if (disabled) {
@@ -346,6 +351,7 @@ export default function FeedPage() {
   const [generalFeed, setGeneralFeed] = useState<FeedItem[]>([]);
   const [isLoadingGeneral, setIsLoadingGeneral] = useState(false);
   const [showSubscribePrompt, setShowSubscribePrompt] = useState(false);
+  const [bookmarkedItems, setBookmarkedItems] = useState<Set<string>>(new Set());
   
   // Pagination state
   const [hasMore, setHasMore] = useState(false);
@@ -657,6 +663,32 @@ export default function FeedPage() {
     setIsLoadingGeneral(false);
   }, [user, profile?.onboarded]);
 
+  // Load bookmarks on mount
+  const loadBookmarks = useCallback(async () => {
+    if (!user) return;
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/bookmarks', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const bookmarkIds = new Set<string>(data.bookmarks.map((b: { item_id: string }) => b.item_id));
+        setBookmarkedItems(bookmarkIds);
+      }
+    } catch (error) {
+      console.error('Error loading bookmarks:', error);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadBookmarks();
+    }
+  }, [user, loadBookmarks]);
+
   // Load pool when dev mode is toggled on
   useEffect(() => {
     if (devShowPool && poolItems.length === 0) {
@@ -741,9 +773,56 @@ export default function FeedPage() {
     recordInteraction(itemId, 'downvote', note);
   };
 
-  const handleStar = (itemId: string) => {
-    console.log('Bookmarked:', itemId);
-    // TODO: Implement bookmark functionality if needed
+  const handleStar = async (itemId: string) => {
+    if (!user) return;
+
+    const item = feed.find(i => i.id === itemId) || generalFeed.find(i => i.id === itemId);
+    if (!item) return;
+
+    const isCurrentlyBookmarked = bookmarkedItems.has(itemId);
+
+    try {
+      const token = await user.getIdToken();
+
+      if (isCurrentlyBookmarked) {
+        // Remove bookmark
+        await fetch(`/api/bookmarks?item_id=${itemId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        setBookmarkedItems(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(itemId);
+          return newSet;
+        });
+      } else {
+        // Add bookmark
+        await fetch('/api/bookmarks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            item_id: itemId,
+            item_metadata: {
+              type: item.type || item.source,
+              title: item.title,
+              description: item.description,
+              url: item.url,
+              thumbnail: item.thumbnail,
+              tags: item.tags || [],
+              why_relevant: item.metadata?.why_relevant,
+            },
+          }),
+        });
+        setBookmarkedItems(prev => new Set(prev).add(itemId));
+      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+    }
   };
 
   if (loading || !user) {
@@ -1095,6 +1174,7 @@ export default function FeedPage() {
                         onDownvote={(note) => handleDownvote(item.id, note)}
                         onStar={() => handleStar(item.id)}
                         initialVote={interactions[item.id]}
+                        initialBookmarked={bookmarkedItems.has(item.id)}
                         disabled={!hasAccess}
                         onDisabledClick={() => setShowSubscribePrompt(true)}
                         onVisible={showPersonalizedFeed ? handleItemVisible : undefined}
@@ -1200,7 +1280,7 @@ export default function FeedPage() {
                           <Sparkles size={24} className="text-primary" />
                         </div>
                         <p className="text-lg font-serif mb-2">
-                          {activeFilter === 'all' ? 'Your feed is empty' : `No ${activeFilter}s yet`}
+                          {activeFilter === 'all' ? 'Your Feed is Being Generated!!! Check back soon!' : `No ${activeFilter}s yet`}
                         </p>
                         <p className="text-sm font-mono text-secondary mb-4">
                           {activeFilter === 'all' 

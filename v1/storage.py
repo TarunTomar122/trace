@@ -10,7 +10,7 @@ Does NOT modify existing collections: user_profiles, user_preferences, user_patt
 """
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from dotenv import load_dotenv
@@ -176,8 +176,10 @@ class FirestoreStore:
     
     def update_query_last_searched(self, query_id: str) -> None:
         """Update the last_searched timestamp for a query."""
+        # Use IST (UTC+5:30) for date consistency with pipeline runs
+        ist_tz = timezone(timedelta(hours=5, minutes=30))
         self.db.collection("query_users").document(query_id).update({
-            "last_searched": datetime.utcnow().strftime("%Y-%m-%d")
+            "last_searched": datetime.now(ist_tz).strftime("%Y-%m-%d")
         })
     
     # =========================================================================

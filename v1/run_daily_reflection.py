@@ -12,7 +12,7 @@ Usage:
 import argparse
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 project_root = str(Path(__file__).parent.parent)
@@ -31,7 +31,7 @@ def run_daily_reflection(date: str | None = None, limit: int | None = None) -> d
     Run reflection for all subscribed users (trial or paid).
     
     Args:
-        date: Optional date string (YYYY-MM-DD), defaults to today
+        date: Optional date string (YYYY-MM-DD), defaults to today in IST
         limit: Optional limit on number of users to process
     
     Returns:
@@ -40,7 +40,10 @@ def run_daily_reflection(date: str | None = None, limit: int | None = None) -> d
     store = FirestoreStore()
     
     if not date:
-        date = datetime.utcnow().strftime("%Y-%m-%d")
+        # Use IST (UTC+5:30) for consistency with feed generation
+        # Reflection runs at 5:00 PM UTC = 10:30 PM IST
+        ist_tz = timezone(timedelta(hours=5, minutes=30))
+        date = datetime.now(ist_tz).strftime("%Y-%m-%d")
     
     start_time = time.time()
     

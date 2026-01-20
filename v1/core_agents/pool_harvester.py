@@ -9,7 +9,7 @@ Usage:
 import json
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 import hashlib
@@ -186,7 +186,9 @@ def harvest_pool(max_queries: int = 50, items_per_query: int = 5) -> dict:
         Stats dict with queries_searched, items_stored, items_deleted
     """
     store = FirestoreStore()
-    today = datetime.utcnow().strftime("%Y-%m-%d")
+    # Use IST (UTC+5:30) for date since pipeline runs at 10:30 PM UTC = 4:00 AM IST
+    ist_tz = timezone(timedelta(hours=5, minutes=30))
+    today = datetime.now(ist_tz).strftime("%Y-%m-%d")
     
     # Get active queries (with at least 1 user)
     print("Loading active queries...")

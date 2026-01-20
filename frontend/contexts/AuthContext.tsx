@@ -9,7 +9,6 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
 import { getOrCreateUserProfile, getUserProfile, UserProfile } from '@/lib/firestore';
-import { isAlphaMode } from '@/lib/alpha';
 
 interface AuthContextType {
   user: User | null;
@@ -45,9 +44,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         firebaseUser.photoURL
       );
       setProfile(userProfile);
+      return userProfile;
     } catch (error) {
       console.error('Error loading profile:', error);
     }
+    return null;
   };
 
   const refreshProfile = async () => {
@@ -75,12 +76,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       if (result.user) {
-        await loadProfile(result.user);
-        // Redirect based on alpha mode - use window.location for client-side redirect
-        if (!isAlphaMode()) {
-          window.location.href = '/waitlist';
+        const userProfile = await loadProfile(result.user);
+        if (!userProfile?.onboarded) {
+          window.location.href = '/onboarding';
         } else {
-          // In alpha mode, always go to feed (non-onboarded users see general feed with callout)
           window.location.href = '/feed';
         }
       }

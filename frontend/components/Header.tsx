@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { RefreshCw, User, LogOut, ArrowLeft } from 'lucide-react';
+import { RefreshCw, User, LogOut, ArrowLeft, Bookmark } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface HeaderProps {
@@ -11,6 +11,7 @@ interface HeaderProps {
   backHref?: string;
   backLabel?: string;
   onSignOut?: () => void;
+  showBookmarks?: boolean;
 }
 
 export default function Header({
@@ -20,6 +21,7 @@ export default function Header({
   backHref,
   backLabel = "Back",
   onSignOut,
+  showBookmarks = true,
 }: HeaderProps) {
   const { user, signOut } = useAuth();
 
@@ -78,7 +80,7 @@ export default function Header({
           </Link>
 
           {/* Right side */}
-          <div className="flex items-center gap-4 flex-1 justify-end">
+          <div className="flex items-center gap-2 md:gap-4 flex-1 justify-end">
             {showBackToFeed ? (
               <button
                 onClick={handleSignOut}
@@ -88,15 +90,26 @@ export default function Header({
                 <LogOut size={14} />
               </button>
             ) : (
-              <Link href="/profile" className="p-1 rounded-full hover:bg-foreground/5 transition-colors">
-                {user?.photoURL ? (
-                  <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User size={16} className="text-primary" />
-                  </div>
+              <>
+                {showBookmarks && user && (
+                  <Link 
+                    href="/bookmarks" 
+                    className="p-2 rounded-full hover:bg-foreground/5 transition-colors text-secondary hover:text-foreground"
+                    title="Bookmarks"
+                  >
+                    <Bookmark size={18} strokeWidth={1.5} />
+                  </Link>
                 )}
-              </Link>
+                <Link href="/profile" className="p-1 rounded-full hover:bg-foreground/5 transition-colors">
+                  {user?.photoURL ? (
+                    <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User size={16} className="text-primary" />
+                    </div>
+                  )}
+                </Link>
+              </>
             )}
           </div>
         </div>

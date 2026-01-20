@@ -379,13 +379,13 @@ def deliver_feed(user_id: str, max_items: int | None = None) -> list[dict[str, A
     
     print(f"  Found {len(all_items)} candidate items from pool (including {len(topup_items)} top-up)")
     
-    # Filter out only personal item URLs (skip seen URLs filtering - was too aggressive)
+    # Filter out seen URLs and personal item URLs to avoid duplicates
     personal_urls = {p.get("url") for p in personal_items}
     unseen_items = [
         item for item in all_items 
-        if item.get("url") not in personal_urls
+        if item.get("url") not in seen_urls and item.get("url") not in personal_urls
     ]
-    print(f"  After filtering personal URLs: {len(unseen_items)} items")
+    print(f"  After filtering seen + personal URLs: {len(unseen_items)} items (filtered {len(all_items) - len(unseen_items)} duplicates)")
     
     # Score each pool item
     print("Scoring pool items...")

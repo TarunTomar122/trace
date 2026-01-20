@@ -9,7 +9,7 @@ Usage:
 """
 import argparse
 import sys
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -161,7 +161,9 @@ def emergency_search_and_populate(store: FirestoreStore, interest: str) -> int:
             return 0
         
         results = resp.json().get("results", [])
-        today = datetime.utcnow().strftime("%Y-%m-%d")
+        # Use IST (UTC+5:30) for date consistency with pipeline runs
+        ist_tz = timezone(timedelta(hours=5, minutes=30))
+        today = datetime.now(ist_tz).strftime("%Y-%m-%d")
         items_added = 0
         
         for r in results:

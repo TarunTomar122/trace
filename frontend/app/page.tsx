@@ -19,7 +19,8 @@ import {
   LogOut,
   Mail,
   Clock,
-  Bookmark
+  Bookmark,
+  MessageCircle
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -476,7 +477,7 @@ const FlowDiagram = () => {
 
 // --- Hero Component ---
 const Hero = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, signInWithGoogle } = useAuth();
   const isLoggedIn = !!user;
 
   return (
@@ -545,23 +546,24 @@ const Hero = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.3 }}
-                  className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl leading-[0.9] font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6 lg:mb-8"
+                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl leading-[0.9] font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6 lg:mb-8"
                 >
-                  Reclaim <br />
-                  <span className="text-secondary/40 italic">Your Attention</span>
+                  Fuck The Algorithms <br />
+                  <span className="text-secondary/40 italic">Build Your Own</span>
                 </motion.h1>
 
                 <motion.p
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.4 }}
-                  className="text-sm md:text-base lg:text-lg text-secondary font-mono leading-relaxed mb-6 md:mb-8 lg:mb-10 max-w-lg"
+                  className="text-sm md:text-base lg:text-lg text-secondary font-mono leading-relaxed mb-4 md:mb-5 max-w-lg"
                 >
                   {isAlphaMode()
-                    ? "Trace brings content from across the web (like YouTube, Reddit, Hacker News, Medium, and X) into one quiet feed."
-                    : "We're putting the finishing touches on Trace. Join our waitlist to be among the first to experience a feed that actually respects your attention."
+                    ? "Every morning, we scan Hacker News, Reddit, Twitter, YouTube, arXiv, and 50+ engineering blogs. You get the 10-15 things that actually matter."
+                    : "Join the waitlist to get early access. We scan 1,000+ sources daily so you don't have to."
                   }
                 </motion.p>
+                
 
                 {!isAlphaMode() && (
                   <motion.div
@@ -585,18 +587,19 @@ const Hero = () => {
                   transition={{ duration: 0.8, delay: 0.5 }}
                   className="flex flex-col sm:flex-row gap-3 md:gap-4"
                 >
-                  <a href="#get-started" className="w-full sm:w-auto">
-                    <button className="group relative bg-primary text-primary-foreground px-8 py-3.5 md:px-10 md:py-4 text-[9px] md:text-[10px] font-semibold tracking-[0.2em] md:tracking-[0.25em] uppercase transition-all overflow-hidden font-mono w-full">
-                      <span className="relative z-10 flex items-center justify-center gap-2">
-                        {isAlphaMode() ? "Get Started" : "Join Waitlist"}
-                        {!isAlphaMode() && <Mail size={12} />}
-                      </span>
-                      <div className="absolute inset-0 translate-y-full group-hover:translate-y-0 bg-primary/20 transition-transform duration-300" />
-                    </button>
-                  </a>
-                  <a href="#how" className="w-full sm:w-auto">
+                  <button
+                    onClick={signInWithGoogle}
+                    className="group relative bg-primary text-primary-foreground px-8 py-3.5 md:px-10 md:py-4 text-[9px] md:text-[10px] font-semibold tracking-[0.2em] md:tracking-[0.25em] uppercase transition-all overflow-hidden font-mono w-full sm:w-auto"
+                  >
+                    <span className="relative z-10 flex items-center justify-center gap-2">
+                      Start Free Trial
+                      <ChevronRight size={12} />
+                    </span>
+                    <div className="absolute inset-0 translate-y-full group-hover:translate-y-0 bg-primary/20 transition-transform duration-300" />
+                  </button>
+                  <a href="#demo" className="w-full sm:w-auto">
                     <button className="flex items-center justify-center gap-2 text-foreground hover:text-primary transition-colors text-[9px] md:text-[10px] font-mono uppercase tracking-[0.2em] md:tracking-[0.25em] px-8 py-3.5 md:px-10 md:py-4 border border-border hover:border-primary w-full">
-                      How It Works <ChevronRight size={12} />
+                      See Example Feed <ChevronRight size={12} />
                     </button>
                   </a>
                 </motion.div>
@@ -615,7 +618,7 @@ const Hero = () => {
             <div className="flex flex-row justify-center items-center gap-2">
               <a href="https://peerlist.io/tarat/project/trace--nurture-your-growth" target="_blank" rel="noreferrer">
                 <img
-                  src="https://peerlist.io/api/v1/projects/embed/PRJHBAR67J9LBKOG7FKPB97ARPBNKB?showUpvote=false&theme=light"
+                  src="https://peerlist.io/api/v1/projects/embed/PRJHBAR67J9LBKOG7FKPB97ARPBNKB?showUpvote=true&theme=light"
                   alt="Trace - Nurture Your Growth"
                   style={{ width: 'auto', height: '42px' }}
                 />
@@ -634,6 +637,89 @@ const Hero = () => {
   );
 };
 
+// --- What Trace Replaces Section ---
+const WhatTraceReplaces = () => {
+  const habits = [
+    {
+      icon: "🔄",
+      title: "Doomscrolling Twitter/X",
+      description: "for tech news and AI updates"
+    },
+    {
+      icon: "📱",
+      title: "Checking Reddit 5x/day",
+      description: "/r/MachineLearning, /r/Programming, /r/WebDev..."
+    },
+    {
+      icon: "💬",
+      title: "Missing good HN discussions",
+      description: "You see it 2 days late in your group chat"
+    },
+    {
+      icon: "🎥",
+      title: "YouTube rabbit holes",
+      description: "Looking for that one tutorial, losing 2 hours"
+    },
+    {
+      icon: "📰",
+      title: "Forgetting your favorite blogs",
+      description: "You mean to check them... but never do"
+    },
+    {
+      icon: "⏰",
+      title: "The 'I should check...' loop",
+      description: "Twitter → Reddit → HN → Repeat"
+    }
+  ];
+
+  return (
+    <section className="py-16 md:py-24 lg:py-32 bg-background border-y border-border relative overflow-hidden z-10">
+      <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
+        <div className="text-center mb-12 md:mb-16">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tighter text-foreground uppercase mb-3 md:mb-4"
+          >
+            What Trace <span className="text-secondary/40">Replaces</span>
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="text-secondary font-mono text-xs md:text-sm leading-relaxed max-w-2xl mx-auto"
+          >
+            If you recognize these habits, Trace is for you
+          </motion.p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          {habits.map((habit, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1 }}
+              className="border border-border bg-background p-5 md:p-6 hover:border-primary/40 transition-all group"
+            >
+              <div className="text-3xl mb-3">{habit.icon}</div>
+              <h3 className="text-base md:text-lg font-serif font-medium text-foreground mb-2 group-hover:text-primary transition-colors">
+                {habit.title}
+              </h3>
+              <p className="text-xs md:text-sm font-mono text-secondary leading-relaxed">
+                {habit.description}
+              </p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
 // --- Source Badge Component ---
 const SourceBadge = ({ icon: Icon, name, color }: { icon: React.ElementType; name: string; color: string }) => (
   <div className={cn("inline-flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-mono uppercase tracking-widest", color)}>
@@ -641,6 +727,146 @@ const SourceBadge = ({ icon: Icon, name, color }: { icon: React.ElementType; nam
     {name}
   </div>
 );
+
+// --- Demo Feed Section ---
+const DemoFeed = () => {
+  const demoItems = [
+    {
+      type: 'video',
+      title: 'Building production-ready AI agents with LangGraph',
+      source: 'YouTube • AI Jason',
+      description: 'A deep dive into building reliable AI agents that actually work in production. Covers memory, tool use, and error handling.',
+      duration: '24 min',
+      icon: Youtube,
+      color: 'text-red-500',
+      bgColor: 'bg-red-500/10'
+    },
+    {
+      type: 'discussion',
+      title: 'Show HN: I built a minimal MCP server for Postgres',
+      source: 'Hacker News • 124 points',
+      description: 'Simple MCP server implementation that lets Claude talk to your Postgres database. Open source and well-documented.',
+      duration: '42 comments',
+      icon: MessageCircle,
+      color: 'text-amber-500',
+      bgColor: 'bg-amber-500/10'
+    },
+    {
+      type: 'repo',
+      title: 'anthropics/courses: Prompt engineering interactive tutorial',
+      source: 'GitHub • ⭐ 2.4k',
+      description: 'Interactive tutorial for learning prompt engineering with Claude. Covers basics to advanced techniques with runnable examples.',
+      duration: 'Updated today',
+      icon: Github,
+      color: 'text-violet-500',
+      bgColor: 'bg-violet-500/10'
+    },
+    {
+      type: 'paper',
+      title: 'Attention Is All You Need',
+      source: 'arXiv • Vaswani et al.',
+      description: 'The paper that introduced transformers. Still the most important architecture in modern AI.',
+      duration: '8 pages',
+      icon: BookOpen,
+      color: 'text-blue-500',
+      bgColor: 'bg-blue-500/10'
+    },
+    {
+      type: 'blog',
+      title: 'How Stripe builds reliable systems',
+      source: 'Stripe Engineering Blog',
+      description: "Deep dive into Stripe's approach to building fault-tolerant distributed systems. Covers their testing philosophy and incident response.",
+      duration: '12 min read',
+      icon: BookOpen,
+      color: 'text-emerald-500',
+      bgColor: 'bg-emerald-500/10'
+    }
+  ];
+
+  return (
+    <section id="demo" className="py-16 md:py-24 lg:py-40 bg-background relative overflow-hidden z-10">
+      <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
+        <div className="text-center mb-12 md:mb-16">
+
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6"
+          >
+            Here's What <span className="text-secondary/40">Sarah Sees</span>
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="text-secondary font-mono text-xs md:text-sm leading-relaxed max-w-2xl mx-auto mb-4"
+          >
+            Sarah is an AI researcher. This is her feed from this morning.
+          </motion.p>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="text-secondary/70 font-mono text-[10px] md:text-xs leading-relaxed max-w-xl mx-auto italic"
+          >
+            No signup needed to see this. Your feed will look different based on YOUR interests.
+          </motion.p>
+        </div>
+
+        <div className="max-w-3xl mx-auto space-y-4 md:space-y-5">
+          {demoItems.map((item, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1 }}
+              className="border border-border bg-background p-4 md:p-5 lg:p-6 hover:border-primary/40 transition-all group"
+            >
+              <div className="flex gap-3 md:gap-4">
+                <div className={cn("w-12 h-12 md:w-14 md:h-14 flex items-center justify-center shrink-0", item.bgColor)}>
+                  <item.icon size={20} className={cn("md:hidden", item.color)} strokeWidth={1.5} />
+                  <item.icon size={24} className={cn("hidden md:block", item.color)} strokeWidth={1.5} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm md:text-base lg:text-lg font-serif font-medium text-foreground mb-1 group-hover:text-primary transition-colors line-clamp-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-[10px] md:text-xs font-mono text-secondary/80 mb-2">
+                    {item.source} • {item.duration}
+                  </p>
+                  <p className="text-xs md:text-sm font-mono text-secondary leading-relaxed line-clamp-2">
+                    {item.description}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.6 }}
+          className="mt-12 md:mt-16 text-center"
+        >
+          <div className="inline-block bg-primary/5 border border-primary/20 p-5 md:p-6 max-w-xl">
+            <p className="text-xs md:text-sm font-mono text-secondary leading-relaxed mb-3">
+              <span className="text-foreground font-bold">That's 5 items from 5 different sources.</span> 
+            </p>
+            <p className="text-[10px] md:text-xs font-mono text-secondary/80 leading-relaxed">
+              Sarah could have spent 2 hours finding these across Twitter, HN, GitHub, arXiv, and blogs. Instead, she opened Trace once. Took 5 minutes.
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+};
 
 // --- Feed Card Component ---
 const FeedCard = ({ title, source, description, index }: { title: string; source: string; description: string; index: number }) => {
@@ -1153,347 +1379,354 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
   );
 };
 
+// --- What You Get Section (Outcomes) ---
+// const WhatYouGet = () => {
+//   const outcomes = [
+//     {
+//       icon: Clock,
+//       title: "Save 2 hours every day.",
+//       description: "Instead of checking Twitter, Reddit, HN, YouTube separately—open Trace once. 10-15 items. Done in 5 minutes. Back to building.",
+//       stat: "2hrs",
+//       statLabel: "Saved daily"
+//     },
+//     {
+//       icon: Sparkles,
+//       title: "Never miss viral threads.",
+//       description: "Found Claude MCP announcement 2 days before it hit HN front page. The best content, before everyone else sees it.",
+//       stat: "24-48h",
+//       statLabel: "Ahead of the curve"
+//     },
+//     {
+//       icon: RefreshCw,
+//       title: "1,000+ sources. One feed.",
+//       description: "We scan Hacker News, r/MachineLearning, r/Programming, top AI researchers on Twitter, arXiv, and 50+ engineering blogs. Every. Single. Day.",
+//       stat: "1,000+",
+//       statLabel: "Sources scanned daily"
+//     },
+//     {
+//       icon: Brain,
+//       title: "After 7 days, it knows you.",
+//       description: "Trace learns you prefer hands-on tutorials over theory, code examples over blog posts, practical tools over thought leadership. Gets smarter with every interaction.",
+//       stat: "7 days",
+//       statLabel: "To personalize"
+//     }
+//   ];
+
+//   return (
+//     <section className="py-16 md:py-24 lg:py-40 bg-background border-y border-border relative overflow-hidden z-10">
+//       <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
+//         <div className="text-center mb-12 md:mb-16 lg:mb-20">
+//           <motion.h2
+//             initial={{ opacity: 0, y: 20 }}
+//             whileInView={{ opacity: 1, y: 0 }}
+//             viewport={{ once: true }}
+//             className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6"
+//           >
+//             What You <span className="text-secondary/40">Get</span>
+//           </motion.h2>
+//           <motion.p
+//             initial={{ opacity: 0, y: 20 }}
+//             whileInView={{ opacity: 1, y: 0 }}
+//             viewport={{ once: true }}
+//             transition={{ delay: 0.1 }}
+//             className="text-secondary font-mono text-xs md:text-sm leading-relaxed max-w-2xl mx-auto"
+//           >
+//             This isn't about features. It's about getting your time back.
+//           </motion.p>
+//         </div>
+
+//         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-10 mb-12 md:mb-16">
+//           {outcomes.map((outcome, i) => (
+//             <motion.div
+//               key={i}
+//               initial={{ opacity: 0, y: 30 }}
+//               whileInView={{ opacity: 1, y: 0 }}
+//               viewport={{ once: true }}
+//               transition={{ delay: i * 0.1 }}
+//               className="border-2 border-border bg-background p-6 md:p-8 lg:p-10 hover:border-primary/40 transition-all group"
+//             >
+//               <div className="flex items-start gap-4 md:gap-5 mb-5 md:mb-6">
+//                 <div className="w-12 h-12 md:w-14 md:h-14 bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+//                   <outcome.icon size={24} className="md:hidden text-primary" strokeWidth={1.5} />
+//                   <outcome.icon size={28} className="hidden md:block text-primary" strokeWidth={1.5} />
+//                 </div>
+//                 <div className="flex-1">
+//                   <div className="text-right">
+//                     <div className="text-2xl md:text-3xl font-serif font-light text-primary mb-1">
+//                       {outcome.stat}
+//                     </div>
+//                     <div className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider text-secondary">
+//                       {outcome.statLabel}
+//                     </div>
+//                   </div>
+//                 </div>
+//               </div>
+              
+//               <h3 className="text-xl md:text-2xl lg:text-3xl font-serif font-light text-foreground mb-3 md:mb-4 group-hover:text-primary transition-colors">
+//                 {outcome.title}
+//               </h3>
+//               <p className="text-sm md:text-base font-mono text-secondary leading-relaxed">
+//                 {outcome.description}
+//               </p>
+//             </motion.div>
+//           ))}
+//         </div>
+
+//         <motion.div
+//           initial={{ opacity: 0, y: 20 }}
+//           whileInView={{ opacity: 1, y: 0 }}
+//           viewport={{ once: true }}
+//           transition={{ delay: 0.4 }}
+//           className="border-2 border-primary bg-primary/5 p-6 md:p-8 lg:p-10 max-w-4xl mx-auto"
+//         >
+//           <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6">
+//             <div className="text-4xl md:text-5xl">⏱️</div>
+//             <div className="flex-1">
+//               <p className="text-base md:text-lg font-serif font-medium text-foreground mb-2">
+//                 Will this actually save me time tomorrow morning?
+//               </p>
+//               <p className="text-xs md:text-sm font-mono text-secondary leading-relaxed">
+//                 Yes. Instead of opening Twitter → Reddit → HN → YouTube → Repeat, you open Trace once. 10-15 curated items. Done in 5 minutes. Back to building.
+//               </p>
+//             </div>
+//           </div>
+//         </motion.div>
+//       </div>
+//     </section>
+//   );
+// };
+
 // --- How It Works Section ---
-const HowItWorks = () => {
-  const [activeStep, setActiveStep] = useState(0);
-  const sectionsRef = useRef<(HTMLDivElement | null)[]>([]);
+// const HowItWorks = () => {
+//   const [activeStep, setActiveStep] = useState(0);
+//   const sectionsRef = useRef<(HTMLDivElement | null)[]>([]);
 
-  const steps = [
-    {
-      icon: User,
-      title: "Create Your Profile",
-      description: "Tell Trace about your interests, goals, and what you want to learn. Your profile is the foundation of your personalized feed."
-    },
-    {
-      icon: Brain,
-      title: "Feed Generation",
-      description: "Our AI agents curate content from across the web—videos, research, articles, projects, and insights specifically for you. Every item is hand-picked based on your profile."
-    },
-    {
-      icon: Activity,
-      title: "Interact & Engage",
-      description: "Star what you love, skip what you don't. Every interaction teaches Trace more about your preferences and patterns."
-    },
-    {
-      icon: RefreshCw,
-      title: "Adaptive Learning",
-      description: "Your feed evolves with you. As your interests shift and grow, Trace adapts in real-time, ensuring you always get what matters most."
-    }
-  ];
+//   const steps = [
+//     {
+//       icon: User,
+//       title: "Create Your Profile",
+//       description: "Tell Trace about your interests, goals, and what you want to learn. Your profile is the foundation of your personalized feed."
+//     },
+//     {
+//       icon: Brain,
+//       title: "Feed Generation",
+//       description: "Our AI agents curate content from across the web—videos, research, articles, projects, and insights specifically for you. Every item is hand-picked based on your profile."
+//     },
+//     {
+//       icon: Activity,
+//       title: "Interact & Engage",
+//       description: "Star what you love, skip what you don't. Every interaction teaches Trace more about your preferences and patterns."
+//     },
+//     {
+//       icon: RefreshCw,
+//       title: "Adaptive Learning",
+//       description: "Your feed evolves with you. As your interests shift and grow, Trace adapts in real-time, ensuring you always get what matters most."
+//     }
+//   ];
 
-  useEffect(() => {
-    const observers = sectionsRef.current.map((section, index) => {
-      const observer = new IntersectionObserver(
-        ([entry]) => {
-          if (entry.isIntersecting) {
-            setActiveStep(index);
-          }
-        },
-        { threshold: 0.5 }
-      );
+//   useEffect(() => {
+//     const observers = sectionsRef.current.map((section, index) => {
+//       const observer = new IntersectionObserver(
+//         ([entry]) => {
+//           if (entry.isIntersecting) {
+//             setActiveStep(index);
+//           }
+//         },
+//         { threshold: 0.5 }
+//       );
 
-      if (section) {
-        observer.observe(section);
-      }
+//       if (section) {
+//         observer.observe(section);
+//       }
 
-      return observer;
-    });
+//       return observer;
+//     });
 
-    return () => {
-      observers.forEach((observer) => observer.disconnect());
-    };
-  }, []);
+//     return () => {
+//       observers.forEach((observer) => observer.disconnect());
+//     };
+//   }, []);
 
-  return (
-    <section id="how" className="py-16 md:py-24 lg:py-40 bg-background relative z-10">
-      <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
-        <div className="mb-12 md:mb-16 lg:mb-20">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-[80px] xl:text-[120px] font-serif font-light leading-[0.85] tracking-tighter text-foreground uppercase mb-4 md:mb-6 lg:mb-8">
-            How It <br /><span className="text-secondary/20">Works</span>
-          </h2>
-          <p className="text-secondary font-mono text-xs md:text-sm leading-relaxed max-w-xl">
-            A simple four-step journey to a feed that actually serves you. Your attention deserves better than algorithmic chaos.
-          </p>
-        </div>
+//   return (
+//     <section id="how" className="py-16 md:py-24 lg:py-40 bg-background relative z-10">
+//       <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
+//         <div className="mb-12 md:mb-16 lg:mb-20">
+//           <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-[80px] xl:text-[120px] font-serif font-light leading-[0.85] tracking-tighter text-foreground uppercase mb-4 md:mb-6 lg:mb-8">
+//             How It <br /><span className="text-secondary/20">Works</span>
+//           </h2>
+//           <p className="text-secondary font-mono text-xs md:text-sm leading-relaxed max-w-xl">
+//             A simple four-step journey to a feed that actually serves you. Your attention deserves better than algorithmic chaos.
+//           </p>
+//         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-16 lg:gap-20">
-          {/* Sticky Left Side */}
-          <div className="lg:sticky lg:top-60 lg:h-fit">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeStep}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <div className="flex items-start gap-4 md:gap-6 mb-6 md:mb-8">
-                  <div className="w-12 h-12 md:w-16 md:h-16 bg-background border-2 border-primary flex items-center justify-center text-primary flex-shrink-0">
-                    {React.createElement(steps[activeStep].icon, { size: 24, strokeWidth: 1.5, className: "md:hidden" })}
-                    {React.createElement(steps[activeStep].icon, { size: 32, strokeWidth: 1.5, className: "hidden md:block" })}
-                  </div>
-                  <div className="font-mono text-xs md:text-sm text-primary pt-2 md:pt-4">
-                    STEP 0{activeStep + 1}/04
-                  </div>
-                </div>
+//         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-16 lg:gap-20">
+//           {/* Sticky Left Side */}
+//           <div className="lg:sticky lg:top-60 lg:h-fit">
+//             <AnimatePresence mode="wait">
+//               <motion.div
+//                 key={activeStep}
+//                 initial={{ opacity: 0, y: 20 }}
+//                 animate={{ opacity: 1, y: 0 }}
+//                 exit={{ opacity: 0, y: -20 }}
+//                 transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+//               >
+//                 <div className="flex items-start gap-4 md:gap-6 mb-6 md:mb-8">
+//                   <div className="w-12 h-12 md:w-16 md:h-16 bg-background border-2 border-primary flex items-center justify-center text-primary flex-shrink-0">
+//                     {React.createElement(steps[activeStep].icon, { size: 24, strokeWidth: 1.5, className: "md:hidden" })}
+//                     {React.createElement(steps[activeStep].icon, { size: 32, strokeWidth: 1.5, className: "hidden md:block" })}
+//                   </div>
+//                   <div className="font-mono text-xs md:text-sm text-primary pt-2 md:pt-4">
+//                     STEP 0{activeStep + 1}/04
+//                   </div>
+//                 </div>
 
-                <h3 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tight text-foreground mb-4 md:mb-6 lg:mb-8 uppercase">
-                  {steps[activeStep].title}
-                </h3>
+//                 <h3 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tight text-foreground mb-4 md:mb-6 lg:mb-8 uppercase">
+//                   {steps[activeStep].title}
+//                 </h3>
 
-                <p className="text-secondary font-mono text-sm md:text-base leading-relaxed max-w-lg mb-6 md:mb-8">
-                  {steps[activeStep].description}
-                </p>
+//                 <p className="text-secondary font-mono text-sm md:text-base leading-relaxed max-w-lg mb-6 md:mb-8">
+//                   {steps[activeStep].description}
+//                 </p>
 
-                <div className="flex gap-2 md:gap-3">
-                  {steps.map((_, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        "h-1 flex-1 transition-all duration-500",
-                        i === activeStep ? "bg-primary" : "bg-border"
-                      )}
-                    />
-                  ))}
-                </div>
-              </motion.div>
-            </AnimatePresence>
-          </div>
+//                 <div className="flex gap-2 md:gap-3">
+//                   {steps.map((_, i) => (
+//                     <div
+//                       key={i}
+//                       className={cn(
+//                         "h-1 flex-1 transition-all duration-500",
+//                         i === activeStep ? "bg-primary" : "bg-border"
+//                       )}
+//                     />
+//                   ))}
+//                 </div>
+//               </motion.div>
+//             </AnimatePresence>
+//           </div>
 
-          {/* Scrolling Right Side */}
-          <div className="space-y-0">
-            {steps.map((step, i) => (
-              <div key={i} ref={(el) => { sectionsRef.current[i] = el; }}>
-                <ScrollSection
-                  step={i + 1}
-                  icon={step.icon}
-                  title={step.title}
-                  index={i}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-};
+//           {/* Scrolling Right Side */}
+//           <div className="space-y-0">
+//             {steps.map((step, i) => (
+//               <div key={i} ref={(el) => { sectionsRef.current[i] = el; }}>
+//                 <ScrollSection
+//                   step={i + 1}
+//                   icon={step.icon}
+//                   title={step.title}
+//                   index={i}
+//                 />
+//               </div>
+//             ))}
+//           </div>
+//         </div>
+//       </div>
+//     </section>
+//   );
+// };
 
 // --- Pricing Section ---
 const Pricing = () => {
-  const { user } = useAuth();
+  const { user, profile, signInWithGoogle } = useAuth();
+  const pricingCtaHref = user ? (profile?.onboarded ? '/feed' : '/onboarding') : null;
 
-  // Only show to non-signed-in users or show minimized version for signed-in
   return (
     <section className="py-16 md:py-24 lg:py-32 bg-background border-y border-border relative z-10">
-      <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
+      <div className="container mx-auto px-4 sm:px-6 max-w-3xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-12 md:mb-16 lg:mb-20"
+          className="text-center"
         >
           <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6">
             Simple <span className="text-secondary/40">Pricing</span>
           </h2>
-          <p className="text-secondary font-mono text-xs md:text-sm leading-relaxed">
-            Try it free for 3 days. Cancel anytime.
+          <p className="text-secondary font-mono text-sm md:text-base leading-relaxed mb-8 md:mb-12">
+            Try free for 3 days. Then $2.99/month. Cancel anytime.
           </p>
         </motion.div>
 
-        {/* Comparison Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mb-12 md:mb-16 lg:mb-20 max-w-6xl mx-auto">
-          {/* Free User Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="border border-border bg-background p-6 md:p-8 lg:p-10 hover:border-border/60 transition-all"
-          >
-            <div className="mb-6 md:mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl md:text-3xl font-serif font-light tracking-tight text-foreground uppercase">
-                  Free
-                </h3>
-                <span className="text-3xl md:text-4xl font-serif font-light text-foreground">$0</span>
-              </div>
-              <p className="text-xs md:text-sm font-mono text-secondary leading-relaxed">
-                Basic feed based on your interests
-              </p>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.1 }}
+          className="border-2 border-primary bg-primary/5 p-6 md:p-8 lg:p-10 mb-8"
+        >
+          <div className="text-center mb-6 md:mb-8">
+            <div className="text-4xl md:text-5xl font-serif font-light text-foreground mb-2">
+              $2.99<span className="text-xl md:text-2xl text-secondary">/month</span>
             </div>
-
-            <div className="space-y-4 md:space-y-5 mb-6 md:mb-8">
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-foreground/40 rounded-full"></div>
-                </div>
-                <div className="text-sm md:text-base font-mono text-foreground">
-                  Get content from your selected interests
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-foreground/40 rounded-full"></div>
-                </div>
-                <div className="text-sm md:text-base font-mono text-foreground/60 line-through">
-                  Upvote/downvote to refine your feed
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-foreground/40 rounded-full"></div>
-                </div>
-                <div className="text-sm md:text-base font-mono text-foreground/60 line-through">
-                  Bookmark content for later
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-foreground/40 rounded-full"></div>
-                </div>
-                <div className="text-sm md:text-base font-mono text-foreground/60 line-through">
-                  AI learns from your interactions
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-foreground/40 rounded-full"></div>
-                </div>
-                <div className="text-sm md:text-base font-mono text-foreground/60 line-through">
-                  Follow niche interests deeply
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 md:p-5 bg-secondary/5 border border-border">
-              <div className="flex items-start gap-3">
-                <span className="text-xl">⚠️</span>
-                <div className="text-xs md:text-sm font-mono text-secondary leading-relaxed">
-                  Your feed won't grow with you. Without interactions, it stays static based on initial setup.
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Premium User Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="border-2 border-primary bg-primary/5 p-6 md:p-8 lg:p-10 relative"
-          >
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-4 py-1 text-[9px] font-mono uppercase tracking-wider">
-              Recommended
-            </div>
-
-            <div className="mb-6 md:mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl md:text-3xl font-serif font-light tracking-tight text-foreground uppercase">
-                  Premium
-                </h3>
-                <div className="text-right">
-                  <span className="text-3xl md:text-4xl font-serif font-light text-foreground">$2.99</span>
-                  <span className="text-sm font-mono text-secondary">/mo</span>
-                </div>
-              </div>
-              <p className="text-xs md:text-sm font-mono text-secondary leading-relaxed">
-                A feed that grows and adapts with you
-              </p>
-            </div>
-
-            <div className="space-y-4 md:space-y-5 mb-6 md:mb-8">
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-primary rounded-full"></div>
-                </div>
-                <div className="text-sm md:text-base font-mono text-foreground">
-                  Daily personalized feed tailored to your interests
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-primary rounded-full"></div>
-                </div>
-                <div className="text-sm md:text-base font-mono text-foreground">
-                  Upvote/downvote to refine and improve your feed
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-primary rounded-full"></div>
-                </div>
-                <div className="text-sm md:text-base font-mono text-foreground">
-                  Bookmark content to read/watch later
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-primary rounded-full"></div>
-                </div>
-                <div className="text-sm md:text-base font-mono text-foreground">
-                  AI learns from every interaction you make
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-primary rounded-full"></div>
-                </div>
-                <div className="text-sm md:text-base font-mono text-foreground">
-                  Follow niche interests as they evolve
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 md:p-5 bg-primary/10 border border-primary/40">
-              <div className="flex items-start gap-3">
-                <span className="text-xl">✨</span>
-                <div className="text-xs md:text-sm font-mono text-foreground leading-relaxed">
-                  <span className="font-bold">Your feed evolves.</span> The more you interact, the smarter it gets at understanding your unique interests.
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-
-        <div className="max-w-3xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.3 }}
-            className="text-center"
-          >
-            <div className="inline-flex items-center gap-2 px-5 py-3 bg-primary text-primary-foreground mb-6">
-              <Sparkles size={16} />
-              <span className="text-[10px] md:text-xs font-mono uppercase tracking-wider font-bold">3-Day Free Trial</span>
-            </div>
-
-            <div className="p-6 md:p-8 bg-background border border-primary/20 mb-6">
-              <div className="flex items-start gap-3 justify-center">
-                <span className="text-2xl">💡</span>
-                <div className="text-xs md:text-sm font-mono text-secondary leading-relaxed text-left max-w-lg">
-                  <span className="text-foreground font-bold">Try it risk-free.</span> Cancel anytime before your 3-day trial ends and you won't be charged. No commitment, no hassle.
-                </div>
-              </div>
-            </div>
-
-            {!user && (
-              <div className="text-center">
-                <a href="#get-started">
-                  <button className="bg-primary text-primary-foreground px-10 py-4 text-[10px] font-mono font-bold uppercase tracking-[0.3em] hover:bg-primary/90 transition-all active:scale-[0.98] w-full md:w-auto">
-                    Start Free Trial
-                  </button>
-                </a>
-              </div>
-            )}
-          </motion.div>
-
-          <div className="mt-8 text-center text-xs font-mono text-secondary">
-            Questions? Email us at <a href="mailto:tomartarun2001@gmail.com" className="text-primary hover:underline">tomartarun2001@gmail.com</a>
+            <p className="text-xs md:text-sm font-mono text-secondary">
+              after 3-day free trial
+            </p>
           </div>
-        </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
+            <div className="flex items-start gap-3">
+              <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-2 h-2 bg-primary rounded-full"></div>
+              </div>
+              <div className="text-sm font-mono text-foreground">
+                Daily personalized digest
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-2 h-2 bg-primary rounded-full"></div>
+              </div>
+              <div className="text-sm font-mono text-foreground">
+                AI learns from your interactions
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-2 h-2 bg-primary rounded-full"></div>
+              </div>
+              <div className="text-sm font-mono text-foreground">
+                Unlimited bookmarks
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-2 h-2 bg-primary rounded-full"></div>
+              </div>
+              <div className="text-sm font-mono text-foreground">
+                All 1,000+ sources included
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center">
+            {pricingCtaHref ? (
+              <a href={pricingCtaHref}>
+                <button className="bg-primary text-primary-foreground px-10 py-4 text-[10px] font-mono font-bold uppercase tracking-[0.3em] hover:bg-primary/90 transition-all active:scale-[0.98] w-full md:w-auto">
+                  Start Free Trial
+                </button>
+              </a>
+            ) : (
+              <button
+                onClick={signInWithGoogle}
+                className="bg-primary text-primary-foreground px-10 py-4 text-[10px] font-mono font-bold uppercase tracking-[0.3em] hover:bg-primary/90 transition-all active:scale-[0.98] w-full md:w-auto"
+              >
+                Start Free Trial
+              </button>
+            )}
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.2 }}
+          className="text-center"
+        >
+          <p className="text-xs font-mono text-secondary mb-4">
+            Cancel anytime before trial ends. No credit card charged until day 4.
+          </p>
+          <p className="text-xs font-mono text-secondary">
+            Questions? We&apos;re humans: <a href="mailto:tomartarun2001@gmail.com" className="text-primary hover:underline">tomartarun2001@gmail.com</a>
+          </p>
+        </motion.div>
       </div>
     </section>
   );
@@ -1512,7 +1745,7 @@ const GetStarted = () => {
   };
 
   const getCtaText = () => {
-    if (!user) return alphaMode ? 'Continue with Google' : 'Join Waitlist';
+    if (!user) return 'Start Free Trial';
     if (!alphaMode) return 'View Waitlist Status';
     if (!profile?.onboarded) return 'Complete Setup';
     return 'Go To Your Feed';
@@ -1521,33 +1754,29 @@ const GetStarted = () => {
   const getStatusText = () => {
     if (!user) return '';
     if (!alphaMode) return "✓ YOU'RE ON THE WAITLIST";
-    if (!profile?.onboarded) return 'COMPLETE YOUR PROFILE TO GET STARTED';
+    if (!profile?.onboarded) return 'TELL US 3 TOPICS YOU CARE ABOUT';
     return '✓ SIGNED IN SUCCESSFULLY';
   };
 
   return (
     <section id="get-started" className="py-16 md:py-24 lg:py-40 bg-background border-t border-border z-10 relative">
       <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
-        <div className="max-w-4xl mx-auto text-center">
+        <div className="max-w-2xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="mb-8 md:mb-12"
           >
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6 lg:mb-8">
-              Get <span className="text-secondary/40">Started</span>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6">
+              Start Your <span className="text-secondary/40">Free Trial</span>
             </h2>
-            <p className="text-secondary font-mono text-xs md:text-sm leading-relaxed max-w-2xl mx-auto px-4">
+            <p className="text-secondary font-mono text-sm md:text-base leading-relaxed max-w-xl mx-auto">
               {user
-                ? !alphaMode
-                  ? "Thanks for joining! We'll notify you via email as soon as Trace goes live."
-                  : profile?.onboarded
-                    ? "You're all set! Your personalized feed awaits."
-                    : "Just a few quick steps to personalize your experience."
-                : alphaMode
-                  ? "Sign in to experience a feed that actually respects your attention. For creators, builders, thinkers, and learners."
-                  : "Join our waitlist to be among the first to experience Trace. Early signups get priority access when we launch."
+                ? profile?.onboarded
+                  ? "Your personalized feed awaits."
+                  : "30 seconds to set up. Then you'll see your first feed."
+                : "Sign in → Tell us 3 topics → See your feed."
               }
             </p>
           </motion.div>
@@ -1557,7 +1786,7 @@ const GetStarted = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
-            className="bg-background border border-border p-6 md:p-10 lg:p-16 shadow-2xl"
+            className="bg-background border-2 border-border p-6 md:p-10 lg:p-12"
           >
             {user ? (
               <div className="space-y-6 md:space-y-8">
@@ -1570,53 +1799,25 @@ const GetStarted = () => {
                     <p className="text-[9px] md:text-[10px] font-mono uppercase tracking-widest text-secondary">{user.email}</p>
                   </div>
                 </div>
-                <div className={`py-4 md:py-6 border font-mono text-xs md:text-sm tracking-wider md:tracking-widest ${profile?.onboarded ? 'border-primary bg-primary/5 text-primary' : 'border-amber-500 bg-amber-500/5 text-amber-600'}`}>
+                <div className={`py-4 md:py-5 border font-mono text-xs md:text-sm tracking-wider ${profile?.onboarded ? 'border-primary bg-primary/5 text-primary' : 'border-amber-500 bg-amber-500/5 text-amber-600'}`}>
                   {getStatusText()}
                 </div>
                 <a href={getCtaLink()}>
-                  <button className="w-full bg-primary text-primary-foreground py-4 md:py-6 text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.3em] md:tracking-[0.4em] hover:bg-primary/90 transition-all active:scale-[0.98]">
+                  <button className="w-full bg-primary text-primary-foreground py-4 md:py-5 text-[10px] font-mono font-bold uppercase tracking-[0.3em] hover:bg-primary/90 transition-all active:scale-[0.98]">
                     {getCtaText()}
                   </button>
                 </a>
               </div>
             ) : (
               <div className="space-y-6 md:space-y-8">
-                <div className="flex flex-col items-center gap-4 md:gap-6">
-                  <div className="w-16 h-16 md:w-20 md:h-20 bg-background border-2 border-border flex items-center justify-center text-primary">
-                    {alphaMode ? (
-                      <>
-                        <User size={32} className="md:hidden" strokeWidth={1.5} />
-                        <User size={40} className="hidden md:block" strokeWidth={1.5} />
-                      </>
-                    ) : (
-                      <>
-                        <Mail size={32} className="md:hidden" strokeWidth={1.5} />
-                        <Mail size={40} className="hidden md:block" strokeWidth={1.5} />
-                      </>
-                    )}
+                <div className="flex flex-col items-center gap-4 md:gap-5">
+                  <div className="w-16 h-16 md:w-20 md:h-20 bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                    <Sparkles size={32} className="md:hidden" strokeWidth={1.5} />
+                    <Sparkles size={40} className="hidden md:block" strokeWidth={1.5} />
                   </div>
-                  <p className="text-xs md:text-sm font-mono text-secondary text-center px-4">
-                    {alphaMode
-                      ? "Sign in with your Google account to get started"
-                      : "Sign in with Google to join the waitlist. We'll email you when Trace goes live."
-                    }
+                  <p className="text-sm md:text-base font-mono text-secondary text-center">
+                    3-day free trial. No credit card required.
                   </p>
-                  {!alphaMode && (
-                    <div className="w-full max-w-md p-4 md:p-6 bg-primary/5 border border-primary/20 flex justify-center items-center">
-                      <div className="flex items-start gap-3">
-                        <div className="space-y-2 md:space-y-3">
-                          <div className="text-xs md:text-sm font-mono font-semibold text-foreground uppercase tracking-wider">
-                            What happens next?
-                          </div>
-                          <div className="space-y-1.5 md:space-y-2 text-[10px] md:text-xs font-mono text-secondary leading-relaxed">
-                            <div>1. Sign up with Google</div>
-                            <div>2. Complete your profile (optional)</div>
-                            <div>3. Get notified when we launch</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
                 <button
                   onClick={signInWithGoogle}
@@ -1628,11 +1829,8 @@ const GetStarted = () => {
                     <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                     <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                   </svg>
-                  Continue with Google
+                  Start Free Trial
                 </button>
-                <p className="text-[9px] md:text-[10px] font-mono uppercase tracking-widest text-secondary">
-                  Free to sign up. No credit card required.
-                </p>
               </div>
             )}
           </motion.div>
@@ -1657,7 +1855,7 @@ const Footer = () => (
             TRACE
           </div>
           <p className="text-secondary font-mono text-[9px] md:text-[10px] uppercase tracking-wider md:tracking-widest leading-relaxed max-w-[200px] md:max-w-[240px]">
-            Trace brings content from across the web into one quiet feed.
+            Your daily tech digest. 5 minutes.
           </p>
         </div>
 
@@ -1665,9 +1863,8 @@ const Footer = () => (
           <div>
             <h4 className="text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-foreground mb-4 md:mb-6">Product</h4>
             <div className="flex flex-col gap-3 md:gap-4">
-              <a href="#how" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">How It Works</a>
-              <a href="#feed" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">Your Feed</a>
-              <a href="#get-started" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">Get Started</a>
+              <a href="#demo" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">See Example Feed</a>
+              <a href="#get-started" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">Start Free Trial</a>
             </div>
           </div>
           <div>
@@ -1711,8 +1908,9 @@ export default function LandingPage() {
       <WaitlistBanner />
       <Nav />
       <Hero />
-      <LivingFeed />
-      <HowItWorks />
+      <WhatTraceReplaces />
+      <DemoFeed />
+      {/* <WhatYouGet /> */}
       <Pricing />
       <GetStarted />
       <Footer />
