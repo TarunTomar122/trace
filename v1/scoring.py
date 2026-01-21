@@ -339,7 +339,8 @@ def apply_diversity_filter(
     max_per_umbrella: int = 2,
     max_total_per_umbrella: int | None = None,
     max_items: int | None = None,
-    interleave_topics: bool = True
+    interleave_topics: bool = True,
+    max_type_percentage: float = 0.6
 ) -> list[dict[str, Any]]:
     """
     Apply diversity filter to avoid feed monotony.
@@ -352,10 +353,16 @@ def apply_diversity_filter(
         max_total_per_umbrella: Maximum items per umbrella overall (None = no limit)
         max_items: Maximum items to return (None = no limit)
         interleave_topics: If True, interleave items from different umbrellas
+        max_type_percentage: Maximum percentage of any single content type (default 0.6 = 60%)
     
     Returns:
         Filtered list of items (topic-interleaved for variety)
     """
+    # Calculate max items per content type based on percentage cap
+    # For a 20-item feed with 60% cap: max 12 of any single type
+    effective_max_items = max_items or len(scored_items)
+    max_type_count = int(effective_max_items * max_type_percentage)
+    
     if not interleave_topics:
         # Original behavior: just filter by domain/type
         filtered = []
@@ -371,6 +378,9 @@ def apply_diversity_filter(
                 continue
             if max_per_type is not None and type_counts.get(item_type, 0) >= max_per_type:
                 continue
+            # Enforce content type percentage cap
+            if type_counts.get(item_type, 0) >= max_type_count:
+                continue
             if max_total_per_umbrella is not None and umbrella_counts.get(item.get("umbrella_id", "general"), 0) >= max_total_per_umbrella:
                 continue
             
@@ -382,6 +392,13 @@ def apply_diversity_filter(
             
             if max_items is not None and len(filtered) >= max_items:
                 break
+        
+        # Log type distribution
+        if type_counts:
+            capped_types = [t for t, c in type_counts.items() if c >= max_type_count]
+            type_str = ", ".join(f"{t}: {c}" for t, c in sorted(type_counts.items(), key=lambda x: -x[1]))
+            if capped_types:
+                print(f"Diversity filter: {type_str} (capped {', '.join(capped_types)} at {int(max_type_percentage*100)}%)")
         
         return filtered
     
@@ -403,6 +420,9 @@ def apply_diversity_filter(
         if domain_counts.get(domain, 0) >= max_per_domain:
             continue
         if max_per_type is not None and type_counts.get(item_type, 0) >= max_per_type:
+            continue
+        # Enforce content type percentage cap
+        if type_counts.get(item_type, 0) >= max_type_count:
             continue
         if max_total_per_umbrella is not None and umbrella_counts.get(item.get("umbrella_id", "general"), 0) >= max_total_per_umbrella:
             continue
@@ -452,6 +472,18 @@ def apply_diversity_filter(
         
         if max_items is not None and len(filtered) >= max_items:
             break
+    
+    # Log type distribution for interleaved results
+    final_type_counts: dict[str, int] = {}
+    for item in filtered:
+        item_type = item.get("type", "blog")
+        final_type_counts[item_type] = final_type_counts.get(item_type, 0) + 1
+    
+    if final_type_counts:
+        capped_types = [t for t, c in final_type_counts.items() if c >= max_type_count]
+        type_str = ", ".join(f"{t}: {c}" for t, c in sorted(final_type_counts.items(), key=lambda x: -x[1]))
+        if capped_types:
+            print(f"Diversity filter: {type_str} (capped {', '.join(capped_types)} at {int(max_type_percentage*100)}%)")
     
     return filtered
 

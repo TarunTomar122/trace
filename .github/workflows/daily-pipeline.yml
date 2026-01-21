@@ -3,15 +3,15 @@ name: Daily Pipeline
 
 on:
   schedule:
-    # Content pipeline at 4:00 AM IST (10:30 PM UTC previous day)
-    # Runs: Trend Discovery → Pool Harvest → Feed Generation
-    # Takes ~30 mins, completes by ~4:30 AM IST
-    - cron: '30 22 * * *'
-    
-    # Reflection at 10:30 PM IST (5:00 PM UTC same day)
+    # Reflection at 9:00 AM IST (03:30 AM UTC)
     # Runs: Daily Reflection → Cleanup expired signals
     # Processes previous day's interactions
-    - cron: '0 17 * * *'
+    - cron: '30 3 * * *'
+
+    # Content pipeline at 10:00 AM IST (04:30 AM UTC)
+    # Runs: Trend Discovery → Pool Harvest → Feed Generation
+    # Takes ~30 mins, completes by ~10:30 AM IST
+    - cron: '30 4 * * *'
   
   # Allow manual trigger
   workflow_dispatch:

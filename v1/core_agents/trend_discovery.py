@@ -43,26 +43,27 @@ def create_trend_discovery_agent() -> Agent:
     )
 
 
-def discover_trends(main_tag: str) -> list[str]:
+def discover_trends(main_tag: str, num_queries: int = 5) -> list[str]:
     """
     Discover trending queries for a main tag.
     
     Args:
         main_tag: The main topic tag (e.g., "AI", "Frontend", "Running")
+        num_queries: Number of queries to return (default 5)
     
     Returns:
-        List of 10 specific search queries
+        List of specific search queries
     """
     agent = create_trend_discovery_agent()
     
-    prompt = f"""Find the 10 most trending and specific topics within "{main_tag}" right now.
+    prompt = f"""Find {num_queries} diverse and trending topics within "{main_tag}" right now.
 
 Search the web for:
 - What's being discussed on HackerNews about {main_tag}
 - Trending {main_tag} repositories on GitHub
 - Recent {main_tag} blog posts and news
 
-Return ONLY a JSON array of 10 short, specific queries (2-4 words each).
+Return ONLY a JSON array of {num_queries} short, specific queries (2-5 words each).
 No markdown formatting, just the raw JSON array."""
 
     result = Runner.run_sync(agent, prompt)
@@ -80,13 +81,13 @@ No markdown formatting, just the raw JSON array."""
     
     try:
         queries = json.loads(output)
-        if isinstance(queries, list) and len(queries) >= 10:
-            return queries[:10]
+        if isinstance(queries, list) and len(queries) >= num_queries:
+            return queries[:num_queries]
         elif isinstance(queries, list):
-            # Pad if less than 10
-            while len(queries) < 10:
-                queries.append(f"{main_tag} developments")
-            return queries[:10]
+            # Pad if less than requested
+            while len(queries) < num_queries:
+                queries.append(f"{main_tag} latest trends")
+            return queries[:num_queries]
         else:
             raise ValueError("Expected a list")
     except json.JSONDecodeError:
@@ -97,25 +98,21 @@ No markdown formatting, just the raw JSON array."""
             try:
                 queries = json.loads(match.group())
                 if isinstance(queries, list):
-                    while len(queries) < 10:
-                        queries.append(f"{main_tag} developments")
-                    return queries[:10]
+                    while len(queries) < num_queries:
+                        queries.append(f"{main_tag} latest trends")
+                    return queries[:num_queries]
             except json.JSONDecodeError:
                 pass
         
         # Fallback: return generic queries
-        return [
+        fallback = [
             f"{main_tag} latest developments",
             f"{main_tag} new releases",
             f"{main_tag} tools 2026",
-            f"{main_tag} frameworks",
             f"{main_tag} best practices",
-            f"{main_tag} performance",
-            f"{main_tag} architecture",
-            f"{main_tag} case studies",
-            f"{main_tag} open source",
-            f"{main_tag} community",
+            f"{main_tag} trends insights",
         ]
+        return fallback[:num_queries]
 
 
 def main():

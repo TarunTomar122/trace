@@ -97,11 +97,12 @@ export default function OnboardingPage() {
   const [petPeevesText, setPetPeevesText] = useState('');
   
   // Step 4: Content Preferences (0-10 scale, will be normalized to percentages)
+  // Defaults: youtube:5, articles:7 = ~30% video, ~42% articles (closer to 30/40 split)
   const [sourcePreferences, setSourcePreferences] = useState({
-    youtube: 6,
+    youtube: 5,
     articles: 7,
     papers: 2,
-    repos: 5,
+    repos: 3,
     tweets: 3,
     discussions: 4,
   });
@@ -146,11 +147,12 @@ export default function OnboardingPage() {
   }, [user, loading, router]);
 
   // Parse comma-separated strings into arrays
-  const parseCommaSeparated = (text: string): string[] => {
-    return text
+  const parseCommaSeparated = (text: string, maxItems?: number): string[] => {
+    const items = text
       .split(',')
       .map(item => item.trim())
       .filter(item => item.length > 0);
+    return typeof maxItems === 'number' ? items.slice(0, maxItems) : items;
   };
 
   // Slider helper
@@ -242,7 +244,7 @@ export default function OnboardingPage() {
   // Validation
   const canProceed = () => {
     if (step === 1) return name.trim() && role;
-    if (step === 2) return parseCommaSeparated(interestsText).length >= 2;
+    if (step === 2) return parseCommaSeparated(interestsText, 8).length >= 2;
     if (step === 3) return parseCommaSeparated(skillsText).length >= 1;
     if (step === 4) return true;
     return true;
@@ -256,8 +258,8 @@ export default function OnboardingPage() {
       const onboardingData: Parameters<typeof completeOnboarding>[1] = {
         name: name.trim(),
         role,
-        interests: parseCommaSeparated(interestsText),
-        hobbies: parseCommaSeparated(hobbiesText),
+        interests: parseCommaSeparated(interestsText, 8),
+        hobbies: parseCommaSeparated(hobbiesText, 3),
         skills: parseCommaSeparated(skillsText),
         dislikedTopics: parseCommaSeparated(dislikedTopicsText),
         sourcePreferences,
@@ -405,7 +407,10 @@ export default function OnboardingPage() {
             Step {step} of 4
           </p>
           <p className="text-xs text-secondary/60 mt-2 max-w-md mx-auto font-mono">
-            🔒 Your data stays private and powers your personalized feed
+            🔒 Your data powers your personalized feed. Read our{' '}
+            <a href="/privacy-policy" target="_blank" className="text-primary hover:underline">privacy policy</a>
+            {' '}and{' '}
+            <a href="/terms" target="_blank" className="text-primary hover:underline">terms</a>
           </p>
         </div>
 
@@ -526,7 +531,7 @@ export default function OnboardingPage() {
                     className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
                   />
                   <p className="text-xs text-secondary/60 mt-2 font-mono">
-                    Separate with commas • {parseCommaSeparated(interestsText).length} added
+                    Separate with commas • {parseCommaSeparated(interestsText, 8).length}/8 added
                   </p>
                 </div>
 
@@ -551,7 +556,7 @@ export default function OnboardingPage() {
                   />
                   {hobbiesText.trim() && (
                     <p className="text-xs text-secondary/60 mt-2 font-mono">
-                      {parseCommaSeparated(hobbiesText).length} added
+                      {parseCommaSeparated(hobbiesText, 3).length}/3 added
                     </p>
                   )}
                 </div>
@@ -687,7 +692,7 @@ export default function OnboardingPage() {
                         {key === 'papers' && '📄 Research Papers'}
                         {key === 'repos' && '💻 GitHub Repos'}
                         {key === 'tweets' && '🐦 Tweets & Threads'}
-                        {key === 'discussions' && '💬 HN & Discussions'}
+                        {key === 'discussions' && '💬 HackerNews & Discussions'}
                       </label>
                       <span className="text-sm font-mono text-primary font-bold flex items-center gap-2">
                         <span className="text-secondary/50 text-xs">Preference:</span>

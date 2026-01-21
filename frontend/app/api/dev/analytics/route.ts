@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { FieldPath } from 'firebase-admin/firestore';
 import { adminAuth, adminFirestore } from '@/lib/firebase-admin';
 
 /**
@@ -38,53 +39,31 @@ export async function GET(request: NextRequest) {
       const data = doc.data();
       const uid = doc.id;
       
-      // Get latest feed (try today first, then get all and sort)
+      // Get latest feed (single query, avoid scanning all feeds)
       let feedItemCount = 0;
       let latestFeedDate = null;
       try {
         if (adminFirestore) {
-          // Try today's date first
-          const today = new Date().toISOString().split('T')[0];
-          const todayFeed = await adminFirestore
+          const latestFeed = await adminFirestore
             .collection('user_feeds')
             .doc(uid)
             .collection('daily')
-            .doc(today)
+            .orderBy(FieldPath.documentId(), 'desc')
+            .limit(1)
             .get();
-          
-          if (todayFeed.exists) {
-            const feedData = todayFeed.data();
+
+          if (!latestFeed.empty) {
+            const latestDoc = latestFeed.docs[0];
+            const feedData = latestDoc.data();
             feedItemCount = feedData?.items?.length || 0;
-            latestFeedDate = today;
-            if (feedItemCount > 0) {
-              console.log(`User ${uid}: ${feedItemCount} items in today's feed`);
-            }
-          } else {
-            // Get all feeds and find the latest
-            const allFeeds = await adminFirestore
-              .collection('user_feeds')
-              .doc(uid)
-              .collection('daily')
-              .get();
-            
-            if (!allFeeds.empty) {
-              // Sort by date (document ID)
-              const sortedDocs = allFeeds.docs.sort((a, b) => b.id.localeCompare(a.id));
-              const latestFeed = sortedDocs[0];
-              const feedData = latestFeed.data();
-              feedItemCount = feedData?.items?.length || 0;
-              latestFeedDate = latestFeed.id;
-              if (feedItemCount > 0) {
-                console.log(`User ${uid}: ${feedItemCount} items in feed from ${latestFeedDate}`);
-              }
-            }
+            latestFeedDate = latestDoc.id;
           }
         }
       } catch (error) {
         console.error(`Error fetching feed for user ${uid}:`, error);
       }
 
-      // Get interactions count for today or latest feed
+      // Get interactions count (single query, avoid scanning all days)
       let interactionCount = 0;
       let lastInteractionDate = null;
       let totalInteractionCount = 0;
@@ -92,31 +71,22 @@ export async function GET(request: NextRequest) {
         if (adminFirestore) {
           const today = new Date().toISOString().split('T')[0];
           
-          // Get all interactions to find latest and count today's
-          const allInteractions = await adminFirestore
+          const latestInteractions = await adminFirestore
             .collection('user_interactions')
             .doc(uid)
             .collection('daily')
+            .orderBy(FieldPath.documentId(), 'desc')
+            .limit(1)
             .get();
-          
-          if (!allInteractions.empty) {
-            // Sort by date (document ID) descending
-            const sortedDocs = allInteractions.docs.sort((a, b) => b.id.localeCompare(a.id));
-            lastInteractionDate = sortedDocs[0].id;
-            
-            // Count today's interactions and total
-            for (const doc of allInteractions.docs) {
-              const data = doc.data();
-              const itemsCount = data?.items?.length || 0;
-              totalInteractionCount += itemsCount;
-              
-              if (doc.id === today) {
-                interactionCount = itemsCount;
-              }
-            }
-            
-            if (totalInteractionCount > 0) {
-              console.log(`User ${uid}: ${totalInteractionCount} total interactions, ${interactionCount} today`);
+
+          if (!latestInteractions.empty) {
+            const latestDoc = latestInteractions.docs[0];
+            const data = latestDoc.data();
+            const itemsCount = data?.items?.length || 0;
+            lastInteractionDate = latestDoc.id;
+            totalInteractionCount = itemsCount;
+            if (latestDoc.id === today) {
+              interactionCount = itemsCount;
             }
           }
         }

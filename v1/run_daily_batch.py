@@ -8,7 +8,7 @@ Usage:
     python v1/run_daily_batch.py
 """
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 # Add project root to path for imports (at end to not shadow external packages)
@@ -21,15 +21,28 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 
 from v1.storage import FirestoreStore
 from v1.models import SubQuery
-from v1.v1_agents.trend_discovery import discover_trends
-from v1.v1_agents.pool_harvester import harvest_pool
-from v1.scripts.map_users_to_queries import map_users_to_queries
+from v1.core_agents.trend_discovery import discover_trends
+from v1.algorithm.pool_harvester import harvest_pool
 
 
 def log(message: str):
     """Log with timestamp."""
     timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] {message}")
+
+
+REFRESH_INTERVAL_DAYS = 3
+
+
+def should_refresh_umbrella(umbrella: dict) -> bool:
+    last_refresh = umbrella.get("last_discovery_refresh")
+    if not last_refresh:
+        return True
+    try:
+        last_dt = datetime.fromisoformat(last_refresh.replace("Z", "+00:00"))
+        return datetime.utcnow() - last_dt >= timedelta(days=REFRESH_INTERVAL_DAYS)
+    except (ValueError, TypeError):
+        return True
 
 
 def refresh_umbrella_queries(umbrella_id: str, store: FirestoreStore) -> bool:
@@ -93,10 +106,15 @@ def run_daily_batch() -> int:
     
     success_count = 0
     fail_count = 0
+    skipped_count = 0
     
     for umbrella in umbrellas:
         umbrella_id = umbrella.get("id")
         if not umbrella_id:
+            continue
+        if not should_refresh_umbrella(umbrella):
+            skipped_count += 1
+            log(f"  Skipping trend refresh for '{umbrella_id}' (recently updated)")
             continue
         
         if refresh_umbrella_queries(umbrella_id, store):
@@ -104,24 +122,15 @@ def run_daily_batch() -> int:
         else:
             fail_count += 1
     
-    log(f"Trend Discovery complete: {success_count} succeeded, {fail_count} failed")
+    log(
+        "Trend Discovery complete: "
+        f"{success_count} succeeded, "
+        f"{fail_count} failed, "
+        f"{skipped_count} skipped"
+    )
     
     # =========================================================================
-    # Phase 2: Map Users to Queries
-    # =========================================================================
-    log("")
-    log("PHASE 2: MAP USERS TO QUERIES")
-    log("-" * 40)
-    
-    try:
-        mapping_stats = map_users_to_queries()
-        log(f"Mapped {mapping_stats.get('users_mapped', 0)} users to {mapping_stats.get('queries_active', 0)} active queries")
-    except Exception as e:
-        log(f"Warning: User-query mapping failed: {e}")
-        # Don't fail the job - pool harvesting can still work with existing mappings
-    
-    # =========================================================================
-    # Phase 3: Pool Harvesting
+    # Phase 2: Pool Harvesting
     # =========================================================================
     log("")
     log("PHASE 3: POOL HARVESTING")
@@ -130,7 +139,7 @@ def run_daily_batch() -> int:
     try:
         # Search all active queries to ensure all umbrellas get content
         # With ~35 umbrellas × 2 queries = ~70 queries
-        stats = harvest_pool(max_queries=None, items_per_query=3)
+        stats = harvest_pool(max_umbrellas=30, max_queries=60, subqueries_per_umbrella=3)
         log(f"Pool Harvesting complete: {stats}")
     except Exception as e:
         log(f"✗ Pool Harvesting failed: {e}")
@@ -148,8 +157,8 @@ def run_daily_batch() -> int:
     log(f"Items stored: {stats.get('items_stored', 0)}")
     log(f"Old items deleted: {stats.get('items_deleted', 0)}")
     
-    # Return 0 if at least one umbrella succeeded and pool harvesting worked
-    if success_count > 0:
+    # Return 0 if at least one umbrella succeeded OR everything was skipped
+    if success_count > 0 or skipped_count > 0:
         return 0
     else:
         log("CRITICAL: No umbrellas were refreshed")

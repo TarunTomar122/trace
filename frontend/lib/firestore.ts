@@ -60,13 +60,13 @@ export interface UserPreferences {
 // Default preferences for new users (used by the agent)
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   source_distribution: {
-    video: 40,      // YouTube - primary source
-    blog: 35,       // Technical articles
+    video: 30,      // YouTube - reduced from 40% to conserve API quota
+    blog: 40,       // Technical articles - increased
     discussion: 15, // HN threads
     repo: 5,        // GitHub repos
     paper: 0,       // Disabled for most users
-    launch: 3,      // Product Hunt
-    tweet: 2,       // Twitter/X
+    launch: 5,      // Product Hunt - increased
+    tweet: 5,       // Twitter/X - increased
     model: 0,       // HuggingFace models
   },
   enabled_sources: {
@@ -89,12 +89,46 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   },
 };
 
+// Normalize slider preferences (0-10 scale) to percentages
+export function normalizeSourcePreferences(sliders: {
+  youtube: number;
+  articles: number;
+  papers: number;
+  repos: number;
+  tweets: number;
+  discussions: number;
+}): UserPreferences['source_distribution'] {
+  // Sum all slider values
+  const total = sliders.youtube + sliders.articles + sliders.papers + sliders.repos + sliders.tweets + sliders.discussions;
+  
+  // If all sliders are 0, use defaults
+  if (total === 0) {
+    return DEFAULT_USER_PREFERENCES.source_distribution;
+  }
+  
+  // Convert to percentages
+  return {
+    video: Math.round((sliders.youtube / total) * 100),
+    blog: Math.round((sliders.articles / total) * 100),
+    paper: Math.round((sliders.papers / total) * 100),
+    repo: Math.round((sliders.repos / total) * 100),
+    tweet: Math.round((sliders.tweets / total) * 100),
+    discussion: Math.round((sliders.discussions / total) * 100),
+    launch: 0,  // Not in sliders, set to 0
+    model: 0,   // Not in sliders, set to 0
+  };
+}
+
 // Initialize user preferences in the user_preferences collection (for agent to read)
-export async function initializeUserPreferences(uid: string): Promise<void> {
+export async function initializeUserPreferences(
+  uid: string, 
+  sourceDistribution?: UserPreferences['source_distribution']
+): Promise<void> {
   try {
     const docRef = doc(firestore, COLLECTIONS.userPreferences, uid);
     await setDoc(docRef, {
       ...DEFAULT_USER_PREFERENCES,
+      source_distribution: sourceDistribution || DEFAULT_USER_PREFERENCES.source_distribution,
       updated_at: new Date().toISOString(),
     }, { merge: true });
   } catch (error) {
@@ -487,8 +521,11 @@ export async function completeOnboarding(
       onboardedAt: serverTimestamp(),
     }, { merge: true });
     
+    // Normalize slider preferences to percentages
+    const normalizedPreferences = normalizeSourcePreferences(data.sourcePreferences);
+    
     // Initialize user_preferences collection (for agent to read)
-    await initializeUserPreferences(uid);
+    await initializeUserPreferences(uid, normalizedPreferences);
     
     // Initialize user_patterns collection with interests/hobbies
     await initializeUserPatterns(uid, data.interests, data.hobbies);

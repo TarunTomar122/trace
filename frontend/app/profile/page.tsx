@@ -126,7 +126,7 @@ function ProfileContent() {
           setFavoriteSourcesText(p.favoriteSources?.join(', ') || '');
           setPersonalityTraitsText(p.personalityTraits?.join(', ') || '');
           setPetPeevesText(p.petPeeves?.join(', ') || '');
-          setSelectedInterests(p.interests);
+          setSelectedInterests((p.interests || []).slice(0, 8));
           setContentDepth(p.contentDepth);
           // Load additional fields
           setHobbiesText(p.hobbies?.join(', ') || '');
@@ -144,11 +144,12 @@ function ProfileContent() {
     }
   }, [user, loading, router]);
 
-  const parseCommaSeparated = (text: string): string[] => {
-    return text
+  const parseCommaSeparated = (text: string, maxItems?: number): string[] => {
+    const items = text
       .split(',')
       .map(item => item.trim())
       .filter(item => item.length > 0);
+    return typeof maxItems === 'number' ? items.slice(0, maxItems) : items;
   };
 
   // Auto-scroll chat
@@ -265,7 +266,7 @@ function ProfileContent() {
       const parsedFavoriteSources = parseCommaSeparated(favoriteSourcesText);
       const parsedPersonalityTraits = parseCommaSeparated(personalityTraitsText);
       const parsedPetPeeves = parseCommaSeparated(petPeevesText);
-      const parsedHobbies = parseCommaSeparated(hobbiesText);
+      const parsedHobbies = parseCommaSeparated(hobbiesText, 3);
       const parsedSkills = parseCommaSeparated(skillsText);
       const parsedDislikedTopics = parseCommaSeparated(dislikedTopicsText);
 
@@ -310,6 +311,30 @@ function ProfileContent() {
       };
 
       await updateUserProfile(user.uid, profileUpdate);
+
+      const normalizeList = (items: string[]) => {
+        return items
+          .map(item => item.trim().toLowerCase())
+          .filter(item => item.length > 0)
+          .sort()
+          .join('|');
+      };
+
+      const wasSubscribed = ['trial', 'active'].includes(profile.subscriptionStatus || '');
+      const interestsChanged = normalizeList(profile.interests || []) !== normalizeList(selectedInterests);
+      const hobbiesChanged = normalizeList(profile.hobbies || []) !== normalizeList(parsedHobbies);
+
+      if (wasSubscribed && (interestsChanged || hobbiesChanged)) {
+        try {
+          await fetch('/api/onboard', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: user.uid }),
+          });
+        } catch (error) {
+          console.error('Error triggering profile remap:', error);
+        }
+      }
       
       setProfile({
         ...profile,

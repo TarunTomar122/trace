@@ -21,7 +21,7 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 from datetime import datetime
 from v1.storage import FirestoreStore
 from v1.models import Umbrella, SubQuery
-from v1.v1_agents.trend_discovery import discover_trends
+from v1.core_agents.trend_discovery import discover_trends
 
 
 def normalize_interest(interest: str) -> str:

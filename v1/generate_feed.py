@@ -8,6 +8,7 @@ Usage:
     python v1/generate_feed.py --user_id abc123
 """
 import argparse
+import os
 import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -20,7 +21,7 @@ if project_root not in sys.path:
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env")
 
-from v1.core_agents.feed_delivery import deliver_feed
+from v1.algorithm.feed_generator import deliver_feed
 from v1.storage import FirestoreStore
 
 
@@ -114,8 +115,9 @@ def generate_feed(user_id: str, date: str | None = None) -> dict[str, Any]:
     subscription_status = user_profile.get("subscriptionStatus", "none") if user_profile else "none"
     is_subscribed = subscription_status in ["trial", "active"]
     
-    # Get scored items from Feed Delivery Agent (limit to 40 items per day)
-    items = deliver_feed(user_id, max_items=40)
+    # Get scored items from Feed Delivery Agent (limit to 30 items per day)
+    skip_seen = os.getenv("SKIP_SEEN_URLS", "").strip().lower() in ["1", "true", "yes"]
+    items = deliver_feed(user_id, max_items=30, skip_seen_urls=skip_seen)
     
     if not items:
         print(f"  Warning: No items generated for user {user_id}")

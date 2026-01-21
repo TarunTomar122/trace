@@ -72,6 +72,24 @@ export async function POST(request: NextRequest) {
     }
 
     const userRef = adminDb.collection('user_profiles').doc(userId);
+    const triggerUnsubscribe = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/unsubscribe`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ uid: userId }),
+        });
+        if (response.ok) {
+          console.log(`Unsubscribe cleanup triggered for user ${userId}`);
+        } else {
+          console.error(`Failed to trigger unsubscribe cleanup for user ${userId}`);
+        }
+      } catch (error) {
+        console.error(`Error triggering unsubscribe cleanup for user ${userId}:`, error);
+      }
+    };
 
     // Handle different subscription events
     switch (eventType) {
@@ -177,6 +195,7 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date(),
         });
         console.log(`Subscription cancelled for user ${userId}`);
+        await triggerUnsubscribe();
         break;
 
       case 'subscription.expired':
@@ -188,6 +207,7 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date(),
         });
         console.log(`Subscription expired for user ${userId}`);
+        await triggerUnsubscribe();
         break;
 
       case 'subscription.updated':
@@ -258,6 +278,9 @@ export async function POST(request: NextRequest) {
         }
 
         await userRef.update(updateData);
+        if (subscriptionStatus === 'cancelled' || subscriptionStatus === 'expired') {
+          await triggerUnsubscribe();
+        }
         break;
 
       default:

@@ -19,7 +19,8 @@ import {
   RefreshCw,
   Zap,
   ChevronDown,
-  Eye
+  Eye,
+  Check
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -362,6 +363,13 @@ export default function FeedPage() {
   const cursorRef = useRef(0);
   const isLoadingRef = useRef(false);
   const hasLoadedInitialFeed = useRef(false);
+  
+  // Feedback state
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackType, setFeedbackType] = useState<'bug' | 'feature' | 'general'>('general');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   
   // Seen items tracking - batch updates
   const seenItemsBuffer = useRef<Set<string>>(new Set());
@@ -775,6 +783,40 @@ export default function FeedPage() {
     recordInteraction(itemId, 'downvote', note);
   };
 
+  // Submit feedback
+  const handleSubmitFeedback = async () => {
+    if (!user || !feedbackMessage.trim()) return;
+    
+    setIsSubmittingFeedback(true);
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          message: feedbackMessage.trim(),
+          type: feedbackType,
+        }),
+      });
+
+      if (response.ok) {
+        setFeedbackSubmitted(true);
+        setFeedbackMessage('');
+        setTimeout(() => {
+          setShowFeedback(false);
+          setFeedbackSubmitted(false);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
+
   const handleStar = async (itemId: string) => {
     if (!user) return;
 
@@ -1045,6 +1087,113 @@ export default function FeedPage() {
             </AnimatePresence>
           </div>
         )}
+
+        {/* Mobile Feedback Callout - Below date picker */}
+        {isOnboarded && !showFeedback && (
+          <div className="md:hidden px-4 mb-4">
+            <div className="p-4 bg-blue-500/5 border border-blue-500/20">
+              <div className="flex items-start gap-2 mb-3">
+                <MessageSquare size={16} className="text-blue-500 mt-0.5 shrink-0" strokeWidth={1.5} />
+                <div className="flex-1">
+                  <p className="text-xs font-mono text-foreground font-bold mb-1">
+                    💬 Got feedback?
+                  </p>
+                  <p className="text-[10px] font-mono text-secondary/80 leading-relaxed">
+                    Help us improve Trace! Share bugs, feature requests, or feedback.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowFeedback(true)}
+                className="w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-mono uppercase tracking-widest transition-colors"
+              >
+                Send Feedback
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Feedback Form */}
+        <AnimatePresence>
+          {showFeedback && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden px-4 mb-4 overflow-hidden"
+            >
+              <div className="p-4 bg-background border border-border">
+                {feedbackSubmitted ? (
+                  <div className="flex items-center gap-3 text-green-500">
+                    <Check size={18} />
+                    <p className="text-sm font-mono">Thanks! Your feedback has been submitted.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-mono font-bold text-foreground">Send Feedback</h3>
+                      <button
+                        onClick={() => setShowFeedback(false)}
+                        className="text-secondary/60 hover:text-foreground transition-colors"
+                        aria-label="Close feedback"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="block text-xs font-mono text-secondary/80 mb-2">Type</label>
+                      <div className="flex gap-2">
+                        {(['bug', 'feature', 'general'] as const).map((type) => (
+                          <button
+                            key={type}
+                            onClick={() => setFeedbackType(type)}
+                            className={`flex-1 px-3 py-2 text-[10px] font-mono uppercase tracking-widest border transition-colors ${
+                              feedbackType === type
+                                ? 'bg-primary text-white border-primary'
+                                : 'bg-transparent text-secondary border-border hover:border-primary'
+                            }`}
+                          >
+                            {type === 'bug' && '🐛 Bug'}
+                            {type === 'feature' && '✨ Feature'}
+                            {type === 'general' && '💬 General'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="block text-xs font-mono text-secondary/80 mb-2">Message</label>
+                      <textarea
+                        value={feedbackMessage}
+                        onChange={(e) => setFeedbackMessage(e.target.value)}
+                        placeholder="Tell us what's on your mind..."
+                        className="w-full px-3 py-2 bg-background border border-border text-sm font-mono text-foreground placeholder:text-secondary/40 focus:outline-none focus:border-primary resize-none"
+                        rows={4}
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowFeedback(false)}
+                        className="flex-1 px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-secondary border border-border hover:border-primary transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSubmitFeedback}
+                        disabled={!feedbackMessage.trim() || isSubmittingFeedback}
+                        className="flex-1 px-4 py-2 text-[10px] font-mono uppercase tracking-widest bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isSubmittingFeedback ? 'Sending...' : 'Submit'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Mobile filters - horizontal scroll */}
         <div className="md:hidden overflow-x-auto mb-4 px-4 scrollbar-hide">
@@ -1366,7 +1515,115 @@ export default function FeedPage() {
                   );
                 })}
               </nav>
-            ) : (
+            ) : null}
+
+            {/* Feedback Callout - Below previous feeds */}
+            {isOnboarded && !showFeedback && (
+              <div className="mt-6">
+                <div className="p-4 bg-blue-500/5 border border-blue-500/20">
+                  <div className="flex items-start gap-2 mb-3">
+                    <div className="flex-1">
+                      <p className="text-xs font-mono text-foreground font-bold mb-1 flex items-center gap-2">
+                         <MessageSquare size={12} className="text-blue-500 mt-0.5 shrink-0" strokeWidth={1.5} />Feedback/Complaint?
+                      </p>
+                      <p className="text-[10px] font-mono text-secondary/80 leading-relaxed">
+                        Help us improve Trace! Share bugs, feature requests, or general feedback.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowFeedback(true)}
+                    className="w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-mono uppercase tracking-widest transition-colors"
+                  >
+                    Send Feedback
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Feedback Form */}
+            <AnimatePresence>
+              {showFeedback && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-4 overflow-hidden"
+                >
+                  <div className="p-4 bg-background border border-border">
+                    {feedbackSubmitted ? (
+                      <div className="flex items-center gap-3 text-green-500">
+                        <Check size={18} />
+                        <p className="text-xs font-mono">Thanks! Your feedback has been submitted.</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-xs font-mono font-bold text-foreground">Send Feedback</h3>
+                          <button
+                            onClick={() => setShowFeedback(false)}
+                            className="text-secondary/60 hover:text-foreground transition-colors"
+                            aria-label="Close feedback"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+
+                        <div className="mb-3">
+                          <label className="block text-[10px] font-mono text-secondary/80 mb-2">Type</label>
+                          <div className="flex gap-2">
+                            {(['bug', 'feature', 'general'] as const).map((type) => (
+                              <button
+                                key={type}
+                                onClick={() => setFeedbackType(type)}
+                                className={`flex-1 px-2 py-1.5 text-[9px] font-mono uppercase tracking-widest border transition-colors ${
+                                  feedbackType === type
+                                    ? 'bg-primary text-white border-primary'
+                                    : 'bg-transparent text-secondary border-border hover:border-primary'
+                                }`}
+                              >
+                                {type === 'bug' && '🐛'}
+                                {type === 'feature' && '✨'}
+                                {type === 'general' && '💬'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="mb-3">
+                          <label className="block text-[10px] font-mono text-secondary/80 mb-2">Message</label>
+                          <textarea
+                            value={feedbackMessage}
+                            onChange={(e) => setFeedbackMessage(e.target.value)}
+                            placeholder="Tell us what's on your mind..."
+                            className="w-full px-3 py-2 bg-background border border-border text-xs font-mono text-foreground placeholder:text-secondary/40 focus:outline-none focus:border-primary resize-none"
+                            rows={4}
+                          />
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setShowFeedback(false)}
+                            className="flex-1 px-3 py-2 text-[9px] font-mono uppercase tracking-widest text-secondary border border-border hover:border-primary transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleSubmitFeedback}
+                            disabled={!feedbackMessage.trim() || isSubmittingFeedback}
+                            className="flex-1 px-3 py-2 text-[9px] font-mono uppercase tracking-widest bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isSubmittingFeedback ? 'Sending...' : 'Submit'}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {!showPersonalizedFeed && (
               <div className="border border-border p-4">
                 <div className="w-10 h-10 bg-primary/10 flex items-center justify-center mb-3">
                   <Sparkles size={18} className="text-primary" />
