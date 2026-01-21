@@ -262,6 +262,24 @@ def deliver_feed(user_id: str, max_items: int | None = None) -> list[dict[str, A
     print(f"  Profile: {len(user_profile.get('interests', []))} interests")
     print(f"  Patterns: {len(user_patterns.get('tags', {}))} tags tracked")
     print(f"  Seen URLs: {len(seen_urls)} in last 14 days")
+
+    def is_blocklisted_url(url: str, title: str = "") -> bool:
+        url_lower = (url or "").lower()
+        title_lower = (title or "").lower()
+        if not url_lower:
+            return False
+        doc_markers = [
+            "/docs", "/documentation", "/reference", "/api/",
+            "/handbook", "/manual", "/sdk", "/guides"
+        ]
+        if any(marker in url_lower for marker in doc_markers):
+            return True
+        if url_lower.startswith("https://docs.") or url_lower.startswith("http://docs."):
+            return True
+        if "documentation" in title_lower or "docs" in title_lower or "reference" in title_lower:
+            return True
+        return False
+
     
     # =========================================================================
     # PERSONAL SIGNALS - Only for subscribed users
@@ -289,6 +307,8 @@ def deliver_feed(user_id: str, max_items: int | None = None) -> list[dict[str, A
                 if item.get("url") in seen_urls:
                     continue
                 if item.get("url") in [p.get("url") for p in personal_items]:
+                    continue
+                if is_blocklisted_url(item.get("url", ""), item.get("title", "")):
                     continue
                 
                 # Add signal info to item
@@ -357,6 +377,8 @@ def deliver_feed(user_id: str, max_items: int | None = None) -> list[dict[str, A
             # Filter out already seen URLs
             for item in results:
                 if item.get("url") not in seen_urls:
+                    if is_blocklisted_url(item.get("url", ""), item.get("title", "")):
+                        continue
                     topup_items.append(item)
             
             if results:
@@ -383,7 +405,9 @@ def deliver_feed(user_id: str, max_items: int | None = None) -> list[dict[str, A
     personal_urls = {p.get("url") for p in personal_items}
     unseen_items = [
         item for item in all_items 
-        if item.get("url") not in seen_urls and item.get("url") not in personal_urls
+        if item.get("url") not in seen_urls
+        and item.get("url") not in personal_urls
+        and not is_blocklisted_url(item.get("url", ""), item.get("title", ""))
     ]
     print(f"  After filtering seen + personal URLs: {len(unseen_items)} items (filtered {len(all_items) - len(unseen_items)} duplicates)")
     
@@ -406,6 +430,7 @@ def deliver_feed(user_id: str, max_items: int | None = None) -> list[dict[str, A
         max_per_domain=5,        # Allow more per domain since no hard limit
         max_per_type=None,       # No type limit
         max_per_umbrella=2,      # Max 2 consecutive items from same topic
+        max_total_per_umbrella=2, # Max 2 items total per umbrella
         max_items=diversity_max,
         interleave_topics=True   # Enable topic interleaving for variety
     )

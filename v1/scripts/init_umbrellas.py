@@ -26,7 +26,13 @@ from v1.v1_agents.trend_discovery import discover_trends
 
 def normalize_interest(interest: str) -> str:
     """Normalize an interest string to an umbrella ID."""
-    return interest.lower().strip().replace(" ", "-").replace("&", "and")
+    return (interest.lower().strip()
+            .replace(" ", "-")
+            .replace("&", "and")
+            .replace("/", "-")
+            .replace("\\", "-")
+            .replace("(", "")
+            .replace(")", ""))
 
 
 def create_display_name(umbrella_id: str) -> str:

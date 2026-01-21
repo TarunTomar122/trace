@@ -358,6 +358,7 @@ export default function FeedPage() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [totalItems, setTotalItems] = useState(0);
   const [unseenCount, setUnseenCount] = useState(0);
+  const [feedMetadata, setFeedMetadata] = useState<any>(null);
   const cursorRef = useRef(0);
   const isLoadingRef = useRef(false);
   const hasLoadedInitialFeed = useRef(false);
@@ -585,6 +586,7 @@ export default function FeedPage() {
         
         if (reset) {
           setFeed(data.items || []);
+          setFeedMetadata(data.metadata || null);  // Store feed metadata
         } else {
           setFeed(prev => [...prev, ...(data.items || [])]);
         }
@@ -1154,6 +1156,31 @@ export default function FeedPage() {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* Preview Mode Banner - Show upgrade message for unsubscribed users */}
+            {feedMetadata?.is_preview && !isFeedLoading && filteredFeed.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-4 md:mb-6 p-4 bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 border border-violet-500/30 flex items-start gap-3"
+              >
+                <Sparkles size={18} className="text-violet-400 mt-0.5 shrink-0" strokeWidth={1.5} />
+                <div className="flex-1">
+                  <p className="text-sm font-mono text-foreground mb-1">
+                    <span className="font-bold text-violet-400">✨ Preview Mode</span>
+                  </p>
+                  <p className="text-xs font-mono text-secondary">
+                    You&apos;re seeing a limited preview feed. Subscribe to unlock personalized AI-powered recommendations, smart signals, and more curated content just for you!
+                  </p>
+                </div>
+                <Link
+                  href="/profile"
+                  className="px-3 py-1.5 bg-violet-500 hover:bg-violet-600 text-white text-[10px] font-mono uppercase tracking-widest transition-colors shrink-0"
+                >
+                  Subscribe
+                </Link>
+              </motion.div>
+            )}
 
             {((showPersonalizedFeed && isFeedLoading) || (devShowPool && isLoadingPool) || (!showPersonalizedFeed && isLoadingGeneral)) ? (
               <div className="py-16 flex flex-col items-center justify-center">

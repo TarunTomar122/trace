@@ -25,7 +25,13 @@ from v1.tools.umbrella_mapper import map_interests_to_umbrellas
 
 def normalize_interest(interest: str) -> str:
     """Normalize an interest string to an umbrella ID (fallback only)."""
-    return interest.lower().strip().replace(" ", "-").replace("&", "and")
+    return (interest.lower().strip()
+            .replace(" ", "-")
+            .replace("&", "and")
+            .replace("/", "-")
+            .replace("\\", "-")
+            .replace("(", "")
+            .replace(")", ""))
 
 
 def map_users_to_queries() -> dict:

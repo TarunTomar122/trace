@@ -119,6 +119,7 @@ export async function GET(request: NextRequest) {
       total: sortedItems.length,
       unseenCount: unseenItems.length,
       seenCount: seenItems.length,
+      metadata: feedData?.metadata || {},  // Pass through feed metadata (includes is_preview flag)
     });
   } catch (error: any) {
     console.error('Error fetching paginated feed:', error);

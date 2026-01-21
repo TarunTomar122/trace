@@ -337,6 +337,7 @@ def apply_diversity_filter(
     max_per_domain: int = 3,
     max_per_type: int | None = 8,
     max_per_umbrella: int = 2,
+    max_total_per_umbrella: int | None = None,
     max_items: int | None = None,
     interleave_topics: bool = True
 ) -> list[dict[str, Any]]:
@@ -348,6 +349,7 @@ def apply_diversity_filter(
         max_per_domain: Maximum items from same domain
         max_per_type: Maximum items of same type (None = no limit)
         max_per_umbrella: Maximum consecutive items from same umbrella
+        max_total_per_umbrella: Maximum items per umbrella overall (None = no limit)
         max_items: Maximum items to return (None = no limit)
         interleave_topics: If True, interleave items from different umbrellas
     
@@ -359,6 +361,7 @@ def apply_diversity_filter(
         filtered = []
         domain_counts: dict[str, int] = {}
         type_counts: dict[str, int] = {}
+        umbrella_counts: dict[str, int] = {}
         
         for item in scored_items:
             domain = extract_domain(item.get("url", ""))
@@ -368,10 +371,14 @@ def apply_diversity_filter(
                 continue
             if max_per_type is not None and type_counts.get(item_type, 0) >= max_per_type:
                 continue
+            if max_total_per_umbrella is not None and umbrella_counts.get(item.get("umbrella_id", "general"), 0) >= max_total_per_umbrella:
+                continue
             
             filtered.append(item)
             domain_counts[domain] = domain_counts.get(domain, 0) + 1
             type_counts[item_type] = type_counts.get(item_type, 0) + 1
+            umbrella_id = item.get("umbrella_id", "general")
+            umbrella_counts[umbrella_id] = umbrella_counts.get(umbrella_id, 0) + 1
             
             if max_items is not None and len(filtered) >= max_items:
                 break
@@ -386,6 +393,7 @@ def apply_diversity_filter(
     # Group items by umbrella (respecting domain limits)
     domain_counts: dict[str, int] = {}
     type_counts: dict[str, int] = {}
+    umbrella_counts: dict[str, int] = {}
     
     for item in scored_items:
         domain = extract_domain(item.get("url", ""))
@@ -396,11 +404,14 @@ def apply_diversity_filter(
             continue
         if max_per_type is not None and type_counts.get(item_type, 0) >= max_per_type:
             continue
+        if max_total_per_umbrella is not None and umbrella_counts.get(item.get("umbrella_id", "general"), 0) >= max_total_per_umbrella:
+            continue
         
         umbrella_id = item.get("umbrella_id", "general")
         umbrella_buckets[umbrella_id].append(item)
         domain_counts[domain] = domain_counts.get(domain, 0) + 1
         type_counts[item_type] = type_counts.get(item_type, 0) + 1
+        umbrella_counts[umbrella_id] = umbrella_counts.get(umbrella_id, 0) + 1
     
     # Interleave items from different umbrellas (round-robin)
     filtered = []

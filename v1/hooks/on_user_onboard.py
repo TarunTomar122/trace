@@ -29,7 +29,13 @@ from v1.tools.umbrella_mapper import map_interests_to_umbrellas
 
 def normalize_interest(interest: str) -> str:
     """Normalize an interest string to an umbrella ID."""
-    return interest.lower().strip().replace(" ", "-").replace("&", "and")
+    return (interest.lower().strip()
+            .replace(" ", "-")
+            .replace("&", "and")
+            .replace("/", "-")
+            .replace("\\", "-")
+            .replace("(", "")
+            .replace(")", ""))
 
 
 def create_display_name(umbrella_id: str) -> str:

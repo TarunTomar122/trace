@@ -109,8 +109,13 @@ def generate_feed(user_id: str, date: str | None = None) -> dict[str, Any]:
     
     print(f"Generating feed for user {user_id} on {date}...")
     
-    # Get scored items from Feed Delivery Agent (no limit - return all related)
-    items = deliver_feed(user_id, max_items=None)
+    # Check user subscription status
+    user_profile = store.get_user_profile(user_id)
+    subscription_status = user_profile.get("subscriptionStatus", "none") if user_profile else "none"
+    is_subscribed = subscription_status in ["trial", "active"]
+    
+    # Get scored items from Feed Delivery Agent (limit to 40 items per day)
+    items = deliver_feed(user_id, max_items=40)
     
     if not items:
         print(f"  Warning: No items generated for user {user_id}")
@@ -144,6 +149,9 @@ def generate_feed(user_id: str, date: str | None = None) -> dict[str, Any]:
                 "item_count": len(formatted_items),
                 "source_counts": source_counts,
                 "freshness_ratio": 1.0,  # All items are fresh from pool
+                "is_subscribed": is_subscribed,
+                "subscription_status": subscription_status,
+                "is_preview": not is_subscribed,  # Flag for frontend to show upgrade message
             }
         }
         

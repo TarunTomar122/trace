@@ -127,13 +127,35 @@ def detect_quality_signals(url: str, content: str) -> dict[str, Any]:
     }
 
 
-def tavily_search(query: str, max_results: int = 10) -> list[dict[str, Any]]:
+def is_blocklisted_url(url: str, title: str = "") -> bool:
+    url_lower = (url or "").lower()
+    title_lower = (title or "").lower()
+    if not url_lower:
+        return False
+    doc_markers = [
+        "/docs", "/documentation", "/reference", "/api/",
+        "/handbook", "/manual", "/sdk", "/guides"
+    ]
+    if any(marker in url_lower for marker in doc_markers):
+        return True
+    if url_lower.startswith("https://docs.") or url_lower.startswith("http://docs."):
+        return True
+    if "documentation" in title_lower or "docs" in title_lower or "reference" in title_lower:
+        return True
+    return False
+
+
+def tavily_search(query: str, max_results: int = 10, days: int | None = None) -> list[dict[str, Any]]:
     """Search using Tavily API."""
     api_key = os.getenv("TAVILY_API_KEY", "").strip()
     if not api_key:
         print("  Warning: TAVILY_API_KEY not set, skipping search")
         return []
-    
+
+    today = datetime.utcnow().date()
+    start_date = (today - timedelta(days=days)).isoformat() if days else None
+    end_date = today.isoformat() if days else None
+
     payload = {
         "api_key": api_key,
         "query": query,
@@ -142,7 +164,12 @@ def tavily_search(query: str, max_results: int = 10) -> list[dict[str, Any]]:
         "include_answer": False,
         "include_raw_content": False,
         "include_images": False,
+        "topic": "news",
     }
+    if start_date:
+        payload["start_date"] = start_date
+    if end_date:
+        payload["end_date"] = end_date
     
     try:
         resp = requests.post("https://api.tavily.com/search", json=payload, timeout=30)
@@ -221,13 +248,18 @@ def harvest_pool(max_queries: int = 50, items_per_query: int = 5) -> dict:
         print(f"  Searching: {query_text[:50]}...")
         
         # Search using Tavily
-        results = tavily_search(query_text, max_results=items_per_query)
+        results = tavily_search(query_text, max_results=items_per_query, days=60)
         queries_searched += 1
         
         for result in results:
             url = result.get("url")
             if not url:
                 continue
+
+            title = result.get("title", "")
+            if is_blocklisted_url(url, title):
+                continue
+
             
             # Deduplicate by URL
             if url in urls_seen:
@@ -239,7 +271,6 @@ def harvest_pool(max_queries: int = 50, items_per_query: int = 5) -> dict:
             
             urls_seen.add(url)
             
-            title = result.get("title", "")
             content = result.get("content", "")
             
             # Generate pool item

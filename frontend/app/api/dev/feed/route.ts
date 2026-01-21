@@ -6,11 +6,8 @@ import { adminAuth, adminFirestore } from '@/lib/firebase-admin';
  * GET /api/dev/feed?userId=xxx
  */
 export async function GET(request: NextRequest) {
-  // Only allow in development or with dev=true query param
-  const isDev = process.env.NODE_ENV === 'development' || 
-                request.nextUrl.searchParams.get('dev') === 'true';
-  
-  if (!isDev) {
+  // Only allow in development environment
+  if (process.env.NODE_ENV !== 'development') {
     return NextResponse.json({ error: 'Not available' }, { status: 403 });
   }
 
