@@ -7,6 +7,7 @@ Daily Batch Orchestrator - runs the 4 AM cron job.
 Usage:
     python v1/run_daily_batch.py
 """
+import os
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -23,6 +24,7 @@ from v1.storage import FirestoreStore
 from v1.models import SubQuery
 from v1.core_agents.trend_discovery import discover_trends
 from v1.algorithm.pool_harvester import harvest_pool
+from v1.flows.build_topics_for_all_users import build_topics_for_all_users
 
 
 def log(message: str):
@@ -95,6 +97,25 @@ def run_daily_batch() -> int:
     store = FirestoreStore()
     
     # =========================================================================
+    # Phase 0: Topics build (every 5 days)
+    # =========================================================================
+    log("")
+    log("PHASE 0: TOPICS BUILD (5-day cadence)")
+    log("-" * 40)
+    try:
+        topics_result = build_topics_for_all_users()
+        log(f"Topics build: {topics_result}")
+    except Exception as e:
+        log(f"✗ Topics build failed: {e}")
+
+    # Legacy umbrella-based batch disabled by default.
+    # Set RUN_LEGACY_POOL=1 to re-enable trend discovery + pool harvest.
+    if os.getenv("RUN_LEGACY_POOL", "").strip().lower() not in ["1", "true", "yes"]:
+        log("")
+        log("Skipping legacy umbrella batch (RUN_LEGACY_POOL not enabled).")
+        return 0
+
+    # =========================================================================
     # Phase 1: Trend Discovery
     # =========================================================================
     log("")
@@ -133,12 +154,10 @@ def run_daily_batch() -> int:
     # Phase 2: Pool Harvesting
     # =========================================================================
     log("")
-    log("PHASE 3: POOL HARVESTING")
+    log("PHASE 2: POOL HARVESTING")
     log("-" * 40)
     
     try:
-        # Search all active queries to ensure all umbrellas get content
-        # With ~35 umbrellas × 2 queries = ~70 queries
         stats = harvest_pool(max_umbrellas=30, max_queries=60, subqueries_per_umbrella=3)
         log(f"Pool Harvesting complete: {stats}")
     except Exception as e:
@@ -157,12 +176,10 @@ def run_daily_batch() -> int:
     log(f"Items stored: {stats.get('items_stored', 0)}")
     log(f"Old items deleted: {stats.get('items_deleted', 0)}")
     
-    # Return 0 if at least one umbrella succeeded OR everything was skipped
     if success_count > 0 or skipped_count > 0:
         return 0
-    else:
-        log("CRITICAL: No umbrellas were refreshed")
-        return 1
+    log("CRITICAL: No umbrellas were refreshed")
+    return 1
 
 
 def main():

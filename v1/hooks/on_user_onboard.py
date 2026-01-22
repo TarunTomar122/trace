@@ -27,7 +27,10 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 from v1.storage import FirestoreStore
 from v1.models import Umbrella, SubQuery
 from v1.core_agents.trend_discovery import discover_trends
-from v1.generate_feed import generate_feed
+from v1.flows.build_feed_from_topics import build_feed_from_topics
+from v1.flows.build_topics_for_user import build_topics_for_user
+from v1.flows.build_unsubscribed_feed_from_topics import build_unsubscribed_feed
+from v1.flows.build_suggested_items_for_user import build_suggested_items_for_user
 from v1.tools.umbrella_mapper import map_interests_to_umbrellas
 
 
@@ -356,132 +359,48 @@ def on_user_onboard(user_id: str) -> dict[str, Any]:
         Stats dict with umbrellas_created, queries_mapped, feed_items
     """
     store = FirestoreStore()
-    
+
     print(f"Processing onboarding for user {user_id}...")
-    
-    # Get user profile
+
     profile = store.get_user_profile(user_id)
     if not profile:
         print(f"  Error: User {user_id} not found")
         return {"error": "User not found"}
-    
-    # Check subscription status
+
     subscription_status = profile.get("subscriptionStatus", "none")
     is_subscribed = subscription_status in ["trial", "active"]
     print(f"  Subscription status: {subscription_status} ({'subscribed' if is_subscribed else 'unsubscribed'})")
-    
-    interests = profile.get("interests", [])
-    if not interests:
-        print(f"  Warning: User has no interests")
-        return {"error": "No interests"}
-    
-    print(f"  Interests: {interests}")
+
+    print(f"  Interests: {profile.get('interests', [])}")
     print(f"  Hobbies: {profile.get('hobbies', [])}")
     print(f"  Projects: {profile.get('projects', [])}")
-    
-    umbrellas_created = 0
-    umbrellas_existing = 0
-    total_queries_mapped = 0
-    interest_to_umbrella = {}
-    unique_umbrella_ids = set()
 
-    if is_subscribed:
-        # Use AI to smart-map interests + hobbies to umbrellas
-        print("\n  Smart-mapping interests + hobbies to umbrellas...")
-        combined = list({i for i in interests + profile.get("hobbies", []) if i})
-        mapping_result = map_interests_to_umbrellas(combined, store)
-        interest_to_umbrella = mapping_result["mappings"]
-        umbrellas_to_create = mapping_result["umbrellas_to_create"]
-
-        # First, create any new umbrellas that were identified
-        for new_umbrella in umbrellas_to_create:
-            umbrella_id = new_umbrella["id"]
-            if not store.umbrella_exists(umbrella_id):
-                # Get the original interest that triggered this umbrella
-                original_interest = next((i for i, u in interest_to_umbrella.items() if u == umbrella_id), umbrella_id)
-                result_id = ensure_umbrella_exists(store, original_interest)
-                if result_id:
-                    umbrellas_created += 1
-
-        # Now map users to queries for each unique umbrella
-        unique_umbrella_ids = set(interest_to_umbrella.values())
-        for umbrella_id in unique_umbrella_ids:
-            if not store.umbrella_exists(umbrella_id):
-                umbrellas_existing += 1  # Already existed before this run
-                continue
-
-            umbrellas_existing += 1
-            queries_mapped = map_user_to_umbrella_queries(store, user_id, umbrella_id)
-            total_queries_mapped += queries_mapped
-            print(f"  Mapped to {queries_mapped} queries in {umbrella_id}")
-
-        # Update umbrella user counts
-        for umbrella_id in unique_umbrella_ids:
-            umbrella = store.get_umbrella(umbrella_id)
-            if umbrella:
-                current_count = umbrella.get("user_count", 0)
-                store.update_umbrella(umbrella_id, {"user_count": current_count + 1})
-
-        interest_map = {
-            i: interest_to_umbrella[i] for i in interests if i in interest_to_umbrella
-        }
-        hobbies = profile.get("hobbies", []) or []
-        hobby_map = {
-            h: interest_to_umbrella[h] for h in hobbies if h in interest_to_umbrella
-        }
-        store.db.collection("user_profiles").document(user_id).set({
-            "interest_umbrella_map": interest_map,
-            "hobby_umbrella_map": hobby_map,
-            "umbrella_ids": list(unique_umbrella_ids),
-            "updatedAt": datetime.utcnow().isoformat(),
-        }, merge=True)
-    else:
-        print("  Skipping umbrella creation and query mapping (user not subscribed)")
-    
-    # Check if pool has items for user's umbrella mappings
-    # Only run emergency search for subscribed users
-    if is_subscribed:
-        print("\n  Checking pool availability...")
-        pool_items = []
-        umbrellas_without_content = []
-
-        for interest, umbrella_id in interest_to_umbrella.items():
-            items = store.get_retrieval_pool(umbrella_id=umbrella_id)
-            if items:
-                pool_items.extend(items)
-            else:
-                umbrellas_without_content.append((interest, umbrella_id))
-
-        print(f"  Pool has {len(pool_items)} items across {len(unique_umbrella_ids)} umbrellas")
-        print(f"  {len(umbrellas_without_content)} umbrellas have no content")
-
-        # Run emergency search for ALL umbrellas without content (not just if total < 5)
-        # Uses multi-source search (YouTube + Tavily) based on user preferences
-        if umbrellas_without_content:
-            print(f"  Running multi-source emergency search for {len(umbrellas_without_content)} empty umbrellas...")
-            for interest, umbrella_id in umbrellas_without_content:
-                emergency_search_and_populate(store, interest, user_id=user_id, user_profile=profile)
-    
-    # Generate first feed
+    # Generate topics + feed using topic flows
     print("\n  Generating initial feed...")
     try:
-        feed_result = generate_feed(user_id)
-        feed_items = len(feed_result.get("items", []))
+        if is_subscribed:
+            build_topics_for_user(user_id)
+            feed_result = build_feed_from_topics(user_id)
+            feed_items = feed_result.get("items_written", 0)
+            suggested_result = build_suggested_items_for_user(user_id)
+            suggested_items = suggested_result.get("items_added", 0)
+        else:
+            feed_result = build_unsubscribed_feed(user_id)
+            feed_items = feed_result.get("items_written", 0)
+            suggested_items = 0
     except Exception as e:
         print(f"  Error generating feed: {e}")
         feed_items = 0
+        suggested_items = 0
     
     # Summary
     print("\n" + "=" * 50)
-    print(f"User onboarded: created {umbrellas_created} umbrella(s), "
-          f"mapped to {total_queries_mapped} queries, "
-          f"generated initial feed with {feed_items} items")
+    print(f"User onboarded: generated initial feed with {feed_items} items, "
+          f"suggested {suggested_items} items")
     
     return {
-        "umbrellas_created": umbrellas_created,
-        "umbrellas_existing": umbrellas_existing,
-        "queries_mapped": total_queries_mapped,
         "feed_items": feed_items,
+        "suggested_items": suggested_items,
         "user_id": user_id
     }
 

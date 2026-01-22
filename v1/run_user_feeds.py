@@ -23,7 +23,9 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 from v1.storage import FirestoreStore
-from v1.generate_feed import generate_feed
+from v1.flows.build_feed_from_topics_for_all_users import build_feeds_for_all_users
+from v1.flows.build_unsubscribed_feeds_for_all_users import build_unsubscribed_feeds
+from v1.flows.build_suggested_items_for_all_users import build_suggested_items_for_all_users
 
 
 def run_user_feeds(date: str | None = None, limit: int | None = None) -> dict:
@@ -51,34 +53,17 @@ def run_user_feeds(date: str | None = None, limit: int | None = None) -> dict:
     
     start_time = time.time()
     
-    # Query all onboarded users
+    # Stats only
     print("Loading onboarded users...")
     all_users = list(store.db.collection("user_profiles").where("onboarded", "==", True).stream())
-    
-    # Separate by subscription status for stats
-    subscribed_users = []
-    unsubscribed_users = []
-    
-    for user_doc in all_users:
-        user_data = user_doc.to_dict()
-        status = user_data.get("subscriptionStatus", "none")
-        if status in ["trial", "active"]:
-            subscribed_users.append(user_doc)
-        else:
-            unsubscribed_users.append(user_doc)
-    
-    users = all_users
-    total_users = len(users)
-    
-    print(f"Found {total_users} onboarded users:")
+    subscribed_users = [u for u in all_users if u.to_dict().get("subscriptionStatus") in ["trial", "active"]]
+    unsubscribed_users = [u for u in all_users if u.to_dict().get("subscriptionStatus") not in ["trial", "active"]]
+
+    print(f"Found {len(all_users)} onboarded users:")
     print(f"  - {len(subscribed_users)} subscribed (trial + active)")
     print(f"  - {len(unsubscribed_users)} unsubscribed")
-    
-    if limit:
-        users = users[:limit]
-        print(f"Processing {len(users)} users (limited)")
-    
-    if not users:
+
+    if not all_users:
         print("No onboarded users found.")
         return {
             "users_processed": 0,
@@ -86,31 +71,18 @@ def run_user_feeds(date: str | None = None, limit: int | None = None) -> dict:
             "error_count": 0,
             "duration_seconds": 0
         }
-    
-    print(f"\nGenerating feeds for {len(users)} users on {date}...")
-    print("-" * 50)
-    
-    success_count = 0
-    error_count = 0
-    errors = []
-    
-    for i, user_doc in enumerate(users, 1):
-        user_id = user_doc.id
-        user_data = user_doc.to_dict()
-        user_name = user_data.get("name", user_data.get("displayName", "Unknown"))
-        
-        progress = f"[{i}/{len(users)}]"
-        print(f"\n{progress} Generating feed for {user_name} ({user_id})...")
-        
-        try:
-            result = generate_feed(user_id, date)
-            item_count = len(result.get("items", []))
-            print(f"  ✓ Generated {item_count} items")
-            success_count += 1
-        except Exception as e:
-            print(f"  ✗ Error: {e}")
-            errors.append({"user_id": user_id, "error": str(e)})
-            error_count += 1
+
+    print(f"\nGenerating feeds for subscribed users on {date}...")
+    subscribed_result = build_feeds_for_all_users(limit=limit, skip_seen=False, mode="subscribed")
+
+    print(f"\nGenerating feeds for unsubscribed users on {date}...")
+    unsubscribed_result = build_unsubscribed_feeds(limit=limit, skip_seen=False)
+
+    print("\nAdding suggested items for subscribed users...")
+    suggested_result = build_suggested_items_for_all_users(limit=limit)
+
+    success_count = subscribed_result.get("success", 0) + unsubscribed_result.get("success", 0)
+    error_count = subscribed_result.get("failed", 0) + unsubscribed_result.get("failed", 0)
     
     # Summary
     duration = time.time() - start_time
@@ -119,15 +91,10 @@ def run_user_feeds(date: str | None = None, limit: int | None = None) -> dict:
     print("\n" + "=" * 50)
     print(f"Generated feeds for {success_count}/{len(users)} users in {duration_str}")
     
-    if errors:
-        print(f"\nErrors ({len(errors)}):")
-        for err in errors[:5]:
-            print(f"  - {err['user_id']}: {err['error']}")
-        if len(errors) > 5:
-            print(f"  ... and {len(errors) - 5} more")
+    print(f"\nSuggested items added for subscribed users: {suggested_result.get('success', 0)}")
     
     return {
-        "users_processed": len(users),
+        "users_processed": len(all_users),
         "success_count": success_count,
         "error_count": error_count,
         "duration_seconds": duration,

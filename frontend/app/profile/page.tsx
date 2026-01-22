@@ -27,7 +27,7 @@ import SubscriptionManager from '@/components/SubscriptionManager';
 function ProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, signOut, profile: authProfile } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -37,6 +37,46 @@ function ProfileContent() {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Switch to subscription tab if coming from onboarding or feed redirect
+  const applyProfile = (p: UserProfile) => {
+    setProfile(p);
+    setName(p.name);
+    setRole(p.role);
+    setCompany(p.company || '');
+    setLocation(p.location || '');
+    setExperienceYears(
+      p.experienceYears !== undefined && p.experienceYears !== null
+        ? String(p.experienceYears)
+        : ''
+    );
+    setCurrentWorkProject(p.currentWork?.project || '');
+    setCurrentWorkFocus(p.currentWork?.focus || '');
+    setProjectsText(p.projects?.join(', ') || '');
+    setGoalsShortTerm(p.goals?.shortTerm || '');
+    setGoalsLongTerm(p.goals?.longTerm || '');
+    setLearningStyle(p.learningStyle || '');
+    setAttentionConstraints(p.attentionConstraints || '');
+    setMotivationTriggersText(p.motivationTriggers?.join(', ') || '');
+    setContentLikesText(p.contentPreferences?.likes?.join(', ') || '');
+    setContentDislikesText(p.contentPreferences?.dislikes?.join(', ') || '');
+    setFavoriteSourcesText(p.favoriteSources?.join(', ') || '');
+    setPersonalityTraitsText(p.personalityTraits?.join(', ') || '');
+    setPetPeevesText(p.petPeeves?.join(', ') || '');
+    const loadedInterests = (p.interests || []).map(i =>
+      i.startsWith('custom-') ? i.replace('custom-', '') : i
+    );
+    setSelectedInterests(loadedInterests.slice(0, 8));
+    setContentDepth(p.contentDepth);
+    setHobbiesText(p.hobbies?.join(', ') || '');
+    setSkillsText(p.skills?.join(', ') || '');
+    setDislikedTopicsText(p.dislikedTopics?.join(', ') || '');
+    if (p.sourcePreferences) {
+      setSourcePreferences(p.sourcePreferences);
+    }
+    if (p.chatHistory) {
+      setChatMessages(p.chatHistory.map(m => ({ role: m.role, content: m.content })));
+    }
+  };
+
   useEffect(() => {
     const tabParam = searchParams.get('tab');
     const subscriptionParam = searchParams.get('subscription');
@@ -104,48 +144,18 @@ function ProfileContent() {
       return;
     }
 
+    if (authProfile && !profile) {
+      applyProfile(authProfile);
+    }
+
     if (user) {
       getUserProfile(user.uid).then(p => {
         if (p) {
-          setProfile(p);
-          setName(p.name);
-          setRole(p.role);
-          setCompany(p.company || '');
-          setLocation(p.location || '');
-          setExperienceYears(p.experienceYears !== undefined && p.experienceYears !== null ? String(p.experienceYears) : '');
-          setCurrentWorkProject(p.currentWork?.project || '');
-          setCurrentWorkFocus(p.currentWork?.focus || '');
-          setProjectsText(p.projects?.join(', ') || '');
-          setGoalsShortTerm(p.goals?.shortTerm || '');
-          setGoalsLongTerm(p.goals?.longTerm || '');
-          setLearningStyle(p.learningStyle || '');
-          setAttentionConstraints(p.attentionConstraints || '');
-          setMotivationTriggersText(p.motivationTriggers?.join(', ') || '');
-          setContentLikesText(p.contentPreferences?.likes?.join(', ') || '');
-          setContentDislikesText(p.contentPreferences?.dislikes?.join(', ') || '');
-          setFavoriteSourcesText(p.favoriteSources?.join(', ') || '');
-          setPersonalityTraitsText(p.personalityTraits?.join(', ') || '');
-          setPetPeevesText(p.petPeeves?.join(', ') || '');
-          const loadedInterests = (p.interests || []).map(i =>
-            i.startsWith('custom-') ? i.replace('custom-', '') : i
-          );
-          setSelectedInterests(loadedInterests.slice(0, 8));
-          setContentDepth(p.contentDepth);
-          // Load additional fields
-          setHobbiesText(p.hobbies?.join(', ') || '');
-          setSkillsText(p.skills?.join(', ') || '');
-          setDislikedTopicsText(p.dislikedTopics?.join(', ') || '');
-          if (p.sourcePreferences) {
-            setSourcePreferences(p.sourcePreferences);
-          }
-          // Load chat history
-          if (p.chatHistory) {
-            setChatMessages(p.chatHistory.map(m => ({ role: m.role, content: m.content })));
-          }
+          applyProfile(p);
         }
       });
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, authProfile, profile]);
 
   const parseCommaSeparated = (text: string, maxItems?: number): string[] => {
     const items = text
@@ -326,11 +336,8 @@ function ProfileContent() {
           .join('|');
       };
 
-      const wasSubscribed = ['trial', 'active'].includes(profile.subscriptionStatus || '');
-      const interestsChanged = normalizeList(profile.interests || []) !== normalizeList(selectedInterests);
-      const hobbiesChanged = normalizeList(profile.hobbies || []) !== normalizeList(parsedHobbies);
-
-      if (wasSubscribed && (interestsChanged || hobbiesChanged)) {
+      const isOnboarded = Boolean(profile.onboarded);
+      if (isOnboarded) {
         try {
           await fetch('/api/onboard', {
             method: 'POST',
@@ -338,7 +345,7 @@ function ProfileContent() {
             body: JSON.stringify({ uid: user.uid }),
           });
         } catch (error) {
-          console.error('Error triggering profile remap:', error);
+          console.error('Error triggering profile refresh:', error);
         }
       }
 

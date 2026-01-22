@@ -173,15 +173,9 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
         
         {/* Content */}
         <div className="flex-1 min-w-0">
-          {/* Source label and relevance */}
+          {/* Source label */}
           <div className="flex items-center gap-2 mb-1.5 md:mb-2">
             <span className={`text-[10px] font-mono uppercase tracking-widest ${config.color}`}>{config.label}</span>
-            {relevance && (
-              <>
-                <span className="text-secondary/20 hidden sm:inline">·</span>
-                <span className="text-[10px] font-mono text-secondary/60 truncate hidden sm:inline">{relevance}</span>
-              </>
-            )}
           </div>
           
           {/* Title - the main focus */}
@@ -200,9 +194,9 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
             </h3>
           </a>
 
-          {/* Mobile: Show relevance below title */}
+          {/* Relevance below title (no clamp) */}
           {relevance && (
-            <p className="text-[10px] font-mono text-secondary/60 mb-2 sm:hidden line-clamp-1">
+            <p className="text-[10px] font-mono text-secondary/60 mb-2">
               {relevance}
             </p>
           )}
@@ -334,7 +328,7 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
   );
 }
 
-type FilterType = 'all' | 'video' | 'blog' | 'paper' | 'discussion' | 'repo';
+type FilterType = 'all' | string;
 
 export default function FeedPage() {
   const router = useRouter();
@@ -400,9 +394,51 @@ export default function FeedPage() {
   const isOnboarded = profile?.onboarded ?? false;
   const showPersonalizedFeed = isOnboarded; // Show feed for ALL onboarded users
   const currentFeed = devShowPool ? poolItems : (!showPersonalizedFeed ? generalFeed : feed);
-  const filteredFeed = activeFilter === 'all' 
-    ? currentFeed 
-    : currentFeed.filter(item => (item.type || item.source) === activeFilter);
+  const normalizeInterest = (interest: string) => {
+    return interest
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/&/g, 'and')
+      .replace(/[\\/]/g, '-')
+      .replace(/[()]/g, '');
+  };
+
+  const profileTopics = [
+    ...(profile?.interests || []),
+    ...(profile?.hobbies || []),
+  ].filter((i): i is string => typeof i === 'string' && i.trim().length > 0);
+
+  const profileFilters = profileTopics.map((topic) => ({
+    id: normalizeInterest(topic),
+    label: topic,
+  }));
+
+  const availableTagIds = new Set(
+    currentFeed.flatMap((item) => (Array.isArray(item.tags) ? item.tags : []))
+  );
+
+  const tagFilters = Array.from(availableTagIds).map((tag) => ({
+    id: tag,
+    label: tag.replace(/-/g, ' '),
+  }));
+
+  const availableProfileFilters = profileFilters.filter((filter) => availableTagIds.has(filter.id));
+  const topicFilters = profileFilters.length > 0 ? availableProfileFilters : tagFilters;
+
+  const filteredFeed = activeFilter === 'all'
+    ? currentFeed
+    : currentFeed.filter((item) => {
+        const tags = item.tags || [];
+        return tags.includes(activeFilter);
+      });
+
+  useEffect(() => {
+    if (activeFilter === 'all') return;
+    if (!topicFilters.some((filter) => filter.id === activeFilter)) {
+      setActiveFilter('all');
+    }
+  }, [activeFilter, topicFilters]);
 
   // Check subscription access
   useEffect(() => {
@@ -1200,11 +1236,7 @@ export default function FeedPage() {
           <div className="flex items-center gap-2 pb-2">
             {[
               { id: 'all', label: showPersonalizedFeed ? 'For you' : 'Discover' },
-              { id: 'video', label: 'Videos' },
-              { id: 'blog', label: 'Articles' },
-              { id: 'paper', label: 'Papers' },
-              { id: 'discussion', label: 'Discuss' },
-              { id: 'repo', label: 'Repos' },
+              ...topicFilters,
             ].map(filter => {
               const isActive = activeFilter === filter.id;
               return (
@@ -1233,11 +1265,7 @@ export default function FeedPage() {
               </h2>
               {[
                 { id: 'all', label: showPersonalizedFeed ? 'For you' : 'Discover' },
-                { id: 'video', label: 'Videos' },
-                { id: 'blog', label: 'Articles' },
-                { id: 'paper', label: 'Papers' },
-                { id: 'discussion', label: 'Discussions' },
-                { id: 'repo', label: 'Repos' },
+                ...topicFilters,
               ].map(filter => {
                 const isActive = activeFilter === filter.id;
                 return (

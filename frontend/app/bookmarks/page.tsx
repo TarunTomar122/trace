@@ -73,15 +73,9 @@ function BookmarkCard({ bookmark, onRemove }: {
         
         {/* Content */}
         <div className="flex-1 min-w-0">
-          {/* Source label and relevance */}
+          {/* Source label */}
           <div className="flex items-center gap-2 mb-1.5 md:mb-2">
             <span className={`text-[10px] font-mono uppercase tracking-widest ${config.color}`}>{config.label}</span>
-            {relevance && (
-              <>
-                <span className="text-secondary/20 hidden sm:inline">·</span>
-                <span className="text-[10px] font-mono text-secondary/60 truncate hidden sm:inline">{relevance}</span>
-              </>
-            )}
           </div>
           
           {/* Title - the main focus */}
@@ -100,9 +94,9 @@ function BookmarkCard({ bookmark, onRemove }: {
             </h3>
           </a>
 
-          {/* Mobile: Show relevance below title */}
+          {/* Relevance below title (no clamp) */}
           {relevance && (
-            <p className="text-[10px] font-mono text-secondary/60 mb-2 sm:hidden line-clamp-1">
+            <p className="text-[10px] font-mono text-secondary/60 mb-2">
               {relevance}
             </p>
           )}

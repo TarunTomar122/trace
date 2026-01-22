@@ -41,6 +41,6 @@ jobs:
           else
             USER_ID="${{ inputs.user_id }}"
           fi
-          echo "Unmapping user: $USER_ID"
-          python v1/algorithm/unmap_user.py --user_id "$USER_ID"
+          echo "Unsubscribing user: $USER_ID"
+          python v1/flows/unsubscribe_user.py --user_id "$USER_ID"
 
