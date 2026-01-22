@@ -145,6 +145,13 @@ export default function AnalyticsPage() {
               Feed Viewer
             </button>
             <button
+              onClick={() => router.push('/dev/umbrellas')}
+              className="text-xs font-mono text-secondary hover:text-foreground transition-colors flex items-center gap-2"
+            >
+              <FileText size={14} />
+              Umbrellas
+            </button>
+            <button
               onClick={() => router.push('/feed')}
               className="text-xs font-mono text-secondary hover:text-foreground transition-colors flex items-center gap-2"
             >

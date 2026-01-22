@@ -244,7 +244,7 @@ export default function OnboardingPage() {
   // Validation
   const canProceed = () => {
     if (step === 1) return name.trim() && role;
-    if (step === 2) return parseCommaSeparated(interestsText, 8).length >= 2;
+    if (step === 2) return parseCommaSeparated(interestsText, 8).length >= 4;
     if (step === 3) return parseCommaSeparated(skillsText).length >= 1;
     if (step === 4) return true;
     return true;
@@ -472,7 +472,7 @@ export default function OnboardingPage() {
                   </div>
                 </div>
 
-                <div>
+                {/* <div>
                   <div className="relative mb-3">
                     <label className="block text-xs font-mono uppercase tracking-wider text-foreground/70 font-medium">
                       Current focus <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
@@ -486,7 +486,7 @@ export default function OnboardingPage() {
                     placeholder="What are you trying to improve or learn?"
                     className="w-full bg-transparent border-b-2 border-border py-4 text-lg font-serif text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
                   />
-                </div>
+                </div> */}
               </div>
             </motion.div>
           )}
@@ -515,7 +515,7 @@ export default function OnboardingPage() {
                 <div>
                   <div className="relative mb-2">
                     <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 font-medium">
-                      What are you interested in? <span className="text-primary">(minimum 2)</span>
+                      What are you interested in? <span className="text-primary">(minimum 4)</span>
                       <HelpTooltip content="These create your content 'umbrellas' - Trace searches for articles, videos, repos, and discussions matching each interest daily" />
                     </label>
                   </div>
@@ -561,7 +561,7 @@ export default function OnboardingPage() {
                   )}
                 </div>
 
-                <div>
+                {/* <div>
                   <div className="relative mb-2">
                     <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 font-medium">
                       Projects <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
@@ -578,7 +578,7 @@ export default function OnboardingPage() {
                     rows={2}
                     className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
                   />
-                </div>
+                </div> */}
 
               </div>
             </motion.div>

@@ -161,7 +161,7 @@ def harvest_pool(
         if not umbrella_id:
             continue
         display_name = umbrella.get("display_name", umbrella_id)
-        query_text = f"{display_name} news latest"
+        query_text = f"{display_name} latest news"
         extra_news_queries.append({
             "query_id": f"{umbrella_id}-news",
             "query_text": query_text,
@@ -211,7 +211,10 @@ def harvest_pool(
                 if q.get("topic") == "news":
                     content_type = "blog"
                 else:
-                    content_type = random.choice(["blog", "discussion"])
+                    if random.random() < 0.8:
+                        content_type = "blog"
+                    else:
+                        content_type = "discussion"
                 item = _build_pool_item(
                     url=url,
                     title=title,

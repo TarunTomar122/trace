@@ -8,10 +8,10 @@ on:
     # Processes previous day's interactions
     - cron: '30 3 * * *'
 
-    # Content pipeline at 10:00 AM IST (04:30 AM UTC)
+    # Content pipeline at 3:00 PM IST (09:30 AM UTC)
     # Runs: Trend Discovery → Pool Harvest → Feed Generation
     # Takes ~30 mins, completes by ~10:30 AM IST
-    - cron: '30 4 * * *'
+    - cron: '30 9 * * *'
   
   # Allow manual trigger
   workflow_dispatch:

@@ -99,6 +99,7 @@ export default function RootLayout({
         "@id": "https://www.yourtrace.online/#product",
         "name": "Trace Pro",
         "description": "Premium personalized intelligence feed with adaptive learning",
+        "image": "https://www.yourtrace.online/trace.png",
         "offers": {
           "@type": "Offer",
           "price": "2.99",

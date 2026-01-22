@@ -135,24 +135,33 @@ class FirestoreStore:
     def add_user_to_query(self, query_id: str, user_id: str, query_text: str, umbrella_id: str) -> None:
         """Add a user to a query. Creates the query_users doc if it doesn't exist."""
         from firebase_admin import firestore
-        
+
         doc_ref = self.db.collection("query_users").document(query_id)
-        doc = doc_ref.get()
-        
-        if doc.exists:
-            doc_ref.update({
-                "users": firestore.ArrayUnion([user_id]),
-                "user_count": firestore.Increment(1)
-            })
-        else:
-            doc_ref.set({
-                "query_id": query_id,
-                "query_text": query_text,
-                "umbrella_id": umbrella_id,
-                "users": [user_id],
-                "user_count": 1,
-                "last_searched": None
-            })
+        transaction = self.db.transaction()
+
+        @firestore.transactional
+        def _txn_add(transaction):
+            doc = doc_ref.get(transaction=transaction)
+            if doc.exists:
+                data = doc.to_dict() or {}
+                users = data.get("users", []) or []
+                if user_id in users:
+                    return
+                transaction.update(doc_ref, {
+                    "users": firestore.ArrayUnion([user_id]),
+                    "user_count": firestore.Increment(1),
+                })
+            else:
+                transaction.set(doc_ref, {
+                    "query_id": query_id,
+                    "query_text": query_text,
+                    "umbrella_id": umbrella_id,
+                    "users": [user_id],
+                    "user_count": 1,
+                    "last_searched": None,
+                })
+
+        _txn_add(transaction)
     
     def remove_user_from_query(self, query_id: str, user_id: str) -> None:
         """Remove a user from a query."""

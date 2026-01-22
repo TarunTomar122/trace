@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { 
+import {
   User,
   Check,
   Plus,
@@ -32,10 +32,10 @@ function ProfileContent() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
-  
+
   const [activeTab, setActiveTab] = useState<'profile' | 'chat' | 'subscription'>('profile');
   const [showAdvanced, setShowAdvanced] = useState(false);
-  
+
   // Switch to subscription tab if coming from onboarding or feed redirect
   useEffect(() => {
     const tabParam = searchParams.get('tab');
@@ -44,13 +44,13 @@ function ProfileContent() {
       setActiveTab('subscription');
     }
   }, [searchParams]);
-  
+
   // Chat state
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  
+
   // Editable fields
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
@@ -74,7 +74,7 @@ function ProfileContent() {
   const [contentDepth, setContentDepth] = useState<'quick' | 'deep' | 'surprise' | null>(null);
   const [customInterest, setCustomInterest] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
-  
+
   // Additional fields from onboarding
   const [hobbiesText, setHobbiesText] = useState('');
   const [skillsText, setSkillsText] = useState('');
@@ -103,7 +103,7 @@ function ProfileContent() {
       router.push('/');
       return;
     }
-    
+
     if (user) {
       getUserProfile(user.uid).then(p => {
         if (p) {
@@ -126,7 +126,10 @@ function ProfileContent() {
           setFavoriteSourcesText(p.favoriteSources?.join(', ') || '');
           setPersonalityTraitsText(p.personalityTraits?.join(', ') || '');
           setPetPeevesText(p.petPeeves?.join(', ') || '');
-          setSelectedInterests((p.interests || []).slice(0, 8));
+          const loadedInterests = (p.interests || []).map(i =>
+            i.startsWith('custom-') ? i.replace('custom-', '') : i
+          );
+          setSelectedInterests(loadedInterests.slice(0, 8));
           setContentDepth(p.contentDepth);
           // Load additional fields
           setHobbiesText(p.hobbies?.join(', ') || '');
@@ -167,18 +170,18 @@ function ProfileContent() {
   const startChat = async () => {
     if (!profile) return;
     setIsChatLoading(true);
-    
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: [], profile }),
       });
-      
+
       const data = await response.json();
       const assistantMessage = { role: 'assistant' as const, content: data.message };
       setChatMessages([assistantMessage]);
-      
+
       if (user) {
         await addChatMessage(user.uid, assistantMessage);
       }
@@ -191,7 +194,7 @@ function ProfileContent() {
 
   const sendMessage = async () => {
     if (!chatInput.trim() || !user || !profile) return;
-    
+
     const userMessage = { role: 'user' as const, content: chatInput.trim() };
     const newMessages = [...chatMessages, userMessage];
     setChatMessages(newMessages);
@@ -207,11 +210,11 @@ function ProfileContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: newMessages, profile }),
       });
-      
+
       const data = await response.json();
       const assistantMessage = { role: 'assistant' as const, content: data.message };
       setChatMessages([...newMessages, assistantMessage]);
-      
+
       // Save assistant message
       await addChatMessage(user.uid, assistantMessage);
 
@@ -239,7 +242,7 @@ function ProfileContent() {
 
   const addCustomInterest = () => {
     if (customInterest.trim() && selectedInterests.length < 8) {
-      const customId = `custom-${customInterest.toLowerCase().replace(/\s+/g, '-')}`;
+      const customId = customInterest.toLowerCase().trim().replace(/\s+/g, '-');
       if (!selectedInterests.includes(customId)) {
         setSelectedInterests([...selectedInterests, customId]);
       }
@@ -255,7 +258,7 @@ function ProfileContent() {
 
   const handleSave = async () => {
     if (!user || !profile) return;
-    
+
     setIsSaving(true);
     try {
       const parsedExperienceYears = experienceYears.trim() ? Number(experienceYears) : null;
@@ -277,6 +280,9 @@ function ProfileContent() {
         );
       };
 
+      const normalizedInterests = selectedInterests.map(interest =>
+        interest.startsWith('custom-') ? interest.replace('custom-', '') : interest
+      );
       const profileUpdate = {
         name,
         role,
@@ -295,7 +301,7 @@ function ProfileContent() {
         ...(learningStyle && { learningStyle }),
         ...(attentionConstraints && { attentionConstraints }),
         motivationTriggers: parsedMotivationTriggers,
-        interests: selectedInterests,
+        interests: normalizedInterests,
         hobbies: parsedHobbies,
         skills: parsedSkills,
         dislikedTopics: parsedDislikedTopics,
@@ -335,7 +341,7 @@ function ProfileContent() {
           console.error('Error triggering profile remap:', error);
         }
       }
-      
+
       setProfile({
         ...profile,
         name,
@@ -355,7 +361,7 @@ function ProfileContent() {
         learningStyle: learningStyle || undefined,
         attentionConstraints: attentionConstraints || undefined,
         motivationTriggers: parsedMotivationTriggers,
-        interests: selectedInterests,
+        interests: normalizedInterests,
         hobbies: parsedHobbies,
         skills: parsedSkills,
         dislikedTopics: parsedDislikedTopics,
@@ -369,7 +375,7 @@ function ProfileContent() {
         personalityTraits: parsedPersonalityTraits,
         petPeeves: parsedPetPeeves,
       });
-      
+
       setIsEditing(false);
       setSaveMessage('Changes saved!');
       setTimeout(() => setSaveMessage(''), 3000);
@@ -396,8 +402,8 @@ function ProfileContent() {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-serif">
-      <Header 
-        showBackToFeed 
+      <Header
+        showBackToFeed
         onSignOut={handleSignOut}
       />
 
@@ -466,22 +472,20 @@ function ProfileContent() {
           <div className="flex gap-2">
             <button
               onClick={() => setActiveTab('profile')}
-              className={`px-4 md:px-6 py-2.5 md:py-3 text-[10px] font-mono uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'profile' 
-                  ? 'bg-primary text-primary-foreground border-2 border-primary' 
+              className={`px-4 md:px-6 py-2.5 md:py-3 text-[10px] font-mono uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeTab === 'profile'
+                  ? 'bg-primary text-primary-foreground border-2 border-primary'
                   : 'bg-background text-secondary border-2 border-border hover:border-primary/50'
-              }`}
+                }`}
             >
               <User size={14} />
               <span className="hidden sm:inline">Profile</span>
             </button>
             <button
               onClick={() => setActiveTab('subscription')}
-              className={`px-4 md:px-6 py-2.5 md:py-3 text-[10px] font-mono uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'subscription' 
-                  ? 'bg-primary text-primary-foreground border-2 border-primary' 
+              className={`px-4 md:px-6 py-2.5 md:py-3 text-[10px] font-mono uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeTab === 'subscription'
+                  ? 'bg-primary text-primary-foreground border-2 border-primary'
                   : 'bg-background text-secondary border-2 border-border hover:border-primary/50'
-              }`}
+                }`}
             >
               <CreditCard size={14} />
               <span className="hidden sm:inline">Subscription</span>
@@ -572,21 +576,6 @@ function ProfileContent() {
                       <p className="text-lg font-serif py-3">{profile?.role}</p>
                     )}
                   </div>
-
-                  <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">Current Focus</label>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={currentWorkFocus}
-                        onChange={(e) => setCurrentWorkFocus(e.target.value)}
-                        placeholder="Improve onboarding, boost retention"
-                        className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
-                      />
-                    ) : (
-                      <p className="text-lg font-serif py-3 text-secondary">{profile?.currentWork?.focus || 'Not set'}</p>
-                    )}
-                  </div>
                 </div>
               </section>
 
@@ -612,7 +601,7 @@ function ProfileContent() {
                       </span>
                     ) : null;
                   })}
-                  
+
                   {selectedInterests.filter(i => i.startsWith('custom-') || !INTERESTS.some(interest => interest.id === i)).map(customId => (
                     isEditing ? (
                       <button key={customId} onClick={() => toggleInterest(customId)} className="px-3 py-2 border border-primary bg-primary text-primary-foreground text-sm font-mono transition-all flex items-center gap-2">
@@ -668,7 +657,7 @@ function ProfileContent() {
               </section>
 
               {/* Projects */}
-              <section className="border border-border p-6 md:p-8">
+              {/* <section className="border border-border p-6 md:p-8">
                 <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-6">
                   Projects
                 </h2>
@@ -689,7 +678,7 @@ function ProfileContent() {
                     <p className="text-lg font-serif py-3 text-secondary">{profile?.projects?.length ? profile.projects.join(', ') : 'Not set'}</p>
                   )}
                 </div>
-              </section>
+              </section> */}
 
               {/* Skills */}
               <section className="border border-border p-6 md:p-8">
@@ -771,8 +760,8 @@ function ProfileContent() {
                         />
                       ) : (
                         <div className="w-full h-2 bg-border rounded-lg overflow-hidden">
-                          <div 
-                            className="h-full bg-primary transition-all" 
+                          <div
+                            className="h-full bg-primary transition-all"
                             style={{ width: `${(sourcePreferences[key] / 10) * 100}%` }}
                           />
                         </div>
@@ -795,11 +784,10 @@ function ProfileContent() {
                           <button
                             key={opt.id}
                             onClick={() => setContentDepth(opt.id as 'quick' | 'deep' | 'surprise')}
-                            className={`px-4 py-3 border text-sm font-mono transition-all ${
-                              contentDepth === opt.id 
-                                ? 'border-primary bg-primary text-primary-foreground' 
+                            className={`px-4 py-3 border text-sm font-mono transition-all ${contentDepth === opt.id
+                                ? 'border-primary bg-primary text-primary-foreground'
                                 : 'border-border hover:border-primary/50'
-                            }`}
+                              }`}
                           >
                             {opt.label}
                           </button>
@@ -807,10 +795,10 @@ function ProfileContent() {
                       </div>
                     ) : (
                       <p className="text-sm font-mono py-2">
-                        {contentDepth === 'quick' ? '⚡ Quick Reads' 
-                          : contentDepth === 'deep' ? '📚 Deep Dives' 
-                          : contentDepth === 'surprise' ? '🎁 Surprise Me'
-                          : 'Not set'}
+                        {contentDepth === 'quick' ? '⚡ Quick Reads'
+                          : contentDepth === 'deep' ? '📚 Deep Dives'
+                            : contentDepth === 'surprise' ? '🎁 Surprise Me'
+                              : 'Not set'}
                       </p>
                     )}
                   </div>
@@ -826,8 +814,8 @@ function ProfileContent() {
                   <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary">
                     Advanced Settings <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
                   </h2>
-                  <ChevronDown 
-                    size={16} 
+                  <ChevronDown
+                    size={16}
                     className={`text-secondary transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
                   />
                 </button>
@@ -847,18 +835,32 @@ function ProfileContent() {
                           <h3 className="text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-4">
                             Additional Information
                           </h3>
+                          <div>
+                            <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">Current Focus</label>
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={currentWorkFocus}
+                                onChange={(e) => setCurrentWorkFocus(e.target.value)}
+                                placeholder="Improve onboarding, boost retention"
+                                className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
+                              />
+                            ) : (
+                              <p className="text-lg font-serif py-3 text-secondary">{profile?.currentWork?.focus || 'Not set'}</p>
+                            )}
+                          </div>
                           <div className="grid gap-6">
                             <div>
                               <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
                                 Company
                               </label>
                               {isEditing ? (
-                                <input 
-                                  type="text" 
-                                  value={company} 
-                                  onChange={(e) => setCompany(e.target.value)} 
-                                  placeholder="Acme, freelancing, stealth startup" 
-                                  className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30" 
+                                <input
+                                  type="text"
+                                  value={company}
+                                  onChange={(e) => setCompany(e.target.value)}
+                                  placeholder="Acme, freelancing, stealth startup"
+                                  className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
                                 />
                               ) : (
                                 <p className="text-lg font-serif py-3 text-secondary">{profile?.company || 'Not set'}</p>
@@ -870,12 +872,12 @@ function ProfileContent() {
                                 Location
                               </label>
                               {isEditing ? (
-                                <input 
-                                  type="text" 
-                                  value={location} 
-                                  onChange={(e) => setLocation(e.target.value)} 
-                                  placeholder="Bangalore, India" 
-                                  className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30" 
+                                <input
+                                  type="text"
+                                  value={location}
+                                  onChange={(e) => setLocation(e.target.value)}
+                                  placeholder="Bangalore, India"
+                                  className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
                                 />
                               ) : (
                                 <p className="text-lg font-serif py-3 text-secondary">{profile?.location || 'Not set'}</p>
@@ -887,13 +889,13 @@ function ProfileContent() {
                                 Experience (years)
                               </label>
                               {isEditing ? (
-                                <input 
-                                  type="number" 
-                                  min="0" 
-                                  value={experienceYears} 
-                                  onChange={(e) => setExperienceYears(e.target.value)} 
-                                  placeholder="3" 
-                                  className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30" 
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={experienceYears}
+                                  onChange={(e) => setExperienceYears(e.target.value)}
+                                  placeholder="3"
+                                  className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
                                 />
                               ) : (
                                 <p className="text-lg font-serif py-3 text-secondary">
@@ -1129,42 +1131,42 @@ function ProfileContent() {
                 const value = profile.insights?.[k as keyof typeof profile.insights];
                 return Array.isArray(value) ? value.length > 0 : !!value;
               }) && (
-                <section className="border border-border p-6 md:p-8">
-                  <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-6 flex items-center gap-2">
-                    <Sparkles size={12} className="text-primary" />
-                    AI-Gathered Insights
-                  </h2>
+                  <section className="border border-border p-6 md:p-8">
+                    <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-6 flex items-center gap-2">
+                      <Sparkles size={12} className="text-primary" />
+                      AI-Gathered Insights
+                    </h2>
 
-                  <div className="grid gap-4">
-                    {profile.insights.currentProjects && profile.insights.currentProjects.length > 0 && (
-                      <div>
-                        <label className="text-[10px] font-mono uppercase tracking-widest text-secondary mb-2 block">Current Projects</label>
-                        <div className="flex flex-wrap gap-2">
-                          {profile.insights.currentProjects.map((p, i) => (
-                            <span key={i} className="px-3 py-1 bg-border text-sm font-mono">{p}</span>
-                          ))}
+                    <div className="grid gap-4">
+                      {profile.insights.currentProjects && profile.insights.currentProjects.length > 0 && (
+                        <div>
+                          <label className="text-[10px] font-mono uppercase tracking-widest text-secondary mb-2 block">Current Projects</label>
+                          <div className="flex flex-wrap gap-2">
+                            {profile.insights.currentProjects.map((p, i) => (
+                              <span key={i} className="px-3 py-1 bg-border text-sm font-mono">{p}</span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    {profile.insights.goals && profile.insights.goals.length > 0 && (
-                      <div>
-                        <label className="text-[10px] font-mono uppercase tracking-widest text-secondary mb-2 block">Goals</label>
-                        <div className="flex flex-wrap gap-2">
-                          {profile.insights.goals.map((g, i) => (
-                            <span key={i} className="px-3 py-1 bg-border text-sm font-mono">{g}</span>
-                          ))}
+                      )}
+                      {profile.insights.goals && profile.insights.goals.length > 0 && (
+                        <div>
+                          <label className="text-[10px] font-mono uppercase tracking-widest text-secondary mb-2 block">Goals</label>
+                          <div className="flex flex-wrap gap-2">
+                            {profile.insights.goals.map((g, i) => (
+                              <span key={i} className="px-3 py-1 bg-border text-sm font-mono">{g}</span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    {profile.insights.additionalContext && (
-                      <div>
-                        <label className="text-[10px] font-mono uppercase tracking-widest text-secondary mb-2 block">Additional Context</label>
-                        <p className="text-sm font-mono text-secondary">{profile.insights.additionalContext}</p>
-                      </div>
-                    )}
-                  </div>
-                </section>
-              )}
+                      )}
+                      {profile.insights.additionalContext && (
+                        <div>
+                          <label className="text-[10px] font-mono uppercase tracking-widest text-secondary mb-2 block">Additional Context</label>
+                          <p className="text-sm font-mono text-secondary">{profile.insights.additionalContext}</p>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                )}
             </motion.div>
           )}
         </AnimatePresence>
