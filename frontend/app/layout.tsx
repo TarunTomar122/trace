@@ -17,9 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Trace - Nurture Your Growth",
-  description: "Your personalized, adaptive intelligence feed. A living feed that helps you bloom and grow.",
-  keywords: ["personalized feed", "AI intelligence", "adaptive learning", "knowledge curation", "growth mindset"],
+  title: "Trace - Build Your Own Feed",
+  description: "A personalized feed with content from across the web",
+  keywords: ["personalized feed", "content from across the web", "reddit", "hacker news", "youtube", "arxiv", "github", "AI intelligence", "adaptive learning", "knowledge curation", "growth mindset"],
   authors: [{ name: "Trace" }],
   metadataBase: new URL('https://www.yourtrace.online'),
   openGraph: {
@@ -27,21 +27,21 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://www.yourtrace.online",
     siteName: "Trace",
-    title: "Trace - Nurture Your Growth",
-    description: "Your personalized, adaptive intelligence feed. A living feed that helps you bloom and grow.",
+    title: "Trace - Build Your Own Feed",
+    description: "A personalized feed with content from across the web",
     images: [
       {
         url: "/trace.png",
         width: 1200,
         height: 630,
-        alt: "Trace - Your Personalized Intelligence Feed",
+        alt: "Trace - Build Your Own Feed",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Trace - Nurture Your Growth",
-    description: "Your personalized, adaptive intelligence feed. A living feed that helps you bloom and grow.",
+    title: "Trace - Build Your Own Feed",
+    description: "A personalized feed with content from across the web",
     images: ["/trace.png"],
   },
   robots: {
@@ -76,7 +76,7 @@ export default function RootLayout({
         "@id": "https://www.yourtrace.online/#website",
         "url": "https://www.yourtrace.online",
         "name": "Trace",
-        "description": "Your personalized, adaptive intelligence feed",
+        "description": "Build your own feed with content from across the web",
         "potentialAction": {
           "@type": "SearchAction",
           "target": "https://www.yourtrace.online/feed?q={search_term_string}",
@@ -98,7 +98,7 @@ export default function RootLayout({
         "@type": "Product",
         "@id": "https://www.yourtrace.online/#product",
         "name": "Trace Pro",
-        "description": "Premium personalized intelligence feed with adaptive learning",
+        "description": "Premium feed with content from across the web",
         "image": "https://www.yourtrace.online/trace.png",
         "offers": {
           "@type": "Offer",

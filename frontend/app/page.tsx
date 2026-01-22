@@ -98,18 +98,20 @@ const Nav = () => {
             {/* Desktop Left Nav */}
             <div className="hidden md:flex items-center gap-1 flex-1">
               {!user && (
-                <a href="#how" className="hover:text-primary px-4 py-2 text-[10px] tracking-[0.3em] uppercase transition-colors text-secondary font-mono">
+                <a href="#how" className="hover:text-primary hover:border-b px-4 py-2 text-[10px] tracking-[0.3em] uppercase transition-colors text-secondary font-mono">
                   How It Works
                 </a>
               )}
               {user ? (
-                <a href="/feed" className="hover:text-primary px-4 py-2 text-[10px] tracking-[0.3em] uppercase transition-colors text-secondary font-mono">
+                <a href="/feed" className="hover:text-primary hover:border-b px-4 py-2 text-[10px] tracking-[0.3em] uppercase transition-colors text-secondary font-mono">
                   Your Feed
                 </a>
               ) : (
-                <a href="#feed" className="hover:text-primary px-4 py-2 text-[10px] tracking-[0.3em] uppercase transition-colors text-secondary font-mono">
-                  The Feed
-                </a>
+                <>
+                  <a href="/trending" className="hover:text-primary hover:border-b px-4 py-2 text-[10px] tracking-[0.3em] uppercase transition-colors text-secondary font-mono">
+                    Trending Topics
+                  </a>
+                </>
               )}
             </div>
 
@@ -201,13 +203,22 @@ const Nav = () => {
                       Your Feed
                     </a>
                   ) : (
-                    <a
-                      href="#feed"
-                      className="text-[10px] tracking-[0.3em] uppercase text-secondary font-mono hover:text-primary transition-colors"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      The Feed
-                    </a>
+                    <>
+                      <a
+                        href="#feed"
+                        className="text-[10px] tracking-[0.3em] uppercase text-secondary font-mono hover:text-primary transition-colors"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        The Feed
+                      </a>
+                      <a
+                        href="/trending"
+                        className="text-[10px] tracking-[0.3em] uppercase text-secondary font-mono hover:text-primary transition-colors"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Trending
+                      </a>
+                    </>
                   )}
                   {user ? (
                     <button
@@ -548,8 +559,8 @@ const Hero = () => {
                   transition={{ duration: 0.8, delay: 0.3 }}
                   className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl leading-[0.9] font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6 lg:mb-8"
                 >
-                  Fuck The Algorithms <br />
-                  <span className="text-secondary/40 italic">Build Your Own</span>
+                  Fu*k The Algorithms <br />
+                  <span className="text-secondary/40 italic text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl">Build Your Own Feed</span>
                 </motion.h1>
 
                 <motion.p
@@ -559,7 +570,7 @@ const Hero = () => {
                   className="text-sm md:text-base lg:text-lg text-secondary font-mono leading-relaxed mb-4 md:mb-5 max-w-lg"
                 >
                   {isAlphaMode()
-                    ? "Every morning, we scan Hacker News, Reddit, Twitter, YouTube, arXiv, and 50+ engineering blogs. You get the 10-15 things that actually matter."
+                    ? "Every morning, we scan Hacker News, Reddit, Twitter, YouTube, arXiv, and 50+ blogs. You get the 10-15 things that actually matter."
                     : "Join the waitlist to get early access. We scan 1,000+ sources daily so you don't have to."
                   }
                 </motion.p>
@@ -597,9 +608,9 @@ const Hero = () => {
                     </span>
                     <div className="absolute inset-0 translate-y-full group-hover:translate-y-0 bg-primary/20 transition-transform duration-300" />
                   </button>
-                  <a href="#demo" className="w-full sm:w-auto">
+                  <a href="/trending" className="w-full sm:w-auto">
                     <button className="flex items-center justify-center gap-2 text-foreground hover:text-primary transition-colors text-[9px] md:text-[10px] font-mono uppercase tracking-[0.2em] md:tracking-[0.25em] px-8 py-3.5 md:px-10 md:py-4 border border-border hover:border-primary w-full">
-                      See Example Feed <ChevronRight size={12} />
+                      See Trending Topics <ChevronRight size={12} />
                     </button>
                   </a>
                 </motion.div>

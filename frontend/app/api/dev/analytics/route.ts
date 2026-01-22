@@ -100,6 +100,9 @@ export async function GET(request: NextRequest) {
         email: data.email || '',
         onboarded: data.onboarded || false,
         subscriptionStatus: data.subscriptionStatus || 'none',
+        willCancelAt: data.willCancelAt || null,
+        subscriptionId: data.subscriptionId || null,
+        trialEndDate: data.trialEndDate || null,
         feedItemCount,
         latestFeedDate,
         interactionCount, // Today's interactions
@@ -117,6 +120,18 @@ export async function GET(request: NextRequest) {
     const onboardedWithNoFeed = onboardedUsers.filter(u => u.feedItemCount === 0);
     const subscribedWithNoFeed = subscribedUsers.filter(u => u.feedItemCount === 0);
     const subscribedWithInteractions = subscribedUsers.filter(u => u.interactionCount > 0);
+    const scheduledCancellations = subscribedUsers.filter(u => Boolean(u.willCancelAt));
+    const today = new Date();
+    const giftedSubscriptions = subscribedUsers.filter(u => {
+      if (u.subscriptionStatus !== 'active') return false;
+      const hasNoSubscriptionId = !u.subscriptionId;
+      if (hasNoSubscriptionId) return true;
+      if (!u.trialEndDate) return false;
+      const trialEnd = u.trialEndDate?.seconds
+        ? new Date(u.trialEndDate.seconds * 1000)
+        : new Date(u.trialEndDate);
+      return trialEnd < today;
+    });
 
     const summary = {
       totalUsers,
@@ -125,6 +140,8 @@ export async function GET(request: NextRequest) {
       onboardedWithNoFeed: onboardedWithNoFeed.length,
       subscribedWithNoFeed: subscribedWithNoFeed.length,
       subscribedWithInteractions: subscribedWithInteractions.length,
+      scheduledCancellations: scheduledCancellations.length,
+      giftedSubscriptions: giftedSubscriptions.length,
       avgFeedItems: subscribedUsers.length > 0 
         ? (subscribedUsers.reduce((sum, u) => sum + u.feedItemCount, 0) / subscribedUsers.length).toFixed(1)
         : 0,

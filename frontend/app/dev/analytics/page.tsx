@@ -26,6 +26,9 @@ type UserData = {
   email: string;
   onboarded: boolean;
   subscriptionStatus: string;
+  willCancelAt?: any;
+  subscriptionId?: string | null;
+  trialEndDate?: any;
   feedItemCount: number;
   latestFeedDate: string | null;
   interactionCount: number;
@@ -43,6 +46,8 @@ type AnalyticsSummary = {
   onboardedWithNoFeed: number;
   subscribedWithNoFeed: number;
   subscribedWithInteractions: number;
+  scheduledCancellations: number;
+  giftedSubscriptions: number;
   avgFeedItems: string;
   avgTodayInteractions: string;
 };
@@ -172,7 +177,7 @@ export default function AnalyticsPage() {
           <>
             {/* Summary Cards */}
             {summary && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -214,6 +219,42 @@ export default function AnalyticsPage() {
                   <h3 className="text-xs font-mono uppercase tracking-wider text-secondary">Subscribed</h3>
                   <p className="text-[10px] font-mono text-secondary/60 mt-1">
                     {summary.subscribedWithNoFeed} with no feed
+                  </p>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="border border-border p-5 bg-background hover:border-primary/30 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <Calendar size={20} className="text-amber-500" />
+                    <span className="text-2xl font-serif">{summary.scheduledCancellations}</span>
+                  </div>
+                  <h3 className="text-xs font-mono uppercase tracking-wider text-secondary">
+                    Scheduled Cancellations
+                  </h3>
+                  <p className="text-[10px] font-mono text-secondary/60 mt-1">
+                    Active/trial with willCancelAt
+                  </p>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="border border-border p-5 bg-background hover:border-primary/30 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <CheckCircle size={20} className="text-emerald-500" />
+                    <span className="text-2xl font-serif">{summary.giftedSubscriptions}</span>
+                  </div>
+                  <h3 className="text-xs font-mono uppercase tracking-wider text-secondary">
+                    Gifted Subs
+                  </h3>
+                  <p className="text-[10px] font-mono text-secondary/60 mt-1">
+                    Active with no sub ID or expired trial
                   </p>
                 </motion.div>
 
@@ -299,6 +340,7 @@ export default function AnalyticsPage() {
                         <td className="p-3">
                           <div className="font-serif text-sm">{u.name}</div>
                           <div className="text-[10px] font-mono text-secondary/60 mt-0.5">{u.email}</div>
+                          <div className="text-[10px] font-mono text-secondary/40">{u.uid}</div>
                           {u.interests.length > 0 && (
                             <div className="text-[9px] font-mono text-secondary/40 mt-1 truncate max-w-xs">
                               {u.interests.slice(0, 3).join(', ')}
