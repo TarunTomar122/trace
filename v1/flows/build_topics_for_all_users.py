@@ -1,14 +1,15 @@
 """
 Build topic pools for all subscribed users (trial + active).
+Skips any topic refreshed within the last N days.
 
 Usage:
   python v1/flows/build_topics_for_all_users.py
   python v1/flows/build_topics_for_all_users.py --limit 10
+  python v1/flows/build_topics_for_all_users.py --min-refresh-days 5
 """
 
 import argparse
 import sys
-from datetime import datetime, timedelta
 import time
 from pathlib import Path
 
@@ -16,40 +17,21 @@ project_root = str(Path(__file__).parent.parent.parent)
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
-from v1.storage import FirestoreStore
-from v1.flows.build_topics_for_user import build_topics_for_user
+from v1.storage import FirestoreStore  # noqa: E402
+from v1.flows.build_topics_for_user import (  # noqa: E402
+    build_topics_for_user,
+)
 
 
-def _should_run(store: FirestoreStore, min_days: int = 5) -> bool:
-    doc_ref = store.db.collection("job_runs").document("topics_build")
-    doc = doc_ref.get()
-    if not doc.exists:
-        return True
-    last_run = (doc.to_dict() or {}).get("last_run")
-    if not last_run:
-        return True
-    try:
-        last_dt = datetime.fromisoformat(last_run.replace("Z", "+00:00"))
-    except (ValueError, TypeError):
-        return True
-    return datetime.utcnow() - last_dt >= timedelta(days=min_days)
-
-
-def _mark_run(store: FirestoreStore) -> None:
-    doc_ref = store.db.collection("job_runs").document("topics_build")
-    doc_ref.set({"last_run": datetime.utcnow().isoformat()}, merge=True)
-
-
-def build_topics_for_all_users(limit: int | None = None) -> dict:
+def build_topics_for_all_users(
+    limit: int | None = None,
+    min_refresh_days: int = 5,
+) -> dict:
     store = FirestoreStore()
-    if not _should_run(store):
-        print("Skipping topics build (last run < 5 days ago).")
-        return {"users_processed": 0, "success": 0, "failed": 0, "skipped": True}
-
     users = store.get_onboarded_users()
     if limit:
         users = users[:limit]
@@ -68,20 +50,25 @@ def build_topics_for_all_users(limit: int | None = None) -> dict:
             continue
         print(f"[{i}/{total}] Building topics for {user_id}...")
         try:
-            build_topics_for_user(user_id)
+            result = build_topics_for_user(
+                user_id,
+                min_refresh_days=min_refresh_days,
+            )
+            print(
+                "  Result: "
+                f"built={result.get('topics_written', 0)}, "
+                f"skipped={result.get('topics_skipped', 0)}"
+            )
             success += 1
         except Exception as e:
             failed += 1
             print(f"  Error: {e}")
         time.sleep(0.2)
 
-    _mark_run(store)
-
     return {
         "users_processed": total,
         "success": success,
         "failed": failed,
-        "skipped": False,
     }
 
 
@@ -89,10 +76,23 @@ def main():
     parser = argparse.ArgumentParser(
         description="Build topics for all subscribed users"
     )
-    parser.add_argument("--limit", type=int, help="Limit number of users to process")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        help="Limit number of users to process",
+    )
+    parser.add_argument(
+        "--min-refresh-days",
+        type=int,
+        default=5,
+        help="Skip topics refreshed within this many days",
+    )
     args = parser.parse_args()
 
-    result = build_topics_for_all_users(limit=args.limit)
+    result = build_topics_for_all_users(
+        limit=args.limit,
+        min_refresh_days=args.min_refresh_days,
+    )
     print(f"Done. Users processed: {result['users_processed']}")
 
 

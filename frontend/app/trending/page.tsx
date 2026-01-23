@@ -1,10 +1,7 @@
-"use client";
-
-import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { 
   Sparkles,
-  ArrowRight,
+  ArrowUpRight,
   Zap,
   Palette,
   Bot,
@@ -12,7 +9,10 @@ import {
   Music,
   Code,
 } from 'lucide-react';
-import Header from '@/components/Header';
+import PublicHeader from '@/components/PublicHeader';
+
+// Static page - no data fetching needed
+export const dynamic = 'force-static';
 
 const TOPICS = [
   {
@@ -36,7 +36,7 @@ const TOPICS = [
   {
     id: 'ai-agents',
     name: 'AI Agents',
-    description: 'Building intelligent agents, LLM applications, and the future of AI interactions',
+    description: 'Autonomous AI systems, frameworks, and applications reshaping how we build software',
     icon: Bot,
     color: 'text-blue-500',
     bgColor: 'bg-blue-500/10',
@@ -45,7 +45,7 @@ const TOPICS = [
   {
     id: 'startups',
     name: 'Startups',
-    description: 'Founder stories, growth strategies, and insights from the startup ecosystem',
+    description: 'Founder stories, funding news, and insights from the startup ecosystem',
     icon: Rocket,
     color: 'text-purple-500',
     bgColor: 'bg-purple-500/10',
@@ -69,118 +69,84 @@ const TOPICS = [
     bgColor: 'bg-indigo-500/10',
     borderColor: 'border-indigo-500/20',
   },
-] as const;
-
-function TopicCard({ topic, index }: { topic: typeof TOPICS[number]; index: number }) {
-  const Icon = topic.icon;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: index * 0.1 }}
-    >
-      <Link href={`/trending/${topic.id}`}>
-        <div className={`group border ${topic.borderColor} ${topic.bgColor} p-6 md:p-8 hover:border-opacity-60 transition-all cursor-pointer h-full`}>
-          <div className="flex items-start gap-4 mb-4">
-            <div className={`w-12 h-12 md:w-14 md:h-14 ${topic.bgColor} border ${topic.borderColor} flex items-center justify-center shrink-0`}>
-              <Icon size={24} className={`${topic.color} md:hidden`} strokeWidth={1.5} />
-              <Icon size={28} className={`${topic.color} hidden md:block`} strokeWidth={1.5} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-lg md:text-xl font-serif text-foreground group-hover:text-primary transition-colors mb-2">
-                {topic.name}
-              </h3>
-              <p className="text-sm font-mono text-secondary/70 leading-relaxed">
-                {topic.description}
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-between mt-6">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-secondary/60">
-              Explore topic
-            </span>
-            <ArrowRight 
-              size={16} 
-              className="text-secondary/40 group-hover:text-primary group-hover:translate-x-1 transition-all" 
-              strokeWidth={1.5}
-            />
-          </div>
-        </div>
-      </Link>
-    </motion.div>
-  );
-}
+];
 
 export default function TrendingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Header backHref="/" backLabel="Back to Home" />
+      <PublicHeader showHome={true} backHref="/" backLabel="Back to Home" />
 
       <main className="w-full mt-6 md:mt-12">
-        <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8">
-          {/* Hero Section */}
-          <div className="mb-12 md:mb-16 text-center">
-
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.1 }}
-              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-serif font-light tracking-tight text-foreground uppercase mb-6"
-            >
-              Discover <span className="text-secondary/40">What&apos;s New</span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-base md:text-lg font-mono text-secondary max-w-2xl mx-auto leading-relaxed"
-            >
-              Curated content from across the web. Updated regularly with the latest articles, discussions, and videos.
-            </motion.p>
+        <div className="max-w-5xl mx-auto px-4 md:px-6 lg:px-8">
+          {/* Header */}
+          <div className="mb-12 md:mb-16">
+            <div className="flex items-center gap-3 mb-4">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tight text-foreground uppercase">
+                Trending
+              </h1>
+            </div>
+            <p className="text-sm md:text-base font-mono text-secondary/70 max-w-2xl">
+              Curated topics updated daily with the latest articles, discussions, and videos from across the web
+            </p>
           </div>
 
           {/* Topics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-16">
-            {TOPICS.map((topic, index) => (
-              <TopicCard key={topic.id} topic={topic} index={index} />
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-12">
+            {TOPICS.map((topic) => {
+              const Icon = topic.icon;
+              return (
+                <Link
+                  key={topic.id}
+                  href={`/trending/${topic.id}`}
+                  className="group block border-2 border-border hover:border-primary transition-all duration-300"
+                >
+                  <div className={`p-6 md:p-8 ${topic.bgColor} group-hover:bg-primary/5 transition-colors`}>
+                    {/* Icon and Title */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className={`w-12 h-12 ${topic.bgColor} ${topic.borderColor} border-2 flex items-center justify-center`}>
+                        <Icon size={24} className={topic.color} strokeWidth={1.5} />
+                      </div>
+                      <ArrowUpRight 
+                        size={20} 
+                        className="text-secondary opacity-40 group-hover:opacity-100 group-hover:text-primary transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5" 
+                        strokeWidth={1.5}
+                      />
+                    </div>
+
+                    {/* Content */}
+                    <h2 className="text-xl md:text-2xl font-serif font-light text-foreground mb-2 uppercase tracking-tight">
+                      {topic.name}
+                    </h2>
+                    <p className="text-xs md:text-sm font-mono text-secondary/70 leading-relaxed">
+                      {topic.description}
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
 
           {/* CTA Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.5 }}
-            className="border-2 border-primary bg-primary/5 p-8 md:p-12 text-center mb-16"
-          >
-            <div className="w-16 h-16 bg-primary/20 border border-primary/30 flex items-center justify-center mx-auto mb-6">
-              <Sparkles size={32} className="text-primary" strokeWidth={1.5} />
-            </div>
-            
-            <h2 className="text-2xl md:text-3xl font-serif font-light text-foreground mb-4">
-              Want a <span className="text-primary">Personalized</span> Feed?
+          <div className="border-2 border-primary bg-primary/5 p-8 md:p-12 text-center mb-12">
+            <Sparkles size={32} className="text-primary mx-auto mb-6" strokeWidth={1.5} />
+            <h2 className="text-2xl md:text-3xl font-serif font-light text-foreground mb-4 uppercase">
+              Want More Than Trending?
             </h2>
-            
-            <p className="text-sm md:text-base font-mono text-secondary mb-8 max-w-xl mx-auto leading-relaxed">
-              Get daily content curated specifically for your interests. AI learns what you like and delivers the perfect mix every morning.
+            <p className="text-sm md:text-base font-mono text-secondary/70 mb-8 max-w-2xl mx-auto">
+              Get a personalized feed curated daily based on your unique interests and learning goals. 
+              No algorithms, no distractions—just the content that matters to you.
             </p>
-            
             <Link href="/">
-              <button className="group relative bg-primary text-primary-foreground px-8 py-4 text-[10px] font-mono font-bold uppercase tracking-[0.25em] transition-all overflow-hidden hover:tracking-[0.35em]">
-                <span className="relative z-10 flex items-center justify-center gap-2">
-                  Start Free Trial
-                  <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
-                </span>
-                <div className="absolute inset-0 translate-y-full group-hover:translate-y-0 bg-primary/20 transition-transform duration-300" />
+              <button className="bg-primary text-primary-foreground px-8 py-4 text-[10px] md:text-xs font-mono font-bold uppercase tracking-[0.25em] hover:bg-primary/90 transition-all active:scale-95">
+                Start Free Trial
               </button>
             </Link>
-          </motion.div>
+          </div>
+
+          {/* Bottom spacer */}
+          <div className="h-12" />
         </div>
       </main>
     </div>
   );
 }
-

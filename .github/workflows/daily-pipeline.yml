@@ -8,9 +8,9 @@ on:
     # Processes previous day's interactions
     - cron: '30 23 * * *'
 
-    # Content pipeline at 6:00 AM IST (12:30 AM UTC)
+    # Content pipeline at 8:00 AM IST (2:30 AM UTC)
     # Runs: Topics (skip if <5d) → Feeds → Suggested items
-    - cron: '30 0 * * *'
+    - cron: '30 2 * * *'
   
   # Allow manual trigger
   workflow_dispatch:

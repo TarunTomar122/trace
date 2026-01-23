@@ -205,13 +205,6 @@ const Nav = () => {
                   ) : (
                     <>
                       <a
-                        href="#feed"
-                        className="text-[10px] tracking-[0.3em] uppercase text-secondary font-mono hover:text-primary transition-colors"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        The Feed
-                      </a>
-                      <a
                         href="/trending"
                         className="text-[10px] tracking-[0.3em] uppercase text-secondary font-mono hover:text-primary transition-colors"
                         onClick={() => setMobileMenuOpen(false)}
@@ -248,7 +241,7 @@ const Nav = () => {
 
 // --- Grid Background ---
 const GridBackground = () => (
-  <div className="fixed inset-0 pointer-events-none z-0 flex justify-center opacity-30">
+  <div className="fixed inset-0 pointer-events-none z-0 flex justify-center opacity-20">
     <div className="grid-inner w-full h-full max-w-7xl flex justify-between px-4">
       {[1, 2, 3, 4, 5].map((i) => (
         <div key={i} className="w-px h-full bg-border" />
@@ -267,7 +260,7 @@ const FlowDiagram = () => {
   ];
 
   return (
-    <div className="relative w-full h-full min-h-[300px] md:min-h-[400px] flex items-center justify-center">
+    <div className="relative w-full h-full min-h-[300px] md:min-h-[400px] flex items-center justify-center hidden md:block">
       {/* Source Nodes - Stacked vertically on the left */}
       <div className="absolute left-0 top-1/2 -translate-y-3/5 flex flex-col gap-3 md:gap-5">
         {sources.map((source, i) => (
@@ -501,19 +494,6 @@ const Hero = () => {
             {isLoggedIn && profile?.onboarded ? (
               // Logged-in user view
               <>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.2 }}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 border border-primary bg-primary/5 mb-4 md:mb-6 w-fit"
-                >
-                  <Sparkles size={12} className="md:hidden text-primary" />
-                  <Sparkles size={14} className="hidden md:block text-primary" />
-                  <span className="text-[9px] md:text-[10px] font-mono uppercase tracking-[0.2em] text-primary">
-                    Welcome back, {profile?.name?.split(' ')[0]}
-                  </span>
-                </motion.div>
-
                 <motion.h1
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -530,7 +510,7 @@ const Hero = () => {
                   transition={{ duration: 0.8, delay: 0.4 }}
                   className="text-sm md:text-base lg:text-lg text-secondary font-mono leading-relaxed mb-6 md:mb-8 lg:mb-10 max-w-lg"
                 >
-                  Your personalized feed is ready.
+                  Your personalized feed curated from across the web is ready.
                 </motion.p>
 
                 <motion.div
@@ -1866,7 +1846,7 @@ const Footer = () => (
             TRACE
           </div>
           <p className="text-secondary font-mono text-[9px] md:text-[10px] uppercase tracking-wider md:tracking-widest leading-relaxed max-w-[200px] md:max-w-[240px]">
-            Your daily tech digest. 5 minutes.
+            Build your own feed with content from across the web
           </p>
         </div>
 
@@ -1876,6 +1856,7 @@ const Footer = () => (
             <div className="flex flex-col gap-3 md:gap-4">
               <a href="#demo" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">See Example Feed</a>
               <a href="#get-started" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">Start Free Trial</a>
+              <a href="/trending" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">Trending Topics</a>
             </div>
           </div>
           <div>

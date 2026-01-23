@@ -281,6 +281,7 @@ def build_unsubscribed_feed(
         if topic_kind == "hobby":
             picked_blogs = _pick_items(blogs, 1, seen_urls, chosen_urls)
             picked_videos = _pick_items(videos, 1, seen_urls, chosen_urls)
+            picked_discussions = []
         else:
             picked_blogs = _pick_items(blogs, 2, seen_urls, chosen_urls)
             picked_videos = []

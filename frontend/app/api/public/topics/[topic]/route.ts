@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminFirestore } from '@/lib/firebase-admin';
 
+// Enable ISR with 4 hour revalidation
+export const revalidate = 14400;
+
 // Curated list of allowed topics for public viewing
 const ALLOWED_TOPICS = [
   'frontend-performance',
@@ -113,12 +116,19 @@ export async function GET(
       })),
     ];
 
+    // Return with proper caching headers for SEO and performance
     return NextResponse.json({
       topic_id: topicId,
       display_name: topicData?.display_name || TOPIC_DISPLAY_NAMES[topicId as AllowedTopic],
       items,
       updated_at: topicData?.updated_at || null,
       total: items.length,
+    }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=14400, stale-while-revalidate=86400',
+        'CDN-Cache-Control': 'public, s-maxage=14400',
+        'Vercel-CDN-Cache-Control': 'public, s-maxage=14400',
+      },
     });
   } catch (error: any) {
     console.error('Error fetching topic:', error);

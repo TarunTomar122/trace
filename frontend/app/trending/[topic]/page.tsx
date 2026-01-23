@@ -9,7 +9,12 @@ import {
   ArrowUpRight,
   Sparkles,
 } from 'lucide-react';
-import Header from '@/components/Header';
+import PublicHeader from '@/components/PublicHeader';
+import { adminFirestore } from '@/lib/firebase-admin';
+
+// Use dynamic rendering to avoid build-time API calls
+export const dynamic = 'force-dynamic';
+export const revalidate = 14400; // Revalidate every 4 hours
 
 const ALLOWED_TOPICS = [
   'frontend-performance',
@@ -102,33 +107,89 @@ function FeedCard({ item }: { item: FeedItem }) {
 async function getTopicData(topicId: string) {
   // Validate topic
   if (!ALLOWED_TOPICS.includes(topicId as typeof ALLOWED_TOPICS[number])) {
-    console.log('Topic not allowed:', topicId);
+    console.log('[getTopicData] Topic not allowed:', topicId);
     return null;
   }
 
   try {
-    // Fetch from API route
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const url = `${baseUrl}/api/public/topics/${topicId}`;
-    console.log('Fetching topic data from:', url);
-    
-    const response = await fetch(url, {
-      cache: 'no-store', // Disable cache for debugging
-    });
-    
-    console.log('Response status:', response.status);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API error:', response.status, errorText);
+    if (!adminFirestore) {
+      console.error('[getTopicData] Firebase Admin not initialized');
       return null;
     }
+
+    console.log('[getTopicData] Fetching topic from Firestore:', topicId);
     
-    const data = await response.json();
-    console.log('Topic data received:', data);
-    return data;
+    // Fetch directly from Firestore
+    const topicDoc = await adminFirestore
+      .collection('topics')
+      .doc(topicId)
+      .get();
+
+    if (!topicDoc.exists) {
+      console.log('[getTopicData] Topic not found in Firestore:', topicId);
+      return null;
+    }
+
+    const topicData = topicDoc.data();
+    const latest = topicData?.latest || {};
+
+    // Extract content - max 4 items total per topic
+    const blogs = (latest.blogs || []).slice(0, 2);
+    const discussions = (latest.discussions || []).slice(0, 1);
+    const videos = (latest.videos || []).slice(0, 1);
+
+    // Combine and format items
+    const items = [
+      ...blogs.map((item: any, idx: number) => ({
+        id: `${topicId}_blog_${idx}`,
+        type: 'blog',
+        title: item.title || '',
+        description: '',
+        url: item.url || '',
+        tags: [topicId],
+        source: 'exa',
+        metadata: {
+          why_relevant: `Latest in ${TOPIC_DISPLAY_NAMES[topicId]}`,
+        },
+      })),
+      ...discussions.map((item: any, idx: number) => ({
+        id: `${topicId}_discussion_${idx}`,
+        type: 'discussion',
+        title: item.title || '',
+        description: '',
+        url: item.url || '',
+        tags: [topicId],
+        source: 'exa',
+        metadata: {
+          why_relevant: `Latest in ${TOPIC_DISPLAY_NAMES[topicId]}`,
+        },
+      })),
+      ...videos.map((item: any, idx: number) => ({
+        id: `${topicId}_video_${idx}`,
+        type: 'video',
+        title: item.title || '',
+        description: '',
+        url: item.url || '',
+        thumbnail: item.thumbnail || null,
+        tags: [topicId],
+        source: 'youtube',
+        metadata: {
+          why_relevant: `Latest in ${TOPIC_DISPLAY_NAMES[topicId]}`,
+        },
+      })),
+    ];
+
+    console.log('[getTopicData] Topic data fetched, items count:', items.length);
+
+    return {
+      topic_id: topicId,
+      display_name: topicData?.display_name || TOPIC_DISPLAY_NAMES[topicId],
+      items,
+      updated_at: topicData?.updated_at || null,
+      total: items.length,
+    };
   } catch (error) {
-    console.error('Error fetching topic:', error);
+    console.error('[getTopicData] Error fetching topic:', error);
     return null;
   }
 }
@@ -139,13 +200,14 @@ export default async function TrendingTopicPage({
   params: Promise<{ topic: string }> 
 }) {
   const { topic } = await params;
-  const topicData = await getTopicData(topic);
   
-  if (!topicData) {
+  // Validate topic is allowed - 404 if not
+  if (!ALLOWED_TOPICS.includes(topic as typeof ALLOWED_TOPICS[number])) {
     notFound();
   }
-
-  const { items = [], display_name } = topicData;
+  
+  const topicData = await getTopicData(topic);
+  const { items = [], display_name } = topicData || {};
   const displayName = display_name || TOPIC_DISPLAY_NAMES[topic] || topic;
 
   // Structured data for SEO
@@ -184,7 +246,7 @@ export default async function TrendingTopicPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
       
-      <Header backHref="/trending" backLabel="Back to Trending" />
+      <PublicHeader backHref="/trending" backLabel="Back to Trending" />
 
       <main className="w-full mt-6 md:mt-12">
         <div className="max-w-4xl mx-auto px-4 md:px-6 lg:px-8">
@@ -247,12 +309,8 @@ export default async function TrendingTopicPage({
   );
 }
 
-// Generate static params for all allowed topics
-export async function generateStaticParams() {
-  return ALLOWED_TOPICS.map((topic) => ({
-    topic,
-  }));
-}
+// Allow dynamic params - pages generated on first request
+export const dynamicParams = true;
 
 // Generate metadata for SEO
 export async function generateMetadata({ 

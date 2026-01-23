@@ -6,7 +6,8 @@ For each interest (capped), runs two Exa searches:
 - "discussions about <interest>"
 
 Stores results in Firestore collection "topics":
-topics/{topic_id} -> generations[date_key] and latest with blogs/discussions URLs.
+topics/{topic_id} -> generations[date_key] and latest with
+blogs/discussions URLs.
 
 Usage:
   python v1/flows/build_topics_for_user.py --user_id USER_ID
@@ -25,13 +26,13 @@ project_root = str(Path(__file__).parent.parent.parent)
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
-from v1.storage import FirestoreStore
-from v1.tools.youtube_search import youtube_search
-from openai import OpenAI
+from v1.storage import FirestoreStore  # noqa: E402
+from v1.tools.youtube_search import youtube_search  # noqa: E402
+from openai import OpenAI  # noqa: E402
 
 try:
     from exa_py import Exa
@@ -46,6 +47,7 @@ MAX_HOBBIES_DEFAULT = 3
 RESULTS_PER_SEARCH = 10
 LOOKBACK_DAYS_DEFAULT = 60
 VIDEO_LOOKBACK_DAYS = 60
+MIN_REFRESH_DAYS_DEFAULT = 5
 
 
 def _normalize_interest(interest: str) -> str:
@@ -79,6 +81,27 @@ def _iso_z(dt: datetime) -> str:
     )
 
 
+def _parse_iso_z(value: str) -> datetime | None:
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return None
+
+
+def _should_refresh_topic(topic_doc: dict, min_days: int) -> bool:
+    if not topic_doc:
+        return True
+    latest = topic_doc.get("latest") if isinstance(topic_doc, dict) else None
+    updated_at = None
+    if isinstance(latest, dict):
+        updated_at = latest.get("generated_at") or latest.get("updated_at")
+    updated_at = updated_at or topic_doc.get("updated_at")
+    parsed = _parse_iso_z(updated_at) if isinstance(updated_at, str) else None
+    if not parsed:
+        return True
+    return datetime.now(timezone.utc) - parsed >= timedelta(days=min_days)
+
+
 def _extract_items(results) -> list[dict]:
     items = []
     for r in results or []:
@@ -108,7 +131,12 @@ def _extract_items(results) -> list[dict]:
     return deduped
 
 
-def _search_exa(exa: Exa, query: str, start_date: str, end_date: str) -> list[dict]:
+def _search_exa(
+    exa: Exa,
+    query: str,
+    start_date: str,
+    end_date: str,
+) -> list[dict]:
     response = exa.search(
         query,
         num_results=RESULTS_PER_SEARCH,
@@ -164,7 +192,11 @@ def _generate_topic_queries(interest: str, user_profile: dict) -> list[str]:
         data = json.loads(text)
         queries = data.get("queries", [])
         if isinstance(queries, list):
-            cleaned = [q.strip() for q in queries if isinstance(q, str) and q.strip()]
+            cleaned = [
+                q.strip()
+                for q in queries
+                if isinstance(q, str) and q.strip()
+            ]
             if cleaned:
                 print(f"  Queries generated: {cleaned}")
                 return cleaned[:5]
@@ -179,7 +211,9 @@ def _get_subscribed_user_profile(store: FirestoreStore, user_id: str) -> dict:
         raise ValueError(f"User {user_id} not found")
     status = profile.get("subscriptionStatus", "none")
     if status not in ["trial", "active"]:
-        raise ValueError(f"User {user_id} is not subscribed (status: {status})")
+        raise ValueError(
+            f"User {user_id} is not subscribed (status: {status})"
+        )
     return profile
 
 
@@ -187,16 +221,25 @@ def build_topics_for_user(
     user_id: str,
     max_interests: int = MAX_INTERESTS_DEFAULT,
     lookback_days: int = LOOKBACK_DAYS_DEFAULT,
+    min_refresh_days: int = MIN_REFRESH_DAYS_DEFAULT,
 ) -> dict:
     store = FirestoreStore()
     profile = _get_subscribed_user_profile(store, user_id)
 
     interests = profile.get("interests", []) or []
-    interests = [i.strip() for i in interests if isinstance(i, str) and i.strip()]
+    interests = [
+        i.strip()
+        for i in interests
+        if isinstance(i, str) and i.strip()
+    ]
     interests = list(dict.fromkeys(interests))[:max_interests]
 
     hobbies = profile.get("hobbies", []) or []
-    hobbies = [h.strip() for h in hobbies if isinstance(h, str) and h.strip()]
+    hobbies = [
+        h.strip()
+        for h in hobbies
+        if isinstance(h, str) and h.strip()
+    ]
     hobbies = list(dict.fromkeys(hobbies))[:MAX_HOBBIES_DEFAULT]
 
     if not interests and not hobbies:
@@ -208,7 +251,9 @@ def build_topics_for_user(
             "hobbies": [],
         }
 
-    api_key = (os.getenv("EXA_API_KEY") or os.getenv("EXA_KEY") or "").strip()
+    api_key = (
+        os.getenv("EXA_API_KEY") or os.getenv("EXA_KEY") or ""
+    ).strip()
     if not api_key:
         raise ValueError("Set EXA_API_KEY (or EXA_KEY) in the environment.")
 
@@ -221,10 +266,22 @@ def build_topics_for_user(
     generated_at = _iso_z(now)
 
     topics_written = 0
+    topics_skipped = 0
 
     def _write_topic(topic_name: str, topic_kind: str) -> None:
-        nonlocal topics_written
+        nonlocal topics_written, topics_skipped
         topic_id = _normalize_interest(topic_name)
+        doc_ref = store.db.collection("topics").document(topic_id)
+        existing = doc_ref.get()
+        data = existing.to_dict() if existing.exists else {}
+        if not _should_refresh_topic(data, min_refresh_days):
+            print(
+                "Skipping topic (fresh): "
+                f"{topic_name} ({topic_id}) [{topic_kind}]"
+            )
+            topics_skipped += 1
+            return
+
         print(f"Processing topic: {topic_name} ({topic_id}) [{topic_kind}]")
 
         queries = _generate_topic_queries(topic_name, profile)
@@ -239,7 +296,9 @@ def build_topics_for_user(
         if topic_kind == "interest":
             discussions_query = f"discussions about {query_used}"
             print(f"  Exa discussion search: {discussions_query}")
-            discussions = _search_exa(exa, discussions_query, start_date, end_date)
+            discussions = _search_exa(
+                exa, discussions_query, start_date, end_date
+            )
         else:
             videos_query = f"videos about {query_used}"
             print(f"  YouTube search: {videos_query}")
@@ -255,7 +314,9 @@ def build_topics_for_user(
                     "title": v.get("title", ""),
                     "thumbnail": (v.get("metadata") or {}).get("thumbnail"),
                     "published_date": v.get("published_date"),
-                    "duration_seconds": (v.get("metadata") or {}).get("duration_seconds"),
+                    "duration_seconds": (
+                        v.get("metadata") or {}
+                    ).get("duration_seconds"),
                 })
 
         generation = {
@@ -273,10 +334,9 @@ def build_topics_for_user(
             "topic_kind": topic_kind,
         }
 
-        doc_ref = store.db.collection("topics").document(topic_id)
-        existing = doc_ref.get()
-        data = existing.to_dict() if existing.exists else {}
-        generations = data.get("generations", {}) if isinstance(data, dict) else {}
+        generations = (
+            data.get("generations", {}) if isinstance(data, dict) else {}
+        )
         generations[date_key] = generation
 
         doc_ref.set(
@@ -303,6 +363,7 @@ def build_topics_for_user(
     return {
         "user_id": user_id,
         "topics_written": topics_written,
+        "topics_skipped": topics_skipped,
         "interests": interests,
         "hobbies": hobbies,
         "date_key": date_key,
@@ -310,8 +371,14 @@ def build_topics_for_user(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Build Exa topics for a user")
-    parser.add_argument("--user_id", required=True, help="User ID to build topics for")
+    parser = argparse.ArgumentParser(
+        description="Build Exa topics for a user"
+    )
+    parser.add_argument(
+        "--user_id",
+        required=True,
+        help="User ID to build topics for",
+    )
     parser.add_argument(
         "--max-interests",
         type=int,

@@ -89,7 +89,9 @@ def run_user_feeds(date: str | None = None, limit: int | None = None) -> dict:
     duration_str = f"{int(duration // 60)}m {int(duration % 60)}s"
     
     print("\n" + "=" * 50)
-    print(f"Generated feeds for {success_count}/{len(users)} users in {duration_str}")
+    print(
+        f"Generated feeds for {success_count}/{len(all_users)} users in {duration_str}"
+    )
     
     print(f"\nSuggested items added for subscribed users: {suggested_result.get('success', 0)}")
     
