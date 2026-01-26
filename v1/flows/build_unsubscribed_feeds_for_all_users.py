@@ -21,7 +21,12 @@ from v1.storage import FirestoreStore
 from v1.flows.build_unsubscribed_feed_from_topics import build_unsubscribed_feed
 
 
-def build_unsubscribed_feeds(limit: int | None = None, skip_seen: bool = False) -> dict:
+def build_unsubscribed_feeds(
+    limit: int | None = None,
+    skip_seen: bool = False,
+    start_index: int = 0,
+    start_after: str | None = None,
+) -> dict:
     store = FirestoreStore()
     profiles = store.get_all_user_profiles()
     users = [
@@ -29,6 +34,23 @@ def build_unsubscribed_feeds(limit: int | None = None, skip_seen: bool = False) 
         if p.get("onboarded") is True
         and p.get("subscriptionStatus") not in ["trial", "active"]
     ]
+    users = sorted(users, key=lambda u: u.get("uid", ""))
+
+    if start_after:
+        start_idx = next(
+            (
+                i + 1
+                for i, u in enumerate(users)
+                if u.get("uid") == start_after
+            ),
+            0,
+        )
+    else:
+        start_idx = max(0, start_index)
+
+    if start_idx:
+        users = users[start_idx:]
+
     if limit:
         users = users[:limit]
 
@@ -59,16 +81,36 @@ def build_unsubscribed_feeds(limit: int | None = None, skip_seen: bool = False) 
         "success": success,
         "failed": failed,
         "skip_seen": skip_seen,
+        "start_index": start_idx,
     }
 
 
 def main():
     parser = argparse.ArgumentParser(description="Build feeds for unsubscribed users")
     parser.add_argument("--limit", type=int, help="Limit number of users to process")
-    parser.add_argument("--skip-seen", action="store_true", help="Skip seen URL filtering and updates")
+    parser.add_argument(
+        "--start-index",
+        type=int,
+        default=0,
+        help="Start processing from this index (0-based) after sorting by uid",
+    )
+    parser.add_argument(
+        "--start-after",
+        help="Start after this user_id (after sorting by uid)",
+    )
+    parser.add_argument(
+        "--skip-seen",
+        action="store_true",
+        help="Skip seen URL filtering and updates",
+    )
     args = parser.parse_args()
 
-    result = build_unsubscribed_feeds(limit=args.limit, skip_seen=args.skip_seen)
+    result = build_unsubscribed_feeds(
+        limit=args.limit,
+        skip_seen=args.skip_seen,
+        start_index=args.start_index,
+        start_after=args.start_after,
+    )
     print(f"Done. Users processed: {result['users_processed']}")
 
 

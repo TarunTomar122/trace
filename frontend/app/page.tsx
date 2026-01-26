@@ -607,16 +607,6 @@ const Hero = () => {
           >
             <FlowDiagram />
             <div className="flex flex-row justify-center items-center gap-2">
-              <a href="https://peerlist.io/tarat/project/trace--nurture-your-growth" target="_blank" rel="noreferrer">
-                <img
-                  src="https://peerlist.io/api/v1/projects/embed/PRJHBAR67J9LBKOG7FKPB97ARPBNKB?showUpvote=true&theme=light"
-                  alt="Trace - Nurture Your Growth"
-                  style={{ width: 'auto', height: '42px' }}
-                />
-              </a>
-              <a href="https://orynth.dev/projects/trace" target="_blank" rel="noopener">
-                <img src="https://orynth.dev/api/badge/trace?theme=light&style=default" alt="Featured on Orynth" style={{ width: 'auto', height: '42px' }} />
-              </a>
               <a href="https://www.producthunt.com/products/trace-23?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-trace-529d0891-421d-450f-8263-879fe3b9370c" target="_blank" rel="noopener noreferrer">
                 <img alt="Trace - Trace brings content from across the web into one quiet feed | Product Hunt" style={{ width: 'auto', height: '42px' }} src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1064894&amp;theme=light&amp;t=1768817161765" />
               </a>
@@ -1895,7 +1885,7 @@ const Footer = () => (
 // --- Main Landing Page ---
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary font-serif antialiased">
+    <div className="min-h-screen bg-background text-foreground px-2 selection:bg-primary/20 selection:text-primary font-serif antialiased">
       <GridBackground />
       <WaitlistBanner />
       <Nav />
