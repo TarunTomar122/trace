@@ -29,7 +29,7 @@ from v1.flows.build_topics_for_user import (  # noqa: E402
 
 def build_topics_for_all_users(
     limit: int | None = None,
-    min_refresh_days: int = 5,
+    min_refresh_days: int = 4,
 ) -> dict:
     store = FirestoreStore()
     users = store.get_onboarded_users()

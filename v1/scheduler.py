@@ -4,15 +4,18 @@ Master Scheduler - orchestrates all daily jobs in correct order.
 This is the ONE script to run via cron. It handles:
 - 4:00 AM: run_daily_batch.py (Trend Discovery + Pool Harvest)
 - 5:00 AM: run_user_feeds.py (Generate feeds for all users)
+- 6:00 AM: build_newsletters_for_all_users.py (Build newsletters)
+- 6:30 AM: send_newsletters_for_all_users.py (Send newsletters)
 - 11:00 PM: run_daily_reflection.py (Process day's interactions)
 - 11:30 PM: cleanup_expired_signals.py
 
 Usage:
     python v1/scheduler.py --jobs all           # Run all jobs
-    python v1/scheduler.py --jobs morning       # Run morning jobs (batch + feeds)
+    python v1/scheduler.py --jobs morning       # Run morning jobs (batch + feeds + newsletters)
     python v1/scheduler.py --jobs evening       # Run evening jobs (reflection + cleanup)
     python v1/scheduler.py --jobs batch         # Run only batch job
     python v1/scheduler.py --jobs feeds         # Run only feeds job
+    python v1/scheduler.py --jobs newsletters   # Run only newsletter jobs (build + send)
     python v1/scheduler.py --jobs reflection    # Run only reflection job
     python v1/scheduler.py --jobs cleanup       # Run only cleanup job
 """
@@ -99,6 +102,18 @@ def job_cleanup_signals():
     return cleanup_expired_signals()
 
 
+def job_build_newsletters():
+    """Build newsletters for all opted-in subscribed users."""
+    from v1.flows.build_newsletters_for_all_users import build_newsletters_for_all_users
+    return build_newsletters_for_all_users()
+
+
+def job_send_newsletters():
+    """Send newsletters for all users with draft newsletters."""
+    from v1.flows.send_newsletter_for_user import send_newsletters_for_all_users
+    return send_newsletters_for_all_users()
+
+
 # Job definitions with scheduled times (for documentation)
 JOBS = {
     "batch": {
@@ -110,6 +125,16 @@ JOBS = {
         "fn": job_user_feeds,
         "description": "Generate feeds for all users",
         "scheduled_time": "5:00 AM"
+    },
+    "build_newsletters": {
+        "fn": job_build_newsletters,
+        "description": "Build newsletters for all users",
+        "scheduled_time": "6:00 AM"
+    },
+    "send_newsletters": {
+        "fn": job_send_newsletters,
+        "description": "Send newsletters to all users",
+        "scheduled_time": "6:30 AM"
     },
     "reflection": {
         "fn": job_daily_reflection,
@@ -125,9 +150,10 @@ JOBS = {
 
 # Job groups
 JOB_GROUPS = {
-    "all": ["batch", "feeds", "reflection", "cleanup"],
-    "morning": ["batch", "feeds"],
-    "evening": ["reflection", "cleanup"]
+    "all": ["batch", "feeds", "build_newsletters", "send_newsletters", "reflection", "cleanup"],
+    "morning": ["batch", "feeds", "build_newsletters", "send_newsletters"],
+    "evening": ["reflection", "cleanup"],
+    "newsletters": ["build_newsletters", "send_newsletters"]
 }
 
 
@@ -203,19 +229,23 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Job Groups:
-  all       - Run all jobs (batch, feeds, reflection, cleanup)
-  morning   - Run morning jobs (batch, feeds)
-  evening   - Run evening jobs (reflection, cleanup)
+  all         - Run all jobs (batch, feeds, newsletters, reflection, cleanup)
+  morning     - Run morning jobs (batch, feeds, newsletters)
+  evening     - Run evening jobs (reflection, cleanup)
+  newsletters - Run newsletter jobs only (build + send)
 
 Individual Jobs:
-  batch      - Trend Discovery + Pool Harvest (4:00 AM)
-  feeds      - Generate feeds for all users (5:00 AM)
-  reflection - Process day's interactions (11:00 PM)
-  cleanup    - Cleanup expired signals (11:30 PM)
+  batch            - Trend Discovery + Pool Harvest (4:00 AM)
+  feeds            - Generate feeds for all users (5:00 AM)
+  build_newsletters - Build newsletters for all users (6:00 AM)
+  send_newsletters  - Send newsletters to all users (6:30 AM)
+  reflection       - Process day's interactions (11:00 PM)
+  cleanup          - Cleanup expired signals (11:30 PM)
 
 Examples:
   python v1/scheduler.py --jobs all
   python v1/scheduler.py --jobs morning
+  python v1/scheduler.py --jobs newsletters
   python v1/scheduler.py --jobs reflection
 """
     )

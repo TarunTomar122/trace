@@ -42,10 +42,10 @@ def run_daily_batch() -> int:
     log("=" * 60)
     
     # =========================================================================
-    # Phase 0: Topics build (every 5 days)
+    # Phase 0: Topics build (every 4 days)
     # =========================================================================
     log("")
-    log("PHASE 0: TOPICS BUILD (5-day cadence)")
+    log("PHASE 0: TOPICS BUILD (4-day cadence)")
     log("-" * 40)
     try:
         topics_result = build_topics_for_all_users()
@@ -61,7 +61,7 @@ def run_daily_batch() -> int:
     log("-" * 40)
     try:
         trending_result = build_trending_news_for_day()
-        log(f"Trending news: {trending_result.get('total_articles', 0)} articles from {trending_result.get('topics_with_news', 0)} topics")
+        log(f"Trending news: {trending_result.get('total_articles', 0)} articles from {trending_result.get('umbrellas_with_news', 0)} umbrellas")
     except Exception as e:
         log(f"✗ Trending news fetch failed (non-critical): {e}")
 
