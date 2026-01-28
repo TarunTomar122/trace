@@ -423,11 +423,6 @@ def run_reflection(user_id: str, date: str, use_smart_reflection: bool = True) -
         if item.get("id") in seen_item_ids:
             # Extract tags from this seen item
             item_tags = item.get("tags", [])
-            if not item_tags:
-                # Fallback: use umbrella_id or type
-                umbrella = item.get("umbrella_id", "")
-                if umbrella:
-                    item_tags = [umbrella.lower().replace("_", "-")]
             for tag in item_tags:
                 seen_tags.add(tag.lower())
     

@@ -1,0 +1,31 @@
+<!--
+    NEWSLETTER ITEM TEMPLATE
+
+    This template is used for each item in the newsletter.
+    Placeholders:
+    - {{ITEM_URL}}: Link to the article
+    - {{ITEM_TITLE}}: Article title
+    - {{ITEM_SUMMARY}}: 2-3 sentence summary
+-->
+<tr>
+    <td style="padding: 24px 0 0 0;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+            <!-- Title -->
+            <tr>
+                <td style="padding-bottom: 8px;">
+                    <a href="{{ITEM_URL}}" style="color: #363737; font-size: 20px; font-family: -apple-system-headline, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-weight: bold; text-decoration: none; line-height: 1.16; display: block;">
+                        {{ITEM_TITLE}}
+                    </a>
+                </td>
+            </tr>
+            <!-- Summary -->
+            <tr>
+                <td style="padding-bottom: 0;">
+                    <p style="color: #363737; font-size: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.625; margin: 0 0 20px 0;">
+                        {{ITEM_SUMMARY}}
+                    </p>
+                </td>
+            </tr>
+        </table>
+    </td>
+</tr>

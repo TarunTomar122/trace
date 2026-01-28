@@ -1,5 +1,5 @@
 """
-Unsubscribe flow wrapper (keeps legacy unmap logic isolated).
+Unsubscribe flow wrapper (topics-based).
 
 Usage:
   python v1/flows/unsubscribe_user.py --user_id USER_ID
@@ -15,7 +15,7 @@ if project_root not in sys.path:
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
-from v1.algorithm.unmap_user import unmap_user
+from v1.storage import FirestoreStore
 
 
 def main():
@@ -23,7 +23,16 @@ def main():
     parser.add_argument("--user_id", required=True, help="User ID to unsubscribe")
     args = parser.parse_args()
 
-    result = unmap_user(args.user_id)
+    store = FirestoreStore()
+    profile = store.get_user_profile(args.user_id)
+    if not profile:
+        result = {"error": "User not found", "user_id": args.user_id}
+    else:
+        result = {
+            "user_id": args.user_id,
+            "status": profile.get("subscriptionStatus", "none"),
+            "message": "Topics-based system: no legacy unmap required.",
+        }
     print(result)
 
 

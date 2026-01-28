@@ -516,7 +516,7 @@ export default function OnboardingPage() {
                   <div className="relative mb-2">
                     <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 font-medium">
                       What are you interested in? <span className="text-primary">(minimum 4)</span>
-                      <HelpTooltip content="These create your content 'umbrellas' - Trace searches for articles, videos, repos, and discussions matching each interest daily" />
+                      <HelpTooltip content="These create your content topics - Trace searches for articles, videos, repos, and discussions matching each interest daily" />
                     </label>
                   </div>
                   <p className="text-xs text-secondary/70 mb-4 font-mono">

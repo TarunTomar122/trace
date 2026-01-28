@@ -10,3 +10,6 @@ schedule
 exa_py
 firebase-admin
 tavily-python
+google-genai
+beautifulsoup4
+sib-api-v3-sdk

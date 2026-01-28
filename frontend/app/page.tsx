@@ -483,6 +483,9 @@ const FlowDiagram = () => {
 const Hero = () => {
   const { user, profile, signInWithGoogle } = useAuth();
   const isLoggedIn = !!user;
+  const isOnboarded = !!user && !!profile?.onboarded;
+  const heroCtaHref = isLoggedIn && !isOnboarded ? '/onboarding' : null;
+  const heroCtaText = isLoggedIn && !isOnboarded ? 'Complete Setup' : 'Start Free Trial';
 
   return (
     <section className="relative pt-28 pb-16 md:pt-36 lg:pt-60 md:pb-24 lg:pb-40 overflow-hidden z-10">
@@ -491,7 +494,7 @@ const Hero = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Left Side - Content */}
           <div className="flex flex-col sm:mt-4">
-            {isLoggedIn && profile?.onboarded ? (
+            {isOnboarded ? (
               // Logged-in user view
               <>
                 <motion.h1
@@ -531,7 +534,7 @@ const Hero = () => {
                 </motion.div>
               </>
             ) : (
-              // New user view
+              // New or not-onboarded user view
               <>
                 <motion.h1
                   initial={{ opacity: 0, y: 20 }}
@@ -547,14 +550,26 @@ const Hero = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.4 }}
-                  className="text-sm md:text-base lg:text-lg text-secondary font-mono leading-relaxed mb-4 md:mb-5 max-w-lg"
+                  className="text-sm md:text-base lg:text-lg text-secondary font-mono leading-relaxed mb-2 max-w-lg"
                 >
                   {isAlphaMode()
                     ? "Every morning, we scan Hacker News, Reddit, Twitter, YouTube, arXiv, and 50+ blogs. You get the 10-15 things that actually matter."
                     : "Join the waitlist to get early access. We scan 1,000+ sources daily so you don't have to."
                   }
                 </motion.p>
-                
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.45 }}
+                  className="flex items-center gap-2 mb-4 md:mb-5"
+                >
+                  <Mail className="text-primary shrink-0" size={14} />
+                  <span className="text-xs md:text-sm font-mono">
+                    <span className="text-primary font-semibold">Now delivered as a daily email.</span>
+                    <span className="text-foreground/70"> Read it. Close it. Done.</span>
+                  </span>
+                </motion.div>
 
                 {!isAlphaMode() && (
                   <motion.div
@@ -578,16 +593,28 @@ const Hero = () => {
                   transition={{ duration: 0.8, delay: 0.5 }}
                   className="flex flex-col sm:flex-row gap-3 md:gap-4"
                 >
-                  <button
-                    onClick={signInWithGoogle}
-                    className="group relative bg-primary text-primary-foreground px-8 py-3.5 md:px-10 md:py-4 text-[9px] md:text-[10px] font-semibold tracking-[0.2em] md:tracking-[0.25em] uppercase transition-all overflow-hidden font-mono w-full sm:w-auto"
-                  >
-                    <span className="relative z-10 flex items-center justify-center gap-2">
-                      Start Free Trial
-                      <ChevronRight size={12} />
-                    </span>
-                    <div className="absolute inset-0 translate-y-full group-hover:translate-y-0 bg-primary/20 transition-transform duration-300" />
-                  </button>
+                  {heroCtaHref ? (
+                    <a href={heroCtaHref} className="w-full sm:w-auto">
+                      <button className="group relative bg-primary text-primary-foreground px-8 py-3.5 md:px-10 md:py-4 text-[9px] md:text-[10px] font-semibold tracking-[0.2em] md:tracking-[0.25em] uppercase transition-all overflow-hidden font-mono w-full">
+                        <span className="relative z-10 flex items-center justify-center gap-2">
+                          {heroCtaText}
+                          <ChevronRight size={12} />
+                        </span>
+                        <div className="absolute inset-0 translate-y-full group-hover:translate-y-0 bg-primary/20 transition-transform duration-300" />
+                      </button>
+                    </a>
+                  ) : (
+                    <button
+                      onClick={signInWithGoogle}
+                      className="group relative bg-primary text-primary-foreground px-8 py-3.5 md:px-10 md:py-4 text-[9px] md:text-[10px] font-semibold tracking-[0.2em] md:tracking-[0.25em] uppercase transition-all overflow-hidden font-mono w-full sm:w-auto"
+                    >
+                      <span className="relative z-10 flex items-center justify-center gap-2">
+                        {heroCtaText}
+                        <ChevronRight size={12} />
+                      </span>
+                      <div className="absolute inset-0 translate-y-full group-hover:translate-y-0 bg-primary/20 transition-transform duration-300" />
+                    </button>
+                  )}
                   <a href="/trending" className="w-full sm:w-auto">
                     <button className="flex items-center justify-center gap-2 text-foreground hover:text-primary transition-colors text-[9px] md:text-[10px] font-mono uppercase tracking-[0.2em] md:tracking-[0.25em] px-8 py-3.5 md:px-10 md:py-4 border border-border hover:border-primary w-full">
                       See Trending Topics <ChevronRight size={12} />
@@ -696,6 +723,99 @@ const WhatTraceReplaces = () => {
             </motion.div>
           ))}
         </div>
+      </div>
+    </section>
+  );
+};
+
+// --- How People Use Trace Section ---
+const HowPeopleUseTrace = () => {
+  return (
+    <section className="py-16 md:py-24 lg:py-32 bg-background border-t border-border relative z-10">
+      <div className="container mx-auto px-4 sm:px-6 max-w-4xl">
+        <div className="text-center mb-10 md:mb-14">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6"
+          >
+            How People <span className="text-secondary/40 italic">Actually</span> Use Trace
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="text-secondary font-mono text-sm md:text-base"
+          >
+            Most people don&apos;t open another app. They open their inbox.
+          </motion.p>
+        </div>
+
+        {/* Email Preview */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.2 }}
+          className="border border-border bg-background mb-10 md:mb-14"
+        >
+          {/* Email Header */}
+          <div className="border-b border-border px-4 md:px-6 py-3 md:py-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                <Mail className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <div className="text-xs md:text-sm font-mono text-foreground font-medium">Trace Daily</div>
+                <div className="text-[10px] md:text-xs font-mono text-secondary">digest@trace.club</div>
+              </div>
+            </div>
+            <div className="text-sm md:text-base font-serif text-foreground">
+              Your Morning Digest — Jan 28, 2025
+            </div>
+          </div>
+
+          {/* Email Body Preview */}
+          <div className="px-4 md:px-6 py-4 md:py-6 space-y-3">
+            {[
+              { icon: "🎬", title: "Building AI agents with LangGraph", source: "YouTube" },
+              { icon: "💬", title: "Show HN: Minimal MCP server for Postgres", source: "Hacker News" },
+              { icon: "📦", title: "anthropics/courses: Prompt engineering tutorial", source: "GitHub" },
+              { icon: "📄", title: "New research on transformer architectures", source: "arXiv" },
+              { icon: "📝", title: "How Stripe builds reliable systems", source: "Blog" },
+            ].map((item, i) => (
+              <div key={i} className="flex items-start gap-3 py-2 border-b border-border/50 last:border-0">
+                <span className="text-lg">{item.icon}</span>
+                <div>
+                  <div className="text-sm font-mono text-foreground">{item.title}</div>
+                  <div className="text-[10px] font-mono text-secondary uppercase tracking-wider">{item.source}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Copy */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.3 }}
+          className="text-center max-w-2xl mx-auto"
+        >
+          <p className="text-sm md:text-base font-mono text-secondary leading-relaxed mb-6">
+            Every morning, Trace sends you one email.<br />
+            The best things from Reddit, Hacker News, YouTube, blogs, and research —<br />
+            filtered for your interests and skill level.
+          </p>
+          <div className="flex flex-col items-center gap-1 text-xs md:text-sm font-mono text-foreground/70">
+            <span>No scrolling.</span>
+            <span>No notifications.</span>
+            <span className="text-primary">5 minutes. You&apos;re done.</span>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
@@ -1607,6 +1727,9 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
 const Pricing = () => {
   const { user, profile, signInWithGoogle } = useAuth();
   const pricingCtaHref = user ? (profile?.onboarded ? '/feed' : '/onboarding') : null;
+  const pricingCtaText = user
+    ? (profile?.onboarded ? 'Go To Your Feed' : 'Complete Setup')
+    : 'Start Free Trial';
 
   return (
     <section className="py-16 md:py-24 lg:py-32 bg-background border-y border-border relative z-10">
@@ -1647,7 +1770,7 @@ const Pricing = () => {
                 <div className="w-2 h-2 bg-primary rounded-full"></div>
               </div>
               <div className="text-sm font-mono text-foreground">
-                Daily personalized digest
+                Daily personalized email digest
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -1680,7 +1803,7 @@ const Pricing = () => {
             {pricingCtaHref ? (
               <a href={pricingCtaHref}>
                 <button className="bg-primary text-primary-foreground px-10 py-4 text-[10px] font-mono font-bold uppercase tracking-[0.3em] hover:bg-primary/90 transition-all active:scale-[0.98] w-full md:w-auto">
-                  Start Free Trial
+                  {pricingCtaText}
                 </button>
               </a>
             ) : (
@@ -1688,7 +1811,7 @@ const Pricing = () => {
                 onClick={signInWithGoogle}
                 className="bg-primary text-primary-foreground px-10 py-4 text-[10px] font-mono font-bold uppercase tracking-[0.3em] hover:bg-primary/90 transition-all active:scale-[0.98] w-full md:w-auto"
               >
-                Start Free Trial
+                {pricingCtaText}
               </button>
             )}
           </div>
@@ -1891,6 +2014,7 @@ export default function LandingPage() {
       <Nav />
       <Hero />
       <WhatTraceReplaces />
+      {/* <HowPeopleUseTrace /> */}
       <DemoFeed />
       {/* <WhatYouGet /> */}
       <Pricing />

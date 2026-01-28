@@ -1,6 +1,8 @@
 """
 Build a topic-based feed for an unsubscribed user using LLM topic matching.
 
+Trending news is added separately via add_trending_news_to_feed.py
+
 Usage:
   python v1/flows/build_unsubscribed_feed_from_topics.py --user_id USER_ID
   python v1/flows/build_unsubscribed_feed_from_topics.py --user_id USER_ID --skip-seen
@@ -8,6 +10,7 @@ Usage:
 import argparse
 import json
 import os
+import random
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -20,7 +23,7 @@ if project_root not in sys.path:
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
-from openai import OpenAI
+from google import genai
 from v1.storage import FirestoreStore
 
 
@@ -145,11 +148,9 @@ def _select_topics_with_llm(
     topics: list[dict],
     max_topics: int = MAX_TOPICS_DEFAULT,
 ) -> list[str]:
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
         return []
-
-    client = OpenAI(api_key=api_key)
 
     context_lines = []
     for key in ["role", "company", "goals", "learningStyle", "contentDepth"]:
@@ -175,18 +176,23 @@ def _select_topics_with_llm(
         f"{topics_list}\n\n"
         "Return JSON with exact shape:\n"
         '{ "topic_ids": ["topic-1", "topic-2"] }\n'
-        "No markdown."
+        "No markdown, only valid JSON."
     )
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0.2,
-            max_tokens=400,
+        # Initialize Gemini client
+        client = genai.Client(api_key=api_key)
+        
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config={
+                "temperature": 0.2,
+                "max_output_tokens": 400,
+                "response_mime_type": "application/json",
+            }
         )
-        data = json.loads(response.choices[0].message.content.strip())
+        data = json.loads(response.text.strip())
         topic_ids = data.get("topic_ids", [])
         if isinstance(topic_ids, list):
             cleaned = [
@@ -333,6 +339,9 @@ def build_unsubscribed_feed(
                 },
             })
 
+    # Shuffle items for variety
+    random.shuffle(items)
+
     feed_data = {
         "date": date,
         "items": items,
@@ -346,6 +355,7 @@ def build_unsubscribed_feed(
                 "video": sum(1 for i in items if i.get("type") == "video"),
             },
             "skip_seen": skip_seen,
+            "is_preview": True,
         },
     }
 

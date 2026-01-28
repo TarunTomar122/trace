@@ -1,16 +1,9 @@
 """
-V1 Firestore storage helpers for the umbrella-based system.
-
-New collections:
-- umbrellas/{umbrella_id}
-- retrieval_pool/{item_id}
-- query_users/{query_id}
-
-Does NOT modify existing collections: user_profiles, user_preferences, user_patterns, user_feeds, user_interactions
+V1 Firestore storage helpers for the topics-based system.
 """
 import json
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from dotenv import load_dotenv
@@ -32,7 +25,7 @@ def _serialize_firestore(obj: Any) -> Any:
 
 
 class FirestoreStore:
-    """Firestore store for v1 umbrella-based system."""
+    """Firestore store for v1 topics-based system."""
     
     def __init__(self) -> None:
         from firebase_admin import credentials, firestore, initialize_app
@@ -58,140 +51,6 @@ class FirestoreStore:
         self.db = firestore.client()
     
     # =========================================================================
-    # UMBRELLAS
-    # =========================================================================
-    
-    def get_umbrella(self, umbrella_id: str) -> Optional[dict[str, Any]]:
-        """Get an umbrella by ID."""
-        doc = self.db.collection("umbrellas").document(umbrella_id).get()
-        return _serialize_firestore(doc.to_dict()) if doc.exists else None
-    
-    def create_umbrella(self, umbrella_id: str, data: dict[str, Any]) -> None:
-        """Create a new umbrella."""
-        data["created_at"] = datetime.utcnow().isoformat()
-        self.db.collection("umbrellas").document(umbrella_id).set(data)
-    
-    def update_umbrella(self, umbrella_id: str, data: dict[str, Any]) -> None:
-        """Update an existing umbrella."""
-        self.db.collection("umbrellas").document(umbrella_id).update(data)
-    
-    def get_all_umbrellas(self) -> list[dict[str, Any]]:
-        """Get all umbrellas."""
-        docs = self.db.collection("umbrellas").stream()
-        return [_serialize_firestore(doc.to_dict()) for doc in docs]
-    
-    def umbrella_exists(self, umbrella_id: str) -> bool:
-        """Check if an umbrella exists."""
-        return self.db.collection("umbrellas").document(umbrella_id).get().exists
-    
-    # =========================================================================
-    # RETRIEVAL POOL
-    # =========================================================================
-    
-    def get_retrieval_pool(self, umbrella_id: Optional[str] = None) -> list[dict[str, Any]]:
-        """Get items from retrieval pool, optionally filtered by umbrella."""
-        query = self.db.collection("retrieval_pool")
-        if umbrella_id:
-            query = query.where("umbrella_id", "==", umbrella_id)
-        docs = query.stream()
-        return [_serialize_firestore(doc.to_dict()) for doc in docs]
-    
-    def add_to_pool(self, item_id: str, data: dict[str, Any]) -> None:
-        """Add an item to the retrieval pool."""
-        data["fetched_at"] = datetime.utcnow().isoformat()
-        self.db.collection("retrieval_pool").document(item_id).set(data, merge=True)
-    
-    def get_pool_item(self, item_id: str) -> Optional[dict[str, Any]]:
-        """Get a single item from the retrieval pool."""
-        doc = self.db.collection("retrieval_pool").document(item_id).get()
-        return _serialize_firestore(doc.to_dict()) if doc.exists else None
-    
-    def pool_url_exists(self, url: str) -> bool:
-        """Check if a URL already exists in the pool."""
-        docs = self.db.collection("retrieval_pool").where("url", "==", url).limit(1).stream()
-        return any(True for _ in docs)
-    
-    def clean_old_pool_items(self, max_age_days: int = 3) -> int:
-        """Delete pool items older than max_age_days. Returns count of deleted items."""
-        cutoff = (datetime.utcnow() - timedelta(days=max_age_days)).isoformat()
-        docs = self.db.collection("retrieval_pool").where("fetched_at", "<", cutoff).stream()
-        
-        deleted = 0
-        for doc in docs:
-            doc.reference.delete()
-            deleted += 1
-        
-        return deleted
-    
-    # =========================================================================
-    # QUERY USERS
-    # =========================================================================
-    
-    def get_query_users(self, query_id: str) -> Optional[dict[str, Any]]:
-        """Get users subscribed to a specific query."""
-        doc = self.db.collection("query_users").document(query_id).get()
-        return _serialize_firestore(doc.to_dict()) if doc.exists else None
-    
-    def add_user_to_query(self, query_id: str, user_id: str, query_text: str, umbrella_id: str) -> None:
-        """Add a user to a query. Creates the query_users doc if it doesn't exist."""
-        from firebase_admin import firestore
-
-        doc_ref = self.db.collection("query_users").document(query_id)
-        transaction = self.db.transaction()
-
-        @firestore.transactional
-        def _txn_add(transaction):
-            doc = doc_ref.get(transaction=transaction)
-            if doc.exists:
-                data = doc.to_dict() or {}
-                users = data.get("users", []) or []
-                if user_id in users:
-                    return
-                transaction.update(doc_ref, {
-                    "users": firestore.ArrayUnion([user_id]),
-                    "user_count": firestore.Increment(1),
-                })
-            else:
-                transaction.set(doc_ref, {
-                    "query_id": query_id,
-                    "query_text": query_text,
-                    "umbrella_id": umbrella_id,
-                    "users": [user_id],
-                    "user_count": 1,
-                    "last_searched": None,
-                })
-
-        _txn_add(transaction)
-    
-    def remove_user_from_query(self, query_id: str, user_id: str) -> None:
-        """Remove a user from a query."""
-        from firebase_admin import firestore
-        
-        doc_ref = self.db.collection("query_users").document(query_id)
-        doc = doc_ref.get()
-        
-        if doc.exists:
-            data = doc.to_dict()
-            if user_id in data.get("users", []):
-                doc_ref.update({
-                    "users": firestore.ArrayRemove([user_id]),
-                    "user_count": firestore.Increment(-1)
-                })
-    
-    def get_active_queries(self, min_users: int = 1) -> list[dict[str, Any]]:
-        """Get all queries with at least min_users subscribers."""
-        docs = self.db.collection("query_users").where("user_count", ">=", min_users).stream()
-        return [_serialize_firestore(doc.to_dict()) for doc in docs]
-    
-    def update_query_last_searched(self, query_id: str) -> None:
-        """Update the last_searched timestamp for a query."""
-        # Use IST (UTC+5:30) for date consistency with pipeline runs
-        ist_tz = timezone(timedelta(hours=5, minutes=30))
-        self.db.collection("query_users").document(query_id).update({
-            "last_searched": datetime.now(ist_tz).strftime("%Y-%m-%d")
-        })
-    
-    # =========================================================================
     # USER PROFILES (READ ONLY - for reading user interests)
     # =========================================================================
     
@@ -212,13 +71,266 @@ class FirestoreStore:
         # Get users with trial or active subscription status
         trial_docs = self.db.collection("user_profiles").where("subscriptionStatus", "==", "trial").stream()
         active_docs = self.db.collection("user_profiles").where("subscriptionStatus", "==", "active").stream()
-        
+
         users = []
         for doc in trial_docs:
             users.append({"uid": doc.id, **_serialize_firestore(doc.to_dict())})
         for doc in active_docs:
             users.append({"uid": doc.id, **_serialize_firestore(doc.to_dict())})
-        
+
+        return users
+
+    # =========================================================================
+    # TRENDING NEWS (for trending news integration)
+    # =========================================================================
+
+    def get_trending_news_for_date(self, date: str) -> Optional[dict[str, Any]]:
+        """Get all trending news for a specific date.
+
+        Args:
+            date: Date string in YYYY-MM-DD format
+
+        Returns:
+            Dictionary with trending news data or None if not found
+        """
+        doc = self.db.collection("trending_news").document(date).get()
+        if doc.exists:
+            return _serialize_firestore(doc.to_dict())
+        return None
+
+    def get_trending_news_for_topic(self, topic_id: str, date: str) -> list[dict[str, Any]]:
+        """Get trending news for a specific topic on a given date.
+
+        Args:
+            topic_id: Normalized topic ID (e.g., 'machine-learning')
+            date: Date string in YYYY-MM-DD format
+
+        Returns:
+            List of news articles for the topic (empty if none found)
+        """
+        news_doc = self.get_trending_news_for_date(date)
+        if not news_doc:
+            return []
+        topics = news_doc.get("topics", {}) or {}
+        return topics.get(topic_id, [])
+
+    def save_trending_news_for_date(
+        self,
+        date: str,
+        news_by_topic: dict[str, list[dict[str, Any]]],
+        generated_at: Optional[str] = None,
+    ) -> None:
+        """Save trending news for a date.
+
+        Args:
+            date: Date string in YYYY-MM-DD format
+            news_by_topic: Dict mapping topic_id to list of news articles
+            generated_at: ISO datetime string (defaults to now)
+        """
+        if generated_at is None:
+            generated_at = datetime.now(timezone.utc).isoformat()
+
+        topic_count = len(news_by_topic)
+        total_articles = sum(len(articles) for articles in news_by_topic.values())
+
+        doc_data = {
+            "date": date,
+            "generated_at": generated_at,
+            "topics": news_by_topic,
+            "topic_count": topic_count,
+            "total_articles": total_articles,
+        }
+
+        self.db.collection("trending_news").document(date).set(doc_data)
+
+
+    # =========================================================================
+    # ARTICLE CONTENT CACHE (for newsletter summarization)
+    # =========================================================================
+
+    def get_cached_content(self, url: str, max_age_days: int = 7) -> Optional[dict[str, Any]]:
+        """Get cached article content if available and not expired.
+
+        Args:
+            url: The article URL
+            max_age_days: Maximum age in days before cache is considered stale
+
+        Returns:
+            Dict with content and metadata, or None if not cached/expired
+        """
+        # Create a safe document ID from URL (Firestore doesn't allow / in doc IDs)
+        import hashlib
+        url_hash = hashlib.sha256(url.encode()).hexdigest()[:32]
+
+        doc = self.db.collection("article_content_cache").document(url_hash).get()
+        if not doc.exists:
+            return None
+
+        data = doc.to_dict()
+        if not data:
+            return None
+
+        # Check if cache is expired
+        fetched_at = data.get("fetched_at")
+        if fetched_at:
+            from datetime import datetime, timedelta
+            try:
+                if isinstance(fetched_at, str):
+                    fetch_time = datetime.fromisoformat(fetched_at.replace("Z", "+00:00"))
+                else:
+                    fetch_time = fetched_at
+                if hasattr(fetch_time, 'timestamp'):
+                    age = datetime.now(timezone.utc) - datetime.fromtimestamp(fetch_time.timestamp(), timezone.utc)
+                else:
+                    age = datetime.now(timezone.utc) - fetch_time.replace(tzinfo=timezone.utc)
+                if age > timedelta(days=max_age_days):
+                    return None
+            except Exception:
+                pass  # If we can't parse date, return cached content anyway
+
+        return _serialize_firestore(data)
+
+    def save_cached_content(
+        self,
+        url: str,
+        content: str,
+        is_paywalled: bool = False,
+        error: Optional[str] = None,
+    ) -> None:
+        """Save article content to cache.
+
+        Args:
+            url: The article URL
+            content: Extracted article content
+            is_paywalled: Whether the content was detected as paywalled
+            error: Any error message if fetch failed
+        """
+        import hashlib
+        url_hash = hashlib.sha256(url.encode()).hexdigest()[:32]
+
+        doc_data = {
+            "url": url,
+            "url_hash": url_hash,
+            "content": content,
+            "content_length": len(content) if content else 0,
+            "is_paywalled": is_paywalled,
+            "error": error,
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        self.db.collection("article_content_cache").document(url_hash).set(doc_data)
+
+    # =========================================================================
+    # USER NEWSLETTERS (for daily newsletter feature)
+    # =========================================================================
+
+    def get_user_newsletter(self, user_id: str, date: str) -> Optional[dict[str, Any]]:
+        """Get a user's newsletter for a specific date.
+
+        Args:
+            user_id: User ID
+            date: Date string in YYYY-MM-DD format
+
+        Returns:
+            Newsletter document or None if not found
+        """
+        doc = (
+            self.db.collection("user_newsletters")
+            .document(user_id)
+            .collection("daily")
+            .document(date)
+            .get()
+        )
+        if doc.exists:
+            return _serialize_firestore(doc.to_dict())
+        return None
+
+    def save_user_newsletter(
+        self,
+        user_id: str,
+        date: str,
+        newsletter_data: dict[str, Any],
+    ) -> None:
+        """Save a user's newsletter for a specific date.
+
+        Args:
+            user_id: User ID
+            date: Date string in YYYY-MM-DD format
+            newsletter_data: Newsletter content including items, email content, status
+        """
+        newsletter_data["user_id"] = user_id
+        newsletter_data["date"] = date
+
+        (
+            self.db.collection("user_newsletters")
+            .document(user_id)
+            .collection("daily")
+            .document(date)
+            .set(newsletter_data)
+        )
+
+    def update_newsletter_status(
+        self,
+        user_id: str,
+        date: str,
+        status: str,
+        error: Optional[str] = None,
+        sent_at: Optional[str] = None,
+    ) -> None:
+        """Update newsletter send status.
+
+        Args:
+            user_id: User ID
+            date: Date string in YYYY-MM-DD format
+            status: "draft", "sent", or "failed"
+            error: Error message if status is "failed"
+            sent_at: ISO datetime when sent
+        """
+        update_data = {"status": status}
+        if error:
+            update_data["error"] = error
+        if sent_at:
+            update_data["sent_at"] = sent_at
+
+        (
+            self.db.collection("user_newsletters")
+            .document(user_id)
+            .collection("daily")
+            .document(date)
+            .update(update_data)
+        )
+
+    def get_newsletter_opted_in_users(self) -> list[dict[str, Any]]:
+        """Get all subscribed users who have opted in to newsletters.
+
+        Returns:
+            List of user profiles with newsletter opt-in enabled
+        """
+        users = []
+
+        # Get trial users
+        trial_docs = (
+            self.db.collection("user_profiles")
+            .where("subscriptionStatus", "==", "trial")
+            .stream()
+        )
+        for doc in trial_docs:
+            data = doc.to_dict()
+            # Default to opted in if field doesn't exist
+            if data.get("newsletterOptIn", True):
+                users.append({"uid": doc.id, **_serialize_firestore(data)})
+
+        # Get active users
+        active_docs = (
+            self.db.collection("user_profiles")
+            .where("subscriptionStatus", "==", "active")
+            .stream()
+        )
+        for doc in active_docs:
+            data = doc.to_dict()
+            if data.get("newsletterOptIn", True):
+                users.append({"uid": doc.id, **_serialize_firestore(data)})
+
         return users
 
 

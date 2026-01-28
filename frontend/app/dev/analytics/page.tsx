@@ -65,44 +65,63 @@ export default function AnalyticsPage() {
   useEffect(() => {
     const isDevMode = process.env.NODE_ENV === 'development' || 
                       window.location.search.includes('dev=true');
+    console.log('[Analytics] Dev mode check:', { 
+      NODE_ENV: process.env.NODE_ENV, 
+      search: window.location.search,
+      isDevMode 
+    });
     setIsDev(isDevMode);
     
     if (!isDevMode) {
+      console.log('[Analytics] Not dev mode, redirecting to feed');
       router.push('/feed');
     }
   }, [router]);
 
   // Load analytics data
   useEffect(() => {
+    console.log('[Analytics] useEffect triggered', { isDev, user: !!user, loading });
+    
     if (!isDev || !user) {
       // Stop loading if not in dev mode or no user
+      console.log('[Analytics] Stopping - isDev:', isDev, 'user:', !!user);
       setIsLoading(false);
       return;
     }
     
     const loadAnalytics = async () => {
+      console.log('[Analytics] Starting loadAnalytics...');
       try {
         const token = await user.getIdToken();
+        console.log('[Analytics] Got token, fetching...');
         const response = await fetch('/api/dev/analytics', {
           headers: { 'Authorization': `Bearer ${token}` },
         });
         
+        console.log('[Analytics] Response status:', response.status);
+        
         if (response.ok) {
           const data = await response.json();
+          console.log('[Analytics] Data received:', { 
+            summaryExists: !!data.summary, 
+            usersCount: data.users?.length || 0 
+          });
           setSummary(data.summary);
           setUsers(data.users || []);
         } else {
-          console.error('Analytics API error:', response.status, await response.text());
+          const errorText = await response.text();
+          console.error('[Analytics] API error:', response.status, errorText);
         }
       } catch (error) {
-        console.error('Error loading analytics:', error);
+        console.error('[Analytics] Error loading analytics:', error);
       } finally {
         setIsLoading(false);
+        console.log('[Analytics] Loading complete');
       }
     };
     
     loadAnalytics();
-  }, [user, isDev]);
+  }, [user, isDev, loading]);
 
   if (loading || !isDev) {
     return (
@@ -148,13 +167,6 @@ export default function AnalyticsPage() {
             >
               <FileText size={14} />
               Feed Viewer
-            </button>
-            <button
-              onClick={() => router.push('/dev/umbrellas')}
-              className="text-xs font-mono text-secondary hover:text-foreground transition-colors flex items-center gap-2"
-            >
-              <FileText size={14} />
-              Umbrellas
             </button>
             <button
               onClick={() => router.push('/feed')}

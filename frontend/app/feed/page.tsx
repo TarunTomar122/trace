@@ -3,13 +3,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { 
-  Youtube, 
-  Github, 
-  BookOpen, 
+import {
+  Youtube,
+  Github,
+  BookOpen,
   ThumbsUp,
   ThumbsDown,
-  MessageSquare, 
+  MessageSquare,
   Bookmark,
   Sparkles,
   ArrowUpRight,
@@ -20,7 +20,10 @@ import {
   Zap,
   ChevronDown,
   Eye,
-  Check
+  Check,
+  Newspaper,
+  Flame,
+  Mail
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,10 +44,16 @@ type FeedItem = {
   tags?: string[];
   metadata?: {
     why_relevant?: string;
+    is_hot?: boolean;
+    feed_category?: string;
   };
   _seen?: boolean;
   _originalIndex?: number;
 };
+
+type FeedMetadata = {
+  is_preview?: boolean;
+} & Record<string, unknown>;
 
 type InteractionItem = {
   item_id?: string;
@@ -60,6 +69,7 @@ const sourceConfig: Record<string, { icon: typeof Youtube; color: string; label:
   tweet: { icon: MessageCircle, color: 'text-sky-500', label: 'Thread', accent: 'bg-sky-500' },
   launch: { icon: Sparkles, color: 'text-fuchsia-500', label: 'Launch', accent: 'bg-fuchsia-500' },
   model: { icon: Sparkles, color: 'text-indigo-500', label: 'Model', accent: 'bg-indigo-500' },
+  news: { icon: Newspaper, color: 'text-orange-500', label: 'News', accent: 'bg-orange-500' },
 };
 
 function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, onDisabledClick, onVisible, initialBookmarked }: { 
@@ -83,11 +93,7 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
   const [bookmarked, setBookmarked] = useState(initialBookmarked || false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedback, setFeedback] = useState('');
-  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const relevance = item.metadata?.why_relevant;
-  
-  // Check if description is long enough to need expansion (roughly > 2 lines worth)
-  const descriptionNeedsExpand = item.description && item.description.length > 50;
 
   // Intersection Observer to track when item becomes visible
   useEffect(() => {
@@ -161,7 +167,14 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, height: 0 }}
-      className="group py-4 md:py-6 hover:bg-foreground/1 transition-colors"
+      className="group py-4 md:py-6 hover:bg-foreground/1 transition-colors cursor-pointer"
+      onClick={(e) => {
+        // Only navigate if not clicking on action buttons
+        const target = e.target as HTMLElement;
+        if (!target.closest('button')) {
+          window.open(item.url, '_blank', 'noopener,noreferrer');
+        }
+      }}
     >
       {/* Top row: icon + source + context */}
       <div className="flex items-start gap-3 md:gap-4">
@@ -176,52 +189,39 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
           {/* Source label */}
           <div className="flex items-center gap-2 mb-1.5 md:mb-2">
             <span className={`text-[10px] font-mono uppercase tracking-widest ${config.color}`}>{config.label}</span>
+            {item.metadata?.is_hot && itemKind !== 'news' && (
+              <span className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-500/10 border border-orange-500/20 text-orange-500">
+                <Flame size={10} strokeWidth={2} />
+                <span className="text-[9px] font-mono uppercase tracking-wider">Hot</span>
+              </span>
+            )}
           </div>
           
           {/* Title - the main focus */}
-          <a 
-            href={item.url} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="group/link block mb-1.5 md:mb-2"
-          >
-            <h3 className="text-base md:text-lg font-serif leading-snug text-foreground group-hover/link:text-primary transition-colors">
+          <div className="mb-2 md:mb-3">
+            <h3 className="text-base md:text-lg font-serif leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
               {item.title}
               <ArrowUpRight 
                 size={14} 
-                className="inline ml-1 opacity-40 md:opacity-0 group-hover/link:opacity-60 transition-opacity -translate-y-0.5" 
+                className="inline ml-1 opacity-40 md:opacity-0 group-hover:opacity-60 transition-opacity" 
               />
             </h3>
-          </a>
+          </div>
 
           {/* Relevance below title (no clamp) */}
           {relevance && (
-            <p className="text-[10px] font-mono text-secondary/60 mb-2">
+            <p className="text-[10px] font-mono text-secondary/60 mb-3 md:mb-4">
               {relevance}
             </p>
-          )}
-          
-          {/* Description - subtle, with expand option */}
-          {item.description && (
-            <div className="mb-3 md:mb-4">
-              <p className={`text-sm text-secondary/70 leading-relaxed font-mono ${!descriptionExpanded ? 'line-clamp-2' : ''}`}>
-                {item.description}
-              </p>
-              {descriptionNeedsExpand && (
-                <button
-                  onClick={() => setDescriptionExpanded(!descriptionExpanded)}
-                  className="text-xs font-mono text-primary hover:text-primary/80 mt-1 transition-colors"
-                >
-                  {descriptionExpanded ? '← Show less' : 'Read more →'}
-                </button>
-              )}
-            </div>
           )}
           
           {/* Actions row - compact */}
           <div className="flex items-center gap-1 md:gap-2 -ml-1">
             <button
-              onClick={handleUpvote}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleUpvote();
+              }}
               className={`flex items-center gap-1.5 px-2 py-2 md:py-1.5 transition-colors active:scale-95 ${
                 disabled 
                   ? 'text-secondary/20 cursor-not-allowed'
@@ -236,7 +236,10 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
             </button>
             
             <button
-              onClick={handleDownvote}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownvote();
+              }}
               className={`flex items-center gap-1.5 px-2 py-2 md:py-1.5 transition-colors active:scale-95 ${
                 disabled
                   ? 'text-secondary/20 cursor-not-allowed'
@@ -251,7 +254,8 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
             </button>
             
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 if (disabled) {
                   onDisabledClick?.();
                   return;
@@ -270,7 +274,8 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
             </button>
             
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 if (disabled) {
                   onDisabledClick?.();
                   return;
@@ -353,7 +358,7 @@ export default function FeedPage() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [totalItems, setTotalItems] = useState(0);
   const [unseenCount, setUnseenCount] = useState(0);
-  const [feedMetadata, setFeedMetadata] = useState<any>(null);
+  const [feedMetadata, setFeedMetadata] = useState<FeedMetadata | null>(null);
   const cursorRef = useRef(0);
   const isLoadingRef = useRef(false);
   const hasLoadedInitialFeed = useRef(false);
@@ -377,23 +382,10 @@ export default function FeedPage() {
     }
   }, []);
   
-  // DEV MODE: Toggle to see full pool instead of personalized feed
-  const [devShowPool, setDevShowPool] = useState(false);
-  const [poolItems, setPoolItems] = useState<FeedItem[]>([]);
-  const [isLoadingPool, setIsLoadingPool] = useState(false);
-  const [showDevToggle, setShowDevToggle] = useState(false);
-  
-  // Check if dev mode should be shown (dev env or ?dev=true query param)
-  useEffect(() => {
-    const isDev = process.env.NODE_ENV === 'development';
-    const hasDevParam = window.location.search.includes('dev=true');
-    setShowDevToggle(isDev || hasDevParam);
-  }, []);
-
-  // Use pool items if dev mode is on, personalized feed for onboarded users (subscribed or not), otherwise general feed
+  // Use personalized feed for onboarded users (subscribed or not), otherwise general feed
   const isOnboarded = profile?.onboarded ?? false;
   const showPersonalizedFeed = isOnboarded; // Show feed for ALL onboarded users
-  const currentFeed = devShowPool ? poolItems : (!showPersonalizedFeed ? generalFeed : feed);
+  const currentFeed = !showPersonalizedFeed ? generalFeed : feed;
   const normalizeInterest = (interest: string) => {
     return interest
       .toLowerCase()
@@ -432,6 +424,9 @@ export default function FeedPage() {
         const tags = item.tags || [];
         return tags.includes(activeFilter);
       });
+
+  // Show only last 7 days in the previous feeds list
+  const visibleFeedDates = feedDates.slice(0, 7);
 
   useEffect(() => {
     if (activeFilter === 'all') return;
@@ -661,40 +656,15 @@ export default function FeedPage() {
     loadFeed(user.uid, feedDate, false);
   }, [user, hasMore, isLoadingMore, loadFeed, feedDate]);
 
-  // DEV: Load full pool items
-  const loadPoolItems = useCallback(async () => {
-    if (!user) return;
-    setIsLoadingPool(true);
-    try {
-      const token = await user.getIdToken();
-      const response = await fetch('/api/feed/pool', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setPoolItems(Array.isArray(data.items) ? data.items : []);
-      }
-    } catch (error) {
-      console.error('Error loading pool:', error);
-    }
-    setIsLoadingPool(false);
-  }, [user]);
-
-  // Load general feed for unsubscribed users
-  // If onboarded: personalized feed from pool (up to 40 items based on interests)
-  // If not onboarded: sample feed (diverse mix, 10 items)
+  // Load general feed for non-onboarded users
+  // Sample feed from topics (10 items)
   const loadGeneralFeed = useCallback(async () => {
     if (!user) return;
     setIsLoadingGeneral(true);
     try {
       const token = await user.getIdToken();
-      const isOnboarded = profile?.onboarded ?? false;
-      const mode = isOnboarded ? 'personalized' : 'sample';
-      const limit = isOnboarded ? 40 : 10;
-      
-      const response = await fetch(`/api/feed/pool?mode=${mode}&limit=${limit}`, {
+      const limit = 10;
+      const response = await fetch(`/api/feed/sample?limit=${limit}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -707,7 +677,7 @@ export default function FeedPage() {
       console.error('Error loading general feed:', error);
     }
     setIsLoadingGeneral(false);
-  }, [user, profile?.onboarded]);
+  }, [user]);
 
   // Load bookmarks on mount
   const loadBookmarks = useCallback(async () => {
@@ -735,13 +705,6 @@ export default function FeedPage() {
     }
   }, [user, loadBookmarks]);
 
-  // Load pool when dev mode is toggled on
-  useEffect(() => {
-    if (devShowPool && poolItems.length === 0) {
-      loadPoolItems();
-    }
-  }, [devShowPool, poolItems.length, loadPoolItems]);
-
   useEffect(() => {
     // Load feed for ALL onboarded users (subscribed and unsubscribed)
     // Feed content differs based on subscription (handled by backend)
@@ -751,7 +714,7 @@ export default function FeedPage() {
     }
   }, [user, profile?.onboarded, loadFeed]);
 
-  // Fallback: Load general pool feed for non-onboarded users only
+  // Fallback: Load sample topics feed for non-onboarded users only
   useEffect(() => {
     const isNotOnboarded = profile && !profile.onboarded;
     if (user && isNotOnboarded && generalFeed.length === 0 && feed.length === 0) {
@@ -946,6 +909,26 @@ export default function FeedPage() {
             </div>
           </div>
         </div>
+      ) : hasAccess && profile && profile.newsletterOptIn !== false ? (
+        // Subscribed users: Show newsletter info chip
+        <div className="sticky top-14 md:top-16 z-40 bg-gradient-to-r from-indigo-500/5 via-violet-500/5 to-indigo-500/5 border-b border-indigo-500/10">
+          <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Mail size={14} className="text-indigo-400" />
+                <span className="text-xs font-mono text-secondary/70">
+                  Daily newsletter included at 10 AM IST
+                </span>
+              </div>
+              <Link
+                href="/profile"
+                className="text-[10px] font-mono text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-wider"
+              >
+                Settings
+              </Link>
+            </div>
+          </div>
+        </div>
       ) : !hasAccess && profile ? (
         // Onboarded but not subscribed: Show subscribe callout
         <div className="sticky top-14 md:top-16 z-40 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border-b border-amber-500/20 backdrop-blur-sm">
@@ -1022,35 +1005,6 @@ export default function FeedPage() {
       </AnimatePresence>
 
       <main className="w-full mt-6 md:mt-12">
-        {/* DEV MODE TOGGLE - visible in development or with ?dev=true */}
-        {/* {showDevToggle && (
-          <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 mb-4">
-            <button
-              onClick={() => setDevShowPool(!devShowPool)}
-              className={`flex items-center gap-2 px-3 py-2 text-xs font-mono border transition-colors ${
-                devShowPool
-                  ? 'bg-amber-500/20 border-amber-500 text-amber-500'
-                  : 'border-border text-secondary/60 hover:border-primary hover:text-primary'
-              }`}
-            >
-              {devShowPool ? (
-                <>
-                  <Database size={14} />
-                  DEV: Showing Full Pool ({poolItems.length} items)
-                </>
-              ) : (
-                <>
-                  <User size={14} />
-                  DEV: Showing Your Feed ({feed.length} items)
-                </>
-              )}
-            </button>
-            {devShowPool && isLoadingPool && (
-              <span className="ml-2 text-xs text-secondary/60">Loading pool...</span>
-            )}
-          </div>
-        )} */}
-
         {/* Mobile: Feed date with dropdown for history (only for subscribed AND onboarded users) */}
         {showPersonalizedFeed && (
           <div className="md:hidden px-4 mb-4">
@@ -1096,7 +1050,7 @@ export default function FeedPage() {
                   className="overflow-hidden"
                 >
                   <div className="flex gap-2 py-3 overflow-x-auto scrollbar-hide">
-                    {feedDates.map(date => {
+                    {visibleFeedDates.map(date => {
                       const isActive = selectedFeedDate === date;
                       return (
                         <button
@@ -1359,11 +1313,11 @@ export default function FeedPage() {
               </motion.div>
             )}
 
-            {((showPersonalizedFeed && isFeedLoading) || (devShowPool && isLoadingPool) || (!showPersonalizedFeed && isLoadingGeneral)) ? (
+            {((showPersonalizedFeed && isFeedLoading) || (!showPersonalizedFeed && isLoadingGeneral)) ? (
               <div className="py-16 flex flex-col items-center justify-center">
                 <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-3" />
                 <p className="text-sm font-mono text-secondary">
-                  {devShowPool ? 'Loading pool items...' : (!showPersonalizedFeed ? 'Loading general feed...' : 'Loading your feed...')}
+                  {!showPersonalizedFeed ? 'Loading general feed...' : 'Loading your feed...'}
                 </p>
               </div>
             ) : (
@@ -1526,7 +1480,7 @@ export default function FeedPage() {
                     No history yet
                   </div>
                 )}
-                {feedDates.map(date => {
+                {visibleFeedDates.map(date => {
                   const isActive = selectedFeedDate === date;
                   return (
                     <button

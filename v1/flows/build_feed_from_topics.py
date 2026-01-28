@@ -6,6 +6,8 @@ For each user interest:
 - Pick 2 blogs + 2 discussions not in seen URLs
 - Save to user_feeds and update user_seen_urls
 
+Trending news is added separately via add_trending_news_to_feed.py
+
 Usage:
   python v1/flows/build_feed_from_topics.py --user_id USER_ID
   python v1/flows/build_feed_from_topics.py --user_id USER_ID --skip-seen

@@ -24,7 +24,6 @@ type FeedItem = {
   url: string;
   metadata?: {
     why_relevant?: string;
-    umbrella_id?: string;
   };
 };
 
@@ -149,12 +148,6 @@ export default function DevFeedsPage() {
               Analytics
             </button>
             <button
-              onClick={() => router.push('/dev/umbrellas')}
-              className="text-xs font-mono text-secondary hover:text-foreground transition-colors"
-            >
-              Umbrellas
-            </button>
-            <button
               onClick={() => router.push('/feed')}
               className="text-xs font-mono text-secondary hover:text-foreground transition-colors"
             >
@@ -271,11 +264,6 @@ export default function DevFeedsPage() {
                                 <span className={`text-[10px] font-mono uppercase tracking-widest ${config.color}`}>
                                   {config.label}
                                 </span>
-                                {item.metadata?.umbrella_id && (
-                                  <span className="text-[10px] font-mono text-secondary/40">
-                                    {item.metadata.umbrella_id}
-                                  </span>
-                                )}
                               </div>
                               
                               <a 

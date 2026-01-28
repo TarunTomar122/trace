@@ -16,7 +16,8 @@ import {
   MessageCircle,
   Bot,
   CreditCard,
-  ChevronDown
+  ChevronDown,
+  Mail
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserProfile, updateUserProfile, updateUserInsights, addChatMessage, clearChatHistory, UserProfile, INTERESTS, ROLES, ChatMessage } from '@/lib/firestore';
@@ -35,6 +36,7 @@ function ProfileContent() {
 
   const [activeTab, setActiveTab] = useState<'profile' | 'chat' | 'subscription'>('profile');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const hasLoadedProfile = useRef(false);
 
   // Switch to subscription tab if coming from onboarding or feed redirect
   const applyProfile = (p: UserProfile) => {
@@ -75,6 +77,8 @@ function ProfileContent() {
     if (p.chatHistory) {
       setChatMessages(p.chatHistory.map(m => ({ role: m.role, content: m.content })));
     }
+    // Newsletter opt-in defaults to true if not set
+    setNewsletterOptIn(p.newsletterOptIn !== false);
   };
 
   useEffect(() => {
@@ -127,6 +131,7 @@ function ProfileContent() {
     tweets: 10,
     discussions: 10,
   });
+  const [newsletterOptIn, setNewsletterOptIn] = useState(true);
 
   useEffect(() => {
     // Alpha mode check: if not in alpha mode, redirect to waitlist
@@ -144,18 +149,21 @@ function ProfileContent() {
       return;
     }
 
+    if (isEditing) return;
+
     if (authProfile && !profile) {
       applyProfile(authProfile);
     }
 
-    if (user) {
+    if (user && !hasLoadedProfile.current) {
+      hasLoadedProfile.current = true;
       getUserProfile(user.uid).then(p => {
         if (p) {
           applyProfile(p);
         }
       });
     }
-  }, [user, loading, router, authProfile, profile]);
+  }, [user, loading, router, authProfile, profile, isEditing]);
 
   const parseCommaSeparated = (text: string, maxItems?: number): string[] => {
     const items = text
@@ -324,6 +332,7 @@ function ProfileContent() {
         favoriteSources: parsedFavoriteSources,
         personalityTraits: parsedPersonalityTraits,
         petPeeves: parsedPetPeeves,
+        newsletterOptIn,
       };
 
       await updateUserProfile(user.uid, profileUpdate);
@@ -811,6 +820,56 @@ function ProfileContent() {
                   </div>
                 </div>
               </section>
+
+              {/* Newsletter Settings */}
+              {profile?.onboarded && ['trial', 'active'].includes(profile?.subscriptionStatus || '') && (
+                <section className="border border-border p-6 md:p-8">
+                  <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-6 flex items-center gap-2">
+                    <Mail size={12} className="text-primary" />
+                    Daily Newsletter
+                  </h2>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-serif text-foreground">Receive daily newsletter</p>
+                        <p className="text-xs font-mono text-secondary/70 mt-1">
+                          Get your personalized feed delivered to your inbox at 10:00 AM IST
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (isEditing) {
+                            setNewsletterOptIn(!newsletterOptIn);
+                          }
+                        }}
+                        disabled={!isEditing}
+                        className={`relative w-12 h-6 rounded-full transition-colors ${
+                          newsletterOptIn
+                            ? 'bg-primary'
+                            : 'bg-border'
+                        } ${!isEditing ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+                      >
+                        <span
+                          className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                            newsletterOptIn ? 'left-7' : 'left-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    <div className="pt-4 border-t border-border/50">
+                      <div className="flex items-center gap-2 text-xs font-mono text-secondary/60">
+                        <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                        <span>Newsletter delivery time: 10:00 AM IST daily</span>
+                      </div>
+                      <p className="text-xs font-mono text-secondary/50 mt-2">
+                        Your newsletter includes up to 8 hand-picked articles summarized by AI, curated based on your interests.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+              )}
 
               {/* Advanced Section - Accordion */}
               <section className="border border-border">

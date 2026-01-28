@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 from v1.flows.build_topics_for_all_users import build_topics_for_all_users
+from v1.flows.build_trending_news_for_day import build_trending_news_for_day
 
 
 def log(message: str):
@@ -51,6 +52,18 @@ def run_daily_batch() -> int:
         log(f"Topics build: {topics_result}")
     except Exception as e:
         log(f"✗ Topics build failed: {e}")
+
+    # =========================================================================
+    # Phase 0.5: Trending News Fetch
+    # =========================================================================
+    log("")
+    log("PHASE 0.5: TRENDING NEWS FETCH")
+    log("-" * 40)
+    try:
+        trending_result = build_trending_news_for_day()
+        log(f"Trending news: {trending_result.get('total_articles', 0)} articles from {trending_result.get('topics_with_news', 0)} topics")
+    except Exception as e:
+        log(f"✗ Trending news fetch failed (non-critical): {e}")
 
     log("")
     log("=" * 60)

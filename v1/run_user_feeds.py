@@ -26,6 +26,7 @@ from v1.storage import FirestoreStore
 from v1.flows.build_feed_from_topics_for_all_users import build_feeds_for_all_users
 from v1.flows.build_unsubscribed_feeds_for_all_users import build_unsubscribed_feeds
 from v1.flows.build_suggested_items_for_all_users import build_suggested_items_for_all_users
+from v1.flows.add_trending_news_to_all_feeds import add_trending_news_to_all_feeds
 
 
 def run_user_feeds(date: str | None = None, limit: int | None = None) -> dict:
@@ -81,19 +82,23 @@ def run_user_feeds(date: str | None = None, limit: int | None = None) -> dict:
     print("\nAdding suggested items for subscribed users...")
     suggested_result = build_suggested_items_for_all_users(limit=limit)
 
+    print("\nAdding trending news to all feeds...")
+    trending_result = add_trending_news_to_all_feeds(date=date, limit=limit)
+
     success_count = subscribed_result.get("success", 0) + unsubscribed_result.get("success", 0)
     error_count = subscribed_result.get("failed", 0) + unsubscribed_result.get("failed", 0)
-    
+
     # Summary
     duration = time.time() - start_time
     duration_str = f"{int(duration // 60)}m {int(duration % 60)}s"
-    
+
     print("\n" + "=" * 50)
     print(
         f"Generated feeds for {success_count}/{len(all_users)} users in {duration_str}"
     )
-    
+
     print(f"\nSuggested items added for subscribed users: {suggested_result.get('success', 0)}")
+    print(f"Trending news items added: {trending_result.get('items_added', 0)}")
     
     return {
         "users_processed": len(all_users),

@@ -22,8 +22,6 @@ export const COLLECTIONS = {
   userFeeds: 'user_feeds',
   userInteractions: 'user_interactions',
   userSeenUrls: 'user_seen_urls',
-  retrievalPool: 'retrieval_pool',
-  trendingQueries: 'trending_queries',
 } as const;
 
 export interface UserPreferences {
@@ -291,6 +289,12 @@ export interface UserProfile {
   cancelledAt: Timestamp | null; // When cancellation was requested
   willCancelAt: Timestamp | null; // When subscription will actually end
   
+  // Newsletter settings
+  newsletterOptIn?: boolean; // Default true for subscribed users
+  newsletterSendTime?: string; // Default '10:00' IST
+  newsletterFrequency?: string; // Default 'daily'
+  newsletterLastSentAt?: string | null; // ISO datetime
+
   // Timestamps
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;
