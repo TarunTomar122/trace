@@ -22,12 +22,10 @@ import {
   Eye,
   Check,
   Newspaper,
-  Flame,
-  Mail
+  Flame
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { getUserFeedDates } from '@/lib/firestore';
 import { isAlphaMode } from '@/lib/alpha';
 import Header from '@/components/Header';
 
@@ -72,8 +70,8 @@ const sourceConfig: Record<string, { icon: typeof Youtube; color: string; label:
   news: { icon: Newspaper, color: 'text-orange-500', label: 'News', accent: 'bg-orange-500' },
 };
 
-function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, onDisabledClick, onVisible, initialBookmarked }: { 
-  item: FeedItem; 
+function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, onDisabledClick, onVisible, initialBookmarked, isBookmarkLoading }: {
+  item: FeedItem;
   onUpvote: (note?: string) => void;
   onDownvote: (note?: string) => void;
   onStar: () => void;
@@ -82,6 +80,7 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
   onDisabledClick?: () => void;
   onVisible?: (itemId: string) => void;
   initialBookmarked?: boolean;
+  isBookmarkLoading?: boolean;
 }) {
   const cardRef = useRef<HTMLElement>(null);
   const hasBeenSeen = useRef(false);
@@ -98,7 +97,7 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
   // Intersection Observer to track when item becomes visible
   useEffect(() => {
     if (!onVisible || hasBeenSeen.current || item._seen) return;
-    
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -183,7 +182,7 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
           <Icon size={16} className={`${config.color} md:hidden`} strokeWidth={1.5} />
           <Icon size={18} className={`${config.color} hidden md:block`} strokeWidth={1.5} />
         </div>
-        
+
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Source label */}
@@ -196,14 +195,14 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
               </span>
             )}
           </div>
-          
+
           {/* Title - the main focus */}
           <div className="mb-2 md:mb-3">
             <h3 className="text-base md:text-lg font-serif leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
               {item.title}
-              <ArrowUpRight 
-                size={14} 
-                className="inline ml-1 opacity-40 md:opacity-0 group-hover:opacity-60 transition-opacity" 
+              <ArrowUpRight
+                size={14}
+                className="inline ml-1 opacity-40 md:opacity-0 group-hover:opacity-60 transition-opacity"
               />
             </h3>
           </div>
@@ -214,7 +213,7 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
               {relevance}
             </p>
           )}
-          
+
           {/* Actions row - compact */}
           <div className="flex items-center gap-1 md:gap-2 -ml-1">
             <button
@@ -222,37 +221,35 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
                 e.stopPropagation();
                 handleUpvote();
               }}
-              className={`flex items-center gap-1.5 px-2 py-2 md:py-1.5 transition-colors active:scale-95 ${
-                disabled 
+              className={`flex items-center gap-1.5 px-2 py-2 md:py-1.5 transition-colors active:scale-95 ${disabled
                   ? 'text-secondary/20 cursor-not-allowed'
-                  : upvoted 
-                    ? 'text-green-500' 
+                  : upvoted
+                    ? 'text-green-500'
                     : 'text-secondary/40 hover:text-green-500'
-              }`}
+                }`}
               title={disabled ? "Subscribe to interact" : "Upvote"}
             >
               <ThumbsUp size={18} className="md:hidden" fill={upvoted ? 'currentColor' : 'none'} strokeWidth={1.5} />
               <ThumbsUp size={16} className="hidden md:block" fill={upvoted ? 'currentColor' : 'none'} strokeWidth={1.5} />
             </button>
-            
+
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleDownvote();
               }}
-              className={`flex items-center gap-1.5 px-2 py-2 md:py-1.5 transition-colors active:scale-95 ${
-                disabled
+              className={`flex items-center gap-1.5 px-2 py-2 md:py-1.5 transition-colors active:scale-95 ${disabled
                   ? 'text-secondary/20 cursor-not-allowed'
-                  : downvoted 
-                    ? 'text-red-500' 
+                  : downvoted
+                    ? 'text-red-500'
                     : 'text-secondary/40 hover:text-red-500'
-              }`}
+                }`}
               title={disabled ? "Subscribe to interact" : "Downvote"}
             >
               <ThumbsDown size={18} className="md:hidden" fill={downvoted ? 'currentColor' : 'none'} strokeWidth={1.5} />
               <ThumbsDown size={16} className="hidden md:block" fill={downvoted ? 'currentColor' : 'none'} strokeWidth={1.5} />
             </button>
-            
+
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -262,17 +259,16 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
                 }
                 setShowFeedback(!showFeedback);
               }}
-              className={`flex items-center gap-1.5 px-2 py-2 md:py-1.5 transition-colors active:scale-95 ${
-                disabled 
+              className={`flex items-center gap-1.5 px-2 py-2 md:py-1.5 transition-colors active:scale-95 ${disabled
                   ? 'text-secondary/20 cursor-not-allowed'
                   : 'text-secondary/40 hover:text-blue-500'
-              }`}
+                }`}
               title={disabled ? "Subscribe to interact" : "Add feedback"}
             >
               <MessageSquare size={18} className="md:hidden" strokeWidth={1.5} />
               <MessageSquare size={16} className="hidden md:block" strokeWidth={1.5} />
             </button>
-            
+
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -280,23 +276,32 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
                   onDisabledClick?.();
                   return;
                 }
+                if (isBookmarkLoading) return;
                 setBookmarked(!bookmarked);
                 onStar();
               }}
-              className={`flex items-center gap-1.5 px-2 py-2 md:py-1.5 transition-colors ml-auto active:scale-95 ${
-                disabled
+              className={`flex items-center gap-1.5 px-2 py-2 md:py-1.5 transition-colors ml-auto active:scale-95 ${disabled
                   ? 'text-secondary/20 cursor-not-allowed'
-                  : bookmarked 
-                    ? 'text-primary' 
-                    : 'text-secondary/40 hover:text-primary'
-              }`}
+                  : isBookmarkLoading
+                    ? 'text-secondary/40'
+                    : bookmarked
+                      ? 'text-primary'
+                      : 'text-secondary/40 hover:text-primary'
+                }`}
               title={disabled ? "Subscribe to interact" : "Bookmark"}
+              disabled={isBookmarkLoading}
             >
-              <Bookmark size={18} className="md:hidden" fill={bookmarked ? 'currentColor' : 'none'} strokeWidth={1.5} />
-              <Bookmark size={16} className="hidden md:block" fill={bookmarked ? 'currentColor' : 'none'} strokeWidth={1.5} />
+              {isBookmarkLoading ? (
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <Bookmark size={18} className="md:hidden" fill={bookmarked ? 'currentColor' : 'none'} strokeWidth={1.5} />
+                  <Bookmark size={16} className="hidden md:block" fill={bookmarked ? 'currentColor' : 'none'} strokeWidth={1.5} />
+                </>
+              )}
             </button>
           </div>
-          
+
           {/* Feedback input - expandable */}
           <AnimatePresence>
             {showFeedback && (
@@ -343,16 +348,15 @@ export default function FeedPage() {
   const [isFeedLoading, setIsFeedLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [interactions, setInteractions] = useState<Record<string, 'upvote' | 'downvote'>>({});
-  const [feedDates, setFeedDates] = useState<string[]>([]);
-  const [selectedFeedDate, setSelectedFeedDate] = useState<string>('');
-  const [showMobileDatePicker, setShowMobileDatePicker] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [generalFeed, setGeneralFeed] = useState<FeedItem[]>([]);
   const [isLoadingGeneral, setIsLoadingGeneral] = useState(false);
   const [showSubscribePrompt, setShowSubscribePrompt] = useState(false);
   const [bookmarkedItems, setBookmarkedItems] = useState<Set<string>>(new Set());
-  
+  const [loadingBookmarks, setLoadingBookmarks] = useState<Set<string>>(new Set());
+  const [bookmarksLoaded, setBookmarksLoaded] = useState(false);
+
   // Pagination state
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -362,18 +366,18 @@ export default function FeedPage() {
   const cursorRef = useRef(0);
   const isLoadingRef = useRef(false);
   const hasLoadedInitialFeed = useRef(false);
-  
+
   // Feedback state
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [feedbackType, setFeedbackType] = useState<'bug' | 'feature' | 'general'>('general');
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
-  
+
   // Seen items tracking - batch updates
   const seenItemsBuffer = useRef<Set<string>>(new Set());
   const seenFlushTimeout = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Check if user has seen the hint before
   useEffect(() => {
     const hasSeenHint = localStorage.getItem('feed-hint-dismissed');
@@ -381,7 +385,7 @@ export default function FeedPage() {
       setShowHint(true);
     }
   }, []);
-  
+
   // Use personalized feed for onboarded users (subscribed or not), otherwise general feed
   const isOnboarded = profile?.onboarded ?? false;
   const showPersonalizedFeed = isOnboarded; // Show feed for ALL onboarded users
@@ -416,17 +420,16 @@ export default function FeedPage() {
   }));
 
   const availableProfileFilters = profileFilters.filter((filter) => availableTagIds.has(filter.id));
-  const topicFilters = profileFilters.length > 0 ? availableProfileFilters : tagFilters;
+  // Use profile filters that match feed tags, fall back to all feed tags if no match
+  const topicFilters = availableProfileFilters.length > 0 ? availableProfileFilters : tagFilters;
 
   const filteredFeed = activeFilter === 'all'
     ? currentFeed
     : currentFeed.filter((item) => {
-        const tags = item.tags || [];
-        return tags.includes(activeFilter);
-      });
+      const tags = item.tags || [];
+      return tags.includes(activeFilter);
+    });
 
-  // Show only last 7 days in the previous feeds list
-  const visibleFeedDates = feedDates.slice(0, 7);
 
   useEffect(() => {
     if (activeFilter === 'all') return;
@@ -439,14 +442,14 @@ export default function FeedPage() {
   useEffect(() => {
     if (profile) {
       const subscriptionStatus = profile.subscriptionStatus || 'none';
-      
+
       // Check if they have active/trial status
       let hasValidAccess = ['trial', 'active'].includes(subscriptionStatus);
-      
+
       // If cancelled but still active, check if cancellation date has passed
       if (hasValidAccess && profile.cancelledAt) {
         const now = new Date();
-        
+
         // Helper to convert Firestore Timestamp to Date
         const toDate = (ts: Date | { seconds: number } | null | undefined): Date | null => {
           if (!ts) return null;
@@ -456,19 +459,19 @@ export default function FeedPage() {
           }
           return null;
         };
-        
+
         const willCancelAt = toDate(profile.willCancelAt);
         const nextBilling = toDate(profile.nextBillingDate);
-        
+
         // Use willCancelAt if available, otherwise nextBillingDate
         const cancelDate = willCancelAt || nextBilling;
-        
+
         // If cancellation date has passed, revoke access
         if (cancelDate && now >= cancelDate) {
           hasValidAccess = false;
         }
       }
-      
+
       setHasAccess(hasValidAccess);
     }
   }, [profile]);
@@ -492,7 +495,7 @@ export default function FeedPage() {
 
   const loadInteractions = useCallback(async (uid: string, feedGenDate: string) => {
     if (!feedGenDate) return;
-    
+
     try {
       const token = await user?.getIdToken();
       if (!token) return;
@@ -507,7 +510,7 @@ export default function FeedPage() {
       if (response.ok) {
         const data = await response.json();
         const interactionsMap: Record<string, 'upvote' | 'downvote'> = {};
-        
+
         if (Array.isArray(data.interactions)) {
           data.interactions.forEach((interaction: InteractionItem) => {
             if (
@@ -518,7 +521,7 @@ export default function FeedPage() {
             }
           });
         }
-        
+
         setInteractions(interactionsMap);
       }
     } catch (error) {
@@ -529,10 +532,10 @@ export default function FeedPage() {
   // Flush seen items to server (batched)
   const flushSeenItems = useCallback(async () => {
     if (!user || !feedDate || seenItemsBuffer.current.size === 0) return;
-    
+
     const itemIds = Array.from(seenItemsBuffer.current);
     seenItemsBuffer.current.clear();
-    
+
     try {
       const token = await user.getIdToken();
       await fetch('/api/feed/seen', {
@@ -546,7 +549,7 @@ export default function FeedPage() {
           item_ids: itemIds,
         }),
       });
-      
+
       // Update unseen count locally
       setUnseenCount(prev => Math.max(0, prev - itemIds.length));
     } catch (error) {
@@ -559,12 +562,12 @@ export default function FeedPage() {
   // Handle item becoming visible
   const handleItemVisible = useCallback((itemId: string) => {
     seenItemsBuffer.current.add(itemId);
-    
+
     // Update local feed state to mark as seen
-    setFeed(prev => prev.map(item => 
+    setFeed(prev => prev.map(item =>
       item.id === itemId ? { ...item, _seen: true } : item
     ));
-    
+
     // Debounce flush - wait 2 seconds after last seen item
     if (seenFlushTimeout.current) {
       clearTimeout(seenFlushTimeout.current);
@@ -576,7 +579,7 @@ export default function FeedPage() {
   useEffect(() => {
     const timeoutRef = seenFlushTimeout.current;
     const bufferRef = seenItemsBuffer.current;
-    
+
     return () => {
       if (timeoutRef) {
         clearTimeout(timeoutRef);
@@ -593,7 +596,7 @@ export default function FeedPage() {
     // Prevent concurrent loads
     if (isLoadingRef.current) return;
     isLoadingRef.current = true;
-    
+
     if (reset) {
       setIsFeedLoading(true);
       setFeed([]);
@@ -601,44 +604,45 @@ export default function FeedPage() {
     } else {
       setIsLoadingMore(true);
     }
-    
+
     try {
       const token = await user?.getIdToken();
       if (!token) {
         isLoadingRef.current = false;
         return;
       }
-      
+
       const params = new URLSearchParams();
       if (dateOverride) params.set('date', dateOverride);
       params.set('cursor', reset ? '0' : String(cursorRef.current));
       params.set('limit', '10');
-      
+
       const response = await fetch(`/api/feed/paginated?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
-      
+
       if (response.ok) {
         const data = await response.json();
-        
+
         if (reset) {
           setFeed(data.items || []);
           setFeedMetadata(data.metadata || null);  // Store feed metadata
         } else {
           setFeed(prev => [...prev, ...(data.items || [])]);
         }
-        
+
         cursorRef.current = data.cursor || 0;
         setHasMore(data.hasMore || false);
         setFeedDate(data.feedDate || '');
-        setSelectedFeedDate(data.feedDate || '');
         setTotalItems(data.total || 0);
         setUnseenCount(data.unseenCount || 0);
-        
+
+        // Defer interactions loading - don't block feed render
         if (data.feedDate) {
-          await loadInteractions(uid, data.feedDate);
+          // Load interactions in background after feed is displayed
+          setTimeout(() => loadInteractions(uid, data.feedDate), 100);
         }
       }
     } catch (error) {
@@ -679,9 +683,9 @@ export default function FeedPage() {
     setIsLoadingGeneral(false);
   }, [user]);
 
-  // Load bookmarks on mount
+  // Load bookmarks lazily (only when needed)
   const loadBookmarks = useCallback(async () => {
-    if (!user) return;
+    if (!user || bookmarksLoaded) return;
     try {
       const token = await user.getIdToken();
       const response = await fetch('/api/bookmarks', {
@@ -693,17 +697,14 @@ export default function FeedPage() {
         const data = await response.json();
         const bookmarkIds = new Set<string>(data.bookmarks.map((b: { item_id: string }) => b.item_id));
         setBookmarkedItems(bookmarkIds);
+        setBookmarksLoaded(true);
       }
     } catch (error) {
       console.error('Error loading bookmarks:', error);
     }
-  }, [user]);
+  }, [user, bookmarksLoaded]);
 
-  useEffect(() => {
-    if (user) {
-      loadBookmarks();
-    }
-  }, [user, loadBookmarks]);
+  // Bookmarks are now loaded lazily when user clicks bookmark icon
 
   useEffect(() => {
     // Load feed for ALL onboarded users (subscribed and unsubscribed)
@@ -722,16 +723,7 @@ export default function FeedPage() {
     }
   }, [user, profile, generalFeed.length, feed.length, loadGeneralFeed]);
 
-  useEffect(() => {
-    // Load feed dates for ALL onboarded users (subscribed and unsubscribed)
-    if (!user || !profile?.onboarded) return;
-    getUserFeedDates(user.uid).then(dates => {
-      setFeedDates(dates);
-      if (!selectedFeedDate && dates.length) {
-        setSelectedFeedDate(dates[0]);
-      }
-    });
-  }, [user, profile?.onboarded, selectedFeedDate]);
+  // History sidebar removed - just showing today's feed
 
   const recordInteraction = async (itemId: string, action: 'upvote' | 'downvote' | 'remove', note?: string) => {
     if (!user || !feedDate) return;
@@ -785,7 +777,7 @@ export default function FeedPage() {
   // Submit feedback
   const handleSubmitFeedback = async () => {
     if (!user || !feedbackMessage.trim()) return;
-    
+
     setIsSubmittingFeedback(true);
     try {
       const token = await user.getIdToken();
@@ -822,10 +814,18 @@ export default function FeedPage() {
     const item = feed.find(i => i.id === itemId) || generalFeed.find(i => i.id === itemId);
     if (!item) return;
 
-    const isCurrentlyBookmarked = bookmarkedItems.has(itemId);
+    // Show loading state for this bookmark
+    setLoadingBookmarks(prev => new Set(prev).add(itemId));
 
     try {
       const token = await user.getIdToken();
+
+      // Lazy load bookmarks if not loaded yet
+      if (!bookmarksLoaded) {
+        await loadBookmarks();
+      }
+
+      const isCurrentlyBookmarked = bookmarkedItems.has(itemId);
 
       if (isCurrentlyBookmarked) {
         // Remove bookmark
@@ -865,6 +865,12 @@ export default function FeedPage() {
       }
     } catch (error) {
       console.error('Error toggling bookmark:', error);
+    } finally {
+      setLoadingBookmarks(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(itemId);
+        return newSet;
+      });
     }
   };
 
@@ -909,28 +915,8 @@ export default function FeedPage() {
             </div>
           </div>
         </div>
-      ) : hasAccess && profile && profile.newsletterOptIn !== false ? (
-        // Subscribed users: Show newsletter info chip
-        <div className="sticky top-14 md:top-16 z-40 bg-gradient-to-r from-indigo-500/5 via-violet-500/5 to-indigo-500/5 border-b border-indigo-500/10">
-          <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Mail size={14} className="text-indigo-400" />
-                <span className="text-xs font-mono text-secondary/70">
-                  Daily newsletter included at 10 AM IST
-                </span>
-              </div>
-              <Link
-                href="/profile"
-                className="text-[10px] font-mono text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-wider"
-              >
-                Settings
-              </Link>
-            </div>
-          </div>
-        </div>
       ) : !hasAccess && profile ? (
-        // Onboarded but not subscribed: Show subscribe callout
+        // Onboarded but not subscribed: Show limited feed callout
         <div className="sticky top-14 md:top-16 z-40 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border-b border-amber-500/20 backdrop-blur-sm">
           <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-3 md:py-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -940,10 +926,10 @@ export default function FeedPage() {
                 </div>
                 <div>
                   <p className="text-sm font-serif text-foreground">
-                    <span className="font-bold">Preview mode</span> — here&apos;s what Trace found for you
+                    <span className="font-bold">You&apos;re viewing a limited feed</span>
                   </p>
                   <p className="text-xs font-mono text-secondary/70 mt-0.5">
-                    Subscribe to interact with content & help Trace learn better from your feedback
+                    Unlock your full personalized feed free for 3 days — no credit card required
                   </p>
                 </div>
               </div>
@@ -952,7 +938,7 @@ export default function FeedPage() {
                 className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-[10px] font-mono uppercase tracking-widest hover:bg-primary/90 transition-colors shrink-0"
               >
                 <Zap size={12} />
-                Subscribe Now
+                Start Free Trial
               </Link>
             </div>
           </div>
@@ -1004,7 +990,7 @@ export default function FeedPage() {
         )}
       </AnimatePresence>
 
-      <main className="w-full mt-6 md:mt-12">
+      <main className="w-full mt-6 md:mt-10">
         {/* Mobile: Feed date with dropdown for history (only for subscribed AND onboarded users) */}
         {showPersonalizedFeed && (
           <div className="md:hidden px-4 mb-4">
@@ -1022,59 +1008,7 @@ export default function FeedPage() {
                   </span>
                 )}
               </div>
-              {feedDates.length > 1 && (
-                <button
-                  onClick={() => setShowMobileDatePicker(!showMobileDatePicker)}
-                  className="text-xs font-mono text-primary flex items-center gap-1"
-                >
-                  History
-                  <svg 
-                    className={`w-3 h-3 transition-transform ${showMobileDatePicker ? 'rotate-180' : ''}`} 
-                    fill="none" 
-                    viewBox="0 0 24 24" 
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              )}
             </div>
-            
-            {/* Mobile date picker dropdown */}
-            <AnimatePresence>
-              {showMobileDatePicker && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="flex gap-2 py-3 overflow-x-auto scrollbar-hide">
-                    {visibleFeedDates.map(date => {
-                      const isActive = selectedFeedDate === date;
-                      return (
-                        <button
-                          key={date}
-                          onClick={() => {
-                            if (user) {
-                              loadFeed(user.uid, date);
-                            }
-                            setShowMobileDatePicker(false);
-                          }}
-                          className={`px-3 py-1.5 text-xs font-mono whitespace-nowrap transition-colors border ${
-                            isActive 
-                              ? 'bg-primary text-primary-foreground border-primary' 
-                              : 'border-border text-secondary/70'
-                          }`}
-                        >
-                          {date}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
         )}
 
@@ -1138,11 +1072,10 @@ export default function FeedPage() {
                           <button
                             key={type}
                             onClick={() => setFeedbackType(type)}
-                            className={`flex-1 px-3 py-2 text-[10px] font-mono uppercase tracking-widest border transition-colors ${
-                              feedbackType === type
+                            className={`flex-1 px-3 py-2 text-[10px] font-mono uppercase tracking-widest border transition-colors ${feedbackType === type
                                 ? 'bg-primary text-white border-primary'
                                 : 'bg-transparent text-secondary border-border hover:border-primary'
-                            }`}
+                              }`}
                           >
                             {type === 'bug' && '🐛 Bug'}
                             {type === 'feature' && '✨ Feature'}
@@ -1197,11 +1130,10 @@ export default function FeedPage() {
                 <button
                   key={filter.id}
                   onClick={() => setActiveFilter(filter.id as FilterType)}
-                  className={`px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider whitespace-nowrap transition-colors border ${
-                    isActive 
-                      ? 'bg-primary text-primary-foreground border-primary' 
+                  className={`px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider whitespace-nowrap transition-colors border ${isActive
+                      ? 'bg-primary text-primary-foreground border-primary'
                       : 'border-border text-secondary/70 active:bg-foreground/5'
-                  }`}
+                    }`}
                 >
                   {filter.label}
                 </button>
@@ -1212,7 +1144,12 @@ export default function FeedPage() {
 
         <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 md:flex md:gap-12">
           {/* Filters - left sidebar, sticky (desktop only) */}
-          <aside className="hidden md:block w-48 shrink-0 sticky top-24 h-fit">
+          <aside className={`hidden md:block w-48 shrink-0 sticky  h-fit ${
+            // Add extra top margin when sticky banners are visible
+            (profile && !profile.onboarded) || (!hasAccess && profile)
+              ? 'top-40'
+              : 'top-24'
+            }`}>
             <nav className="space-y-2">
               <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-4 px-2">
                 Filters
@@ -1226,11 +1163,10 @@ export default function FeedPage() {
                   <button
                     key={filter.id}
                     onClick={() => setActiveFilter(filter.id as FilterType)}
-                    className={`w-full text-left px-2 py-2 text-sm font-serif transition-colors border ${
-                      isActive 
-                        ? 'text-primary border-primary/60 bg-primary/10 shadow-[0_0_0_1px_rgba(99,102,241,0.35)]' 
+                    className={`w-full text-left px-2 py-2 text-sm font-serif transition-colors border ${isActive
+                        ? 'text-primary border-primary/60 bg-primary/10 shadow-[0_0_0_1px_rgba(99,102,241,0.35)]'
                         : 'border-transparent text-secondary/70 hover:text-foreground hover:border-border'
-                    }`}
+                      }`}
                   >
                     {filter.label}
                   </button>
@@ -1288,51 +1224,43 @@ export default function FeedPage() {
               )}
             </AnimatePresence>
 
-            {/* Preview Mode Banner - Show upgrade message for unsubscribed users */}
-            {feedMetadata?.is_preview && !isFeedLoading && filteredFeed.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-4 md:mb-6 p-4 bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 border border-violet-500/30 flex items-start gap-3"
-              >
-                <Sparkles size={18} className="text-violet-400 mt-0.5 shrink-0" strokeWidth={1.5} />
-                <div className="flex-1">
-                  <p className="text-sm font-mono text-foreground mb-1">
-                    <span className="font-bold text-violet-400">✨ Preview Mode</span>
-                  </p>
-                  <p className="text-xs font-mono text-secondary">
-                    You&apos;re seeing a limited preview feed. Subscribe to unlock personalized AI-powered recommendations, smart signals, and more curated content just for you!
-                  </p>
-                </div>
-                <Link
-                  href="/profile"
-                  className="px-3 py-1.5 bg-violet-500 hover:bg-violet-600 text-white text-[10px] font-mono uppercase tracking-widest transition-colors shrink-0"
-                >
-                  Subscribe
-                </Link>
-              </motion.div>
-            )}
 
             {((showPersonalizedFeed && isFeedLoading) || (!showPersonalizedFeed && isLoadingGeneral)) ? (
-              <div className="py-16 flex flex-col items-center justify-center">
-                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-3" />
-                <p className="text-sm font-mono text-secondary">
-                  {!showPersonalizedFeed ? 'Loading general feed...' : 'Loading your feed...'}
-                </p>
+              <div className="divide-y divide-border/20">
+                {/* Skeleton loader - 5 placeholder cards */}
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="py-4 md:py-5 px-1 animate-pulse">
+                    <div className="flex gap-3 md:gap-4">
+                      <div className="w-8 h-8 md:w-10 md:h-10 bg-border/50 rounded shrink-0" />
+                      <div className="flex-1 space-y-3">
+                        <div className="h-3 bg-border/50 rounded w-16" />
+                        <div className="h-5 bg-border/50 rounded w-full" />
+                        <div className="h-5 bg-border/50 rounded w-3/4" />
+                        <div className="h-3 bg-border/50 rounded w-1/2" />
+                        <div className="flex gap-4 pt-2">
+                          <div className="h-6 w-6 bg-border/50 rounded" />
+                          <div className="h-6 w-6 bg-border/50 rounded" />
+                          <div className="h-6 w-6 bg-border/50 rounded" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <>
                 <div className="divide-y divide-border/20">
                   <AnimatePresence>
                     {filteredFeed.map((item) => (
-                      <FeedCard 
-                        key={item.id} 
-                        item={item} 
+                      <FeedCard
+                        key={item.id}
+                        item={item}
                         onUpvote={(note) => handleUpvote(item.id, note)}
                         onDownvote={(note) => handleDownvote(item.id, note)}
                         onStar={() => handleStar(item.id)}
                         initialVote={interactions[item.id]}
                         initialBookmarked={bookmarkedItems.has(item.id)}
+                        isBookmarkLoading={loadingBookmarks.has(item.id)}
                         disabled={!hasAccess}
                         onDisabledClick={() => setShowSubscribePrompt(true)}
                         onVisible={showPersonalizedFeed ? handleItemVisible : undefined}
@@ -1365,7 +1293,7 @@ export default function FeedPage() {
                 )}
 
                 {filteredFeed.length === 0 && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className="text-center py-16 md:py-20 px-4"
@@ -1378,7 +1306,7 @@ export default function FeedPage() {
                       const now = new Date();
                       const timeSinceOnboarding = now.getTime() - onboardedTime.getTime();
                       const isNewUser = timeSinceOnboarding < 30 * 60 * 1000; // Within 30 minutes
-                      
+
                       if (isNewUser) {
                         return (
                           <>
@@ -1425,37 +1353,65 @@ export default function FeedPage() {
                         );
                       }
                     })()}
-                    
-                    {(!profile?.onboardedAt || 
+
+                    {(!profile?.onboardedAt ||
                       (profile?.onboardedAt && (() => {
                         const ts = profile.onboardedAt as { seconds: number } | Date;
                         const time = typeof ts === 'object' && 'seconds' in ts ? new Date(ts.seconds * 1000) : new Date(ts);
                         return new Date().getTime() - time.getTime() >= 30 * 60 * 1000;
                       })()) ||
                       activeFilter !== 'all') && (
-                      <>
-                        <div className="w-12 h-12 bg-primary/5 border border-primary/20 flex items-center justify-center mx-auto mb-4">
-                          <Sparkles size={24} className="text-primary" />
-                        </div>
-                        <p className="text-lg font-serif mb-2">
-                          {activeFilter === 'all' ? 'Your Feed is Being Generated!!! Check back soon!' : `No ${activeFilter}s yet`}
-                        </p>
-                        <p className="text-sm font-mono text-secondary mb-4">
-                          {activeFilter === 'all' 
-                            ? "We're curating content for you. Check back soon!" 
-                            : 'Try a different filter'}
-                        </p>
-                        {activeFilter !== 'all' && (
-                          <button 
-                            onClick={() => setActiveFilter('all')}
-                            className="text-sm font-mono text-primary hover:underline uppercase tracking-wider"
-                          >
-                            View all content
-                          </button>
-                        )}
-                      </>
-                    )}
+                        <>
+                          <div className="w-12 h-12 bg-primary/5 border border-primary/20 flex items-center justify-center mx-auto mb-4">
+                            <Sparkles size={24} className="text-primary" />
+                          </div>
+                          <p className="text-lg font-serif mb-2">
+                            {activeFilter === 'all' ? 'Your Feed is Being Generated!!! Check back soon!' : `No ${activeFilter}s yet`}
+                          </p>
+                          <p className="text-sm font-mono text-secondary mb-4">
+                            {activeFilter === 'all'
+                              ? "We're curating content for you. Check back soon!"
+                              : 'Try a different filter'}
+                          </p>
+                          {activeFilter !== 'all' && (
+                            <button
+                              onClick={() => setActiveFilter('all')}
+                              className="text-sm font-mono text-primary hover:underline uppercase tracking-wider"
+                            >
+                              View all content
+                            </button>
+                          )}
+                        </>
+                      )}
                   </motion.div>
+                )}
+
+                {/* Bottom callout for unsubscribed users */}
+                {feedMetadata?.is_preview && filteredFeed.length > 0 && (
+                  <div className="mt-6 mb-4 p-4 md:p-5 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/20">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-amber-500/20 flex items-center justify-center shrink-0">
+                          <Brain size={20} className="text-amber-500" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-serif text-foreground font-bold">
+                            Want more?
+                          </p>
+                          <p className="text-xs font-mono text-secondary/70 mt-0.5">
+                            This is just a taste. Unlock your full personalized feed with AI-powered recommendations, free for 3 days.
+                          </p>
+                        </div>
+                      </div>
+                      <Link
+                        href="/profile?tab=subscription"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground text-[10px] font-mono uppercase tracking-widest hover:bg-primary/90 transition-colors shrink-0"
+                      >
+                        <Zap size={12} />
+                        Start Free Trial
+                      </Link>
+                    </div>
+                  </div>
                 )}
 
                 {/* End of feed indicator */}
@@ -1468,45 +1424,20 @@ export default function FeedPage() {
             )}
           </div>
 
-          {/* Previous feeds - right sidebar (desktop only) */}
-          <aside className="hidden md:block w-48 shrink-0 sticky top-24 h-fit">
-            {showPersonalizedFeed ? (
-              <nav className="space-y-2">
-                <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-4 px-2">
-                  Previous Feeds
-                </h2>
-                {feedDates.length === 0 && (
-                  <div className="px-2 text-xs font-mono text-secondary/60">
-                    No history yet
-                  </div>
-                )}
-                {visibleFeedDates.map(date => {
-                  const isActive = selectedFeedDate === date;
-                  return (
-                    <button
-                      key={date}
-                      onClick={() => user && loadFeed(user.uid, date)}
-                      className={`w-full text-left px-2 py-2 text-sm font-serif transition-colors border ${
-                        isActive 
-                          ? 'text-primary border-primary/60 bg-primary/10 shadow-[0_0_0_1px_rgba(99,102,241,0.35)]' 
-                          : 'border-transparent text-secondary/70 hover:text-foreground hover:border-border'
-                      }`}
-                    >
-                      {date}
-                    </button>
-                  );
-                })}
-              </nav>
-            ) : null}
-
-            {/* Feedback Callout - Below previous feeds */}
+          {/* Right sidebar (desktop only) - Feedback */}
+          <aside className={`hidden md:block w-48 shrink-0 sticky h-fit ${
+            (profile && !profile.onboarded) || (!hasAccess && profile) 
+              ? 'top-40' 
+              : 'top-24'
+          }`}>
+            {/* Feedback Callout */}
             {isOnboarded && !showFeedback && (
               <div className="mt-6">
                 <div className="p-4 bg-blue-500/5 border border-blue-500/20">
                   <div className="flex items-start gap-2 mb-3">
                     <div className="flex-1">
                       <p className="text-xs font-mono text-foreground font-bold mb-1 flex items-center gap-2">
-                         <MessageSquare size={12} className="text-blue-500 mt-0.5 shrink-0" strokeWidth={1.5} />Feedback/Complaint?
+                        <MessageSquare size={12} className="text-blue-500 mt-0.5 shrink-0" strokeWidth={1.5} />Feedback/Complaint?
                       </p>
                       <p className="text-[10px] font-mono text-secondary/80 leading-relaxed">
                         Help us improve Trace! Share bugs, feature requests, or general feedback.
@@ -1558,11 +1489,10 @@ export default function FeedPage() {
                               <button
                                 key={type}
                                 onClick={() => setFeedbackType(type)}
-                                className={`flex-1 px-2 py-1.5 text-[9px] font-mono uppercase tracking-widest border transition-colors ${
-                                  feedbackType === type
+                                className={`flex-1 px-2 py-1.5 text-[9px] font-mono uppercase tracking-widest border transition-colors ${feedbackType === type
                                     ? 'bg-primary text-white border-primary'
                                     : 'bg-transparent text-secondary border-border hover:border-primary'
-                                }`}
+                                  }`}
                               >
                                 {type === 'bug' && '🐛'}
                                 {type === 'feature' && '✨'}

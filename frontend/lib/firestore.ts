@@ -5,7 +5,10 @@ import {
   serverTimestamp,
   Timestamp,
   collection,
-  getDocs
+  getDocs,
+  query,
+  orderBy,
+  limit
 } from 'firebase/firestore';
 import { firestore } from './firebase';
 
@@ -302,24 +305,16 @@ export interface UserProfile {
 }
 
 export const INTERESTS = [
-  { id: 'ai-ml', label: 'AI & ML', emoji: '🤖' },
-  { id: 'performance', label: 'Performance', emoji: '⚡' },
-  { id: 'design', label: 'Design', emoji: '🎨' },
-  { id: 'frontend', label: 'Frontend', emoji: '💻' },
-  { id: 'backend', label: 'Backend', emoji: '🔧' },
-  { id: 'mobile', label: 'Mobile', emoji: '📱' },
-  { id: 'startups', label: 'Startups', emoji: '🚀' },
-  { id: 'finance', label: 'Finance', emoji: '💰' },
-  { id: 'content-creation', label: 'Content Creation', emoji: '🎬' },
-  { id: 'data', label: 'Data', emoji: '📊' },
-  { id: 'security', label: 'Security', emoji: '🔐' },
-  { id: 'gaming', label: 'Gaming', emoji: '🎮' },
-  { id: 'writing', label: 'Writing', emoji: '✍️' },
-  { id: 'growth', label: 'Growth', emoji: '📈' },
-  { id: 'productivity', label: 'Productivity', emoji: '🧠' },
-  { id: 'cloud-infra', label: 'Cloud/Infra', emoji: '☁️' },
-  { id: 'research', label: 'Research', emoji: '🔬' },
-  { id: 'web3', label: 'Web3', emoji: '🌐' },
+  { id: 'ai-tools', label: 'AI Tools' },
+  { id: 'frontend-performance', label: 'Frontend Performance' },
+  { id: 'ux-design', label: 'UX Design' },
+  { id: 'finance', label: 'Finance' },
+  { id: 'writing', label: 'Writing' },
+  { id: 'startups', label: 'Startups' },
+  { id: 'indie-dev', label: 'Indie Dev' },
+  { id: 'productivity', label: 'Productivity' },
+  { id: 'ux-research', label: 'UX Research' },
+  { id: 'gaming', label: 'Gaming' },
 ];
 
 export const ROLES = [
@@ -366,16 +361,14 @@ export async function getLatestUserFeed(uid: string): Promise<UserFeed | null> {
   }
 }
 
-export async function getUserFeedDates(uid: string, limit = 10): Promise<string[]> {
+export async function getUserFeedDates(uid: string, limitCount = 10): Promise<string[]> {
   try {
     const feedRef = collection(firestore, COLLECTIONS.userFeeds, uid, 'daily');
-    const snapshot = await getDocs(feedRef);
+    // Only fetch the IDs we need, ordered by date desc
+    const q = query(feedRef, orderBy('__name__', 'desc'), limit(limitCount));
+    const snapshot = await getDocs(q);
     if (snapshot.empty) return [];
-
-    const sortedDocs = snapshot.docs
-      .map(docSnap => docSnap.id)
-      .sort((a, b) => b.localeCompare(a));
-    return sortedDocs.slice(0, limit);
+    return snapshot.docs.map(docSnap => docSnap.id);
   } catch (error) {
     console.error('Error getting feed dates:', error);
     return [];

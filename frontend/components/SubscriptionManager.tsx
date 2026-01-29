@@ -336,15 +336,15 @@ export default function SubscriptionManager() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary mt-0.5">✓</span>
+                  <span>Daily newsletter delivered to your inbox every morning</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary mt-0.5">✓</span>
                   <span>Smart content from YouTube, blogs, papers, repos & more</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary mt-0.5">✓</span>
                   <span>AI-curated based on your role, projects, and learning style</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary mt-0.5">✓</span>
-                  <span>Fresh, relevant content—no repeats, no noise</span>
                 </li>
               </ul>
             </div>

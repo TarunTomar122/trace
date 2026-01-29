@@ -61,6 +61,7 @@ def build_unsubscribed_feeds(
 
     success = 0
     failed = 0
+    skipped = 0
 
     for i, user in enumerate(users, 1):
         user_id = user.get("uid")
@@ -69,8 +70,12 @@ def build_unsubscribed_feeds(
         print(f"[{i}/{total}] Building unsubscribed feed for {user_id}...")
         try:
             result = build_unsubscribed_feed(user_id, skip_seen=skip_seen)
-            print(f"  Items written: {result.get('items_written', 0)}")
-            success += 1
+            if result.get("skipped"):
+                skipped += 1
+                print(f"  Skipped (feed already exists)")
+            else:
+                print(f"  Items written: {result.get('items_written', 0)}")
+                success += 1
         except Exception as e:
             failed += 1
             print(f"  Error: {e}")
@@ -80,6 +85,7 @@ def build_unsubscribed_feeds(
         "users_processed": total,
         "success": success,
         "failed": failed,
+        "skipped": skipped,
         "skip_seen": skip_seen,
         "start_index": start_idx,
     }

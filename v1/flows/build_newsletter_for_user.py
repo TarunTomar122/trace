@@ -109,7 +109,7 @@ def _select_items_with_gemini(
             "content_depth": user_profile.get("contentDepth", ""),
         }
 
-        prompt = f"""You are selecting items for a daily newsletter. Pick the {max_items} BEST items for this user.
+        prompt = f"""Select the {max_items} BEST items for this user's daily newsletter.
 
 USER PROFILE:
 {json.dumps(user_context, indent=2)}
@@ -119,31 +119,30 @@ AVAILABLE ITEMS:
 
 SELECTION CRITERIA:
 1. Relevance to user's interests and goals
-2. Novelty and freshness of information
-3. Diversity of topics (don't pick too many similar items)
-4. Quality indicators (clear titles, good tags)
-5. Mix of content types if possible
+2. Diversity of topics (don't pick too many similar items)
+3. Quality indicators (clear titles, good tags)
 
-Return ONLY a JSON array of item IDs (strings), ordered by relevance.
-Example: ["item_1", "item_2", "item_3"]
+INSTRUCTIONS:
+- Return ONLY a JSON array of item IDs
+- Order by relevance (best first)
+- Select up to {max_items} items
 
-Select up to {max_items} items. Return fewer if there aren't enough quality items."""
+EXAMPLE OUTPUT:
+["topic_ai-agents_blog_0_2026-01-29", "topic_python_discussion_1_2026-01-29", "trending_tech_0_2026-01-29"]
+
+YOUR RESPONSE (valid JSON array only):"""
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
+            config={
+                "temperature": 0.2,
+                "max_output_tokens": 500,
+                "response_mime_type": "application/json",
+            }
         )
 
-        response_text = response.text.strip()
-
-        # Parse JSON from response
-        if response_text.startswith("```"):
-            response_text = response_text.split("```")[1]
-            if response_text.startswith("json"):
-                response_text = response_text[4:]
-            response_text = response_text.strip()
-
-        selected_ids = json.loads(response_text)
+        selected_ids = json.loads(response.text.strip())
 
         # Validate IDs exist in items
         valid_ids = {item.get("id") for item in items}
@@ -152,7 +151,7 @@ Select up to {max_items} items. Return fewer if there aren't enough quality item
         return selected_ids[:max_items]
 
     except Exception as e:
-        print(f"  Gemini selection failed: {e}")
+        print(f"  Warning: Gemini selection failed: {e}")
         return []
 
 
@@ -260,42 +259,38 @@ def _summarize_items_batch(
 User interests: {', '.join(user_profile.get('interests', [])[:3])}
 User goals: {user_profile.get('goals', {}).get('shortTerm', '')}"""
 
-        prompt = f"""Summarize each article for a daily newsletter. Each summary should be 2-3 sentences, no bullets.
-Make summaries engaging and highlight why each article matters.
+        prompt = f"""Summarize each article for a daily newsletter.
 
 {user_context}
 
 ARTICLES TO SUMMARIZE:
 {json.dumps(items_for_prompt, indent=2)}
 
-Return a JSON object mapping item ID to summary string.
-Example: {{"item_1": "Summary of first article...", "item_2": "Summary of second..."}}
-
-IMPORTANT:
-- Each summary should be 2-3 concise sentences
-- NO bullet points
+INSTRUCTIONS:
+- Each summary: 2-3 engaging sentences (NO bullet points)
 - Focus on key insights and why it matters
-- Keep a professional but engaging tone"""
+- Return a JSON object mapping item ID to summary string
+
+EXAMPLE OUTPUT:
+{{"topic_ai_blog_0_2026-01-29": "New research shows AI agents can now autonomously debug code with 90% accuracy. This could dramatically reduce developer time spent on bug fixes.", "topic_python_discussion_1_2026-01-29": "The Python community debates async vs sync patterns for web APIs. Key takeaway: async shines for I/O-bound workloads but adds complexity."}}
+
+YOUR RESPONSE (valid JSON object only):"""
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
+            config={
+                "temperature": 0.3,
+                "max_output_tokens": 2000,
+                "response_mime_type": "application/json",
+            }
         )
 
-        response_text = response.text.strip()
-
-        # Parse JSON from response
-        if response_text.startswith("```"):
-            response_text = response_text.split("```")[1]
-            if response_text.startswith("json"):
-                response_text = response_text[4:]
-            response_text = response_text.strip()
-
-        summaries = json.loads(response_text)
+        summaries = json.loads(response.text.strip())
         return summaries
 
     except Exception as e:
-        print(f"  Batch summarization failed: {e}")
+        print(f"  Warning: Batch summarization failed: {e}")
         return {}
 
 
@@ -313,7 +308,7 @@ def _summarize_single_item(
         if len(content) > 3000:
             content = content[:3000] + "..."
 
-        prompt = f"""Summarize this article in 2-3 sentences for a newsletter. No bullets.
+        prompt = f"""Summarize this article in 2-3 sentences for a newsletter. No bullets, just flowing text.
 
 Title: {item.get('title', '')}
 Content: {content}
@@ -321,14 +316,14 @@ Content: {content}
 Write an engaging summary that highlights key insights."""
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
         )
 
         return response.text.strip()
 
     except Exception as e:
-        print(f"  Single summarization failed: {e}")
+        print(f"  Warning: Single summarization failed: {e}")
         return None
 
 

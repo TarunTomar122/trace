@@ -3,10 +3,41 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, ChevronLeft, Check, MessageCircle, Sparkles, HelpCircle } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, MessageCircle, Sparkles, HelpCircle, Plus, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { ROLES, completeOnboarding, getUserProfile, addChatMessage } from '@/lib/firestore';
+import { ROLES, INTERESTS, completeOnboarding, getUserProfile, addChatMessage } from '@/lib/firestore';
 import { isAlphaMode } from '@/lib/alpha';
+
+// Suggested hobbies for pills
+const HOBBY_SUGGESTIONS = [
+  { id: 'running', label: 'Running' },
+  { id: 'cycling', label: 'Cycling' },
+  { id: 'pottery', label: 'Pottery' },
+  { id: 'sketching', label: 'Sketching' },
+  { id: 'photography', label: 'Photography' },
+  { id: 'music', label: 'Music' },
+  { id: 'reading', label: 'Reading' },
+  { id: 'fitness', label: 'Fitness' },
+];
+
+// Suggested skills for pills
+const SKILL_SUGGESTIONS = [
+  { id: 'software-engineering', label: 'Software Engineering' },
+  { id: 'ai-engineer', label: 'AI Engineer' },
+  { id: 'ux-designer', label: 'UX Designer' },
+  { id: 'quant-researcher', label: 'Quant Researcher' },
+  { id: 'frontend', label: 'Frontend' },
+  { id: 'backend', label: 'Backend' },
+  { id: 'trading', label: 'Trading' },
+  { id: 'marketing', label: 'Marketing' },
+];
+
+// Suggested short-term goals for pills
+const GOAL_SUGGESTIONS = [
+  { id: 'scale-a-startup', label: 'Scale a Startup' },
+  { id: 'build-an-online-brand', label: 'Build an Online Brand' },
+  { id: 'get-promoted-at-work', label: 'Get Promoted at Work' },
+];
 
 // Tooltip component - Desktop: hover popup, Mobile: inline accordion
 function HelpTooltip({ content }: { content: string }) {
@@ -66,7 +97,7 @@ function HelpTooltip({ content }: { content: string }) {
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, refreshProfile } = useAuth();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -79,14 +110,20 @@ export default function OnboardingPage() {
   const [currentWorkProject, setCurrentWorkProject] = useState('');
   const [currentWorkFocus, setCurrentWorkFocus] = useState('');
   
-  // Step 2: Interests & Hobbies
-  const [interestsText, setInterestsText] = useState('');
-  const [hobbiesText, setHobbiesText] = useState('');
+  // Step 2: Interests & Hobbies (pills-based)
+  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+  const [selectedHobbies, setSelectedHobbies] = useState<string[]>([]);
+  const [customInterest, setCustomInterest] = useState('');
+  const [showCustomInterestInput, setShowCustomInterestInput] = useState(false);
+  const [customHobby, setCustomHobby] = useState('');
+  const [showCustomHobbyInput, setShowCustomHobbyInput] = useState(false);
   const [projectsText, setProjectsText] = useState('');
   const [favoriteSourcesText, setFavoriteSourcesText] = useState('');
   
-  // Step 3: Skills & Dislikes
-  const [skillsText, setSkillsText] = useState('');
+  // Step 3: Skills & Goals (pills-based)
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [customSkill, setCustomSkill] = useState('');
+  const [showCustomSkillInput, setShowCustomSkillInput] = useState(false);
   const [dislikedTopicsText, setDislikedTopicsText] = useState('');
   const [goalsShortTerm, setGoalsShortTerm] = useState('');
   const [goalsLongTerm, setGoalsLongTerm] = useState('');
@@ -160,6 +197,64 @@ export default function OnboardingPage() {
     setSourcePreferences(prev => ({ ...prev, [key]: value }));
   };
 
+  // Toggle functions for pills
+  const toggleInterest = (id: string) => {
+    if (selectedInterests.includes(id)) {
+      setSelectedInterests(selectedInterests.filter(i => i !== id));
+    } else if (selectedInterests.length < 8) {
+      setSelectedInterests([...selectedInterests, id]);
+    }
+  };
+
+  const addCustomInterest = () => {
+    if (customInterest.trim() && selectedInterests.length < 8) {
+      const customId = customInterest.toLowerCase().trim().replace(/\s+/g, '-');
+      if (!selectedInterests.includes(customId)) {
+        setSelectedInterests([...selectedInterests, customId]);
+      }
+      setCustomInterest('');
+      setShowCustomInterestInput(false);
+    }
+  };
+
+  const toggleHobby = (id: string) => {
+    if (selectedHobbies.includes(id)) {
+      setSelectedHobbies(selectedHobbies.filter(h => h !== id));
+    } else if (selectedHobbies.length < 3) {
+      setSelectedHobbies([...selectedHobbies, id]);
+    }
+  };
+
+  const addCustomHobby = () => {
+    if (customHobby.trim() && selectedHobbies.length < 3) {
+      const customId = customHobby.toLowerCase().trim().replace(/\s+/g, '-');
+      if (!selectedHobbies.includes(customId)) {
+        setSelectedHobbies([...selectedHobbies, customId]);
+      }
+      setCustomHobby('');
+      setShowCustomHobbyInput(false);
+    }
+  };
+
+  const toggleSkill = (id: string) => {
+    if (selectedSkills.includes(id)) {
+      setSelectedSkills(selectedSkills.filter(s => s !== id));
+    } else {
+      setSelectedSkills([...selectedSkills, id]);
+    }
+  };
+
+  const addCustomSkill = () => {
+    if (customSkill.trim()) {
+      const customId = customSkill.toLowerCase().trim().replace(/\s+/g, '-');
+      if (!selectedSkills.includes(customId)) {
+        setSelectedSkills([...selectedSkills, customId]);
+      }
+      setCustomSkill('');
+      setShowCustomSkillInput(false);
+    }
+  };
+
   // Chat functionality
   const sendChatMessage = async () => {
     if (!chatInput.trim() || !user) return;
@@ -190,9 +285,9 @@ export default function OnboardingPage() {
               focus: currentWorkFocus || undefined,
             },
             projects: parseCommaSeparated(projectsText),
-            interests: parseCommaSeparated(interestsText), 
-            hobbies: parseCommaSeparated(hobbiesText), 
-            skills: parseCommaSeparated(skillsText), 
+            interests: selectedInterests, 
+            hobbies: selectedHobbies, 
+            skills: selectedSkills, 
             goals: {
               shortTerm: goalsShortTerm || undefined,
               longTerm: goalsLongTerm || undefined,
@@ -244,9 +339,8 @@ export default function OnboardingPage() {
   // Validation
   const canProceed = () => {
     if (step === 1) return name.trim() && role;
-    if (step === 2) return parseCommaSeparated(interestsText, 8).length >= 4;
-    if (step === 3) return parseCommaSeparated(skillsText).length >= 1;
-    if (step === 4) return true;
+    if (step === 2) return selectedInterests.length >= 4;
+    if (step === 3) return selectedSkills.length >= 1;
     return true;
   };
 
@@ -258,9 +352,9 @@ export default function OnboardingPage() {
       const onboardingData: Parameters<typeof completeOnboarding>[1] = {
         name: name.trim(),
         role,
-        interests: parseCommaSeparated(interestsText, 8),
-        hobbies: parseCommaSeparated(hobbiesText, 3),
-        skills: parseCommaSeparated(skillsText),
+        interests: selectedInterests,
+        hobbies: selectedHobbies,
+        skills: selectedSkills,
         dislikedTopics: parseCommaSeparated(dislikedTopicsText),
         sourcePreferences,
         contentDepth,
@@ -346,9 +440,12 @@ export default function OnboardingPage() {
         console.warn('Onboard trigger failed:', e);
       }
       
-      // Redirect to profile subscription tab to start subscription
+      // Refresh profile to update onboarded status before redirect
+      await refreshProfile();
+      
+      // Redirect to feed after onboarding
       if (isAlphaMode()) {
-        router.push('/profile?tab=subscription');
+        router.push('/feed');
       } else {
         router.push('/waitlist');
       }
@@ -361,9 +458,9 @@ export default function OnboardingPage() {
   const nextStep = () => {
     if (!canProceed()) return;
     
-    if (step < 4) {
+    if (step < 3) {
       setStep(step + 1);
-    } else if (step === 4) {
+    } else if (step === 3) {
       handleSubmit();
     }
   };
@@ -386,8 +483,8 @@ export default function OnboardingPage() {
       <div className="fixed top-0 left-0 right-0 h-1 bg-border z-50">
         <motion.div 
           className="h-full bg-primary"
-          initial={{ width: '25%' }}
-          animate={{ width: `${(step / 4) * 100}%` }}
+          initial={{ width: '33.33%' }}
+          animate={{ width: `${(step / 3) * 100}%` }}
           transition={{ duration: 0.3 }}
         />
       </div>
@@ -404,7 +501,7 @@ export default function OnboardingPage() {
             TRACE
           </div>
           <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary">
-            Step {step} of 4
+            Step {step} of 3
           </p>
           <p className="text-xs text-secondary/60 mt-2 max-w-md mx-auto font-mono">
             🔒 Your data powers your personalized feed. Read our{' '}
@@ -511,7 +608,7 @@ export default function OnboardingPage() {
               </div>
 
               <div className="space-y-8">
-                {/* Interests */}
+                {/* Interests - Pills */}
                 <div>
                   <div className="relative mb-2">
                     <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 font-medium">
@@ -520,66 +617,148 @@ export default function OnboardingPage() {
                     </label>
                   </div>
                   <p className="text-xs text-secondary/70 mb-4 font-mono">
-                    💡 These drive 70% of your feed content
+                    💡 These drive 70% of your feed content • {selectedInterests.length}/8 selected
                   </p>
                   
-                  <textarea
-                    value={interestsText}
-                    onChange={(e) => setInterestsText(e.target.value)}
-                    placeholder="React performance, fintech APIs, product teardowns, typography"
-                    rows={3}
-                    className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                  />
-                  <p className="text-xs text-secondary/60 mt-2 font-mono">
-                    Separate with commas • {parseCommaSeparated(interestsText, 8).length}/8 added
-                  </p>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {INTERESTS.map((interest) => {
+                      const isSelected = selectedInterests.includes(interest.id);
+                      return (
+                        <button
+                          key={interest.id}
+                          onClick={() => toggleInterest(interest.id)}
+                          className={`px-3 py-2 border text-sm font-mono transition-all flex items-center gap-2 ${
+                            isSelected
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border hover:border-primary/50'
+                          }`}
+                        >
+                          <span>{interest.label}</span>
+                          {isSelected && <Check size={12} />}
+                        </button>
+                      );
+                    })}
+
+                    {/* Custom interests that were added */}
+                    {selectedInterests
+                      .filter(id => !INTERESTS.some(i => i.id === id))
+                      .map(customId => (
+                        <button
+                          key={customId}
+                          onClick={() => toggleInterest(customId)}
+                          className="px-3 py-2 border border-primary bg-primary text-primary-foreground text-sm font-mono transition-all flex items-center gap-2"
+                        >
+                          <span>{customId.replace(/-/g, ' ')}</span>
+                          <X size={12} />
+                        </button>
+                      ))}
+
+                    {/* Add custom interest */}
+                    {!showCustomInterestInput ? (
+                      <button
+                        onClick={() => setShowCustomInterestInput(true)}
+                        className="px-3 py-2 border border-dashed border-border hover:border-primary/50 text-sm font-mono transition-all flex items-center gap-2 text-secondary"
+                      >
+                        <Plus size={12} />
+                        Add custom
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={customInterest}
+                          onChange={(e) => setCustomInterest(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && addCustomInterest()}
+                          placeholder="Your interest"
+                          autoFocus
+                          className="px-3 py-2 border border-primary bg-transparent text-sm font-mono outline-none w-32"
+                        />
+                        <button onClick={addCustomInterest} className="p-2 border border-primary bg-primary text-primary-foreground">
+                          <Check size={12} />
+                        </button>
+                        <button onClick={() => { setShowCustomInterestInput(false); setCustomInterest(''); }} className="p-2 border border-border">
+                          <X size={12} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Hobbies */}
+                {/* Hobbies - Pills */}
                 <div>
                   <div className="relative mb-2">
                     <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 font-medium">
-                      Hobbies <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
+                      Hobbies <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional, max 3)</span>
                       <HelpTooltip content="Balances your professional feed with personal interests - helps you discover content outside your work bubble" />
                     </label>
                   </div>
                   <p className="text-xs text-secondary/70 mb-4 font-mono">
-                    ✨ We&apos;ll sprinkle in some fun content (~20%)
+                    ✨ We&apos;ll sprinkle in some fun content (~20%) • {selectedHobbies.length}/3 selected
                   </p>
                   
-                  <textarea
-                    value={hobbiesText}
-                    onChange={(e) => setHobbiesText(e.target.value)}
-                    placeholder="marathon training, sourdough baking, film photography, ceramics"
-                    rows={2}
-                    className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                  />
-                  {hobbiesText.trim() && (
-                    <p className="text-xs text-secondary/60 mt-2 font-mono">
-                      {parseCommaSeparated(hobbiesText, 3).length}/3 added
-                    </p>
-                  )}
-                </div>
+                  <div className="flex flex-wrap gap-2">
+                    {HOBBY_SUGGESTIONS.map((hobby) => {
+                      const isSelected = selectedHobbies.includes(hobby.id);
+                      return (
+                        <button
+                          key={hobby.id}
+                          onClick={() => toggleHobby(hobby.id)}
+                          className={`px-3 py-2 border text-sm font-mono transition-all flex items-center gap-2 ${
+                            isSelected
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border hover:border-primary/50'
+                          }`}
+                        >
+                          <span>{hobby.label}</span>
+                          {isSelected && <Check size={12} />}
+                        </button>
+                      );
+                    })}
 
-                {/* <div>
-                  <div className="relative mb-2">
-                    <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 font-medium">
-                      Projects <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                      <HelpTooltip content="Helps us find case studies, technical deep-dives, and tools specific to what you're actively building" />
-                    </label>
+                    {/* Custom hobbies that were added */}
+                    {selectedHobbies
+                      .filter(id => !HOBBY_SUGGESTIONS.some(h => h.id === id))
+                      .map(customId => (
+                        <button
+                          key={customId}
+                          onClick={() => toggleHobby(customId)}
+                          className="px-3 py-2 border border-primary bg-primary text-primary-foreground text-sm font-mono transition-all flex items-center gap-2"
+                        >
+                          <span>{customId.replace(/-/g, ' ')}</span>
+                          <X size={12} />
+                        </button>
+                      ))}
+
+                    {/* Add custom hobby */}
+                    {!showCustomHobbyInput ? (
+                      <button
+                        onClick={() => setShowCustomHobbyInput(true)}
+                        className="px-3 py-2 border border-dashed border-border hover:border-primary/50 text-sm font-mono transition-all flex items-center gap-2 text-secondary"
+                      >
+                        <Plus size={12} />
+                        Add custom
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={customHobby}
+                          onChange={(e) => setCustomHobby(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && addCustomHobby()}
+                          placeholder="Your hobby"
+                          autoFocus
+                          className="px-3 py-2 border border-primary bg-transparent text-sm font-mono outline-none w-32"
+                        />
+                        <button onClick={addCustomHobby} className="p-2 border border-primary bg-primary text-primary-foreground">
+                          <Check size={12} />
+                        </button>
+                        <button onClick={() => { setShowCustomHobbyInput(false); setCustomHobby(''); }} className="p-2 border border-border">
+                          <X size={12} />
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-xs text-secondary/70 mb-4 font-mono">
-                    🧩 Comma-separated list of things you&apos;re building
-                  </p>
-                  <textarea
-                    value={projectsText}
-                    onChange={(e) => setProjectsText(e.target.value)}
-                    placeholder="building a fintech app, redesigning checkout flows, crypto analytics tool"
-                    rows={2}
-                    className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                  />
-                </div> */}
-
+                </div>
               </div>
             </motion.div>
           )}
@@ -613,22 +792,72 @@ export default function OnboardingPage() {
                     </label>
                   </div>
                   <p className="text-xs text-secondary/70 mb-4 font-mono">
-                    🎯 Helps us calibrate content difficulty
+                    🎯 Helps us calibrate content difficulty • {selectedSkills.length} selected
                   </p>
                   
-                  <textarea
-                    value={skillsText}
-                    onChange={(e) => setSkillsText(e.target.value)}
-                    placeholder="TypeScript, Figma, financial modeling, user interviews"
-                    rows={3}
-                    className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                  />
-                  <p className="text-xs text-secondary/60 mt-2 font-mono">
-                    Separate with commas • {parseCommaSeparated(skillsText).length} added
-                  </p>
-                </div>
+                  <div className="flex flex-wrap gap-2">
+                    {SKILL_SUGGESTIONS.map((skill) => {
+                      const isSelected = selectedSkills.includes(skill.id);
+                      return (
+                        <button
+                          key={skill.id}
+                          onClick={() => toggleSkill(skill.id)}
+                          className={`px-3 py-2 border text-sm font-mono transition-all flex items-center gap-2 ${
+                            isSelected
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border hover:border-primary/50'
+                          }`}
+                        >
+                          <span>{skill.label}</span>
+                          {isSelected && <Check size={12} />}
+                        </button>
+                      );
+                    })}
 
-                {/* Disliked Topics */}
+                    {/* Custom skills that were added */}
+                    {selectedSkills
+                      .filter(id => !SKILL_SUGGESTIONS.some(s => s.id === id))
+                      .map(customId => (
+                        <button
+                          key={customId}
+                          onClick={() => toggleSkill(customId)}
+                          className="px-3 py-2 border border-primary bg-primary text-primary-foreground text-sm font-mono transition-all flex items-center gap-2"
+                        >
+                          <span>{customId.replace(/-/g, ' ')}</span>
+                          <X size={12} />
+                        </button>
+                      ))}
+
+                    {/* Add custom skill */}
+                    {!showCustomSkillInput ? (
+                      <button
+                        onClick={() => setShowCustomSkillInput(true)}
+                        className="px-3 py-2 border border-dashed border-border hover:border-primary/50 text-sm font-mono transition-all flex items-center gap-2 text-secondary"
+                      >
+                        <Plus size={12} />
+                        Add custom
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={customSkill}
+                          onChange={(e) => setCustomSkill(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && addCustomSkill()}
+                          placeholder="Your skill"
+                          autoFocus
+                          className="px-3 py-2 border border-primary bg-transparent text-sm font-mono outline-none w-32"
+                        />
+                        <button onClick={addCustomSkill} className="p-2 border border-primary bg-primary text-primary-foreground">
+                          <Check size={12} />
+                        </button>
+                        <button onClick={() => { setShowCustomSkillInput(false); setCustomSkill(''); }} className="p-2 border border-border">
+                          <X size={12} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
              
 
                 <div>
@@ -638,12 +867,45 @@ export default function OnboardingPage() {
                       <HelpTooltip content="Surfaces content aligned with your immediate objectives - like promotion prep, product launches, or skill acquisition" />
                     </label>
                   </div>
-                  <textarea
+                  <p className="text-xs text-secondary/70 mb-4 font-mono">
+                    What are you working towards?
+                  </p>
+                  
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {GOAL_SUGGESTIONS.map((goal) => {
+                      const isSelected = goalsShortTerm.toLowerCase().includes(goal.label.toLowerCase());
+                      return (
+                        <button
+                          key={goal.id}
+                          onClick={() => {
+                            if (isSelected) {
+                              // Remove from goals
+                              const regex = new RegExp(goal.label + ',?\\s*', 'gi');
+                              setGoalsShortTerm(prev => prev.replace(regex, '').trim().replace(/,\s*$/, ''));
+                            } else {
+                              // Add to goals
+                              setGoalsShortTerm(prev => prev ? `${prev}, ${goal.label}` : goal.label);
+                            }
+                          }}
+                          className={`px-3 py-2 border text-sm font-mono transition-all flex items-center gap-2 ${
+                            isSelected
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border hover:border-primary/50'
+                          }`}
+                        >
+                          <span>{goal.label}</span>
+                          {isSelected && <Check size={12} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <input
+                    type="text"
                     value={goalsShortTerm}
                     onChange={(e) => setGoalsShortTerm(e.target.value)}
-                    placeholder="Ship my side project, get promoted, learn system design"
-                    rows={2}
-                    className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                    placeholder="Or type your own goals..."
+                    className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
                   />
                 </div>
 
@@ -651,98 +913,6 @@ export default function OnboardingPage() {
 
                
 
-              </div>
-            </motion.div>
-          )}
-
-          {/* Step 4: Content Preferences */}
-          {step === 4 && (
-            <motion.div
-              key="step4"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-8"
-            >
-              <div className="text-center mb-10">
-                <h1 className="text-4xl md:text-5xl font-serif font-light tracking-tight uppercase mb-3">
-                  Content <span className="text-secondary/40">Mix</span>
-                </h1>
-                <p className="text-secondary font-mono text-sm">
-                  Fine-tune your content sources
-                </p>
-              </div>
-
-              <div className="space-y-6">
-                <div className="relative mb-6 text-center">
-                  <p className="text-sm text-secondary/80 font-mono inline-flex items-center gap-2 flex-wrap justify-center">
-                    🎚️ Rate your preference for each content type (0 = skip, 10 = love it)
-                    <HelpTooltip content="Set your preference level for each content type - we'll automatically balance your feed based on these ratings" />
-                  </p>
-                </div>
-
-                {/* Sliders */}
-                {(Object.keys(sourcePreferences) as Array<keyof typeof sourcePreferences>).map(key => (
-                  <div key={key}>
-                    <div className="flex justify-between items-center mb-2">
-                      <label className="text-sm font-mono uppercase tracking-wide text-foreground/80 font-medium">
-                        {key === 'youtube' && '📹 YouTube Videos'}
-                        {key === 'articles' && '📰 Articles & Blogs'}
-                        {key === 'papers' && '📄 Research Papers'}
-                        {key === 'repos' && '💻 GitHub Repos'}
-                        {key === 'tweets' && '🐦 Tweets & Threads'}
-                        {key === 'discussions' && '💬 HackerNews & Discussions'}
-                      </label>
-                      <span className="text-sm font-mono text-primary font-bold flex items-center gap-2">
-                        <span className="text-secondary/50 text-xs">Preference:</span>
-                        {sourcePreferences[key]}/10
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="10"
-                      value={sourcePreferences[key]}
-                      onChange={(e) => updateSlider(key, parseInt(e.target.value))}
-                      className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-primary"
-                    />
-                    <div className="flex justify-between text-[9px] font-mono text-secondary/40 mt-1">
-                      <span>Skip</span>
-                      <span>Some</span>
-                      <span>Love it</span>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Content Depth */}
-                <div className="pt-6 border-t border-border">
-                  <div className="relative mb-4">
-                    <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 font-medium">
-                      Content depth <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                      <HelpTooltip content="'Quick' = actionable tips & tutorials. 'Deep' = architecture & systems thinking. 'Surprise' = we&apos;ll mix it up!" />
-                    </label>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {[
-                      { value: 'quick', label: 'Quick & practical' },
-                      { value: 'deep', label: 'Deep dives' },
-                      { value: 'surprise', label: 'Surprise me' },
-                    ].map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={() => setContentDepth(option.value as typeof contentDepth)}
-                        className={`px-4 py-4 border text-sm font-mono transition-all ${
-                          contentDepth === option.value
-                            ? 'border-primary bg-primary text-primary-foreground'
-                            : 'border-border hover:border-primary/50'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
             </motion.div>
           )}
@@ -778,7 +948,7 @@ export default function OnboardingPage() {
                 <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                 Saving...
               </>
-            ) : step === 4 ? (
+            ) : step === 3 ? (
               <>
                 Start Exploring
                 <Check size={14} />

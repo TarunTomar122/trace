@@ -132,11 +132,27 @@ def build_feed_from_topics(
     user_id: str,
     date: str | None = None,
     skip_seen: bool = False,
+    force: bool = False,
 ) -> dict:
     store = FirestoreStore()
     profile = store.get_user_profile(user_id)
     if not profile:
         raise ValueError(f"User {user_id} not found")
+
+    if not date:
+        date = _get_today_ist_date()
+
+    # Check if feed already exists
+    if not force:
+        existing = store.db.collection("user_feeds").document(user_id).collection("daily").document(date).get()
+        if existing.exists:
+            return {
+                "user_id": user_id,
+                "date": date,
+                "items_written": 0,
+                "skipped": True,
+                "reason": "feed_exists",
+            }
 
     interests = profile.get("interests", []) or []
     interests = [
@@ -153,9 +169,6 @@ def build_feed_from_topics(
         if isinstance(h, str) and h.strip()
     ]
     hobbies = list(dict.fromkeys(hobbies))[:3]
-
-    if not date:
-        date = _get_today_ist_date()
 
     seen_urls = set()
     if not skip_seen:

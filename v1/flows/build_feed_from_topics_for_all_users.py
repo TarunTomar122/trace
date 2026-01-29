@@ -64,6 +64,7 @@ def build_feeds_for_all_users(
 
     success = 0
     failed = 0
+    skipped = 0
 
     for i, user in enumerate(users, 1):
         user_id = user.get("uid")
@@ -71,8 +72,12 @@ def build_feeds_for_all_users(
             continue
         print(f"[{i}/{total}] Building feed for {user_id}...")
         try:
-            build_feed_from_topics(user_id, skip_seen=skip_seen)
-            success += 1
+            result = build_feed_from_topics(user_id, skip_seen=skip_seen)
+            if result.get("skipped"):
+                skipped += 1
+                print(f"  Skipped (feed already exists)")
+            else:
+                success += 1
         except Exception as e:
             failed += 1
             print(f"  Error: {e}")
@@ -82,6 +87,7 @@ def build_feeds_for_all_users(
         "users_processed": total,
         "success": success,
         "failed": failed,
+        "skipped": skipped,
         "skip_seen": skip_seen,
         "mode": mode,
     }

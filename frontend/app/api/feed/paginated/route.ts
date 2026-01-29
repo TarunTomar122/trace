@@ -37,13 +37,16 @@ export async function GET(request: NextRequest) {
     // Get feed date (latest if not specified)
     let feedDate = dateParam;
     if (!feedDate) {
-      const feedsRef = adminFirestore
+      // Only fetch the latest feed date (not all feeds!)
+      const latestFeedSnapshot = await adminFirestore
         .collection('user_feeds')
         .doc(userId)
-        .collection('daily');
+        .collection('daily')
+        .orderBy('__name__', 'desc')
+        .limit(1)
+        .get();
       
-      const feedsSnapshot = await feedsRef.get();
-      if (feedsSnapshot.empty) {
+      if (latestFeedSnapshot.empty) {
         return NextResponse.json({ 
           items: [], 
           cursor: 0, 
@@ -53,11 +56,7 @@ export async function GET(request: NextRequest) {
         });
       }
       
-      // Sort by date descending and get latest
-      const sortedDates = feedsSnapshot.docs
-        .map(doc => doc.id)
-        .sort((a, b) => b.localeCompare(a));
-      feedDate = sortedDates[0];
+      feedDate = latestFeedSnapshot.docs[0].id;
     }
 
     // Get the feed document

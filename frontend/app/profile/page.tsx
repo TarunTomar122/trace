@@ -606,13 +606,11 @@ function ProfileContent() {
                     const isSelected = selectedInterests.includes(interest.id);
                     return isEditing ? (
                       <button key={interest.id} onClick={() => toggleInterest(interest.id)} className={`px-3 py-2 border text-sm font-mono transition-all flex items-center gap-2 ${isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:border-primary/50'}`}>
-                        <span>{interest.emoji}</span>
                         <span>{interest.label}</span>
                         {isSelected && <Check size={12} />}
                       </button>
                     ) : isSelected ? (
                       <span key={interest.id} className="px-3 py-2 border border-primary bg-primary/5 text-sm font-mono flex items-center gap-2">
-                        <span>{interest.emoji}</span>
                         <span>{interest.label}</span>
                       </span>
                     ) : null;

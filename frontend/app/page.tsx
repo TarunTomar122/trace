@@ -562,13 +562,15 @@ const Hero = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.45 }}
-                  className="flex items-center gap-2 mb-4 md:mb-5"
+                  className="mt-2 mb-6 md:mb-8 p-3 md:p-4 bg-primary/5 border border-primary/20 inline-flex items-center gap-3"
                 >
-                  <Mail className="text-primary shrink-0" size={14} />
-                  <span className="text-xs md:text-sm font-mono">
+                  <div className="w-8 h-8 bg-primary/20 flex items-center justify-center shrink-0">
+                    <Mail className="text-primary" size={16} />
+                  </div>
+                  <div className="text-xs md:text-sm font-mono">
                     <span className="text-primary font-semibold">Now delivered as a daily email.</span>
-                    <span className="text-foreground/70"> Read it. Close it. Done.</span>
-                  </span>
+                    <span className="text-foreground/70 block sm:inline"> Read it. Close it. Done.</span>
+                  </div>
                 </motion.div>
 
                 {!isAlphaMode() && (
@@ -829,141 +831,137 @@ const SourceBadge = ({ icon: Icon, name, color }: { icon: React.ElementType; nam
   </div>
 );
 
-// --- Demo Feed Section ---
+// --- Product Screenshot Section ---
 const DemoFeed = () => {
-  const demoItems = [
-    {
-      type: 'video',
-      title: 'Building production-ready AI agents with LangGraph',
-      source: 'YouTube • AI Jason',
-      description: 'A deep dive into building reliable AI agents that actually work in production. Covers memory, tool use, and error handling.',
-      duration: '24 min',
-      icon: Youtube,
-      color: 'text-red-500',
-      bgColor: 'bg-red-500/10'
-    },
-    {
-      type: 'discussion',
-      title: 'Show HN: I built a minimal MCP server for Postgres',
-      source: 'Hacker News • 124 points',
-      description: 'Simple MCP server implementation that lets Claude talk to your Postgres database. Open source and well-documented.',
-      duration: '42 comments',
-      icon: MessageCircle,
-      color: 'text-amber-500',
-      bgColor: 'bg-amber-500/10'
-    },
-    {
-      type: 'repo',
-      title: 'anthropics/courses: Prompt engineering interactive tutorial',
-      source: 'GitHub • ⭐ 2.4k',
-      description: 'Interactive tutorial for learning prompt engineering with Claude. Covers basics to advanced techniques with runnable examples.',
-      duration: 'Updated today',
-      icon: Github,
-      color: 'text-violet-500',
-      bgColor: 'bg-violet-500/10'
-    },
-    {
-      type: 'paper',
-      title: 'Attention Is All You Need',
-      source: 'arXiv • Vaswani et al.',
-      description: 'The paper that introduced transformers. Still the most important architecture in modern AI.',
-      duration: '8 pages',
-      icon: BookOpen,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10'
-    },
-    {
-      type: 'blog',
-      title: 'How Stripe builds reliable systems',
-      source: 'Stripe Engineering Blog',
-      description: "Deep dive into Stripe's approach to building fault-tolerant distributed systems. Covers their testing philosophy and incident response.",
-      duration: '12 min read',
-      icon: BookOpen,
-      color: 'text-emerald-500',
-      bgColor: 'bg-emerald-500/10'
-    }
-  ];
-
   return (
-    <section id="demo" className="py-16 md:py-24 lg:py-40 bg-background relative overflow-hidden z-10">
+    <section id="demo" className="py-16 md:py-24 lg:py-32 bg-background relative overflow-hidden z-10">
       <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
-        <div className="text-center mb-12 md:mb-16">
-
+        <div className="text-center mb-10 md:mb-14">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6"
           >
-            Here's What <span className="text-secondary/40">Sarah Sees</span>
+            Your Feed, <span className="text-secondary/40">Your Way</span>
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="text-secondary font-mono text-xs md:text-sm leading-relaxed max-w-2xl mx-auto mb-4"
+            className="text-secondary font-mono text-xs md:text-sm leading-relaxed max-w-2xl mx-auto"
           >
-            Sarah is an AI researcher. This is her feed from this morning.
+            Articles, videos, discussions — all filtered by your interests and skill level
           </motion.p>
+        </div>
+
+        {/* Product Screenshot */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.2, duration: 0.6 }}
+          className="relative max-w-5xl mx-auto"
+        >
+          <div className="border-2 border-border bg-background shadow-2xl overflow-hidden">
+            <img 
+              src="/feed.png" 
+              alt="Trace Feed - Personalized content from across the web" 
+              className="w-full h-auto"
+            />
+          </div>
+          
+          {/* Decorative elements */}
+          <div className="absolute -top-4 -left-4 w-8 h-8 border-t-2 border-l-2 border-primary/40" />
+          <div className="absolute -bottom-4 -right-4 w-8 h-8 border-b-2 border-r-2 border-primary/40" />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.4 }}
+          className="mt-10 md:mt-14"
+        >
+          <div className="flex flex-wrap justify-center items-center gap-3 md:gap-4 text-xs md:text-sm font-mono">
+            <span className="text-foreground font-semibold">Choose your interests</span>
+            <span className="text-primary">→</span>
+            <span className="text-foreground font-semibold">Set your skill level</span>
+            <span className="text-primary">→</span>
+            <span className="text-foreground font-semibold">Get daily feed + newsletter</span>
+            <span className="text-primary">→</span>
+            <span className="text-foreground font-semibold">Stay ahead</span>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+};
+
+// --- Testimonials Section ---
+const Testimonials = () => {
+  const testimonials = [
+    {
+      quote: "Trace has become the first thing I open every morning. The daily newsletter is incredibly useful — it helps me make the most of my mornings and stay up to date with what's happening in tech, all in one quick email.",
+      name: "Zeba",
+      role: "AI Engineer @ Dell"
+    },
+    {
+      quote: "As a designer, I'm not an engineer — but Trace shows me AI releases and tech updates at a level I can actually understand. It's helping me learn and stay relevant without feeling overwhelmed.",
+      name: "Monisha",
+      role: "Designer"
+    },
+    {
+      quote: "I'm constantly finding useful blogs and videos about my interests and hobbies through Trace. It's saving me hours of searching and helping me upskill in ways I didn't expect.",
+      name: "Sebastian",
+      role: "Indie Developer"
+    }
+  ];
+
+  return (
+    <section className="py-16 md:py-24 lg:py-32 bg-background border-t border-border relative z-10">
+      <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
+        <div className="text-center mb-12 md:mb-16">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6"
+          >
+            What People <span className="text-secondary/40">Say</span>
+          </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="text-secondary/70 font-mono text-[10px] md:text-xs leading-relaxed max-w-xl mx-auto italic"
+            transition={{ delay: 0.1 }}
+            className="text-secondary font-mono text-xs md:text-sm leading-relaxed max-w-2xl mx-auto"
           >
-            No signup needed to see this. Your feed will look different based on YOUR interests.
+            Builders, makers, and curious minds who use Trace daily
           </motion.p>
         </div>
 
-        <div className="max-w-3xl mx-auto space-y-4 md:space-y-5">
-          {demoItems.map((item, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+          {testimonials.map((testimonial, i) => (
             <motion.div
               key={i}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="border border-border bg-background p-4 md:p-5 lg:p-6 hover:border-primary/40 transition-all group"
+              className="border border-border bg-background p-6 md:p-8 hover:border-primary/30 transition-all group"
             >
-              <div className="flex gap-3 md:gap-4">
-                <div className={cn("w-12 h-12 md:w-14 md:h-14 flex items-center justify-center shrink-0", item.bgColor)}>
-                  <item.icon size={20} className={cn("md:hidden", item.color)} strokeWidth={1.5} />
-                  <item.icon size={24} className={cn("hidden md:block", item.color)} strokeWidth={1.5} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm md:text-base lg:text-lg font-serif font-medium text-foreground mb-1 group-hover:text-primary transition-colors line-clamp-2">
-                    {item.title}
-                  </h3>
-                  <p className="text-[10px] md:text-xs font-mono text-secondary/80 mb-2">
-                    {item.source} • {item.duration}
-                  </p>
-                  <p className="text-xs md:text-sm font-mono text-secondary leading-relaxed line-clamp-2">
-                    {item.description}
-                  </p>
-                </div>
+              <blockquote className="text-sm md:text-base font-mono text-secondary leading-relaxed mb-6 italic">
+                &ldquo;{testimonial.quote}&rdquo;
+              </blockquote>
+              <div className="border-t border-border pt-4">
+                <p className="text-sm font-serif font-medium text-foreground">{testimonial.name}</p>
+                <p className="text-xs font-mono text-secondary/70">{testimonial.role}</p>
               </div>
             </motion.div>
           ))}
         </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.6 }}
-          className="mt-12 md:mt-16 text-center"
-        >
-          <div className="inline-block bg-primary/5 border border-primary/20 p-5 md:p-6 max-w-xl">
-            <p className="text-xs md:text-sm font-mono text-secondary leading-relaxed mb-3">
-              <span className="text-foreground font-bold">That's 5 items from 5 different sources.</span> 
-            </p>
-            <p className="text-[10px] md:text-xs font-mono text-secondary/80 leading-relaxed">
-              Sarah could have spent 2 hours finding these across Twitter, HN, GitHub, arXiv, and blogs. Instead, she opened Trace once. Took 5 minutes.
-            </p>
-          </div>
-        </motion.div>
       </div>
     </section>
   );
@@ -2013,9 +2011,10 @@ export default function LandingPage() {
       <WaitlistBanner />
       <Nav />
       <Hero />
+      <DemoFeed />
       <WhatTraceReplaces />
       {/* <HowPeopleUseTrace /> */}
-      <DemoFeed />
+      <Testimonials />
       {/* <WhatYouGet /> */}
       <Pricing />
       <GetStarted />

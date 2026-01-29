@@ -169,18 +169,24 @@ def _select_topics_with_llm(
         [f"- {t['topic_id']} ({t.get('display_name')})" for t in topics]
     )
 
-    prompt = (
-        "Select up to 10 topic_ids that best match this user.\n\n"
-        f"User context:\n{context_block}\n\n"
-        "Available topics:\n"
-        f"{topics_list}\n\n"
-        "Return JSON with exact shape:\n"
-        '{ "topic_ids": ["topic-1", "topic-2"] }\n'
-        "No markdown, only valid JSON."
-    )
+    prompt = f"""Select up to 10 topic_ids that best match this user's interests and profile.
+
+USER CONTEXT:
+{context_block}
+
+AVAILABLE TOPICS:
+{topics_list}
+
+INSTRUCTIONS:
+- Select topic_ids that match the user's interests, role, and goals
+- Return ONLY valid JSON, nothing else
+- Use this exact format:
+
+{{"topic_ids": ["machine-learning", "python", "web-development"]}}
+
+YOUR RESPONSE (valid JSON only):"""
 
     try:
-        # Initialize Gemini client
         client = genai.Client(api_key=api_key)
         
         response = client.models.generate_content(
@@ -230,6 +236,7 @@ def build_unsubscribed_feed(
     date: str | None = None,
     skip_seen: bool = False,
     max_topics: int = MAX_TOPICS_DEFAULT,
+    force: bool = False,
 ) -> dict:
     store = FirestoreStore()
     profile = store.get_user_profile(user_id)
@@ -238,6 +245,18 @@ def build_unsubscribed_feed(
 
     if not date:
         date = _get_today_ist_date()
+
+    # Check if feed already exists
+    if not force:
+        existing = store.db.collection("user_feeds").document(user_id).collection("daily").document(date).get()
+        if existing.exists:
+            return {
+                "user_id": user_id,
+                "date": date,
+                "items_written": 0,
+                "skipped": True,
+                "reason": "feed_exists",
+            }
 
     seen_urls = set()
     if not skip_seen:
