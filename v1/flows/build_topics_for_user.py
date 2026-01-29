@@ -18,6 +18,7 @@ import json
 import os
 import random
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable
@@ -136,17 +137,37 @@ def _search_exa(
     query: str,
     start_date: str,
     end_date: str,
+    max_retries: int = 3,
 ) -> list[dict]:
-    response = exa.search(
-        query,
-        num_results=RESULTS_PER_SEARCH,
-        start_published_date=start_date,
-        end_published_date=end_date,
-        type="auto",
-        exclude_text=["docs"],
-    )
-    results = getattr(response, "results", response)
-    return _extract_items(results)[:RESULTS_PER_SEARCH]
+    """Search Exa with retry logic for transient failures (502, 503, etc.)"""
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            response = exa.search(
+                query,
+                num_results=RESULTS_PER_SEARCH,
+                start_published_date=start_date,
+                end_published_date=end_date,
+                type="auto",
+                exclude_text=["docs"],
+            )
+            results = getattr(response, "results", response)
+            return _extract_items(results)[:RESULTS_PER_SEARCH]
+        except (ValueError, Exception) as e:
+            last_error = e
+            error_str = str(e)
+            # Retry on transient errors (502, 503, 504, timeout, etc.)
+            if any(code in error_str for code in ["502", "503", "504", "timeout", "timed out"]):
+                wait_time = (2 ** attempt) + random.uniform(0, 1)  # Exponential backoff with jitter
+                print(f"    ⚠️  Exa API error (attempt {attempt + 1}/{max_retries}), retrying in {wait_time:.1f}s...")
+                time.sleep(wait_time)
+            else:
+                # Non-transient error, don't retry
+                raise
+    
+    # All retries exhausted, log and return empty to continue processing
+    print(f"    ❌ Exa API failed after {max_retries} attempts, skipping this search")
+    return []
 
 
 def _generate_topic_queries(interest: str, user_profile: dict) -> list[str]:
