@@ -262,35 +262,37 @@ export default function SubscriptionManager() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="border-2 border-border p-6 md:p-8"
+        className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8"
       >
         <div className="flex items-start justify-between mb-6">
-          <div className="flex items-center gap-3">
-            {getStatusIcon(status)}
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">
+              {getStatusIcon(status)}
+            </div>
             <div>
-              <h3 className="text-xl font-serif font-light text-foreground uppercase">
+              <h3 className="text-lg font-semibold text-foreground">
                 Subscription Status
               </h3>
-              <p className={`text-sm font-mono uppercase tracking-wider mt-1 ${getStatusColor(status)}`}>
+              <p className={`text-sm font-medium mt-0.5 ${getStatusColor(status)}`}>
                 {status === 'none' ? 'No Subscription' : status.replace('_', ' ')}
               </p>
             </div>
           </div>
           {hasAccess && (
-            <div className="px-3 py-1 bg-green-500/10 border border-green-500/20 text-green-600 text-xs font-mono uppercase tracking-wider">
+            <span className="px-3 py-1.5 rounded-full bg-green-50 text-green-600 text-xs font-medium">
               Active
-            </div>
+            </span>
           )}
         </div>
 
         {/* Subscription Details */}
         {status !== 'none' && (
-          <div className="space-y-4 mb-6">
+          <div className="space-y-3 mb-6 p-4 bg-gray-50 rounded-xl">
             {status === 'trial' && subscriptionStatus?.trialEndDate && (
               <div className="flex items-center gap-3 text-sm">
                 <Calendar size={16} className="text-secondary" />
-                <span className="font-mono text-secondary">
-                  Trial ends: <span className="text-foreground">{formatDate(subscriptionStatus.trialEndDate)}</span>
+                <span className="text-secondary">
+                  Trial ends: <span className="text-foreground font-medium">{formatDate(subscriptionStatus.trialEndDate)}</span>
                 </span>
               </div>
             )}
@@ -298,8 +300,8 @@ export default function SubscriptionManager() {
             {status === 'active' && subscriptionStatus?.nextBillingDate && (
               <div className="flex items-center gap-3 text-sm">
                 <Calendar size={16} className="text-secondary" />
-                <span className="font-mono text-secondary">
-                  Next billing: <span className="text-foreground">{formatDate(subscriptionStatus.nextBillingDate)}</span>
+                <span className="text-secondary">
+                  Next billing: <span className="text-foreground font-medium">{formatDate(subscriptionStatus.nextBillingDate)}</span>
                 </span>
               </div>
             )}
@@ -307,8 +309,8 @@ export default function SubscriptionManager() {
             {subscriptionStatus?.lastPaymentDate && (
               <div className="flex items-center gap-3 text-sm">
                 <CheckCircle2 size={16} className="text-secondary" />
-                <span className="font-mono text-secondary">
-                  Last payment: <span className="text-foreground">{formatDate(subscriptionStatus.lastPaymentDate)}</span>
+                <span className="text-secondary">
+                  Last payment: <span className="text-foreground font-medium">{formatDate(subscriptionStatus.lastPaymentDate)}</span>
                 </span>
               </div>
             )}
@@ -317,7 +319,7 @@ export default function SubscriptionManager() {
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-600 text-sm font-mono">
+          <div className="mb-6 p-4 bg-red-50 rounded-xl border border-red-100 text-red-600 text-sm">
             {error}
           </div>
         )}
@@ -325,33 +327,33 @@ export default function SubscriptionManager() {
         {/* Benefits Section - only show when not subscribed */}
         {status === 'none' && (
           <div className="mb-6 space-y-4">
-            <div className="border-l-2 border-primary/20 pl-4">
-              <h4 className="text-sm font-mono uppercase tracking-wider text-foreground mb-3">
+            <div className="p-5 bg-gray-50 rounded-xl">
+              <h4 className="text-sm font-medium text-foreground mb-4">
                 What you&apos;ll get:
               </h4>
-              <ul className="space-y-3 text-sm font-mono text-secondary">
-                <li className="flex items-start gap-2">
-                  <span className="text-primary mt-0.5">✓</span>
+              <ul className="space-y-3 text-sm text-secondary">
+                <li className="flex items-start gap-3">
+                  <span className="w-5 h-5 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs shrink-0">✓</span>
                   <span>Daily personalized feed tailored to your interests and goals</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary mt-0.5">✓</span>
+                <li className="flex items-start gap-3">
+                  <span className="w-5 h-5 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs shrink-0">✓</span>
                   <span>Daily newsletter delivered to your inbox every morning</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary mt-0.5">✓</span>
+                <li className="flex items-start gap-3">
+                  <span className="w-5 h-5 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs shrink-0">✓</span>
                   <span>Smart content from YouTube, blogs, papers, repos & more</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary mt-0.5">✓</span>
+                <li className="flex items-start gap-3">
+                  <span className="w-5 h-5 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs shrink-0">✓</span>
                   <span>AI-curated based on your role, projects, and learning style</span>
                 </li>
               </ul>
             </div>
             
-            <div className="p-4 bg-primary/5 border border-primary/20">
-              <p className="text-xs font-mono text-foreground">
-                <span className="font-bold">Try it free for 3 days.</span> Cancel anytime before your trial ends and you won&apos;t be charged.
+            <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
+              <p className="text-sm text-foreground">
+                <span className="font-semibold">Try it free for 3 days.</span> Cancel anytime before your trial ends and you won&apos;t be charged.
               </p>
             </div>
           </div>
@@ -363,16 +365,16 @@ export default function SubscriptionManager() {
             <button
               onClick={handleSubscribe}
               disabled={isCreatingCheckout}
-              className="w-full bg-primary text-primary-foreground py-4 text-xs font-mono font-bold uppercase tracking-[0.3em] hover:bg-primary/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full bg-foreground text-background py-4 rounded-xl text-sm font-medium hover:bg-foreground/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isCreatingCheckout ? (
                 <>
-                  <Loader2 className="animate-spin" size={16} />
+                  <Loader2 className="animate-spin" size={18} />
                   Creating Checkout...
                 </>
               ) : (
                 <>
-                  <Zap size={16} />
+                  <Zap size={18} />
                   Start 3-Day Free Trial
                 </>
               )}
@@ -382,24 +384,24 @@ export default function SubscriptionManager() {
           {(status === 'trial' || status === 'active') && (
             <>
               {subscriptionStatus?.cancelledAt ? (
-                <div className="space-y-3 p-4 border-2 border-yellow-500/20 bg-yellow-500/5">
+                <div className="space-y-3 p-4 bg-yellow-50 rounded-xl border border-yellow-100">
                   <div className="flex items-center gap-2">
-                    <AlertCircle size={16} className="text-yellow-500" />
-                    <p className="text-sm font-mono text-foreground">
+                    <AlertCircle size={16} className="text-yellow-600" />
+                    <p className="text-sm font-medium text-foreground">
                       Subscription cancelled
                     </p>
                   </div>
-                  <p className="text-xs font-mono text-secondary mb-3">
+                  <p className="text-sm text-secondary mb-3">
                     Your access will end {subscriptionStatus.willCancelAt ? `on ${formatDate(subscriptionStatus.willCancelAt)}` : 'at the end of your billing period'}.
                   </p>
                   <button
                     onClick={handleResumeSubscription}
                     disabled={isResuming}
-                    className="w-full bg-primary text-primary-foreground py-3 text-xs font-mono uppercase tracking-wider hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full bg-foreground text-background py-3 rounded-xl text-sm font-medium hover:bg-foreground/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {isResuming ? (
                       <>
-                        <Loader2 className="animate-spin" size={14} />
+                        <Loader2 className="animate-spin" size={16} />
                         Resuming...
                       </>
                     ) : (
@@ -410,26 +412,26 @@ export default function SubscriptionManager() {
               ) : !showCancelConfirm ? (
                 <button
                   onClick={() => setShowCancelConfirm(true)}
-                  className="w-full border border-border text-secondary hover:border-red-500 hover:text-red-500 py-3 text-xs font-mono uppercase tracking-wider transition-colors"
+                  className="w-full border border-gray-200 text-secondary hover:border-red-300 hover:text-red-500 py-3 rounded-xl text-sm font-medium transition-colors"
                 >
                   Cancel Subscription
                 </button>
               ) : (
-                <div className="space-y-3 p-4 border-2 border-red-500/20 bg-red-500/5">
-                  <p className="text-sm font-mono text-foreground">
+                <div className="space-y-3 p-4 bg-red-50 rounded-xl border border-red-100">
+                  <p className="text-sm text-foreground">
                     Are you sure you want to cancel? You&apos;ll lose access to your personalized feed.
                   </p>
                   <div className="flex gap-3">
                     <button
                       onClick={() => handleCancelSubscription(false)}
                       disabled={isCancelling}
-                      className="flex-1 bg-red-500 text-white py-2 text-xs font-mono uppercase tracking-wider hover:bg-red-600 transition-colors disabled:opacity-50"
+                      className="flex-1 bg-red-500 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
                     >
                       {isCancelling ? 'Cancelling...' : 'Cancel at Period End'}
                     </button>
                     <button
                       onClick={() => setShowCancelConfirm(false)}
-                      className="flex-1 border border-border text-secondary py-2 text-xs font-mono uppercase tracking-wider hover:border-foreground hover:text-foreground transition-colors"
+                      className="flex-1 border border-gray-200 text-secondary py-2.5 rounded-lg text-sm font-medium hover:border-foreground hover:text-foreground transition-colors"
                     >
                       Keep Subscription
                     </button>
@@ -443,16 +445,16 @@ export default function SubscriptionManager() {
             <button
               onClick={handleSubscribe}
               disabled={isCreatingCheckout}
-              className="w-full bg-primary text-primary-foreground py-4 text-xs font-mono font-bold uppercase tracking-[0.3em] hover:bg-primary/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full bg-foreground text-background py-4 rounded-xl text-sm font-medium hover:bg-foreground/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isCreatingCheckout ? (
                 <>
-                  <Loader2 className="animate-spin" size={16} />
+                  <Loader2 className="animate-spin" size={18} />
                   Creating Checkout...
                 </>
               ) : (
                 <>
-                  <Zap size={16} />
+                  <Zap size={18} />
                   Resubscribe
                 </>
               )}
@@ -466,29 +468,29 @@ export default function SubscriptionManager() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="border border-border p-6"
+        className="bg-white border border-gray-200 rounded-2xl p-6"
       >
-        <h4 className="text-sm font-mono uppercase tracking-wider text-foreground mb-4">
+        <h4 className="text-sm font-medium text-foreground mb-4">
           Plan Details
         </h4>
-        <div className="space-y-2 text-sm font-mono text-secondary">
+        <div className="space-y-3 text-sm">
           <div className="flex justify-between">
-            <span>Price:</span>
-            <span className="text-foreground">$2.99/month</span>
+            <span className="text-secondary">Price:</span>
+            <span className="text-foreground font-medium">$2.99/month</span>
           </div>
           <div className="flex justify-between">
-            <span>Trial Period:</span>
-            <span className="text-foreground">3 days free</span>
+            <span className="text-secondary">Trial Period:</span>
+            <span className="text-foreground font-medium">3 days free</span>
           </div>
           <div className="flex justify-between">
-            <span>Billing:</span>
-            <span className="text-foreground">Monthly</span>
+            <span className="text-secondary">Billing:</span>
+            <span className="text-foreground font-medium">Monthly</span>
           </div>
         </div>
       </motion.div>
 
       {/* Help Text */}
-      <p className="text-xs font-mono text-secondary/60 text-center">
+      <p className="text-sm text-secondary/60 text-center">
         Questions? Contact us at tomartarun2001@gmail.com
       </p>
     </div>

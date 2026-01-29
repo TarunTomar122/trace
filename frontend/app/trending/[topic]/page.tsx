@@ -58,49 +58,54 @@ function FeedCard({ item }: { item: FeedItem }) {
   const config = sourceConfig[itemKind] || sourceConfig.blog;
   const Icon = config.icon;
 
+  const bgColors: Record<string, string> = {
+    video: 'bg-red-50',
+    blog: 'bg-emerald-50',
+    discussion: 'bg-amber-50',
+  };
+
   return (
-    <article className="group py-4 md:py-6 hover:bg-foreground/1 transition-colors">
+    <a 
+      href={item.url} 
+      target="_blank" 
+      rel="noopener noreferrer"
+      className="group block p-4 md:p-5 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
+    >
       <div className="flex items-start gap-3 md:gap-4">
-        {/* Source icon */}
-        <div className={`w-8 h-8 md:w-10 md:h-10 flex items-center justify-center shrink-0 ${config.color} bg-current/5 border border-current/10`}>
-          <Icon size={16} className={`${config.color} md:hidden`} strokeWidth={1.5} />
-          <Icon size={18} className={`${config.color} hidden md:block`} strokeWidth={1.5} />
+        {/* Source icon - hidden on mobile */}
+        <div className={`hidden md:flex w-12 h-12 rounded-xl items-center justify-center shrink-0 ${bgColors[itemKind] || bgColors.blog}`}>
+          <Icon size={20} className={config.color} strokeWidth={1.5} />
         </div>
         
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Source label */}
           <div className="flex items-center gap-2 mb-1.5 md:mb-2">
-            <span className={`text-[10px] font-mono uppercase tracking-widest ${config.color}`}>
+            <span className={`text-[10px] font-medium uppercase tracking-wider ${config.color}`}>
               {config.label}
             </span>
           </div>
           
           {/* Title */}
-          <a 
-            href={item.url} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="group/link block mb-1.5 md:mb-2"
-          >
-            <h3 className="text-base md:text-lg font-serif leading-snug text-foreground group-hover/link:text-primary transition-colors">
+          <div className="mb-2 md:mb-3">
+            <h3 className="text-base md:text-lg font-medium leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
               {item.title}
               <ArrowUpRight 
                 size={14} 
-                className="inline ml-1 opacity-40 md:opacity-0 group-hover/link:opacity-60 transition-opacity -translate-y-0.5" 
+                className="inline ml-1 opacity-40 md:opacity-0 group-hover:opacity-60 transition-opacity" 
               />
             </h3>
-          </a>
+          </div>
 
           {/* Description if available */}
           {item.description && (
-            <p className="text-sm text-secondary/70 leading-relaxed font-mono mb-2">
+            <p className="text-xs text-secondary/70">
               {item.description}
             </p>
           )}
         </div>
       </div>
-    </article>
+    </a>
   );
 }
 
@@ -239,7 +244,7 @@ export default async function TrendingTopicPage({
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background">
       {/* Structured Data */}
       <script
         type="application/ld+json"
@@ -249,17 +254,13 @@ export default async function TrendingTopicPage({
       <PublicHeader backHref="/trending" backLabel="Back to Trending" />
 
       <main className="w-full mt-6 md:mt-12">
-        <div className="max-w-4xl mx-auto px-4 md:px-6 lg:px-8">
+        <div className="max-w-2xl mx-auto px-4 md:px-6">
           {/* Header */}
-          <div className="mb-8 md:mb-12">
-
-            <div className="flex items-center gap-3 mb-3">
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-serif font-light tracking-tight text-foreground uppercase">
-                {displayName}
-              </h1>
-            </div>
-            
-            <p className="text-sm md:text-base font-mono text-secondary/70">
+          <div className="mb-6 md:mb-8">
+            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground mb-2">
+              {displayName}
+            </h1>
+            <p className="text-sm text-secondary">
               Latest articles, discussions, and videos curated from across the web
             </p>
           </div>
@@ -267,24 +268,26 @@ export default async function TrendingTopicPage({
           {/* Content */}
           {items.length > 0 ? (
             <>
-              <div className="divide-y divide-border/20">
+              <div className="divide-y divide-border/10">
                 {items.map((item: FeedItem) => (
                   <FeedCard key={item.id} item={item} />
                 ))}
               </div>
 
               {/* CTA to sign in */}
-              <div className="py-8 md:py-12 border-t border-border/20">
-                <div className="border-2 border-primary bg-primary/5 p-6 md:p-8 text-center">
-                  <Sparkles size={24} className="text-primary mx-auto mb-4" strokeWidth={1.5} />
-                  <p className="text-sm md:text-base font-serif text-foreground mb-2">
+              <div className="py-8 md:py-12">
+                <div className="bg-gray-50 rounded-2xl p-6 md:p-8 text-center">
+                  <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                    <Sparkles size={22} className="text-foreground" strokeWidth={1.5} />
+                  </div>
+                  <p className="text-base font-semibold text-foreground mb-2">
                     Want the complete feed?
                   </p>
-                  <p className="text-xs md:text-sm font-mono text-secondary/70 mb-6">
+                  <p className="text-sm text-secondary mb-6">
                     Sign in to get personalized content curated daily for your interests
                   </p>
                   <Link href="/">
-                    <button className="bg-primary text-primary-foreground px-6 py-3 text-[10px] font-mono font-bold uppercase tracking-[0.25em] hover:bg-primary/90 transition-all active:scale-95">
+                    <button className="bg-foreground text-background px-6 py-3 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all">
                       Start Free Trial
                     </button>
                   </Link>
@@ -294,11 +297,11 @@ export default async function TrendingTopicPage({
           ) : (
             /* Empty state */
             <div className="py-16 text-center">
-              <div className="w-12 h-12 bg-primary/5 border border-primary/20 flex items-center justify-center mx-auto mb-4">
-                <Sparkles size={24} className="text-primary" />
+              <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Sparkles size={24} className="text-foreground" />
               </div>
-              <p className="text-lg font-serif mb-2">No content yet</p>
-              <p className="text-sm font-mono text-secondary">
+              <p className="text-lg font-semibold text-foreground mb-2">No content yet</p>
+              <p className="text-sm text-secondary">
                 Check back soon for fresh content!
               </p>
             </div>

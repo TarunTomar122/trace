@@ -47,89 +47,81 @@ function BookmarkCard({ bookmark, onRemove }: {
   bookmark: BookmarkItem; 
   onRemove: () => void;
 }) {
-  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const itemKind = bookmark.item_metadata.type || 'blog';
   const config = sourceConfig[itemKind] || sourceConfig.blog;
   const Icon = config.icon;
   const relevance = bookmark.item_metadata.why_relevant;
-  
-  // Check if description is long enough to need expansion
-  const descriptionNeedsExpand = bookmark.item_metadata.description && bookmark.item_metadata.description.length > 50;
 
   return (
     <motion.article
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, height: 0 }}
-      className="group py-4 md:py-6 hover:bg-foreground/1 transition-colors"
+      className="group p-4 md:p-5 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
+      onClick={(e) => {
+        const target = e.target as HTMLElement;
+        if (!target.closest('button')) {
+          window.open(bookmark.item_metadata.url, '_blank', 'noopener,noreferrer');
+        }
+      }}
     >
       {/* Top row: icon + source + context */}
       <div className="flex items-start gap-3 md:gap-4">
-        {/* Source icon */}
-        <div className={`w-8 h-8 md:w-10 md:h-10 flex items-center justify-center shrink-0 ${config.color} bg-current/5 border border-current/10`}>
-          <Icon size={16} className={`${config.color} md:hidden`} strokeWidth={1.5} />
-          <Icon size={18} className={`${config.color} hidden md:block`} strokeWidth={1.5} />
+        {/* Source icon - hidden on mobile, matches feed */}
+        <div className={`hidden md:flex w-12 h-12 rounded-xl items-center justify-center shrink-0 ${
+          itemKind === 'video' ? 'bg-red-50' :
+          itemKind === 'repo' ? 'bg-violet-50' :
+          itemKind === 'paper' ? 'bg-blue-50' :
+          itemKind === 'discussion' ? 'bg-amber-50' :
+          itemKind === 'tweet' ? 'bg-sky-50' :
+          itemKind === 'launch' ? 'bg-fuchsia-50' :
+          itemKind === 'model' ? 'bg-indigo-50' :
+          'bg-emerald-50'
+        }`}>
+          <Icon size={20} className={config.color} strokeWidth={1.5} />
         </div>
         
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Source label */}
           <div className="flex items-center gap-2 mb-1.5 md:mb-2">
-            <span className={`text-[10px] font-mono uppercase tracking-widest ${config.color}`}>{config.label}</span>
+            <span className={`text-[10px] font-medium uppercase tracking-wider ${config.color}`}>{config.label}</span>
           </div>
           
           {/* Title - the main focus */}
-          <a 
-            href={bookmark.item_metadata.url} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="group/link block mb-1.5 md:mb-2"
-          >
-            <h3 className="text-base md:text-lg font-serif leading-snug text-foreground group-hover/link:text-primary transition-colors">
+          <div className="mb-2 md:mb-3">
+            <h3 className="text-base md:text-lg font-medium leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
               {bookmark.item_metadata.title}
               <ArrowUpRight 
                 size={14} 
-                className="inline ml-1 opacity-40 md:opacity-0 group-hover/link:opacity-60 transition-opacity -translate-y-0.5" 
+                className="inline ml-1 opacity-40 md:opacity-0 group-hover:opacity-60 transition-opacity" 
               />
             </h3>
-          </a>
+          </div>
 
           {/* Relevance below title (no clamp) */}
           {relevance && (
-            <p className="text-[10px] font-mono text-secondary/60 mb-2">
+            <p className="text-xs text-secondary/70 mb-3 md:mb-4">
               {relevance}
             </p>
           )}
           
-          {/* Description - subtle, with expand option */}
-          {bookmark.item_metadata.description && (
-            <div className="mb-3 md:mb-4">
-              <p className={`text-sm text-secondary/70 leading-relaxed font-mono ${!descriptionExpanded ? 'line-clamp-2' : ''}`}>
-                {bookmark.item_metadata.description}
-              </p>
-              {descriptionNeedsExpand && (
-                <button
-                  onClick={() => setDescriptionExpanded(!descriptionExpanded)}
-                  className="text-xs font-mono text-primary hover:text-primary/80 mt-1 transition-colors"
-                >
-                  {descriptionExpanded ? '← Show less' : 'Read more →'}
-                </button>
-              )}
-            </div>
-          )}
-          
           {/* Actions row - only remove button */}
-          <div className="flex items-center justify-between">
-            <div className="text-[10px] font-mono text-secondary/50">
-              Saved {new Date(bookmark.bookmarked_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-            </div>
+          <div className="flex items-center gap-1 md:gap-1.5">
             <button
-              onClick={onRemove}
-              className="flex items-center gap-1.5 px-2 py-2 md:py-1.5 text-secondary/40 hover:text-red-500 transition-colors active:scale-95"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+              className="flex items-center gap-1.5 p-2 rounded-lg text-secondary/40 hover:text-red-500 hover:bg-red-50 transition-colors active:scale-95"
               title="Remove bookmark"
             >
-              <Trash2 size={16} strokeWidth={1.5} />
+              <Trash2 size={18} className="md:hidden" strokeWidth={1.5} />
+              <Trash2 size={16} className="hidden md:block" strokeWidth={1.5} />
             </button>
+            <div className="ml-auto text-[11px] text-secondary/50">
+              Saved {new Date(bookmark.bookmarked_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </div>
           </div>
         </div>
       </div>
@@ -218,14 +210,14 @@ export default function BookmarksPage() {
 
   if (loading || !user) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-foreground border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-slate-50">
       <Header backHref="/feed" backLabel="Back to Feed" />
 
       <main className="w-full mt-6 md:mt-12">
@@ -245,10 +237,10 @@ export default function BookmarksPage() {
                 <button
                   key={filter.id}
                   onClick={() => setActiveFilter(filter.id as FilterType)}
-                  className={`px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider whitespace-nowrap transition-colors border ${
+                  className={`px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all rounded-full ${
                     isActive 
-                      ? 'bg-primary text-primary-foreground border-primary' 
-                      : 'border-border text-secondary/70 active:bg-foreground/5'
+                      ? 'bg-foreground text-background' 
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 active:bg-slate-200'
                   }`}
                 >
                   {filter.label}
@@ -261,8 +253,8 @@ export default function BookmarksPage() {
         <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 md:flex md:gap-12">
           {/* Filters - left sidebar, sticky (desktop only) */}
           <aside className="hidden md:block w-48 shrink-0 sticky top-24 h-fit">
-            <nav className="space-y-2">
-              <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-4 px-2">
+            <nav className="space-y-1.5 bg-white rounded-xl border border-slate-200/60 p-3">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-3 px-2">
                 Filters
               </h2>
               {[
@@ -278,10 +270,10 @@ export default function BookmarksPage() {
                   <button
                     key={filter.id}
                     onClick={() => setActiveFilter(filter.id as FilterType)}
-                    className={`w-full text-left px-2 py-2 text-sm font-serif transition-colors border ${
+                    className={`w-full text-left px-3 py-2 text-sm font-medium transition-all rounded-lg ${
                       isActive 
-                        ? 'text-primary border-primary/60 bg-primary/10 shadow-[0_0_0_1px_rgba(99,102,241,0.35)]' 
-                        : 'border-transparent text-secondary/70 hover:text-foreground hover:border-border'
+                        ? 'text-foreground bg-gray-100' 
+                        : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
                     }`}
                   >
                     {filter.label}
@@ -295,14 +287,14 @@ export default function BookmarksPage() {
           <div className="flex-1 max-w-2xl mx-auto md:mx-0 w-full">
             {isLoading ? (
               <div className="py-16 flex flex-col items-center justify-center">
-                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-3" />
-                <p className="text-sm font-mono text-secondary">
+                <div className="w-6 h-6 border-2 border-foreground border-t-transparent rounded-full animate-spin mb-3" />
+                <p className="text-sm text-slate-500">
                   Loading your bookmarks...
                 </p>
               </div>
             ) : (
               <>
-                <div className="divide-y divide-border/20">
+                <div className="space-y-3">
                   <AnimatePresence>
                     {filteredBookmarks.map((bookmark) => (
                       <BookmarkCard 
@@ -320,13 +312,13 @@ export default function BookmarksPage() {
                     animate={{ opacity: 1 }}
                     className="text-center py-16 md:py-20 px-4"
                   >
-                    <div className="w-12 h-12 bg-primary/5 border border-primary/20 flex items-center justify-center mx-auto mb-4">
-                      <Bookmark size={24} className="text-primary" />
+                    <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <Bookmark size={24} className="text-foreground" />
                     </div>
-                    <p className="text-lg font-serif mb-2">
+                    <p className="text-lg font-semibold text-slate-800 mb-2">
                       {activeFilter === 'all' ? 'No bookmarks yet' : `No ${activeFilter}s bookmarked`}
                     </p>
-                    <p className="text-sm font-mono text-secondary mb-4">
+                    <p className="text-sm text-slate-500 mb-4">
                       {activeFilter === 'all' 
                         ? 'Start bookmarking content from your feed' 
                         : 'Try a different filter'}
@@ -334,7 +326,7 @@ export default function BookmarksPage() {
                     {activeFilter !== 'all' && (
                       <button 
                         onClick={() => setActiveFilter('all')}
-                        className="text-sm font-mono text-primary hover:underline uppercase tracking-wider"
+                        className="text-sm font-medium text-foreground hover:text-foreground/80 transition-colors"
                       >
                         View all bookmarks
                       </button>
@@ -344,8 +336,8 @@ export default function BookmarksPage() {
 
                 {/* End of bookmarks indicator */}
                 {filteredBookmarks.length > 0 && (
-                  <div className="py-8 md:py-12 text-center border-t border-border/20">
-                    <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary/50">
+                  <div className="py-8 md:py-12 text-center">
+                    <p className="text-xs text-slate-400">
                       {filteredBookmarks.length} {filteredBookmarks.length === 1 ? 'bookmark' : 'bookmarks'}
                     </p>
                   </div>

@@ -20,7 +20,12 @@ import {
   Mail,
   Clock,
   Bookmark,
-  MessageCircle
+  MessageCircle,
+  ThumbsUp,
+  ThumbsDown,
+  MessageSquare,
+  Newspaper,
+  ArrowUpRight
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -40,13 +45,13 @@ const WaitlistBanner = () => {
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6 }}
-      className="fixed top-0 left-0 right-0 z-60 bg-primary/10 border-b border-primary/20 backdrop-blur-sm"
+      className="fixed top-0 left-0 right-0 z-60 bg-gray-100 border-b border-gray-200"
     >
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-center gap-3 text-sm">
-          <Clock className="text-primary" size={16} />
-          <span className="font-mono text-[10px] uppercase tracking-wider text-foreground">
-            <span className="text-primary font-bold">Early Access</span> — We're launching soon! Sign up now to secure your spot.
+          <Clock className="text-foreground" size={16} />
+          <span className="text-sm text-foreground">
+            <span className="font-semibold">Early Access</span> — We&apos;re launching soon! Sign up now to secure your spot.
           </span>
         </div>
       </div>
@@ -70,26 +75,25 @@ const Nav = () => {
 
   return (
     <nav className={cn(
-      "fixed left-0 right-0 z-50 transition-all duration-700 ease-in-out",
-      showBanner ? "top-[40px]" : "top-0",
-      scrolled || showBanner ? "translate-y-0" : "md:translate-y-4"
+      "fixed left-0 right-0 z-50 transition-all duration-500",
+      showBanner ? "top-[40px]" : "top-0"
     )}>
       <div className="container mx-auto px-4 max-w-7xl">
         <motion.div
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className={cn(
-            "bg-background/95 backdrop-blur-md w-full transition-all duration-700 ease-in-out",
+            "bg-background/95 backdrop-blur-md w-full transition-all duration-500 rounded-2xl mt-4",
             scrolled
-              ? "border-x border-b border-border shadow-sm p-4 py-3 rounded-none"
-              : "border-transparent py-6 md:py-8 rounded-sm p-4"
+              ? "border border-gray-200 shadow-sm px-4 py-3"
+              : "border-transparent px-4 py-5"
           )}
         >
           <div className="flex items-center justify-between w-full">
             {/* Mobile Menu Button */}
             <button
-              className="md:hidden p-2 text-foreground"
+              className="md:hidden p-2 rounded-lg hover:bg-gray-100 text-foreground transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -98,25 +102,23 @@ const Nav = () => {
             {/* Desktop Left Nav */}
             <div className="hidden md:flex items-center gap-1 flex-1">
               {!user && (
-                <a href="#how" className="hover:text-primary hover:border-b px-4 py-2 text-[10px] tracking-[0.3em] uppercase transition-colors text-secondary font-mono">
+                <a href="#how" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100">
                   How It Works
                 </a>
               )}
               {user ? (
-                <a href="/feed" className="hover:text-primary hover:border-b px-4 py-2 text-[10px] tracking-[0.3em] uppercase transition-colors text-secondary font-mono">
+                <a href="/feed" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100">
                   Your Feed
                 </a>
               ) : (
-                <>
-                  <a href="/trending" className="hover:text-primary hover:border-b px-4 py-2 text-[10px] tracking-[0.3em] uppercase transition-colors text-secondary font-mono">
-                    Trending Topics
-                  </a>
-                </>
+                <a href="/trending" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100">
+                  Trending
+                </a>
               )}
             </div>
 
             {/* Logo - Centered */}
-            <div className="text-lg md:text-xl text-foreground uppercase flex items-center gap-3 md:gap-4 tracking-[0.15em] font-serif font-black group cursor-default md:absolute md:left-1/2 md:-translate-x-1/2">
+            <div className="text-lg md:text-xl text-foreground uppercase flex items-center gap-2.5 tracking-wide font-semibold md:absolute md:left-1/2 md:-translate-x-1/2">
               <img
                 src="/trace.png"
                 alt="Trace Logo"
@@ -126,29 +128,29 @@ const Nav = () => {
             </div>
 
             {/* Desktop Right Nav */}
-            <div className="hidden md:flex items-center gap-4 flex-1 justify-end">
+            <div className="hidden md:flex items-center gap-3 flex-1 justify-end">
               {user ? (
-                <div className="flex items-center gap-4">
-                  <Link href="/profile" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                <div className="flex items-center gap-3">
+                  <Link href="/profile" className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
                     {user.photoURL && (
                       <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" />
                     )}
-                    <span className="text-[10px] tracking-[0.2em] uppercase font-mono text-secondary">
+                    <span className="text-sm font-medium text-secondary">
                       {profile?.name?.split(' ')[0] || user.displayName?.split(' ')[0]}
                     </span>
                   </Link>
                   <button
                     onClick={signOut}
-                    className="flex items-center gap-2 border border-border text-foreground px-6 py-3 text-[10px] tracking-[0.25em] uppercase font-mono font-bold transition-all hover:border-primary active:scale-95"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-full border border-gray-200 text-sm font-medium text-foreground hover:bg-gray-100 transition-all"
                   >
-                    <LogOut size={12} />
+                    <LogOut size={14} />
                     Sign Out
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={signInWithGoogle}
-                  className="bg-primary text-primary-foreground px-8 py-3 text-[10px] tracking-[0.25em] uppercase font-mono font-bold transition-all hover:tracking-[0.4em] active:scale-95"
+                  className="bg-foreground text-background px-6 py-2.5 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all"
                 >
                   Sign In
                 </button>
@@ -160,13 +162,13 @@ const Nav = () => {
               {user ? (
                 <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                   {user.photoURL && (
-                    <img src={user.photoURL} alt="Profile" className="w-7 h-7 rounded-full" />
+                    <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" />
                   )}
                 </Link>
               ) : (
                 <button
                   onClick={signInWithGoogle}
-                  className="bg-primary text-primary-foreground px-4 py-2 text-[9px] tracking-[0.2em] uppercase font-mono font-bold"
+                  className="bg-foreground text-background px-4 py-2 rounded-full text-sm font-medium"
                 >
                   Sign In
                 </button>
@@ -181,14 +183,14 @@ const Nav = () => {
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.2 }}
                 className="md:hidden overflow-hidden"
               >
-                <div className="pt-6 pb-2 flex flex-col gap-4 border-t border-border mt-4">
+                <div className="pt-4 pb-2 flex flex-col gap-1 border-t border-gray-200 mt-4">
                   {!user && (
                     <a
                       href="#how"
-                      className="text-[10px] tracking-[0.3em] uppercase text-secondary font-mono hover:text-primary transition-colors"
+                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       How It Works
@@ -197,34 +199,32 @@ const Nav = () => {
                   {user ? (
                     <a
                       href="/feed"
-                      className="text-[10px] tracking-[0.3em] uppercase text-secondary font-mono hover:text-primary transition-colors"
+                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Your Feed
                     </a>
                   ) : (
-                    <>
-                      <a
-                        href="/trending"
-                        className="text-[10px] tracking-[0.3em] uppercase text-secondary font-mono hover:text-primary transition-colors"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        Trending
-                      </a>
-                    </>
+                    <a
+                      href="/trending"
+                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Trending
+                    </a>
                   )}
                   {user ? (
                     <button
                       onClick={() => { signOut(); setMobileMenuOpen(false); }}
-                      className="text-[10px] tracking-[0.3em] uppercase text-secondary font-mono hover:text-primary transition-colors text-left flex items-center gap-2"
+                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors text-left flex items-center gap-2"
                     >
-                      <LogOut size={12} />
+                      <LogOut size={14} />
                       Sign Out
                     </button>
                   ) : (
                     <button
                       onClick={() => { signInWithGoogle(); setMobileMenuOpen(false); }}
-                      className="text-[10px] tracking-[0.3em] uppercase text-secondary font-mono hover:text-primary transition-colors text-left"
+                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors text-left"
                     >
                       Sign In with Google
                     </button>
@@ -500,18 +500,18 @@ const Hero = () => {
                 <motion.h1
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.3 }}
-                  className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl leading-[0.9] font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6 lg:mb-8"
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-tight font-semibold tracking-tight text-foreground mb-4 md:mb-6"
                 >
-                  Your Feed <br />
-                  <span className="text-secondary/40 italic">Awaits</span>
+                  Your Feed{' '}
+                  <span className="text-secondary/50">Awaits</span>
                 </motion.h1>
 
                 <motion.p
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.4 }}
-                  className="text-sm md:text-base lg:text-lg text-secondary font-mono leading-relaxed mb-6 md:mb-8 lg:mb-10 max-w-lg"
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                  className="text-base md:text-lg text-secondary leading-relaxed mb-6 md:mb-8 max-w-lg"
                 >
                   Your personalized feed curated from across the web is ready.
                 </motion.p>
@@ -519,127 +519,109 @@ const Hero = () => {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.5 }}
-                  className="flex flex-col sm:flex-row gap-3 md:gap-4"
+                  transition={{ duration: 0.6, delay: 0.4 }}
+                  className="flex flex-col sm:flex-row gap-3"
                 >
                   <a href="/feed" className="w-full sm:w-auto">
-                    <button className="group relative bg-primary text-primary-foreground px-8 py-3.5 md:px-10 md:py-4 text-[9px] md:text-[10px] font-semibold tracking-[0.2em] md:tracking-[0.25em] uppercase transition-all overflow-hidden font-mono w-full">
-                      <span className="relative z-10 flex items-center justify-center gap-2">
-                        View Your Feed
-                        <ChevronRight size={12} />
-                      </span>
-                      <div className="absolute inset-0 translate-y-full group-hover:translate-y-0 bg-primary/20 transition-transform duration-300" />
+                    <button className="inline-flex items-center justify-center gap-2 bg-foreground text-background px-6 py-3.5 rounded-full text-sm font-medium hover:bg-foreground/90 transition-colors w-full sm:w-auto">
+                      View Your Feed
+                      <ChevronRight size={16} />
                     </button>
                   </a>
                 </motion.div>
               </>
             ) : (
-              // New or not-onboarded user view
+              // New or not-onboarded user view - Clean layout
               <>
                 <motion.h1
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.3 }}
-                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl leading-[0.9] font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6 lg:mb-8"
+                  transition={{ duration: 0.6, delay: 0.1 }}
+                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-tight font-serif tracking-tight text-foreground mb-4 md:mb-6"
                 >
-                  Fu*k The Algorithms <br />
-                  <span className="text-secondary/40 italic text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl">Build Your Own Feed</span>
+                  Stay informed with{' '}
+                  <span className="italic text-primary">your own feed</span>
                 </motion.h1>
 
                 <motion.p
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.4 }}
-                  className="text-sm md:text-base lg:text-lg text-secondary font-mono leading-relaxed mb-2 max-w-lg"
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                  className="text-base md:text-lg text-secondary leading-relaxed mb-6 md:mb-8 max-w-md"
                 >
                   {isAlphaMode()
-                    ? "Every morning, we scan Hacker News, Reddit, Twitter, YouTube, arXiv, and 50+ blogs. You get the 10-15 things that actually matter."
-                    : "Join the waitlist to get early access. We scan 1,000+ sources daily so you don't have to."
+                    ? "We scan 50+ sources daily — Hacker News, Reddit, YouTube, arXiv, blogs. You get 10-15 things that actually matter, delivered to your inbox."
+                    : "Join the waitlist for early access. We scan 1,000+ sources daily so you don't have to."
                   }
                 </motion.p>
 
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.45 }}
-                  className="mt-2 mb-6 md:mb-8 p-3 md:p-4 bg-primary/5 border border-primary/20 inline-flex items-center gap-3"
-                >
-                  <div className="w-8 h-8 bg-primary/20 flex items-center justify-center shrink-0">
-                    <Mail className="text-primary" size={16} />
-                  </div>
-                  <div className="text-xs md:text-sm font-mono">
-                    <span className="text-primary font-semibold">Now delivered as a daily email.</span>
-                    <span className="text-foreground/70 block sm:inline"> Read it. Close it. Done.</span>
-                  </div>
-                </motion.div>
-
-                {!isAlphaMode() && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.5 }}
-                    className="mb-4 md:mb-6 p-3 md:p-4 bg-primary/5 border border-primary/20 rounded-sm"
-                  >
-                    <div className="flex items-start gap-2 md:gap-3">
-                      <Mail className="text-primary mt-0.5 shrink-0" size={14} />
-                      <div className="text-xs font-mono text-secondary leading-relaxed">
-                        <span className="text-foreground font-semibold">Early signups welcome!</span> We'll notify you via email as soon as Trace goes live. No spam, just one email when we're ready.
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.5 }}
-                  className="flex flex-col sm:flex-row gap-3 md:gap-4"
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                  className="flex flex-col sm:flex-row gap-3 mb-8"
                 >
                   {heroCtaHref ? (
-                    <a href={heroCtaHref} className="w-full sm:w-auto">
-                      <button className="group relative bg-primary text-primary-foreground px-8 py-3.5 md:px-10 md:py-4 text-[9px] md:text-[10px] font-semibold tracking-[0.2em] md:tracking-[0.25em] uppercase transition-all overflow-hidden font-mono w-full">
-                        <span className="relative z-10 flex items-center justify-center gap-2">
-                          {heroCtaText}
-                          <ChevronRight size={12} />
-                        </span>
-                        <div className="absolute inset-0 translate-y-full group-hover:translate-y-0 bg-primary/20 transition-transform duration-300" />
+                    <a href={heroCtaHref}>
+                      <button className="inline-flex items-center gap-2 bg-foreground text-background px-6 py-3.5 rounded-full text-sm font-medium hover:bg-foreground/90 transition-colors">
+                        {heroCtaText}
+                        <ChevronRight size={16} />
                       </button>
                     </a>
                   ) : (
                     <button
                       onClick={signInWithGoogle}
-                      className="group relative bg-primary text-primary-foreground px-8 py-3.5 md:px-10 md:py-4 text-[9px] md:text-[10px] font-semibold tracking-[0.2em] md:tracking-[0.25em] uppercase transition-all overflow-hidden font-mono w-full sm:w-auto"
+                      className="inline-flex items-center gap-2 bg-foreground text-background px-6 py-3.5 rounded-full text-sm font-medium hover:bg-foreground/90 transition-colors"
                     >
-                      <span className="relative z-10 flex items-center justify-center gap-2">
-                        {heroCtaText}
-                        <ChevronRight size={12} />
-                      </span>
-                      <div className="absolute inset-0 translate-y-full group-hover:translate-y-0 bg-primary/20 transition-transform duration-300" />
+                      {heroCtaText}
+                      <ChevronRight size={16} />
                     </button>
                   )}
-                  <a href="/trending" className="w-full sm:w-auto">
-                    <button className="flex items-center justify-center gap-2 text-foreground hover:text-primary transition-colors text-[9px] md:text-[10px] font-mono uppercase tracking-[0.2em] md:tracking-[0.25em] px-8 py-3.5 md:px-10 md:py-4 border border-border hover:border-primary w-full">
-                      See Trending Topics <ChevronRight size={12} />
-                    </button>
-                  </a>
+                </motion.div>
+
+                {/* Social Proof */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.4 }}
+                  className="flex items-center gap-4"
+                >
+                  {/* Avatar stack */}
+                  <div className="flex -space-x-2">
+                    {['Z', 'M', 'S', 'A'].map((initial, i) => (
+                      <div 
+                        key={i}
+                        className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/40 border-2 border-background flex items-center justify-center text-xs font-medium text-primary"
+                      >
+                        {initial}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex text-amber-400">
+                      {[1,2,3,4,5].map(i => (
+                        <svg key={i} className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                        </svg>
+                      ))}
+                    </div>
+                    <span className="text-sm text-secondary">
+                      Loved by <span className="font-medium text-foreground">100+</span> users
+                    </span>
+                  </div>
                 </motion.div>
               </>
             )}
           </div>
 
-          {/* Right Side - Flow Diagram */}
+          {/* Right Side - Interactive Demo */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1, delay: 0.4 }}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
             className="block"
           >
-            <FlowDiagram />
-            <div className="flex flex-row justify-center items-center gap-2">
-              <a href="https://www.producthunt.com/products/trace-23?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-trace-529d0891-421d-450f-8263-879fe3b9370c" target="_blank" rel="noopener noreferrer">
-                <img alt="Trace - Trace brings content from across the web into one quiet feed | Product Hunt" style={{ width: 'auto', height: '42px' }} src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1064894&amp;theme=light&amp;t=1768817161765" />
-              </a>
-            </div>
+            <HeroDemo />
           </motion.div>
         </div>
       </div>
@@ -683,29 +665,29 @@ const WhatTraceReplaces = () => {
   ];
 
   return (
-    <section className="py-16 md:py-24 lg:py-32 bg-background border-y border-border relative overflow-hidden z-10">
+    <section className="py-16 md:py-24 lg:py-32 bg-gray-50 relative overflow-hidden z-10">
       <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
         <div className="text-center mb-12 md:mb-16">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tighter text-foreground uppercase mb-3 md:mb-4"
+            className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-3 md:mb-4"
           >
-            What Trace <span className="text-secondary/40">Replaces</span>
+            What Trace <span className="text-secondary/50">Replaces</span>
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="text-secondary font-mono text-xs md:text-sm leading-relaxed max-w-2xl mx-auto"
+            className="text-secondary text-base md:text-lg leading-relaxed max-w-2xl mx-auto"
           >
             If you recognize these habits, Trace is for you
           </motion.p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
           {habits.map((habit, i) => (
             <motion.div
               key={i}
@@ -713,13 +695,13 @@ const WhatTraceReplaces = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="border border-border bg-background p-5 md:p-6 hover:border-primary/40 transition-all group"
+              className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6 hover:border-gray-300 hover:shadow-sm transition-all group"
             >
               <div className="text-3xl mb-3">{habit.icon}</div>
-              <h3 className="text-base md:text-lg font-serif font-medium text-foreground mb-2 group-hover:text-primary transition-colors">
+              <h3 className="text-base md:text-lg font-semibold text-foreground mb-2 group-hover:text-foreground/80 transition-colors">
                 {habit.title}
               </h3>
-              <p className="text-xs md:text-sm font-mono text-secondary leading-relaxed">
+              <p className="text-sm text-secondary leading-relaxed">
                 {habit.description}
               </p>
             </motion.div>
@@ -733,23 +715,23 @@ const WhatTraceReplaces = () => {
 // --- How People Use Trace Section ---
 const HowPeopleUseTrace = () => {
   return (
-    <section className="py-16 md:py-24 lg:py-32 bg-background border-t border-border relative z-10">
+    <section className="py-16 md:py-24 lg:py-32 bg-background relative z-10">
       <div className="container mx-auto px-4 sm:px-6 max-w-4xl">
         <div className="text-center mb-10 md:mb-14">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6"
+            className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-4 md:mb-6"
           >
-            How People <span className="text-secondary/40 italic">Actually</span> Use Trace
+            How People <span className="text-secondary/50">Actually</span> Use Trace
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="text-secondary font-mono text-sm md:text-base"
+            className="text-secondary text-base md:text-lg"
           >
             Most people don&apos;t open another app. They open their inbox.
           </motion.p>
@@ -761,26 +743,26 @@ const HowPeopleUseTrace = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.2 }}
-          className="border border-border bg-background mb-10 md:mb-14"
+          className="bg-white rounded-2xl border border-gray-200 shadow-lg mb-10 md:mb-14 overflow-hidden"
         >
           {/* Email Header */}
-          <div className="border-b border-border px-4 md:px-6 py-3 md:py-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                <Mail className="w-4 h-4 text-primary" />
+          <div className="border-b border-gray-100 px-4 md:px-6 py-3 md:py-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                <Mail className="w-4 h-4 text-foreground" />
               </div>
               <div>
-                <div className="text-xs md:text-sm font-mono text-foreground font-medium">Trace Daily</div>
-                <div className="text-[10px] md:text-xs font-mono text-secondary">digest@trace.club</div>
+                <div className="text-sm font-medium text-foreground">Trace Daily</div>
+                <div className="text-xs text-secondary">digest@trace.club</div>
               </div>
             </div>
-            <div className="text-sm md:text-base font-serif text-foreground">
+            <div className="text-sm md:text-base font-medium text-foreground">
               Your Morning Digest — Jan 28, 2025
             </div>
           </div>
 
           {/* Email Body Preview */}
-          <div className="px-4 md:px-6 py-4 md:py-6 space-y-3">
+          <div className="px-4 md:px-6 py-4 md:py-6 space-y-2">
             {[
               { icon: "🎬", title: "Building AI agents with LangGraph", source: "YouTube" },
               { icon: "💬", title: "Show HN: Minimal MCP server for Postgres", source: "Hacker News" },
@@ -788,11 +770,11 @@ const HowPeopleUseTrace = () => {
               { icon: "📄", title: "New research on transformer architectures", source: "arXiv" },
               { icon: "📝", title: "How Stripe builds reliable systems", source: "Blog" },
             ].map((item, i) => (
-              <div key={i} className="flex items-start gap-3 py-2 border-b border-border/50 last:border-0">
+              <div key={i} className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
                 <span className="text-lg">{item.icon}</span>
                 <div>
-                  <div className="text-sm font-mono text-foreground">{item.title}</div>
-                  <div className="text-[10px] font-mono text-secondary uppercase tracking-wider">{item.source}</div>
+                  <div className="text-sm font-medium text-foreground">{item.title}</div>
+                  <div className="text-xs text-secondary">{item.source}</div>
                 </div>
               </div>
             ))}
@@ -807,15 +789,15 @@ const HowPeopleUseTrace = () => {
           transition={{ delay: 0.3 }}
           className="text-center max-w-2xl mx-auto"
         >
-          <p className="text-sm md:text-base font-mono text-secondary leading-relaxed mb-6">
+          <p className="text-base text-secondary leading-relaxed mb-6">
             Every morning, Trace sends you one email.<br />
             The best things from Reddit, Hacker News, YouTube, blogs, and research —<br />
             filtered for your interests and skill level.
           </p>
-          <div className="flex flex-col items-center gap-1 text-xs md:text-sm font-mono text-foreground/70">
+          <div className="flex flex-col items-center gap-1 text-sm text-foreground/70">
             <span>No scrolling.</span>
             <span>No notifications.</span>
-            <span className="text-primary">5 minutes. You&apos;re done.</span>
+            <span className="font-medium text-foreground">5 minutes. You&apos;re done.</span>
           </div>
         </motion.div>
       </div>
@@ -825,11 +807,442 @@ const HowPeopleUseTrace = () => {
 
 // --- Source Badge Component ---
 const SourceBadge = ({ icon: Icon, name, color }: { icon: React.ElementType; name: string; color: string }) => (
-  <div className={cn("inline-flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-mono uppercase tracking-widest", color)}>
-    <Icon size={10} />
+  <div className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium", color)}>
+    <Icon size={12} />
     {name}
   </div>
 );
+
+// --- Interactive Demo Section ---
+const DEMO_FEED_ITEMS = [
+  {
+    id: '1',
+    type: 'youtube',
+    title: 'Building a $10M SaaS in 12 Months — The Full Breakdown',
+    description: 'Learn the exact playbook behind scaling a SaaS from 0 to $10M ARR, including pricing strategies, growth loops, and the mistakes to avoid.',
+    source: 'YouTube',
+    author: 'Lenny Rachitsky',
+    tag: 'startups',
+    tagLabel: 'Matches your interest in startups',
+  },
+  {
+    id: '2',
+    type: 'article',
+    title: 'React Server Components: A Deep Dive into the Future of Web Dev',
+    description: 'Everything you need to know about RSC — how they work, when to use them, and why they matter for performance.',
+    source: 'Blog',
+    author: 'Dan Abramov',
+    tag: 'frontend',
+    tagLabel: 'Matches your interest in frontend',
+  },
+  {
+    id: '3',
+    type: 'news',
+    title: 'Claude 4 Benchmarks Leaked: Outperforms GPT-5 on Reasoning Tasks',
+    description: 'Internal benchmarks suggest Anthropic\'s upcoming model shows 40% improvement on complex reasoning while maintaining safety guardrails.',
+    source: 'News',
+    author: 'The Verge',
+    tag: 'ai-tools',
+    tagLabel: 'Matches your interest in AI tools',
+  },
+  {
+    id: '4',
+    type: 'discussion',
+    title: 'Is TypeScript Worth It in 2026? A Honest Take from Both Sides',
+    description: 'Senior engineers debate the pros and cons of TypeScript adoption — productivity gains vs. added complexity.',
+    source: 'Discussion',
+    author: 'Hacker News',
+    tag: 'productivity',
+    tagLabel: 'Matches your interest in productivity',
+  },
+];
+
+const DEMO_FILTERS = [
+  { id: 'all', label: 'For You' },
+  { id: 'ai-tools', label: 'AI Tools' },
+  { id: 'startups', label: 'Startups' },
+  { id: 'frontend', label: 'Frontend' },
+  { id: 'productivity', label: 'Productivity' },
+];
+
+const DemoFeedCard = ({ item, index, compact = false }: { item: typeof DEMO_FEED_ITEMS[0]; index: number; compact?: boolean }) => {
+  const [upvoted, setUpvoted] = useState(false);
+  const [downvoted, setDownvoted] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
+  const [showSignupHint, setShowSignupHint] = useState(false);
+
+  const typeConfig: Record<string, { icon: React.ElementType; color: string }> = {
+    youtube: { icon: Youtube, color: 'text-red-500' },
+    article: { icon: BookOpen, color: 'text-emerald-500' },
+    news: { icon: Newspaper, color: 'text-orange-500' },
+    discussion: { icon: MessageCircle, color: 'text-amber-500' },
+  };
+
+  const config = typeConfig[item.type] || typeConfig.article;
+  const Icon = config.icon;
+
+  const handleInteraction = (action: 'upvote' | 'downvote' | 'bookmark') => {
+    if (action === 'upvote') {
+      setUpvoted(!upvoted);
+      if (downvoted) setDownvoted(false);
+    } else if (action === 'downvote') {
+      setDownvoted(!downvoted);
+      if (upvoted) setUpvoted(false);
+    } else {
+      setBookmarked(!bookmarked);
+    }
+    setShowSignupHint(true);
+    setTimeout(() => setShowSignupHint(false), 2000);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: compact ? 10 : 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
+      className={`border-b border-border/30 last:border-0 group ${compact ? 'py-2.5' : 'py-4'}`}
+    >
+      <div className={`flex ${compact ? 'gap-2' : 'gap-3'}`}>
+        {/* Icon */}
+        <div className={`flex items-center justify-center shrink-0 bg-border/30 ${config.color} ${compact ? 'w-7 h-7' : 'w-9 h-9'}`}>
+          <Icon size={compact ? 12 : 16} strokeWidth={1.5} />
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          {/* Source label */}
+          <div className={`flex items-center gap-2 ${compact ? 'mb-1' : 'mb-1.5'}`}>
+            <span className={`font-mono uppercase tracking-wider ${config.color} ${compact ? 'text-[8px]' : 'text-[10px]'}`}>
+              {item.source}
+            </span>
+            <span className={`font-mono text-secondary/50 ${compact ? 'text-[8px]' : 'text-[10px]'}`}>
+              {item.author}
+            </span>
+          </div>
+
+          {/* Title */}
+          <h3 className={`font-serif leading-snug text-foreground group-hover:text-primary transition-colors cursor-pointer ${compact ? 'text-xs mb-1 line-clamp-2' : 'text-sm mb-1.5'}`}>
+            {item.title}
+            {!compact && <ArrowUpRight size={12} className="inline ml-1 opacity-0 group-hover:opacity-60 transition-opacity" />}
+          </h3>
+
+          {/* Description - hidden in compact mode */}
+          {!compact && (
+            <p className="text-xs font-mono text-secondary/70 line-clamp-2 mb-2">
+              {item.description}
+            </p>
+          )}
+
+          {/* Tag */}
+          <p className={`font-mono text-primary/70 ${compact ? 'text-[8px] mb-1.5' : 'text-[10px] mb-3'}`}>
+            {item.tagLabel}
+          </p>
+
+          {/* Actions */}
+          <div className={`flex items-center gap-1 relative ${compact ? '-ml-1' : '-ml-1.5'}`}>
+            <button
+              onClick={() => handleInteraction('upvote')}
+              className={`flex items-center gap-1 transition-colors ${compact ? 'px-1 py-0.5' : 'px-1.5 py-1'} ${
+                upvoted ? 'text-green-500' : 'text-secondary/40 hover:text-green-500'
+              }`}
+            >
+              <ThumbsUp size={compact ? 12 : 14} fill={upvoted ? 'currentColor' : 'none'} strokeWidth={1.5} />
+            </button>
+
+            <button
+              onClick={() => handleInteraction('downvote')}
+              className={`flex items-center gap-1 transition-colors ${compact ? 'px-1 py-0.5' : 'px-1.5 py-1'} ${
+                downvoted ? 'text-red-500' : 'text-secondary/40 hover:text-red-500'
+              }`}
+            >
+              <ThumbsDown size={compact ? 12 : 14} fill={downvoted ? 'currentColor' : 'none'} strokeWidth={1.5} />
+            </button>
+
+            {!compact && (
+              <button className="flex items-center gap-1 px-1.5 py-1 text-secondary/40 hover:text-blue-500 transition-colors">
+                <MessageSquare size={14} strokeWidth={1.5} />
+              </button>
+            )}
+
+            <button
+              onClick={() => handleInteraction('bookmark')}
+              className={`flex items-center gap-1 ml-auto transition-colors ${compact ? 'px-1 py-0.5' : 'px-1.5 py-1'} ${
+                bookmarked ? 'text-primary' : 'text-secondary/40 hover:text-primary'
+              }`}
+            >
+              <Bookmark size={compact ? 12 : 14} fill={bookmarked ? 'currentColor' : 'none'} strokeWidth={1.5} />
+            </button>
+
+            {/* Signup hint */}
+            <AnimatePresence>
+              {showSignupHint && (
+                <motion.div
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 5 }}
+                  className="absolute -bottom-8 left-0 px-2 py-1 bg-primary text-primary-foreground text-[10px] font-mono whitespace-nowrap"
+                >
+                  Sign up to save your preferences!
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const InteractiveDemo = () => {
+  const { signInWithGoogle } = useAuth();
+  const [activeFilter, setActiveFilter] = useState('all');
+
+  const filteredItems = activeFilter === 'all' 
+    ? DEMO_FEED_ITEMS 
+    : DEMO_FEED_ITEMS.filter(item => item.tag === activeFilter);
+
+  return (
+    <section className="py-16 md:py-24 lg:py-32 bg-background relative overflow-hidden z-10">
+      <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
+        <div className="text-center mb-10 md:mb-14">
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-[10px] font-mono uppercase tracking-[0.3em] text-primary mb-4"
+          >
+            Interactive Demo
+          </motion.p>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6"
+          >
+            Try It <span className="text-secondary/40">Yourself</span>
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="text-secondary font-mono text-xs md:text-sm leading-relaxed max-w-2xl mx-auto"
+          >
+            This is what your daily feed could look like. Go ahead — interact with it!
+          </motion.p>
+        </div>
+
+        {/* Browser Frame */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.2, duration: 0.6 }}
+          className="relative max-w-3xl mx-auto"
+        >
+          {/* Browser Chrome */}
+          <div className="bg-[#1a1a1a] rounded-t-xl border border-border/50 border-b-0">
+            {/* Traffic lights & URL bar */}
+            <div className="flex items-center gap-3 px-4 py-3">
+              <div className="flex gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
+                <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
+                <div className="w-3 h-3 rounded-full bg-[#28c840]" />
+              </div>
+              <div className="flex-1 flex justify-center">
+                <div className="bg-[#2a2a2a] rounded-md px-4 py-1.5 text-xs font-mono text-secondary/60 flex items-center gap-2">
+                  <span className="text-green-500">🔒</span>
+                  trace.club/feed
+                </div>
+              </div>
+              <div className="w-16" /> {/* Spacer for balance */}
+            </div>
+          </div>
+
+          {/* Feed Content */}
+          <div className="bg-background border border-border/50 border-t-0 rounded-b-xl overflow-hidden">
+            {/* Feed Header */}
+            <div className="px-5 py-4 border-b border-border/30 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="text-sm font-serif font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+                  <Sparkles size={14} className="text-primary" />
+                  TRACE
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono text-secondary/50">Today&apos;s Feed</span>
+                <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-mono">{filteredItems.length} items</span>
+              </div>
+            </div>
+
+            {/* Filter Pills - Now Interactive */}
+            <div className="px-5 py-3 border-b border-border/30 flex gap-2 overflow-x-auto">
+              {DEMO_FILTERS.map(filter => (
+                <button
+                  key={filter.id}
+                  onClick={() => setActiveFilter(filter.id)}
+                  className={`px-3 py-1 text-[10px] font-mono uppercase tracking-wider transition-colors ${
+                    activeFilter === filter.id
+                      ? 'bg-primary text-primary-foreground'
+                      : 'border border-border text-secondary/60 hover:border-primary/50'
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Feed Items */}
+            <div className="px-5">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeFilter}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {filteredItems.map((item, i) => (
+                    <DemoFeedCard key={item.id} item={item} index={i} />
+                  ))}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {/* CTA at bottom */}
+            <div className="px-5 py-6 bg-gradient-to-t from-primary/5 to-transparent border-t border-border/30">
+              <div className="text-center">
+                <p className="text-sm font-mono text-foreground mb-3">
+                  Like what you see? Get your own personalized feed.
+                </p>
+                <button
+                  onClick={signInWithGoogle}
+                  className="px-6 py-3 bg-primary text-primary-foreground text-xs font-mono uppercase tracking-widest hover:bg-primary/90 transition-colors"
+                >
+                  Sign Up Free — 3 Day Trial
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Decorative elements */}
+          <div className="absolute -top-4 -left-4 w-8 h-8 border-t-2 border-l-2 border-primary/40" />
+          <div className="absolute -bottom-4 -right-4 w-8 h-8 border-b-2 border-r-2 border-primary/40" />
+        </motion.div>
+      </div>
+    </section>
+  );
+};
+
+// --- Compact Hero Demo (for right side of hero) ---
+const HeroDemo = () => {
+  const displayItems = DEMO_FEED_ITEMS.slice(0, 3);
+
+  return (
+    <div className="relative w-full">
+      {/* Clean Card Container - Light Mode */}
+      <div className="bg-white rounded-2xl border border-border/60 overflow-hidden shadow-xl shadow-black/5">
+        {/* App Header with Trace Logo */}
+        <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between bg-gray-50/50">
+          <div className="flex items-center gap-2">
+            <img 
+              src="/trace.png" 
+              alt="Trace" 
+              className="h-5 w-auto"
+            />
+            <span className="text-xs font-semibold text-foreground uppercase tracking-wider">Your Feed</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-secondary/60 font-mono">Today</span>
+            <span className="px-2 py-0.5 rounded-full bg-gray-100 text-secondary text-[10px] font-medium">
+              {displayItems.length} new
+            </span>
+          </div>
+        </div>
+
+        {/* Filter Pills - Static/Unclickable */}
+        <div className="px-4 py-2.5 border-b border-border/40 flex gap-1.5 overflow-x-auto scrollbar-hide">
+          {DEMO_FILTERS.slice(0, 4).map((filter, i) => (
+            <div
+              key={filter.id}
+              className={`px-3 py-1 rounded-full text-[11px] font-medium cursor-default select-none ${
+                i === 0
+                  ? 'bg-foreground text-background'
+                  : 'bg-gray-100 text-secondary'
+              }`}
+            >
+              {filter.label}
+            </div>
+          ))}
+        </div>
+
+        {/* Feed Items */}
+        <div className="divide-y divide-border/30">
+          {displayItems.map((item, i) => (
+            <HeroDemoCard key={item.id} item={item} index={i} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Simplified card for Hero demo - Matches actual feed style
+const HeroDemoCard = ({ item, index }: { item: typeof DEMO_FEED_ITEMS[0]; index: number }) => {
+  const typeConfig: Record<string, { icon: React.ElementType; color: string; bg: string; label: string }> = {
+    youtube: { icon: Youtube, color: 'text-red-500', bg: 'bg-red-50', label: 'Video' },
+    article: { icon: BookOpen, color: 'text-emerald-600', bg: 'bg-emerald-50', label: 'Article' },
+    news: { icon: Newspaper, color: 'text-orange-500', bg: 'bg-orange-50', label: 'News' },
+    discussion: { icon: MessageCircle, color: 'text-amber-600', bg: 'bg-amber-50', label: 'Discussion' },
+  };
+
+  const config = typeConfig[item.type] || typeConfig.article;
+  const Icon = config.icon;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: index * 0.05 }}
+      className="group p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+    >
+      <div className="flex items-start gap-3">
+        {/* Source icon */}
+        <div className={`w-10 h-10 rounded-xl ${config.bg} flex items-center justify-center shrink-0`}>
+          <Icon size={18} className={config.color} strokeWidth={1.5} />
+        </div>
+        
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          {/* Source label */}
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`text-[10px] font-medium uppercase tracking-wider ${config.color}`}>
+              {config.label}
+            </span>
+          </div>
+
+          {/* Title */}
+          <h3 className="text-sm font-medium leading-snug text-foreground group-hover:text-foreground/70 transition-colors line-clamp-2 mb-2">
+            {item.title}
+          </h3>
+
+          {/* Actions row */}
+          <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 p-1.5 rounded-lg text-secondary/40">
+              <ThumbsUp size={14} strokeWidth={1.5} />
+            </div>
+            <div className="flex items-center gap-1 p-1.5 rounded-lg text-secondary/40">
+              <ThumbsDown size={14} strokeWidth={1.5} />
+            </div>
+            <div className="flex items-center gap-1 p-1.5 rounded-lg text-secondary/40">
+              <Bookmark size={14} strokeWidth={1.5} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
 
 // --- Product Screenshot Section ---
 const DemoFeed = () => {
@@ -920,29 +1333,29 @@ const Testimonials = () => {
   ];
 
   return (
-    <section className="py-16 md:py-24 lg:py-32 bg-background border-t border-border relative z-10">
+    <section className="py-16 md:py-24 lg:py-32 bg-background relative z-10">
       <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
         <div className="text-center mb-12 md:mb-16">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6"
+            className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-4 md:mb-6"
           >
-            What People <span className="text-secondary/40">Say</span>
+            What People <span className="text-secondary/50">Say</span>
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="text-secondary font-mono text-xs md:text-sm leading-relaxed max-w-2xl mx-auto"
+            className="text-secondary text-base md:text-lg leading-relaxed max-w-2xl mx-auto"
           >
             Builders, makers, and curious minds who use Trace daily
           </motion.p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
           {testimonials.map((testimonial, i) => (
             <motion.div
               key={i}
@@ -950,14 +1363,14 @@ const Testimonials = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="border border-border bg-background p-6 md:p-8 hover:border-primary/30 transition-all group"
+              className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8 hover:border-gray-300 hover:shadow-sm transition-all"
             >
-              <blockquote className="text-sm md:text-base font-mono text-secondary leading-relaxed mb-6 italic">
+              <blockquote className="text-sm md:text-base text-secondary leading-relaxed mb-6">
                 &ldquo;{testimonial.quote}&rdquo;
               </blockquote>
-              <div className="border-t border-border pt-4">
-                <p className="text-sm font-serif font-medium text-foreground">{testimonial.name}</p>
-                <p className="text-xs font-mono text-secondary/70">{testimonial.role}</p>
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-sm font-semibold text-foreground">{testimonial.name}</p>
+                <p className="text-xs text-secondary/70">{testimonial.role}</p>
               </div>
             </motion.div>
           ))}
@@ -970,9 +1383,9 @@ const Testimonials = () => {
 // --- Feed Card Component ---
 const FeedCard = ({ title, source, description, index }: { title: string; source: string; description: string; index: number }) => {
   const sources: Record<string, { icon: React.ElementType; name: string; color: string }> = {
-    youtube: { icon: Youtube, name: 'YouTube', color: 'bg-red-500/10 text-red-600 border border-red-500/20' },
-    github: { icon: Github, name: 'GitHub', color: 'bg-purple-500/10 text-purple-600 border border-purple-500/20' },
-    arxiv: { icon: BookOpen, name: 'ArXiv', color: 'bg-blue-500/10 text-blue-600 border border-blue-500/20' },
+    youtube: { icon: Youtube, name: 'YouTube', color: 'bg-red-50 text-red-600' },
+    github: { icon: Github, name: 'GitHub', color: 'bg-purple-50 text-purple-600' },
+    arxiv: { icon: BookOpen, name: 'ArXiv', color: 'bg-blue-50 text-blue-600' },
   };
 
   const sourceConfig = sources[source];
@@ -983,21 +1396,20 @@ const FeedCard = ({ title, source, description, index }: { title: string; source
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: index * 0.1 }}
       viewport={{ once: true }}
-      className="bg-background border border-border p-5 md:p-6 lg:p-8 hover:border-primary/40 transition-all duration-500 group relative"
+      className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6 hover:border-gray-300 hover:shadow-sm transition-all group relative"
     >
-      <div className="absolute top-3 right-3 md:top-4 md:right-4">
+      <div className="absolute top-4 right-4">
         <SourceBadge {...sourceConfig} />
       </div>
       <div className="flex items-start gap-3 md:gap-4 mb-3 md:mb-4">
-        <div className="w-8 h-8 md:w-10 md:h-10 bg-background border border-border flex items-center justify-center text-foreground group-hover:border-primary/20 transition-colors flex-shrink-0">
-          <sourceConfig.icon size={16} className="md:hidden" strokeWidth={1.5} />
-          <sourceConfig.icon size={20} className="hidden md:block" strokeWidth={1.5} />
+        <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-foreground shrink-0">
+          <sourceConfig.icon size={18} strokeWidth={1.5} />
         </div>
       </div>
-      <h3 className="text-base md:text-lg lg:text-xl font-serif tracking-tight text-foreground mb-2 md:mb-3 line-clamp-2 pr-16">
+      <h3 className="text-base md:text-lg font-semibold text-foreground mb-2 md:mb-3 line-clamp-2 pr-16">
         {title}
       </h3>
-      <p className="text-xs md:text-sm font-mono text-secondary leading-relaxed line-clamp-3">
+      <p className="text-sm text-secondary leading-relaxed line-clamp-3">
         {description}
       </p>
     </motion.div>
@@ -1730,7 +2142,7 @@ const Pricing = () => {
     : 'Start Free Trial';
 
   return (
-    <section className="py-16 md:py-24 lg:py-32 bg-background border-y border-border relative z-10">
+    <section className="py-16 md:py-24 lg:py-32 bg-background relative z-10">
       <div className="container mx-auto px-4 sm:px-6 max-w-3xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -1738,10 +2150,10 @@ const Pricing = () => {
           viewport={{ once: true }}
           className="text-center"
         >
-          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6">
-            Simple <span className="text-secondary/40">Pricing</span>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-4 md:mb-6">
+            Simple <span className="text-secondary/50">Pricing</span>
           </h2>
-          <p className="text-secondary font-mono text-sm md:text-base leading-relaxed mb-8 md:mb-12">
+          <p className="text-secondary text-base md:text-lg leading-relaxed mb-8 md:mb-12">
             Try free for 3 days. Then $2.99/month. Cancel anytime.
           </p>
         </motion.div>
@@ -1751,47 +2163,47 @@ const Pricing = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.1 }}
-          className="border-2 border-primary bg-primary/5 p-6 md:p-8 lg:p-10 mb-8"
+          className="bg-white rounded-3xl border border-gray-200 shadow-xl p-6 md:p-10 lg:p-12 mb-8"
         >
-          <div className="text-center mb-6 md:mb-8">
-            <div className="text-4xl md:text-5xl font-serif font-light text-foreground mb-2">
-              $2.99<span className="text-xl md:text-2xl text-secondary">/month</span>
+          <div className="text-center mb-8 md:mb-10">
+            <div className="text-5xl md:text-6xl font-semibold text-foreground mb-2">
+              $2.99<span className="text-2xl md:text-3xl text-secondary/60">/month</span>
             </div>
-            <p className="text-xs md:text-sm font-mono text-secondary">
+            <p className="text-sm text-secondary">
               after 3-day free trial
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
-            <div className="flex items-start gap-3">
-              <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                <div className="w-2 h-2 bg-primary rounded-full"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-8 md:mb-10">
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+              <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                <span className="text-green-600 text-xs">✓</span>
               </div>
-              <div className="text-sm font-mono text-foreground">
+              <div className="text-sm text-foreground">
                 Daily personalized email digest
               </div>
             </div>
-            <div className="flex items-start gap-3">
-              <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                <div className="w-2 h-2 bg-primary rounded-full"></div>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+              <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                <span className="text-green-600 text-xs">✓</span>
               </div>
-              <div className="text-sm font-mono text-foreground">
+              <div className="text-sm text-foreground">
                 AI learns from your interactions
               </div>
             </div>
-            <div className="flex items-start gap-3">
-              <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                <div className="w-2 h-2 bg-primary rounded-full"></div>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+              <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                <span className="text-green-600 text-xs">✓</span>
               </div>
-              <div className="text-sm font-mono text-foreground">
+              <div className="text-sm text-foreground">
                 Unlimited bookmarks
               </div>
             </div>
-            <div className="flex items-start gap-3">
-              <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                <div className="w-2 h-2 bg-primary rounded-full"></div>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+              <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                <span className="text-green-600 text-xs">✓</span>
               </div>
-              <div className="text-sm font-mono text-foreground">
+              <div className="text-sm text-foreground">
                 All 1,000+ sources included
               </div>
             </div>
@@ -1800,14 +2212,14 @@ const Pricing = () => {
           <div className="text-center">
             {pricingCtaHref ? (
               <a href={pricingCtaHref}>
-                <button className="bg-primary text-primary-foreground px-10 py-4 text-[10px] font-mono font-bold uppercase tracking-[0.3em] hover:bg-primary/90 transition-all active:scale-[0.98] w-full md:w-auto">
+                <button className="bg-foreground text-background px-10 py-4 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all active:scale-[0.98] w-full md:w-auto">
                   {pricingCtaText}
                 </button>
               </a>
             ) : (
               <button
                 onClick={signInWithGoogle}
-                className="bg-primary text-primary-foreground px-10 py-4 text-[10px] font-mono font-bold uppercase tracking-[0.3em] hover:bg-primary/90 transition-all active:scale-[0.98] w-full md:w-auto"
+                className="bg-foreground text-background px-10 py-4 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all active:scale-[0.98] w-full md:w-auto"
               >
                 {pricingCtaText}
               </button>
@@ -1822,10 +2234,10 @@ const Pricing = () => {
           transition={{ delay: 0.2 }}
           className="text-center"
         >
-          <p className="text-xs font-mono text-secondary mb-4">
+          <p className="text-sm text-secondary mb-3">
             Cancel anytime before trial ends. No credit card charged until day 4.
           </p>
-          <p className="text-xs font-mono text-secondary">
+          <p className="text-sm text-secondary">
             Questions? We&apos;re humans: <a href="mailto:tomartarun2001@gmail.com" className="text-primary hover:underline">tomartarun2001@gmail.com</a>
           </p>
         </motion.div>
@@ -1855,13 +2267,13 @@ const GetStarted = () => {
 
   const getStatusText = () => {
     if (!user) return '';
-    if (!alphaMode) return "✓ YOU'RE ON THE WAITLIST";
-    if (!profile?.onboarded) return 'TELL US 3 TOPICS YOU CARE ABOUT';
-    return '✓ SIGNED IN SUCCESSFULLY';
+    if (!alphaMode) return "✓ You're on the waitlist";
+    if (!profile?.onboarded) return 'Tell us 3 topics you care about';
+    return '✓ Signed in successfully';
   };
 
   return (
-    <section id="get-started" className="py-16 md:py-24 lg:py-40 bg-background border-t border-border z-10 relative">
+    <section id="get-started" className="py-16 md:py-24 lg:py-40 bg-background z-10 relative">
       <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
         <div className="max-w-2xl mx-auto text-center">
           <motion.div
@@ -1870,10 +2282,10 @@ const GetStarted = () => {
             viewport={{ once: true }}
             className="mb-8 md:mb-12"
           >
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tighter text-foreground uppercase mb-4 md:mb-6">
-              Start Your <span className="text-secondary/40">Free Trial</span>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-4 md:mb-6">
+              Start Your <span className="text-secondary/50">Free Trial</span>
             </h2>
-            <p className="text-secondary font-mono text-sm md:text-base leading-relaxed max-w-xl mx-auto">
+            <p className="text-secondary text-base md:text-lg leading-relaxed max-w-xl mx-auto">
               {user
                 ? profile?.onboarded
                   ? "Your personalized feed awaits."
@@ -1888,24 +2300,24 @@ const GetStarted = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
-            className="bg-background border-2 border-border p-6 md:p-10 lg:p-12"
+            className="bg-white rounded-3xl border border-gray-200 shadow-lg p-6 md:p-10 lg:p-12"
           >
             {user ? (
               <div className="space-y-6 md:space-y-8">
                 <div className="flex flex-col items-center gap-3 md:gap-4">
                   {user.photoURL && (
-                    <img src={user.photoURL} alt="Profile" className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-primary" />
+                    <img src={user.photoURL} alt="Profile" className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-gray-200" />
                   )}
                   <div>
-                    <p className="text-lg md:text-xl font-serif text-foreground mb-1">{profile?.name || user.displayName}</p>
-                    <p className="text-[9px] md:text-[10px] font-mono uppercase tracking-widest text-secondary">{user.email}</p>
+                    <p className="text-lg md:text-xl font-semibold text-foreground mb-1">{profile?.name || user.displayName}</p>
+                    <p className="text-sm text-secondary">{user.email}</p>
                   </div>
                 </div>
-                <div className={`py-4 md:py-5 border font-mono text-xs md:text-sm tracking-wider ${profile?.onboarded ? 'border-primary bg-primary/5 text-primary' : 'border-amber-500 bg-amber-500/5 text-amber-600'}`}>
+                <div className={`py-4 md:py-5 rounded-xl text-sm font-medium ${profile?.onboarded ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>
                   {getStatusText()}
                 </div>
                 <a href={getCtaLink()}>
-                  <button className="w-full bg-primary text-primary-foreground py-4 md:py-5 text-[10px] font-mono font-bold uppercase tracking-[0.3em] hover:bg-primary/90 transition-all active:scale-[0.98]">
+                  <button className="w-full bg-foreground text-background py-4 md:py-5 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all active:scale-[0.98]">
                     {getCtaText()}
                   </button>
                 </a>
@@ -1913,19 +2325,19 @@ const GetStarted = () => {
             ) : (
               <div className="space-y-6 md:space-y-8">
                 <div className="flex flex-col items-center gap-4 md:gap-5">
-                  <div className="w-16 h-16 md:w-20 md:h-20 bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
                     <Sparkles size={32} className="md:hidden" strokeWidth={1.5} />
                     <Sparkles size={40} className="hidden md:block" strokeWidth={1.5} />
                   </div>
-                  <p className="text-sm md:text-base font-mono text-secondary text-center">
+                  <p className="text-base text-secondary text-center">
                     3-day free trial. No credit card required.
                   </p>
                 </div>
                 <button
                   onClick={signInWithGoogle}
-                  className="w-full bg-primary text-primary-foreground py-4 md:py-6 text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.3em] md:tracking-[0.4em] hover:bg-primary/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 md:gap-3"
+                  className="w-full bg-foreground text-background py-4 md:py-5 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
                 >
-                  <svg className="w-4 h-4 md:w-5 md:h-5" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                     <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                     <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
@@ -1944,11 +2356,11 @@ const GetStarted = () => {
 
 // --- Footer Component ---
 const Footer = () => (
-  <footer className="py-12 md:py-16 lg:py-20 bg-background border-t border-border z-10 relative">
+  <footer className="py-12 md:py-16 lg:py-20 bg-gray-50 border-t border-gray-100 z-10 relative">
     <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
       <div className="flex flex-col md:flex-row justify-between items-start gap-10 md:gap-12 lg:gap-16 mb-12 md:mb-16 lg:mb-20">
-        <div className="flex flex-col gap-4 md:gap-6">
-          <div className="text-xl md:text-2xl text-foreground uppercase flex items-center gap-3 md:gap-4 tracking-[0.15em] font-serif font-black">
+        <div className="flex flex-col gap-4 md:gap-5">
+          <div className="text-xl md:text-2xl text-foreground uppercase flex items-center gap-3 md:gap-4 tracking-[0.1em] font-semibold">
             <img
               src="/trace.png"
               alt="Trace Logo"
@@ -1956,46 +2368,46 @@ const Footer = () => (
             />
             TRACE
           </div>
-          <p className="text-secondary font-mono text-[9px] md:text-[10px] uppercase tracking-wider md:tracking-widest leading-relaxed max-w-[200px] md:max-w-[240px]">
+          <p className="text-secondary text-sm leading-relaxed max-w-[240px]">
             Build your own feed with content from across the web
           </p>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-12 lg:gap-24 w-full md:w-auto">
           <div>
-            <h4 className="text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-foreground mb-4 md:mb-6">Product</h4>
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground mb-4 md:mb-5">Product</h4>
             <div className="flex flex-col gap-3 md:gap-4">
-              <a href="#demo" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">See Example Feed</a>
-              <a href="#get-started" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">Start Free Trial</a>
-              <a href="/trending" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">Trending Topics</a>
+              <a href="#demo" className="text-sm text-secondary hover:text-foreground transition-colors">See Example Feed</a>
+              <a href="#get-started" className="text-sm text-secondary hover:text-foreground transition-colors">Start Free Trial</a>
+              <a href="/trending" className="text-sm text-secondary hover:text-foreground transition-colors">Trending Topics</a>
             </div>
           </div>
           <div>
-            <h4 className="text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-foreground mb-4 md:mb-6">Legal</h4>
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground mb-4 md:mb-5">Legal</h4>
             <div className="flex flex-col gap-3 md:gap-4">
-              <a href="/privacy-policy" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">Privacy Policy</a>
-              <a href="/terms" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">Terms of Service</a>
+              <a href="/privacy-policy" className="text-sm text-secondary hover:text-foreground transition-colors">Privacy Policy</a>
+              <a href="/terms" className="text-sm text-secondary hover:text-foreground transition-colors">Terms of Service</a>
             </div>
           </div>
           <div>
-            <h4 className="text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-foreground mb-4 md:mb-6">Connect</h4>
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground mb-4 md:mb-5">Connect</h4>
             <div className="flex flex-col gap-3 md:gap-4">
-              <a href="https://x.com/tarat_211" target="_blank" rel="noopener noreferrer" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">Twitter</a>
-              <a href="https://github.com/TarunTomar122" target="_blank" rel="noopener noreferrer" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">GitHub</a>
-              <a href="mailto:tomartarun2001@gmail.com" className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary hover:text-primary transition-colors">Email</a>
+              <a href="https://x.com/tarat_211" target="_blank" rel="noopener noreferrer" className="text-sm text-secondary hover:text-foreground transition-colors">Twitter</a>
+              <a href="https://github.com/TarunTomar122" target="_blank" rel="noopener noreferrer" className="text-sm text-secondary hover:text-foreground transition-colors">GitHub</a>
+              <a href="mailto:tomartarun2001@gmail.com" className="text-sm text-secondary hover:text-foreground transition-colors">Email</a>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="pt-8 md:pt-12 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6">
-        <div className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary text-center md:text-left">
-          © 2026 TRACE // BUILT WITH INTENTION
+      <div className="pt-8 md:pt-10 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6">
+        <div className="text-sm text-secondary text-center md:text-left">
+          © 2026 Trace — Built with intention
         </div>
         <div className="flex gap-4">
-          <div className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            ALPHA - v0.1.0
+          <div className="px-3 py-1.5 rounded-full bg-green-100 text-green-600 text-xs font-medium flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            Alpha v0.1.0
           </div>
         </div>
       </div>
@@ -2011,7 +2423,8 @@ export default function LandingPage() {
       <WaitlistBanner />
       <Nav />
       <Hero />
-      <DemoFeed />
+      {/* <InteractiveDemo />
+      <DemoFeed /> */}
       <WhatTraceReplaces />
       {/* <HowPeopleUseTrace /> */}
       <Testimonials />

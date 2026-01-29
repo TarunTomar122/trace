@@ -73,53 +73,53 @@ const TOPICS = [
 
 export default function TrendingPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background">
       <PublicHeader showHome={true} backHref="/" backLabel="Back to Home" />
 
       <main className="w-full mt-6 md:mt-12">
-        <div className="max-w-5xl mx-auto px-4 md:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto px-4 md:px-6">
           {/* Header */}
-          <div className="mb-12 md:mb-16">
-            <div className="flex items-center gap-3 mb-4">
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-light tracking-tight text-foreground uppercase">
-                Trending
-              </h1>
-            </div>
-            <p className="text-sm md:text-base font-mono text-secondary/70 max-w-2xl">
+          <div className="mb-8 md:mb-12">
+            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground mb-3">
+              Trending Topics
+            </h1>
+            <p className="text-sm md:text-base text-secondary max-w-2xl">
               Curated topics updated daily with the latest articles, discussions, and videos from across the web
             </p>
           </div>
 
           {/* Topics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-12">
             {TOPICS.map((topic) => {
               const Icon = topic.icon;
               return (
                 <Link
                   key={topic.id}
                   href={`/trending/${topic.id}`}
-                  className="group block border-2 border-border hover:border-primary transition-all duration-300"
+                  className="group block p-4 md:p-5 rounded-xl hover:bg-gray-50 transition-colors"
                 >
-                  <div className={`p-6 md:p-8 ${topic.bgColor} group-hover:bg-primary/5 transition-colors`}>
-                    {/* Icon and Title */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div className={`w-12 h-12 ${topic.bgColor} ${topic.borderColor} border-2 flex items-center justify-center`}>
-                        <Icon size={24} className={topic.color} strokeWidth={1.5} />
-                      </div>
-                      <ArrowUpRight 
-                        size={20} 
-                        className="text-secondary opacity-40 group-hover:opacity-100 group-hover:text-primary transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5" 
-                        strokeWidth={1.5}
-                      />
+                  <div className="flex items-start gap-4">
+                    {/* Icon */}
+                    <div className={`w-12 h-12 rounded-xl ${topic.bgColor} flex items-center justify-center shrink-0`}>
+                      <Icon size={22} className={topic.color} strokeWidth={1.5} />
                     </div>
 
                     {/* Content */}
-                    <h2 className="text-xl md:text-2xl font-serif font-light text-foreground mb-2 uppercase tracking-tight">
-                      {topic.name}
-                    </h2>
-                    <p className="text-xs md:text-sm font-mono text-secondary/70 leading-relaxed">
-                      {topic.description}
-                    </p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h2 className="text-base md:text-lg font-medium text-foreground group-hover:text-primary transition-colors">
+                          {topic.name}
+                        </h2>
+                        <ArrowUpRight 
+                          size={16} 
+                          className="text-secondary/40 group-hover:text-primary opacity-0 group-hover:opacity-100 transition-all shrink-0" 
+                          strokeWidth={1.5}
+                        />
+                      </div>
+                      <p className="text-xs text-secondary/70 leading-relaxed line-clamp-2">
+                        {topic.description}
+                      </p>
+                    </div>
                   </div>
                 </Link>
               );
@@ -127,24 +127,22 @@ export default function TrendingPage() {
           </div>
 
           {/* CTA Section */}
-          <div className="border-2 border-primary bg-primary/5 p-8 md:p-12 text-center mb-12">
-            <Sparkles size={32} className="text-primary mx-auto mb-6" strokeWidth={1.5} />
-            <h2 className="text-2xl md:text-3xl font-serif font-light text-foreground mb-4 uppercase">
+          <div className="bg-gray-50 rounded-2xl p-6 md:p-8 text-center mb-12">
+            <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+              <Sparkles size={22} className="text-foreground" strokeWidth={1.5} />
+            </div>
+            <h2 className="text-lg md:text-xl font-semibold text-foreground mb-2">
               Want More Than Trending?
             </h2>
-            <p className="text-sm md:text-base font-mono text-secondary/70 mb-8 max-w-2xl mx-auto">
-              Get a personalized feed curated daily based on your unique interests and learning goals. 
-              No algorithms, no distractions—just the content that matters to you.
+            <p className="text-sm text-secondary mb-6 max-w-lg mx-auto">
+              Get a personalized feed curated daily based on your unique interests and learning goals.
             </p>
             <Link href="/">
-              <button className="bg-primary text-primary-foreground px-8 py-4 text-[10px] md:text-xs font-mono font-bold uppercase tracking-[0.25em] hover:bg-primary/90 transition-all active:scale-95">
+              <button className="bg-foreground text-background px-6 py-3 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all">
                 Start Free Trial
               </button>
             </Link>
           </div>
-
-          {/* Bottom spacer */}
-          <div className="h-12" />
         </div>
       </main>
     </div>

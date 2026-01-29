@@ -478,21 +478,21 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-serif">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Progress bar */}
-      <div className="fixed top-0 left-0 right-0 h-1 bg-border z-50">
+      <div className="fixed top-0 left-0 right-0 h-1.5 bg-gray-100 z-50">
         <motion.div 
-          className="h-full bg-primary"
+          className="h-full bg-foreground rounded-r-full"
           initial={{ width: '33.33%' }}
           animate={{ width: `${(step / 3) * 100}%` }}
           transition={{ duration: 0.3 }}
         />
       </div>
 
-      <div className="container mx-auto px-4 max-w-3xl py-12 md:py-20">
+      <div className="container mx-auto px-4 max-w-2xl py-12 md:py-20">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="text-lg text-foreground uppercase flex items-center justify-center gap-3 tracking-[0.15em] font-serif font-black mb-6">
+        <div className="text-center mb-10">
+          <div className="text-lg text-foreground uppercase flex items-center justify-center gap-3 tracking-[0.15em] font-semibold mb-6">
             <img 
               src="/trace.png" 
               alt="Trace" 
@@ -500,10 +500,10 @@ export default function OnboardingPage() {
             />
             TRACE
           </div>
-          <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-sm text-secondary mb-3">
             Step {step} of 3
-          </p>
-          <p className="text-xs text-secondary/60 mt-2 max-w-md mx-auto font-mono">
+          </div>
+          <p className="text-sm text-secondary/70 mt-3 max-w-md mx-auto">
             🔒 Your data powers your personalized feed. Read our{' '}
             <a href="/privacy-policy" target="_blank" className="text-primary hover:underline">privacy policy</a>
             {' '}and{' '}
@@ -523,17 +523,17 @@ export default function OnboardingPage() {
               className="space-y-8"
             >
               <div className="text-center mb-10">
-                <h1 className="text-4xl md:text-5xl font-serif font-light tracking-tight uppercase mb-3">
-                  The <span className="text-secondary/40">Basics</span>
+                <h1 className="text-3xl md:text-4xl font-semibold tracking-tight mb-3">
+                  The <span className="text-secondary/50">Basics</span>
                 </h1>
-                <p className="text-secondary font-mono text-sm">
+                <p className="text-secondary text-base">
                   Let&apos;s get to know you a bit
                 </p>
               </div>
 
               <div className="space-y-6">
                 <div>
-                  <label className="block text-xs font-mono uppercase tracking-wider text-foreground/70 mb-3 font-medium">
+                  <label className="block text-sm font-medium text-foreground/70 mb-3">
                     What should we call you?
                   </label>
                   <input
@@ -541,26 +541,26 @@ export default function OnboardingPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Your name"
-                    className="w-full bg-transparent border-b-2 border-border py-4 text-lg font-serif text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 text-base text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-secondary/40"
                   />
                 </div>
 
                 <div>
                   <div className="relative mb-3">
-                    <label className="block text-xs font-mono uppercase tracking-wider text-foreground/70 font-medium">
+                    <label className="block text-sm font-medium text-foreground/70">
                       What do you do?
                       <HelpTooltip content="Helps us understand your professional context and match content difficulty to your expertise level" />
                     </label>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="flex flex-wrap gap-2">
                     {ROLES.map((r) => (
                       <button
                         key={r}
                         onClick={() => setRole(r)}
-                        className={`px-4 py-3 border text-sm font-mono transition-all ${
+                        className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all ${
                           role === r 
-                            ? 'border-primary bg-primary text-primary-foreground' 
-                            : 'border-border hover:border-primary/50'
+                            ? 'bg-foreground text-background' 
+                            : 'bg-gray-100 text-secondary hover:bg-gray-200'
                         }`}
                       >
                         {r}
@@ -599,10 +599,10 @@ export default function OnboardingPage() {
               className="space-y-8"
             >
               <div className="text-center mb-10">
-                <h1 className="text-4xl md:text-5xl font-serif font-light tracking-tight uppercase mb-3">
-                  Interests <span className="text-secondary/40">&</span> Hobbies
+                <h1 className="text-3xl md:text-4xl font-semibold tracking-tight mb-3">
+                  Interests <span className="text-secondary/50">&</span> Hobbies
                 </h1>
-                <p className="text-secondary font-mono text-sm">
+                <p className="text-secondary text-base">
                   Help us curate content you&apos;ll love
                 </p>
               </div>
@@ -611,12 +611,12 @@ export default function OnboardingPage() {
                 {/* Interests - Pills */}
                 <div>
                   <div className="relative mb-2">
-                    <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 font-medium">
+                    <label className="block text-sm font-medium text-foreground/80">
                       What are you interested in? <span className="text-primary">(minimum 4)</span>
                       <HelpTooltip content="These create your content topics - Trace searches for articles, videos, repos, and discussions matching each interest daily" />
                     </label>
                   </div>
-                  <p className="text-xs text-secondary/70 mb-4 font-mono">
+                  <p className="text-sm text-secondary/70 mb-4">
                     💡 These drive 70% of your feed content • {selectedInterests.length}/8 selected
                   </p>
                   
@@ -627,14 +627,14 @@ export default function OnboardingPage() {
                         <button
                           key={interest.id}
                           onClick={() => toggleInterest(interest.id)}
-                          className={`px-3 py-2 border text-sm font-mono transition-all flex items-center gap-2 ${
+                          className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
                             isSelected
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-border hover:border-primary/50'
+                              ? 'bg-foreground text-background'
+                              : 'bg-gray-100 text-secondary hover:bg-gray-200'
                           }`}
                         >
                           <span>{interest.label}</span>
-                          {isSelected && <Check size={12} />}
+                          {isSelected && <Check size={14} />}
                         </button>
                       );
                     })}
@@ -646,10 +646,10 @@ export default function OnboardingPage() {
                         <button
                           key={customId}
                           onClick={() => toggleInterest(customId)}
-                          className="px-3 py-2 border border-primary bg-primary text-primary-foreground text-sm font-mono transition-all flex items-center gap-2"
+                          className="px-4 py-2.5 rounded-full bg-foreground text-background text-sm font-medium transition-all flex items-center gap-2"
                         >
                           <span>{customId.replace(/-/g, ' ')}</span>
-                          <X size={12} />
+                          <X size={14} />
                         </button>
                       ))}
 
@@ -657,9 +657,9 @@ export default function OnboardingPage() {
                     {!showCustomInterestInput ? (
                       <button
                         onClick={() => setShowCustomInterestInput(true)}
-                        className="px-3 py-2 border border-dashed border-border hover:border-primary/50 text-sm font-mono transition-all flex items-center gap-2 text-secondary"
+                        className="px-4 py-2.5 rounded-full border-2 border-dashed border-gray-200 hover:border-gray-300 text-sm font-medium transition-all flex items-center gap-2 text-secondary"
                       >
-                        <Plus size={12} />
+                        <Plus size={14} />
                         Add custom
                       </button>
                     ) : (
@@ -671,13 +671,13 @@ export default function OnboardingPage() {
                           onKeyDown={(e) => e.key === 'Enter' && addCustomInterest()}
                           placeholder="Your interest"
                           autoFocus
-                          className="px-3 py-2 border border-primary bg-transparent text-sm font-mono outline-none w-32"
+                          className="px-4 py-2.5 rounded-full border-2 border-foreground bg-transparent text-sm font-medium outline-none w-36"
                         />
-                        <button onClick={addCustomInterest} className="p-2 border border-primary bg-primary text-primary-foreground">
-                          <Check size={12} />
+                        <button onClick={addCustomInterest} className="p-2.5 rounded-full bg-foreground text-background">
+                          <Check size={14} />
                         </button>
-                        <button onClick={() => { setShowCustomInterestInput(false); setCustomInterest(''); }} className="p-2 border border-border">
-                          <X size={12} />
+                        <button onClick={() => { setShowCustomInterestInput(false); setCustomInterest(''); }} className="p-2.5 rounded-full bg-gray-100">
+                          <X size={14} />
                         </button>
                       </div>
                     )}
@@ -687,12 +687,12 @@ export default function OnboardingPage() {
                 {/* Hobbies - Pills */}
                 <div>
                   <div className="relative mb-2">
-                    <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 font-medium">
-                      Hobbies <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional, max 3)</span>
+                    <label className="block text-sm font-medium text-foreground/80">
+                      Hobbies <span className="text-secondary/50 text-xs ml-2">(optional, max 3)</span>
                       <HelpTooltip content="Balances your professional feed with personal interests - helps you discover content outside your work bubble" />
                     </label>
                   </div>
-                  <p className="text-xs text-secondary/70 mb-4 font-mono">
+                  <p className="text-sm text-secondary/70 mb-4">
                     ✨ We&apos;ll sprinkle in some fun content (~20%) • {selectedHobbies.length}/3 selected
                   </p>
                   
@@ -703,14 +703,14 @@ export default function OnboardingPage() {
                         <button
                           key={hobby.id}
                           onClick={() => toggleHobby(hobby.id)}
-                          className={`px-3 py-2 border text-sm font-mono transition-all flex items-center gap-2 ${
+                          className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
                             isSelected
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-border hover:border-primary/50'
+                              ? 'bg-foreground text-background'
+                              : 'bg-gray-100 text-secondary hover:bg-gray-200'
                           }`}
                         >
                           <span>{hobby.label}</span>
-                          {isSelected && <Check size={12} />}
+                          {isSelected && <Check size={14} />}
                         </button>
                       );
                     })}
@@ -722,10 +722,10 @@ export default function OnboardingPage() {
                         <button
                           key={customId}
                           onClick={() => toggleHobby(customId)}
-                          className="px-3 py-2 border border-primary bg-primary text-primary-foreground text-sm font-mono transition-all flex items-center gap-2"
+                          className="px-4 py-2.5 rounded-full bg-foreground text-background text-sm font-medium transition-all flex items-center gap-2"
                         >
                           <span>{customId.replace(/-/g, ' ')}</span>
-                          <X size={12} />
+                          <X size={14} />
                         </button>
                       ))}
 
@@ -733,9 +733,9 @@ export default function OnboardingPage() {
                     {!showCustomHobbyInput ? (
                       <button
                         onClick={() => setShowCustomHobbyInput(true)}
-                        className="px-3 py-2 border border-dashed border-border hover:border-primary/50 text-sm font-mono transition-all flex items-center gap-2 text-secondary"
+                        className="px-4 py-2.5 rounded-full border-2 border-dashed border-gray-200 hover:border-gray-300 text-sm font-medium transition-all flex items-center gap-2 text-secondary"
                       >
-                        <Plus size={12} />
+                        <Plus size={14} />
                         Add custom
                       </button>
                     ) : (
@@ -747,13 +747,13 @@ export default function OnboardingPage() {
                           onKeyDown={(e) => e.key === 'Enter' && addCustomHobby()}
                           placeholder="Your hobby"
                           autoFocus
-                          className="px-3 py-2 border border-primary bg-transparent text-sm font-mono outline-none w-32"
+                          className="px-4 py-2.5 rounded-full border-2 border-foreground bg-transparent text-sm font-medium outline-none w-36"
                         />
-                        <button onClick={addCustomHobby} className="p-2 border border-primary bg-primary text-primary-foreground">
-                          <Check size={12} />
+                        <button onClick={addCustomHobby} className="p-2.5 rounded-full bg-foreground text-background">
+                          <Check size={14} />
                         </button>
-                        <button onClick={() => { setShowCustomHobbyInput(false); setCustomHobby(''); }} className="p-2 border border-border">
-                          <X size={12} />
+                        <button onClick={() => { setShowCustomHobbyInput(false); setCustomHobby(''); }} className="p-2.5 rounded-full bg-gray-100">
+                          <X size={14} />
                         </button>
                       </div>
                     )}
@@ -763,7 +763,7 @@ export default function OnboardingPage() {
             </motion.div>
           )}
 
-          {/* Step 3: Skills & Dislikes */}
+          {/* Step 3: Skills & Goals */}
           {step === 3 && (
             <motion.div
               key="step3"
@@ -774,10 +774,10 @@ export default function OnboardingPage() {
               className="space-y-8"
             >
               <div className="text-center mb-10">
-                <h1 className="text-4xl md:text-5xl font-serif font-light tracking-tight uppercase mb-3">
-                  Skills <span className="text-secondary/40">&</span> Goals
+                <h1 className="text-3xl md:text-4xl font-semibold tracking-tight mb-3">
+                  Skills <span className="text-secondary/50">&</span> Goals
                 </h1>
-                <p className="text-secondary font-mono text-sm">
+                <p className="text-secondary text-base">
                   Help us match content to your level
                 </p>
               </div>
@@ -786,12 +786,12 @@ export default function OnboardingPage() {
                 {/* Skills */}
                 <div>
                   <div className="relative mb-2">
-                    <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 font-medium">
+                    <label className="block text-sm font-medium text-foreground/80">
                       Your skills <span className="text-primary">(minimum 1)</span>
                       <HelpTooltip content="Calibrates content difficulty - experts get architecture deep-dives, beginners get practical tutorials" />
                     </label>
                   </div>
-                  <p className="text-xs text-secondary/70 mb-4 font-mono">
+                  <p className="text-sm text-secondary/70 mb-4">
                     🎯 Helps us calibrate content difficulty • {selectedSkills.length} selected
                   </p>
                   
@@ -802,14 +802,14 @@ export default function OnboardingPage() {
                         <button
                           key={skill.id}
                           onClick={() => toggleSkill(skill.id)}
-                          className={`px-3 py-2 border text-sm font-mono transition-all flex items-center gap-2 ${
+                          className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
                             isSelected
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-border hover:border-primary/50'
+                              ? 'bg-foreground text-background'
+                              : 'bg-gray-100 text-secondary hover:bg-gray-200'
                           }`}
                         >
                           <span>{skill.label}</span>
-                          {isSelected && <Check size={12} />}
+                          {isSelected && <Check size={14} />}
                         </button>
                       );
                     })}
@@ -821,10 +821,10 @@ export default function OnboardingPage() {
                         <button
                           key={customId}
                           onClick={() => toggleSkill(customId)}
-                          className="px-3 py-2 border border-primary bg-primary text-primary-foreground text-sm font-mono transition-all flex items-center gap-2"
+                          className="px-4 py-2.5 rounded-full bg-foreground text-background text-sm font-medium transition-all flex items-center gap-2"
                         >
                           <span>{customId.replace(/-/g, ' ')}</span>
-                          <X size={12} />
+                          <X size={14} />
                         </button>
                       ))}
 
@@ -832,9 +832,9 @@ export default function OnboardingPage() {
                     {!showCustomSkillInput ? (
                       <button
                         onClick={() => setShowCustomSkillInput(true)}
-                        className="px-3 py-2 border border-dashed border-border hover:border-primary/50 text-sm font-mono transition-all flex items-center gap-2 text-secondary"
+                        className="px-4 py-2.5 rounded-full border-2 border-dashed border-gray-200 hover:border-gray-300 text-sm font-medium transition-all flex items-center gap-2 text-secondary"
                       >
-                        <Plus size={12} />
+                        <Plus size={14} />
                         Add custom
                       </button>
                     ) : (
@@ -846,13 +846,13 @@ export default function OnboardingPage() {
                           onKeyDown={(e) => e.key === 'Enter' && addCustomSkill()}
                           placeholder="Your skill"
                           autoFocus
-                          className="px-3 py-2 border border-primary bg-transparent text-sm font-mono outline-none w-32"
+                          className="px-4 py-2.5 rounded-full border-2 border-foreground bg-transparent text-sm font-medium outline-none w-36"
                         />
-                        <button onClick={addCustomSkill} className="p-2 border border-primary bg-primary text-primary-foreground">
-                          <Check size={12} />
+                        <button onClick={addCustomSkill} className="p-2.5 rounded-full bg-foreground text-background">
+                          <Check size={14} />
                         </button>
-                        <button onClick={() => { setShowCustomSkillInput(false); setCustomSkill(''); }} className="p-2 border border-border">
-                          <X size={12} />
+                        <button onClick={() => { setShowCustomSkillInput(false); setCustomSkill(''); }} className="p-2.5 rounded-full bg-gray-100">
+                          <X size={14} />
                         </button>
                       </div>
                     )}
@@ -862,12 +862,12 @@ export default function OnboardingPage() {
 
                 <div>
                   <div className="relative mb-2">
-                    <label className="block text-sm font-mono uppercase tracking-wider text-foreground/80 font-medium">
-                      Short-term goals <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
+                    <label className="block text-sm font-medium text-foreground/80">
+                      Short-term goals <span className="text-secondary/50 text-xs ml-2">(optional)</span>
                       <HelpTooltip content="Surfaces content aligned with your immediate objectives - like promotion prep, product launches, or skill acquisition" />
                     </label>
                   </div>
-                  <p className="text-xs text-secondary/70 mb-4 font-mono">
+                  <p className="text-sm text-secondary/70 mb-4">
                     What are you working towards?
                   </p>
                   
@@ -887,14 +887,14 @@ export default function OnboardingPage() {
                               setGoalsShortTerm(prev => prev ? `${prev}, ${goal.label}` : goal.label);
                             }
                           }}
-                          className={`px-3 py-2 border text-sm font-mono transition-all flex items-center gap-2 ${
+                          className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
                             isSelected
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-border hover:border-primary/50'
+                              ? 'bg-foreground text-background'
+                              : 'bg-gray-100 text-secondary hover:bg-gray-200'
                           }`}
                         >
                           <span>{goal.label}</span>
-                          {isSelected && <Check size={12} />}
+                          {isSelected && <Check size={14} />}
                         </button>
                       );
                     })}
@@ -905,7 +905,7 @@ export default function OnboardingPage() {
                     value={goalsShortTerm}
                     onChange={(e) => setGoalsShortTerm(e.target.value)}
                     placeholder="Or type your own goals..."
-                    className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 text-base text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-secondary/40"
                   />
                 </div>
 
@@ -924,39 +924,39 @@ export default function OnboardingPage() {
           <button
             onClick={prevStep}
             disabled={step === 1}
-            className={`flex items-center gap-2 px-6 py-3 text-[10px] font-mono uppercase tracking-[0.25em] transition-all ${
+            className={`flex items-center gap-2 px-5 py-3 rounded-full text-sm font-medium transition-all ${
               step === 1 
                 ? 'opacity-0 pointer-events-none' 
-                : 'text-foreground hover:text-primary'
+                : 'text-secondary hover:text-foreground hover:bg-gray-100'
             }`}
           >
-            <ChevronLeft size={14} />
+            <ChevronLeft size={16} />
             Back
           </button>
 
           <button
             onClick={nextStep}
             disabled={!canProceed() || isSubmitting}
-            className={`flex items-center gap-2 px-8 py-4 text-[10px] font-mono uppercase tracking-[0.25em] transition-all ${
+            className={`flex items-center gap-2 px-8 py-4 rounded-full text-sm font-medium transition-all ${
               canProceed() && !isSubmitting
-                ? 'bg-primary text-primary-foreground hover:tracking-[0.4em]'
-                : 'bg-border text-secondary cursor-not-allowed'
+                ? 'bg-foreground text-background hover:bg-foreground/90'
+                : 'bg-gray-200 text-secondary cursor-not-allowed'
             }`}
           >
             {isSubmitting ? (
               <>
-                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />
                 Saving...
               </>
             ) : step === 3 ? (
               <>
                 Start Exploring
-                <Check size={14} />
+                <Check size={16} />
               </>
             ) : (
               <>
                 Continue
-                <ChevronRight size={14} />
+                <ChevronRight size={16} />
               </>
             )}
           </button>

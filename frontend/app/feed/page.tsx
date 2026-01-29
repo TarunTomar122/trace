@@ -58,16 +58,16 @@ type InteractionItem = {
   action?: 'upvote' | 'downvote' | 'remove';
 };
 
-const sourceConfig: Record<string, { icon: typeof Youtube; color: string; label: string; accent: string }> = {
-  video: { icon: Youtube, color: 'text-red-500', label: 'Video', accent: 'bg-red-500' },
-  repo: { icon: Github, color: 'text-violet-500', label: 'Repo', accent: 'bg-violet-500' },
-  paper: { icon: BookOpen, color: 'text-blue-500', label: 'Paper', accent: 'bg-blue-500' },
-  blog: { icon: BookOpen, color: 'text-emerald-500', label: 'Article', accent: 'bg-emerald-500' },
-  discussion: { icon: MessageCircle, color: 'text-amber-500', label: 'Discussion', accent: 'bg-amber-500' },
-  tweet: { icon: MessageCircle, color: 'text-sky-500', label: 'Thread', accent: 'bg-sky-500' },
-  launch: { icon: Sparkles, color: 'text-fuchsia-500', label: 'Launch', accent: 'bg-fuchsia-500' },
-  model: { icon: Sparkles, color: 'text-indigo-500', label: 'Model', accent: 'bg-indigo-500' },
-  news: { icon: Newspaper, color: 'text-orange-500', label: 'News', accent: 'bg-orange-500' },
+const sourceConfig: Record<string, { icon: typeof Youtube; color: string; label: string; accent: string; bg: string }> = {
+  video: { icon: Youtube, color: 'text-red-500', label: 'Video', accent: 'bg-red-500', bg: 'bg-red-50' },
+  repo: { icon: Github, color: 'text-violet-500', label: 'Repo', accent: 'bg-violet-500', bg: 'bg-violet-50' },
+  paper: { icon: BookOpen, color: 'text-blue-500', label: 'Paper', accent: 'bg-blue-500', bg: 'bg-blue-50' },
+  blog: { icon: BookOpen, color: 'text-emerald-600', label: 'Article', accent: 'bg-emerald-500', bg: 'bg-emerald-50' },
+  discussion: { icon: MessageCircle, color: 'text-amber-600', label: 'Discussion', accent: 'bg-amber-500', bg: 'bg-amber-50' },
+  tweet: { icon: MessageCircle, color: 'text-sky-500', label: 'Thread', accent: 'bg-sky-500', bg: 'bg-sky-50' },
+  launch: { icon: Sparkles, color: 'text-fuchsia-500', label: 'Launch', accent: 'bg-fuchsia-500', bg: 'bg-fuchsia-50' },
+  model: { icon: Sparkles, color: 'text-indigo-500', label: 'Model', accent: 'bg-indigo-500', bg: 'bg-indigo-50' },
+  news: { icon: Newspaper, color: 'text-orange-500', label: 'News', accent: 'bg-orange-500', bg: 'bg-orange-50' },
 };
 
 function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, onDisabledClick, onVisible, initialBookmarked, isBookmarkLoading }: {
@@ -166,7 +166,7 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, height: 0 }}
-      className="group py-4 md:py-6 hover:bg-foreground/1 transition-colors cursor-pointer"
+      className="group p-4 md:p-5 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
       onClick={(e) => {
         // Only navigate if not clicking on action buttons
         const target = e.target as HTMLElement;
@@ -177,28 +177,27 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
     >
       {/* Top row: icon + source + context */}
       <div className="flex items-start gap-3 md:gap-4">
-        {/* Source icon */}
-        <div className={`w-8 h-8 md:w-10 md:h-10 flex items-center justify-center shrink-0 ${config.color} bg-current/5 border border-current/10`}>
-          <Icon size={16} className={`${config.color} md:hidden`} strokeWidth={1.5} />
-          <Icon size={18} className={`${config.color} hidden md:block`} strokeWidth={1.5} />
+        {/* Source icon - hidden on mobile, visible on desktop */}
+        <div className={`hidden md:flex w-12 h-12 rounded-xl items-center justify-center shrink-0 ${config.bg}`}>
+          <Icon size={20} className={config.color} strokeWidth={1.5} />
         </div>
-
+        
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Source label */}
           <div className="flex items-center gap-2 mb-1.5 md:mb-2">
-            <span className={`text-[10px] font-mono uppercase tracking-widest ${config.color}`}>{config.label}</span>
+            <span className={`text-[10px] font-medium uppercase tracking-wider ${config.color}`}>{config.label}</span>
             {item.metadata?.is_hot && itemKind !== 'news' && (
-              <span className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-500/10 border border-orange-500/20 text-orange-500">
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">
                 <Flame size={10} strokeWidth={2} />
-                <span className="text-[9px] font-mono uppercase tracking-wider">Hot</span>
+                <span className="text-[9px] font-medium uppercase tracking-wider">Hot</span>
               </span>
             )}
           </div>
 
           {/* Title - the main focus */}
           <div className="mb-2 md:mb-3">
-            <h3 className="text-base md:text-lg font-serif leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
+            <h3 className="text-base md:text-lg font-medium leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
               {item.title}
               <ArrowUpRight
                 size={14}
@@ -209,23 +208,23 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
 
           {/* Relevance below title (no clamp) */}
           {relevance && (
-            <p className="text-[10px] font-mono text-secondary/60 mb-3 md:mb-4">
+            <p className="text-xs text-secondary/70 mb-3 md:mb-4">
               {relevance}
             </p>
           )}
 
-          {/* Actions row - compact */}
-          <div className="flex items-center gap-1 md:gap-2 -ml-1">
+          {/* Actions row - rounded buttons */}
+          <div className="flex items-center gap-1 md:gap-1.5">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleUpvote();
               }}
-              className={`flex items-center gap-1.5 px-2 py-2 md:py-1.5 transition-colors active:scale-95 ${disabled
+              className={`flex items-center gap-1.5 p-2 rounded-lg transition-colors active:scale-95 ${disabled
                   ? 'text-secondary/20 cursor-not-allowed'
                   : upvoted
-                    ? 'text-green-500'
-                    : 'text-secondary/40 hover:text-green-500'
+                    ? 'text-green-500 bg-green-50'
+                    : 'text-secondary/40 hover:text-green-500 hover:bg-green-50'
                 }`}
               title={disabled ? "Subscribe to interact" : "Upvote"}
             >
@@ -238,11 +237,11 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
                 e.stopPropagation();
                 handleDownvote();
               }}
-              className={`flex items-center gap-1.5 px-2 py-2 md:py-1.5 transition-colors active:scale-95 ${disabled
+              className={`flex items-center gap-1.5 p-2 rounded-lg transition-colors active:scale-95 ${disabled
                   ? 'text-secondary/20 cursor-not-allowed'
                   : downvoted
-                    ? 'text-red-500'
-                    : 'text-secondary/40 hover:text-red-500'
+                    ? 'text-red-500 bg-red-50'
+                    : 'text-secondary/40 hover:text-red-500 hover:bg-red-50'
                 }`}
               title={disabled ? "Subscribe to interact" : "Downvote"}
             >
@@ -259,9 +258,9 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
                 }
                 setShowFeedback(!showFeedback);
               }}
-              className={`flex items-center gap-1.5 px-2 py-2 md:py-1.5 transition-colors active:scale-95 ${disabled
+              className={`flex items-center gap-1.5 p-2 rounded-lg transition-colors active:scale-95 ${disabled
                   ? 'text-secondary/20 cursor-not-allowed'
-                  : 'text-secondary/40 hover:text-blue-500'
+                  : 'text-secondary/40 hover:text-blue-500 hover:bg-blue-50'
                 }`}
               title={disabled ? "Subscribe to interact" : "Add feedback"}
             >
@@ -280,13 +279,13 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
                 setBookmarked(!bookmarked);
                 onStar();
               }}
-              className={`flex items-center gap-1.5 px-2 py-2 md:py-1.5 transition-colors ml-auto active:scale-95 ${disabled
+              className={`flex items-center gap-1.5 p-2 rounded-lg transition-colors ml-auto active:scale-95 ${disabled
                   ? 'text-secondary/20 cursor-not-allowed'
                   : isBookmarkLoading
                     ? 'text-secondary/40'
                     : bookmarked
-                      ? 'text-primary'
-                      : 'text-secondary/40 hover:text-primary'
+                      ? 'text-primary bg-primary/10'
+                      : 'text-secondary/40 hover:text-primary hover:bg-primary/10'
                 }`}
               title={disabled ? "Subscribe to interact" : "Bookmark"}
               disabled={isBookmarkLoading}
@@ -370,7 +369,6 @@ export default function FeedPage() {
   // Feedback state
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
-  const [feedbackType, setFeedbackType] = useState<'bug' | 'feature' | 'general'>('general');
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
@@ -789,7 +787,7 @@ export default function FeedPage() {
         },
         body: JSON.stringify({
           message: feedbackMessage.trim(),
-          type: feedbackType,
+          type: 'general',
         }),
       });
 
@@ -889,27 +887,27 @@ export default function FeedPage() {
       {/* Callout banner - show ONE based on state */}
       {profile && !profile.onboarded ? (
         // Non-onboarded users: Show onboarding callout
-        <div className="sticky top-14 md:top-16 z-40 bg-gradient-to-r from-violet-500/10 via-indigo-500/10 to-violet-500/10 border-b border-violet-500/20 backdrop-blur-sm">
+        <div className="sticky top-14 md:top-16 z-40 bg-violet-50 border-b border-violet-100">
           <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-3 md:py-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-violet-500/20 flex items-center justify-center shrink-0">
-                  <Brain size={16} className="text-violet-500" />
+                <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+                  <Brain size={18} className="text-violet-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-serif text-foreground">
-                    <span className="font-bold">Complete your profile</span> — tell us what you&apos;re into
+                  <p className="text-sm font-medium text-foreground">
+                    Complete your profile — tell us what you&apos;re into
                   </p>
-                  <p className="text-xs font-mono text-secondary/70 mt-0.5">
+                  <p className="text-xs text-secondary/70 mt-0.5">
                     Finish onboarding to get your personalized feed
                   </p>
                 </div>
               </div>
               <Link
                 href="/onboarding"
-                className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-[10px] font-mono uppercase tracking-widest hover:bg-violet-700 transition-colors shrink-0"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-violet-600 text-white text-xs font-medium hover:bg-violet-700 transition-colors shrink-0"
               >
-                <Sparkles size={12} />
+                <Sparkles size={14} />
                 Complete Setup
               </Link>
             </div>
@@ -917,27 +915,27 @@ export default function FeedPage() {
         </div>
       ) : !hasAccess && profile ? (
         // Onboarded but not subscribed: Show limited feed callout
-        <div className="sticky top-14 md:top-16 z-40 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border-b border-amber-500/20 backdrop-blur-sm">
+        <div className="sticky top-14 md:top-16 z-40 bg-amber-100 border-b border-amber-100">
           <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-3 md:py-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-amber-500/20 flex items-center justify-center shrink-0">
-                  <Brain size={16} className="text-amber-500" />
+                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                  <Brain size={18} className="text-amber-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-serif text-foreground">
-                    <span className="font-bold">You&apos;re viewing a limited feed</span>
+                  <p className="text-sm font-medium text-foreground">
+                    You&apos;re viewing a limited feed
                   </p>
-                  <p className="text-xs font-mono text-secondary/70 mt-0.5">
+                  <p className="text-xs text-secondary/70 mt-0.5">
                     Unlock your full personalized feed free for 3 days — no credit card required
                   </p>
                 </div>
               </div>
               <Link
                 href="/profile?tab=subscription"
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-[10px] font-mono uppercase tracking-widest hover:bg-primary/90 transition-colors shrink-0"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-foreground text-background text-xs font-medium hover:bg-foreground/90 transition-colors shrink-0"
               >
-                <Zap size={12} />
+                <Zap size={14} />
                 Start Free Trial
               </Link>
             </div>
@@ -960,27 +958,27 @@ export default function FeedPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-background border border-border p-6 md:p-8 max-w-md w-full"
+              className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8 max-w-md w-full shadow-xl"
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-primary/10 flex items-center justify-center">
-                  <Brain size={20} className="text-primary" />
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Brain size={22} className="text-primary" />
                 </div>
-                <h3 className="text-lg font-serif">Subscribe to Unlock</h3>
+                <h3 className="text-lg font-semibold">Subscribe to Unlock</h3>
               </div>
-              <p className="text-sm font-mono text-secondary mb-6">
+              <p className="text-sm text-secondary mb-6">
                 Subscribe to interact with content and help Trace learn from your feedback. Your upvotes, downvotes, and comments help us personalize your daily feed better.
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowSubscribePrompt(false)}
-                  className="flex-1 px-4 py-3 border border-border text-[10px] font-mono uppercase tracking-widest hover:border-primary/50 transition-colors"
+                  className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-secondary hover:bg-gray-50 transition-colors"
                 >
                   Maybe Later
                 </button>
                 <Link
                   href="/profile?tab=subscription"
-                  className="flex-1 px-4 py-3 bg-primary text-primary-foreground text-[10px] font-mono uppercase tracking-widest text-center hover:bg-primary/90 transition-colors"
+                  className="flex-1 px-4 py-3 rounded-xl bg-foreground text-background text-sm font-medium text-center hover:bg-foreground/90 transition-colors"
                 >
                   Subscribe
                 </Link>
@@ -1015,21 +1013,20 @@ export default function FeedPage() {
         {/* Mobile Feedback Callout - Below date picker */}
         {isOnboarded && !showFeedback && (
           <div className="md:hidden px-4 mb-4">
-            <div className="p-4 bg-blue-500/5 border border-blue-500/20">
-              <div className="flex items-start gap-2 mb-3">
-                <MessageSquare size={16} className="text-blue-500 mt-0.5 shrink-0" strokeWidth={1.5} />
+            <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+              <div className="flex items-start gap-3 mb-3">
                 <div className="flex-1">
-                  <p className="text-xs font-mono text-foreground font-bold mb-1">
-                    💬 Got feedback?
+                  <p className="text-xs font-medium text-foreground mb-0.5">
+                    Got feedback?
                   </p>
-                  <p className="text-[10px] font-mono text-secondary/80 leading-relaxed">
+                  <p className="text-[11px] text-secondary/80 leading-relaxed">
                     Help us improve Trace! Share bugs, feature requests, or feedback.
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowFeedback(true)}
-                className="w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-mono uppercase tracking-widest transition-colors"
+                className="w-full px-4 py-2.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium transition-colors"
               >
                 Send Feedback
               </button>
@@ -1046,52 +1043,34 @@ export default function FeedPage() {
               exit={{ opacity: 0, height: 0 }}
               className="md:hidden px-4 mb-4 overflow-hidden"
             >
-              <div className="p-4 bg-background border border-border">
+              <div className="p-4 bg-white rounded-xl border border-gray-200">
                 {feedbackSubmitted ? (
-                  <div className="flex items-center gap-3 text-green-500">
-                    <Check size={18} />
-                    <p className="text-sm font-mono">Thanks! Your feedback has been submitted.</p>
+                  <div className="flex items-center gap-3 text-green-600">
+                    <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                      <Check size={16} />
+                    </div>
+                    <p className="text-sm font-medium">Thanks! Your feedback has been submitted.</p>
                   </div>
                 ) : (
                   <>
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-mono font-bold text-foreground">Send Feedback</h3>
+                      <h3 className="text-sm font-medium text-foreground">Send Feedback</h3>
                       <button
                         onClick={() => setShowFeedback(false)}
-                        className="text-secondary/60 hover:text-foreground transition-colors"
+                        className="p-1.5 rounded-lg text-secondary/60 hover:text-foreground hover:bg-gray-100 transition-colors"
                         aria-label="Close feedback"
                       >
-                        <X size={16} />
+                        <X size={14} />
                       </button>
                     </div>
 
                     <div className="mb-3">
-                      <label className="block text-xs font-mono text-secondary/80 mb-2">Type</label>
-                      <div className="flex gap-2">
-                        {(['bug', 'feature', 'general'] as const).map((type) => (
-                          <button
-                            key={type}
-                            onClick={() => setFeedbackType(type)}
-                            className={`flex-1 px-3 py-2 text-[10px] font-mono uppercase tracking-widest border transition-colors ${feedbackType === type
-                                ? 'bg-primary text-white border-primary'
-                                : 'bg-transparent text-secondary border-border hover:border-primary'
-                              }`}
-                          >
-                            {type === 'bug' && '🐛 Bug'}
-                            {type === 'feature' && '✨ Feature'}
-                            {type === 'general' && '💬 General'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="mb-3">
-                      <label className="block text-xs font-mono text-secondary/80 mb-2">Message</label>
+                      <label className="block text-xs font-medium text-secondary/80 mb-2">Message</label>
                       <textarea
                         value={feedbackMessage}
                         onChange={(e) => setFeedbackMessage(e.target.value)}
                         placeholder="Tell us what's on your mind..."
-                        className="w-full px-3 py-2 bg-background border border-border text-sm font-mono text-foreground placeholder:text-secondary/40 focus:outline-none focus:border-primary resize-none"
+                        className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-foreground placeholder:text-secondary/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none"
                         rows={4}
                       />
                     </div>
@@ -1099,14 +1078,14 @@ export default function FeedPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => setShowFeedback(false)}
-                        className="flex-1 px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-secondary border border-border hover:border-primary transition-colors"
+                        className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-secondary border border-gray-200 hover:border-gray-300 transition-colors"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleSubmitFeedback}
                         disabled={!feedbackMessage.trim() || isSubmittingFeedback}
-                        className="flex-1 px-4 py-2 text-[10px] font-mono uppercase tracking-widest bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-foreground text-background hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isSubmittingFeedback ? 'Sending...' : 'Submit'}
                       </button>
@@ -1130,9 +1109,9 @@ export default function FeedPage() {
                 <button
                   key={filter.id}
                   onClick={() => setActiveFilter(filter.id as FilterType)}
-                  className={`px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider whitespace-nowrap transition-colors border ${isActive
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'border-border text-secondary/70 active:bg-foreground/5'
+                  className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${isActive
+                      ? 'bg-foreground text-background'
+                      : 'bg-gray-100 text-secondary hover:bg-gray-200'
                     }`}
                 >
                   {filter.label}
@@ -1144,14 +1123,14 @@ export default function FeedPage() {
 
         <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 md:flex md:gap-12">
           {/* Filters - left sidebar, sticky (desktop only) */}
-          <aside className={`hidden md:block w-48 shrink-0 sticky  h-fit ${
+          <aside className={`hidden md:block w-48 shrink-0 sticky h-fit ${
             // Add extra top margin when sticky banners are visible
             (profile && !profile.onboarded) || (!hasAccess && profile)
               ? 'top-40'
               : 'top-24'
             }`}>
-            <nav className="space-y-2">
-              <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-4 px-2">
+            <nav className="space-y-1.5">
+              <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-4 px-3">
                 Filters
               </h2>
               {[
@@ -1163,9 +1142,9 @@ export default function FeedPage() {
                   <button
                     key={filter.id}
                     onClick={() => setActiveFilter(filter.id as FilterType)}
-                    className={`w-full text-left px-2 py-2 text-sm font-serif transition-colors border ${isActive
-                        ? 'text-primary border-primary/60 bg-primary/10 shadow-[0_0_0_1px_rgba(99,102,241,0.35)]'
-                        : 'border-transparent text-secondary/70 hover:text-foreground hover:border-border'
+                    className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive
+                        ? 'text-foreground bg-gray-100'
+                        : 'text-secondary/70 hover:text-foreground hover:bg-gray-50'
                       }`}
                   >
                     {filter.label}
@@ -1199,14 +1178,13 @@ export default function FeedPage() {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="mb-4 md:mb-6 p-4 bg-blue-500/5 border border-blue-500/20 flex items-start gap-3"
+                  className="mb-4 md:mb-6 p-4 bg-blue-50 rounded-xl border border-blue-100 flex items-start gap-3"
                 >
-                  <MessageSquare size={18} className="text-blue-500 mt-0.5 shrink-0" strokeWidth={1.5} />
                   <div className="flex-1">
-                    <p className="text-sm font-mono text-foreground mb-1">
-                      <span className="font-bold">💡 Pro tip:</span> Vote on content and add feedback to help us personalize your feed better!
+                    <p className="text-sm font-medium text-foreground mb-1">
+                      Pro tip: Vote on content to personalize your feed!
                     </p>
-                    <p className="text-xs font-mono text-secondary">
+                    <p className="text-xs text-secondary">
                       Your feedback helps us understand what you like and refine tomorrow&apos;s recommendations.
                     </p>
                   </div>
@@ -1215,7 +1193,7 @@ export default function FeedPage() {
                       setShowHint(false);
                       localStorage.setItem('feed-hint-dismissed', 'true');
                     }}
-                    className="text-secondary/60 hover:text-foreground transition-colors shrink-0"
+                    className="text-secondary/60 hover:text-foreground transition-colors shrink-0 p-1 rounded-lg hover:bg-gray-100"
                     aria-label="Dismiss hint"
                   >
                     <X size={16} />
@@ -1226,21 +1204,21 @@ export default function FeedPage() {
 
 
             {((showPersonalizedFeed && isFeedLoading) || (!showPersonalizedFeed && isLoadingGeneral)) ? (
-              <div className="divide-y divide-border/20">
+              <div className="space-y-3">
                 {/* Skeleton loader - 5 placeholder cards */}
                 {[...Array(5)].map((_, i) => (
-                  <div key={i} className="py-4 md:py-5 px-1 animate-pulse">
+                  <div key={i} className="p-4 md:p-5 rounded-xl bg-gray-50 animate-pulse">
                     <div className="flex gap-3 md:gap-4">
-                      <div className="w-8 h-8 md:w-10 md:h-10 bg-border/50 rounded shrink-0" />
+                      <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-200 rounded-xl shrink-0" />
                       <div className="flex-1 space-y-3">
-                        <div className="h-3 bg-border/50 rounded w-16" />
-                        <div className="h-5 bg-border/50 rounded w-full" />
-                        <div className="h-5 bg-border/50 rounded w-3/4" />
-                        <div className="h-3 bg-border/50 rounded w-1/2" />
-                        <div className="flex gap-4 pt-2">
-                          <div className="h-6 w-6 bg-border/50 rounded" />
-                          <div className="h-6 w-6 bg-border/50 rounded" />
-                          <div className="h-6 w-6 bg-border/50 rounded" />
+                        <div className="h-3 bg-gray-200 rounded-full w-20" />
+                        <div className="h-5 bg-gray-200 rounded-lg w-full" />
+                        <div className="h-5 bg-gray-200 rounded-lg w-3/4" />
+                        <div className="h-3 bg-gray-200 rounded-full w-1/2" />
+                        <div className="flex gap-2 pt-2">
+                          <div className="h-8 w-8 bg-gray-200 rounded-lg" />
+                          <div className="h-8 w-8 bg-gray-200 rounded-lg" />
+                          <div className="h-8 w-8 bg-gray-200 rounded-lg" />
                         </div>
                       </div>
                     </div>
@@ -1388,26 +1366,23 @@ export default function FeedPage() {
 
                 {/* Bottom callout for unsubscribed users */}
                 {feedMetadata?.is_preview && filteredFeed.length > 0 && (
-                  <div className="mt-6 mb-4 p-4 md:p-5 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/20">
+                  <div className="mt-6 mb-4 p-5 md:p-6 bg-amber-100 rounded-2xl border border-amber-100">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-amber-500/20 flex items-center justify-center shrink-0">
-                          <Brain size={20} className="text-amber-500" />
-                        </div>
+                      <div className="flex items-center gap-4">
                         <div>
-                          <p className="text-sm font-serif text-foreground font-bold">
+                          <p className="text-base font-semibold text-foreground">
                             Want more?
                           </p>
-                          <p className="text-xs font-mono text-secondary/70 mt-0.5">
+                          <p className="text-sm text-secondary/70 mt-0.5">
                             This is just a taste. Unlock your full personalized feed with AI-powered recommendations, free for 3 days.
                           </p>
                         </div>
                       </div>
                       <Link
                         href="/profile?tab=subscription"
-                        className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground text-[10px] font-mono uppercase tracking-widest hover:bg-primary/90 transition-colors shrink-0"
+                        className="flex items-center gap-2 px-6 py-3 rounded-full bg-foreground text-background text-sm font-medium hover:bg-foreground/90 transition-colors shrink-0"
                       >
-                        <Zap size={12} />
+                        <Zap size={16} />
                         Start Free Trial
                       </Link>
                     </div>
@@ -1433,20 +1408,18 @@ export default function FeedPage() {
             {/* Feedback Callout */}
             {isOnboarded && !showFeedback && (
               <div className="mt-6">
-                <div className="p-4 bg-blue-500/5 border border-blue-500/20">
-                  <div className="flex items-start gap-2 mb-3">
+                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                  <div className="flex items-start gap-3 mb-3">
                     <div className="flex-1">
-                      <p className="text-xs font-mono text-foreground font-bold mb-1 flex items-center gap-2">
-                        <MessageSquare size={12} className="text-blue-500 mt-0.5 shrink-0" strokeWidth={1.5} />Feedback/Complaint?
-                      </p>
-                      <p className="text-[10px] font-mono text-secondary/80 leading-relaxed">
+                      <p className="text-xs font-medium text-foreground mb-0.5">Feedback/Complaint?</p>
+                      <p className="text-[11px] text-secondary/80 leading-relaxed">
                         Help us improve Trace! Share bugs, feature requests, or general feedback.
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={() => setShowFeedback(true)}
-                    className="w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-mono uppercase tracking-widest transition-colors"
+                    className="w-full px-4 py-2.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium transition-colors"
                   >
                     Send Feedback
                   </button>
@@ -1463,19 +1436,21 @@ export default function FeedPage() {
                   exit={{ opacity: 0, height: 0 }}
                   className="mt-4 overflow-hidden"
                 >
-                  <div className="p-4 bg-background border border-border">
+                  <div className="p-4 bg-white rounded-xl border border-gray-200">
                     {feedbackSubmitted ? (
-                      <div className="flex items-center gap-3 text-green-500">
-                        <Check size={18} />
-                        <p className="text-xs font-mono">Thanks! Your feedback has been submitted.</p>
+                      <div className="flex items-center gap-3 text-green-600">
+                        <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                          <Check size={16} />
+                        </div>
+                        <p className="text-sm font-medium">Thanks! Your feedback has been submitted.</p>
                       </div>
                     ) : (
                       <>
                         <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-xs font-mono font-bold text-foreground">Send Feedback</h3>
+                          <h3 className="text-sm font-medium text-foreground">Send Feedback</h3>
                           <button
                             onClick={() => setShowFeedback(false)}
-                            className="text-secondary/60 hover:text-foreground transition-colors"
+                            className="p-1.5 rounded-lg text-secondary/60 hover:text-foreground hover:bg-gray-100 transition-colors"
                             aria-label="Close feedback"
                           >
                             <X size={14} />
@@ -1483,32 +1458,12 @@ export default function FeedPage() {
                         </div>
 
                         <div className="mb-3">
-                          <label className="block text-[10px] font-mono text-secondary/80 mb-2">Type</label>
-                          <div className="flex gap-2">
-                            {(['bug', 'feature', 'general'] as const).map((type) => (
-                              <button
-                                key={type}
-                                onClick={() => setFeedbackType(type)}
-                                className={`flex-1 px-2 py-1.5 text-[9px] font-mono uppercase tracking-widest border transition-colors ${feedbackType === type
-                                    ? 'bg-primary text-white border-primary'
-                                    : 'bg-transparent text-secondary border-border hover:border-primary'
-                                  }`}
-                              >
-                                {type === 'bug' && '🐛'}
-                                {type === 'feature' && '✨'}
-                                {type === 'general' && '💬'}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="mb-3">
-                          <label className="block text-[10px] font-mono text-secondary/80 mb-2">Message</label>
+                          <label className="block text-xs font-medium text-secondary/80 mb-2">Message</label>
                           <textarea
                             value={feedbackMessage}
                             onChange={(e) => setFeedbackMessage(e.target.value)}
                             placeholder="Tell us what's on your mind..."
-                            className="w-full px-3 py-2 bg-background border border-border text-xs font-mono text-foreground placeholder:text-secondary/40 focus:outline-none focus:border-primary resize-none"
+                            className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-foreground placeholder:text-secondary/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none"
                             rows={4}
                           />
                         </div>
@@ -1516,14 +1471,14 @@ export default function FeedPage() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => setShowFeedback(false)}
-                            className="flex-1 px-3 py-2 text-[9px] font-mono uppercase tracking-widest text-secondary border border-border hover:border-primary transition-colors"
+                            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-secondary border border-gray-200 hover:border-gray-300 transition-colors"
                           >
                             Cancel
                           </button>
                           <button
                             onClick={handleSubmitFeedback}
                             disabled={!feedbackMessage.trim() || isSubmittingFeedback}
-                            className="flex-1 px-3 py-2 text-[9px] font-mono uppercase tracking-widest bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-foreground text-background hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {isSubmittingFeedback ? 'Sending...' : 'Submit'}
                           </button>
@@ -1536,12 +1491,12 @@ export default function FeedPage() {
             </AnimatePresence>
 
             {!showPersonalizedFeed && (
-              <div className="border border-border p-4">
-                <div className="w-10 h-10 bg-primary/10 flex items-center justify-center mb-3">
+              <div className="bg-white rounded-xl border border-gray-200 p-4">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
                   <Sparkles size={18} className="text-primary" />
                 </div>
-                <h3 className="text-sm font-serif mb-2">Unlock Your Feed</h3>
-                <p className="text-xs font-mono text-secondary/70 mb-4">
+                <h3 className="text-sm font-medium mb-2">Unlock Your Feed</h3>
+                <p className="text-xs text-secondary/70 mb-4">
                   Get personalized content curated daily for your interests.
                 </p>
                 <Link

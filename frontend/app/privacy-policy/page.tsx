@@ -9,14 +9,14 @@ export default function PrivacyPolicyPage() {
     return (
         <div className="min-h-screen bg-background text-foreground">
             {/* Header */}
-            <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
+            <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100">
                 <div className="container mx-auto px-4 max-w-7xl">
                     <div className="flex items-center justify-between py-4">
-                        <Link href="/" className="flex items-center gap-2 text-sm font-mono uppercase tracking-wider text-secondary hover:text-primary transition-colors">
+                        <Link href="/" className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 transition-all">
                             <ArrowLeft size={16} />
                             Back to Home
                         </Link>
-                        <div className="text-lg text-foreground uppercase flex items-center gap-3 tracking-[0.15em] font-serif font-black">
+                        <div className="text-lg text-foreground uppercase flex items-center gap-3 tracking-[0.1em] font-semibold">
                             <img
                                 src="/trace.png"
                                 alt="Trace Logo"
@@ -39,17 +39,17 @@ export default function PrivacyPolicyPage() {
                         transition={{ duration: 0.6 }}
                         className="mb-12"
                     >
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-12 h-12 bg-primary/10 border-2 border-primary flex items-center justify-center">
-                                <Shield className="text-primary" size={18} strokeWidth={1.5} />
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                                <Shield className="text-primary" size={24} strokeWidth={1.5} />
                             </div>
                             <div>
-                                <h1 className="text-4xl md:text-6xl font-serif font-light tracking-tighter text-foreground uppercase">
+                                <h1 className="text-3xl md:text-5xl font-semibold tracking-tight text-foreground">
                                     Privacy Policy
                                 </h1>
                             </div>
                         </div>
-                        <p className="text-xs font-mono uppercase tracking-widest text-secondary mt-2">
+                        <p className="text-sm text-secondary mt-2">
                             Last Updated: January 18, 2026
                         </p>
                     </motion.div>
@@ -61,9 +61,9 @@ export default function PrivacyPolicyPage() {
                         transition={{ duration: 0.6, delay: 0.1 }}
                         className="prose prose-sm md:prose-base max-w-none"
                     >
-                        <div className="space-y-8 font-mono text-sm leading-relaxed text-secondary">
-                            <section>
-                                <h2 className="text-2xl font-serif font-light text-foreground uppercase mb-4">Introduction</h2>
+                        <div className="space-y-8 text-sm leading-relaxed text-secondary">
+                            <section className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8">
+                                <h2 className="text-xl font-semibold text-foreground mb-4">Introduction</h2>
                                 <p>
                                     Welcome to Trace. We respect your privacy and are committed to protecting your personal data.
                                     This privacy policy explains how we collect, use, disclose, and safeguard your information when
@@ -185,20 +185,20 @@ export default function PrivacyPolicyPage() {
                                 </p>
                             </section>
 
-                            <section>
-                                <h2 className="text-2xl font-serif font-light text-foreground uppercase mb-4">Contact Us</h2>
+                            <section className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8">
+                                <h2 className="text-xl font-semibold text-foreground mb-4">Contact Us</h2>
                                 <p className="mb-4">
                                     If you have questions or concerns about this privacy policy, please contact us:
                                 </p>
-                                <div className="border border-border p-6 bg-background">
+                                <div className="bg-gray-50 rounded-xl p-5">
                                     <p className="mb-2"><strong>Email:</strong> tomartarun2001@gmail.com</p>
                                     <p className="mb-2"><strong>Twitter:</strong> <a href="https://x.com/tarat_211" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@tarat_211</a></p>
                                     <p><strong>GitHub:</strong> <a href="https://github.com/TarunTomar122" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">TarunTomar122</a></p>
                                 </div>
                             </section>
 
-                            <section className="border-t border-border pt-8 mt-12">
-                                <p className="text-xs uppercase tracking-widest text-secondary/60">
+                            <section className="pt-8 mt-8">
+                                <p className="text-sm text-secondary/60 text-center">
                                     By using Trace, you acknowledge that you have read and understood this Privacy Policy.
                                 </p>
                             </section>
@@ -208,10 +208,10 @@ export default function PrivacyPolicyPage() {
             </main>
 
             {/* Footer */}
-            <footer className="py-8 bg-background border-t border-border">
+            <footer className="py-8 bg-background border-t border-gray-100">
                 <div className="container mx-auto px-4 max-w-4xl text-center">
-                    <p className="text-xs font-mono uppercase tracking-widest text-secondary">
-                        © 2026 TRACE // BUILT WITH INTENTION
+                    <p className="text-sm text-secondary">
+                        © 2026 Trace — Built with intention
                     </p>
                 </div>
             </footer>

@@ -417,7 +417,7 @@ function ProfileContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-serif">
+    <div className="min-h-screen bg-slate-50">
       <Header
         showBackToFeed
         onSignOut={handleSignOut}
@@ -425,27 +425,27 @@ function ProfileContent() {
 
       {/* Onboarding banner for non-onboarded users */}
       {profile && !profile.onboarded && (
-        <div className="bg-gradient-to-r from-violet-500/10 via-indigo-500/10 to-violet-500/10 border-b border-violet-500/20">
+        <div className="bg-gray-100 border-b border-gray-200">
           <div className="container mx-auto px-4 max-w-4xl py-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-violet-500/20 flex items-center justify-center shrink-0">
-                  <Sparkles size={20} className="text-violet-500" />
+                <div className="w-10 h-10 rounded-xl bg-gray-200 flex items-center justify-center shrink-0">
+                  <Sparkles size={18} className="text-foreground" />
                 </div>
                 <div>
-                  <p className="text-base font-serif text-foreground">
-                    <span className="font-bold">Finish setting up your profile</span>
+                  <p className="text-sm font-medium text-foreground">
+                    Finish setting up your profile
                   </p>
-                  <p className="text-xs font-mono text-secondary/70 mt-0.5">
+                  <p className="text-xs text-secondary/70 mt-0.5">
                     Complete onboarding to get a personalized feed curated just for your interests
                   </p>
                 </div>
               </div>
               <Link
                 href="/onboarding"
-                className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 text-white text-[10px] font-mono uppercase tracking-widest hover:bg-violet-700 transition-colors shrink-0"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-foreground text-background text-xs font-medium hover:bg-foreground/90 transition-colors shrink-0"
               >
-                <Sparkles size={12} />
+                <Sparkles size={14} />
                 Complete Setup
               </Link>
             </div>
@@ -461,7 +461,7 @@ function ProfileContent() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="fixed top-20 left-1/2 -translate-x-1/2 px-6 py-3 bg-primary text-primary-foreground text-sm font-mono z-50"
+              className="fixed top-20 left-1/2 -translate-x-1/2 px-6 py-3 bg-slate-800 text-white text-sm font-medium rounded-xl shadow-lg z-50"
             >
               {saveMessage}
             </motion.div>
@@ -470,40 +470,40 @@ function ProfileContent() {
 
         {/* Profile Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-5">
             {user.photoURL ? (
-              <img src={user.photoURL} alt="Profile" className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-border" />
+              <img src={user.photoURL} alt="Profile" className="w-16 h-16 md:w-20 md:h-20 rounded-2xl border border-gray-200" />
             ) : (
-              <div className="w-16 h-16 md:w-20 md:h-20 bg-primary/10 rounded-full flex items-center justify-center border-2 border-border">
-                <User size={32} className="text-primary" />
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-100 rounded-2xl flex items-center justify-center border border-gray-200">
+                <User size={32} className="text-foreground" />
               </div>
             )}
             <div>
-              <h1 className="text-2xl md:text-3xl font-serif font-light">{profile?.name || user.displayName}</h1>
-              <p className="text-sm font-mono text-secondary">{user.email}</p>
+              <h1 className="text-2xl md:text-3xl font-semibold text-slate-800">{profile?.name || user.displayName}</h1>
+              <p className="text-sm text-slate-500 mt-1">{user.email}</p>
             </div>
           </div>
 
           {/* Tab Switcher */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">
             <button
               onClick={() => setActiveTab('profile')}
-              className={`px-4 md:px-6 py-2.5 md:py-3 text-[10px] font-mono uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeTab === 'profile'
-                  ? 'bg-primary text-primary-foreground border-2 border-primary'
-                  : 'bg-background text-secondary border-2 border-border hover:border-primary/50'
+              className={`px-4 md:px-6 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${activeTab === 'profile'
+                  ? 'bg-white text-foreground shadow-sm'
+                  : 'text-secondary hover:text-foreground'
                 }`}
             >
-              <User size={14} />
+              <User size={16} />
               <span className="hidden sm:inline">Profile</span>
             </button>
             <button
               onClick={() => setActiveTab('subscription')}
-              className={`px-4 md:px-6 py-2.5 md:py-3 text-[10px] font-mono uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeTab === 'subscription'
-                  ? 'bg-primary text-primary-foreground border-2 border-primary'
-                  : 'bg-background text-secondary border-2 border-border hover:border-primary/50'
+              className={`px-4 md:px-6 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${activeTab === 'subscription'
+                  ? 'bg-white text-foreground shadow-sm'
+                  : 'text-secondary hover:text-foreground'
                 }`}
             >
-              <CreditCard size={14} />
+              <CreditCard size={16} />
               <span className="hidden sm:inline">Subscription</span>
             </button>
           </div>
@@ -533,7 +533,7 @@ function ProfileContent() {
                   {!isEditing ? (
                     <button
                       onClick={() => setIsEditing(true)}
-                      className="px-6 py-3 border border-border text-[10px] font-mono uppercase tracking-widest hover:border-primary transition-colors"
+                      className="px-5 py-2.5 rounded-full border border-gray-200 text-sm font-medium text-secondary hover:border-foreground hover:text-foreground transition-all"
                     >
                       Edit Profile
                     </button>
@@ -541,19 +541,19 @@ function ProfileContent() {
                     <div className="flex gap-3">
                       <button
                         onClick={() => setIsEditing(false)}
-                        className="px-6 py-3 border border-border text-[10px] font-mono uppercase tracking-widest hover:border-red-500 hover:text-red-500 transition-colors"
+                        className="px-5 py-2.5 rounded-full border border-gray-200 text-sm font-medium text-secondary hover:border-red-300 hover:text-red-500 transition-all"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="px-6 py-3 bg-primary text-primary-foreground text-[10px] font-mono uppercase tracking-widest flex items-center gap-2"
+                        className="px-5 py-2.5 rounded-full bg-foreground text-background text-sm font-medium flex items-center gap-2 hover:bg-foreground/90 transition-all"
                       >
                         {isSaving ? (
-                          <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                          <div className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />
                         ) : (
-                          <Save size={12} />
+                          <Save size={14} />
                         )}
                         Save
                       </button>
@@ -563,41 +563,41 @@ function ProfileContent() {
               )}
 
               {/* Basic Info */}
-              <section className="border border-border p-6 md:p-8">
-                <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-6">
+              <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
+                <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6">
                   Basic Information
                 </h2>
 
                 <div className="grid gap-6">
                   <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">Name</label>
+                    <label className="block text-sm font-medium text-secondary mb-2">Name</label>
                     {isEditing ? (
-                      <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors" />
+                      <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" />
                     ) : (
-                      <p className="text-lg font-serif py-3">{profile?.name}</p>
+                      <p className="text-base py-3">{profile?.name}</p>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">Role</label>
+                    <label className="block text-sm font-medium text-secondary mb-2">Role</label>
                     {isEditing ? (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      <div className="flex flex-wrap gap-2">
                         {ROLES.map((r) => (
-                          <button key={r} onClick={() => setRole(r)} className={`px-3 py-2 border text-xs font-mono transition-all ${role === r ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:border-primary/50'}`}>
+                          <button key={r} onClick={() => setRole(r)} className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all ${role === r ? 'bg-foreground text-background' : 'bg-gray-100 text-secondary hover:bg-gray-200'}`}>
                             {r}
                           </button>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-lg font-serif py-3">{profile?.role}</p>
+                      <p className="text-base py-3 text-slate-700">{profile?.role}</p>
                     )}
                   </div>
                 </div>
               </section>
 
               {/* Interests */}
-              <section className="border border-border p-6 md:p-8">
-                <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-6">
+              <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
+                <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6">
                   Interests ({selectedInterests.length}/8)
                 </h2>
 
@@ -605,12 +605,12 @@ function ProfileContent() {
                   {INTERESTS.map((interest) => {
                     const isSelected = selectedInterests.includes(interest.id);
                     return isEditing ? (
-                      <button key={interest.id} onClick={() => toggleInterest(interest.id)} className={`px-3 py-2 border text-sm font-mono transition-all flex items-center gap-2 ${isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:border-primary/50'}`}>
+                      <button key={interest.id} onClick={() => toggleInterest(interest.id)} className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${isSelected ? 'bg-foreground text-background' : 'bg-gray-100 text-secondary hover:bg-gray-200'}`}>
                         <span>{interest.label}</span>
-                        {isSelected && <Check size={12} />}
+                        {isSelected && <Check size={14} />}
                       </button>
                     ) : isSelected ? (
-                      <span key={interest.id} className="px-3 py-2 border border-primary bg-primary/5 text-sm font-mono flex items-center gap-2">
+                      <span key={interest.id} className="px-4 py-2.5 rounded-full bg-gray-100 text-sm font-medium flex items-center gap-2">
                         <span>{interest.label}</span>
                       </span>
                     ) : null;
@@ -618,12 +618,12 @@ function ProfileContent() {
 
                   {selectedInterests.filter(i => i.startsWith('custom-') || !INTERESTS.some(interest => interest.id === i)).map(customId => (
                     isEditing ? (
-                      <button key={customId} onClick={() => toggleInterest(customId)} className="px-3 py-2 border border-primary bg-primary text-primary-foreground text-sm font-mono transition-all flex items-center gap-2">
+                      <button key={customId} onClick={() => toggleInterest(customId)} className="px-4 py-2.5 rounded-full bg-foreground text-background text-sm font-medium transition-all flex items-center gap-2">
                         <span>{customId.startsWith('custom-') ? customId.replace('custom-', '').replace(/-/g, ' ') : customId}</span>
-                        <X size={12} />
+                        <X size={14} />
                       </button>
                     ) : (
-                      <span key={customId} className="px-3 py-2 border border-primary bg-primary/5 text-sm font-mono flex items-center gap-2">
+                      <span key={customId} className="px-4 py-2.5 rounded-full bg-gray-100 text-sm font-medium flex items-center gap-2">
                         <span>{customId.startsWith('custom-') ? customId.replace('custom-', '').replace(/-/g, ' ') : customId}</span>
                       </span>
                     )
@@ -631,15 +631,15 @@ function ProfileContent() {
 
                   {isEditing && (
                     !showCustomInput ? (
-                      <button onClick={() => setShowCustomInput(true)} className="px-3 py-2 border border-dashed border-border hover:border-primary/50 text-sm font-mono transition-all flex items-center gap-2 text-secondary">
-                        <Plus size={12} />
+                      <button onClick={() => setShowCustomInput(true)} className="px-4 py-2.5 rounded-full border-2 border-dashed border-gray-200 hover:border-gray-300 text-sm font-medium transition-all flex items-center gap-2 text-secondary">
+                        <Plus size={14} />
                         Add custom
                       </button>
                     ) : (
                       <div className="flex items-center gap-2">
-                        <input type="text" value={customInterest} onChange={(e) => setCustomInterest(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addCustomInterest()} placeholder="Interest" autoFocus className="px-3 py-2 border border-primary bg-transparent text-sm font-mono outline-none w-28" />
-                        <button onClick={addCustomInterest} className="p-2 border border-primary bg-primary text-primary-foreground"><Check size={12} /></button>
-                        <button onClick={() => { setShowCustomInput(false); setCustomInterest(''); }} className="p-2 border border-border"><X size={12} /></button>
+                        <input type="text" value={customInterest} onChange={(e) => setCustomInterest(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addCustomInterest()} placeholder="Interest" autoFocus className="px-4 py-2.5 rounded-full border-2 border-foreground bg-transparent text-sm font-medium outline-none w-32" />
+                        <button onClick={addCustomInterest} className="p-2.5 rounded-full bg-foreground text-background"><Check size={14} /></button>
+                        <button onClick={() => { setShowCustomInput(false); setCustomInterest(''); }} className="p-2.5 rounded-full bg-gray-100"><X size={14} /></button>
                       </div>
                     )
                   )}
@@ -647,13 +647,13 @@ function ProfileContent() {
               </section>
 
               {/* Hobbies */}
-              <section className="border border-border p-6 md:p-8">
-                <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-6">
+              <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
+                <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6">
                   Hobbies
                 </h2>
 
                 <div>
-                  <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                  <label className="block text-sm font-medium text-secondary mb-2">
                     Things you enjoy outside of work
                   </label>
                   {isEditing ? (
@@ -662,10 +662,10 @@ function ProfileContent() {
                       onChange={(e) => setHobbiesText(e.target.value)}
                       placeholder="marathon training, sourdough baking, film photography, ceramics"
                       rows={2}
-                      className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-secondary/40 resize-none"
                     />
                   ) : (
-                    <p className="text-lg font-serif py-3 text-secondary">{profile?.hobbies?.length ? profile.hobbies.join(', ') : 'Not set'}</p>
+                    <p className="text-base py-3 text-secondary">{profile?.hobbies?.length ? profile.hobbies.join(', ') : 'Not set'}</p>
                   )}
                 </div>
               </section>
@@ -695,13 +695,13 @@ function ProfileContent() {
               </section> */}
 
               {/* Skills */}
-              <section className="border border-border p-6 md:p-8">
-                <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-6">
+              <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
+                <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6">
                   Skills
                 </h2>
 
                 <div>
-                  <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                  <label className="block text-sm font-medium text-secondary mb-2">
                     Your skills & expertise
                   </label>
                   {isEditing ? (
@@ -710,22 +710,22 @@ function ProfileContent() {
                       onChange={(e) => setSkillsText(e.target.value)}
                       placeholder="TypeScript, Figma, financial modeling, user interviews"
                       rows={2}
-                      className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-secondary/40 resize-none"
                     />
                   ) : (
-                    <p className="text-lg font-serif py-3 text-secondary">{profile?.skills?.length ? profile.skills.join(', ') : 'Not set'}</p>
+                    <p className="text-base py-3 text-secondary">{profile?.skills?.length ? profile.skills.join(', ') : 'Not set'}</p>
                   )}
                 </div>
               </section>
 
               {/* Short-term Goals */}
-              <section className="border border-border p-6 md:p-8">
-                <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-6">
+              <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
+                <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6">
                   Short-term Goals
                 </h2>
 
                 <div>
-                  <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                  <label className="block text-sm font-medium text-secondary mb-2">
                     What do you want to achieve soon?
                   </label>
                   {isEditing ? (
@@ -734,17 +734,17 @@ function ProfileContent() {
                       onChange={(e) => setGoalsShortTerm(e.target.value)}
                       placeholder="Ship MVP, learn TypeScript"
                       rows={2}
-                      className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-secondary/40 resize-none"
                     />
                   ) : (
-                    <p className="text-lg font-serif py-3 text-secondary">{profile?.goals?.shortTerm || 'Not set'}</p>
+                    <p className="text-base py-3 text-secondary">{profile?.goals?.shortTerm || 'Not set'}</p>
                   )}
                 </div>
               </section>
 
               {/* Content Mix - Source Preferences */}
-              <section className="border border-border p-6 md:p-8">
-                <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-6">
+              <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
+                <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6">
                   Content Source Preferences
                 </h2>
 
@@ -753,7 +753,7 @@ function ProfileContent() {
                   {(Object.keys(sourcePreferences) as Array<keyof typeof sourcePreferences>).map(key => (
                     <div key={key}>
                       <div className="flex justify-between items-center mb-2">
-                        <label className="text-sm font-mono uppercase tracking-wide text-foreground/80 font-medium">
+                        <label className="text-sm font-medium text-slate-700">
                           {key === 'youtube' && '📹 YouTube Videos'}
                           {key === 'articles' && '📰 Articles & Blogs'}
                           {key === 'papers' && '📄 Research Papers'}
@@ -761,7 +761,7 @@ function ProfileContent() {
                           {key === 'tweets' && '🐦 Tweets & Threads'}
                           {key === 'discussions' && '💬 HN & Discussions'}
                         </label>
-                        <span className="text-sm font-mono text-primary font-bold">{sourcePreferences[key]}</span>
+                        <span className="text-sm font-semibold text-foreground">{sourcePreferences[key]}</span>
                       </div>
                       {isEditing ? (
                         <input
@@ -770,12 +770,12 @@ function ProfileContent() {
                           max="10"
                           value={sourcePreferences[key]}
                           onChange={(e) => updateSlider(key, parseInt(e.target.value))}
-                          className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-primary"
+                          className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-foreground"
                         />
                       ) : (
-                        <div className="w-full h-2 bg-border rounded-lg overflow-hidden">
+                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-primary transition-all"
+                            className="h-full bg-foreground rounded-full transition-all"
                             style={{ width: `${(sourcePreferences[key] / 10) * 100}%` }}
                           />
                         </div>
@@ -784,9 +784,9 @@ function ProfileContent() {
                   ))}
 
                   {/* Content Depth */}
-                  <div className="pt-6 border-t border-border">
-                    <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-4">
-                      Content Depth <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
+                  <div className="pt-6 border-t border-gray-100">
+                    <label className="block text-sm font-medium text-secondary mb-4">
+                      Content Depth <span className="text-secondary/50 text-xs font-normal ml-2">(optional)</span>
                     </label>
                     {isEditing ? (
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -798,9 +798,9 @@ function ProfileContent() {
                           <button
                             key={opt.id}
                             onClick={() => setContentDepth(opt.id as 'quick' | 'deep' | 'surprise')}
-                            className={`px-4 py-3 border text-sm font-mono transition-all ${contentDepth === opt.id
-                                ? 'border-primary bg-primary text-primary-foreground'
-                                : 'border-border hover:border-primary/50'
+                            className={`px-4 py-3 rounded-xl text-sm font-medium transition-all ${contentDepth === opt.id
+                                ? 'bg-foreground text-background'
+                                : 'bg-gray-100 text-secondary hover:bg-gray-200'
                               }`}
                           >
                             {opt.label}
@@ -808,7 +808,7 @@ function ProfileContent() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm font-mono py-2">
+                      <p className="text-base text-slate-600 py-2">
                         {contentDepth === 'quick' ? '⚡ Quick Reads'
                           : contentDepth === 'deep' ? '📚 Deep Dives'
                             : contentDepth === 'surprise' ? '🎁 Surprise Me'
@@ -821,17 +821,17 @@ function ProfileContent() {
 
               {/* Newsletter Settings */}
               {profile?.onboarded && ['trial', 'active'].includes(profile?.subscriptionStatus || '') && (
-                <section className="border border-border p-6 md:p-8">
-                  <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-6 flex items-center gap-2">
-                    <Mail size={12} className="text-primary" />
+                <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
+                  <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6 flex items-center gap-2">
+                    <Mail size={14} className="text-foreground" />
                     Daily Newsletter
                   </h2>
 
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-serif text-foreground">Receive daily newsletter</p>
-                        <p className="text-xs font-mono text-secondary/70 mt-1">
+                        <p className="text-sm font-medium text-slate-700">Receive daily newsletter</p>
+                        <p className="text-xs text-secondary/70 mt-1">
                           Get your personalized feed delivered to your inbox at 10:00 AM IST
                         </p>
                       </div>
@@ -844,24 +844,24 @@ function ProfileContent() {
                         disabled={!isEditing}
                         className={`relative w-12 h-6 rounded-full transition-colors ${
                           newsletterOptIn
-                            ? 'bg-primary'
-                            : 'bg-border'
+                            ? 'bg-foreground'
+                            : 'bg-gray-200'
                         } ${!isEditing ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
                       >
                         <span
-                          className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                          className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${
                             newsletterOptIn ? 'left-7' : 'left-1'
                           }`}
                         />
                       </button>
                     </div>
 
-                    <div className="pt-4 border-t border-border/50">
-                      <div className="flex items-center gap-2 text-xs font-mono text-secondary/60">
+                    <div className="pt-4 border-t border-gray-100">
+                      <div className="flex items-center gap-2 text-xs text-secondary/60">
                         <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                         <span>Newsletter delivery time: 10:00 AM IST daily</span>
                       </div>
-                      <p className="text-xs font-mono text-secondary/50 mt-2">
+                      <p className="text-xs text-secondary/50 mt-2">
                         Your newsletter includes up to 8 hand-picked articles summarized by AI, curated based on your interests.
                       </p>
                     </div>
@@ -870,13 +870,13 @@ function ProfileContent() {
               )}
 
               {/* Advanced Section - Accordion */}
-              <section className="border border-border">
+              <section className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
                 <button
                   onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="w-full p-6 md:p-8 flex items-center justify-between hover:bg-border/5 transition-colors"
+                  className="w-full p-6 md:p-8 flex items-center justify-between hover:bg-gray-50 transition-colors"
                 >
-                  <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary">
-                    Advanced Settings <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
+                  <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
+                    Advanced Settings <span className="text-secondary/50 text-xs font-normal ml-2">(optional)</span>
                   </h2>
                   <ChevronDown
                     size={16}
@@ -893,29 +893,29 @@ function ProfileContent() {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="px-6 md:px-8 pb-6 md:pb-8 space-y-8 border-t border-border pt-6">
+                      <div className="px-6 md:px-8 pb-6 md:pb-8 space-y-8 border-t border-gray-100 pt-6">
                         {/* Additional Info */}
                         <div>
-                          <h3 className="text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-4">
+                          <h3 className="text-sm font-medium text-slate-700 mb-4">
                             Additional Information
                           </h3>
-                          <div>
-                            <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">Current Focus</label>
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium text-secondary mb-2">Current Focus</label>
                             {isEditing ? (
                               <input
                                 type="text"
                                 value={currentWorkFocus}
                                 onChange={(e) => setCurrentWorkFocus(e.target.value)}
                                 placeholder="Improve onboarding, boost retention"
-                                className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
+                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/20 transition-all placeholder:text-secondary/40"
                               />
                             ) : (
-                              <p className="text-lg font-serif py-3 text-secondary">{profile?.currentWork?.focus || 'Not set'}</p>
+                              <p className="text-base py-3 text-secondary">{profile?.currentWork?.focus || 'Not set'}</p>
                             )}
                           </div>
-                          <div className="grid gap-6">
+                          <div className="grid gap-4">
                             <div>
-                              <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                              <label className="block text-sm font-medium text-secondary mb-2">
                                 Company
                               </label>
                               {isEditing ? (
@@ -924,15 +924,15 @@ function ProfileContent() {
                                   value={company}
                                   onChange={(e) => setCompany(e.target.value)}
                                   placeholder="Acme, freelancing, stealth startup"
-                                  className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
+                                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/20 transition-all placeholder:text-secondary/40"
                                 />
                               ) : (
-                                <p className="text-lg font-serif py-3 text-secondary">{profile?.company || 'Not set'}</p>
+                                <p className="text-base py-3 text-secondary">{profile?.company || 'Not set'}</p>
                               )}
                             </div>
 
                             <div>
-                              <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                              <label className="block text-sm font-medium text-secondary mb-2">
                                 Location
                               </label>
                               {isEditing ? (
@@ -941,15 +941,15 @@ function ProfileContent() {
                                   value={location}
                                   onChange={(e) => setLocation(e.target.value)}
                                   placeholder="Bangalore, India"
-                                  className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
+                                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/20 transition-all placeholder:text-secondary/40"
                                 />
                               ) : (
-                                <p className="text-lg font-serif py-3 text-secondary">{profile?.location || 'Not set'}</p>
+                                <p className="text-base py-3 text-secondary">{profile?.location || 'Not set'}</p>
                               )}
                             </div>
 
                             <div>
-                              <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                              <label className="block text-sm font-medium text-secondary mb-2">
                                 Experience (years)
                               </label>
                               {isEditing ? (
@@ -959,17 +959,17 @@ function ProfileContent() {
                                   value={experienceYears}
                                   onChange={(e) => setExperienceYears(e.target.value)}
                                   placeholder="3"
-                                  className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
+                                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/20 transition-all placeholder:text-secondary/40"
                                 />
                               ) : (
-                                <p className="text-lg font-serif py-3 text-secondary">
+                                <p className="text-base py-3 text-secondary">
                                   {profile?.experienceYears !== undefined && profile?.experienceYears !== null ? profile.experienceYears : 'Not set'}
                                 </p>
                               )}
                             </div>
 
                             <div>
-                              <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                              <label className="block text-sm font-medium text-secondary mb-2">
                                 Current Project
                               </label>
                               {isEditing ? (
@@ -978,10 +978,10 @@ function ProfileContent() {
                                   value={currentWorkProject}
                                   onChange={(e) => setCurrentWorkProject(e.target.value)}
                                   placeholder="Design system revamp, creator newsletter"
-                                  className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
+                                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/20 transition-all placeholder:text-secondary/40"
                                 />
                               ) : (
-                                <p className="text-lg font-serif py-3 text-secondary">{profile?.currentWork?.project || 'Not set'}</p>
+                                <p className="text-base py-3 text-secondary">{profile?.currentWork?.project || 'Not set'}</p>
                               )}
                             </div>
                           </div>
@@ -989,11 +989,11 @@ function ProfileContent() {
 
                         {/* Long-term Goals */}
                         <div>
-                          <h3 className="text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-4">
+                          <h3 className="text-sm font-medium text-slate-700 mb-4">
                             Long-term Goals
                           </h3>
                           <div>
-                            <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                            <label className="block text-sm font-medium text-secondary mb-2">
                               What are your long-term aspirations?
                             </label>
                             {isEditing ? (
@@ -1002,21 +1002,21 @@ function ProfileContent() {
                                 onChange={(e) => setGoalsLongTerm(e.target.value)}
                                 placeholder="Lead a team, start a company"
                                 rows={2}
-                                className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/20 transition-all placeholder:text-secondary/40 resize-none"
                               />
                             ) : (
-                              <p className="text-lg font-serif py-3 text-secondary">{profile?.goals?.longTerm || 'Not set'}</p>
+                              <p className="text-base py-3 text-secondary">{profile?.goals?.longTerm || 'Not set'}</p>
                             )}
                           </div>
                         </div>
 
                         {/* Topics to Avoid */}
                         <div>
-                          <h3 className="text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-4">
+                          <h3 className="text-sm font-medium text-slate-700 mb-4">
                             Topics to Avoid
                           </h3>
                           <div>
-                            <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                            <label className="block text-sm font-medium text-secondary mb-2">
                               Content topics we should filter out
                             </label>
                             {isEditing ? (
@@ -1025,22 +1025,22 @@ function ProfileContent() {
                                 onChange={(e) => setDislikedTopicsText(e.target.value)}
                                 placeholder="clickbait listicles, crypto shilling, overly basic content"
                                 rows={2}
-                                className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/20 transition-all placeholder:text-secondary/40 resize-none"
                               />
                             ) : (
-                              <p className="text-lg font-serif py-3 text-secondary">{profile?.dislikedTopics?.length ? profile.dislikedTopics.join(', ') : 'Not set'}</p>
+                              <p className="text-base py-3 text-secondary">{profile?.dislikedTopics?.length ? profile.dislikedTopics.join(', ') : 'Not set'}</p>
                             )}
                           </div>
                         </div>
 
                         {/* Learning Preferences */}
                         <div>
-                          <h3 className="text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-4">
+                          <h3 className="text-sm font-medium text-slate-700 mb-4">
                             Learning Preferences
                           </h3>
-                          <div className="grid gap-6">
+                          <div className="grid gap-4">
                             <div>
-                              <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                              <label className="block text-sm font-medium text-secondary mb-2">
                                 Learning Style
                               </label>
                               {isEditing ? (
@@ -1049,15 +1049,15 @@ function ProfileContent() {
                                   value={learningStyle}
                                   onChange={(e) => setLearningStyle(e.target.value)}
                                   placeholder="Visual examples > long text"
-                                  className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
+                                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/20 transition-all placeholder:text-secondary/40"
                                 />
                               ) : (
-                                <p className="text-lg font-serif py-3 text-secondary">{profile?.learningStyle || 'Not set'}</p>
+                                <p className="text-base py-3 text-secondary">{profile?.learningStyle || 'Not set'}</p>
                               )}
                             </div>
 
                             <div>
-                              <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                              <label className="block text-sm font-medium text-secondary mb-2">
                                 Attention Constraints
                               </label>
                               {isEditing ? (
@@ -1066,15 +1066,15 @@ function ProfileContent() {
                                   value={attentionConstraints}
                                   onChange={(e) => setAttentionConstraints(e.target.value)}
                                   placeholder="Low tolerance for long content"
-                                  className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-serif outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
+                                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/20 transition-all placeholder:text-secondary/40"
                                 />
                               ) : (
-                                <p className="text-lg font-serif py-3 text-secondary">{profile?.attentionConstraints || 'Not set'}</p>
+                                <p className="text-base py-3 text-secondary">{profile?.attentionConstraints || 'Not set'}</p>
                               )}
                             </div>
 
                             <div>
-                              <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                              <label className="block text-sm font-medium text-secondary mb-2">
                                 Motivation Triggers
                               </label>
                               {isEditing ? (
@@ -1083,10 +1083,10 @@ function ProfileContent() {
                                   onChange={(e) => setMotivationTriggersText(e.target.value)}
                                   placeholder="Strong hooks, clear ROI, aesthetics"
                                   rows={2}
-                                  className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/20 transition-all placeholder:text-secondary/40 resize-none"
                                 />
                               ) : (
-                                <p className="text-lg font-serif py-3 text-secondary">{profile?.motivationTriggers?.length ? profile.motivationTriggers.join(', ') : 'Not set'}</p>
+                                <p className="text-base py-3 text-secondary">{profile?.motivationTriggers?.length ? profile.motivationTriggers.join(', ') : 'Not set'}</p>
                               )}
                             </div>
                           </div>
