@@ -22,7 +22,7 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 from v1.storage import FirestoreStore
 from v1.tools.extract_signal import extract_signal
-from v1.tools.smart_reflection import run_smart_reflection, apply_smart_adjustments
+from v1.tools.smart_reflection import run_smart_reflection, apply_smart_adjustments, generate_trace_summary
 
 
 # Score update constants (from v0)
@@ -515,6 +515,13 @@ def run_reflection(user_id: str, date: str, use_smart_reflection: bool = True) -
     # =========================================================================
     # Save and return results
     # =========================================================================
+    try:
+        summary = generate_trace_summary(user_profile, patterns, user_preferences)
+        if summary:
+            patterns["summary"] = summary
+    except Exception as e:
+        print(f"  Summary generation error: {e}")
+
     save_user_patterns(store, user_id, patterns)
     
     tags_updated = len(updates["tag_updates"]) + smart_stats["tags_adjusted"]

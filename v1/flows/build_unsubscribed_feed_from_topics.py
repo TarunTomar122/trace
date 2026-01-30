@@ -143,6 +143,26 @@ def _get_topics(store: FirestoreStore) -> list[dict]:
     return topics
 
 
+def _extract_json_from_response(text: str) -> str:
+    """Extract JSON from response, handling markdown code blocks and extra text."""
+    text = text.strip()
+    # Remove markdown code blocks if present
+    if text.startswith("```"):
+        lines = text.split("\n")
+        # Skip first line (```json or ```)
+        lines = lines[1:]
+        # Remove closing ```
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+    # Try to find JSON object boundaries
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        text = text[start:end + 1]
+    return text
+
+
 def _select_topics_with_llm(
     profile: dict,
     topics: list[dict],
@@ -188,26 +208,47 @@ YOUR RESPONSE (valid JSON only):"""
 
     try:
         client = genai.Client(api_key=api_key)
-        
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-            config={
-                "temperature": 0.2,
-                "max_output_tokens": 400,
-                "response_mime_type": "application/json",
-            }
-        )
-        data = json.loads(response.text.strip())
-        topic_ids = data.get("topic_ids", [])
-        if isinstance(topic_ids, list):
-            cleaned = [
-                t for t in topic_ids
-                if isinstance(t, str) and t.strip()
-            ]
-            return cleaned[:max_topics]
     except Exception as e:
-        print(f"  Warning: Topic selection failed: {e}")
+        print(f"  Warning: Failed to create Gemini client: {e}")
+        return []
+    
+    # Try up to 2 times
+    for attempt in range(2):
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config={
+                    "temperature": 0.2,
+                    "max_output_tokens": 600,
+                    "response_mime_type": "application/json",
+                }
+            )
+            raw_text = response.text.strip() if response.text else ""
+            if not raw_text:
+                if attempt == 0:
+                    continue
+                print(f"  Warning: Gemini returned empty response")
+                return []
+            cleaned_text = _extract_json_from_response(raw_text)
+            data = json.loads(cleaned_text)
+            topic_ids = data.get("topic_ids", [])
+            if isinstance(topic_ids, list):
+                cleaned = [
+                    t for t in topic_ids
+                    if isinstance(t, str) and t.strip()
+                ]
+                return cleaned[:max_topics]
+        except json.JSONDecodeError as e:
+            if attempt == 0:
+                continue
+            # Log what we actually got for debugging
+            snippet = raw_text[:100] if raw_text else "(empty)"
+            print(f"  Warning: JSON parse failed: {e} | Response: {snippet}")
+        except Exception as e:
+            if attempt == 0:
+                continue
+            print(f"  Warning: Topic selection failed: {e}")
     return []
 
 

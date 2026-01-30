@@ -89,6 +89,27 @@ Return a JSON object with these adjustments:
 Return ONLY valid JSON, no other text."""
 
 
+TRACE_SUMMARY_PROMPT = """You are writing a punchy, exciting snapshot of a user's current taste.
+
+Write 1-2 sentences that feel personal and vivid — like a friend who gets their vibe.
+
+Rules:
+- Do NOT list tags or stack nouns (avoid "X, Y, Z" lists).
+- Do NOT say "intersection of" or "diving deep into".
+- Use 1-2 specific themes from inputs, phrased naturally (not tag-like).
+- Add a sense of momentum ("lately", "right now", "next up") without hypey fluff.
+- Do NOT mention learning style, formats, or sources.
+- Do NOT mention "avoid", "exclude", or negatives.
+- Keep it under 26 words.
+
+Inputs:
+- Interests: {interests}
+- Learning style: {learning_style}
+- Top tags: {top_tags}
+- Personal signals: {personal_signals}
+"""
+
+
 def format_interaction(interaction: dict, action: str) -> str:
     """Format an interaction for the prompt."""
     item_meta = interaction.get("item_metadata", {})
@@ -130,6 +151,55 @@ def run_smart_reflection(
     downvoted_text = "\n".join(filter(None, [format_interaction(i, "downvote") for i in downvoted]))
     
     if not upvoted_text and not downvoted_text:
+        return None
+
+
+def generate_trace_summary(
+    user_profile: dict,
+    user_patterns: dict,
+    user_preferences: dict
+) -> str | None:
+    """Generate a short, human-friendly summary of user preferences."""
+    tags_data = user_patterns.get("tags", {})
+    if not tags_data:
+        return None
+
+    sorted_tags = sorted(
+        tags_data.items(),
+        key=lambda kv: kv[1].get("score", 50) if isinstance(kv[1], dict) else kv[1],
+        reverse=True
+    )
+    top_tags = [t for t, _ in sorted_tags[:5]]
+
+    personal_signals = [
+        s.get("query", "")
+        for s in user_patterns.get("personal_signals", [])
+        if s.get("query")
+    ][:4]
+
+    prompt = TRACE_SUMMARY_PROMPT.format(
+        interests=", ".join(user_profile.get("interests", [])) or "Not specified",
+        learning_style=user_profile.get("learningStyle", "Not specified"),
+        top_tags=", ".join(top_tags) or "None",
+        personal_signals=", ".join(personal_signals) or "None"
+    )
+
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Write a concise, friendly snapshot of user preferences."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.4,
+            max_tokens=120
+        )
+        content = response.choices[0].message.content.strip()
+        return content if content else None
+    except Exception as e:
+        print(f"  Error generating trace summary: {e}", file=sys.stderr)
         return None
     
     # Format current tags

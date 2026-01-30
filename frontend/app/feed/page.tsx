@@ -28,6 +28,9 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { isAlphaMode } from '@/lib/alpha';
 import Header from '@/components/Header';
+import { getUserPatterns } from '@/lib/firestore';
+import { buildTraceInsights, TraceInsights } from '@/lib/traceInsights';
+import TraceInsightCard from '@/components/TraceInsightCard';
 
 type FeedItem = {
   id: string;
@@ -355,6 +358,11 @@ export default function FeedPage() {
   const [bookmarkedItems, setBookmarkedItems] = useState<Set<string>>(new Set());
   const [loadingBookmarks, setLoadingBookmarks] = useState<Set<string>>(new Set());
   const [bookmarksLoaded, setBookmarksLoaded] = useState(false);
+  const [traceInsights, setTraceInsights] = useState<TraceInsights | null>(null);
+  const [traceInsightsLoading, setTraceInsightsLoading] = useState(false);
+  const [interactionCount, setInteractionCount] = useState(0);
+  const [showTraceInsight, setShowTraceInsight] = useState(false);
+  const [insightDismissed, setInsightDismissed] = useState(false);
 
   // Pagination state
   const [hasMore, setHasMore] = useState(false);
@@ -382,6 +390,12 @@ export default function FeedPage() {
     if (!hasSeenHint) {
       setShowHint(true);
     }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const dismissed = sessionStorage.getItem('trace-insight-dismissed') === 'true';
+    setInsightDismissed(dismissed);
   }, []);
 
   // Use personalized feed for onboarded users (subscribed or not), otherwise general feed
@@ -420,6 +434,38 @@ export default function FeedPage() {
   const availableProfileFilters = profileFilters.filter((filter) => availableTagIds.has(filter.id));
   // Use profile filters that match feed tags, fall back to all feed tags if no match
   const topicFilters = availableProfileFilters.length > 0 ? availableProfileFilters : tagFilters;
+  const insightInsertIndex = 2;
+  const canShowTraceInsight = Boolean(showTraceInsight && traceInsights && !traceInsightsLoading);
+
+  useEffect(() => {
+    if (!user || !profile?.onboarded) {
+      setTraceInsights(null);
+      return;
+    }
+
+    let isActive = true;
+    setTraceInsightsLoading(true);
+
+    Promise.all([
+      getUserPatterns(user.uid),
+    ])
+      .then(([patterns]) => {
+        if (!isActive) return;
+        const insights = buildTraceInsights({ patterns });
+        setTraceInsights(insights);
+      })
+      .catch((error) => {
+        console.error('Error loading trace insights:', error);
+      })
+      .finally(() => {
+        if (!isActive) return;
+        setTraceInsightsLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [user, profile]);
 
   const filteredFeed = activeFilter === 'all'
     ? currentFeed
@@ -427,6 +473,13 @@ export default function FeedPage() {
       const tags = item.tags || [];
       return tags.includes(activeFilter);
     });
+
+  useEffect(() => {
+    if (!traceInsights || insightDismissed || !hasAccess) return;
+    if (interactionCount >= 3 && !showTraceInsight) {
+      setShowTraceInsight(true);
+    }
+  }, [interactionCount, traceInsights, insightDismissed, showTraceInsight, hasAccess]);
 
 
   useEffect(() => {
@@ -765,11 +818,21 @@ export default function FeedPage() {
   const handleUpvote = (itemId: string, note?: string) => {
     console.log('Upvoted:', itemId);
     recordInteraction(itemId, 'upvote', note);
+    setInteractionCount((prev) => prev + 1);
   };
 
   const handleDownvote = (itemId: string, note?: string) => {
     console.log('Downvoted:', itemId, note ? `with note: ${note}` : '');
     recordInteraction(itemId, 'downvote', note);
+    setInteractionCount((prev) => prev + 1);
+  };
+
+  const dismissTraceInsight = () => {
+    setShowTraceInsight(false);
+    setInsightDismissed(true);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('trace-insight-dismissed', 'true');
+    }
   };
 
   // Submit feedback
@@ -1229,20 +1292,31 @@ export default function FeedPage() {
               <>
                 <div className="divide-y divide-border/20">
                   <AnimatePresence>
-                    {filteredFeed.map((item) => (
-                      <FeedCard
-                        key={item.id}
-                        item={item}
-                        onUpvote={(note) => handleUpvote(item.id, note)}
-                        onDownvote={(note) => handleDownvote(item.id, note)}
-                        onStar={() => handleStar(item.id)}
-                        initialVote={interactions[item.id]}
-                        initialBookmarked={bookmarkedItems.has(item.id)}
-                        isBookmarkLoading={loadingBookmarks.has(item.id)}
-                        disabled={!hasAccess}
-                        onDisabledClick={() => setShowSubscribePrompt(true)}
-                        onVisible={showPersonalizedFeed ? handleItemVisible : undefined}
-                      />
+                    {filteredFeed.map((item, index) => (
+                      <React.Fragment key={item.id}>
+                        <FeedCard
+                          item={item}
+                          onUpvote={(note) => handleUpvote(item.id, note)}
+                          onDownvote={(note) => handleDownvote(item.id, note)}
+                          onStar={() => handleStar(item.id)}
+                          initialVote={interactions[item.id]}
+                          initialBookmarked={bookmarkedItems.has(item.id)}
+                          isBookmarkLoading={loadingBookmarks.has(item.id)}
+                          disabled={!hasAccess}
+                          onDisabledClick={() => setShowSubscribePrompt(true)}
+                          onVisible={showPersonalizedFeed ? handleItemVisible : undefined}
+                        />
+                        {canShowTraceInsight && index === insightInsertIndex && traceInsights && (
+                          <div className="py-3 md:py-4" key="trace-insight-card">
+                            <TraceInsightCard
+                              insights={traceInsights}
+                              variant="compact"
+                              onDismiss={dismissTraceInsight}
+                              showCta
+                            />
+                          </div>
+                        )}
+                      </React.Fragment>
                     ))}
                   </AnimatePresence>
                 </div>
@@ -1253,12 +1327,12 @@ export default function FeedPage() {
                     <button
                       onClick={loadMore}
                       disabled={isLoadingMore}
-                      className="inline-flex items-center gap-2 px-6 py-3 border border-border text-[10px] font-mono uppercase tracking-widest hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-foreground text-background text-sm font-medium hover:bg-foreground/90 transition-colors disabled:opacity-50"
                     >
                       {isLoadingMore ? (
                         <>
                           <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                          Loading...
+                          Loading
                         </>
                       ) : (
                         <>

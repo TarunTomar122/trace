@@ -56,6 +56,7 @@ export interface UserPreferences {
   format: {
     max_items: number;
   };
+  contentDepth?: 'quick' | 'deep' | 'surprise' | null;
 }
 
 // Default preferences for new users (used by the agent)
@@ -167,6 +168,16 @@ export async function initializeUserPatterns(uid: string, interests: string[], h
 export interface UserPatterns {
   tags: Record<string, { score: number; up?: number; down?: number; shown?: number }>;
   exclude_tags: string[];
+  summary?: string;
+  personal_signals?: Array<{
+    signal_id?: string;
+    query?: string;
+    priority?: number;
+    confidence?: number;
+    created_at?: string;
+    expires_at?: string;
+    source?: string;
+  }>;
   exploration: {
     adjacent_searches: string[];
     serendipity_queries: string[];
@@ -275,6 +286,12 @@ export interface UserProfile {
     preferredSources?: string[];
     additionalContext?: string;
   };
+
+  traceSummary?: {
+    text: string;
+    updatedAt?: string;
+    source?: string;
+  };
   
   // Chat history with profile agent
   chatHistory?: ChatMessage[];
@@ -341,6 +358,34 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     return null;
   } catch (error) {
     console.error('Error getting user profile:', error);
+    return null;
+  }
+}
+
+export async function getUserPatterns(uid: string): Promise<UserPatterns | null> {
+  try {
+    const docRef = doc(firestore, COLLECTIONS.userPatterns, uid);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data() as UserPatterns;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting user patterns:', error);
+    return null;
+  }
+}
+
+export async function getUserPreferences(uid: string): Promise<UserPreferences | null> {
+  try {
+    const docRef = doc(firestore, COLLECTIONS.userPreferences, uid);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data() as UserPreferences;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting user preferences:', error);
     return null;
   }
 }

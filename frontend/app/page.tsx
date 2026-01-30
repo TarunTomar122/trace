@@ -488,12 +488,12 @@ const Hero = () => {
   const heroCtaText = isLoggedIn && !isOnboarded ? 'Complete Setup' : 'Start Free Trial';
 
   return (
-    <section className="relative pt-28 pb-16 md:pt-36 lg:pt-60 md:pb-24 lg:pb-40 overflow-hidden z-10">
+    <section className="relative pt-32 pb-16 md:pt-36 lg:pt-60 md:pb-24 lg:pb-40 overflow-hidden z-10">
       <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Left Side - Content */}
-          <div className="flex flex-col sm:mt-4">
+          <div className="flex flex-col">
             {isOnboarded ? (
               // Logged-in user view
               <>
@@ -547,13 +547,27 @@ const Hero = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.2 }}
-                  className="text-base md:text-lg text-secondary leading-relaxed mb-6 md:mb-8 max-w-md"
+                  className="text-base md:text-lg text-secondary leading-relaxed mb-4 max-w-md"
                 >
                   {isAlphaMode()
-                    ? "We scan 50+ sources daily — Hacker News, Reddit, YouTube, arXiv, blogs. You get 10-15 things that actually matter, delivered to your inbox."
+                    ? "We scan 50+ sources daily — Hacker News, Reddit, YouTube, arXiv, blogs. You get 10-15 things that actually matter."
                     : "Join the waitlist for early access. We scan 1,000+ sources daily so you don't have to."
                   }
                 </motion.p>
+
+                {isAlphaMode() && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.25 }}
+                    className="flex items-center gap-2 mb-6 md:mb-8"
+                  >
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full">
+                      <Mail size={14} className="text-primary" />
+                      <span className="text-sm font-medium text-primary">Plus a daily newsletter</span>
+                    </div>
+                  </motion.div>
+                )}
 
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -619,8 +633,22 @@ const Hero = () => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
-            className="block"
+            className="block relative"
           >
+            {/* Annotation with arrow */}
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.8 }}
+              className="absolute -top-4 md:-top-14 left-4 md:left-8 flex items-end gap-2"
+            >
+              <span className="text-secondary/60 text-sm italic font-serif pb-3">This could be your feed</span>
+              <img 
+                src="/arrow.png" 
+                alt="" 
+                className="w-6 h-6 opacity-50 pt-1"
+              />
+            </motion.div>
             <HeroDemo />
           </motion.div>
         </div>
@@ -1136,10 +1164,10 @@ const InteractiveDemo = () => {
 
 // --- Compact Hero Demo (for right side of hero) ---
 const HeroDemo = () => {
-  const displayItems = DEMO_FEED_ITEMS.slice(0, 3);
+  const displayItems = DEMO_FEED_ITEMS.slice(0, 4);
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full mt-6 md:mt-0">
       {/* Clean Card Container - Light Mode */}
       <div className="bg-white rounded-2xl border border-border/60 overflow-hidden shadow-xl shadow-black/5">
         {/* App Header with Trace Logo */}
@@ -1207,8 +1235,8 @@ const HeroDemoCard = ({ item, index }: { item: typeof DEMO_FEED_ITEMS[0]; index:
       className="group p-4 hover:bg-gray-50 transition-colors cursor-pointer"
     >
       <div className="flex items-start gap-3">
-        {/* Source icon */}
-        <div className={`w-10 h-10 rounded-xl ${config.bg} flex items-center justify-center shrink-0`}>
+        {/* Source icon - hidden on mobile */}
+        <div className={`w-10 h-10 rounded-xl ${config.bg} hidden md:flex items-center justify-center shrink-0`}>
           <Icon size={18} className={config.color} strokeWidth={1.5} />
         </div>
         
