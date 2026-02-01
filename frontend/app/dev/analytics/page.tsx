@@ -11,6 +11,7 @@ import {
   MousePointerClick,
   TrendingUp,
   Calendar,
+  Clock,
   BarChart3,
   RefreshCw,
   ArrowLeft,
@@ -43,11 +44,13 @@ type AnalyticsSummary = {
   totalUsers: number;
   onboardedUsers: number;
   subscribedUsers: number;
+  trialUsers: number;
+  paidSubscribers: number;
+  giftedSubscriptions: number;
   onboardedWithNoFeed: number;
   subscribedWithNoFeed: number;
   subscribedWithInteractions: number;
   scheduledCancellations: number;
-  giftedSubscriptions: number;
   avgFeedItems: string;
   avgTodayInteractions: string;
 };
@@ -228,16 +231,70 @@ export default function AnalyticsPage() {
                     <CreditCard size={20} className="text-green-500" />
                     <span className="text-2xl font-serif">{summary.subscribedUsers}</span>
                   </div>
-                  <h3 className="text-xs font-mono uppercase tracking-wider text-secondary">Subscribed</h3>
+                  <h3 className="text-xs font-mono uppercase tracking-wider text-secondary">Subscribed (Total)</h3>
                   <p className="text-[10px] font-mono text-secondary/60 mt-1">
-                    {summary.subscribedWithNoFeed} with no feed
+                    Trial + Paid + Gifted
                   </p>
                 </motion.div>
 
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 }}
+                  transition={{ delay: 0.12 }}
+                  className="border border-border p-5 bg-blue-50 hover:border-primary/30 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <Clock size={20} className="text-blue-600" />
+                    <span className="text-2xl font-serif">{summary.trialUsers}</span>
+                  </div>
+                  <h3 className="text-xs font-mono uppercase tracking-wider text-secondary">
+                    Trial Users
+                  </h3>
+                  <p className="text-[10px] font-mono text-secondary/60 mt-1">
+                    In active trial period
+                  </p>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.14 }}
+                  className="border border-border p-5 bg-green-50 hover:border-primary/30 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <CreditCard size={20} className="text-green-600" />
+                    <span className="text-2xl font-serif">{summary.paidSubscribers}</span>
+                  </div>
+                  <h3 className="text-xs font-mono uppercase tracking-wider text-secondary">
+                    Paid Subscribers
+                  </h3>
+                  <p className="text-[10px] font-mono text-secondary/60 mt-1">
+                    Active + has sub ID + not cancelled
+                  </p>
+                </motion.div>
+
+                {/* <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.16 }}
+                  className="border border-border p-5 bg-emerald-50 hover:border-primary/30 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <CheckCircle size={20} className="text-emerald-600" />
+                    <span className="text-2xl font-serif">{summary.giftedSubscriptions}</span>
+                  </div>
+                  <h3 className="text-xs font-mono uppercase tracking-wider text-secondary">
+                    Gifted Subs
+                  </h3>
+                  <p className="text-[10px] font-mono text-secondary/60 mt-1">
+                    Active + (no sub ID OR trial expired)
+                  </p>
+                </motion.div> */}
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.18 }}
                   className="border border-border p-5 bg-background hover:border-primary/30 transition-colors"
                 >
                   <div className="flex items-center justify-between mb-3">
@@ -252,28 +309,10 @@ export default function AnalyticsPage() {
                   </p>
                 </motion.div>
 
-                <motion.div
+                {/* <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="border border-border p-5 bg-background hover:border-primary/30 transition-colors"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <CheckCircle size={20} className="text-emerald-500" />
-                    <span className="text-2xl font-serif">{summary.giftedSubscriptions}</span>
-                  </div>
-                  <h3 className="text-xs font-mono uppercase tracking-wider text-secondary">
-                    Gifted Subs
-                  </h3>
-                  <p className="text-[10px] font-mono text-secondary/60 mt-1">
-                    Active with no sub ID or expired trial
-                  </p>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 }}
                   className="border border-border p-5 bg-background hover:border-primary/30 transition-colors"
                 >
                   <div className="flex items-center justify-between mb-3">
@@ -284,13 +323,13 @@ export default function AnalyticsPage() {
                   <p className="text-[10px] font-mono text-secondary/60 mt-1">
                     Avg {summary.avgTodayInteractions} interactions
                   </p>
-                </motion.div>
+                </motion.div> */}
 
                 {/* Additional metrics */}
-                <motion.div
+                {/* <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
+                  transition={{ delay: 0.22 }}
                   className="border border-border p-5 bg-primary/5"
                 >
                   <div className="flex items-center justify-between mb-3">
@@ -299,7 +338,7 @@ export default function AnalyticsPage() {
                   </div>
                   <h3 className="text-xs font-mono uppercase tracking-wider text-secondary">Avg Feed Items</h3>
                   <p className="text-[10px] font-mono text-secondary/60 mt-1">Per subscribed user</p>
-                </motion.div>
+                </motion.div> */}
               </div>
             )}
 

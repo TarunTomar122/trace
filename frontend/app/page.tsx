@@ -10,10 +10,8 @@ import {
   Sparkles,
   Brain,
   ChevronRight,
-  Activity,
   Layers,
   User,
-  RefreshCw,
   Menu,
   X,
   LogOut,
@@ -25,7 +23,10 @@ import {
   ThumbsDown,
   MessageSquare,
   Newspaper,
-  ArrowUpRight
+  ArrowUpRight,
+  Lightbulb,
+  Search,
+  TrendingUp
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -139,13 +140,6 @@ const Nav = () => {
                       {profile?.name?.split(' ')[0] || user.displayName?.split(' ')[0]}
                     </span>
                   </Link>
-                  <button
-                    onClick={signOut}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-full border border-gray-200 text-sm font-medium text-foreground hover:bg-gray-100 transition-all"
-                  >
-                    <LogOut size={14} />
-                    Sign Out
-                  </button>
                 </div>
               ) : (
                 <button
@@ -485,7 +479,7 @@ const Hero = () => {
   const isLoggedIn = !!user;
   const isOnboarded = !!user && !!profile?.onboarded;
   const heroCtaHref = isLoggedIn && !isOnboarded ? '/onboarding' : null;
-  const heroCtaText = isLoggedIn && !isOnboarded ? 'Complete Setup' : 'Start Free Trial';
+  const heroCtaText = isLoggedIn && !isOnboarded ? 'Personalize my feed' : 'Unlock full feed';
 
   return (
     <section className="relative pt-32 pb-16 md:pt-36 lg:pt-60 md:pb-24 lg:pb-40 overflow-hidden z-10">
@@ -519,6 +513,18 @@ const Hero = () => {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.25 }}
+                  className="flex items-center gap-2 mb-6 md:mb-8"
+                >
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 rounded-full">
+                    <Lightbulb size={14} className="text-primary" />
+                    <span className="text-sm font-medium text-primary">Help trace learn about your preferences by interacting with your feed items.</span>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.4 }}
                   className="flex flex-col sm:flex-row gap-3"
                 >
@@ -537,10 +543,10 @@ const Hero = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.1 }}
-                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-tight font-serif tracking-tight text-foreground mb-4 md:mb-6"
+                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-tight font-serif tracking-tight text-secondary/80 mb-4 md:mb-6"
                 >
-                  Stay informed with{' '}
-                  <span className="italic text-primary">your own feed</span>
+                  Fu*K The Algorithms{' '}
+                  <span className="italic text-primary">Build Your Own Feed</span>
                 </motion.h1>
 
                 <motion.p
@@ -603,7 +609,7 @@ const Hero = () => {
                   {/* Avatar stack */}
                   <div className="flex -space-x-2">
                     {['Z', 'M', 'S', 'A'].map((initial, i) => (
-                      <div 
+                      <div
                         key={i}
                         className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/40 border-2 border-background flex items-center justify-center text-xs font-medium text-primary"
                       >
@@ -613,9 +619,9 @@ const Hero = () => {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="flex text-amber-400">
-                      {[1,2,3,4,5].map(i => (
+                      {[1, 2, 3, 4, 5].map(i => (
                         <svg key={i} className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                         </svg>
                       ))}
                     </div>
@@ -636,22 +642,193 @@ const Hero = () => {
             className="block relative"
           >
             {/* Annotation with arrow */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.8 }}
               className="absolute -top-4 md:-top-14 left-4 md:left-8 flex items-end gap-2"
             >
               <span className="text-secondary/60 text-sm italic font-serif pb-3">This could be your feed</span>
-              <img 
-                src="/arrow.png" 
-                alt="" 
+              <img
+                src="/arrow.png"
+                alt=""
                 className="w-6 h-6 opacity-50 pt-1"
               />
             </motion.div>
             <HeroDemo />
           </motion.div>
         </div>
+      </div>
+    </section>
+  );
+};
+
+// --- How It Works Section ---
+const HowItWorks = () => {
+  const steps = [
+    {
+      number: "01",
+      icon: User,
+      title: "Choose topics",
+      description: "Tell us what you care about — AI, design, startups, or anything else.",
+      color: "text-blue-500",
+      bgColor: "bg-blue-50"
+    },
+    {
+      number: "02",
+      icon: Search,
+      title: "Trace builds your feed",
+      description: "We search YouTube, GitHub, Hacker News, Reddit, arXiv, blogs and more.",
+      color: "text-purple-500",
+      bgColor: "bg-purple-50"
+    },
+    {
+      number: "03",
+      icon: ThumbsUp,
+      title: "You interact",
+      description: "Upvote what you like, downvote what you don't. Add notes if you want.",
+      color: "text-green-500",
+      bgColor: "bg-green-50"
+    },
+    {
+      number: "04",
+      icon: Brain,
+      title: "Trace reflects",
+      description: "Our AI learns your patterns and preferences from your interactions.",
+      color: "text-orange-500",
+      bgColor: "bg-orange-50"
+    },
+    {
+      number: "05",
+      icon: TrendingUp,
+      title: "Your feed gets better",
+      description: "Every day, your feed becomes more aligned with what you actually care about.",
+      color: "text-pink-500",
+      bgColor: "bg-pink-50"
+    }
+  ];
+
+  return (
+    <section id="how" className="py-16 md:py-24 lg:py-32 bg-background relative z-10">
+      <div className="container mx-auto px-4 sm:px-6 max-w-6xl">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-12 md:mb-16"
+        >
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-4">
+            How It <span className="text-secondary/50">Works</span>
+          </h2>
+          <p className="text-secondary text-base md:text-lg leading-relaxed max-w-2xl mx-auto">
+            A simple process that gets smarter every day
+          </p>
+        </motion.div>
+
+        <div>
+          {/* First row - 3 items */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 mb-6 md:mb-8">
+            {steps.slice(0, 3).map((step, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                className="relative p-6 md:p-8 rounded-2xl border border-gray-200 bg-white hover:shadow-lg transition-all"
+              >
+                {/* Step number */}
+                <div className="absolute top-4 right-4 text-2xl font-bold text-secondary/10">
+                  {step.number}
+                </div>
+
+                {/* Icon */}
+                <div className={cn(
+                  "w-12 h-12 rounded-xl flex items-center justify-center mb-4",
+                  step.bgColor
+                )}>
+                  <step.icon size={24} className={step.color} strokeWidth={1.5} />
+                </div>
+
+                {/* Content */}
+                <h3 className="text-lg md:text-xl font-semibold text-foreground mb-2">
+                  {step.title}
+                </h3>
+                <p className="text-sm text-secondary leading-relaxed">
+                  {step.description}
+                </p>
+
+                {/* Connector arrow */}
+                {index < 2 && (
+                  <div className="hidden lg:block absolute -right-6 top-1/2 -translate-y-1/2 text-secondary/20">
+                    <ChevronRight size={24} />
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Second row - 2 items centered */}
+          <div className="flex flex-col md:flex-row gap-6 md:gap-8 justify-center max-w-2xl mx-auto lg:max-w-4xl">
+            {steps.slice(3).map((step, index) => (
+              <motion.div
+                key={index + 3}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: (index + 3) * 0.1 }}
+                className="relative p-6 md:p-8 rounded-2xl border border-gray-200 bg-white hover:shadow-lg transition-all flex-1"
+              >
+                {/* Step number */}
+                <div className="absolute top-4 right-4 text-2xl font-bold text-secondary/10">
+                  {step.number}
+                </div>
+
+                {/* Icon */}
+                <div className={cn(
+                  "w-12 h-12 rounded-xl flex items-center justify-center mb-4",
+                  step.bgColor
+                )}>
+                  <step.icon size={24} className={step.color} strokeWidth={1.5} />
+                </div>
+
+                {/* Content */}
+                <h3 className="text-lg md:text-xl font-semibold text-foreground mb-2">
+                  {step.title}
+                </h3>
+                <p className="text-sm text-secondary leading-relaxed">
+                  {step.description}
+                </p>
+
+                {/* Connector arrow */}
+                {index === 0 && (
+                  <div className="hidden lg:block absolute -right-6 top-1/2 -translate-y-1/2 text-secondary/20">
+                    <ChevronRight size={24} />
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* CTA */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.5 }}
+          className="text-center mt-12 md:mt-16"
+        >
+          <p className="text-secondary text-sm mb-4">
+            Ready to build your own feed?
+          </p>
+          <a href="#get-started">
+            <button className="inline-flex items-center gap-2 bg-foreground text-background px-6 py-3 rounded-full text-sm font-medium hover:bg-foreground/90 transition-colors">
+              Get Started
+              <ChevronRight size={16} />
+            </button>
+          </a>
+        </motion.div>
       </div>
     </section>
   );
@@ -970,18 +1147,16 @@ const DemoFeedCard = ({ item, index, compact = false }: { item: typeof DEMO_FEED
           <div className={`flex items-center gap-1 relative ${compact ? '-ml-1' : '-ml-1.5'}`}>
             <button
               onClick={() => handleInteraction('upvote')}
-              className={`flex items-center gap-1 transition-colors ${compact ? 'px-1 py-0.5' : 'px-1.5 py-1'} ${
-                upvoted ? 'text-green-500' : 'text-secondary/40 hover:text-green-500'
-              }`}
+              className={`flex items-center gap-1 transition-colors ${compact ? 'px-1 py-0.5' : 'px-1.5 py-1'} ${upvoted ? 'text-green-500' : 'text-secondary/40 hover:text-green-500'
+                }`}
             >
               <ThumbsUp size={compact ? 12 : 14} fill={upvoted ? 'currentColor' : 'none'} strokeWidth={1.5} />
             </button>
 
             <button
               onClick={() => handleInteraction('downvote')}
-              className={`flex items-center gap-1 transition-colors ${compact ? 'px-1 py-0.5' : 'px-1.5 py-1'} ${
-                downvoted ? 'text-red-500' : 'text-secondary/40 hover:text-red-500'
-              }`}
+              className={`flex items-center gap-1 transition-colors ${compact ? 'px-1 py-0.5' : 'px-1.5 py-1'} ${downvoted ? 'text-red-500' : 'text-secondary/40 hover:text-red-500'
+                }`}
             >
               <ThumbsDown size={compact ? 12 : 14} fill={downvoted ? 'currentColor' : 'none'} strokeWidth={1.5} />
             </button>
@@ -994,9 +1169,8 @@ const DemoFeedCard = ({ item, index, compact = false }: { item: typeof DEMO_FEED
 
             <button
               onClick={() => handleInteraction('bookmark')}
-              className={`flex items-center gap-1 ml-auto transition-colors ${compact ? 'px-1 py-0.5' : 'px-1.5 py-1'} ${
-                bookmarked ? 'text-primary' : 'text-secondary/40 hover:text-primary'
-              }`}
+              className={`flex items-center gap-1 ml-auto transition-colors ${compact ? 'px-1 py-0.5' : 'px-1.5 py-1'} ${bookmarked ? 'text-primary' : 'text-secondary/40 hover:text-primary'
+                }`}
             >
               <Bookmark size={compact ? 12 : 14} fill={bookmarked ? 'currentColor' : 'none'} strokeWidth={1.5} />
             </button>
@@ -1025,8 +1199,8 @@ const InteractiveDemo = () => {
   const { signInWithGoogle } = useAuth();
   const [activeFilter, setActiveFilter] = useState('all');
 
-  const filteredItems = activeFilter === 'all' 
-    ? DEMO_FEED_ITEMS 
+  const filteredItems = activeFilter === 'all'
+    ? DEMO_FEED_ITEMS
     : DEMO_FEED_ITEMS.filter(item => item.tag === activeFilter);
 
   return (
@@ -1109,11 +1283,10 @@ const InteractiveDemo = () => {
                 <button
                   key={filter.id}
                   onClick={() => setActiveFilter(filter.id)}
-                  className={`px-3 py-1 text-[10px] font-mono uppercase tracking-wider transition-colors ${
-                    activeFilter === filter.id
+                  className={`px-3 py-1 text-[10px] font-mono uppercase tracking-wider transition-colors ${activeFilter === filter.id
                       ? 'bg-primary text-primary-foreground'
                       : 'border border-border text-secondary/60 hover:border-primary/50'
-                  }`}
+                    }`}
                 >
                   {filter.label}
                 </button>
@@ -1173,9 +1346,9 @@ const HeroDemo = () => {
         {/* App Header with Trace Logo */}
         <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between bg-gray-50/50">
           <div className="flex items-center gap-2">
-            <img 
-              src="/trace.png" 
-              alt="Trace" 
+            <img
+              src="/trace.png"
+              alt="Trace"
               className="h-5 w-auto"
             />
             <span className="text-xs font-semibold text-foreground uppercase tracking-wider">Your Feed</span>
@@ -1193,11 +1366,10 @@ const HeroDemo = () => {
           {DEMO_FILTERS.slice(0, 4).map((filter, i) => (
             <div
               key={filter.id}
-              className={`px-3 py-1 rounded-full text-[11px] font-medium cursor-default select-none ${
-                i === 0
+              className={`px-3 py-1 rounded-full text-[11px] font-medium cursor-default select-none ${i === 0
                   ? 'bg-foreground text-background'
                   : 'bg-gray-100 text-secondary'
-              }`}
+                }`}
             >
               {filter.label}
             </div>
@@ -1239,7 +1411,7 @@ const HeroDemoCard = ({ item, index }: { item: typeof DEMO_FEED_ITEMS[0]; index:
         <div className={`w-10 h-10 rounded-xl ${config.bg} hidden md:flex items-center justify-center shrink-0`}>
           <Icon size={18} className={config.color} strokeWidth={1.5} />
         </div>
-        
+
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Source label */}
@@ -1306,13 +1478,13 @@ const DemoFeed = () => {
           className="relative max-w-5xl mx-auto"
         >
           <div className="border-2 border-border bg-background shadow-2xl overflow-hidden">
-            <img 
-              src="/feed.png" 
-              alt="Trace Feed - Personalized content from across the web" 
+            <img
+              src="/feed.png"
+              alt="Trace Feed - Personalized content from across the web"
               className="w-full h-auto"
             />
           </div>
-          
+
           {/* Decorative elements */}
           <div className="absolute -top-4 -left-4 w-8 h-8 border-t-2 border-l-2 border-primary/40" />
           <div className="absolute -bottom-4 -right-4 w-8 h-8 border-b-2 border-r-2 border-primary/40" />
@@ -2000,7 +2172,7 @@ const ScrollSection = ({ step }: { step: number; icon: React.ElementType; title:
 //                   </div>
 //                 </div>
 //               </div>
-              
+
 //               <h3 className="text-xl md:text-2xl lg:text-3xl font-serif font-light text-foreground mb-3 md:mb-4 group-hover:text-primary transition-colors">
 //                 {outcome.title}
 //               </h3>
@@ -2166,8 +2338,8 @@ const Pricing = () => {
   const { user, profile, signInWithGoogle } = useAuth();
   const pricingCtaHref = user ? (profile?.onboarded ? '/feed' : '/onboarding') : null;
   const pricingCtaText = user
-    ? (profile?.onboarded ? 'Go To Your Feed' : 'Complete Setup')
-    : 'Start Free Trial';
+    ? (profile?.onboarded ? 'Go To Your Feed' : 'Personalize my feed')
+    : 'Unlock full feed';
 
   return (
     <section className="py-16 md:py-24 lg:py-32 bg-background relative z-10">
@@ -2287,9 +2459,9 @@ const GetStarted = () => {
   };
 
   const getCtaText = () => {
-    if (!user) return 'Start Free Trial';
+    if (!user) return 'Unlock full feed';
     if (!alphaMode) return 'View Waitlist Status';
-    if (!profile?.onboarded) return 'Complete Setup';
+    if (!profile?.onboarded) return 'Personalize my feed';
     return 'Go To Your Feed';
   };
 
@@ -2371,7 +2543,7 @@ const GetStarted = () => {
                     <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                     <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                   </svg>
-                  Start Free Trial
+                  Unlock full feed
                 </button>
               </div>
             )}
@@ -2406,7 +2578,7 @@ const Footer = () => (
             <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground mb-4 md:mb-5">Product</h4>
             <div className="flex flex-col gap-3 md:gap-4">
               <a href="#demo" className="text-sm text-secondary hover:text-foreground transition-colors">See Example Feed</a>
-              <a href="#get-started" className="text-sm text-secondary hover:text-foreground transition-colors">Start Free Trial</a>
+              <a href="#get-started" className="text-sm text-secondary hover:text-foreground transition-colors">Unlock full feed</a>
               <a href="/trending" className="text-sm text-secondary hover:text-foreground transition-colors">Trending Topics</a>
             </div>
           </div>
@@ -2451,6 +2623,7 @@ export default function LandingPage() {
       <WaitlistBanner />
       <Nav />
       <Hero />
+      <HowItWorks />
       {/* <InteractiveDemo />
       <DemoFeed /> */}
       <WhatTraceReplaces />

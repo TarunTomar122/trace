@@ -16,13 +16,12 @@ import {
   MessageCircle,
   X,
   Brain,
-  RefreshCw,
   Zap,
-  ChevronDown,
   Eye,
   Check,
   Newspaper,
-  Flame
+  Flame,
+  Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -55,6 +54,15 @@ type FeedItem = {
 type FeedMetadata = {
   is_preview?: boolean;
 } & Record<string, unknown>;
+
+const shuffleItems = <T,>(items: T[]): T[] => {
+  const shuffled = items.slice();
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
 
 type InteractionItem = {
   item_id?: string;
@@ -164,11 +172,8 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
   };
 
   return (
-    <motion.article
+    <article
       ref={cardRef}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0, height: 0 }}
       className="group p-4 md:p-5 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
       onClick={(e) => {
         // Only navigate if not clicking on action buttons
@@ -229,7 +234,7 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
                     ? 'text-green-500 bg-green-50'
                     : 'text-secondary/40 hover:text-green-500 hover:bg-green-50'
                 }`}
-              title={disabled ? "Subscribe to interact" : "Upvote"}
+              title={disabled ? "Subscribe to teach Trace" : "Upvote"}
             >
               <ThumbsUp size={18} className="md:hidden" fill={upvoted ? 'currentColor' : 'none'} strokeWidth={1.5} />
               <ThumbsUp size={16} className="hidden md:block" fill={upvoted ? 'currentColor' : 'none'} strokeWidth={1.5} />
@@ -246,7 +251,7 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
                     ? 'text-red-500 bg-red-50'
                     : 'text-secondary/40 hover:text-red-500 hover:bg-red-50'
                 }`}
-              title={disabled ? "Subscribe to interact" : "Downvote"}
+              title={disabled ? "Subscribe to teach Trace" : "Downvote"}
             >
               <ThumbsDown size={18} className="md:hidden" fill={downvoted ? 'currentColor' : 'none'} strokeWidth={1.5} />
               <ThumbsDown size={16} className="hidden md:block" fill={downvoted ? 'currentColor' : 'none'} strokeWidth={1.5} />
@@ -265,7 +270,7 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
                   ? 'text-secondary/20 cursor-not-allowed'
                   : 'text-secondary/40 hover:text-blue-500 hover:bg-blue-50'
                 }`}
-              title={disabled ? "Subscribe to interact" : "Add feedback"}
+              title={disabled ? "Subscribe to teach Trace" : "Add feedback"}
             >
               <MessageSquare size={18} className="md:hidden" strokeWidth={1.5} />
               <MessageSquare size={16} className="hidden md:block" strokeWidth={1.5} />
@@ -290,7 +295,7 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
                       ? 'text-primary bg-primary/10'
                       : 'text-secondary/40 hover:text-primary hover:bg-primary/10'
                 }`}
-              title={disabled ? "Subscribe to interact" : "Bookmark"}
+              title={disabled ? "Subscribe to teach Trace" : "Bookmark"}
               disabled={isBookmarkLoading}
             >
               {isBookmarkLoading ? (
@@ -336,7 +341,7 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
           </AnimatePresence>
         </div>
       </div>
-    </motion.article>
+    </article>
   );
 }
 
@@ -364,15 +369,15 @@ export default function FeedPage() {
   const [showTraceInsight, setShowTraceInsight] = useState(false);
   const [insightDismissed, setInsightDismissed] = useState(false);
 
-  // Pagination state
-  const [hasMore, setHasMore] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [totalItems, setTotalItems] = useState(0);
   const [unseenCount, setUnseenCount] = useState(0);
   const [feedMetadata, setFeedMetadata] = useState<FeedMetadata | null>(null);
-  const cursorRef = useRef(0);
   const isLoadingRef = useRef(false);
   const hasLoadedInitialFeed = useRef(false);
+
+  // Feed generation timer state (for newly onboarded users)
+  const [feedGenTimeRemaining, setFeedGenTimeRemaining] = useState(90); // 90 seconds total
+  const [feedGenActive, setFeedGenActive] = useState(false);
+  const feedGenRefreshAttempted = useRef(false);
 
   // Feedback state
   const [showFeedback, setShowFeedback] = useState(false);
@@ -401,7 +406,8 @@ export default function FeedPage() {
   // Use personalized feed for onboarded users (subscribed or not), otherwise general feed
   const isOnboarded = profile?.onboarded ?? false;
   const showPersonalizedFeed = isOnboarded; // Show feed for ALL onboarded users
-  const currentFeed = !showPersonalizedFeed ? generalFeed : feed;
+  const isFallbackFeed = showPersonalizedFeed && !isFeedLoading && feed.length === 0;
+  const currentFeed = isFallbackFeed ? generalFeed : (!showPersonalizedFeed ? generalFeed : feed);
   const normalizeInterest = (interest: string) => {
     return interest
       .toLowerCase()
@@ -436,6 +442,7 @@ export default function FeedPage() {
   const topicFilters = availableProfileFilters.length > 0 ? availableProfileFilters : tagFilters;
   const insightInsertIndex = 2;
   const canShowTraceInsight = Boolean(showTraceInsight && traceInsights && !traceInsightsLoading);
+  const primaryFilterLabel = showPersonalizedFeed && !isFallbackFeed ? 'For you' : 'Discover';
 
   useEffect(() => {
     if (!user || !profile?.onboarded) {
@@ -642,19 +649,14 @@ export default function FeedPage() {
     };
   }, [flushSeenItems]);
 
-  // Load paginated feed
-  const loadFeed = useCallback(async (uid: string, dateOverride?: string, reset = true) => {
+  // Load full feed and shuffle on each visit
+  const loadFeed = useCallback(async (uid: string, dateOverride?: string) => {
     // Prevent concurrent loads
     if (isLoadingRef.current) return;
     isLoadingRef.current = true;
 
-    if (reset) {
-      setIsFeedLoading(true);
-      setFeed([]);
-      cursorRef.current = 0;
-    } else {
-      setIsLoadingMore(true);
-    }
+    setIsFeedLoading(true);
+    setFeed([]);
 
     try {
       const token = await user?.getIdToken();
@@ -665,8 +667,7 @@ export default function FeedPage() {
 
       const params = new URLSearchParams();
       if (dateOverride) params.set('date', dateOverride);
-      params.set('cursor', reset ? '0' : String(cursorRef.current));
-      params.set('limit', '10');
+      params.set('limit', '50');
 
       const response = await fetch(`/api/feed/paginated?${params}`, {
         headers: {
@@ -676,18 +677,10 @@ export default function FeedPage() {
 
       if (response.ok) {
         const data = await response.json();
-
-        if (reset) {
-          setFeed(data.items || []);
-          setFeedMetadata(data.metadata || null);  // Store feed metadata
-        } else {
-          setFeed(prev => [...prev, ...(data.items || [])]);
-        }
-
-        cursorRef.current = data.cursor || 0;
-        setHasMore(data.hasMore || false);
+        const items = Array.isArray(data.items) ? data.items : [];
+        setFeed(shuffleItems(items));
+        setFeedMetadata(data.metadata || null);  // Store feed metadata
         setFeedDate(data.feedDate || '');
-        setTotalItems(data.total || 0);
         setUnseenCount(data.unseenCount || 0);
 
         // Defer interactions loading - don't block feed render
@@ -700,16 +693,9 @@ export default function FeedPage() {
       console.error('Error loading feed:', error);
     } finally {
       setIsFeedLoading(false);
-      setIsLoadingMore(false);
       isLoadingRef.current = false;
     }
   }, [user, loadInteractions]);
-
-  // Load more items
-  const loadMore = useCallback(() => {
-    if (!user || !hasMore || isLoadingMore) return;
-    loadFeed(user.uid, feedDate, false);
-  }, [user, hasMore, isLoadingMore, loadFeed, feedDate]);
 
   // Load general feed for non-onboarded users
   // Sample feed from topics (10 items)
@@ -726,7 +712,8 @@ export default function FeedPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        setGeneralFeed(Array.isArray(data.items) ? data.items : []);
+        const items = Array.isArray(data.items) ? data.items : [];
+        setGeneralFeed(shuffleItems(items));
       }
     } catch (error) {
       console.error('Error loading general feed:', error);
@@ -769,10 +756,56 @@ export default function FeedPage() {
   // Fallback: Load sample topics feed for non-onboarded users only
   useEffect(() => {
     const isNotOnboarded = profile && !profile.onboarded;
+    const shouldLoadFallback = isFallbackFeed && generalFeed.length === 0 && !isLoadingGeneral;
     if (user && isNotOnboarded && generalFeed.length === 0 && feed.length === 0) {
       loadGeneralFeed();
+      return;
     }
-  }, [user, profile, generalFeed.length, feed.length, loadGeneralFeed]);
+    if (user && shouldLoadFallback) {
+      loadGeneralFeed();
+    }
+  }, [user, profile, generalFeed.length, feed.length, loadGeneralFeed, isFallbackFeed, isLoadingGeneral]);
+
+  // Feed generation timer for newly onboarded users
+  useEffect(() => {
+    // Start timer when we detect fallback feed (user onboarded but no personalized feed yet)
+    if (isFallbackFeed && !feedGenActive && feedGenTimeRemaining === 90) {
+      setFeedGenActive(true);
+    }
+    
+    // Stop timer if we got a real feed
+    if (!isFallbackFeed && feed.length > 0) {
+      setFeedGenActive(false);
+    }
+  }, [isFallbackFeed, feed.length, feedGenActive, feedGenTimeRemaining]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (!feedGenActive || feedGenTimeRemaining <= 0) return;
+
+    const interval = setInterval(() => {
+      setFeedGenTimeRemaining(prev => {
+        const newTime = prev - 1;
+        
+        // At 10 seconds remaining (80 seconds elapsed), try to refresh feed
+        if (newTime === 10 && !feedGenRefreshAttempted.current && user) {
+          feedGenRefreshAttempted.current = true;
+          hasLoadedInitialFeed.current = false; // Reset to allow reload
+          loadFeed(user.uid);
+        }
+        
+        // Timer complete
+        if (newTime <= 0) {
+          setFeedGenActive(false);
+          return 0;
+        }
+        
+        return newTime;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [feedGenActive, feedGenTimeRemaining, user, loadFeed]);
 
   // History sidebar removed - just showing today's feed
 
@@ -959,10 +992,10 @@ export default function FeedPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    Complete your profile — tell us what you&apos;re into
+                    Make the feed yours in 2 minutes
                   </p>
                   <p className="text-xs text-secondary/70 mt-0.5">
-                    Finish onboarding to get your personalized feed
+                    82% of early users say their feed feels sharper after picking interests
                   </p>
                 </div>
               </div>
@@ -971,7 +1004,7 @@ export default function FeedPage() {
                 className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-violet-600 text-white text-xs font-medium hover:bg-violet-700 transition-colors shrink-0"
               >
                 <Sparkles size={14} />
-                Complete Setup
+                Personalize my feed
               </Link>
             </div>
           </div>
@@ -987,10 +1020,10 @@ export default function FeedPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    You&apos;re viewing a limited feed
+                    You&apos;re seeing a starter feed
                   </p>
                   <p className="text-xs text-secondary/70 mt-0.5">
-                    Unlock your full personalized feed free for 3 days — no credit card required
+                    Unlock the full daily feed + Trace learning loop. Early users say it saves ~30 mins/week.
                   </p>
                 </div>
               </div>
@@ -999,7 +1032,7 @@ export default function FeedPage() {
                 className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-foreground text-background text-xs font-medium hover:bg-foreground/90 transition-colors shrink-0"
               >
                 <Zap size={14} />
-                Start Free Trial
+                Unlock full feed
               </Link>
             </div>
           </div>
@@ -1027,23 +1060,23 @@ export default function FeedPage() {
                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                   <Brain size={22} className="text-primary" />
                 </div>
-                <h3 className="text-lg font-semibold">Subscribe to Unlock</h3>
+                <h3 className="text-lg font-semibold">Unlock the full feed</h3>
               </div>
               <p className="text-sm text-secondary mb-6">
-                Subscribe to interact with content and help Trace learn from your feedback. Your upvotes, downvotes, and comments help us personalize your daily feed better.
+                Subscribe to unlock the full daily feed. Your interactions teach Trace what to find and what to skip, so it gets smarter every day.
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowSubscribePrompt(false)}
                   className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-secondary hover:bg-gray-50 transition-colors"
                 >
-                  Maybe Later
+                  Not now
                 </button>
                 <Link
                   href="/profile?tab=subscription"
                   className="flex-1 px-4 py-3 rounded-xl bg-foreground text-background text-sm font-medium text-center hover:bg-foreground/90 transition-colors"
                 >
-                  Subscribe
+                  Unlock full feed
                 </Link>
               </div>
             </motion.div>
@@ -1197,7 +1230,7 @@ export default function FeedPage() {
                 Filters
               </h2>
               {[
-                { id: 'all', label: showPersonalizedFeed ? 'For you' : 'Discover' },
+                { id: 'all', label: primaryFilterLabel },
                 ...topicFilters,
               ].map(filter => {
                 const isActive = activeFilter === filter.id;
@@ -1234,6 +1267,38 @@ export default function FeedPage() {
               </div>
             )} */}
 
+            {/* Feed generation progress (for newly onboarded users) */}
+            {isFallbackFeed && feedGenActive && (
+              <div className="mb-4 md:mb-6 p-4 md:p-5 bg-gradient-to-r from-violet-50 to-indigo-50 rounded-xl border border-violet-100">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+                    <Loader2 size={20} className="text-violet-600 animate-spin" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground mb-1">
+                      Building your personalized feed...
+                    </p>
+                    <p className="text-xs text-secondary/70 mb-3">
+                      Trace is analyzing your interests to find the best content. This usually takes about a minute.
+                    </p>
+                    {/* Progress bar */}
+                    <div className="w-full bg-violet-100 rounded-full h-1.5 overflow-hidden">
+                      <div 
+                        className="bg-violet-500 h-full rounded-full transition-all duration-1000 ease-linear"
+                        style={{ width: `${((90 - feedGenTimeRemaining) / 90) * 100}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] font-mono text-secondary/50 mt-2">
+                      {Math.floor(feedGenTimeRemaining / 60)}:{(feedGenTimeRemaining % 60).toString().padStart(2, '0')} remaining
+                    </p>
+                  </div>
+                </div>
+                <p className="text-[11px] text-secondary/60 mt-3 pl-14 md:pl-16">
+                  In the meantime, explore some popular picks below!
+                </p>
+              </div>
+            )}
+
             {/* Hint about feedback (only for subscribed AND onboarded users) */}
             <AnimatePresence>
               {showPersonalizedFeed && showHint && !isFeedLoading && filteredFeed.length > 0 && (
@@ -1266,7 +1331,7 @@ export default function FeedPage() {
             </AnimatePresence>
 
 
-            {((showPersonalizedFeed && isFeedLoading) || (!showPersonalizedFeed && isLoadingGeneral)) ? (
+            {((showPersonalizedFeed && isFeedLoading) || (!showPersonalizedFeed && isLoadingGeneral) || (isFallbackFeed && isLoadingGeneral)) ? (
               <div className="space-y-3">
                 {/* Skeleton loader - 5 placeholder cards */}
                 {[...Array(5)].map((_, i) => (
@@ -1291,151 +1356,58 @@ export default function FeedPage() {
             ) : (
               <>
                 <div className="divide-y divide-border/20">
-                  <AnimatePresence>
-                    {filteredFeed.map((item, index) => (
-                      <React.Fragment key={item.id}>
-                        <FeedCard
-                          item={item}
-                          onUpvote={(note) => handleUpvote(item.id, note)}
-                          onDownvote={(note) => handleDownvote(item.id, note)}
-                          onStar={() => handleStar(item.id)}
-                          initialVote={interactions[item.id]}
-                          initialBookmarked={bookmarkedItems.has(item.id)}
-                          isBookmarkLoading={loadingBookmarks.has(item.id)}
-                          disabled={!hasAccess}
-                          onDisabledClick={() => setShowSubscribePrompt(true)}
-                          onVisible={showPersonalizedFeed ? handleItemVisible : undefined}
-                        />
-                        {canShowTraceInsight && index === insightInsertIndex && traceInsights && (
-                          <div className="py-3 md:py-4" key="trace-insight-card">
-                            <TraceInsightCard
-                              insights={traceInsights}
-                              variant="compact"
-                              onDismiss={dismissTraceInsight}
-                              showCta
-                            />
-                          </div>
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </AnimatePresence>
+                  {filteredFeed.map((item, index) => (
+                    <React.Fragment key={item.id}>
+                      <FeedCard
+                        item={item}
+                        onUpvote={(note) => handleUpvote(item.id, note)}
+                        onDownvote={(note) => handleDownvote(item.id, note)}
+                        onStar={() => handleStar(item.id)}
+                        initialVote={interactions[item.id]}
+                        initialBookmarked={bookmarkedItems.has(item.id)}
+                        isBookmarkLoading={loadingBookmarks.has(item.id)}
+                        disabled={!hasAccess}
+                        onDisabledClick={() => setShowSubscribePrompt(true)}
+                        onVisible={showPersonalizedFeed ? handleItemVisible : undefined}
+                      />
+                      {canShowTraceInsight && index === insightInsertIndex && traceInsights && (
+                        <div className="py-3 md:py-4" key="trace-insight-card">
+                          <TraceInsightCard
+                            insights={traceInsights}
+                            variant="compact"
+                            onDismiss={dismissTraceInsight}
+                            showCta
+                          />
+                        </div>
+                      )}
+                    </React.Fragment>
+                  ))}
                 </div>
 
-                {/* Load More Button */}
-                {showPersonalizedFeed && hasMore && filteredFeed.length > 0 && (
-                  <div className="py-6 text-center">
-                    <button
-                      onClick={loadMore}
-                      disabled={isLoadingMore}
-                      className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-foreground text-background text-sm font-medium hover:bg-foreground/90 transition-colors disabled:opacity-50"
-                    >
-                      {isLoadingMore ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                          Loading
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown size={14} />
-                          Load More ({totalItems - feed.length} remaining)
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
-
                 {filteredFeed.length === 0 && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-center py-16 md:py-20 px-4"
-                  >
-                    {profile?.onboardedAt && activeFilter === 'all' && (() => {
-                      const onboardedTimestamp = profile.onboardedAt as { seconds: number } | Date;
-                      const onboardedTime = typeof onboardedTimestamp === 'object' && 'seconds' in onboardedTimestamp
-                        ? new Date(onboardedTimestamp.seconds * 1000)
-                        : new Date(onboardedTimestamp);
-                      const now = new Date();
-                      const timeSinceOnboarding = now.getTime() - onboardedTime.getTime();
-                      const isNewUser = timeSinceOnboarding < 30 * 60 * 1000; // Within 30 minutes
-
-                      if (isNewUser) {
-                        return (
-                          <>
-                            <div className="w-16 h-16 md:w-20 md:h-20 bg-primary text-primary-foreground flex items-center justify-center mx-auto mb-6 relative">
-                              <Brain size={32} className="md:hidden" />
-                              <Brain size={40} className="hidden md:block" />
-                              <motion.div
-                                className="absolute inset-0 border-2 border-primary"
-                                animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0, 0.5] }}
-                                transition={{ duration: 2, repeat: Infinity }}
-                              />
-                            </div>
-                            <p className="text-xl md:text-2xl font-serif mb-3">
-                              AI is curating your feed
-                            </p>
-                            <p className="text-sm font-mono text-secondary mb-6 max-w-md mx-auto leading-relaxed">
-                              Our AI agents are analyzing your profile and gathering personalized content from across the web. This usually takes 5-10 minutes.
-                            </p>
-                            <div className="space-y-3 max-w-sm mx-auto mb-6">
-                              {['Analyzing your interests', 'Searching content sources', 'Ranking & filtering'].map((step, i) => (
-                                <motion.div
-                                  key={i}
-                                  initial={{ opacity: 0, x: -20 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  transition={{ delay: i * 0.2 }}
-                                  className="flex items-center gap-3 text-sm font-mono text-secondary"
-                                >
-                                  <motion.div
-                                    animate={{ rotate: 360 }}
-                                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                                  >
-                                    <RefreshCw size={14} className="text-primary" />
-                                  </motion.div>
-                                  {step}
-                                </motion.div>
-                              ))}
-                            </div>
-                            <div className="p-4 bg-blue-500/5 border border-blue-500/20 max-w-md mx-auto">
-                              <p className="text-xs font-mono text-secondary leading-relaxed">
-                                💡 <span className="text-foreground font-bold">Pro tip:</span> While you wait, you can update your profile or explore your interests to help us curate even better content for you.
-                              </p>
-                            </div>
-                          </>
-                        );
-                      }
-                    })()}
-
-                    {(!profile?.onboardedAt ||
-                      (profile?.onboardedAt && (() => {
-                        const ts = profile.onboardedAt as { seconds: number } | Date;
-                        const time = typeof ts === 'object' && 'seconds' in ts ? new Date(ts.seconds * 1000) : new Date(ts);
-                        return new Date().getTime() - time.getTime() >= 30 * 60 * 1000;
-                      })()) ||
-                      activeFilter !== 'all') && (
-                        <>
-                          <div className="w-12 h-12 bg-primary/5 border border-primary/20 flex items-center justify-center mx-auto mb-4">
-                            <Sparkles size={24} className="text-primary" />
-                          </div>
-                          <p className="text-lg font-serif mb-2">
-                            {activeFilter === 'all' ? 'Your Feed is Being Generated!!! Check back soon!' : `No ${activeFilter}s yet`}
-                          </p>
-                          <p className="text-sm font-mono text-secondary mb-4">
-                            {activeFilter === 'all'
-                              ? "We're curating content for you. Check back soon!"
-                              : 'Try a different filter'}
-                          </p>
-                          {activeFilter !== 'all' && (
-                            <button
-                              onClick={() => setActiveFilter('all')}
-                              className="text-sm font-mono text-primary hover:underline uppercase tracking-wider"
-                            >
-                              View all content
-                            </button>
-                          )}
-                        </>
+                  <div className="text-center py-16 md:py-20 px-4">
+                    <>
+                      <div className="w-12 h-12 bg-primary/5 border border-primary/20 flex items-center justify-center mx-auto mb-4">
+                        <Sparkles size={24} className="text-primary" />
+                      </div>
+                      <p className="text-lg font-serif mb-2">
+                        {activeFilter === 'all' ? 'No items yet' : `No ${activeFilter}s yet`}
+                      </p>
+                      <p className="text-sm font-mono text-secondary mb-4">
+                        {activeFilter === 'all'
+                          ? 'Check back soon or try a different filter.'
+                          : 'Try a different filter'}
+                      </p>
+                      {activeFilter !== 'all' && (
+                        <button
+                          onClick={() => setActiveFilter('all')}
+                          className="text-sm font-mono text-primary hover:underline uppercase tracking-wider"
+                        >
+                          View all content
+                        </button>
                       )}
-                  </motion.div>
+                    </>
+                  </div>
                 )}
 
                 {/* Bottom callout for unsubscribed users */}
@@ -1448,7 +1420,7 @@ export default function FeedPage() {
                             Want more?
                           </p>
                           <p className="text-sm text-secondary/70 mt-0.5">
-                            This is just a taste. Unlock your full personalized feed with AI-powered recommendations, free for 3 days.
+                            This is a taste. Unlock the full daily feed and let Trace learn your patterns for sharper picks.
                           </p>
                         </div>
                       </div>
@@ -1457,7 +1429,7 @@ export default function FeedPage() {
                         className="flex items-center gap-2 px-6 py-3 rounded-full bg-foreground text-background text-sm font-medium hover:bg-foreground/90 transition-colors shrink-0"
                       >
                         <Zap size={16} />
-                        Start Free Trial
+                        Unlock full feed
                       </Link>
                     </div>
                   </div>
@@ -1569,15 +1541,15 @@ export default function FeedPage() {
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
                   <Sparkles size={18} className="text-primary" />
                 </div>
-                <h3 className="text-sm font-medium mb-2">Unlock Your Feed</h3>
+                <h3 className="text-sm font-medium mb-2">Unlock the full feed</h3>
                 <p className="text-xs text-secondary/70 mb-4">
-                  Get personalized content curated daily for your interests.
+                  Daily picks tuned to your interests, with Trace learning every day.
                 </p>
                 <Link
                   href="/profile?tab=subscription"
                   className="block w-full px-3 py-2 bg-primary text-primary-foreground text-[10px] font-mono uppercase tracking-widest text-center hover:bg-primary/90 transition-colors"
                 >
-                  Subscribe
+                  Unlock full feed
                 </Link>
               </div>
             )}

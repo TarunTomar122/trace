@@ -15,7 +15,27 @@ type FeedItem = {
   };
 };
 
-const MAX_TOPICS = 50;
+type TopicLatestItem = {
+  title?: string;
+  url?: string;
+  thumbnail?: string | null;
+};
+
+type TopicLatest = {
+  blogs?: TopicLatestItem[];
+  discussions?: TopicLatestItem[];
+  videos?: TopicLatestItem[];
+  generated_at?: string;
+};
+
+type TopicDoc = {
+  id: string;
+  topic_id?: string;
+  display_name?: string;
+  latest?: TopicLatest;
+  updated_at?: string;
+};
+
 
 const pickItems = (
   items: FeedItem[],
@@ -42,38 +62,34 @@ export async function GET(request: NextRequest) {
     }
 
     const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.split('Bearer ')[1];
+      await adminAuth.verifyIdToken(token);
     }
-
-    const token = authHeader.split('Bearer ')[1];
-    await adminAuth.verifyIdToken(token);
 
     const { searchParams } = new URL(request.url);
     const limit = Math.min(
       parseInt(searchParams.get('limit') || '10', 10),
       50
     );
+    const topicsParam = searchParams.get('topics') || '';
+    const preferredTopics = topicsParam
+      .split(',')
+      .map(topic => topic.trim())
+      .filter(topic => topic.length > 0);
+    const defaultTopics = ['ai', 'design', 'productivity', 'startups', 'frontend'];
+    const topicIds = (preferredTopics.length > 0 ? preferredTopics : defaultTopics).slice(0, limit);
 
-    const topicsSnapshot = await adminFirestore
-      .collection('topics')
-      .limit(MAX_TOPICS)
-      .get();
-
-    if (topicsSnapshot.empty) {
-      return NextResponse.json({ items: [], count: 0, source: 'topics' });
-    }
-
-    const topics: any[] = topicsSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    topics.sort((a: any, b: any) => {
-      const aDate = a.updated_at || a.latest?.generated_at || '';
-      const bDate = b.updated_at || b.latest?.generated_at || '';
-      return String(bDate).localeCompare(String(aDate));
-    });
+    const topicRefs = topicIds.map((topicId) =>
+      adminFirestore!.collection('topics').doc(topicId)
+    );
+    const topicDocs = await adminFirestore!.getAll(...topicRefs);
+    const topics: TopicDoc[] = topicDocs
+      .filter((doc) => doc.exists)
+      .map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as Omit<TopicDoc, 'id'>),
+      }));
 
     const seenUrls = new Set<string>();
     const items: FeedItem[] = [];
@@ -84,7 +100,7 @@ export async function GET(request: NextRequest) {
       const topicId = topic.topic_id || topic.id;
       const displayName = topic.display_name || topicId;
 
-      const blogs = (latest.blogs || []).map((item: any, idx: number) => ({
+      const blogs: FeedItem[] = (latest.blogs || []).map((item, idx) => ({
         id: `${topicId}_blog_${idx}`,
         type: 'blog',
         title: item.title || '',
@@ -97,37 +113,7 @@ export async function GET(request: NextRequest) {
         },
       }));
 
-      const discussions = (latest.discussions || []).map(
-        (item: any, idx: number) => ({
-          id: `${topicId}_discussion_${idx}`,
-          type: 'discussion',
-          title: item.title || '',
-          description: '',
-          url: item.url || '',
-          tags: [topicId],
-          metadata: {
-            why_relevant: `Trending in ${displayName}`,
-            feed_category: 'sample',
-          },
-        })
-      );
-
-      const videos = (latest.videos || []).map((item: any, idx: number) => ({
-        id: `${topicId}_video_${idx}`,
-        type: 'video',
-        title: item.title || '',
-        description: '',
-        url: item.url || '',
-        thumbnail: item.thumbnail || null,
-        tags: [topicId],
-        metadata: {
-          why_relevant: `Trending in ${displayName}`,
-          feed_category: 'sample',
-        },
-      }));
-
-      const combined = [...blogs, ...discussions, ...videos];
-      const picked = pickItems(combined, 1, seenUrls);
+      const picked = pickItems(blogs, 1, seenUrls);
       items.push(...picked);
     }
 
@@ -136,10 +122,11 @@ export async function GET(request: NextRequest) {
       count: Math.min(items.length, limit),
       source: 'topics',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching sample feed:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: message },
       { status: 500 }
     );
   }

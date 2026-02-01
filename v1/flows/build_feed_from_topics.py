@@ -39,6 +39,45 @@ def _normalize_interest(interest: str) -> str:
             .replace(")", ""))
 
 
+def _title_matches_topic(title: str, topic_name: str) -> bool:
+    """Check if an article title is roughly related to the topic."""
+    if not title or not topic_name:
+        return False
+    
+    title_lower = title.lower()
+    topic_lower = topic_name.lower()
+    
+    # Split topic into keywords
+    topic_words = set(topic_lower.replace("-", " ").split())
+    # Remove common filler words
+    filler_words = {"the", "a", "an", "in", "on", "for", "to", "and", "or", "of", "with"}
+    topic_words = topic_words - filler_words
+    
+    # Check if any topic keyword appears in title
+    for word in topic_words:
+        if len(word) >= 3 and word in title_lower:
+            return True
+    
+    # Also check the full topic phrase
+    topic_phrase = topic_lower.replace("-", " ")
+    if topic_phrase in title_lower:
+        return True
+    
+    return False
+
+
+def _get_why_relevant(title: str, topic_name: str, topic_kind: str) -> str:
+    """Generate appropriate why_relevant text based on actual relevance."""
+    if _title_matches_topic(title, topic_name):
+        if topic_kind == "hobby":
+            return f"Matches your hobby in {topic_name}"
+        else:
+            return f"Matches your interest in {topic_name}"
+    else:
+        # Fallback for items that don't clearly match
+        return "Curated for you"
+
+
 def _get_today_ist_date() -> str:
     ist_tz = timezone(timedelta(hours=5, minutes=30))
     return datetime.now(ist_tz).strftime("%Y-%m-%d")
@@ -200,31 +239,33 @@ def build_feed_from_topics(
         picked_discussions = _pick_urls(discussions, 2, seen_urls, chosen_urls)
 
         for idx, item in enumerate(picked_blogs):
+            title = item.get("title", "")
             items.append({
                 "id": f"topic_{topic_id}_blog_{idx}_{date}",
                 "type": "blog",
-                "title": item.get("title", ""),
+                "title": title,
                 "description": "",
                 "url": item.get("url", ""),
                 "tags": [topic_id],
                 "source": "exa",
                 "metadata": {
-                    "why_relevant": f"Matches your interest in {interest}",
+                    "why_relevant": _get_why_relevant(title, interest, "interest"),
                     "feed_category": "topics",
                 },
             })
 
         for idx, item in enumerate(picked_discussions):
+            title = item.get("title", "")
             items.append({
                 "id": f"topic_{topic_id}_discussion_{idx}_{date}",
                 "type": "discussion",
-                "title": item.get("title", ""),
+                "title": title,
                 "description": "",
                 "url": item.get("url", ""),
                 "tags": [topic_id],
                 "source": "exa",
                 "metadata": {
-                    "why_relevant": f"Matches your interest in {interest}",
+                    "why_relevant": _get_why_relevant(title, interest, "interest"),
                     "feed_category": "topics",
                 },
             })
@@ -251,32 +292,34 @@ def build_feed_from_topics(
         picked_videos = _pick_urls(videos, 1, seen_urls, chosen_urls)
 
         for idx, item in enumerate(picked_blogs):
+            title = item.get("title", "")
             items.append({
                 "id": f"topic_{topic_id}_blog_{idx}_{date}",
                 "type": "blog",
-                "title": item.get("title", ""),
+                "title": title,
                 "description": "",
                 "url": item.get("url", ""),
                 "tags": [topic_id],
                 "source": "exa",
                 "metadata": {
-                    "why_relevant": f"Matches your hobby in {hobby}",
+                    "why_relevant": _get_why_relevant(title, hobby, "hobby"),
                     "feed_category": "topics",
                 },
             })
 
         for idx, item in enumerate(picked_videos):
+            title = item.get("title", "")
             items.append({
                 "id": f"topic_{topic_id}_video_{idx}_{date}",
                 "type": "video",
-                "title": item.get("title", ""),
+                "title": title,
                 "description": "",
                 "url": item.get("url", ""),
                 "thumbnail": item.get("thumbnail"),
                 "tags": [topic_id],
                 "source": "youtube",
                 "metadata": {
-                    "why_relevant": f"Matches your hobby in {hobby}",
+                    "why_relevant": _get_why_relevant(title, hobby, "hobby"),
                     "feed_category": "topics",
                 },
             })

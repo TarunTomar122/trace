@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  CreditCard, 
-  Calendar, 
-  CheckCircle2, 
-  AlertCircle, 
+import {
+  CreditCard,
+  Calendar,
+  CheckCircle2,
+  AlertCircle,
   XCircle,
   Loader2,
   Zap
@@ -49,14 +49,14 @@ export default function SubscriptionManager() {
     if (profile) {
       // Get subscription status from profile (handle undefined for existing users)
       const status = profile.subscriptionStatus || 'none';
-      
+
       // Debug log to help troubleshoot subscription issues
       console.log('[SubscriptionManager] Profile data:', {
         subscriptionStatus: status,
         subscriptionId: profile.subscriptionId,
         planId: profile.planId,
       });
-      
+
       // Check for abandoned checkout (older than 15 minutes)
       let showAbandonedWarning = false;
       if (status === 'none' && profile.lastCheckoutCreatedAt) {
@@ -66,11 +66,11 @@ export default function SubscriptionManager() {
           showAbandonedWarning = true;
         }
       }
-      
+
       if (showAbandonedWarning) {
         setError('💡 You started a checkout but didn\'t complete it. Ready to try again?');
       }
-      
+
       setSubscriptionStatus({
         subscriptionStatus: status,
         subscriptionId: profile.subscriptionId || null,
@@ -88,7 +88,7 @@ export default function SubscriptionManager() {
 
   const handleSubscribe = async () => {
     if (!user) return;
-    
+
     setIsCreatingCheckout(true);
     setError(null);
 
@@ -115,7 +115,7 @@ export default function SubscriptionManager() {
       }
 
       const data = await response.json();
-      
+
       // Redirect to Dodo Payments checkout
       window.location.href = data.checkoutUrl;
     } catch (err) {
@@ -127,12 +127,12 @@ export default function SubscriptionManager() {
 
   const handleCancelSubscription = async (immediate = false) => {
     if (!user) return;
-    
+
     if (!subscriptionStatus?.subscriptionId) {
       setError('Unable to cancel: subscription ID not found. Please try refreshing the page or contact support.');
       return;
     }
-    
+
     setIsCancelling(true);
     setError(null);
 
@@ -158,7 +158,7 @@ export default function SubscriptionManager() {
 
       const data = await response.json();
       alert(data.message);
-      
+
       // Refresh the page to update status
       window.location.reload();
     } catch (err) {
@@ -172,7 +172,7 @@ export default function SubscriptionManager() {
 
   const handleResumeSubscription = async () => {
     if (!user || !subscriptionStatus?.subscriptionId) return;
-    
+
     setIsResuming(true);
     setError(null);
 
@@ -195,7 +195,7 @@ export default function SubscriptionManager() {
 
       const data = await response.json();
       alert(data.message);
-      
+
       // Refresh the page to update status
       window.location.reload();
     } catch (err) {
@@ -296,7 +296,7 @@ export default function SubscriptionManager() {
                 </span>
               </div>
             )}
-            
+
             {status === 'active' && subscriptionStatus?.nextBillingDate && (
               <div className="flex items-center gap-3 text-sm">
                 <Calendar size={16} className="text-secondary" />
@@ -350,12 +350,6 @@ export default function SubscriptionManager() {
                 </li>
               </ul>
             </div>
-            
-            <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
-              <p className="text-sm text-foreground">
-                <span className="font-semibold">Try it free for 3 days.</span> Cancel anytime before your trial ends and you won&apos;t be charged.
-              </p>
-            </div>
           </div>
         )}
 
@@ -365,7 +359,7 @@ export default function SubscriptionManager() {
             <button
               onClick={handleSubscribe}
               disabled={isCreatingCheckout}
-              className="w-full bg-foreground text-background py-4 rounded-xl text-sm font-medium hover:bg-foreground/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full bg-foreground text-background py-3.5 rounded-xl text-sm font-medium hover:bg-foreground/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isCreatingCheckout ? (
                 <>
@@ -373,10 +367,15 @@ export default function SubscriptionManager() {
                   Creating Checkout...
                 </>
               ) : (
-                <>
-                  <Zap size={18} />
-                  Start 3-Day Free Trial
-                </>
+                <span className="flex flex-col items-center text-center gap-1">
+                  <span className="flex items-center gap-2 text-white text-sm">
+                    <Zap size={16} />
+                    Start 3-Day Free Trial
+                  </span>
+                  <span className="text-[10px] md:text-[11px] text-white/70 leading-tight max-w-64">
+                    Cancel anytime before your trial ends and you won&apos;t be charged.
+                  </span>
+                </span>
               )}
             </button>
           )}

@@ -31,8 +31,8 @@ function ProfileContent() {
   const searchParams = useSearchParams();
   const { user, loading, signOut, profile: authProfile } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [savingSection, setSavingSection] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState('');
   const [traceInsights, setTraceInsights] = useState<TraceInsights | null>(null);
   const [traceInsightsLoading, setTraceInsightsLoading] = useState(false);
@@ -151,7 +151,7 @@ function ProfileContent() {
       return;
     }
 
-    if (isEditing) return;
+    if (editingSection) return;
 
     if (authProfile && !profile) {
       applyProfile(authProfile);
@@ -165,7 +165,7 @@ function ProfileContent() {
         }
       });
     }
-  }, [user, loading, router, authProfile, profile, isEditing]);
+  }, [user, loading, router, authProfile, profile, editingSection]);
 
   useEffect(() => {
     if (!user || !profile?.onboarded) {
@@ -306,79 +306,59 @@ function ProfileContent() {
     setSourcePreferences(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleSave = async () => {
+  const handleSaveSection = async (section: string) => {
     if (!user || !profile) return;
 
-    setIsSaving(true);
+    setSavingSection(section);
     try {
-      const parsedExperienceYears = experienceYears.trim() ? Number(experienceYears) : null;
-      const parsedProjects = parseCommaSeparated(projectsText);
-      const parsedMotivationTriggers = parseCommaSeparated(motivationTriggersText);
-      const parsedContentLikes = parseCommaSeparated(contentLikesText);
-      const parsedContentDislikes = parseCommaSeparated(contentDislikesText);
-      const parsedFavoriteSources = parseCommaSeparated(favoriteSourcesText);
-      const parsedPersonalityTraits = parseCommaSeparated(personalityTraitsText);
-      const parsedPetPeeves = parseCommaSeparated(petPeevesText);
-      const parsedHobbies = parseCommaSeparated(hobbiesText, 3);
-      const parsedSkills = parseCommaSeparated(skillsText);
-      const parsedDislikedTopics = parseCommaSeparated(dislikedTopicsText);
+      let profileUpdate: Record<string, unknown> = {};
+      let localProfileUpdate: Partial<UserProfile> = {};
 
-      // Helper to remove undefined values from an object
-      const removeUndefined = <T extends Record<string, unknown>>(obj: T): Partial<T> => (
-        Object.fromEntries(
-          Object.entries(obj).filter(([, v]) => v !== undefined)
-        ) as Partial<T>
-      );
-
-      const normalizedInterests = selectedInterests.map(interest =>
-        interest.startsWith('custom-') ? interest.replace('custom-', '') : interest
-      );
-      const profileUpdate = {
-        name,
-        role,
-        ...(company && { company }),
-        ...(location && { location }),
-        experienceYears: parsedExperienceYears !== null && !Number.isNaN(parsedExperienceYears) ? parsedExperienceYears : null,
-        currentWork: removeUndefined({
-          project: currentWorkProject || undefined,
-          focus: currentWorkFocus || undefined,
-        }),
-        projects: parsedProjects,
-        goals: removeUndefined({
-          shortTerm: goalsShortTerm || undefined,
-          longTerm: goalsLongTerm || undefined,
-        }),
-        ...(learningStyle && { learningStyle }),
-        ...(attentionConstraints && { attentionConstraints }),
-        motivationTriggers: parsedMotivationTriggers,
-        interests: normalizedInterests,
-        hobbies: parsedHobbies,
-        skills: parsedSkills,
-        dislikedTopics: parsedDislikedTopics,
-        sourcePreferences,
-        contentDepth,
-        contentPreferences: {
-          likes: parsedContentLikes,
-          dislikes: parsedContentDislikes,
-        },
-        favoriteSources: parsedFavoriteSources,
-        personalityTraits: parsedPersonalityTraits,
-        petPeeves: parsedPetPeeves,
-        newsletterOptIn,
-      };
+      switch (section) {
+        case 'interests': {
+          const normalizedInterests = selectedInterests.map(interest =>
+            interest.startsWith('custom-') ? interest.replace('custom-', '') : interest
+          );
+          profileUpdate = { interests: normalizedInterests };
+          localProfileUpdate = { interests: normalizedInterests };
+          break;
+        }
+        case 'hobbies': {
+          const parsedHobbies = parseCommaSeparated(hobbiesText, 3);
+          profileUpdate = { hobbies: parsedHobbies };
+          localProfileUpdate = { hobbies: parsedHobbies };
+          break;
+        }
+        case 'skills': {
+          const parsedSkills = parseCommaSeparated(skillsText);
+          profileUpdate = { skills: parsedSkills };
+          localProfileUpdate = { skills: parsedSkills };
+          break;
+        }
+        case 'goals': {
+          profileUpdate = { goals: { shortTerm: goalsShortTerm || undefined, longTerm: goalsLongTerm || undefined } };
+          localProfileUpdate = { goals: { shortTerm: goalsShortTerm || undefined, longTerm: goalsLongTerm || undefined } };
+          break;
+        }
+        case 'contentPreferences': {
+          profileUpdate = { sourcePreferences, contentDepth };
+          localProfileUpdate = { sourcePreferences, contentDepth };
+          break;
+        }
+        case 'newsletter': {
+          profileUpdate = { newsletterOptIn };
+          localProfileUpdate = { newsletterOptIn };
+          break;
+        }
+        default:
+          return;
+      }
 
       await updateUserProfile(user.uid, profileUpdate);
 
-      const normalizeList = (items: string[]) => {
-        return items
-          .map(item => item.trim().toLowerCase())
-          .filter(item => item.length > 0)
-          .sort()
-          .join('|');
-      };
-
+      // Trigger feed refresh if onboarded
       const isOnboarded = Boolean(profile.onboarded);
-      if (isOnboarded) {
+      if (isOnboarded && ['interests', 'hobbies', 'skills', 'goals', 'contentPreferences'].includes(section)) {
         try {
           await fetch('/api/onboard', {
             method: 'POST',
@@ -390,49 +370,44 @@ function ProfileContent() {
         }
       }
 
-      setProfile({
-        ...profile,
-        name,
-        role,
-        company: company || undefined,
-        location: location || undefined,
-        experienceYears: parsedExperienceYears !== null && !Number.isNaN(parsedExperienceYears) ? parsedExperienceYears : undefined,
-        currentWork: {
-          project: currentWorkProject || undefined,
-          focus: currentWorkFocus || undefined,
-        },
-        projects: parsedProjects,
-        goals: {
-          shortTerm: goalsShortTerm || undefined,
-          longTerm: goalsLongTerm || undefined,
-        },
-        learningStyle: learningStyle || undefined,
-        attentionConstraints: attentionConstraints || undefined,
-        motivationTriggers: parsedMotivationTriggers,
-        interests: normalizedInterests,
-        hobbies: parsedHobbies,
-        skills: parsedSkills,
-        dislikedTopics: parsedDislikedTopics,
-        sourcePreferences,
-        contentDepth,
-        contentPreferences: {
-          likes: parsedContentLikes,
-          dislikes: parsedContentDislikes,
-        },
-        favoriteSources: parsedFavoriteSources,
-        personalityTraits: parsedPersonalityTraits,
-        petPeeves: parsedPetPeeves,
-      });
-
-      setIsEditing(false);
-      setSaveMessage('Changes saved!');
-      setTimeout(() => setSaveMessage(''), 3000);
+      setProfile({ ...profile, ...localProfileUpdate });
+      setEditingSection(null);
+      setSaveMessage('Saved!');
+      setTimeout(() => setSaveMessage(''), 2000);
     } catch (error) {
-      console.error('Error saving profile:', error);
-      setSaveMessage('Error saving changes');
+      console.error('Error saving section:', error);
+      setSaveMessage('Error saving');
     } finally {
-      setIsSaving(false);
+      setSavingSection(null);
     }
+  };
+
+  const cancelEditSection = (section: string) => {
+    // Reset section values to profile values
+    if (profile) {
+      switch (section) {
+        case 'interests':
+          setSelectedInterests((profile.interests || []).map(i => i.startsWith('custom-') ? i.replace('custom-', '') : i).slice(0, 8));
+          break;
+        case 'hobbies':
+          setHobbiesText(profile.hobbies?.join(', ') || '');
+          break;
+        case 'skills':
+          setSkillsText(profile.skills?.join(', ') || '');
+          break;
+        case 'goals':
+          setGoalsShortTerm(profile.goals?.shortTerm || '');
+          break;
+        case 'contentPreferences':
+          if (profile.sourcePreferences) setSourcePreferences(profile.sourcePreferences);
+          setContentDepth(profile.contentDepth);
+          break;
+        case 'newsletter':
+          setNewsletterOptIn(profile.newsletterOptIn !== false);
+          break;
+      }
+    }
+    setEditingSection(null);
   };
 
   const handleSignOut = async () => {
@@ -466,10 +441,10 @@ function ProfileContent() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    Finish setting up your profile
+                    Make your feed feel personal
                   </p>
                   <p className="text-xs text-secondary/70 mt-0.5">
-                    Complete onboarding to get a personalized feed curated just for your interests
+                    Most early users say picking interests makes the feed feel 2–3x more relevant
                   </p>
                 </div>
               </div>
@@ -478,7 +453,7 @@ function ProfileContent() {
                 className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-foreground text-background text-xs font-medium hover:bg-foreground/90 transition-colors shrink-0"
               >
                 <Sparkles size={14} />
-                Complete Setup
+                Personalize my feed
               </Link>
             </div>
           </div>
@@ -578,43 +553,9 @@ function ProfileContent() {
                 </section>
               )}
 
-              {/* Edit Button - only show for onboarded users */}
-              {profile?.onboarded && (
-                <div className="flex justify-end">
-                  {!isEditing ? (
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="px-5 py-2.5 rounded-full border border-gray-200 text-sm font-medium text-secondary hover:border-foreground hover:text-foreground transition-all"
-                    >
-                      Edit Profile
-                    </button>
-                  ) : (
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => setIsEditing(false)}
-                        className="px-5 py-2.5 rounded-full border border-gray-200 text-sm font-medium text-secondary hover:border-red-300 hover:text-red-500 transition-all"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        className="px-5 py-2.5 rounded-full bg-foreground text-background text-sm font-medium flex items-center gap-2 hover:bg-foreground/90 transition-all"
-                      >
-                        {isSaving ? (
-                          <div className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <Save size={14} />
-                        )}
-                        Save
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Basic Info */}
-              <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
+              {/* <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
                 <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6">
                   Basic Information
                 </h2>
@@ -644,18 +585,33 @@ function ProfileContent() {
                     )}
                   </div>
                 </div>
-              </section>
+              </section> */}
 
               {/* Interests */}
               <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
-                <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6">
-                  Interests ({selectedInterests.length}/8)
-                </h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
+                    Interests ({selectedInterests.length}/8)
+                  </h2>
+                  {profile?.onboarded && (
+                    editingSection === 'interests' ? (
+                      <div className="flex gap-2">
+                        <button onClick={() => cancelEditSection('interests')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-red-500 transition-colors">Cancel</button>
+                        <button onClick={() => handleSaveSection('interests')} disabled={savingSection === 'interests'} className="px-3 py-1.5 rounded-lg bg-foreground text-background text-xs font-medium flex items-center gap-1.5 hover:bg-foreground/90 transition-colors disabled:opacity-50">
+                          {savingSection === 'interests' ? <div className="w-3 h-3 border-2 border-background border-t-transparent rounded-full animate-spin" /> : <Check size={12} />}
+                          Save
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setEditingSection('interests')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-foreground hover:bg-gray-100 transition-colors">Edit</button>
+                    )
+                  )}
+                </div>
 
                 <div className="flex flex-wrap gap-2">
                   {INTERESTS.map((interest) => {
                     const isSelected = selectedInterests.includes(interest.id);
-                    return isEditing ? (
+                    return editingSection === 'interests' ? (
                       <button key={interest.id} onClick={() => toggleInterest(interest.id)} className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${isSelected ? 'bg-foreground text-background' : 'bg-gray-100 text-secondary hover:bg-gray-200'}`}>
                         <span>{interest.label}</span>
                         {isSelected && <Check size={14} />}
@@ -668,7 +624,7 @@ function ProfileContent() {
                   })}
 
                   {selectedInterests.filter(i => i.startsWith('custom-') || !INTERESTS.some(interest => interest.id === i)).map(customId => (
-                    isEditing ? (
+                    editingSection === 'interests' ? (
                       <button key={customId} onClick={() => toggleInterest(customId)} className="px-4 py-2.5 rounded-full bg-foreground text-background text-sm font-medium transition-all flex items-center gap-2">
                         <span>{customId.startsWith('custom-') ? customId.replace('custom-', '').replace(/-/g, ' ') : customId}</span>
                         <X size={14} />
@@ -680,7 +636,7 @@ function ProfileContent() {
                     )
                   ))}
 
-                  {isEditing && (
+                  {editingSection === 'interests' && (
                     !showCustomInput ? (
                       <button onClick={() => setShowCustomInput(true)} className="px-4 py-2.5 rounded-full border-2 border-dashed border-gray-200 hover:border-gray-300 text-sm font-medium transition-all flex items-center gap-2 text-secondary">
                         <Plus size={14} />
@@ -699,12 +655,27 @@ function ProfileContent() {
 
               {/* Hobbies */}
               <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
-                <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6">
-                  Hobbies
-                </h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
+                    Hobbies
+                  </h2>
+                  {profile?.onboarded && (
+                    editingSection === 'hobbies' ? (
+                      <div className="flex gap-2">
+                        <button onClick={() => cancelEditSection('hobbies')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-red-500 transition-colors">Cancel</button>
+                        <button onClick={() => handleSaveSection('hobbies')} disabled={savingSection === 'hobbies'} className="px-3 py-1.5 rounded-lg bg-foreground text-background text-xs font-medium flex items-center gap-1.5 hover:bg-foreground/90 transition-colors disabled:opacity-50">
+                          {savingSection === 'hobbies' ? <div className="w-3 h-3 border-2 border-background border-t-transparent rounded-full animate-spin" /> : <Check size={12} />}
+                          Save
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setEditingSection('hobbies')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-foreground hover:bg-gray-100 transition-colors">Edit</button>
+                    )
+                  )}
+                </div>
 
                 <div>
-                  {isEditing ? (
+                  {editingSection === 'hobbies' ? (
                     <>
                       <label className="block text-sm font-medium text-secondary mb-2">
                         Things you enjoy outside of work
@@ -749,12 +720,27 @@ function ProfileContent() {
 
               {/* Skills */}
               <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
-                <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6">
-                  Skills
-                </h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
+                    Skills
+                  </h2>
+                  {profile?.onboarded && (
+                    editingSection === 'skills' ? (
+                      <div className="flex gap-2">
+                        <button onClick={() => cancelEditSection('skills')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-red-500 transition-colors">Cancel</button>
+                        <button onClick={() => handleSaveSection('skills')} disabled={savingSection === 'skills'} className="px-3 py-1.5 rounded-lg bg-foreground text-background text-xs font-medium flex items-center gap-1.5 hover:bg-foreground/90 transition-colors disabled:opacity-50">
+                          {savingSection === 'skills' ? <div className="w-3 h-3 border-2 border-background border-t-transparent rounded-full animate-spin" /> : <Check size={12} />}
+                          Save
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setEditingSection('skills')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-foreground hover:bg-gray-100 transition-colors">Edit</button>
+                    )
+                  )}
+                </div>
 
                 <div>
-                  {isEditing ? (
+                  {editingSection === 'skills' ? (
                     <>
                       <label className="block text-sm font-medium text-secondary mb-2">
                         Your skills & expertise
@@ -775,12 +761,27 @@ function ProfileContent() {
 
               {/* Short-term Goals */}
               <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
-                <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6">
-                  Short-term Goals
-                </h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
+                    Short-term Goals
+                  </h2>
+                  {profile?.onboarded && (
+                    editingSection === 'goals' ? (
+                      <div className="flex gap-2">
+                        <button onClick={() => cancelEditSection('goals')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-red-500 transition-colors">Cancel</button>
+                        <button onClick={() => handleSaveSection('goals')} disabled={savingSection === 'goals'} className="px-3 py-1.5 rounded-lg bg-foreground text-background text-xs font-medium flex items-center gap-1.5 hover:bg-foreground/90 transition-colors disabled:opacity-50">
+                          {savingSection === 'goals' ? <div className="w-3 h-3 border-2 border-background border-t-transparent rounded-full animate-spin" /> : <Check size={12} />}
+                          Save
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setEditingSection('goals')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-foreground hover:bg-gray-100 transition-colors">Edit</button>
+                    )
+                  )}
+                </div>
 
                 <div>
-                  {isEditing ? (
+                  {editingSection === 'goals' ? (
                     <>
                       <label className="block text-sm font-medium text-secondary mb-2">
                         What do you want to achieve soon?
@@ -801,9 +802,24 @@ function ProfileContent() {
 
               {/* Content Mix - Source Preferences */}
               <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
-                <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6">
-                  Content Source Preferences
-                </h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
+                    Content Source Preferences
+                  </h2>
+                  {profile?.onboarded && (
+                    editingSection === 'contentPreferences' ? (
+                      <div className="flex gap-2">
+                        <button onClick={() => cancelEditSection('contentPreferences')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-red-500 transition-colors">Cancel</button>
+                        <button onClick={() => handleSaveSection('contentPreferences')} disabled={savingSection === 'contentPreferences'} className="px-3 py-1.5 rounded-lg bg-foreground text-background text-xs font-medium flex items-center gap-1.5 hover:bg-foreground/90 transition-colors disabled:opacity-50">
+                          {savingSection === 'contentPreferences' ? <div className="w-3 h-3 border-2 border-background border-t-transparent rounded-full animate-spin" /> : <Check size={12} />}
+                          Save
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setEditingSection('contentPreferences')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-foreground hover:bg-gray-100 transition-colors">Edit</button>
+                    )
+                  )}
+                </div>
 
                 <div className="space-y-6">
                   {/* Sliders */}
@@ -820,7 +836,7 @@ function ProfileContent() {
                         </label>
                         <span className="text-sm font-semibold text-foreground">{sourcePreferences[key]}</span>
                       </div>
-                      {isEditing ? (
+                      {editingSection === 'contentPreferences' ? (
                         <input
                           type="range"
                           min="0"
@@ -845,7 +861,7 @@ function ProfileContent() {
                     <label className="block text-sm font-medium text-secondary mb-4">
                       Content Depth <span className="text-secondary/50 text-xs font-normal ml-2">(optional)</span>
                     </label>
-                    {isEditing ? (
+                    {editingSection === 'contentPreferences' ? (
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         {[
                           { id: 'quick', label: '⚡ Quick Reads' },
@@ -893,17 +909,26 @@ function ProfileContent() {
                         </p>
                       </div>
                       <button
-                        onClick={() => {
-                          if (isEditing) {
-                            setNewsletterOptIn(!newsletterOptIn);
+                        onClick={async () => {
+                          const newValue = !newsletterOptIn;
+                          setNewsletterOptIn(newValue);
+                          // Auto-save newsletter preference
+                          if (user) {
+                            try {
+                              await updateUserProfile(user.uid, { newsletterOptIn: newValue });
+                              setSaveMessage('Saved!');
+                              setTimeout(() => setSaveMessage(''), 2000);
+                            } catch (error) {
+                              console.error('Error saving newsletter preference:', error);
+                              setNewsletterOptIn(!newValue); // Revert on error
+                            }
                           }
                         }}
-                        disabled={!isEditing}
-                        className={`relative w-12 h-6 rounded-full transition-colors ${
+                        className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer ${
                           newsletterOptIn
                             ? 'bg-foreground'
                             : 'bg-gray-200'
-                        } ${!isEditing ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+                        }`}
                       >
                         <span
                           className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${

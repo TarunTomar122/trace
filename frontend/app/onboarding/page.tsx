@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, ChevronLeft, Check, MessageCircle, Sparkles, HelpCircle, Plus, X } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, MessageCircle, Sparkles, HelpCircle, Plus, X, Lightbulb, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLES, INTERESTS, completeOnboarding, getUserProfile, addChatMessage } from '@/lib/firestore';
 import { isAlphaMode } from '@/lib/alpha';
@@ -37,6 +37,112 @@ const GOAL_SUGGESTIONS = [
   { id: 'scale-a-startup', label: 'Scale a Startup' },
   { id: 'build-an-online-brand', label: 'Build an Online Brand' },
   { id: 'get-promoted-at-work', label: 'Get Promoted at Work' },
+];
+
+// Sample feed items per interest (for real-time preview)
+const INTEREST_FEED_SAMPLES: Record<string, { title: string; category: string }[]> = {
+  'ai-tools': [
+    { title: 'I Spent $28K Testing Every AI Tool for Product Managers', category: 'AI Tools' },
+    { title: 'The Best AI Coding Assistants in 2026 Compared', category: 'AI Tools' },
+    { title: 'How to Build Your Own AI Agent in 30 Minutes', category: 'AI Tools' },
+  ],
+  'frontend-performance': [
+    { title: 'Core Web Vitals: The Ultimate 2026 Optimization Guide', category: 'Frontend' },
+    { title: 'Why Your React App is Slow (And How to Fix It)', category: 'Frontend' },
+    { title: 'Edge Computing Changed How I Think About Performance', category: 'Frontend' },
+  ],
+  'ux-design': [
+    { title: 'Top 15 AI Animation Tools for Creators & Professionals', category: 'Design' },
+    { title: 'The Psychology Behind Addictive Product Design', category: 'Design' },
+    { title: 'Figma Tips That Will 10x Your Design Workflow', category: 'Design' },
+  ],
+  'finance': [
+    { title: 'The Complete Guide to Angel Investing in 2026', category: 'Finance' },
+    { title: 'How I Built a $10K/month Dividend Portfolio', category: 'Finance' },
+    { title: 'Crypto Market Analysis: What Smart Money is Buying', category: 'Finance' },
+  ],
+  'writing': [
+    { title: 'How I Grew My Newsletter to 50K Subscribers', category: 'Writing' },
+    { title: 'The Science of Writing Headlines That Convert', category: 'Writing' },
+    { title: 'Why Every Founder Should Write in Public', category: 'Writing' },
+  ],
+  'startups': [
+    { title: 'Five Growth Strategies Every Early-Stage Startup Should Explore', category: 'Startups' },
+    { title: 'How We Got Our First 1000 Users Without Paid Ads', category: 'Startups' },
+    { title: 'The Fundraising Playbook That Got Us $5M Seed', category: 'Startups' },
+  ],
+  'indie-dev': [
+    { title: 'From Side Project to $20K MRR: A Solo Dev Journey', category: 'Indie Dev' },
+    { title: 'The Tech Stack I Use to Ship Fast as a Solo Founder', category: 'Indie Dev' },
+    { title: 'Why I Quit My FAANG Job to Build Indie Products', category: 'Indie Dev' },
+  ],
+  'productivity': [
+    { title: '9 Lesser-Known AI Productivity Tools You Wish You Knew', category: 'Productivity' },
+    { title: 'The Morning Routine That Doubled My Output', category: 'Productivity' },
+    { title: 'How Top Performers Structure Their Deep Work Sessions', category: 'Productivity' },
+  ],
+  'ux-research': [
+    { title: 'User Interview Techniques That Reveal Real Insights', category: 'UX Research' },
+    { title: 'How to Run Effective Usability Tests on a Budget', category: 'UX Research' },
+    { title: 'Quantitative vs Qualitative: When to Use Which', category: 'UX Research' },
+  ],
+  'gaming': [
+    { title: 'The Economics of Free-to-Play Game Design', category: 'Gaming' },
+    { title: 'How Indie Games Are Disrupting AAA Studios', category: 'Gaming' },
+    { title: 'Building Immersive Worlds: Lessons from Top Game Designers', category: 'Gaming' },
+  ],
+};
+
+// Sample feed items per hobby (for real-time preview)
+const HOBBY_FEED_SAMPLES: Record<string, { title: string; category: string }[]> = {
+  'running': [
+    { title: 'How I Went from Couch to Marathon in 12 Months', category: 'Running' },
+    { title: 'The Science of Zone 2 Training for Endurance', category: 'Running' },
+    { title: 'Best Running Apps and Gear for 2026', category: 'Running' },
+  ],
+  'cycling': [
+    { title: 'Indoor vs Outdoor Cycling: What the Data Says', category: 'Cycling' },
+    { title: 'How Pro Cyclists Train in the Off-Season', category: 'Cycling' },
+    { title: 'The Best Cycling Routes You Haven\'t Discovered Yet', category: 'Cycling' },
+  ],
+  'pottery': [
+    { title: 'From Beginner to Selling on Etsy: A Potter\'s Journey', category: 'Pottery' },
+    { title: 'The Meditative Practice of Throwing Clay', category: 'Pottery' },
+    { title: 'Glazing Techniques That Transform Your Work', category: 'Pottery' },
+  ],
+  'sketching': [
+    { title: 'Daily Sketching Habits of Professional Artists', category: 'Sketching' },
+    { title: 'How to Develop Your Unique Drawing Style', category: 'Sketching' },
+    { title: 'iPad vs Traditional: Which is Better for Sketching?', category: 'Sketching' },
+  ],
+  'photography': [
+    { title: 'Street Photography Tips from National Geographic Shooters', category: 'Photography' },
+    { title: 'The Art of Editing: Lightroom Presets That Actually Work', category: 'Photography' },
+    { title: 'How to Build a Photography Portfolio That Gets Noticed', category: 'Photography' },
+  ],
+  'music': [
+    { title: 'Home Studio Setup for Under $500', category: 'Music' },
+    { title: 'How Top Producers Find Their Sound', category: 'Music' },
+    { title: 'The Psychology of Why Certain Songs Get Stuck in Your Head', category: 'Music' },
+  ],
+  'reading': [
+    { title: 'How to Read 50 Books a Year Without Burning Out', category: 'Reading' },
+    { title: 'The Best Non-Fiction Books CEOs Are Reading in 2026', category: 'Reading' },
+    { title: 'Building a Second Brain Through Strategic Reading', category: 'Reading' },
+  ],
+  'fitness': [
+    { title: 'The Minimum Effective Dose for Strength Training', category: 'Fitness' },
+    { title: 'How Sleep Affects Your Gains More Than You Think', category: 'Fitness' },
+    { title: 'Nutrition Myths Debunked by Sports Scientists', category: 'Fitness' },
+  ],
+};
+
+// Default items shown when no interests selected
+const DEFAULT_FEED_SAMPLES = [
+  { title: 'How AI is Transforming Every Industry in 2026', category: 'AI' },
+  { title: 'The Future of Remote Work: What Top Companies Are Doing', category: 'Work' },
+  { title: 'Building Products People Actually Want to Use', category: 'Product' },
+  { title: 'Why the Best Ideas Come from Diverse Teams', category: 'Culture' },
 ];
 
 // Tooltip component - Desktop: hover popup, Mobile: inline accordion
@@ -98,7 +204,7 @@ function HelpTooltip({ content }: { content: string }) {
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, loading, refreshProfile } = useAuth();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Form data - Step 1: Basics
@@ -182,6 +288,45 @@ export default function OnboardingPage() {
       });
     }
   }, [user, loading, router]);
+
+  // Compute preview feed items based on selected interests and hobbies
+  const previewItems = useMemo(() => {
+    if (selectedInterests.length === 0 && selectedHobbies.length === 0) {
+      return DEFAULT_FEED_SAMPLES;
+    }
+    
+    const items: { title: string; category: string }[] = [];
+    let itemIndex = 0;
+    
+    // Interleave interests and hobbies for variety
+    while (items.length < 4 && itemIndex < 12) {
+      // Add from interests
+      for (const interest of selectedInterests) {
+        if (items.length >= 4) break;
+        const interestItems = INTEREST_FEED_SAMPLES[interest];
+        if (interestItems && interestItems[itemIndex % interestItems.length]) {
+          const item = interestItems[itemIndex % interestItems.length];
+          if (!items.some(i => i.title === item.title)) {
+            items.push(item);
+          }
+        }
+      }
+      // Add from hobbies
+      for (const hobby of selectedHobbies) {
+        if (items.length >= 4) break;
+        const hobbyItems = HOBBY_FEED_SAMPLES[hobby];
+        if (hobbyItems && hobbyItems[itemIndex % hobbyItems.length]) {
+          const item = hobbyItems[itemIndex % hobbyItems.length];
+          if (!items.some(i => i.title === item.title)) {
+            items.push(item);
+          }
+        }
+      }
+      itemIndex++;
+    }
+    
+    return items.length > 0 ? items : DEFAULT_FEED_SAMPLES;
+  }, [selectedInterests, selectedHobbies]);
 
   // Parse comma-separated strings into arrays
   const parseCommaSeparated = (text: string, maxItems?: number): string[] => {
@@ -338,9 +483,9 @@ export default function OnboardingPage() {
 
   // Validation
   const canProceed = () => {
-    if (step === 1) return name.trim() && role;
-    if (step === 2) return selectedInterests.length >= 4;
-    if (step === 3) return selectedSkills.length >= 1;
+    if (step === 0) return selectedInterests.length >= 4;
+    if (step === 1) return selectedSkills.length >= 1;
+    if (step === 2) return name.trim() && role;
     return true;
   };
 
@@ -458,15 +603,23 @@ export default function OnboardingPage() {
   const nextStep = () => {
     if (!canProceed()) return;
     
-    if (step < 3) {
+    if (step < 2) {
       setStep(step + 1);
-    } else if (step === 3) {
+    } else if (step === 2) {
       handleSubmit();
     }
   };
 
+  const startOnboarding = () => {
+    setStep(1);
+  };
+
+  const skipOnboarding = () => {
+    router.push('/feed');
+  };
+
   const prevStep = () => {
-    if (step > 1) setStep(step - 1);
+    if (step > 0) setStep(step - 1);
   };
 
   if (loading || !user) {
@@ -478,19 +631,17 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Progress bar */}
+    <div className="min-h-screen bg-background text-foreground onboarding-page">
       <div className="fixed top-0 left-0 right-0 h-1.5 bg-gray-100 z-50">
         <motion.div 
           className="h-full bg-foreground rounded-r-full"
-          initial={{ width: '33.33%' }}
-          animate={{ width: `${(step / 3) * 100}%` }}
+          initial={{ width: '33%' }}
+          animate={{ width: `${((step + 1) / 3) * 100}%` }}
           transition={{ duration: 0.3 }}
         />
       </div>
 
-      <div className="container mx-auto px-4 max-w-2xl py-12 md:py-20">
-        {/* Header */}
+      <div className="container mx-auto px-4 max-w-5xl py-12 md:py-20">
         <div className="text-center mb-10">
           <div className="text-lg text-foreground uppercase flex items-center justify-center gap-3 tracking-[0.15em] font-semibold mb-6">
             <img 
@@ -501,7 +652,7 @@ export default function OnboardingPage() {
             TRACE
           </div>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-sm text-secondary mb-3">
-            Step {step} of 3
+            Step {step + 1} of 3
           </div>
           <p className="text-sm text-secondary/70 mt-3 max-w-md mx-auto">
             🔒 Your data powers your personalized feed. Read our{' '}
@@ -512,10 +663,195 @@ export default function OnboardingPage() {
         </div>
 
         <AnimatePresence mode="wait">
-          {/* Step 1: The Basics */}
-          {step === 1 && (
+          {step === 0 && (
             <motion.div
-              key="step1"
+              key="step0"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-8"
+            >
+              <div className="grid gap-10 md:grid-cols-[1.1fr_0.9fr] items-start">
+                <div className="space-y-6">
+                 
+                  <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground/80 mb-2">
+                      What are you interested in? <span className="text-primary">(minimum 4)</span>
+                    </label>
+                    <p className="text-sm text-secondary/70 mb-4">
+                      These topics shape your daily feed • {selectedInterests.length}/8 selected
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {INTERESTS.map((interest) => {
+                        const isSelected = selectedInterests.includes(interest.id);
+                        return (
+                          <button
+                            key={interest.id}
+                            onClick={() => toggleInterest(interest.id)}
+                            className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 cursor-pointer ${
+                              isSelected
+                                ? 'bg-foreground text-background'
+                                : 'bg-gray-100 text-secondary hover:bg-gray-200'
+                            }`}
+                          >
+                            <span>{interest.label}</span>
+                            {isSelected && <Check size={14} />}
+                          </button>
+                        );
+                      })}
+
+                      {selectedInterests
+                        .filter(id => !INTERESTS.some(i => i.id === id))
+                        .map(customId => (
+                          <button
+                            key={customId}
+                            onClick={() => toggleInterest(customId)}
+                            className="px-4 py-2.5 rounded-full bg-foreground text-background text-sm font-medium transition-all flex items-center gap-2 cursor-pointer"
+                          >
+                            <span>{customId.replace(/-/g, ' ')}</span>
+                            <X size={14} />
+                          </button>
+                        ))}
+
+                      {!showCustomInterestInput ? (
+                        <button
+                          onClick={() => setShowCustomInterestInput(true)}
+                          className="px-4 py-2.5 rounded-full border-2 border-dashed border-gray-200 hover:border-gray-300 text-sm font-medium transition-all flex items-center gap-2 text-secondary cursor-pointer"
+                        >
+                          <Plus size={14} />
+                          Add custom
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={customInterest}
+                            onChange={(e) => setCustomInterest(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && addCustomInterest()}
+                            placeholder="Your interest"
+                            autoFocus
+                            className="px-4 py-2.5 rounded-full border-2 border-foreground bg-transparent text-sm font-medium outline-none w-36"
+                          />
+                          <button onClick={addCustomInterest} className="p-2.5 rounded-full bg-foreground text-background cursor-pointer">
+                            <Check size={14} />
+                          </button>
+                          <button onClick={() => { setShowCustomInterestInput(false); setCustomInterest(''); }} className="p-2.5 rounded-full bg-gray-100 cursor-pointer">
+                            <X size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-foreground/80 mb-2">
+                      Hobbies <span className="text-secondary/50 text-xs ml-2">(optional, max 3)</span>
+                    </label>
+                    <p className="text-sm text-secondary/70 mb-4">
+                      Adds a personal layer to your feed • {selectedHobbies.length}/3 selected
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {HOBBY_SUGGESTIONS.map((hobby) => {
+                        const isSelected = selectedHobbies.includes(hobby.id);
+                        return (
+                          <button
+                            key={hobby.id}
+                            onClick={() => toggleHobby(hobby.id)}
+                            className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 cursor-pointer ${
+                              isSelected
+                                ? 'bg-foreground text-background'
+                                : 'bg-gray-100 text-secondary hover:bg-gray-200'
+                            }`}
+                          >
+                            <span>{hobby.label}</span>
+                            {isSelected && <Check size={14} />}
+                          </button>
+                        );
+                      })}
+
+                      {selectedHobbies
+                        .filter(id => !HOBBY_SUGGESTIONS.some(h => h.id === id))
+                        .map(customId => (
+                          <button
+                            key={customId}
+                            onClick={() => toggleHobby(customId)}
+                            className="px-4 py-2.5 rounded-full bg-foreground text-background text-sm font-medium transition-all flex items-center gap-2 cursor-pointer"
+                          >
+                            <span>{customId.replace(/-/g, ' ')}</span>
+                            <X size={14} />
+                          </button>
+                        ))}
+
+                      {!showCustomHobbyInput ? (
+                        <button
+                          onClick={() => setShowCustomHobbyInput(true)}
+                          className="px-4 py-2.5 rounded-full border-2 border-dashed border-gray-200 hover:border-gray-300 text-sm font-medium transition-all flex items-center gap-2 text-secondary cursor-pointer"
+                        >
+                          <Plus size={14} />
+                          Add custom
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={customHobby}
+                            onChange={(e) => setCustomHobby(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && addCustomHobby()}
+                            placeholder="Your hobby"
+                            autoFocus
+                            className="px-4 py-2.5 rounded-full border-2 border-foreground bg-transparent text-sm font-medium outline-none w-36"
+                          />
+                          <button onClick={addCustomHobby} className="p-2.5 rounded-full bg-foreground text-background cursor-pointer">
+                            <Check size={14} />
+                          </button>
+                          <button onClick={() => { setShowCustomHobbyInput(false); setCustomHobby(''); }} className="p-2.5 rounded-full bg-gray-100 cursor-pointer">
+                            <X size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                </div>
+
+                <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-foreground">Your feed preview</p>
+                  <span className="text-xs text-secondary/60">{(selectedInterests.length > 0 || selectedHobbies.length > 0) ? 'Based on your picks' : 'Sample topics'}</span>
+                </div>
+                <div className="divide-y divide-gray-200 rounded-2xl border border-gray-200 bg-white overflow-hidden">
+                  <AnimatePresence mode="popLayout">
+                    {previewItems.map((item, index) => (
+                      <motion.div
+                        key={item.title}
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        transition={{ duration: 0.2, delay: index * 0.05 }}
+                        className="p-4"
+                      >
+                        <p className="text-sm font-medium text-foreground mb-1.5">{item.title}</p>
+                        <p className="text-xs text-secondary/70">Trending in {item.category}</p>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+                <p className="text-sm text-secondary/80 leading-relaxed bg-white rounded-2xl p-6">
+                    <Lightbulb size={16} className="text-primary inline-block mr-2" />
+                    <span className="text-foreground font-semibold">82% of early users</span> say their feed feels
+                    noticeably better after they pick 4+ interests.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Step 2: The Basics */}
+          {step === 2 && (
+            <motion.div
+              key="step2"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -588,185 +924,12 @@ export default function OnboardingPage() {
             </motion.div>
           )}
 
-          {/* Step 2: Interests & Hobbies */}
-          {step === 2 && (
+          
+
+          {/* Step 1: Skills & Goals */}
+          {step === 1 && (
             <motion.div
-              key="step2"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-8"
-            >
-              <div className="text-center mb-10">
-                <h1 className="text-3xl md:text-4xl font-semibold tracking-tight mb-3">
-                  Interests <span className="text-secondary/50">&</span> Hobbies
-                </h1>
-                <p className="text-secondary text-base">
-                  Help us curate content you&apos;ll love
-                </p>
-              </div>
-
-              <div className="space-y-8">
-                {/* Interests - Pills */}
-                <div>
-                  <div className="relative mb-2">
-                    <label className="block text-sm font-medium text-foreground/80">
-                      What are you interested in? <span className="text-primary">(minimum 4)</span>
-                      <HelpTooltip content="These create your content topics - Trace searches for articles, videos, repos, and discussions matching each interest daily" />
-                    </label>
-                  </div>
-                  <p className="text-sm text-secondary/70 mb-4">
-                    💡 These drive 70% of your feed content • {selectedInterests.length}/8 selected
-                  </p>
-                  
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {INTERESTS.map((interest) => {
-                      const isSelected = selectedInterests.includes(interest.id);
-                      return (
-                        <button
-                          key={interest.id}
-                          onClick={() => toggleInterest(interest.id)}
-                          className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
-                            isSelected
-                              ? 'bg-foreground text-background'
-                              : 'bg-gray-100 text-secondary hover:bg-gray-200'
-                          }`}
-                        >
-                          <span>{interest.label}</span>
-                          {isSelected && <Check size={14} />}
-                        </button>
-                      );
-                    })}
-
-                    {/* Custom interests that were added */}
-                    {selectedInterests
-                      .filter(id => !INTERESTS.some(i => i.id === id))
-                      .map(customId => (
-                        <button
-                          key={customId}
-                          onClick={() => toggleInterest(customId)}
-                          className="px-4 py-2.5 rounded-full bg-foreground text-background text-sm font-medium transition-all flex items-center gap-2"
-                        >
-                          <span>{customId.replace(/-/g, ' ')}</span>
-                          <X size={14} />
-                        </button>
-                      ))}
-
-                    {/* Add custom interest */}
-                    {!showCustomInterestInput ? (
-                      <button
-                        onClick={() => setShowCustomInterestInput(true)}
-                        className="px-4 py-2.5 rounded-full border-2 border-dashed border-gray-200 hover:border-gray-300 text-sm font-medium transition-all flex items-center gap-2 text-secondary"
-                      >
-                        <Plus size={14} />
-                        Add custom
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={customInterest}
-                          onChange={(e) => setCustomInterest(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && addCustomInterest()}
-                          placeholder="Your interest"
-                          autoFocus
-                          className="px-4 py-2.5 rounded-full border-2 border-foreground bg-transparent text-sm font-medium outline-none w-36"
-                        />
-                        <button onClick={addCustomInterest} className="p-2.5 rounded-full bg-foreground text-background">
-                          <Check size={14} />
-                        </button>
-                        <button onClick={() => { setShowCustomInterestInput(false); setCustomInterest(''); }} className="p-2.5 rounded-full bg-gray-100">
-                          <X size={14} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Hobbies - Pills */}
-                <div>
-                  <div className="relative mb-2">
-                    <label className="block text-sm font-medium text-foreground/80">
-                      Hobbies <span className="text-secondary/50 text-xs ml-2">(optional, max 3)</span>
-                      <HelpTooltip content="Balances your professional feed with personal interests - helps you discover content outside your work bubble" />
-                    </label>
-                  </div>
-                  <p className="text-sm text-secondary/70 mb-4">
-                    ✨ We&apos;ll sprinkle in some fun content (~20%) • {selectedHobbies.length}/3 selected
-                  </p>
-                  
-                  <div className="flex flex-wrap gap-2">
-                    {HOBBY_SUGGESTIONS.map((hobby) => {
-                      const isSelected = selectedHobbies.includes(hobby.id);
-                      return (
-                        <button
-                          key={hobby.id}
-                          onClick={() => toggleHobby(hobby.id)}
-                          className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
-                            isSelected
-                              ? 'bg-foreground text-background'
-                              : 'bg-gray-100 text-secondary hover:bg-gray-200'
-                          }`}
-                        >
-                          <span>{hobby.label}</span>
-                          {isSelected && <Check size={14} />}
-                        </button>
-                      );
-                    })}
-
-                    {/* Custom hobbies that were added */}
-                    {selectedHobbies
-                      .filter(id => !HOBBY_SUGGESTIONS.some(h => h.id === id))
-                      .map(customId => (
-                        <button
-                          key={customId}
-                          onClick={() => toggleHobby(customId)}
-                          className="px-4 py-2.5 rounded-full bg-foreground text-background text-sm font-medium transition-all flex items-center gap-2"
-                        >
-                          <span>{customId.replace(/-/g, ' ')}</span>
-                          <X size={14} />
-                        </button>
-                      ))}
-
-                    {/* Add custom hobby */}
-                    {!showCustomHobbyInput ? (
-                      <button
-                        onClick={() => setShowCustomHobbyInput(true)}
-                        className="px-4 py-2.5 rounded-full border-2 border-dashed border-gray-200 hover:border-gray-300 text-sm font-medium transition-all flex items-center gap-2 text-secondary"
-                      >
-                        <Plus size={14} />
-                        Add custom
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={customHobby}
-                          onChange={(e) => setCustomHobby(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && addCustomHobby()}
-                          placeholder="Your hobby"
-                          autoFocus
-                          className="px-4 py-2.5 rounded-full border-2 border-foreground bg-transparent text-sm font-medium outline-none w-36"
-                        />
-                        <button onClick={addCustomHobby} className="p-2.5 rounded-full bg-foreground text-background">
-                          <Check size={14} />
-                        </button>
-                        <button onClick={() => { setShowCustomHobbyInput(false); setCustomHobby(''); }} className="p-2.5 rounded-full bg-gray-100">
-                          <X size={14} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Step 3: Skills & Goals */}
-          {step === 3 && (
-            <motion.div
-              key="step3"
+              key="step1"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -919,20 +1082,23 @@ export default function OnboardingPage() {
 
         </AnimatePresence>
 
-        {/* Navigation */}
         <div className="flex justify-between items-center mt-12">
-          <button
-            onClick={prevStep}
-            disabled={step === 1}
-            className={`flex items-center gap-2 px-5 py-3 rounded-full text-sm font-medium transition-all ${
-              step === 1 
-                ? 'opacity-0 pointer-events-none' 
-                : 'text-secondary hover:text-foreground hover:bg-gray-100'
-            }`}
-          >
-            <ChevronLeft size={16} />
-            Back
-          </button>
+          {step > 0 ? (
+            <button
+              onClick={prevStep}
+              className="flex items-center gap-2 px-5 py-3 rounded-full text-sm font-medium transition-all text-secondary hover:text-foreground hover:bg-gray-100"
+            >
+              <ChevronLeft size={16} />
+              Back
+            </button>
+          ) : (
+            <button
+              onClick={skipOnboarding}
+              className="flex items-center gap-2 px-5 py-3 rounded-full text-sm font-medium transition-all text-secondary hover:text-foreground hover:bg-gray-100"
+            >
+              Skip for now
+            </button>
+          )}
 
           <button
             onClick={nextStep}
@@ -947,11 +1113,6 @@ export default function OnboardingPage() {
               <>
                 <div className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />
                 Saving...
-              </>
-            ) : step === 3 ? (
-              <>
-                Start Exploring
-                <Check size={16} />
               </>
             ) : (
               <>

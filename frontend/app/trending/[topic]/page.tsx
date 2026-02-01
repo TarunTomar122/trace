@@ -288,7 +288,7 @@ export default async function TrendingTopicPage({
                   </p>
                   <Link href="/">
                     <button className="bg-foreground text-background px-6 py-3 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all">
-                      Start Free Trial
+                      Unlock full feed
                     </button>
                   </Link>
                 </div>

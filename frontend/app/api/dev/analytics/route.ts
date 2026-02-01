@@ -122,26 +122,50 @@ export async function GET(request: NextRequest) {
     const subscribedWithInteractions = subscribedUsers.filter(u => u.interactionCount > 0);
     const scheduledCancellations = subscribedUsers.filter(u => Boolean(u.willCancelAt));
     const today = new Date();
+    
+    // Helper to check if trial is expired
+    const isTrialExpired = (trialEndDate: any) => {
+      if (!trialEndDate) return false;
+      const trialEnd = trialEndDate?.seconds
+        ? new Date(trialEndDate.seconds * 1000)
+        : new Date(trialEndDate);
+      return trialEnd < today;
+    };
+
+    // Trial Users: In active trial period (trialEndDate exists and > now)
+    const trialUsers = subscribedUsers.filter(u => {
+      if (!u.trialEndDate) return false;
+      return !isTrialExpired(u.trialEndDate);
+    });
+
+    // Paid Subscribers: status='active' + has subscriptionId + (no trial OR trial expired) + not cancelled
+    const paidSubscribers = subscribedUsers.filter(u => {
+      if (u.subscriptionStatus !== 'active') return false;
+      if (!u.subscriptionId) return false;
+      if (u.willCancelAt) return false; // Exclude if they've scheduled cancellation
+      // Either no trial date (never had trial) OR trial expired
+      return !u.trialEndDate || isTrialExpired(u.trialEndDate);
+    });
+
+    // Gifted Subs: status='active' + (no subscriptionId OR trial expired)
     const giftedSubscriptions = subscribedUsers.filter(u => {
       if (u.subscriptionStatus !== 'active') return false;
       const hasNoSubscriptionId = !u.subscriptionId;
-      if (hasNoSubscriptionId) return true;
-      if (!u.trialEndDate) return false;
-      const trialEnd = u.trialEndDate?.seconds
-        ? new Date(u.trialEndDate.seconds * 1000)
-        : new Date(u.trialEndDate);
-      return trialEnd < today;
+      const trialExpired = u.trialEndDate && isTrialExpired(u.trialEndDate);
+      return hasNoSubscriptionId || trialExpired;
     });
 
     const summary = {
       totalUsers,
       onboardedUsers: onboardedUsers.length,
       subscribedUsers: subscribedUsers.length,
+      trialUsers: trialUsers.length,
+      paidSubscribers: paidSubscribers.length,
+      giftedSubscriptions: giftedSubscriptions.length,
       onboardedWithNoFeed: onboardedWithNoFeed.length,
       subscribedWithNoFeed: subscribedWithNoFeed.length,
       subscribedWithInteractions: subscribedWithInteractions.length,
       scheduledCancellations: scheduledCancellations.length,
-      giftedSubscriptions: giftedSubscriptions.length,
       avgFeedItems: subscribedUsers.length > 0 
         ? (subscribedUsers.reduce((sum, u) => sum + u.feedItemCount, 0) / subscribedUsers.length).toFixed(1)
         : 0,

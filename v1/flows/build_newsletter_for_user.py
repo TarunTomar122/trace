@@ -269,6 +269,8 @@ ARTICLES TO SUMMARIZE:
 INSTRUCTIONS:
 - Each summary: 2-3 engaging sentences (NO bullet points)
 - Focus on key insights and why it matters
+- If an article has empty or minimal content, write an intriguing teaser based on the title that makes readers want to click through
+- NEVER say things like "the content wasn't provided" or "I need the article first" - always write something engaging
 - Return a JSON object mapping item ID to summary string
 
 EXAMPLE OUTPUT:
@@ -305,15 +307,30 @@ def _summarize_single_item(
         client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
         content = item.get("content", "") or item.get("description", "")
+        title = item.get("title", "")
+        
+        # Skip if we have no content AND no meaningful title
+        if not content and not title:
+            return None
+            
         if len(content) > 3000:
             content = content[:3000] + "..."
 
-        prompt = f"""Summarize this article in 2-3 sentences for a newsletter. No bullets, just flowing text.
+        # Different prompt based on whether we have content
+        if content and len(content.strip()) > 50:
+            prompt = f"""Summarize this article in 2-3 sentences for a newsletter. No bullets, just flowing text.
 
-Title: {item.get('title', '')}
+Title: {title}
 Content: {content}
 
 Write an engaging summary that highlights key insights."""
+        else:
+            # Title-only mode: generate a teaser based on the title
+            prompt = f"""Write a 2-3 sentence teaser for this article based on its title. No bullets, just flowing text. Make it engaging and hint at what the reader might learn.
+
+Title: {title}
+
+Write an intriguing teaser that makes readers want to click through."""
 
         response = client.models.generate_content(
             model="gemini-2.5-flash",

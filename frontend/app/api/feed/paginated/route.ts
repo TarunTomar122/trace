@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminFirestore } from '@/lib/firebase-admin';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 50;
 const MAX_FEED_ITEMS = 50;
 
 /**
@@ -10,7 +10,7 @@ const MAX_FEED_ITEMS = 50;
  * Query params:
  * - date: Feed date (YYYY-MM-DD), defaults to latest
  * - cursor: Item index to start from (0-based)
- * - limit: Number of items to return (default 10, max 20)
+ * - limit: Number of items to return (default 50, max 50)
  * 
  * Returns items sorted: unseen first, then seen (by original order)
  */
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const dateParam = searchParams.get('date');
     const cursor = parseInt(searchParams.get('cursor') || '0', 10);
-    const limit = Math.min(parseInt(searchParams.get('limit') || String(PAGE_SIZE), 10), 20);
+    const limit = Math.min(parseInt(searchParams.get('limit') || String(PAGE_SIZE), 10), MAX_FEED_ITEMS);
 
     // Get feed date (latest if not specified)
     let feedDate = dateParam;
