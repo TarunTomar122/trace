@@ -61,7 +61,7 @@ def run_daily_batch() -> int:
     log("-" * 40)
     try:
         trending_result = build_trending_news_for_day()
-        log(f"Trending news: {trending_result.get('total_articles', 0)} articles from {trending_result.get('umbrellas_with_news', 0)} umbrellas")
+        log(f"Trending news: {trending_result.get('total_articles', 0)} articles from {trending_result.get('topics_with_news', 0)} topics")
     except Exception as e:
         log(f"✗ Trending news fetch failed (non-critical): {e}")
 

@@ -1,11 +1,11 @@
 """
 Append trending news items to a user's existing feed.
 
-This script reads from the cached trending_news collection (umbrella-based)
-and adds relevant news items to the user's feed.
+This script reads from the cached trending_news collection (topic-based)
+and adds relevant news items to the user's feed by matching keywords.
 
 Two-step process:
-1. Run build_trending_news_for_day.py first (caches news by umbrella)
+1. Run build_trending_news_for_day.py first (caches news by topic)
 2. Run this script to add news to user feeds
 
 Usage:
@@ -30,7 +30,7 @@ from v1.storage import FirestoreStore
 
 
 MAX_NEWS_PER_FEED = 5
-MAX_NEWS_PER_UMBRELLA = 2
+MAX_NEWS_PER_TOPIC = 2
 
 
 def _get_today_ist_date() -> str:
@@ -47,53 +47,68 @@ def _get_user_seen_urls(store: FirestoreStore, user_id: str) -> set[str]:
     return set(urls_dict.keys())
 
 
-def _normalize_topic_name(name: str) -> str:
-    """Normalize topic name for matching (lowercase, stripped)."""
-    return name.lower().strip()
+def _normalize(text: str) -> str:
+    """Normalize text for matching (lowercase, stripped)."""
+    return text.lower().strip()
+
+
+def _user_matches_topic(user_interests: set[str], topic_keywords: list[str]) -> bool:
+    """
+    Check if any user interest matches any topic keyword.
+    
+    Uses substring matching - if a keyword appears in any interest or vice versa.
+    """
+    normalized_keywords = {_normalize(k) for k in topic_keywords}
+    
+    for interest in user_interests:
+        interest_lower = _normalize(interest)
+        # Direct match
+        if interest_lower in normalized_keywords:
+            return True
+        # Substring match (keyword in interest or interest in keyword)
+        for keyword in normalized_keywords:
+            if keyword in interest_lower or interest_lower in keyword:
+                return True
+    return False
 
 
 def _get_trending_news_for_user(
     store: FirestoreStore,
-    user_topics: set[str],
+    user_interests: set[str],
     date: str,
     seen_urls: set[str],
     existing_urls: set[str],
 ) -> list[dict[str, Any]]:
     """
-    Get trending news articles from umbrellas matching user's topics.
+    Get trending news articles from topics matching user's interests.
 
     Args:
         store: FirestoreStore instance
-        user_topics: Set of user's topic names (normalized lowercase)
+        user_interests: Set of user's interests + hobbies (normalized lowercase)
         date: Date string (YYYY-MM-DD)
         seen_urls: URLs the user has seen before
         existing_urls: URLs already in the feed
 
     Returns:
-        List of news articles (max 5, max 2 per umbrella)
+        List of news articles (max 5, max 2 per topic)
     """
-    # Fetch all umbrella news for the date
-    umbrella_docs = (
+    # Fetch all topic news for the date
+    topic_docs = (
         store.db.collection("trending_news")
         .document(date)
-        .collection("umbrellas")
+        .collection("topics")
         .stream()
     )
 
-    # Find umbrellas that match user's topics
-    matching_umbrellas: list[dict[str, Any]] = []
+    # Find topics that match user's interests via keywords
+    matching_topics: list[dict[str, Any]] = []
 
-    for doc in umbrella_docs:
+    for doc in topic_docs:
         data = doc.to_dict() or {}
-        umbrella_topic_names = data.get("topic_names", [])
+        keywords = data.get("keywords", [])
 
-        # Normalize umbrella topic names for matching
-        normalized_umbrella_topics = {
-            _normalize_topic_name(t) for t in umbrella_topic_names
-        }
-
-        # Check if any user topic matches
-        if user_topics & normalized_umbrella_topics:
+        # Check if user interests match this topic's keywords
+        if _user_matches_topic(user_interests, keywords):
             articles = data.get("articles", [])
             # Filter out seen/existing URLs
             filtered_articles = [
@@ -103,37 +118,37 @@ def _get_trending_news_for_user(
                 and a["url"] not in existing_urls
             ]
             if filtered_articles:
-                matching_umbrellas.append({
-                    "umbrella_id": doc.id,
+                matching_topics.append({
+                    "topic_id": doc.id,
                     "name": data.get("name", doc.id),
                     "articles": filtered_articles,
                 })
 
-    if not matching_umbrellas:
+    if not matching_topics:
         return []
 
-    # Select articles with diversity (max 2 per umbrella, up to 5 total)
+    # Select articles with diversity (max 2 per topic, up to 5 total)
     selected: list[dict] = []
-    umbrella_counts: dict[str, int] = {}
+    topic_counts: dict[str, int] = {}
 
-    random.shuffle(matching_umbrellas)
+    random.shuffle(matching_topics)
 
     while len(selected) < MAX_NEWS_PER_FEED:
         added_this_round = False
-        for umbrella in matching_umbrellas:
+        for topic in matching_topics:
             if len(selected) >= MAX_NEWS_PER_FEED:
                 break
-            uid = umbrella["umbrella_id"]
-            if umbrella_counts.get(uid, 0) >= MAX_NEWS_PER_UMBRELLA:
+            tid = topic["topic_id"]
+            if topic_counts.get(tid, 0) >= MAX_NEWS_PER_TOPIC:
                 continue
-            articles = umbrella["articles"]
-            idx = umbrella_counts.get(uid, 0)
+            articles = topic["articles"]
+            idx = topic_counts.get(tid, 0)
             if idx < len(articles):
                 article = articles[idx].copy()
-                article["_umbrella_id"] = uid
-                article["_umbrella_name"] = umbrella["name"]
+                article["_topic_id"] = tid
+                article["_topic_name"] = topic["name"]
                 selected.append(article)
-                umbrella_counts[uid] = idx + 1
+                topic_counts[tid] = idx + 1
                 added_this_round = True
 
         if not added_this_round:
@@ -190,27 +205,27 @@ def add_trending_news_to_feed(
         print(f"  Trending news already added for {user_id}")
         return {"user_id": user_id, "date": date, "items_added": 0}
 
-    # Gather user's topics (normalized for matching)
+    # Gather user's interests + hobbies (normalized for matching)
     interests = profile.get("interests", []) or []
     hobbies = profile.get("hobbies", []) or []
-    user_topics: set[str] = set()
+    user_interests: set[str] = set()
 
     for interest in interests:
         if isinstance(interest, str) and interest.strip():
-            user_topics.add(_normalize_topic_name(interest))
+            user_interests.add(_normalize(interest))
     for hobby in hobbies:
         if isinstance(hobby, str) and hobby.strip():
-            user_topics.add(_normalize_topic_name(hobby))
+            user_interests.add(_normalize(hobby))
 
-    if not user_topics:
-        print(f"  No topics found for {user_id}")
+    if not user_interests:
+        print(f"  No interests found for {user_id}")
         return {"user_id": user_id, "date": date, "items_added": 0}
 
     seen_urls = _get_user_seen_urls(store, user_id)
 
-    # Get trending news from matching umbrellas
+    # Get trending news from matching topics
     trending_articles = _get_trending_news_for_user(
-        store, user_topics, date, seen_urls, existing_urls
+        store, user_interests, date, seen_urls, existing_urls
     )
 
     if not trending_articles:
@@ -220,20 +235,20 @@ def add_trending_news_to_feed(
     # Build news items
     items_to_add = []
     for idx, article in enumerate(trending_articles):
-        umbrella_name = article.get("_umbrella_name", "Trending")
-        umbrella_id = article.get("_umbrella_id", "trending")
+        topic_name = article.get("_topic_name", "Trending")
+        topic_id = article.get("_topic_id", "trending")
         url = article.get("url", "")
 
         items_to_add.append({
-            "id": f"trending_{umbrella_id}_{idx}_{date}",
+            "id": f"trending_{topic_id}_{idx}_{date}",
             "type": "news",
             "title": article.get("title", ""),
             "description": article.get("content", ""),
             "url": url,
-            "tags": [umbrella_id],
+            "tags": [topic_id],
             "source": "tavily",
             "metadata": {
-                "why_relevant": f"Trending in {umbrella_name}",
+                "why_relevant": f"Trending in {topic_name}",
                 "feed_category": "trending_news",
                 "is_hot": True,
                 "published_date": article.get("published_date", ""),
@@ -263,8 +278,8 @@ def add_trending_news_to_feed(
         "user_id": user_id,
         "date": date,
         "items_added": len(items_to_add),
-        "umbrellas_matched": list(
-            set(a.get("_umbrella_id") for a in trending_articles)
+        "topics_matched": list(
+            set(a.get("_topic_id") for a in trending_articles)
         ),
     }
 
