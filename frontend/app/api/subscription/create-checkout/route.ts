@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     // Dodo Payments API configuration
     const DODO_API_KEY = process.env.DODO_API_KEY;
-    const DODO_PRODUCT_ID = process.env.DODO_PRODUCT_ID; // Your $2.99/month product ID
+    const DODO_PRODUCT_ID = process.env.DODO_PRODUCT_ID; // Your $5.00/month product ID
     const TRIAL_DAYS = 3; // 3-day free trial
 
     if (!DODO_API_KEY || !DODO_PRODUCT_ID || DODO_API_KEY === 'sk_your_key_here' || DODO_PRODUCT_ID === 'prod_your_product_id_here') {
@@ -178,4 +178,3 @@ export async function POST(request: NextRequest) {
     }, { status: 500 });
   }
 }
-

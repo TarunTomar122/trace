@@ -30,6 +30,7 @@ import Header from '@/components/Header';
 import { getUserPatterns } from '@/lib/firestore';
 import { buildTraceInsights, TraceInsights } from '@/lib/traceInsights';
 import TraceInsightCard from '@/components/TraceInsightCard';
+import { trackFeedViewed, trackFeedItemUpvoted, trackFeedItemDownvoted, trackFeedItemBookmarked, trackFeedItemClicked } from '@/lib/posthog';
 
 type FeedItem = {
   id: string;
@@ -179,6 +180,7 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
         // Only navigate if not clicking on action buttons
         const target = e.target as HTMLElement;
         if (!target.closest('button')) {
+          trackFeedItemClicked(item.id, itemKind, item.source || 'unknown');
           window.open(item.url, '_blank', 'noopener,noreferrer');
         }
       }}
@@ -682,6 +684,9 @@ export default function FeedPage() {
         setFeedMetadata(data.metadata || null);  // Store feed metadata
         setFeedDate(data.feedDate || '');
         setUnseenCount(data.unseenCount || 0);
+        
+        // Track feed view
+        trackFeedViewed(items.length, data.metadata?.is_preview);
 
         // Defer interactions loading - don't block feed render
         if (data.feedDate) {
@@ -850,12 +855,16 @@ export default function FeedPage() {
 
   const handleUpvote = (itemId: string, note?: string) => {
     console.log('Upvoted:', itemId);
+    const item = feed.find(i => i.id === itemId);
+    trackFeedItemUpvoted(itemId, item?.type || item?.source || 'unknown');
     recordInteraction(itemId, 'upvote', note);
     setInteractionCount((prev) => prev + 1);
   };
 
   const handleDownvote = (itemId: string, note?: string) => {
     console.log('Downvoted:', itemId, note ? `with note: ${note}` : '');
+    const item = feed.find(i => i.id === itemId);
+    trackFeedItemDownvoted(itemId, item?.type || item?.source || 'unknown');
     recordInteraction(itemId, 'downvote', note);
     setInteractionCount((prev) => prev + 1);
   };
@@ -955,6 +964,7 @@ export default function FeedPage() {
             },
           }),
         });
+        trackFeedItemBookmarked(itemId, item.type || item.source || 'unknown');
         setBookmarkedItems(prev => new Set(prev).add(itemId));
       }
     } catch (error) {
@@ -1556,6 +1566,7 @@ export default function FeedPage() {
           </aside>
         </div>
       </main>
+
     </div>
   );
 }

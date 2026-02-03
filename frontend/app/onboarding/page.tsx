@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, ChevronLeft, Check, MessageCircle, Sparkles, HelpCircle, Plus, X, Lightbulb, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLES, INTERESTS, completeOnboarding, getUserProfile, addChatMessage } from '@/lib/firestore';
 import { isAlphaMode } from '@/lib/alpha';
+import { trackOnboardingStarted, trackOnboardingCompleted } from '@/lib/posthog';
 
 // Suggested hobbies for pills
 const HOBBY_SUGGESTIONS = [
@@ -260,6 +261,8 @@ export default function OnboardingPage() {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [chatInsights, setChatInsights] = useState<Record<string, unknown>>({});
 
+  const hasTrackedOnboardingStart = useRef(false);
+  
   useEffect(() => {
     // Alpha mode check: if not in alpha mode, redirect to waitlist
     if (!isAlphaMode()) {
@@ -284,6 +287,10 @@ export default function OnboardingPage() {
           } else {
             router.push('/waitlist');
           }
+        } else if (!hasTrackedOnboardingStart.current) {
+          // Track onboarding started for non-onboarded users
+          trackOnboardingStarted();
+          hasTrackedOnboardingStart.current = true;
         }
       });
     }
@@ -483,9 +490,9 @@ export default function OnboardingPage() {
 
   // Validation
   const canProceed = () => {
-    if (step === 0) return selectedInterests.length >= 4;
+    if (step === 0) return selectedInterests.length >= 4 && role;
     if (step === 1) return selectedSkills.length >= 1;
-    if (step === 2) return name.trim() && role;
+    if (step === 2) return name.trim().length > 0;
     return true;
   };
 
@@ -572,6 +579,13 @@ export default function OnboardingPage() {
       }
 
       await completeOnboarding(user.uid, onboardingData);
+      
+      // Track onboarding completed
+      trackOnboardingCompleted({
+        interests_count: selectedInterests.length,
+        hobbies_count: selectedHobbies.length,
+        role: role,
+      });
       
       // Trigger Python onboarding hook via GitHub Action
       try {
@@ -746,71 +760,26 @@ export default function OnboardingPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-foreground/80 mb-2">
-                      Hobbies <span className="text-secondary/50 text-xs ml-2">(optional, max 3)</span>
-                    </label>
-                    <p className="text-sm text-secondary/70 mb-4">
-                      Adds a personal layer to your feed • {selectedHobbies.length}/3 selected
-                    </p>
+                    <div className="relative mb-2">
+                      <label className="block text-sm font-medium text-foreground/80">
+                        What do you do?
+                        <HelpTooltip content="Helps us understand your professional context and match content difficulty to your expertise level" />
+                      </label>
+                    </div>
                     <div className="flex flex-wrap gap-2">
-                      {HOBBY_SUGGESTIONS.map((hobby) => {
-                        const isSelected = selectedHobbies.includes(hobby.id);
-                        return (
-                          <button
-                            key={hobby.id}
-                            onClick={() => toggleHobby(hobby.id)}
-                            className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 cursor-pointer ${
-                              isSelected
-                                ? 'bg-foreground text-background'
-                                : 'bg-gray-100 text-secondary hover:bg-gray-200'
-                            }`}
-                          >
-                            <span>{hobby.label}</span>
-                            {isSelected && <Check size={14} />}
-                          </button>
-                        );
-                      })}
-
-                      {selectedHobbies
-                        .filter(id => !HOBBY_SUGGESTIONS.some(h => h.id === id))
-                        .map(customId => (
-                          <button
-                            key={customId}
-                            onClick={() => toggleHobby(customId)}
-                            className="px-4 py-2.5 rounded-full bg-foreground text-background text-sm font-medium transition-all flex items-center gap-2 cursor-pointer"
-                          >
-                            <span>{customId.replace(/-/g, ' ')}</span>
-                            <X size={14} />
-                          </button>
-                        ))}
-
-                      {!showCustomHobbyInput ? (
+                      {ROLES.map((r) => (
                         <button
-                          onClick={() => setShowCustomHobbyInput(true)}
-                          className="px-4 py-2.5 rounded-full border-2 border-dashed border-gray-200 hover:border-gray-300 text-sm font-medium transition-all flex items-center gap-2 text-secondary cursor-pointer"
+                          key={r}
+                          onClick={() => setRole(r)}
+                          className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all ${
+                            role === r 
+                              ? 'bg-foreground text-background' 
+                              : 'bg-gray-100 text-secondary hover:bg-gray-200'
+                          }`}
                         >
-                          <Plus size={14} />
-                          Add custom
+                          {r}
                         </button>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={customHobby}
-                            onChange={(e) => setCustomHobby(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && addCustomHobby()}
-                            placeholder="Your hobby"
-                            autoFocus
-                            className="px-4 py-2.5 rounded-full border-2 border-foreground bg-transparent text-sm font-medium outline-none w-36"
-                          />
-                          <button onClick={addCustomHobby} className="p-2.5 rounded-full bg-foreground text-background cursor-pointer">
-                            <Check size={14} />
-                          </button>
-                          <button onClick={() => { setShowCustomHobbyInput(false); setCustomHobby(''); }} className="p-2.5 rounded-full bg-gray-100 cursor-pointer">
-                            <X size={14} />
-                          </button>
-                        </div>
-                      )}
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -882,26 +851,71 @@ export default function OnboardingPage() {
                 </div>
 
                 <div>
-                  <div className="relative mb-3">
-                    <label className="block text-sm font-medium text-foreground/70">
-                      What do you do?
-                      <HelpTooltip content="Helps us understand your professional context and match content difficulty to your expertise level" />
-                    </label>
-                  </div>
+                  <label className="block text-sm font-medium text-foreground/80 mb-2">
+                    Hobbies <span className="text-secondary/50 text-xs ml-2">(optional, max 3)</span>
+                  </label>
+                  <p className="text-sm text-secondary/70 mb-4">
+                    Adds a personal layer to your feed • {selectedHobbies.length}/3 selected
+                  </p>
                   <div className="flex flex-wrap gap-2">
-                    {ROLES.map((r) => (
+                    {HOBBY_SUGGESTIONS.map((hobby) => {
+                      const isSelected = selectedHobbies.includes(hobby.id);
+                      return (
+                        <button
+                          key={hobby.id}
+                          onClick={() => toggleHobby(hobby.id)}
+                          className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 cursor-pointer ${
+                            isSelected
+                              ? 'bg-foreground text-background'
+                              : 'bg-gray-100 text-secondary hover:bg-gray-200'
+                          }`}
+                        >
+                          <span>{hobby.label}</span>
+                          {isSelected && <Check size={14} />}
+                        </button>
+                      );
+                    })}
+
+                    {selectedHobbies
+                      .filter(id => !HOBBY_SUGGESTIONS.some(h => h.id === id))
+                      .map(customId => (
+                        <button
+                          key={customId}
+                          onClick={() => toggleHobby(customId)}
+                          className="px-4 py-2.5 rounded-full bg-foreground text-background text-sm font-medium transition-all flex items-center gap-2 cursor-pointer"
+                        >
+                          <span>{customId.replace(/-/g, ' ')}</span>
+                          <X size={14} />
+                        </button>
+                      ))}
+
+                    {!showCustomHobbyInput ? (
                       <button
-                        key={r}
-                        onClick={() => setRole(r)}
-                        className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all ${
-                          role === r 
-                            ? 'bg-foreground text-background' 
-                            : 'bg-gray-100 text-secondary hover:bg-gray-200'
-                        }`}
+                        onClick={() => setShowCustomHobbyInput(true)}
+                        className="px-4 py-2.5 rounded-full border-2 border-dashed border-gray-200 hover:border-gray-300 text-sm font-medium transition-all flex items-center gap-2 text-secondary cursor-pointer"
                       >
-                        {r}
+                        <Plus size={14} />
+                        Add custom
                       </button>
-                    ))}
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={customHobby}
+                          onChange={(e) => setCustomHobby(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && addCustomHobby()}
+                          placeholder="Your hobby"
+                          autoFocus
+                          className="px-4 py-2.5 rounded-full border-2 border-foreground bg-transparent text-sm font-medium outline-none w-36"
+                        />
+                        <button onClick={addCustomHobby} className="p-2.5 rounded-full bg-foreground text-background cursor-pointer">
+                          <Check size={14} />
+                        </button>
+                        <button onClick={() => { setShowCustomHobbyInput(false); setCustomHobby(''); }} className="p-2.5 rounded-full bg-gray-100 cursor-pointer">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 

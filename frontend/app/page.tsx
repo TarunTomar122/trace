@@ -518,7 +518,7 @@ const Hero = () => {
                 >
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 rounded-full">
                     <Lightbulb size={14} className="text-primary" />
-                    <span className="text-sm font-medium text-primary">Help trace learn about your preferences by interacting with your feed items.</span>
+                    <span className="text-sm font-medium text-primary">Help Trace learn what matters by interacting with your feed items.</span>
                   </div>
                 </motion.div>
 
@@ -543,10 +543,10 @@ const Hero = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.1 }}
-                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-tight font-serif tracking-tight text-secondary/80 mb-4 md:mb-6"
+                  className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-tight font-serif tracking-tight text-secondary/80 mb-4 md:mb-6"
                 >
-                  Fu*K The Algorithms{' '}
-                  <span className="italic text-primary">Build Your Own Feed</span>
+                  Your personal signal{' '}
+                  <span className="italic text-primary">for building & shipping</span>
                 </motion.h1>
 
                 <motion.p
@@ -556,10 +556,28 @@ const Hero = () => {
                   className="text-base md:text-lg text-secondary leading-relaxed mb-4 max-w-md"
                 >
                   {isAlphaMode()
-                    ? "We scan 50+ sources daily — Hacker News, Reddit, YouTube, arXiv, blogs. You get 10-15 things that actually matter."
-                    : "Join the waitlist for early access. We scan 1,000+ sources daily so you don't have to."
+                    ? "Trace keeps you current on AI, product, and startups — without doomscrolling — tuned to what you’re building and the curiosities that fuel you."
+                    : "Join the waitlist for early access. Trace keeps you current on AI, product, and startups — without doomscrolling — tuned to what you’re building."
                   }
                 </motion.p>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.25 }}
+                  className="flex flex-wrap gap-2 mb-6 md:mb-8"
+                >
+                  {[
+                    "Built for product & design folks",
+                  ].map((item) => (
+                    <div
+                      key={item}
+                      className="px-3 py-1.5 rounded-full text-primary text-xs font-medium"
+                    >
+                      {item}
+                    </div>
+                  ))}
+                </motion.div>
 
                 {isAlphaMode() && (
                   <motion.div
@@ -626,7 +644,7 @@ const Hero = () => {
                       ))}
                     </div>
                     <span className="text-sm text-secondary">
-                      Loved by <span className="font-medium text-foreground">100+</span> users
+                      Loved by <span className="font-medium text-foreground">indie hackers & product teams</span>
                     </span>
                   </div>
                 </motion.div>
@@ -670,7 +688,7 @@ const HowItWorks = () => {
       number: "01",
       icon: User,
       title: "Choose topics",
-      description: "Tell us what you care about — AI, design, startups, or anything else.",
+      description: "Tell us what you’re building — AI, product, design, startups, or anything else.",
       color: "text-blue-500",
       bgColor: "bg-blue-50"
     },
@@ -678,23 +696,23 @@ const HowItWorks = () => {
       number: "02",
       icon: Search,
       title: "Trace builds your feed",
-      description: "We search YouTube, GitHub, Hacker News, Reddit, arXiv, blogs and more.",
+      description: "We scan YouTube, GitHub, Hacker News, Reddit, arXiv, blogs and more.",
       color: "text-purple-500",
       bgColor: "bg-purple-50"
     },
     {
       number: "03",
       icon: ThumbsUp,
-      title: "You interact",
-      description: "Upvote what you like, downvote what you don't. Add notes if you want.",
+      title: "You steer",
+      description: "Upvote what matters, downvote what doesn’t. Add notes when you want.",
       color: "text-green-500",
       bgColor: "bg-green-50"
     },
     {
       number: "04",
       icon: Brain,
-      title: "Trace reflects",
-      description: "Our AI learns your patterns and preferences from your interactions.",
+      title: "Trace adapts",
+      description: "Your agent learns your patterns and sharpens your feed over time.",
       color: "text-orange-500",
       bgColor: "bg-orange-50"
     },
@@ -702,7 +720,7 @@ const HowItWorks = () => {
       number: "05",
       icon: TrendingUp,
       title: "Your feed gets better",
-      description: "Every day, your feed becomes more aligned with what you actually care about.",
+      description: "Every day, your feed aligns more with what you build and care about.",
       color: "text-pink-500",
       bgColor: "bg-pink-50"
     }
@@ -845,17 +863,17 @@ const WhatTraceReplaces = () => {
     {
       icon: "📱",
       title: "Checking Reddit 5x/day",
-      description: "/r/MachineLearning, /r/Programming, /r/WebDev..."
+      description: "for signal across AI, product, and engineering"
     },
     {
       icon: "💬",
-      title: "Missing good HN discussions",
-      description: "You see it 2 days late in your group chat"
+      title: "Missing great threads",
+      description: "You find them after the momentum is gone"
     },
     {
       icon: "🎥",
       title: "YouTube rabbit holes",
-      description: "Looking for that one tutorial, losing 2 hours"
+      description: "Searching for one insight, losing 2 hours"
     },
     {
       icon: "📰",
@@ -865,7 +883,7 @@ const WhatTraceReplaces = () => {
     {
       icon: "⏰",
       title: "The 'I should check...' loop",
-      description: "Twitter → Reddit → HN → Repeat"
+      description: "X → Reddit → HN → Repeat"
     }
   ];
 
@@ -938,7 +956,7 @@ const HowPeopleUseTrace = () => {
             transition={{ delay: 0.1 }}
             className="text-secondary text-base md:text-lg"
           >
-            Most people don&apos;t open another app. They open their inbox.
+            Most people start in their inbox, then open the feed when something matters.
           </motion.p>
         </div>
 
@@ -969,11 +987,11 @@ const HowPeopleUseTrace = () => {
           {/* Email Body Preview */}
           <div className="px-4 md:px-6 py-4 md:py-6 space-y-2">
             {[
-              { icon: "🎬", title: "Building AI agents with LangGraph", source: "YouTube" },
-              { icon: "💬", title: "Show HN: Minimal MCP server for Postgres", source: "Hacker News" },
-              { icon: "📦", title: "anthropics/courses: Prompt engineering tutorial", source: "GitHub" },
-              { icon: "📄", title: "New research on transformer architectures", source: "arXiv" },
-              { icon: "📝", title: "How Stripe builds reliable systems", source: "Blog" },
+              { icon: "🎬", title: "A practical AI agent stack for product teams", source: "YouTube" },
+              { icon: "💬", title: "Show HN: A calmer way to stay current as a builder", source: "Hacker News" },
+              { icon: "📦", title: "open-source: design review checklist for operators", source: "GitHub" },
+              { icon: "📄", title: "New research on evaluation for applied AI systems", source: "arXiv" },
+              { icon: "📝", title: "How great product teams triage signal vs noise", source: "Blog" },
             ].map((item, i) => (
               <div key={i} className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
                 <span className="text-lg">{item.icon}</span>
@@ -995,9 +1013,9 @@ const HowPeopleUseTrace = () => {
           className="text-center max-w-2xl mx-auto"
         >
           <p className="text-base text-secondary leading-relaxed mb-6">
-            Every morning, Trace sends you one email.<br />
-            The best things from Reddit, Hacker News, YouTube, blogs, and research —<br />
-            filtered for your interests and skill level.
+            Every morning, Trace sends you one brief.<br />
+            The best from Reddit, Hacker News, YouTube, blogs, and research —<br />
+            filtered for what you’re building and how you think.
           </p>
           <div className="flex flex-col items-center gap-1 text-sm text-foreground/70">
             <span>No scrolling.</span>
@@ -1023,42 +1041,42 @@ const DEMO_FEED_ITEMS = [
   {
     id: '1',
     type: 'youtube',
-    title: 'Building a $10M SaaS in 12 Months — The Full Breakdown',
-    description: 'Learn the exact playbook behind scaling a SaaS from 0 to $10M ARR, including pricing strategies, growth loops, and the mistakes to avoid.',
+    title: 'Designing AI features users actually trust',
+    description: 'A clear framework for shipping AI UX that doesn’t confuse users, with examples from real products.',
     source: 'YouTube',
-    author: 'Lenny Rachitsky',
-    tag: 'startups',
-    tagLabel: 'Matches your interest in startups',
+    author: 'Product Studio',
+    tag: 'product',
+    tagLabel: 'Matches your interest in product',
   },
   {
     id: '2',
     type: 'article',
-    title: 'React Server Components: A Deep Dive into the Future of Web Dev',
-    description: 'Everything you need to know about RSC — how they work, when to use them, and why they matter for performance.',
+    title: 'From idea to MVP: a 4-week builder sprint',
+    description: 'A tactical playbook for shipping fast without trashing quality or focus.',
     source: 'Blog',
-    author: 'Dan Abramov',
-    tag: 'frontend',
-    tagLabel: 'Matches your interest in frontend',
+    author: 'Builder Notes',
+    tag: 'startups',
+    tagLabel: 'Matches your interest in startups',
   },
   {
     id: '3',
     type: 'news',
-    title: 'Claude 4 Benchmarks Leaked: Outperforms GPT-5 on Reasoning Tasks',
-    description: 'Internal benchmarks suggest Anthropic\'s upcoming model shows 40% improvement on complex reasoning while maintaining safety guardrails.',
+    title: 'New AI model improves tool-use reliability in production',
+    description: 'Early results show fewer hallucinations and better task execution for real-world agent workflows.',
     source: 'News',
-    author: 'The Verge',
+    author: 'Tech Brief',
     tag: 'ai-tools',
     tagLabel: 'Matches your interest in AI tools',
   },
   {
     id: '4',
     type: 'discussion',
-    title: 'Is TypeScript Worth It in 2026? A Honest Take from Both Sides',
-    description: 'Senior engineers debate the pros and cons of TypeScript adoption — productivity gains vs. added complexity.',
+    title: 'What does “high-signal” look like for builder-operators?',
+    description: 'A discussion on how product/design operators cut noise and stay focused while shipping.',
     source: 'Discussion',
     author: 'Hacker News',
-    tag: 'productivity',
-    tagLabel: 'Matches your interest in productivity',
+    tag: 'design',
+    tagLabel: 'Matches your interest in design',
   },
 ];
 
@@ -1066,8 +1084,8 @@ const DEMO_FILTERS = [
   { id: 'all', label: 'For You' },
   { id: 'ai-tools', label: 'AI Tools' },
   { id: 'startups', label: 'Startups' },
-  { id: 'frontend', label: 'Frontend' },
-  { id: 'productivity', label: 'Productivity' },
+  { id: 'product', label: 'Product' },
+  { id: 'design', label: 'Design' },
 ];
 
 const DemoFeedCard = ({ item, index, compact = false }: { item: typeof DEMO_FEED_ITEMS[0]; index: number; compact?: boolean }) => {
@@ -1230,7 +1248,7 @@ const InteractiveDemo = () => {
             transition={{ delay: 0.1 }}
             className="text-secondary font-mono text-xs md:text-sm leading-relaxed max-w-2xl mx-auto"
           >
-            This is what your daily feed could look like. Go ahead — interact with it!
+            This is what your daily feed could look like. Go ahead — shape it.
           </motion.p>
         </div>
 
@@ -1314,7 +1332,7 @@ const InteractiveDemo = () => {
             <div className="px-5 py-6 bg-gradient-to-t from-primary/5 to-transparent border-t border-border/30">
               <div className="text-center">
                 <p className="text-sm font-mono text-foreground mb-3">
-                  Like what you see? Get your own personalized feed.
+                  Like what you see? Get your own builder-focused feed.
                 </p>
                 <button
                   onClick={signInWithGoogle}
@@ -1516,19 +1534,19 @@ const DemoFeed = () => {
 const Testimonials = () => {
   const testimonials = [
     {
-      quote: "Trace has become the first thing I open every morning. The daily newsletter is incredibly useful — it helps me make the most of my mornings and stay up to date with what's happening in tech, all in one quick email.",
+      quote: "I ship faster now. Trace surfaced an AI eval tool I used the same day and saved me a week of rabbit holes.",
       name: "Zeba",
-      role: "AI Engineer @ Dell"
+      role: "AI Engineer"
     },
     {
-      quote: "As a designer, I'm not an engineer — but Trace shows me AI releases and tech updates at a level I can actually understand. It's helping me learn and stay relevant without feeling overwhelmed.",
+      quote: "I’m a product designer and Trace is my daily signal. It found a new UX pattern for AI onboarding I used in our next release.",
       name: "Monisha",
-      role: "Designer"
+      role: "Product Designer"
     },
     {
-      quote: "I'm constantly finding useful blogs and videos about my interests and hobbies through Trace. It's saving me hours of searching and helping me upskill in ways I didn't expect.",
+      quote: "As an indie hacker, I need signal fast. Trace pulled a launch checklist and a pricing teardown that directly shaped my MVP.",
       name: "Sebastian",
-      role: "Indie Developer"
+      role: "Indie Hacker"
     }
   ];
 
@@ -2354,7 +2372,7 @@ const Pricing = () => {
             Simple <span className="text-secondary/50">Pricing</span>
           </h2>
           <p className="text-secondary text-base md:text-lg leading-relaxed mb-8 md:mb-12">
-            Try free for 3 days. Then $2.99/month. Cancel anytime.
+            Try free for 3 days. Then $5/month. Cancel anytime.
           </p>
         </motion.div>
 
@@ -2367,7 +2385,7 @@ const Pricing = () => {
         >
           <div className="text-center mb-8 md:mb-10">
             <div className="text-5xl md:text-6xl font-semibold text-foreground mb-2">
-              $2.99<span className="text-2xl md:text-3xl text-secondary/60">/month</span>
+              $5<span className="text-2xl md:text-3xl text-secondary/60">/month</span>
             </div>
             <p className="text-sm text-secondary">
               after 3-day free trial

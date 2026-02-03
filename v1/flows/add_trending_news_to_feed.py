@@ -32,6 +32,22 @@ from v1.storage import FirestoreStore
 MAX_NEWS_PER_FEED = 5
 MAX_NEWS_PER_TOPIC = 2
 
+ROLE_KEYWORDS = {
+    "founder": ["founder", "startup", "startups", "entrepreneur", "bootstrapping", "launch"],
+    "ux designer": ["ux", "ui", "design", "product design", "user research"],
+    "software engineer": ["software", "engineering", "developer", "programming", "code"],
+    "marketing": ["marketing", "growth", "seo", "copywriting", "distribution"],
+    "student": ["learning", "beginner", "study", "career"],
+}
+
+ROLE_MATCHERS = {
+    "founder": ["founder", "entrepreneur", "indie", "startup"],
+    "ux designer": ["ux", "ui", "product designer", "designer"],
+    "software engineer": ["software engineer", "engineer", "developer", "programmer"],
+    "marketing": ["marketing", "growth", "brand", "demand gen"],
+    "student": ["student", "learner"],
+}
+
 
 def _get_today_ist_date() -> str:
     ist_tz = timezone(timedelta(hours=5, minutes=30))
@@ -50,6 +66,16 @@ def _get_user_seen_urls(store: FirestoreStore, user_id: str) -> set[str]:
 def _normalize(text: str) -> str:
     """Normalize text for matching (lowercase, stripped)."""
     return text.lower().strip()
+
+
+def _get_role_keywords(role: str | None) -> list[str]:
+    role_value = (role or "").strip().lower()
+    if not role_value:
+        return []
+    for key, matchers in ROLE_MATCHERS.items():
+        if any(m in role_value for m in matchers):
+            return ROLE_KEYWORDS.get(key, [])
+    return []
 
 
 def _user_matches_topic(user_interests: set[str], topic_keywords: list[str]) -> bool:
@@ -216,6 +242,10 @@ def add_trending_news_to_feed(
     for hobby in hobbies:
         if isinstance(hobby, str) and hobby.strip():
             user_interests.add(_normalize(hobby))
+
+    role_keywords = _get_role_keywords(profile.get("role"))
+    for keyword in role_keywords:
+        user_interests.add(_normalize(keyword))
 
     if not user_interests:
         print(f"  No interests found for {user_id}")

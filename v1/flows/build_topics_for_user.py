@@ -50,6 +50,57 @@ LOOKBACK_DAYS_DEFAULT = 60
 VIDEO_LOOKBACK_DAYS = 60
 MIN_REFRESH_DAYS_DEFAULT = 4
 
+ROLE_QUERY_MODIFIERS = {
+    "founder": [
+        "launch",
+        "pricing",
+        "distribution",
+        "growth",
+        "customer discovery",
+    ],
+    "ux designer": [
+        "usability",
+        "design systems",
+        "user research",
+        "product design",
+        "prototyping",
+    ],
+    "software engineer": [
+        "architecture",
+        "performance",
+        "testing",
+        "developer tooling",
+        "production",
+    ],
+    "marketing": [
+        "positioning",
+        "growth",
+        "copywriting",
+        "seo",
+        "distribution",
+    ],
+    "student": [
+        "learning",
+        "foundations",
+        "beginner",
+        "projects",
+        "study guide",
+    ],
+    "other": [
+        "practical",
+        "workflow",
+        "playbook",
+    ],
+}
+
+ROLE_MATCHERS = {
+    "founder": ["founder", "entrepreneur", "indie", "startup"],
+    "ux designer": ["ux", "ui", "product designer", "designer"],
+    "software engineer": ["software engineer", "engineer", "developer", "programmer"],
+    "marketing": ["marketing", "growth", "brand", "demand gen"],
+    "student": ["student", "learner"],
+}
+
 
 def _normalize_interest(interest: str) -> str:
     return (
@@ -170,6 +221,21 @@ def _search_exa(
     return []
 
 
+def _get_role_modifiers(role: str | None) -> list[str]:
+    role_value = (role or "").strip().lower()
+    if not role_value:
+        return ROLE_QUERY_MODIFIERS["other"]
+    for key, matchers in ROLE_MATCHERS.items():
+        if any(m in role_value for m in matchers):
+            return ROLE_QUERY_MODIFIERS.get(key, ROLE_QUERY_MODIFIERS["other"])
+    return ROLE_QUERY_MODIFIERS["other"]
+
+
+def _is_role_inflected(query: str, role_modifiers: list[str]) -> bool:
+    query_lower = query.lower()
+    return any(mod in query_lower for mod in role_modifiers)
+
+
 def _generate_topic_queries(interest: str, user_profile: dict) -> list[str]:
     context_lines = []
     for key in ["role", "company", "goals", "learningStyle", "contentDepth"]:
@@ -184,17 +250,23 @@ def _generate_topic_queries(interest: str, user_profile: dict) -> list[str]:
         context_lines.append(f"hobbies: {', '.join(hobbies[:12])}")
     context_block = "\n".join(context_lines)
 
+    role = user_profile.get("role", "")
+    role_modifiers = _get_role_modifiers(role)
+
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", "").strip())
     print(f"  Generating topic queries for: {interest}")
     prompt = (
         "Generate 5 concise, specific search queries for this interest.\n"
         f"Interest: {interest}\n\n"
         f"User context:\n{context_block}\n\n"
+        f"Role: {role or 'unknown'}\n"
+        f"Role modifiers: {', '.join(role_modifiers)}\n\n"
         f"Current year: {datetime.now(timezone.utc).year}\n\n"
         "Rules:\n"
         "- Total 5 queries, 2 to 5 words each\n"
-        "- 2 queries should stay very close to the interest\n"
-        "- 3 queries should blend the interest with the user's profile\n"
+        "- 3 queries should stay very close to the interest while respecting the user's role modifier (if provided)\n"
+        "- 2 queries should blend the interest with the user's profile\n"
+        "- At least 3 queries must include a role modifier (if provided)\n"
         "- Diverse angles (tools, methods, niche)\n"
         "- Avoid basic docs-related queries\n"
         "- Return JSON with this exact shape:\n"
@@ -219,6 +291,13 @@ def _generate_topic_queries(interest: str, user_profile: dict) -> list[str]:
                 if isinstance(q, str) and q.strip()
             ]
             if cleaned:
+                if role_modifiers and not any(
+                    _is_role_inflected(q, role_modifiers) for q in cleaned
+                ):
+                    modifier = random.choice(role_modifiers)
+                    injected = f"{interest} {modifier}"
+                    if injected not in cleaned:
+                        cleaned = cleaned[:4] + [injected]
                 print(f"  Queries generated: {cleaned}")
                 return cleaned[:5]
     except Exception as e:
@@ -306,7 +385,14 @@ def build_topics_for_user(
         print(f"Processing topic: {topic_name} ({topic_id}) [{topic_kind}]")
 
         queries = _generate_topic_queries(topic_name, profile)
-        query_used = random.choice(queries)
+        role_modifiers = _get_role_modifiers(profile.get("role"))
+        role_queries = [
+            q for q in queries if _is_role_inflected(q, role_modifiers)
+        ]
+        if role_queries and random.random() < 0.7:
+            query_used = random.choice(role_queries)
+        else:
+            query_used = random.choice(queries)
 
         blogs_query = f"blogs about {query_used}"
         print(f"  Exa blog search: {blogs_query}")

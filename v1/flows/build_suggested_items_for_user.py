@@ -158,7 +158,8 @@ def _select_suggested_topics(
 
     prompt = (
         "Select up to 4 topic_ids that are NOT the user's direct topics, "
-        "but are likely interesting based on their profile.\n\n"
+        "but are likely interesting based on their profile.\n"
+        "Bias toward topics that help someone in this role ship results.\n\n"
         f"User context:\n{context_block}\n\n"
         "Available topics:\n"
         f"{topics_list}\n\n"
@@ -342,4 +343,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

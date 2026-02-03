@@ -2,13 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { 
-  Youtube, 
-  BookOpen, 
-  MessageCircle,
-  ArrowUpRight,
-  Sparkles,
-} from 'lucide-react';
+import { Sparkles, Calendar, Youtube, BookOpen, MessageCircle, ArrowUpRight } from 'lucide-react';
 import PublicHeader from '@/components/PublicHeader';
 import { adminFirestore } from '@/lib/firebase-admin';
 
@@ -57,6 +51,13 @@ function FeedCard({ item }: { item: FeedItem }) {
   const itemKind = item.type || 'blog';
   const config = sourceConfig[itemKind] || sourceConfig.blog;
   const Icon = config.icon;
+  const host = (() => {
+    try {
+      return new URL(item.url).hostname.replace('www.', '');
+    } catch {
+      return '';
+    }
+  })();
 
   const bgColors: Record<string, string> = {
     video: 'bg-red-50',
@@ -65,42 +66,47 @@ function FeedCard({ item }: { item: FeedItem }) {
   };
 
   return (
-    <a 
-      href={item.url} 
-      target="_blank" 
+    <a
+      href={item.url}
+      target="_blank"
       rel="noopener noreferrer"
       className="group block p-4 md:p-5 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
     >
       <div className="flex items-start gap-3 md:gap-4">
-        {/* Source icon - hidden on mobile */}
         <div className={`hidden md:flex w-12 h-12 rounded-xl items-center justify-center shrink-0 ${bgColors[itemKind] || bgColors.blog}`}>
           <Icon size={20} className={config.color} strokeWidth={1.5} />
         </div>
-        
-        {/* Content */}
+
         <div className="flex-1 min-w-0">
-          {/* Source label */}
           <div className="flex items-center gap-2 mb-1.5 md:mb-2">
             <span className={`text-[10px] font-medium uppercase tracking-wider ${config.color}`}>
               {config.label}
             </span>
+            {host && (
+              <span className="text-[10px] font-mono text-secondary/50">
+                {host}
+              </span>
+            )}
           </div>
-          
-          {/* Title */}
+
           <div className="mb-2 md:mb-3">
             <h3 className="text-base md:text-lg font-medium leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
               {item.title}
-              <ArrowUpRight 
-                size={14} 
-                className="inline ml-1 opacity-40 md:opacity-0 group-hover:opacity-60 transition-opacity" 
+              <ArrowUpRight
+                size={14}
+                className="inline ml-1 opacity-40 md:opacity-0 group-hover:opacity-60 transition-opacity"
               />
             </h3>
           </div>
 
-          {/* Description if available */}
           {item.description && (
-            <p className="text-xs text-secondary/70">
+            <p className="text-xs text-secondary/70 mb-2">
               {item.description}
+            </p>
+          )}
+          {item.metadata?.why_relevant && (
+            <p className="text-[11px] text-primary/70">
+              {item.metadata.why_relevant}
             </p>
           )}
         </div>
@@ -108,6 +114,7 @@ function FeedCard({ item }: { item: FeedItem }) {
     </a>
   );
 }
+
 
 async function getTopicData(topicId: string) {
   // Validate topic
@@ -138,10 +145,10 @@ async function getTopicData(topicId: string) {
     const topicData = topicDoc.data();
     const latest = topicData?.latest || {};
 
-    // Extract content - max 4 items total per topic
-    const blogs = (latest.blogs || []).slice(0, 2);
-    const discussions = (latest.discussions || []).slice(0, 1);
-    const videos = (latest.videos || []).slice(0, 1);
+    // Extract content - more items for SEO/value
+    const blogs = (latest.blogs || []).slice(0, 4);
+    const discussions = (latest.discussions || []).slice(0, 3);
+    const videos = (latest.videos || []).slice(0, 3);
 
     // Combine and format items
     const items = [
@@ -149,7 +156,7 @@ async function getTopicData(topicId: string) {
         id: `${topicId}_blog_${idx}`,
         type: 'blog',
         title: item.title || '',
-        description: '',
+        description: item.description || item.summary || item.excerpt || '',
         url: item.url || '',
         tags: [topicId],
         source: 'exa',
@@ -161,7 +168,7 @@ async function getTopicData(topicId: string) {
         id: `${topicId}_discussion_${idx}`,
         type: 'discussion',
         title: item.title || '',
-        description: '',
+        description: item.description || item.summary || item.excerpt || '',
         url: item.url || '',
         tags: [topicId],
         source: 'exa',
@@ -173,7 +180,7 @@ async function getTopicData(topicId: string) {
         id: `${topicId}_video_${idx}`,
         type: 'video',
         title: item.title || '',
-        description: '',
+        description: item.description || item.summary || item.excerpt || '',
         url: item.url || '',
         thumbnail: item.thumbnail || null,
         tags: [topicId],
@@ -214,6 +221,19 @@ export default async function TrendingTopicPage({
   const topicData = await getTopicData(topic);
   const { items = [], display_name } = topicData || {};
   const displayName = display_name || TOPIC_DISPLAY_NAMES[topic] || topic;
+  const updatedAtRaw = topicData?.updated_at;
+  const updatedAt = (() => {
+    if (!updatedAtRaw) return null;
+    if (typeof updatedAtRaw === 'string' || typeof updatedAtRaw === 'number') {
+      const date = new Date(updatedAtRaw);
+      return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString();
+    }
+    if (typeof updatedAtRaw === 'object' && typeof updatedAtRaw.seconds === 'number') {
+      const date = new Date(updatedAtRaw.seconds * 1000);
+      return date.toLocaleDateString();
+    }
+    return null;
+  })();
 
   // Structured data for SEO
   const structuredData = {
@@ -226,6 +246,23 @@ export default async function TrendingTopicPage({
       '@type': 'Organization',
       name: 'Trace',
       url: 'https://www.yourtrace.online',
+    },
+    breadcrumb: {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'Trending',
+          item: 'https://www.yourtrace.online/trending',
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: displayName,
+          item: `https://www.yourtrace.online/trending/${topic}`,
+        },
+      ],
     },
     mainEntity: {
       '@type': 'ItemList',
@@ -261,7 +298,24 @@ export default async function TrendingTopicPage({
               {displayName}
             </h1>
             <p className="text-sm text-secondary">
-              Latest articles, discussions, and videos curated from across the web
+              Latest articles, discussions, and videos curated from across the web — free to browse.
+            </p>
+            {updatedAt && (
+              <div className="mt-3 flex items-center gap-2 text-xs text-secondary/70">
+                <Calendar size={14} className="text-secondary/50" />
+                Updated {updatedAt}
+              </div>
+            )}
+          </div>
+
+          {/* Value summary */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6 mb-8">
+            <h2 className="text-base md:text-lg font-semibold text-foreground mb-2">
+              Why this topic matters for builders
+            </h2>
+            <p className="text-sm text-secondary leading-relaxed">
+              Trace curates the most relevant {displayName.toLowerCase()} signal so you can keep shipping without getting lost in noise.
+              Use this page to scan what’s trending — then unlock your personalized feed when you want it tailored to your work.
             </p>
           </div>
 
@@ -284,13 +338,29 @@ export default async function TrendingTopicPage({
                     Want the complete feed?
                   </p>
                   <p className="text-sm text-secondary mb-6">
-                    Sign in to get personalized content curated daily for your interests
+                    Sign in to get a feed tuned to what you’re building across AI, product, and startups.
                   </p>
                   <Link href="/">
                     <button className="bg-foreground text-background px-6 py-3 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all">
                       Unlock full feed
                     </button>
                   </Link>
+                </div>
+              </div>
+
+              {/* Related topics */}
+              <div className="pb-12">
+                <h3 className="text-base font-semibold text-foreground mb-3">Explore related topics</h3>
+                <div className="flex flex-wrap gap-2">
+                  {ALLOWED_TOPICS.filter((t) => t !== topic).map((t) => (
+                    <Link
+                      key={t}
+                      href={`/trending/${t}`}
+                      className="px-3 py-1.5 rounded-full bg-gray-100 text-xs text-secondary/80 hover:text-foreground hover:bg-gray-200 transition-colors"
+                    >
+                      {TOPIC_DISPLAY_NAMES[t]}
+                    </Link>
+                  ))}
                 </div>
               </div>
             </>
@@ -334,7 +404,8 @@ export async function generateMetadata({
       `${displayName} trends`,
       'curated content',
       'tech news',
-      'developer resources',
+      'product builders',
+      'indie hackers',
     ],
     openGraph: {
       title: `${displayName} - Trending on Trace`,

@@ -271,7 +271,7 @@ export default function SubscriptionManager() {
             </div>
             <div>
               <h3 className="text-lg font-semibold text-foreground">
-                Subscription Status
+                Founder Feed Access
               </h3>
               <p className={`text-sm font-medium mt-0.5 ${getStatusColor(status)}`}>
                 {status === 'none' ? 'No Subscription' : status.replace('_', ' ')}
@@ -329,24 +329,24 @@ export default function SubscriptionManager() {
           <div className="mb-6 space-y-4">
             <div className="p-5 bg-gray-50 rounded-xl">
               <h4 className="text-sm font-medium text-foreground mb-4">
-                What you&apos;ll get:
+                What founders & builders get:
               </h4>
               <ul className="space-y-3 text-sm text-secondary">
                 <li className="flex items-start gap-3">
                   <span className="w-5 h-5 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs shrink-0">✓</span>
-                  <span>Daily personalized feed tailored to your interests and goals</span>
+                  <span>Daily founder feed tailored to what you&apos;re building</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="w-5 h-5 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs shrink-0">✓</span>
-                  <span>Daily newsletter delivered to your inbox every morning</span>
+                  <span>Daily briefing delivered to your inbox every morning</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="w-5 h-5 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs shrink-0">✓</span>
-                  <span>Smart content from YouTube, blogs, papers, repos & more</span>
+                  <span>High-signal picks from YouTube, blogs, papers, repos & more</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="w-5 h-5 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs shrink-0">✓</span>
-                  <span>AI-curated based on your role, projects, and learning style</span>
+                  <span>AI-curated based on your role, product stage, and goals</span>
                 </li>
               </ul>
             </div>
@@ -418,7 +418,7 @@ export default function SubscriptionManager() {
               ) : (
                 <div className="space-y-3 p-4 bg-red-50 rounded-xl border border-red-100">
                   <p className="text-sm text-foreground">
-                    Are you sure you want to cancel? You&apos;ll lose access to your personalized feed.
+                    Are you sure you want to cancel? You&apos;ll lose access to your founder feed.
                   </p>
                   <div className="flex gap-3">
                     <button
@@ -475,7 +475,7 @@ export default function SubscriptionManager() {
         <div className="space-y-3 text-sm">
           <div className="flex justify-between">
             <span className="text-secondary">Price:</span>
-            <span className="text-foreground font-medium">$2.99/month</span>
+            <span className="text-foreground font-medium">$5/month</span>
           </div>
           <div className="flex justify-between">
             <span className="text-secondary">Trial Period:</span>
@@ -495,4 +495,3 @@ export default function SubscriptionManager() {
     </div>
   );
 }
-

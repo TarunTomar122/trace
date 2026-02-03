@@ -9,6 +9,7 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
 import { getOrCreateUserProfile, getUserProfile, UserProfile } from '@/lib/firestore';
+import { identifyUser, resetUser, trackSignIn, trackSignOut } from '@/lib/posthog';
 
 interface AuthContextType {
   user: User | null;
@@ -62,7 +63,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
-        await loadProfile(firebaseUser);
+        const userProfile = await loadProfile(firebaseUser);
+        // Identify returning users for PostHog
+        identifyUser(firebaseUser.uid, {
+          email: firebaseUser.email,
+          name: firebaseUser.displayName,
+          onboarded: userProfile?.onboarded || false,
+        });
       } else {
         setProfile(null);
       }
@@ -77,6 +84,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await signInWithPopup(auth, googleProvider);
       if (result.user) {
         const userProfile = await loadProfile(result.user);
+        
+        // Track sign in with PostHog
+        identifyUser(result.user.uid, {
+          email: result.user.email,
+          name: result.user.displayName,
+          onboarded: userProfile?.onboarded || false,
+        });
+        trackSignIn("google");
+        
         if (!userProfile?.onboarded) {
           window.location.href = '/onboarding';
         } else {
@@ -91,6 +107,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
+      trackSignOut();
+      resetUser();
       await firebaseSignOut(auth);
       setProfile(null);
     } catch (error) {

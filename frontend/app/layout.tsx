@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { PostHogProvider } from "@/lib/posthog";
 import "./globals.css";
 import Script from "next/script";
 
@@ -102,7 +103,7 @@ export default function RootLayout({
         "image": "https://www.yourtrace.online/trace.png",
         "offers": {
           "@type": "Offer",
-          "price": "2.99",
+          "price": "5.00",
           "priceCurrency": "USD",
           "availability": "https://schema.org/InStock",
           "priceValidUntil": "2026-12-31",
@@ -124,9 +125,11 @@ export default function RootLayout({
       <body
         className={`${spaceGrotesk.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <PostHogProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </PostHogProvider>
         <Analytics />
         <Script
           defer
