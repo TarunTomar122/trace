@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { Sparkles, Calendar, Youtube, BookOpen, MessageCircle, ArrowUpRight } from 'lucide-react';
+import { Sparkles, Calendar, Youtube, BookOpen, MessageCircle, ArrowUpRight, Newspaper } from 'lucide-react';
 import PublicHeader from '@/components/PublicHeader';
 import { adminFirestore } from '@/lib/firebase-admin';
 
@@ -11,21 +11,29 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 14400; // Revalidate every 4 hours
 
 const ALLOWED_TOPICS = [
-  'frontend-performance',
-  'design',
-  'ai-agents',
-  'startups',
-  'music-production',
-  'vibe-coding',
+  'mental-wellness',
+  'health-fitness',
+  'relationships',
+  'money',
+  'career',
+  'learning',
+  'productivity',
+  'creativity',
+  'travel',
+  'culture',
 ] as const;
 
 const TOPIC_DISPLAY_NAMES: Record<string, string> = {
-  'frontend-performance': 'Frontend Performance',
-  'design': 'Design',
-  'ai-agents': 'AI Agents',
-  'startups': 'Startups',
-  'music-production': 'Music Production',
-  'vibe-coding': 'Vibe Coding',
+  'mental-wellness': 'Mental Wellness',
+  'health-fitness': 'Health & Fitness',
+  'relationships': 'Relationships',
+  'money': 'Money & Personal Finance',
+  'career': 'Career & Work',
+  'learning': 'Learning & Skills',
+  'productivity': 'Productivity',
+  'creativity': 'Creativity',
+  'travel': 'Travel & Adventure',
+  'culture': 'Culture & Entertainment',
 };
 
 type FeedItem = {
@@ -45,12 +53,12 @@ const sourceConfig: Record<string, { icon: typeof Youtube; color: string; label:
   video: { icon: Youtube, color: 'text-red-500', label: 'Video' },
   blog: { icon: BookOpen, color: 'text-emerald-500', label: 'Article' },
   discussion: { icon: MessageCircle, color: 'text-amber-500', label: 'Discussion' },
+  news: { icon: Newspaper, color: 'text-sky-500', label: 'News' },
 };
 
 function FeedCard({ item }: { item: FeedItem }) {
   const itemKind = item.type || 'blog';
   const config = sourceConfig[itemKind] || sourceConfig.blog;
-  const Icon = config.icon;
   const host = (() => {
     try {
       return new URL(item.url).hostname.replace('www.', '');
@@ -63,6 +71,7 @@ function FeedCard({ item }: { item: FeedItem }) {
     video: 'bg-red-50',
     blog: 'bg-emerald-50',
     discussion: 'bg-amber-50',
+    news: 'bg-sky-50',
   };
 
   return (
@@ -73,10 +82,6 @@ function FeedCard({ item }: { item: FeedItem }) {
       className="group block p-4 md:p-5 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
     >
       <div className="flex items-start gap-3 md:gap-4">
-        <div className={`hidden md:flex w-12 h-12 rounded-xl items-center justify-center shrink-0 ${bgColors[itemKind] || bgColors.blog}`}>
-          <Icon size={20} className={config.color} strokeWidth={1.5} />
-        </div>
-
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5 md:mb-2">
             <span className={`text-[10px] font-medium uppercase tracking-wider ${config.color}`}>
@@ -99,11 +104,6 @@ function FeedCard({ item }: { item: FeedItem }) {
             </h3>
           </div>
 
-          {item.description && (
-            <p className="text-xs text-secondary/70 mb-2">
-              {item.description}
-            </p>
-          )}
           {item.metadata?.why_relevant && (
             <p className="text-[11px] text-primary/70">
               {item.metadata.why_relevant}
@@ -113,6 +113,25 @@ function FeedCard({ item }: { item: FeedItem }) {
       </div>
     </a>
   );
+}
+
+
+function getTodayIstDate(): string {
+  const now = new Date();
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  const ist = new Date(utc + 5.5 * 60 * 60 * 1000);
+  return ist.toISOString().slice(0, 10);
+}
+
+
+async function getLatestTrendingDate(): Promise<string | null> {
+  const snapshot = await adminFirestore
+    .collection('trending_news')
+    .orderBy('date', 'desc')
+    .limit(1)
+    .get();
+  if (snapshot.empty) return null;
+  return snapshot.docs[0].id || snapshot.docs[0].data().date || null;
 }
 
 
@@ -129,67 +148,39 @@ async function getTopicData(topicId: string) {
       return null;
     }
 
-    console.log('[getTopicData] Fetching topic from Firestore:', topicId);
-    
-    // Fetch directly from Firestore
+    console.log('[getTopicData] Fetching trending topic from Firestore:', topicId);
+
+    const today = getTodayIstDate();
+    const latestDate = await getLatestTrendingDate();
+    const dateToUse = latestDate || today;
+
     const topicDoc = await adminFirestore
+      .collection('trending_news')
+      .doc(dateToUse)
       .collection('topics')
       .doc(topicId)
       .get();
 
     if (!topicDoc.exists) {
-      console.log('[getTopicData] Topic not found in Firestore:', topicId);
+      console.log('[getTopicData] Topic not found in trending_news:', topicId);
       return null;
     }
 
     const topicData = topicDoc.data();
-    const latest = topicData?.latest || {};
+    const articles = (topicData?.articles || []).slice(0, 10);
 
-    // Extract content - more items for SEO/value
-    const blogs = (latest.blogs || []).slice(0, 4);
-    const discussions = (latest.discussions || []).slice(0, 3);
-    const videos = (latest.videos || []).slice(0, 3);
-
-    // Combine and format items
-    const items = [
-      ...blogs.map((item: any, idx: number) => ({
-        id: `${topicId}_blog_${idx}`,
-        type: 'blog',
-        title: item.title || '',
-        description: item.description || item.summary || item.excerpt || '',
-        url: item.url || '',
-        tags: [topicId],
-        source: 'exa',
-        metadata: {
-          why_relevant: `Latest in ${TOPIC_DISPLAY_NAMES[topicId]}`,
-        },
-      })),
-      ...discussions.map((item: any, idx: number) => ({
-        id: `${topicId}_discussion_${idx}`,
-        type: 'discussion',
-        title: item.title || '',
-        description: item.description || item.summary || item.excerpt || '',
-        url: item.url || '',
-        tags: [topicId],
-        source: 'exa',
-        metadata: {
-          why_relevant: `Latest in ${TOPIC_DISPLAY_NAMES[topicId]}`,
-        },
-      })),
-      ...videos.map((item: any, idx: number) => ({
-        id: `${topicId}_video_${idx}`,
-        type: 'video',
-        title: item.title || '',
-        description: item.description || item.summary || item.excerpt || '',
-        url: item.url || '',
-        thumbnail: item.thumbnail || null,
-        tags: [topicId],
-        source: 'youtube',
-        metadata: {
-          why_relevant: `Latest in ${TOPIC_DISPLAY_NAMES[topicId]}`,
-        },
-      })),
-    ];
+    const items = articles.map((item: any, idx: number) => ({
+      id: `${topicId}_news_${idx}`,
+      type: 'news',
+      title: item.title || '',
+      description: item.content || '',
+      url: item.url || '',
+      tags: [topicId],
+      source: 'tavily',
+      metadata: {
+        why_relevant: `Trending in ${TOPIC_DISPLAY_NAMES[topicId]}`,
+      },
+    }));
 
     console.log('[getTopicData] Topic data fetched, items count:', items.length);
 
@@ -197,7 +188,7 @@ async function getTopicData(topicId: string) {
       topic_id: topicId,
       display_name: topicData?.display_name || TOPIC_DISPLAY_NAMES[topicId],
       items,
-      updated_at: topicData?.updated_at || null,
+      updated_at: topicData?.generated_at || null,
       total: items.length,
     };
   } catch (error) {
@@ -240,7 +231,7 @@ export default async function TrendingTopicPage({
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
     name: `${displayName} - Trending`,
-    description: `Latest ${displayName.toLowerCase()} articles, discussions, and videos`,
+    description: `Latest ${displayName.toLowerCase()} articles curated from across the web`,
     url: `https://www.yourtrace.online/trending/${topic}`,
     publisher: {
       '@type': 'Organization',
@@ -298,7 +289,7 @@ export default async function TrendingTopicPage({
               {displayName}
             </h1>
             <p className="text-sm text-secondary">
-              Latest articles, discussions, and videos curated from across the web — free to browse.
+              Latest articles curated from across the web — free to browse.
             </p>
             {updatedAt && (
               <div className="mt-3 flex items-center gap-2 text-xs text-secondary/70">
@@ -311,61 +302,22 @@ export default async function TrendingTopicPage({
           {/* Value summary */}
           <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6 mb-8">
             <h2 className="text-base md:text-lg font-semibold text-foreground mb-2">
-              Why this topic matters for builders
+              Why this topic matters
             </h2>
             <p className="text-sm text-secondary leading-relaxed">
-              Trace curates the most relevant {displayName.toLowerCase()} signal so you can keep shipping without getting lost in noise.
-              Use this page to scan what’s trending — then unlock your personalized feed when you want it tailored to your work.
+              Trace curates the most relevant {displayName.toLowerCase()} signal so you can stay informed without getting lost in noise.
+              Use this page to scan what’s trending — then unlock a personalized feed when you want it tailored to you.
             </p>
           </div>
 
           {/* Content */}
           {items.length > 0 ? (
-            <>
-              <div className="divide-y divide-border/10">
-                {items.map((item: FeedItem) => (
-                  <FeedCard key={item.id} item={item} />
-                ))}
-              </div>
-
-              {/* CTA to sign in */}
-              <div className="py-8 md:py-12">
-                <div className="bg-gray-50 rounded-2xl p-6 md:p-8 text-center">
-                  <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                    <Sparkles size={22} className="text-foreground" strokeWidth={1.5} />
-                  </div>
-                  <p className="text-base font-semibold text-foreground mb-2">
-                    Want the complete feed?
-                  </p>
-                  <p className="text-sm text-secondary mb-6">
-                    Sign in to get a feed tuned to what you’re building across AI, product, and startups.
-                  </p>
-                  <Link href="/">
-                    <button className="bg-foreground text-background px-6 py-3 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all">
-                      Unlock full feed
-                    </button>
-                  </Link>
-                </div>
-              </div>
-
-              {/* Related topics */}
-              <div className="pb-12">
-                <h3 className="text-base font-semibold text-foreground mb-3">Explore related topics</h3>
-                <div className="flex flex-wrap gap-2">
-                  {ALLOWED_TOPICS.filter((t) => t !== topic).map((t) => (
-                    <Link
-                      key={t}
-                      href={`/trending/${t}`}
-                      className="px-3 py-1.5 rounded-full bg-gray-100 text-xs text-secondary/80 hover:text-foreground hover:bg-gray-200 transition-colors"
-                    >
-                      {TOPIC_DISPLAY_NAMES[t]}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            </>
+            <div className="divide-y divide-border/10 mb-8">
+              {items.map((item: FeedItem) => (
+                <FeedCard key={item.id} item={item} />
+              ))}
+            </div>
           ) : (
-            /* Empty state */
             <div className="py-16 text-center">
               <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Sparkles size={24} className="text-foreground" />
@@ -376,6 +328,42 @@ export default async function TrendingTopicPage({
               </p>
             </div>
           )}
+
+          {/* CTA to sign in */}
+          <div className="py-8 md:py-12">
+            <div className="bg-gray-50 rounded-2xl p-6 md:p-8 text-center">
+              <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <Sparkles size={22} className="text-foreground" strokeWidth={1.5} />
+              </div>
+              <p className="text-base font-semibold text-foreground mb-2">
+                Want the complete feed?
+              </p>
+              <p className="text-sm text-secondary mb-6">
+                Sign in to get a feed tuned to what you care about — without doomscrolling.
+              </p>
+              <Link href="/">
+                <button className="bg-foreground text-background px-6 py-3 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all">
+                  Unlock full feed
+                </button>
+              </Link>
+            </div>
+          </div>
+
+          {/* Related topics */}
+          <div className="pb-12">
+            <h3 className="text-base font-semibold text-foreground mb-3">Explore related topics</h3>
+            <div className="flex flex-wrap gap-2">
+              {ALLOWED_TOPICS.filter((t) => t !== topic).map((t) => (
+                <Link
+                  key={t}
+                  href={`/trending/${t}`}
+                  className="px-3 py-1.5 rounded-full bg-gray-100 text-xs text-secondary/80 hover:text-foreground hover:bg-gray-200 transition-colors"
+                >
+                  {TOPIC_DISPLAY_NAMES[t]}
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
       </main>
     </div>
@@ -396,16 +384,16 @@ export async function generateMetadata({
   
   return {
     title: `${displayName} - Trending on Trace`,
-    description: `Latest ${displayName.toLowerCase()} articles, discussions, and videos curated from across the web. Stay updated with the newest trends and insights.`,
+    description: `Latest ${displayName.toLowerCase()} articles curated from across the web. Stay updated without the noise.`,
     keywords: [
       displayName,
       `${displayName} news`,
       `${displayName} articles`,
       `${displayName} trends`,
       'curated content',
-      'tech news',
-      'product builders',
-      'indie hackers',
+      'curated topics',
+      'focus',
+      'wellness',
     ],
     openGraph: {
       title: `${displayName} - Trending on Trace`,
