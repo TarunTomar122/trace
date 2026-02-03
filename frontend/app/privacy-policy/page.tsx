@@ -147,7 +147,7 @@ export default function PrivacyPolicyPage() {
                                     <li>Withdraw consent at any time</li>
                                 </ul>
                                 <p className="mt-4">
-                                    To exercise these rights, please contact us at tomartarun2001@gmail.com
+                                    To exercise these rights, please contact us at yourtrace.online@gmail.com
                                 </p>
                             </section>
 
@@ -191,7 +191,7 @@ export default function PrivacyPolicyPage() {
                                     If you have questions or concerns about this privacy policy, please contact us:
                                 </p>
                                 <div className="bg-gray-50 rounded-xl p-5">
-                                    <p className="mb-2"><strong>Email:</strong> tomartarun2001@gmail.com</p>
+                                    <p className="mb-2"><strong>Email:</strong> yourtrace.online@gmail.com</p>
                                     <p className="mb-2"><strong>Twitter:</strong> <a href="https://x.com/tarat_211" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@tarat_211</a></p>
                                     <p><strong>GitHub:</strong> <a href="https://github.com/TarunTomar122" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">TarunTomar122</a></p>
                                 </div>

@@ -125,6 +125,7 @@ function getTodayIstDate(): string {
 
 
 async function getLatestTrendingDate(): Promise<string | null> {
+  if (!adminFirestore) return null;
   const snapshot = await adminFirestore
     .collection('trending_news')
     .orderBy('date', 'desc')

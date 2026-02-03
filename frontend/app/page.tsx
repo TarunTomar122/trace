@@ -2497,7 +2497,7 @@ const Pricing = () => {
             Cancel anytime before trial ends. No credit card charged until day 4.
           </p>
           <p className="text-sm text-secondary">
-            Questions? We&apos;re humans: <a href="mailto:yourtrace.online@gmail.com" className="text-primary hover:underline">tomartarun2001@gmail.com</a>
+            Questions? We&apos;re humans: <a href="mailto:yourtrace.online@gmail.com" className="text-primary hover:underline">yourtrace.online@gmail.com</a>
           </p>
         </motion.div>
       </div>
@@ -2653,7 +2653,7 @@ const Footer = () => (
             <div className="flex flex-col gap-3 md:gap-4">
               <a href="https://x.com/tarat_211" target="_blank" rel="noopener noreferrer" className="text-sm text-secondary hover:text-foreground transition-colors">Twitter</a>
               <a href="https://github.com/TarunTomar122" target="_blank" rel="noopener noreferrer" className="text-sm text-secondary hover:text-foreground transition-colors">GitHub</a>
-              <a href="mailto:tomartarun2001@gmail.com" className="text-sm text-secondary hover:text-foreground transition-colors">Email</a>
+              <a href="mailto:yourtrace.online@gmail.com" className="text-sm text-secondary hover:text-foreground transition-colors">Email</a>
             </div>
           </div>
         </div>

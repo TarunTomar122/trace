@@ -494,7 +494,7 @@ export default function SubscriptionManager() {
 
       {/* Help Text */}
       <p className="text-sm text-secondary/60 text-center">
-        Questions? Contact us at tomartarun2001@gmail.com
+        Questions? Contact us at yourtrace.online@gmail.com
       </p>
     </div>
   );
