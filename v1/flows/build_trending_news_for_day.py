@@ -36,64 +36,64 @@ DELAY_BETWEEN_SEARCHES = 0.3
 # 10 hardcoded trending topics with keywords for user matching
 TRENDING_TOPICS = [
     {
-        "id": "ai-ml",
-        "name": "AI & Machine Learning",
-        "search_query": "AI artificial intelligence news",
-        "keywords": ["ai", "artificial intelligence", "machine learning", "ml", "llm", "gpt", "chatgpt", "deep learning", "neural network"],
+        "id": "mental-wellness",
+        "name": "Mental Wellness",
+        "search_query": "mental wellness habits stress anxiety mindfulness news",
+        "keywords": ["mental wellness", "mindfulness", "stress", "anxiety", "wellbeing", "self care"],
     },
     {
-        "id": "software-eng",
-        "name": "Software Engineering",
-        "search_query": "software engineering news",
-        "keywords": ["software", "programming", "code", "developer", "engineering", "backend", "coding", "software development"],
+        "id": "health-fitness",
+        "name": "Health & Fitness",
+        "search_query": "health fitness habits nutrition exercise news",
+        "keywords": ["health", "fitness", "exercise", "nutrition", "workout", "wellness"],
     },
     {
-        "id": "frontend",
-        "name": "Frontend Development",
-        "search_query": "frontend web development news",
-        "keywords": ["frontend", "react", "vue", "javascript", "css", "web dev", "typescript", "nextjs", "web development", "html"],
+        "id": "relationships",
+        "name": "Relationships",
+        "search_query": "relationships communication habits psychology news",
+        "keywords": ["relationships", "communication", "family", "friendship", "dating", "marriage"],
     },
     {
-        "id": "ux-design",
-        "name": "UX & Product Design",
-        "search_query": "UX design news",
-        "keywords": ["ux", "ui", "design", "figma", "user experience", "product design", "ui design", "ux design", "interface"],
+        "id": "money",
+        "name": "Money & Personal Finance",
+        "search_query": "personal finance budgeting saving investing news",
+        "keywords": ["money", "personal finance", "budgeting", "saving", "investing", "debt"],
     },
     {
-        "id": "ai-tools",
-        "name": "AI Tools & Productivity",
-        "search_query": "AI tools productivity news",
-        "keywords": ["ai tools", "automation", "copilot", "cursor", "ai apps", "productivity", "tools", "workflow"],
+        "id": "career",
+        "name": "Career & Work",
+        "search_query": "career growth workplace jobs hiring news",
+        "keywords": ["career", "work", "jobs", "hiring", "salary", "workplace"],
     },
     {
-        "id": "finance",
-        "name": "Finance & Investing",
-        "search_query": "investing finance news",
-        "keywords": ["finance", "investing", "stocks", "crypto", "trading", "personal finance", "investment", "money", "fintech"],
+        "id": "learning",
+        "name": "Learning & Skills",
+        "search_query": "learning skills education study tips news",
+        "keywords": ["learning", "skills", "education", "study", "courses", "training"],
     },
     {
-        "id": "startups",
-        "name": "Startups & Business",
-        "search_query": "tech startups news",
-        "keywords": ["startup", "startups", "entrepreneurship", "vc", "business", "founder", "venture capital", "tech business"],
+        "id": "productivity",
+        "name": "Productivity",
+        "search_query": "productivity habits focus time management news",
+        "keywords": ["productivity", "focus", "time management", "habits", "planning"],
     },
     {
-        "id": "product",
-        "name": "Product Management",
-        "search_query": "product management news",
-        "keywords": ["product management", "pm", "roadmap", "agile", "scrum", "product", "product manager"],
+        "id": "creativity",
+        "name": "Creativity",
+        "search_query": "creativity inspiration writing art music news",
+        "keywords": ["creativity", "writing", "art", "music", "design", "inspiration"],
     },
     {
-        "id": "devops",
-        "name": "DevOps & Cloud",
-        "search_query": "devops cloud computing news",
-        "keywords": ["devops", "cloud", "aws", "kubernetes", "docker", "infrastructure", "cloud computing", "ci/cd", "azure", "gcp"],
+        "id": "travel",
+        "name": "Travel & Adventure",
+        "search_query": "travel tips destinations adventure news",
+        "keywords": ["travel", "destinations", "adventure", "trips", "tourism"],
     },
     {
-        "id": "data-science",
-        "name": "Data Science",
-        "search_query": "data science analytics news",
-        "keywords": ["data science", "analytics", "python", "sql", "data engineering", "data", "big data", "data analyst"],
+        "id": "culture",
+        "name": "Culture & Entertainment",
+        "search_query": "culture entertainment books movies tv music news",
+        "keywords": ["culture", "entertainment", "books", "movies", "tv", "music"],
     },
 ]
 
@@ -136,6 +136,7 @@ def fetch_news_for_topics(
     """
     news_by_topic: dict[str, dict[str, Any]] = {}
 
+    topics = topics[:10]
     print(f"Fetching news for {len(topics)} topics...")
     start_time = time.time()
 
@@ -263,13 +264,14 @@ def build_trending_news_for_day(date: str | None = None) -> dict[str, Any]:
     store = FirestoreStore()
 
     # Step 1: Use hardcoded topics
-    print(f"\n[1/2] Using {len(TRENDING_TOPICS)} hardcoded topics")
-    for t in TRENDING_TOPICS:
+    topics = TRENDING_TOPICS[:10]
+    print(f"\n[1/2] Using {len(topics)} hardcoded topics")
+    for t in topics:
         print(f"  - {t['name']}")
 
     # Step 2: Fetch news
     print("\n[2/2] Fetching news for topics...")
-    news_by_topic = fetch_news_for_topics(TRENDING_TOPICS, days=1)
+    news_by_topic = fetch_news_for_topics(topics, days=1)
 
     # Step 3: Save to Firestore
     print("\nSaving to Firestore...")
@@ -283,7 +285,7 @@ def build_trending_news_for_day(date: str | None = None) -> dict[str, Any]:
     print("TRENDING NEWS BUILD COMPLETE")
     print("=" * 60)
     print(f"  Date: {date}")
-    print(f"  Topics searched: {len(TRENDING_TOPICS)}")
+    print(f"  Topics searched: {len(topics)}")
     print(f"  Topics with news: {topics_with_news}")
     print(f"  Total articles: {total_articles}")
     print(f"  Elapsed time: {elapsed:.1f}s")
