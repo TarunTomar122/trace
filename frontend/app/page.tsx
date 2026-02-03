@@ -545,8 +545,9 @@ const Hero = () => {
                   transition={{ duration: 0.6, delay: 0.1 }}
                   className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-tight font-serif tracking-tight text-secondary/80 mb-4 md:mb-6"
                 >
-                  Your personal signal{' '}
-                  <span className="italic text-primary">for building & shipping</span>
+                  F*ck the algorithm.
+                  <br />
+                  <span className="italic text-primary">Build your own feed.</span>
                 </motion.h1>
 
                 <motion.p
@@ -556,8 +557,8 @@ const Hero = () => {
                   className="text-base md:text-lg text-secondary leading-relaxed mb-4 max-w-md"
                 >
                   {isAlphaMode()
-                    ? "Trace keeps you current on AI, product, and startups — without doomscrolling — tuned to what you’re building and the curiosities that fuel you."
-                    : "Join the waitlist for early access. Trace keeps you current on AI, product, and startups — without doomscrolling — tuned to what you’re building."
+                    ? "Stop letting algorithms hijack your brain. Trace gives you a feed you actually control — no engagement bait, no outrage loops, just signal."
+                    : "Join the waitlist for early access. Stop letting algorithms hijack your brain — Trace gives you a feed you actually control."
                   }
                 </motion.p>
 
@@ -568,7 +569,7 @@ const Hero = () => {
                   className="flex flex-wrap gap-2 mb-6 md:mb-8"
                 >
                   {[
-                    "Built for product & design folks",
+                    "Anti-brainrot",
                   ].map((item) => (
                     <div
                       key={item}
@@ -644,7 +645,7 @@ const Hero = () => {
                       ))}
                     </div>
                     <span className="text-sm text-secondary">
-                      Loved by <span className="font-medium text-foreground">indie hackers & product teams</span>
+                      Loved by <span className="font-medium text-foreground">people done with doomscrolling</span>
                     </span>
                   </div>
                 </motion.div>
@@ -676,6 +677,46 @@ const Hero = () => {
             <HeroDemo />
           </motion.div>
         </div>
+      </div>
+    </section>
+  );
+};
+
+// --- Demo Video Section ---
+const DemoVideo = () => {
+  return (
+    <section className="relative py-16 md:py-24 overflow-hidden z-10">
+      <div className="container mx-auto px-4 sm:px-6 max-w-5xl">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.7 }}
+          className="text-center mb-10"
+        >
+          <h2 className="text-2xl md:text-3xl font-serif text-foreground mb-3">
+            See Trace in action
+          </h2>
+          <p className="text-secondary text-base md:text-lg max-w-xl mx-auto">
+            A personalized feed that learns what matters to you
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.8, delay: 0.1 }}
+          className="relative rounded-2xl overflow-hidden border border-border/50 shadow-2xl shadow-primary/5 bg-background aspect-video"
+        >
+          <iframe
+            src="https://www.youtube.com/embed/ueJC-EZCvr4?autoplay=0&rel=0&modestbranding=1"
+            title="Trace Demo"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="w-full h-full"
+          />
+        </motion.div>
       </div>
     </section>
   );
@@ -1041,42 +1082,42 @@ const DEMO_FEED_ITEMS = [
   {
     id: '1',
     type: 'youtube',
-    title: 'Designing AI features users actually trust',
-    description: 'A clear framework for shipping AI UX that doesn’t confuse users, with examples from real products.',
+    title: 'The creative process behind Studio Ghibli backgrounds',
+    description: 'How Kazuo Oga painted those dreamy landscapes and what digital artists can learn from his techniques.',
     source: 'YouTube',
-    author: 'Product Studio',
-    tag: 'product',
-    tagLabel: 'Matches your interest in product',
+    author: 'Art of Animation',
+    tag: 'design',
+    tagLabel: 'You liked illustration content',
   },
   {
     id: '2',
     type: 'article',
-    title: 'From idea to MVP: a 4-week builder sprint',
-    description: 'A tactical playbook for shipping fast without trashing quality or focus.',
+    title: 'Why your side project needs a 2-hour weekly ritual',
+    description: 'A simple system for making consistent progress without burning out or losing momentum.',
     source: 'Blog',
-    author: 'Builder Notes',
+    author: 'Indie Hackers',
     tag: 'startups',
-    tagLabel: 'Matches your interest in startups',
+    tagLabel: 'You follow productivity',
   },
   {
     id: '3',
     type: 'news',
-    title: 'New AI model improves tool-use reliability in production',
-    description: 'Early results show fewer hallucinations and better task execution for real-world agent workflows.',
+    title: 'Claude 4 benchmarks show major reasoning improvements',
+    description: 'New model excels at multi-step tasks and code generation, with notable gains in math.',
     source: 'News',
-    author: 'Tech Brief',
+    author: 'AI Weekly',
     tag: 'ai-tools',
-    tagLabel: 'Matches your interest in AI tools',
+    tagLabel: 'You follow AI news',
   },
   {
     id: '4',
     type: 'discussion',
-    title: 'What does “high-signal” look like for builder-operators?',
-    description: 'A discussion on how product/design operators cut noise and stay focused while shipping.',
+    title: "What's your unpopular opinion about React in 2026?",
+    description: 'Devs debate server components, build complexity, and whether the ecosystem has peaked.',
     source: 'Discussion',
     author: 'Hacker News',
-    tag: 'design',
-    tagLabel: 'Matches your interest in design',
+    tag: 'product',
+    tagLabel: 'You follow web dev',
   },
 ];
 
@@ -1534,17 +1575,17 @@ const DemoFeed = () => {
 const Testimonials = () => {
   const testimonials = [
     {
-      quote: "I ship faster now. Trace surfaced an AI eval tool I used the same day and saved me a week of rabbit holes.",
+      quote: "I deleted Twitter and Reddit. Trace is the only feed I check now — 15 minutes in the morning and I'm done. No rabbit holes.",
       name: "Zeba",
       role: "AI Engineer"
     },
     {
-      quote: "I’m a product designer and Trace is my daily signal. It found a new UX pattern for AI onboarding I used in our next release.",
+      quote: "I used to lose hours to doomscrolling. Now I get the same info in a fraction of the time, without the anxiety spiral.",
       name: "Monisha",
       role: "Product Designer"
     },
     {
-      quote: "As an indie hacker, I need signal fast. Trace pulled a launch checklist and a pricing teardown that directly shaped my MVP.",
+      quote: "Finally, a feed that doesn't try to manipulate me. I see what I want to see, not what some algorithm thinks will keep me hooked.",
       name: "Sebastian",
       role: "Indie Hacker"
     }
@@ -1560,7 +1601,7 @@ const Testimonials = () => {
             viewport={{ once: true }}
             className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-4 md:mb-6"
           >
-            What People <span className="text-secondary/50">Say</span>
+            People Who <span className="text-secondary/50">Escaped</span>
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -1569,7 +1610,7 @@ const Testimonials = () => {
             transition={{ delay: 0.1 }}
             className="text-secondary text-base md:text-lg leading-relaxed max-w-2xl mx-auto"
           >
-            Builders, makers, and curious minds who use Trace daily
+            Real people who took back their attention
           </motion.p>
         </div>
 
@@ -2371,9 +2412,6 @@ const Pricing = () => {
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-4 md:mb-6">
             Simple <span className="text-secondary/50">Pricing</span>
           </h2>
-          <p className="text-secondary text-base md:text-lg leading-relaxed mb-8 md:mb-12">
-            Try free for 3 days. Then $5/month. Cancel anytime.
-          </p>
         </motion.div>
 
         <motion.div
@@ -2385,10 +2423,13 @@ const Pricing = () => {
         >
           <div className="text-center mb-8 md:mb-10">
             <div className="text-5xl md:text-6xl font-semibold text-foreground mb-2">
-              $5<span className="text-2xl md:text-3xl text-secondary/60">/month</span>
+              $5.90<span className="text-2xl md:text-3xl text-secondary/60">/month</span>
             </div>
-            <p className="text-sm text-secondary">
+            <p className="text-sm text-secondary mb-2">
               after 3-day free trial
+            </p>
+            <p className="text-xs text-primary font-medium">
+              ☕ Less than a single coffee for a whole month
             </p>
           </div>
 
@@ -2456,7 +2497,7 @@ const Pricing = () => {
             Cancel anytime before trial ends. No credit card charged until day 4.
           </p>
           <p className="text-sm text-secondary">
-            Questions? We&apos;re humans: <a href="mailto:tomartarun2001@gmail.com" className="text-primary hover:underline">tomartarun2001@gmail.com</a>
+            Questions? We&apos;re humans: <a href="mailto:yourtrace.online@gmail.com" className="text-primary hover:underline">tomartarun2001@gmail.com</a>
           </p>
         </motion.div>
       </div>
@@ -2641,6 +2682,7 @@ export default function LandingPage() {
       <WaitlistBanner />
       <Nav />
       <Hero />
+      <DemoVideo />
       <HowItWorks />
       {/* <InteractiveDemo />
       <DemoFeed /> */}

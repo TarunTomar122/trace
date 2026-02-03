@@ -539,7 +539,7 @@ function ProfileContent() {
                 <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
                   <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6 flex items-center gap-2">
                     <Sparkles size={14} className="text-foreground" />
-                    What Trace thinks about you
+                    Your focus snapshot
                   </h2>
                   {traceInsightsLoading ? (
                     <div className="text-sm text-secondary/70">Loading insights...</div>
@@ -547,7 +547,7 @@ function ProfileContent() {
                     <TraceInsightCard insights={traceInsights} />
                   ) : (
                     <div className="text-sm text-secondary/70">
-                      Interact with your feed to help Trace learn what you like.
+                      Interact with your feed to teach Trace what helps you focus and avoid doomscrolling.
                     </div>
                   )}
                 </section>
@@ -591,7 +591,7 @@ function ProfileContent() {
               <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
-                    Interests ({selectedInterests.length}/8)
+                    Topics you want more of ({selectedInterests.length}/8)
                   </h2>
                   {profile?.onboarded && (
                     editingSection === 'interests' ? (

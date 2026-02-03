@@ -32,6 +32,7 @@ from v1.storage import FirestoreStore
 
 MAX_SUGGESTED_TOPICS = 4
 ITEMS_PER_TOPIC = 2
+MAX_SUGGESTED_ITEMS = 4
 
 
 def _normalize_interest(interest: str) -> str:
@@ -294,6 +295,9 @@ def build_suggested_items_for_user(
                     "feed_category": "suggested",
                 },
             })
+
+    if len(items_to_add) > MAX_SUGGESTED_ITEMS:
+        items_to_add = items_to_add[:MAX_SUGGESTED_ITEMS]
 
     if not items_to_add:
         return {"user_id": user_id, "items_added": 0}

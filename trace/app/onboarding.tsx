@@ -29,21 +29,45 @@ import {
 
 // Sample feed items per interest (for preview)
 const INTEREST_FEED_SAMPLES: Record<string, { title: string; category: string }[]> = {
-  'ai-tools': [
-    { title: 'I Spent $28K Testing Every AI Tool for PMs', category: 'AI Tools' },
-    { title: 'The Best AI Coding Assistants Compared', category: 'AI Tools' },
+  'mental-wellness': [
+    { title: 'Small Habits That Reduce Daily Stress', category: 'Mental Wellness' },
+    { title: 'A Calm Start to Your Day in 10 Minutes', category: 'Mental Wellness' },
   ],
-  'frontend-performance': [
-    { title: 'Core Web Vitals: Ultimate 2026 Guide', category: 'Frontend' },
-    { title: 'Why Your React App is Slow', category: 'Frontend' },
+  'health-fitness': [
+    { title: 'The 20-Minute Strength Routine That Works', category: 'Health & Fitness' },
+    { title: 'Walking Habits That Boost Your Energy', category: 'Health & Fitness' },
   ],
-  'startups': [
-    { title: 'Five Growth Strategies for Early-Stage', category: 'Startups' },
-    { title: 'How We Got First 1000 Users', category: 'Startups' },
+  relationships: [
+    { title: 'How to Have Better Conversations', category: 'Relationships' },
+    { title: 'Kind Boundaries That Actually Stick', category: 'Relationships' },
   ],
-  'indie-dev': [
-    { title: 'Side Project to $20K MRR Journey', category: 'Indie Dev' },
-    { title: 'Tech Stack I Use to Ship Fast', category: 'Indie Dev' },
+  money: [
+    { title: 'A Budget You Will Actually Keep', category: 'Money' },
+    { title: 'How to Start Investing with $50', category: 'Money' },
+  ],
+  career: [
+    { title: 'How to Ask for a Raise (Without Panic)', category: 'Career' },
+    { title: 'Switching Careers Without Burning Out', category: 'Career' },
+  ],
+  learning: [
+    { title: 'Learn Anything Faster with Spaced Repetition', category: 'Learning' },
+    { title: 'A 30-Day Plan to Build a Skill', category: 'Learning' },
+  ],
+  productivity: [
+    { title: 'A Simple Daily System That Works', category: 'Productivity' },
+    { title: 'Phone-Free Mornings That Stick', category: 'Productivity' },
+  ],
+  creativity: [
+    { title: 'Finding Ideas When You Feel Stuck', category: 'Creativity' },
+    { title: 'Small Creative Habits You Can Keep', category: 'Creativity' },
+  ],
+  travel: [
+    { title: 'How to Plan a Low-Stress Trip', category: 'Travel' },
+    { title: 'Travel Smarter on a Small Budget', category: 'Travel' },
+  ],
+  culture: [
+    { title: 'Great Books and Podcasts to Add This Week', category: 'Culture' },
+    { title: 'What Everyone Is Watching Right Now', category: 'Culture' },
   ],
 };
 
@@ -116,8 +140,8 @@ export default function OnboardingScreen() {
   const previewItems = useMemo(() => {
     if (selectedInterests.length === 0) {
       return [
-        { title: 'How AI is Transforming Every Industry', category: 'AI' },
-        { title: 'Building Products People Want to Use', category: 'Product' },
+        { title: 'A Calm Feed That Helps You Focus', category: 'Wellbeing' },
+        { title: 'Small Habits That Add Up Over Time', category: 'Growth' },
       ];
     }
     
@@ -276,15 +300,15 @@ export default function OnboardingScreen() {
             <Animated.View entering={FadeIn} exiting={FadeOut}>
               <ThemedText style={styles.pageTitle}>Let's get started</ThemedText>
               <ThemedText style={[styles.pageSubtitle, { color: Colors[colorScheme].muted }]}>
-                Pick what you care about and what you do
+                Build a calmer feed in minutes (no doomscrolling)
               </ThemedText>
 
               <View style={styles.section}>
                 <ThemedText style={styles.sectionTitle}>
-                  What are you interested in?
+                  What do you want more of?
                 </ThemedText>
                 <ThemedText style={[styles.sectionSubtitle, { color: Colors[colorScheme].muted }]}>
-                  Pick at least 4 topics • {selectedInterests.length}/8 selected
+                  Pick at least 4 topics to keep your feed focused • {selectedInterests.length}/8 selected
                 </ThemedText>
 
                 <View style={styles.pillsContainer}>
@@ -335,7 +359,7 @@ export default function OnboardingScreen() {
 
               <View style={[styles.tipCard, { backgroundColor: '#eff6ff' }]}>
                 <ThemedText style={styles.tipText}>
-                  👋 We'll use this to personalize your experience
+                  👋 We use this to cut noise and keep your feed calm
                 </ThemedText>
               </View>
             </Animated.View>
@@ -346,15 +370,15 @@ export default function OnboardingScreen() {
             <Animated.View entering={SlideInRight} exiting={SlideOutLeft}>
               <ThemedText style={styles.pageTitle}>Skills & Goals</ThemedText>
               <ThemedText style={[styles.pageSubtitle, { color: Colors[colorScheme].muted }]}>
-                Help us match content to your level
+                Help us match the right depth
               </ThemedText>
 
               <View style={styles.section}>
                 <ThemedText style={styles.sectionTitle}>
-                  Your skills
+                  Your skills or strengths
                 </ThemedText>
                 <ThemedText style={[styles.sectionSubtitle, { color: Colors[colorScheme].muted }]}>
-                  Pick at least 1 • {selectedSkills.length} selected
+                  Pick at least 1 • helps us match the depth • {selectedSkills.length} selected
                 </ThemedText>
                 
                 <View style={styles.pillsContainer}>
@@ -372,10 +396,10 @@ export default function OnboardingScreen() {
 
               <View style={styles.section}>
                 <ThemedText style={styles.sectionTitle}>
-                  Short-term goals
+                  What you want more of
                 </ThemedText>
                 <ThemedText style={[styles.sectionSubtitle, { color: Colors[colorScheme].muted }]}>
-                  Optional — what are you working towards?
+                  Optional — your focus for the next few weeks
                 </ThemedText>
                 
                 <TextInput
@@ -396,7 +420,7 @@ export default function OnboardingScreen() {
 
               <View style={[styles.tipCard, { backgroundColor: '#eff6ff' }]}>
                 <ThemedText style={styles.tipText}>
-                  ℹ️ {isEditMode ? 'Your feed will update with your new preferences.' : 'You can always edit your preferences from the Profile tab later.'}
+                  ℹ️ {isEditMode ? 'Your feed will update with your new preferences.' : 'You can always edit this later to keep your feed healthy.'}
                 </ThemedText>
               </View>
             </Animated.View>
@@ -407,7 +431,7 @@ export default function OnboardingScreen() {
             <Animated.View entering={SlideInRight} exiting={SlideOutLeft}>
               <ThemedText style={styles.pageTitle}>About You</ThemedText>
               <ThemedText style={[styles.pageSubtitle, { color: Colors[colorScheme].muted }]}>
-                Personalize your name and hobbies
+                Add a personal touch (optional)
               </ThemedText>
 
               <View style={styles.section}>
@@ -454,7 +478,7 @@ export default function OnboardingScreen() {
 
               <View style={[styles.tipCard, { backgroundColor: '#f0fdf4' }]}>
                 <ThemedText style={styles.tipText}>
-                  💡 <ThemedText style={styles.tipBold}>82% of early users</ThemedText> say their feed feels noticeably better after picking 4+ interests.
+                  💡 <ThemedText style={styles.tipBold}>Most people</ThemedText> say their feed feels calmer after picking 4+ topics.
                 </ThemedText>
               </View>
             </Animated.View>

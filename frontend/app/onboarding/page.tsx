@@ -42,55 +42,55 @@ const GOAL_SUGGESTIONS = [
 
 // Sample feed items per interest (for real-time preview)
 const INTEREST_FEED_SAMPLES: Record<string, { title: string; category: string }[]> = {
-  'ai-tools': [
-    { title: 'I Spent $28K Testing Every AI Tool for Product Managers', category: 'AI Tools' },
-    { title: 'The Best AI Coding Assistants in 2026 Compared', category: 'AI Tools' },
-    { title: 'How to Build Your Own AI Agent in 30 Minutes', category: 'AI Tools' },
+  'mental-wellness': [
+    { title: 'Small Habits That Reduce Daily Stress', category: 'Mental Wellness' },
+    { title: 'A Calm Start to Your Day in 10 Minutes', category: 'Mental Wellness' },
+    { title: 'How to Protect Your Attention', category: 'Mental Wellness' },
   ],
-  'frontend-performance': [
-    { title: 'Core Web Vitals: The Ultimate 2026 Optimization Guide', category: 'Frontend' },
-    { title: 'Why Your React App is Slow (And How to Fix It)', category: 'Frontend' },
-    { title: 'Edge Computing Changed How I Think About Performance', category: 'Frontend' },
+  'health-fitness': [
+    { title: 'The 20-Minute Strength Routine That Works', category: 'Health & Fitness' },
+    { title: 'Walking Habits That Boost Your Energy', category: 'Health & Fitness' },
+    { title: 'Simple Nutrition Swaps That Add Up', category: 'Health & Fitness' },
   ],
-  'ux-design': [
-    { title: 'Top 15 AI Animation Tools for Creators & Professionals', category: 'Design' },
-    { title: 'The Psychology Behind Addictive Product Design', category: 'Design' },
-    { title: 'Figma Tips That Will 10x Your Design Workflow', category: 'Design' },
+  relationships: [
+    { title: 'How to Have Better Conversations', category: 'Relationships' },
+    { title: 'Kind Boundaries That Actually Stick', category: 'Relationships' },
+    { title: 'Repairing Small Conflicts Quickly', category: 'Relationships' },
   ],
-  'finance': [
-    { title: 'The Complete Guide to Angel Investing in 2026', category: 'Finance' },
-    { title: 'How I Built a $10K/month Dividend Portfolio', category: 'Finance' },
-    { title: 'Crypto Market Analysis: What Smart Money is Buying', category: 'Finance' },
+  money: [
+    { title: 'A Budget You Will Actually Keep', category: 'Money' },
+    { title: 'How to Start Investing with $50', category: 'Money' },
+    { title: 'Simple Ways to Lower Monthly Costs', category: 'Money' },
   ],
-  'writing': [
-    { title: 'How I Grew My Newsletter to 50K Subscribers', category: 'Writing' },
-    { title: 'The Science of Writing Headlines That Convert', category: 'Writing' },
-    { title: 'Why Every Founder Should Write in Public', category: 'Writing' },
+  career: [
+    { title: 'How to Ask for a Raise (Without Panic)', category: 'Career' },
+    { title: 'Switching Careers Without Burning Out', category: 'Career' },
+    { title: 'Build a Portfolio That Gets Replies', category: 'Career' },
   ],
-  'startups': [
-    { title: 'Five Growth Strategies Every Early-Stage Startup Should Explore', category: 'Startups' },
-    { title: 'How We Got Our First 1000 Users Without Paid Ads', category: 'Startups' },
-    { title: 'The Fundraising Playbook That Got Us $5M Seed', category: 'Startups' },
+  learning: [
+    { title: 'Learn Anything Faster with Spaced Repetition', category: 'Learning' },
+    { title: 'A 30-Day Plan to Build a Skill', category: 'Learning' },
+    { title: 'How to Keep a Learning Streak', category: 'Learning' },
   ],
-  'indie-dev': [
-    { title: 'From Side Project to $20K MRR: A Solo Dev Journey', category: 'Indie Dev' },
-    { title: 'The Tech Stack I Use to Ship Fast as a Solo Founder', category: 'Indie Dev' },
-    { title: 'Why I Quit My FAANG Job to Build Indie Products', category: 'Indie Dev' },
+  productivity: [
+    { title: 'A Simple Daily System That Works', category: 'Productivity' },
+    { title: 'Phone-Free Mornings That Stick', category: 'Productivity' },
+    { title: 'Stop Multitasking in Three Steps', category: 'Productivity' },
   ],
-  'productivity': [
-    { title: '9 Lesser-Known AI Productivity Tools You Wish You Knew', category: 'Productivity' },
-    { title: 'The Morning Routine That Doubled My Output', category: 'Productivity' },
-    { title: 'How Top Performers Structure Their Deep Work Sessions', category: 'Productivity' },
+  creativity: [
+    { title: 'Finding Ideas When You Feel Stuck', category: 'Creativity' },
+    { title: 'Small Creative Habits You Can Keep', category: 'Creativity' },
+    { title: 'A Weekly Routine for Making Things', category: 'Creativity' },
   ],
-  'ux-research': [
-    { title: 'User Interview Techniques That Reveal Real Insights', category: 'UX Research' },
-    { title: 'How to Run Effective Usability Tests on a Budget', category: 'UX Research' },
-    { title: 'Quantitative vs Qualitative: When to Use Which', category: 'UX Research' },
+  travel: [
+    { title: 'How to Plan a Low-Stress Trip', category: 'Travel' },
+    { title: 'Travel Smarter on a Small Budget', category: 'Travel' },
+    { title: 'Packing Tricks That Save Time', category: 'Travel' },
   ],
-  'gaming': [
-    { title: 'The Economics of Free-to-Play Game Design', category: 'Gaming' },
-    { title: 'How Indie Games Are Disrupting AAA Studios', category: 'Gaming' },
-    { title: 'Building Immersive Worlds: Lessons from Top Game Designers', category: 'Gaming' },
+  culture: [
+    { title: 'Great Books and Podcasts to Add This Week', category: 'Culture' },
+    { title: 'What Everyone Is Watching Right Now', category: 'Culture' },
+    { title: 'Hidden Gems Worth Your Time', category: 'Culture' },
   ],
 };
 
@@ -140,10 +140,10 @@ const HOBBY_FEED_SAMPLES: Record<string, { title: string; category: string }[]> 
 
 // Default items shown when no interests selected
 const DEFAULT_FEED_SAMPLES = [
-  { title: 'How AI is Transforming Every Industry in 2026', category: 'AI' },
-  { title: 'The Future of Remote Work: What Top Companies Are Doing', category: 'Work' },
-  { title: 'Building Products People Actually Want to Use', category: 'Product' },
-  { title: 'Why the Best Ideas Come from Diverse Teams', category: 'Culture' },
+  { title: 'A Calm Feed That Helps You Focus', category: 'Wellbeing' },
+  { title: 'Small Habits That Add Up Over Time', category: 'Growth' },
+  { title: 'Practical Ideas You Can Use Today', category: 'Everyday' },
+  { title: 'Less Noise, More Signal', category: 'Focus' },
 ];
 
 // Tooltip component - Desktop: hover popup, Mobile: inline accordion
@@ -669,7 +669,7 @@ export default function OnboardingPage() {
             Step {step + 1} of 3
           </div>
           <p className="text-sm text-secondary/70 mt-3 max-w-md mx-auto">
-            🔒 Your data powers your personalized feed. Read our{' '}
+            🔒 Your data powers a calmer, focused feed (not doomscrolling). Read our{' '}
             <a href="/privacy-policy" target="_blank" className="text-primary hover:underline">privacy policy</a>
             {' '}and{' '}
             <a href="/terms" target="_blank" className="text-primary hover:underline">terms</a>
@@ -692,10 +692,10 @@ export default function OnboardingPage() {
                   <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-foreground/80 mb-2">
-                      What are you interested in? <span className="text-primary">(minimum 4)</span>
+                      What do you want more of? <span className="text-primary">(minimum 4)</span>
                     </label>
                     <p className="text-sm text-secondary/70 mb-4">
-                      These topics shape your daily feed • {selectedInterests.length}/8 selected
+                      These topics keep your feed focused • {selectedInterests.length}/8 selected
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {INTERESTS.map((interest) => {
@@ -787,7 +787,7 @@ export default function OnboardingPage() {
 
                 <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-foreground">Your feed preview</p>
+                  <p className="text-sm font-medium text-foreground">Your calmer feed preview</p>
                   <span className="text-xs text-secondary/60">{(selectedInterests.length > 0 || selectedHobbies.length > 0) ? 'Based on your picks' : 'Sample topics'}</span>
                 </div>
                 <div className="divide-y divide-gray-200 rounded-2xl border border-gray-200 bg-white overflow-hidden">
@@ -809,8 +809,8 @@ export default function OnboardingPage() {
                 </div>
                 <p className="text-sm text-secondary/80 leading-relaxed bg-white rounded-2xl p-6">
                     <Lightbulb size={16} className="text-primary inline-block mr-2" />
-                    <span className="text-foreground font-semibold">82% of early users</span> say their feed feels
-                    noticeably better after they pick 4+ interests.
+                    <span className="text-foreground font-semibold">Most people</span> say their feed feels calmer
+                    after picking 4+ topics.
                   </p>
                 </div>
               </div>
@@ -964,8 +964,8 @@ export default function OnboardingPage() {
                 <div>
                   <div className="relative mb-2">
                     <label className="block text-sm font-medium text-foreground/80">
-                      Your skills <span className="text-primary">(minimum 1)</span>
-                      <HelpTooltip content="Calibrates content difficulty - experts get architecture deep-dives, beginners get practical tutorials" />
+                      Your skills or strengths <span className="text-primary">(minimum 1)</span>
+                      <HelpTooltip content="Helps us match depth - quick tips when you want them, deep dives when you do." />
                     </label>
                   </div>
                   <p className="text-sm text-secondary/70 mb-4">
@@ -1041,7 +1041,7 @@ export default function OnboardingPage() {
                   <div className="relative mb-2">
                     <label className="block text-sm font-medium text-foreground/80">
                       Short-term goals <span className="text-secondary/50 text-xs ml-2">(optional)</span>
-                      <HelpTooltip content="Surfaces content aligned with your immediate objectives - like promotion prep, product launches, or skill acquisition" />
+                      <HelpTooltip content="Surfaces content aligned with what you want more of right now." />
                     </label>
                   </div>
                   <p className="text-sm text-secondary/70 mb-4">

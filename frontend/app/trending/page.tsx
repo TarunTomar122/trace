@@ -19,25 +19,25 @@ import PublicHeader from '@/components/PublicHeader';
 export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
-  title: 'Trending Topics on Trace — AI, Product, Design, Startups',
+  title: 'Trending Topics on Trace — Focus, Wellness, Money, Culture',
   description:
-    'Browse trending AI, product, design, and startup topics curated daily. See the value of Trace without signing in.',
+    'Browse trending topics curated daily across life, work, wellness, money, and culture. No doomscrolling, just signal.',
   keywords: [
-    'AI trends',
-    'product trends',
-    'design trends',
-    'startup trends',
-    'curated tech news',
-    'personalized feed',
+    'curated topics',
+    'focus',
+    'wellness',
+    'personal finance',
+    'learning',
+    'culture',
     'Trace trending',
   ],
   alternates: {
     canonical: 'https://www.yourtrace.online/trending',
   },
   openGraph: {
-    title: 'Trending Topics on Trace — AI, Product, Design, Startups',
+    title: 'Trending Topics on Trace — Focus, Wellness, Money, Culture',
     description:
-      'Daily curated topics across AI, product, design, and startups. No sign-in required to explore.',
+      'Daily curated topics across life, work, wellness, money, and culture. No doomscrolling required.',
     url: 'https://www.yourtrace.online/trending',
     type: 'website',
     siteName: 'Trace',
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Trending Topics on Trace',
     description:
-      'Daily curated topics across AI, product, design, and startups. No sign-in required to explore.',
+      'Daily curated topics across life, work, wellness, money, and culture. No doomscrolling required.',
   },
 };
 
@@ -123,10 +123,10 @@ export default function TrendingPage() {
           {/* Header */}
           <div className="mb-8 md:mb-12">
             <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground mb-3">
-              Trending Topics for People Who Build Products
+              What&apos;s Actually Worth Your Attention
             </h1>
             <p className="text-sm md:text-base text-secondary max-w-2xl">
-              Daily curated topics across AI, product, design, and startups — browse freely and see the value of Trace without signing in.
+              No algorithm trying to keep you hooked. Just topics that matter — across life, work, money, wellness, and culture — curated daily without the brainrot.
             </p>
           </div>
 
@@ -135,18 +135,18 @@ export default function TrendingPage() {
             {[
               {
                 icon: Radar,
-                title: 'High-signal only',
-                description: 'We filter noise and surface what’s worth your time.',
+                title: 'No engagement tricks',
+                description: 'Zero outrage bait. Zero infinite scroll traps. Just signal.',
               },
               {
                 icon: Brain,
-                title: 'Built for builders',
-                description: 'AI + product + startups, tuned for people who ship.',
+                title: 'You control it',
+                description: 'Your interests decide what shows up. Not some engagement machine.',
               },
               {
                 icon: Newspaper,
                 title: 'Updated daily',
-                description: 'Fresh items across articles, videos, and discussions.',
+                description: 'Fresh content without the doomscroll rabbit holes.',
               },
             ].map((item) => (
               <div
@@ -217,11 +217,11 @@ export default function TrendingPage() {
           {/* SEO Copy */}
           <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6 mb-12">
             <h2 className="text-lg md:text-xl font-semibold text-foreground mb-2">
-              Why these trending topics matter
+              Take back your attention
             </h2>
             <p className="text-sm text-secondary leading-relaxed">
-              Trace tracks what’s changing across AI, product, design, and startups — then curates a clean feed so you can stay current without
-              doomscrolling. Browse any topic above to see examples, then unlock your personalized feed when you’re ready.
+              Social feeds are built to keep you scrolling — outrage, fear, endless loops. Trace is the opposite: a feed you control,
+              curated around what you actually care about. No manipulation. No brainrot. Just what matters.
             </p>
           </div>
 
@@ -231,14 +231,14 @@ export default function TrendingPage() {
               <Sparkles size={22} className="text-foreground" strokeWidth={1.5} />
             </div>
             <h2 className="text-lg md:text-xl font-semibold text-foreground mb-2">
-              Want a feed tuned to what you’re building?
+              Ready to escape the algorithm?
             </h2>
             <p className="text-sm text-secondary mb-6 max-w-lg mx-auto">
-              Trace personalizes daily — so you get the right signal across AI, product, and startups with zero noise.
+              Build a feed that works for you, not against you. No manipulation, no brainrot — just what you actually want to see.
             </p>
             <Link href="/">
               <button className="bg-foreground text-background px-6 py-3 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all">
-                Unlock full feed
+                Build your feed
               </button>
             </Link>
           </div>

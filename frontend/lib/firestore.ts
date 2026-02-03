@@ -322,16 +322,16 @@ export interface UserProfile {
 }
 
 export const INTERESTS = [
-  { id: 'ai-tools', label: 'AI Tools' },
-  { id: 'frontend-performance', label: 'Frontend Performance' },
-  { id: 'ux-design', label: 'UX Design' },
-  { id: 'finance', label: 'Finance' },
-  { id: 'writing', label: 'Writing' },
-  { id: 'startups', label: 'Startups' },
-  { id: 'indie-dev', label: 'Indie Dev' },
+  { id: 'mental-wellness', label: 'Mental Wellness' },
+  { id: 'health-fitness', label: 'Health & Fitness' },
+  { id: 'relationships', label: 'Relationships' },
+  { id: 'money', label: 'Money & Personal Finance' },
+  { id: 'career', label: 'Career & Work' },
+  { id: 'learning', label: 'Learning & Skills' },
   { id: 'productivity', label: 'Productivity' },
-  { id: 'ux-research', label: 'UX Research' },
-  { id: 'gaming', label: 'Gaming' },
+  { id: 'creativity', label: 'Creativity' },
+  { id: 'travel', label: 'Travel & Adventure' },
+  { id: 'culture', label: 'Culture & Entertainment' },
 ];
 
 export const ROLES = [
@@ -682,4 +682,3 @@ export async function updateUserInsights(
     throw error;
   }
 }
-

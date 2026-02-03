@@ -27,6 +27,9 @@ from google import genai
 from v1.storage import FirestoreStore
 
 
+MAX_FEED_ITEMS = 10
+
+
 MAX_TOPICS_DEFAULT = 10
 
 
@@ -443,6 +446,8 @@ def build_unsubscribed_feed(
 
     # Shuffle items for variety
     random.shuffle(items)
+    if len(items) > MAX_FEED_ITEMS:
+        items = items[:MAX_FEED_ITEMS]
 
     feed_data = {
         "date": date,
@@ -491,4 +496,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

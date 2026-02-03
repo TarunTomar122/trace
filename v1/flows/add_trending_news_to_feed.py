@@ -29,7 +29,7 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 from v1.storage import FirestoreStore
 
 
-MAX_NEWS_PER_FEED = 5
+MAX_NEWS_PER_FEED = 4
 MAX_NEWS_PER_TOPIC = 2
 
 ROLE_KEYWORDS = {

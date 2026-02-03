@@ -29,6 +29,9 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 from v1.storage import FirestoreStore
 
 
+MAX_FEED_ITEMS = 10
+
+
 def _normalize_interest(interest: str) -> str:
     return (interest.lower().strip()
             .replace(" ", "-")
@@ -325,6 +328,8 @@ def build_feed_from_topics(
             })
 
     random.shuffle(items)
+    if len(items) > MAX_FEED_ITEMS:
+        items = items[:MAX_FEED_ITEMS]
 
     feed_data = {
         "date": date,
@@ -369,4 +374,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
