@@ -7,7 +7,6 @@ __pycache__/
 agent/feeds/
 agent/memory/daily/
 *.log
-*.md
 anybrew-7c6c1-firebase-adminsdk-fbsvc-fe164fd73a.json
 *.json
 *-firebase-adminsdk-*.json
