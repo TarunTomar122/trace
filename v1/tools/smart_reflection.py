@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 from openai import OpenAI
+from v1.algorithm.interest_schema import get_interest_ids, get_interest_label
 
 
 SMART_REFLECTION_PROMPT = """You are a personalization expert analyzing a user's feedback on content items.
@@ -177,8 +178,10 @@ def generate_trace_summary(
         if s.get("query")
     ][:4]
 
+    interest_ids = get_interest_ids(user_profile)
+    interest_labels = [get_interest_label(i) for i in interest_ids]
     prompt = TRACE_SUMMARY_PROMPT.format(
-        interests=", ".join(user_profile.get("interests", [])) or "Not specified",
+        interests=", ".join(interest_labels) or "Not specified",
         learning_style=user_profile.get("learningStyle", "Not specified"),
         top_tags=", ".join(top_tags) or "None",
         personal_signals=", ".join(personal_signals) or "None"
@@ -209,7 +212,7 @@ def generate_trace_summary(
     
     # Build prompt
     prompt = SMART_REFLECTION_PROMPT.format(
-        interests=", ".join(user_profile.get("interests", [])) or "Not specified",
+        interests=", ".join(interest_labels) or "Not specified",
         content_depth=user_preferences.get("contentDepth") or user_profile.get("contentDepth", "deep"),
         learning_style=user_profile.get("learningStyle", "Not specified"),
         source_preferences=json.dumps(user_preferences.get("source_distribution", {})),

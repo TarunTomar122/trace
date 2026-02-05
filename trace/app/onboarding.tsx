@@ -5,13 +5,12 @@ import {
   View,
   Image,
   ScrollView,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutLeft } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -20,10 +19,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   INTERESTS, 
-  HOBBY_SUGGESTIONS, 
-  SKILL_SUGGESTIONS, 
-  ROLES,
-  SAMPLE_FEED_ITEMS,
+  SKILL_SUGGESTIONS,
   completeOnboarding 
 } from '@/lib/firestore';
 
@@ -109,30 +105,24 @@ export default function OnboardingScreen() {
   
   const isEditMode = profile?.onboarded ?? false;
   
-  const [step, setStep] = useState(0);
+  const step = 0;
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Step 0: Interests & Profession
+  // Step 0: Interests & Skills
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
-  const [selectedHobbies, setSelectedHobbies] = useState<string[]>([]);
-  
-  // Step 1: Skills & Goals
+
+  // Skills
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [goalsShortTerm, setGoalsShortTerm] = useState('');
-  
-  // Step 2: Name & Hobbies
+
+  // Name (kept for existing profiles)
   const [name, setName] = useState(user?.displayName || '');
-  const [role, setRole] = useState('');
   
   // Pre-fill form with existing profile data when editing
   useEffect(() => {
     if (profile) {
       if (profile.interests?.length) setSelectedInterests(profile.interests);
-      if (profile.hobbies?.length) setSelectedHobbies(profile.hobbies);
       if (profile.skills?.length) setSelectedSkills(profile.skills);
-      if (profile.goalsShortTerm) setGoalsShortTerm(profile.goalsShortTerm);
       if (profile.name) setName(profile.name);
-      if (profile.role) setRole(profile.role);
     }
   }, [profile]);
 
@@ -163,14 +153,6 @@ export default function OnboardingScreen() {
     }
   };
 
-  const toggleHobby = (id: string) => {
-    if (selectedHobbies.includes(id)) {
-      setSelectedHobbies(selectedHobbies.filter(h => h !== id));
-    } else if (selectedHobbies.length < 3) {
-      setSelectedHobbies([...selectedHobbies, id]);
-    }
-  };
-
   const toggleSkill = (id: string) => {
     if (selectedSkills.includes(id)) {
       setSelectedSkills(selectedSkills.filter(s => s !== id));
@@ -179,28 +161,19 @@ export default function OnboardingScreen() {
     }
   };
 
-  const canProceed = () => {
-    // Step 0: Interests & Profession
-    if (step === 0) return selectedInterests.length >= 4 && role;
-    // Step 1: Skills & Goals
-    if (step === 1) return selectedSkills.length >= 1;
-    // Step 2: Name & Hobbies
-    if (step === 2) return name.trim().length > 0;
-    return true;
-  };
+  const canProceed = () => selectedInterests.length >= 4 && selectedSkills.length >= 1;
 
   const handleSubmit = async () => {
     if (!user) return;
     
     setIsSubmitting(true);
     try {
+      const existingHobbies = profile?.hobbies || [];
       await completeOnboarding(user.uid, {
         name: name.trim(),
-        role,
         interests: selectedInterests,
-        hobbies: selectedHobbies,
+        hobbies: existingHobbies,
         skills: selectedSkills,
-        goalsShortTerm: goalsShortTerm.trim() || undefined,
         sourcePreferences: {
           youtube: 5,
           articles: 7,
@@ -222,15 +195,7 @@ export default function OnboardingScreen() {
 
   const nextStep = () => {
     if (!canProceed()) return;
-    if (step < 2) {
-      setStep(step + 1);
-    } else {
-      handleSubmit();
-    }
-  };
-
-  const prevStep = () => {
-    if (step > 0) setStep(step - 1);
+    handleSubmit();
   };
 
   return (
@@ -276,7 +241,7 @@ export default function OnboardingScreen() {
                 styles.progressFill, 
                 { 
                   backgroundColor: Colors[colorScheme].foreground,
-                  width: `${((step + 1) / 3) * 100}%` 
+                  width: '100%' 
                 }
               ]} 
             />
@@ -284,7 +249,7 @@ export default function OnboardingScreen() {
           
           <View style={styles.stepIndicator}>
             <ThemedText style={[styles.stepText, { color: Colors[colorScheme].muted }]}>
-              Step {step + 1} of 3
+              Step 1 of 1
             </ThemedText>
           </View>
         </View>
@@ -295,7 +260,7 @@ export default function OnboardingScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled">
           
-          {/* Step 0: Interests & Profession */}
+          {/* Step 0: Interests & Skills */}
           {step === 0 && (
             <Animated.View entering={FadeIn} exiting={FadeOut}>
               <ThemedText style={styles.pageTitle}>Let's get started</ThemedText>
@@ -326,16 +291,19 @@ export default function OnboardingScreen() {
 
               <View style={styles.section}>
                 <ThemedText style={styles.sectionTitle}>
-                  What do you do?
+                  Your skills or strengths
                 </ThemedText>
-                
+                <ThemedText style={[styles.sectionSubtitle, { color: Colors[colorScheme].muted }]}>
+                  Pick at least 1 • helps us match depth • {selectedSkills.length} selected
+                </ThemedText>
+
                 <View style={styles.pillsContainer}>
-                  {ROLES.map((r) => (
+                  {SKILL_SUGGESTIONS.map((skill) => (
                     <Pill
-                      key={r}
-                      label={r}
-                      selected={role === r}
-                      onPress={() => setRole(r)}
+                      key={skill.id}
+                      label={skill.label}
+                      selected={selectedSkills.includes(skill.id)}
+                      onPress={() => toggleSkill(skill.id)}
                       colorScheme={colorScheme}
                     />
                   ))}
@@ -365,137 +333,12 @@ export default function OnboardingScreen() {
             </Animated.View>
           )}
 
-          {/* Step 1: Skills & Goals */}
-          {step === 1 && (
-            <Animated.View entering={SlideInRight} exiting={SlideOutLeft}>
-              <ThemedText style={styles.pageTitle}>Skills & Goals</ThemedText>
-              <ThemedText style={[styles.pageSubtitle, { color: Colors[colorScheme].muted }]}>
-                Help us match the right depth
-              </ThemedText>
-
-              <View style={styles.section}>
-                <ThemedText style={styles.sectionTitle}>
-                  Your skills or strengths
-                </ThemedText>
-                <ThemedText style={[styles.sectionSubtitle, { color: Colors[colorScheme].muted }]}>
-                  Pick at least 1 • helps us match the depth • {selectedSkills.length} selected
-                </ThemedText>
-                
-                <View style={styles.pillsContainer}>
-                  {SKILL_SUGGESTIONS.map((skill) => (
-                    <Pill
-                      key={skill.id}
-                      label={skill.label}
-                      selected={selectedSkills.includes(skill.id)}
-                      onPress={() => toggleSkill(skill.id)}
-                      colorScheme={colorScheme}
-                    />
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.section}>
-                <ThemedText style={styles.sectionTitle}>
-                  What you want more of
-                </ThemedText>
-                <ThemedText style={[styles.sectionSubtitle, { color: Colors[colorScheme].muted }]}>
-                  Optional — your focus for the next few weeks
-                </ThemedText>
-                
-                <TextInput
-                  value={goalsShortTerm}
-                  onChangeText={setGoalsShortTerm}
-                  placeholder="e.g. Scale a startup, Get promoted"
-                  placeholderTextColor={Colors[colorScheme].muted}
-                  style={[
-                    styles.textInput,
-                    { 
-                      backgroundColor: Colors[colorScheme].card, 
-                      borderColor: Colors[colorScheme].border,
-                      color: Colors[colorScheme].text,
-                    }
-                  ]}
-                />
-              </View>
-
-              <View style={[styles.tipCard, { backgroundColor: '#eff6ff' }]}>
-                <ThemedText style={styles.tipText}>
-                  ℹ️ {isEditMode ? 'Your feed will update with your new preferences.' : 'You can always edit this later to keep your feed healthy.'}
-                </ThemedText>
-              </View>
-            </Animated.View>
-          )}
-
-          {/* Step 2: Name & Hobbies */}
-          {step === 2 && (
-            <Animated.View entering={SlideInRight} exiting={SlideOutLeft}>
-              <ThemedText style={styles.pageTitle}>About You</ThemedText>
-              <ThemedText style={[styles.pageSubtitle, { color: Colors[colorScheme].muted }]}>
-                Add a personal touch (optional)
-              </ThemedText>
-
-              <View style={styles.section}>
-                <ThemedText style={styles.sectionTitle}>
-                  What should we call you?
-                </ThemedText>
-                
-                <TextInput
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="Your name"
-                  placeholderTextColor={Colors[colorScheme].muted}
-                  style={[
-                    styles.textInput,
-                    { 
-                      backgroundColor: Colors[colorScheme].card, 
-                      borderColor: Colors[colorScheme].border,
-                      color: Colors[colorScheme].text,
-                    }
-                  ]}
-                />
-              </View>
-
-              <View style={styles.section}>
-                <ThemedText style={styles.sectionTitle}>
-                  Hobbies
-                </ThemedText>
-                <ThemedText style={[styles.sectionSubtitle, { color: Colors[colorScheme].muted }]}>
-                  Optional • {selectedHobbies.length}/3 selected
-                </ThemedText>
-                
-                <View style={styles.pillsContainer}>
-                  {HOBBY_SUGGESTIONS.map((hobby) => (
-                    <Pill
-                      key={hobby.id}
-                      label={hobby.label}
-                      selected={selectedHobbies.includes(hobby.id)}
-                      onPress={() => toggleHobby(hobby.id)}
-                      colorScheme={colorScheme}
-                    />
-                  ))}
-                </View>
-              </View>
-
-              <View style={[styles.tipCard, { backgroundColor: '#f0fdf4' }]}>
-                <ThemedText style={styles.tipText}>
-                  💡 <ThemedText style={styles.tipBold}>Most people</ThemedText> say their feed feels calmer after picking 4+ topics.
-                </ThemedText>
-              </View>
-            </Animated.View>
           )}
         </ScrollView>
 
         {/* Footer */}
         <View style={[styles.footer, { borderTopColor: Colors[colorScheme].border }]}>
-          {step > 0 ? (
-            <Pressable onPress={prevStep} style={styles.backButton}>
-              <ThemedText style={[styles.backButtonText, { color: Colors[colorScheme].muted }]}>
-                ← Back
-              </ThemedText>
-            </Pressable>
-          ) : (
-            <View style={styles.backButton} />
-          )}
+          <View style={styles.backButton} />
 
           <Pressable
             onPress={nextStep}
@@ -509,7 +352,7 @@ export default function OnboardingScreen() {
                 styles.nextButtonText,
                 { color: canProceed() && !isSubmitting ? Colors[colorScheme].background : Colors[colorScheme].muted },
               ]}>
-              {isSubmitting ? 'Saving...' : step === 2 ? (isEditMode ? 'Save Changes' : 'Finish') : 'Continue →'}
+              {isSubmitting ? 'Saving...' : isEditMode ? 'Save Changes' : 'Finish'}
             </ThemedText>
           </Pressable>
         </View>

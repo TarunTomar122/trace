@@ -1,270 +1,207 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, ChevronLeft, Check, MessageCircle, Sparkles, HelpCircle, Plus, X, Lightbulb, ArrowRight } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { ROLES, INTERESTS, completeOnboarding, getUserProfile, addChatMessage } from '@/lib/firestore';
+import { completeOnboarding, getUserProfile, INTERESTS, INTEREST_SUBTOPICS } from '@/lib/firestore';
 import { isAlphaMode } from '@/lib/alpha';
 import { trackOnboardingStarted, trackOnboardingCompleted } from '@/lib/posthog';
 
-// Suggested hobbies for pills
-const HOBBY_SUGGESTIONS = [
-  { id: 'running', label: 'Running' },
-  { id: 'cycling', label: 'Cycling' },
-  { id: 'pottery', label: 'Pottery' },
-  { id: 'sketching', label: 'Sketching' },
-  { id: 'photography', label: 'Photography' },
-  { id: 'music', label: 'Music' },
-  { id: 'reading', label: 'Reading' },
-  { id: 'fitness', label: 'Fitness' },
-];
+type FocusMap = Record<string, string[]>;
 
-// Suggested skills for pills
-const SKILL_SUGGESTIONS = [
-  { id: 'software-engineering', label: 'Software Engineering' },
-  { id: 'ai-engineer', label: 'AI Engineer' },
-  { id: 'ux-designer', label: 'UX Designer' },
-  { id: 'quant-researcher', label: 'Quant Researcher' },
-  { id: 'frontend', label: 'Frontend' },
-  { id: 'backend', label: 'Backend' },
-  { id: 'trading', label: 'Trading' },
+const SKILL_OPTIONS = [
+  { id: 'design', label: 'Design' },
+  { id: 'writing', label: 'Writing' },
   { id: 'marketing', label: 'Marketing' },
+  { id: 'business', label: 'Business' },
+  { id: 'software-tech', label: 'Software & Tech' },
+  { id: 'data-analytics', label: 'Data & Analytics' },
+  { id: 'finance', label: 'Finance' },
+  { id: 'education', label: 'Education' },
+  { id: 'health-wellness', label: 'Health & Wellness' },
+  { id: 'creative-arts', label: 'Creative Arts' },
 ];
 
-// Suggested short-term goals for pills
-const GOAL_SUGGESTIONS = [
-  { id: 'scale-a-startup', label: 'Scale a Startup' },
-  { id: 'build-an-online-brand', label: 'Build an Online Brand' },
-  { id: 'get-promoted-at-work', label: 'Get Promoted at Work' },
-];
+const MAX_INTERESTS = 4;
+const MIN_INTERESTS = 4;
+const MAX_SUBTOPICS_PER_INTEREST = 2;
+const MAX_FOCUS_INTERESTS = 4;
+const TOTAL_STEPS = 3;
 
-// Sample feed items per interest (for real-time preview)
-const INTEREST_FEED_SAMPLES: Record<string, { title: string; category: string }[]> = {
-  'mental-wellness': [
-    { title: 'Small Habits That Reduce Daily Stress', category: 'Mental Wellness' },
-    { title: 'A Calm Start to Your Day in 10 Minutes', category: 'Mental Wellness' },
-    { title: 'How to Protect Your Attention', category: 'Mental Wellness' },
-  ],
-  'health-fitness': [
-    { title: 'The 20-Minute Strength Routine That Works', category: 'Health & Fitness' },
-    { title: 'Walking Habits That Boost Your Energy', category: 'Health & Fitness' },
-    { title: 'Simple Nutrition Swaps That Add Up', category: 'Health & Fitness' },
-  ],
-  relationships: [
-    { title: 'How to Have Better Conversations', category: 'Relationships' },
-    { title: 'Kind Boundaries That Actually Stick', category: 'Relationships' },
-    { title: 'Repairing Small Conflicts Quickly', category: 'Relationships' },
-  ],
-  money: [
-    { title: 'A Budget You Will Actually Keep', category: 'Money' },
-    { title: 'How to Start Investing with $50', category: 'Money' },
-    { title: 'Simple Ways to Lower Monthly Costs', category: 'Money' },
-  ],
-  career: [
-    { title: 'How to Ask for a Raise (Without Panic)', category: 'Career' },
-    { title: 'Switching Careers Without Burning Out', category: 'Career' },
-    { title: 'Build a Portfolio That Gets Replies', category: 'Career' },
-  ],
-  learning: [
-    { title: 'Learn Anything Faster with Spaced Repetition', category: 'Learning' },
-    { title: 'A 30-Day Plan to Build a Skill', category: 'Learning' },
-    { title: 'How to Keep a Learning Streak', category: 'Learning' },
-  ],
-  productivity: [
-    { title: 'A Simple Daily System That Works', category: 'Productivity' },
-    { title: 'Phone-Free Mornings That Stick', category: 'Productivity' },
-    { title: 'Stop Multitasking in Three Steps', category: 'Productivity' },
-  ],
-  creativity: [
-    { title: 'Finding Ideas When You Feel Stuck', category: 'Creativity' },
-    { title: 'Small Creative Habits You Can Keep', category: 'Creativity' },
-    { title: 'A Weekly Routine for Making Things', category: 'Creativity' },
-  ],
-  travel: [
-    { title: 'How to Plan a Low-Stress Trip', category: 'Travel' },
-    { title: 'Travel Smarter on a Small Budget', category: 'Travel' },
-    { title: 'Packing Tricks That Save Time', category: 'Travel' },
-  ],
-  culture: [
-    { title: 'Great Books and Podcasts to Add This Week', category: 'Culture' },
-    { title: 'What Everyone Is Watching Right Now', category: 'Culture' },
-    { title: 'Hidden Gems Worth Your Time', category: 'Culture' },
-  ],
+const FEED_PREVIEWS: Record<string, { title: string; summary: string }> = {
+  technology: {
+    title: "OpenAI's GPT-5 leak reveals multimodal breakthroughs",
+    summary: "Internal documents suggest real-time video understanding and 10x context windows coming Q2.",
+  },
+  science: {
+    title: "CRISPR trial reverses blindness in 12 patients",
+    summary: "Gene therapy restored partial vision within weeks—first successful in-vivo human editing.",
+  },
+  psychology: {
+    title: "Why your brain resists change (and how to hack it)",
+    summary: "Neuroscience research shows the amygdala treats new habits as threats. Here's the workaround.",
+  },
+  ideas: {
+    title: "The case against infinite growth",
+    summary: "Economist Kate Raworth's doughnut model is reshaping how cities think about prosperity.",
+  },
+  business: {
+    title: "How Notion hit $10B without a sales team",
+    summary: "Product-led growth playbook: community loops, templates, and strategic patience.",
+  },
+  money: {
+    title: "The 4% rule is dead—here's what replaced it",
+    summary: "New withdrawal strategies adapt to sequence-of-returns risk and longer retirements.",
+  },
+  design: {
+    title: "Apple's design language is shifting again",
+    summary: "iOS 19 leaks show bolder typography, reduced glass effects, and spatial UI cues.",
+  },
+  career: {
+    title: "Senior engineers who mass-applied got 0 offers",
+    summary: "Hiring managers reveal why targeted applications beat volume—and what actually works.",
+  },
+  'self-development': {
+    title: "James Clear on the 2-minute rule's hidden power",
+    summary: "Atomic Habits author explains why starting small compounds into identity change.",
+  },
+  health: {
+    title: "Zone 2 cardio is overhyped (for most people)",
+    summary: "New meta-analysis suggests high-intensity intervals deliver better longevity markers.",
+  },
+  cooking: {
+    title: "The science of perfect crispy rice",
+    summary: "Why the Maillard reaction needs 15 minutes undisturbed—and the ideal pan for it.",
+  },
+  culture: {
+    title: "Why Gen Z is abandoning Instagram for group chats",
+    summary: "The shift from performance to intimacy is reshaping how online identity works.",
+  },
+  relationships: {
+    title: "Gottman's new research on conflict repair",
+    summary: "40 years of data shows the 5:1 ratio matters less than how you reconnect after fights.",
+  },
+  society: {
+    title: "Remote work reshaped American geography",
+    summary: "Census data reveals which cities gained, which lost, and why the trend is accelerating.",
+  },
 };
 
-// Sample feed items per hobby (for real-time preview)
-const HOBBY_FEED_SAMPLES: Record<string, { title: string; category: string }[]> = {
-  'running': [
-    { title: 'How I Went from Couch to Marathon in 12 Months', category: 'Running' },
-    { title: 'The Science of Zone 2 Training for Endurance', category: 'Running' },
-    { title: 'Best Running Apps and Gear for 2026', category: 'Running' },
-  ],
-  'cycling': [
-    { title: 'Indoor vs Outdoor Cycling: What the Data Says', category: 'Cycling' },
-    { title: 'How Pro Cyclists Train in the Off-Season', category: 'Cycling' },
-    { title: 'The Best Cycling Routes You Haven\'t Discovered Yet', category: 'Cycling' },
-  ],
-  'pottery': [
-    { title: 'From Beginner to Selling on Etsy: A Potter\'s Journey', category: 'Pottery' },
-    { title: 'The Meditative Practice of Throwing Clay', category: 'Pottery' },
-    { title: 'Glazing Techniques That Transform Your Work', category: 'Pottery' },
-  ],
-  'sketching': [
-    { title: 'Daily Sketching Habits of Professional Artists', category: 'Sketching' },
-    { title: 'How to Develop Your Unique Drawing Style', category: 'Sketching' },
-    { title: 'iPad vs Traditional: Which is Better for Sketching?', category: 'Sketching' },
-  ],
-  'photography': [
-    { title: 'Street Photography Tips from National Geographic Shooters', category: 'Photography' },
-    { title: 'The Art of Editing: Lightroom Presets That Actually Work', category: 'Photography' },
-    { title: 'How to Build a Photography Portfolio That Gets Noticed', category: 'Photography' },
-  ],
-  'music': [
-    { title: 'Home Studio Setup for Under $500', category: 'Music' },
-    { title: 'How Top Producers Find Their Sound', category: 'Music' },
-    { title: 'The Psychology of Why Certain Songs Get Stuck in Your Head', category: 'Music' },
-  ],
-  'reading': [
-    { title: 'How to Read 50 Books a Year Without Burning Out', category: 'Reading' },
-    { title: 'The Best Non-Fiction Books CEOs Are Reading in 2026', category: 'Reading' },
-    { title: 'Building a Second Brain Through Strategic Reading', category: 'Reading' },
-  ],
-  'fitness': [
-    { title: 'The Minimum Effective Dose for Strength Training', category: 'Fitness' },
-    { title: 'How Sleep Affects Your Gains More Than You Think', category: 'Fitness' },
-    { title: 'Nutrition Myths Debunked by Sports Scientists', category: 'Fitness' },
-  ],
+// Subtopic-specific previews that override base interest previews
+const SUBTOPIC_PREVIEWS: Record<string, { title: string; summary: string }> = {
+  // Technology subtopics
+  'ai': { title: "Claude 4 benchmarks leak—and it's not what anyone expected", summary: "Anthropic's new model shows reasoning gains but trades off speed. Here's what it means for devs." },
+  'automation': { title: "Zapier vs Make vs n8n: the 2026 automation stack wars", summary: "Which no-code platform actually scales? We tested all three with real workflows." },
+  'software': { title: "Why senior devs are mass-quitting FAANG for climate startups", summary: "The great talent migration: compensation down, meaning up. The math might actually work." },
+  'productivity-tools': { title: "Notion AI just killed 5 apps in my stack", summary: "The new features that made Todoist, Calendly, and others redundant overnight." },
+  'future-tech': { title: "Neuralink's first non-medical implant approved for trials", summary: "Cognitive enhancement for healthy adults is no longer sci-fi. Here's the timeline." },
+  // Science subtopics
+  'space': { title: "SpaceX Starship reaches Mars orbit—now what?", summary: "The 7-month journey succeeded. The real challenges start when humans follow." },
+  'biology': { title: "Lab-grown organs hit 90% transplant success rate", summary: "Synthetic kidneys from your own cells are now outperforming donor matches." },
+  'physics': { title: "Quantum computers just factored a 2048-bit number", summary: "RSA encryption's days are numbered. Cryptographers are scrambling." },
+  'climate': { title: "Ocean iron seeding worked—but created a new problem", summary: "Carbon capture success triggered unexpected algae blooms. Scientists debate next steps." },
+  'explained': { title: "Why time moves slower for your face than your feet", summary: "Gravitational time dilation explained with zero equations. Yes, it's been measured." },
+  // Psychology subtopics
+  'mental-health': { title: "Psilocybin therapy FDA-approved for treatment-resistant depression", summary: "After decades of stigma, psychedelics enter mainstream psychiatry. What to expect." },
+  'habits': { title: "The 'habit stacking' backlash: why it fails for most people", summary: "New research suggests context beats routine. Here's the better framework." },
+  'learning': { title: "Spaced repetition apps are using the wrong algorithm", summary: "A PhD student's side project outperforms Anki. The learning science is clear." },
+  'relationships': { title: "Attachment theory is getting a major update", summary: "The original categories were too rigid. Here's the nuanced model therapists now use." },
+  'emotions': { title: "Why naming your emotions makes them less intense", summary: "The neuroscience of affect labeling—and why 'I'm fine' backfires." },
+  // Ideas subtopics
+  'philosophy': { title: "Effective altruism after the FTX collapse: what remains", summary: "The movement's core ideas survive, but trust takes decades to rebuild." },
+  'essays': { title: "Paul Graham on the death of credentialism", summary: "Why degrees matter less each year—and what's replacing them." },
+  'creativity': { title: "Why constraints breed better creative work", summary: "The research on 'freedom paradox' and how limitations unlock original thinking." },
+  'meaning': { title: "The meaning crisis has a surprising solution", summary: "John Vervaeke's decade of research points to embodied practices, not beliefs." },
+  'big-ideas': { title: "What if consciousness is a spectrum, not a switch?", summary: "The panpsychism debate is going mainstream. Here's why serious scientists care." },
+  // Business subtopics
+  'startups': { title: "YC's latest batch has 40% solo founders—here's why", summary: "Co-founder matching is broken. The new playbook is build first, partner later." },
+  'product': { title: "The 'jobs to be done' framework has a fatal flaw", summary: "Why JTBD fails for novel products—and the alternative top PMs now use." },
+  'marketing': { title: "SEO is dead. Long live... whatever this is", summary: "AI search is reshaping discovery. The new playbook for getting found." },
+  'operations': { title: "How Stripe runs 10,000 A/B tests per year", summary: "Inside their experimentation culture: tooling, velocity, and learning loops." },
+  'leadership': { title: "Why 'radical candor' created toxic cultures at scale", summary: "The framework worked for small teams. Here's what breaks at 500+ people." },
+  // Money subtopics
+  'personal-finance': { title: "The 50/30/20 budget rule needs an update for 2026", summary: "Housing costs broke the formula. Financial planners share the new ratios." },
+  'investing': { title: "Index funds are distorting markets—and your returns", summary: "Passive investing's success created a paradox. Active managers see opportunity." },
+  'income': { title: "The creator middle class is finally emerging", summary: "Not everyone needs millions of followers. The $50K-$150K tier is thriving." },
+  'markets': { title: "Why the yield curve inversion didn't predict recession this time", summary: "The indicator that's been reliable for 50 years just failed. What changed." },
+  'crypto': { title: "Bitcoin ETF inflows just passed gold", summary: "Institutional adoption hit an inflection point. What the flows tell us." },
+  // Design subtopics
+  'visual-design': { title: "The anti-minimalism movement is picking up steam", summary: "Maximalism, texture, and chaos are back. See the portfolios leading the shift." },
+  'ux': { title: "Dark patterns are getting regulated—finally", summary: "EU's new enforcement actions and what designers need to change now." },
+  'branding': { title: "Why every brand looks the same (and how to break out)", summary: "The 'blanding' phenomenon explained—and the rebellious counter-trend." },
+  'creative-process': { title: "Designers who sketch first produce better work", summary: "The research is in: hand-drawing before digital leads to more original solutions." },
+  'tools': { title: "Figma's AI features are changing how designers think", summary: "Auto-layout suggestions and component generation: helpful or homogenizing?" },
+  // Career subtopics
+  'job-search': { title: "The hidden job market is 70% of all roles now", summary: "Referrals dominate. Here's how to get them without being awkward." },
+  'skills': { title: "The skills that actually compound over a career", summary: "Writing, selling, and learning how to learn. Everything else is temporary." },
+  'portfolio': { title: "Case studies that actually get you hired", summary: "Recruiters reveal what they skim, what they read, and what makes them reach out." },
+  'career-growth': { title: "Staff engineer vs. manager: the decision framework", summary: "Both paths have hidden costs. How to choose based on your actual priorities." },
+  'workplace': { title: "Remote work policies are quietly reversing", summary: "The 'return to office' wave and how to negotiate if you want to stay remote." },
+  // Self-development subtopics
+  'focus': { title: "Deep work is harder than ever—here's the new research", summary: "Attention spans aren't shrinking; demands are increasing. The updated strategies." },
+  'routines': { title: "Morning routines are overrated (evening routines aren't)", summary: "What you do before bed predicts tomorrow's performance better than sunrise rituals." },
+  'mindset': { title: "Growth mindset has been oversimplified", summary: "Dweck's original research is more nuanced. Here's what actually changes outcomes." },
+  'confidence': { title: "Confidence comes from evidence, not affirmations", summary: "The 'confidence-competence loop' and why small wins beat positive self-talk." },
+  'life-design': { title: "The 'Odyssey Plan' exercise that changed how I see my future", summary: "Stanford's life design approach: three versions of your next five years." },
+  // Health subtopics
+  'workouts': { title: "The minimum effective dose for strength is lower than you think", summary: "New meta-analysis: 2 sets to failure beats 4+ sets for naturals. Here's why." },
+  'nutrition': { title: "Protein timing matters less than total intake", summary: "The 'anabolic window' myth is dead. What the research actually supports." },
+  'sleep': { title: "The 8-hour sleep myth and what to aim for instead", summary: "Sleep need varies wildly. Here's how to find your actual number." },
+  'recovery': { title: "Cold plunges might be hurting your gains", summary: "The inflammation you're suppressing is part of the adaptation signal." },
+  'fitness': { title: "VO2 max is the best predictor of longevity we have", summary: "Better than cholesterol, blood pressure, or BMI. Here's how to improve it." },
+  // Cooking subtopics
+  'recipes': { title: "The one-pan dinner formula that actually works", summary: "Protein + veg + starch + fat + acid. Master the ratios, skip the recipes." },
+  'healthy-meals': { title: "Meal prep is dead. 'Ingredient prep' is the move", summary: "Prepping components instead of full meals keeps things flexible and fresh." },
+  'baking': { title: "Why your bread isn't rising (it's probably the water)", summary: "Chlorine kills yeast. The filtered water fix bakers wish they knew sooner." },
+  'drinks': { title: "The science of clear ice (and why it matters)", summary: "Directional freezing explained. Your cocktails will never be cloudy again." },
+  'food-culture': { title: "Why Korean food is having its global moment", summary: "Beyond K-pop: the culinary infrastructure that made Korean cuisine exportable." },
+  // Culture subtopics
+  'movies': { title: "Why every movie looks orange and teal", summary: "The color grading trend that took over Hollywood—and the directors fighting back." },
+  'music': { title: "Spotify's algorithm is homogenizing pop music", summary: "Data shows songs are getting more similar. The economics driving convergence." },
+  'games': { title: "Why shorter games are winning", summary: "The 100-hour RPG is dying. Players want complete experiences in 10 hours." },
+  'books': { title: "The BookTok effect on publishing is permanent", summary: "How TikTok remade bestseller lists and what gets published next." },
+  'internet': { title: "The 'dead internet' theory has some truth to it", summary: "Bot traffic is 50%+ now. The implications for online discourse are real." },
+  // Relationships subtopics
+  'dating': { title: "Dating app fatigue is reshaping how people meet", summary: "IRL is back: run clubs, pottery classes, and 'third places' are the new Hinge." },
+  'family': { title: "The 'invisible load' in parenting finally has solutions", summary: "Fair Play and other systems for splitting cognitive labor. They actually work." },
+  'friendships': { title: "Adult friendships require 200 hours—here's how to get there", summary: "The research on friendship formation and why most adults don't invest enough." },
+  'communication': { title: "Why 'I feel' statements backfire in some situations", summary: "The popular technique has limits. When to use it and when it escalates." },
+  'conflict': { title: "The '5:1 ratio' for relationships needs context", summary: "Gottman's famous rule applies differently across cultures and conflict styles." },
+  // Society subtopics
+  'politics': { title: "Political polarization is worse online than in person", summary: "New study shows neighbors across party lines get along fine. Algorithms don't help." },
+  'economics': { title: "UBI pilots are producing unexpected results", summary: "Recipients don't quit working—but they do change what work means to them." },
+  'history': { title: "What the 1918 pandemic teaches us about 'normalcy'", summary: "The 'roaring 20s' didn't happen immediately. Recovery took longer than memory suggests." },
+  'media': { title: "Local news collapse is creating 'news deserts'", summary: "1,800 papers closed since 2004. The civic consequences are measurable." },
+  'technology-impact': { title: "Screen time research is more nuanced than headlines suggest", summary: "The moral panic vs. the data. What parents and policymakers should actually worry about." },
 };
 
-// Default items shown when no interests selected
-const DEFAULT_FEED_SAMPLES = [
-  { title: 'A Calm Feed That Helps You Focus', category: 'Wellbeing' },
-  { title: 'Small Habits That Add Up Over Time', category: 'Growth' },
-  { title: 'Practical Ideas You Can Use Today', category: 'Everyday' },
-  { title: 'Less Noise, More Signal', category: 'Focus' },
-];
-
-// Tooltip component - Desktop: hover popup, Mobile: inline accordion
-function HelpTooltip({ content }: { content: string }) {
-  const [isVisible, setIsVisible] = useState(false);
-
-  return (
-    <>
-      {/* Tooltip trigger button */}
-      <button
-        type="button"
-        onMouseEnter={() => setIsVisible(true)}
-        onMouseLeave={() => setIsVisible(false)}
-        onClick={(e) => {
-          e.preventDefault();
-          setIsVisible(!isVisible);
-        }}
-        className="inline-block ml-1.5 text-secondary/40 hover:text-primary transition-colors align-middle"
-        aria-label="Help"
-      >
-        <HelpCircle size={14} strokeWidth={1.5} />
-      </button>
-      
-      {/* Desktop: Floating tooltip */}
-      <AnimatePresence>
-        {isVisible && (
-          <motion.div
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 5 }}
-            transition={{ duration: 0.15 }}
-            className="hidden md:block absolute left-0 top-full mt-2 z-50 w-64 bg-background border border-border p-3 shadow-lg"
-          >
-            <p className="text-xs font-mono text-secondary leading-relaxed">{content}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      
-      {/* Mobile: Inline accordion */}
-      <AnimatePresence>
-        {isVisible && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="md:hidden overflow-hidden mt-2 mb-1"
-          >
-            <div className="bg-primary/5 border-l-2 border-primary/30 p-3">
-              <p className="text-xs font-mono text-secondary/80 leading-relaxed">{content}</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
-  );
-}
+// How skills modify the angle of content
+const SKILL_ANGLES: Record<string, string> = {
+  'design': 'with a design lens',
+  'writing': 'for writers',
+  'marketing': 'through a marketing lens',
+  'business': 'with business implications',
+  'software-tech': 'with technical depth',
+  'data-analytics': 'backed by data',
+  'finance': 'with financial analysis',
+  'education': 'with learning insights',
+  'health-wellness': 'for wellbeing',
+  'creative-arts': 'through a creative lens',
+};
 
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, loading, refreshProfile } = useAuth();
-  const [step, setStep] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Form data - Step 1: Basics
-  const [name, setName] = useState('');
-  const [role, setRole] = useState('');
-  const [company, setCompany] = useState('');
-  const [location, setLocation] = useState('');
-  const [experienceYears, setExperienceYears] = useState('');
-  const [currentWorkProject, setCurrentWorkProject] = useState('');
-  const [currentWorkFocus, setCurrentWorkFocus] = useState('');
-  
-  // Step 2: Interests & Hobbies (pills-based)
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
-  const [selectedHobbies, setSelectedHobbies] = useState<string[]>([]);
-  const [customInterest, setCustomInterest] = useState('');
-  const [showCustomInterestInput, setShowCustomInterestInput] = useState(false);
-  const [customHobby, setCustomHobby] = useState('');
-  const [showCustomHobbyInput, setShowCustomHobbyInput] = useState(false);
-  const [projectsText, setProjectsText] = useState('');
-  const [favoriteSourcesText, setFavoriteSourcesText] = useState('');
-  
-  // Step 3: Skills & Goals (pills-based)
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [customSkill, setCustomSkill] = useState('');
-  const [showCustomSkillInput, setShowCustomSkillInput] = useState(false);
-  const [dislikedTopicsText, setDislikedTopicsText] = useState('');
-  const [goalsShortTerm, setGoalsShortTerm] = useState('');
-  const [goalsLongTerm, setGoalsLongTerm] = useState('');
-  const [learningStyle, setLearningStyle] = useState('');
-  const [attentionConstraints, setAttentionConstraints] = useState('');
-  const [motivationTriggersText, setMotivationTriggersText] = useState('');
-  const [personalityTraitsText, setPersonalityTraitsText] = useState('');
-  const [petPeevesText, setPetPeevesText] = useState('');
-  
-  // Step 4: Content Preferences (0-10 scale, will be normalized to percentages)
-  // Defaults: youtube:5, articles:7 = ~30% video, ~42% articles (closer to 30/40 split)
-  const [sourcePreferences, setSourcePreferences] = useState({
-    youtube: 5,
-    articles: 7,
-    papers: 2,
-    repos: 3,
-    tweets: 3,
-    discussions: 4,
-  });
-  const [contentDepth, setContentDepth] = useState<'quick' | 'deep' | 'surprise' | null>(null);
-  const [contentLikesText, setContentLikesText] = useState('');
-  const [contentDislikesText, setContentDislikesText] = useState('');
-  
-  // Step 5: Optional Chat
-  const [skipChat, setSkipChat] = useState(false);
-  const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
-  const [chatInput, setChatInput] = useState('');
-  const [isChatLoading, setIsChatLoading] = useState(false);
-  const [chatInsights, setChatInsights] = useState<Record<string, unknown>>({});
-
   const hasTrackedOnboardingStart = useRef(false);
-  
+
+  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [selectedFocus, setSelectedFocus] = useState<FocusMap>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [step, setStep] = useState(1);
+
   useEffect(() => {
-    // Alpha mode check: if not in alpha mode, redirect to waitlist
     if (!isAlphaMode()) {
       if (user) {
         router.push('/waitlist');
@@ -277,10 +214,9 @@ export default function OnboardingPage() {
     if (!loading && !user) {
       router.push('/');
     }
+
     if (user) {
-      setName(user.displayName || '');
-      // Check if already onboarded
-      getUserProfile(user.uid).then(profile => {
+      getUserProfile(user.uid).then((profile) => {
         if (profile?.onboarded) {
           if (isAlphaMode()) {
             router.push('/feed');
@@ -288,7 +224,6 @@ export default function OnboardingPage() {
             router.push('/waitlist');
           }
         } else if (!hasTrackedOnboardingStart.current) {
-          // Track onboarding started for non-onboarded users
           trackOnboardingStarted();
           hasTrackedOnboardingStart.current = true;
         }
@@ -296,298 +231,107 @@ export default function OnboardingPage() {
     }
   }, [user, loading, router]);
 
-  // Compute preview feed items based on selected interests and hobbies
-  const previewItems = useMemo(() => {
-    if (selectedInterests.length === 0 && selectedHobbies.length === 0) {
-      return DEFAULT_FEED_SAMPLES;
-    }
-    
-    const items: { title: string; category: string }[] = [];
-    let itemIndex = 0;
-    
-    // Interleave interests and hobbies for variety
-    while (items.length < 4 && itemIndex < 12) {
-      // Add from interests
-      for (const interest of selectedInterests) {
-        if (items.length >= 4) break;
-        const interestItems = INTEREST_FEED_SAMPLES[interest];
-        if (interestItems && interestItems[itemIndex % interestItems.length]) {
-          const item = interestItems[itemIndex % interestItems.length];
-          if (!items.some(i => i.title === item.title)) {
-            items.push(item);
-          }
-        }
-      }
-      // Add from hobbies
-      for (const hobby of selectedHobbies) {
-        if (items.length >= 4) break;
-        const hobbyItems = HOBBY_FEED_SAMPLES[hobby];
-        if (hobbyItems && hobbyItems[itemIndex % hobbyItems.length]) {
-          const item = hobbyItems[itemIndex % hobbyItems.length];
-          if (!items.some(i => i.title === item.title)) {
-            items.push(item);
-          }
-        }
-      }
-      itemIndex++;
-    }
-    
-    return items.length > 0 ? items : DEFAULT_FEED_SAMPLES;
-  }, [selectedInterests, selectedHobbies]);
-
-  // Parse comma-separated strings into arrays
-  const parseCommaSeparated = (text: string, maxItems?: number): string[] => {
-    const items = text
-      .split(',')
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
-    return typeof maxItems === 'number' ? items.slice(0, maxItems) : items;
-  };
-
-  // Slider helper
-  const updateSlider = (key: keyof typeof sourcePreferences, value: number) => {
-    setSourcePreferences(prev => ({ ...prev, [key]: value }));
-  };
-
-  // Toggle functions for pills
   const toggleInterest = (id: string) => {
     if (selectedInterests.includes(id)) {
-      setSelectedInterests(selectedInterests.filter(i => i !== id));
-    } else if (selectedInterests.length < 8) {
+      setSelectedInterests(selectedInterests.filter((i) => i !== id));
+      if (selectedFocus[id]) {
+        const next = { ...selectedFocus };
+        delete next[id];
+        setSelectedFocus(next);
+      }
+    } else if (selectedInterests.length < MAX_INTERESTS) {
       setSelectedInterests([...selectedInterests, id]);
-    }
-  };
-
-  const addCustomInterest = () => {
-    if (customInterest.trim() && selectedInterests.length < 8) {
-      const customId = customInterest.toLowerCase().trim().replace(/\s+/g, '-');
-      if (!selectedInterests.includes(customId)) {
-        setSelectedInterests([...selectedInterests, customId]);
-      }
-      setCustomInterest('');
-      setShowCustomInterestInput(false);
-    }
-  };
-
-  const toggleHobby = (id: string) => {
-    if (selectedHobbies.includes(id)) {
-      setSelectedHobbies(selectedHobbies.filter(h => h !== id));
-    } else if (selectedHobbies.length < 3) {
-      setSelectedHobbies([...selectedHobbies, id]);
-    }
-  };
-
-  const addCustomHobby = () => {
-    if (customHobby.trim() && selectedHobbies.length < 3) {
-      const customId = customHobby.toLowerCase().trim().replace(/\s+/g, '-');
-      if (!selectedHobbies.includes(customId)) {
-        setSelectedHobbies([...selectedHobbies, customId]);
-      }
-      setCustomHobby('');
-      setShowCustomHobbyInput(false);
     }
   };
 
   const toggleSkill = (id: string) => {
     if (selectedSkills.includes(id)) {
-      setSelectedSkills(selectedSkills.filter(s => s !== id));
+      setSelectedSkills(selectedSkills.filter((s) => s !== id));
     } else {
       setSelectedSkills([...selectedSkills, id]);
     }
   };
 
-  const addCustomSkill = () => {
-    if (customSkill.trim()) {
-      const customId = customSkill.toLowerCase().trim().replace(/\s+/g, '-');
-      if (!selectedSkills.includes(customId)) {
-        setSelectedSkills([...selectedSkills, customId]);
-      }
-      setCustomSkill('');
-      setShowCustomSkillInput(false);
-    }
-  };
+  const focusInterestCount = Object.values(selectedFocus).filter((list) => list.length > 0).length;
+  const signalScore = Math.min(
+    100,
+    Math.round(
+      (selectedInterests.length / MIN_INTERESTS) * 50
+        + focusInterestCount * 12
+        + selectedSkills.length * 4
+    )
+  );
+  const signalLabel =
+    signalScore >= 80 ? 'High fidelity' : signalScore >= 55 ? 'Dialed in' : 'Warming up';
 
-  // Chat functionality
-  const sendChatMessage = async () => {
-    if (!chatInput.trim() || !user) return;
+  const toggleSubtopic = (interestId: string, subtopicId: string) => {
+    if (!selectedInterests.includes(interestId)) return;
 
-    const userMessage = { role: 'user' as const, content: chatInput };
-    setChatMessages(prev => [...prev, userMessage]);
-    setChatInput('');
-    setIsChatLoading(true);
+    const current = selectedFocus[interestId] || [];
+    const isSelected = current.includes(subtopicId);
 
-    try {
-      // Save to Firestore
-      await addChatMessage(user.uid, userMessage);
-
-      // Call chat API
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [...chatMessages, userMessage],
-          profile: { 
-            name, 
-            role, 
-            company, 
-            location,
-            experienceYears: experienceYears ? Number(experienceYears) : undefined,
-            currentWork: {
-              project: currentWorkProject || undefined,
-              focus: currentWorkFocus || undefined,
-            },
-            projects: parseCommaSeparated(projectsText),
-            interests: selectedInterests, 
-            hobbies: selectedHobbies, 
-            skills: selectedSkills, 
-            goals: {
-              shortTerm: goalsShortTerm || undefined,
-              longTerm: goalsLongTerm || undefined,
-            },
-            learningStyle: learningStyle || undefined,
-            attentionConstraints: attentionConstraints || undefined,
-            motivationTriggers: parseCommaSeparated(motivationTriggersText),
-            contentPreferences: {
-              likes: parseCommaSeparated(contentLikesText),
-              dislikes: parseCommaSeparated(contentDislikesText),
-            },
-            favoriteSources: parseCommaSeparated(favoriteSourcesText),
-            personalityTraits: parseCommaSeparated(personalityTraitsText),
-            petPeeves: parseCommaSeparated(petPeevesText),
-            insights: chatInsights 
-          }
-        }),
+    if (!isSelected) {
+      const isNewInterest = current.length === 0;
+      if (isNewInterest && focusInterestCount >= MAX_FOCUS_INTERESTS) return;
+      if (current.length >= MAX_SUBTOPICS_PER_INTEREST) return;
+      setSelectedFocus({
+        ...selectedFocus,
+        [interestId]: [...current, subtopicId],
       });
-
-      const data = await response.json();
-      const assistantMessage = { role: 'assistant' as const, content: data.message };
-      
-      setChatMessages(prev => [...prev, assistantMessage]);
-      await addChatMessage(user.uid, assistantMessage);
-
-      // Merge insights
-      if (data.insights && Object.keys(data.insights).length > 0) {
-        setChatInsights((prev) => {
-          const prevTyped = prev as Record<string, unknown>;
-          const insightsTyped = data.insights as Record<string, unknown>;
-          return {
-            ...prevTyped,
-            ...insightsTyped,
-            currentProjects: [...((prevTyped.currentProjects as string[]) || []), ...((insightsTyped.currentProjects as string[]) || [])],
-            goals: [...((prevTyped.goals as string[]) || []), ...((insightsTyped.goals as string[]) || [])],
-            hobbies: [...((prevTyped.hobbies as string[]) || []), ...((insightsTyped.hobbies as string[]) || [])],
-            preferredSources: [...((prevTyped.preferredSources as string[]) || []), ...((insightsTyped.preferredSources as string[]) || [])],
-            dislikedTopics: [...((prevTyped.dislikedTopics as string[]) || []), ...((insightsTyped.dislikedTopics as string[]) || [])],
-          };
-        });
-      }
-    } catch (error) {
-      console.error('Chat error:', error);
-    } finally {
-      setIsChatLoading(false);
+      return;
     }
+
+    const nextList = current.filter((id) => id !== subtopicId);
+    if (nextList.length === 0) {
+      const next = { ...selectedFocus };
+      delete next[interestId];
+      setSelectedFocus(next);
+      return;
+    }
+    setSelectedFocus({
+      ...selectedFocus,
+      [interestId]: nextList,
+    });
   };
 
-  // Validation
-  const canProceed = () => {
-    if (step === 0) return selectedInterests.length >= 4 && role;
-    if (step === 1) return selectedSkills.length >= 1;
-    if (step === 2) return name.trim().length > 0;
-    return true;
+  const handleNext = () => {
+    if (step === 1 && selectedInterests.length < MIN_INTERESTS) return;
+    setStep(Math.min(TOTAL_STEPS, step + 1));
   };
 
-  const handleSubmit = async () => {
+  const handleBack = () => {
+    setStep(Math.max(1, step - 1));
+  };
+
+  const handleComplete = async () => {
     if (!user) return;
-    
+    if (selectedInterests.length < MIN_INTERESTS) return;
+
     setIsSubmitting(true);
     try {
-      const onboardingData: Parameters<typeof completeOnboarding>[1] = {
-        name: name.trim(),
-        role,
+      await completeOnboarding(user.uid, {
+        name: user.displayName || '',
         interests: selectedInterests,
-        hobbies: selectedHobbies,
+        interestQueries: Object.keys(selectedFocus).length ? selectedFocus : undefined,
         skills: selectedSkills,
-        dislikedTopics: parseCommaSeparated(dislikedTopicsText),
-        sourcePreferences,
-        contentDepth,
-      };
+        sourcePreferences: {
+          articles: 7,
+          discussions: 4,
+          youtube: 5,
+          papers: 2,
+          repos: 3,
+          tweets: 3,
+        },
+        contentDepth: 'surprise',
+        hobbies: [],
+        dislikedTopics: [],
+      });
 
-      // Only add optional fields if they have values
-      if (company.trim()) {
-        onboardingData.company = company.trim();
-      }
-      if (location.trim()) {
-        onboardingData.location = location.trim();
-      }
-      if (experienceYears.trim()) {
-        const parsedYears = Number(experienceYears);
-        if (!Number.isNaN(parsedYears)) {
-          onboardingData.experienceYears = parsedYears;
-        }
-      }
-      if (currentWorkProject.trim() || currentWorkFocus.trim()) {
-        const currentWork: { project?: string; focus?: string } = {};
-        if (currentWorkProject.trim()) currentWork.project = currentWorkProject.trim();
-        if (currentWorkFocus.trim()) currentWork.focus = currentWorkFocus.trim();
-        onboardingData.currentWork = currentWork;
-      }
-      const parsedProjects = parseCommaSeparated(projectsText);
-      if (parsedProjects.length > 0) {
-        onboardingData.projects = parsedProjects;
-      }
-      if (goalsShortTerm.trim() || goalsLongTerm.trim()) {
-        const goals: { shortTerm?: string; longTerm?: string } = {};
-        if (goalsShortTerm.trim()) goals.shortTerm = goalsShortTerm.trim();
-        if (goalsLongTerm.trim()) goals.longTerm = goalsLongTerm.trim();
-        onboardingData.goals = goals;
-      }
-      if (learningStyle.trim()) {
-        onboardingData.learningStyle = learningStyle.trim();
-      }
-      if (attentionConstraints.trim()) {
-        onboardingData.attentionConstraints = attentionConstraints.trim();
-      }
-      const parsedMotivationTriggers = parseCommaSeparated(motivationTriggersText);
-      if (parsedMotivationTriggers.length > 0) {
-        onboardingData.motivationTriggers = parsedMotivationTriggers;
-      }
-      const contentLikes = parseCommaSeparated(contentLikesText);
-      const contentDislikes = parseCommaSeparated(contentDislikesText);
-      if (contentLikes.length > 0 || contentDislikes.length > 0) {
-        const contentPreferences: { likes?: string[]; dislikes?: string[] } = {};
-        if (contentLikes.length > 0) contentPreferences.likes = contentLikes;
-        if (contentDislikes.length > 0) contentPreferences.dislikes = contentDislikes;
-        onboardingData.contentPreferences = contentPreferences;
-      }
-      const parsedFavoriteSources = parseCommaSeparated(favoriteSourcesText);
-      if (parsedFavoriteSources.length > 0) {
-        onboardingData.favoriteSources = parsedFavoriteSources;
-      }
-      const parsedPersonalityTraits = parseCommaSeparated(personalityTraitsText);
-      if (parsedPersonalityTraits.length > 0) {
-        onboardingData.personalityTraits = parsedPersonalityTraits;
-      }
-      const parsedPetPeeves = parseCommaSeparated(petPeevesText);
-      if (parsedPetPeeves.length > 0) {
-        onboardingData.petPeeves = parsedPetPeeves;
-      }
-      if (Object.keys(chatInsights).length > 0) {
-        onboardingData.insights = chatInsights as Record<string, unknown>;
-      }
-      if (chatMessages.length > 0) {
-        onboardingData.chatHistory = chatMessages.map(m => ({ ...m, timestamp: null }));
-      }
-
-      await completeOnboarding(user.uid, onboardingData);
-      
-      // Track onboarding completed
       trackOnboardingCompleted({
         interests_count: selectedInterests.length,
-        hobbies_count: selectedHobbies.length,
-        role: role,
+        hobbies_count: selectedSkills.length,
       });
-      
-      // Trigger Python onboarding hook via GitHub Action
+
       try {
         await fetch('/api/onboard', {
           method: 'POST',
@@ -595,14 +339,11 @@ export default function OnboardingPage() {
           body: JSON.stringify({ uid: user.uid }),
         });
       } catch (e) {
-        // Don't block redirect if trigger fails - feed will generate in daily batch
         console.warn('Onboard trigger failed:', e);
       }
-      
-      // Refresh profile to update onboarded status before redirect
+
       await refreshProfile();
-      
-      // Redirect to feed after onboarding
+
       if (isAlphaMode()) {
         router.push('/feed');
       } else {
@@ -614,28 +355,6 @@ export default function OnboardingPage() {
     }
   };
 
-  const nextStep = () => {
-    if (!canProceed()) return;
-    
-    if (step < 2) {
-      setStep(step + 1);
-    } else if (step === 2) {
-      handleSubmit();
-    }
-  };
-
-  const startOnboarding = () => {
-    setStep(1);
-  };
-
-  const skipOnboarding = () => {
-    router.push('/feed');
-  };
-
-  const prevStep = () => {
-    if (step > 0) setStep(step - 1);
-  };
-
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -645,496 +364,281 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground onboarding-page">
-      <div className="fixed top-0 left-0 right-0 h-1.5 bg-gray-100 z-50">
-        <motion.div 
-          className="h-full bg-foreground rounded-r-full"
-          initial={{ width: '33%' }}
-          animate={{ width: `${((step + 1) / 3) * 100}%` }}
-          transition={{ duration: 0.3 }}
-        />
-      </div>
-
-      <div className="container mx-auto px-4 max-w-5xl py-12 md:py-20">
+    <div className="min-h-screen text-foreground bg-[radial-gradient(circle_at_top,_#f9f5ff_0%,_#ffffff_45%,_#f6f8ff_100%)]">
+      <div className="container mx-auto px-4 max-w-5xl py-8 md:py-12">
         <div className="text-center mb-10">
-          <div className="text-lg text-foreground uppercase flex items-center justify-center gap-3 tracking-[0.15em] font-semibold mb-6">
-            <img 
-              src="/trace.png" 
-              alt="Trace" 
-              className="h-6 md:h-7 w-auto"
-            />
+          <div className="text-base text-foreground uppercase flex items-center justify-center gap-2 tracking-[0.15em] font-semibold mb-6">
+            <img src="/trace.png" alt="Trace" className="h-5 md:h-6 w-auto" />
             TRACE
           </div>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-sm text-secondary mb-3">
-            Step {step + 1} of 3
-          </div>
-          <p className="text-sm text-secondary/70 mt-3 max-w-md mx-auto">
-            🔒 Your data powers a calmer, focused feed (not doomscrolling). Read our{' '}
-            <a href="/privacy-policy" target="_blank" className="text-primary hover:underline">privacy policy</a>
-            {' '}and{' '}
-            <a href="/terms" target="_blank" className="text-primary hover:underline">terms</a>
+          <h1
+            className="text-2xl md:text-3xl font-semibold mb-2"
+            style={{ fontFamily: '"Space Grotesk", "DM Sans", sans-serif' }}
+          >
+            Let's refine your feed
+          </h1>
+          <p className="text-sm text-secondary/70 max-w-xl mx-auto">
+            Pick a few topics and we will tune your feed.
           </p>
+          
+          {/* Signal strength - always visible */}
+          <div className="mt-6 max-w-md mx-auto">
+            <div className="flex items-center justify-between text-xs mb-2">
+              <span className="text-secondary/60">Signal strength</span>
+              <span className={`font-medium ${signalScore >= 80 ? 'text-emerald-600' : signalScore >= 55 ? 'text-amber-600' : 'text-secondary/60'}`}>
+                {signalLabel} · {signalScore}%
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-gray-200 overflow-hidden">
+              <div
+                className={`h-full transition-all duration-500 ${
+                  signalScore >= 80 ? 'bg-emerald-500' : signalScore >= 55 ? 'bg-amber-500' : 'bg-gray-400'
+                }`}
+                style={{ width: `${Math.min(100, signalScore)}%` }}
+              />
+            </div>
+          </div>
         </div>
 
-        <AnimatePresence mode="wait">
-          {step === 0 && (
-            <motion.div
-              key="step0"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-8"
-            >
-              <div className="grid gap-10 md:grid-cols-[1.1fr_0.9fr] items-start">
-                <div className="space-y-6">
-                 
-                  <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground/80 mb-2">
-                      What do you want more of? <span className="text-primary">(minimum 4)</span>
-                    </label>
-                    <p className="text-sm text-secondary/70 mb-4">
-                      These topics keep your feed focused • {selectedInterests.length}/8 selected
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {INTERESTS.map((interest) => {
-                        const isSelected = selectedInterests.includes(interest.id);
-                        return (
-                          <button
-                            key={interest.id}
-                            onClick={() => toggleInterest(interest.id)}
-                            className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 cursor-pointer ${
-                              isSelected
-                                ? 'bg-foreground text-background'
-                                : 'bg-gray-100 text-secondary hover:bg-gray-200'
-                            }`}
-                          >
-                            <span>{interest.label}</span>
-                            {isSelected && <Check size={14} />}
-                          </button>
-                        );
-                      })}
-
-                      {selectedInterests
-                        .filter(id => !INTERESTS.some(i => i.id === id))
-                        .map(customId => (
-                          <button
-                            key={customId}
-                            onClick={() => toggleInterest(customId)}
-                            className="px-4 py-2.5 rounded-full bg-foreground text-background text-sm font-medium transition-all flex items-center gap-2 cursor-pointer"
-                          >
-                            <span>{customId.replace(/-/g, ' ')}</span>
-                            <X size={14} />
-                          </button>
-                        ))}
-
-                      {!showCustomInterestInput ? (
-                        <button
-                          onClick={() => setShowCustomInterestInput(true)}
-                          className="px-4 py-2.5 rounded-full border-2 border-dashed border-gray-200 hover:border-gray-300 text-sm font-medium transition-all flex items-center gap-2 text-secondary cursor-pointer"
-                        >
-                          <Plus size={14} />
-                          Add custom
-                        </button>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={customInterest}
-                            onChange={(e) => setCustomInterest(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && addCustomInterest()}
-                            placeholder="Your interest"
-                            autoFocus
-                            className="px-4 py-2.5 rounded-full border-2 border-foreground bg-transparent text-sm font-medium outline-none w-36"
-                          />
-                          <button onClick={addCustomInterest} className="p-2.5 rounded-full bg-foreground text-background cursor-pointer">
-                            <Check size={14} />
-                          </button>
-                          <button onClick={() => { setShowCustomInterestInput(false); setCustomInterest(''); }} className="p-2.5 rounded-full bg-gray-100 cursor-pointer">
-                            <X size={14} />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="relative mb-2">
-                      <label className="block text-sm font-medium text-foreground/80">
-                        What do you do?
-                        <HelpTooltip content="Helps us understand your professional context and match content difficulty to your expertise level" />
-                      </label>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {ROLES.map((r) => (
-                        <button
-                          key={r}
-                          onClick={() => setRole(r)}
-                          className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all ${
-                            role === r 
-                              ? 'bg-foreground text-background' 
-                              : 'bg-gray-100 text-secondary hover:bg-gray-200'
-                          }`}
-                        >
-                          {r}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                </div>
-
-                <div className="space-y-4">
+          <div className="grid lg:grid-cols-[1.35fr_0.65fr] gap-8 items-start">
+          <div className="space-y-8">
+            {step === 1 && (
+              <>
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-foreground">Your calmer feed preview</p>
-                  <span className="text-xs text-secondary/60">{(selectedInterests.length > 0 || selectedHobbies.length > 0) ? 'Based on your picks' : 'Sample topics'}</span>
-                </div>
-                <div className="divide-y divide-gray-200 rounded-2xl border border-gray-200 bg-white overflow-hidden">
-                  <AnimatePresence mode="popLayout">
-                    {previewItems.map((item, index) => (
-                      <motion.div
-                        key={item.title}
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        transition={{ duration: 0.2, delay: index * 0.05 }}
-                        className="p-4"
-                      >
-                        <p className="text-sm font-medium text-foreground mb-1.5">{item.title}</p>
-                        <p className="text-xs text-secondary/70">Trending in {item.category}</p>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
-                <p className="text-sm text-secondary/80 leading-relaxed bg-white rounded-2xl p-6">
-                    <Lightbulb size={16} className="text-primary inline-block mr-2" />
-                    <span className="text-foreground font-semibold">Most people</span> say their feed feels calmer
-                    after picking 4+ topics.
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Step 2: The Basics */}
-          {step === 2 && (
-            <motion.div
-              key="step2"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-8"
-            >
-              <div className="text-center mb-10">
-                <h1 className="text-3xl md:text-4xl font-semibold tracking-tight mb-3">
-                  The <span className="text-secondary/50">Basics</span>
-                </h1>
-                <p className="text-secondary text-base">
-                  Let&apos;s get to know you a bit
-                </p>
-              </div>
-
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-foreground/70 mb-3">
-                    What should we call you?
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Your name"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 text-base text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-secondary/40"
-                  />
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.2em] text-secondary/60">Step 1</div>
+                    <h2 className="text-lg font-semibold">Choose your topics</h2>
+                    <p className="text-xs text-secondary/60 mt-1">
+                      We’ll pull the best articles from these topics each day.
+                    </p>
+                  </div>
+                  <div className="text-xs text-secondary/60">
+                    {selectedInterests.length}/{MAX_INTERESTS} selected
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground/80 mb-2">
-                    Hobbies <span className="text-secondary/50 text-xs ml-2">(optional, max 3)</span>
-                  </label>
-                  <p className="text-sm text-secondary/70 mb-4">
-                    Adds a personal layer to your feed • {selectedHobbies.length}/3 selected
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {HOBBY_SUGGESTIONS.map((hobby) => {
-                      const isSelected = selectedHobbies.includes(hobby.id);
-                      return (
-                        <button
-                          key={hobby.id}
-                          onClick={() => toggleHobby(hobby.id)}
-                          className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 cursor-pointer ${
-                            isSelected
-                              ? 'bg-foreground text-background'
-                              : 'bg-gray-100 text-secondary hover:bg-gray-200'
-                          }`}
-                        >
-                          <span>{hobby.label}</span>
-                          {isSelected && <Check size={14} />}
-                        </button>
-                      );
-                    })}
-
-                    {selectedHobbies
-                      .filter(id => !HOBBY_SUGGESTIONS.some(h => h.id === id))
-                      .map(customId => (
-                        <button
-                          key={customId}
-                          onClick={() => toggleHobby(customId)}
-                          className="px-4 py-2.5 rounded-full bg-foreground text-background text-sm font-medium transition-all flex items-center gap-2 cursor-pointer"
-                        >
-                          <span>{customId.replace(/-/g, ' ')}</span>
-                          <X size={14} />
-                        </button>
-                      ))}
-
-                    {!showCustomHobbyInput ? (
+                <div className="flex flex-wrap gap-2">
+                  {INTERESTS.map((interest) => {
+                    const isSelected = selectedInterests.includes(interest.id);
+                    const isMaxed = !isSelected && selectedInterests.length >= MAX_INTERESTS;
+                    return (
                       <button
-                        onClick={() => setShowCustomHobbyInput(true)}
-                        className="px-4 py-2.5 rounded-full border-2 border-dashed border-gray-200 hover:border-gray-300 text-sm font-medium transition-all flex items-center gap-2 text-secondary cursor-pointer"
+                        key={interest.id}
+                        onClick={() => toggleInterest(interest.id)}
+                        disabled={isMaxed}
+                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 border ${
+                          isSelected
+                            ? 'border-foreground bg-foreground text-background'
+                            : 'border-gray-200 bg-white text-foreground/80 hover:border-foreground/40'
+                        } ${isMaxed ? 'opacity-40 cursor-not-allowed' : ''}`}
                       >
-                        <Plus size={14} />
-                        Add custom
+                        <span>{interest.label}</span>
+                        {isSelected && <Check size={12} />}
                       </button>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={customHobby}
-                          onChange={(e) => setCustomHobby(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && addCustomHobby()}
-                          placeholder="Your hobby"
-                          autoFocus
-                          className="px-4 py-2.5 rounded-full border-2 border-foreground bg-transparent text-sm font-medium outline-none w-36"
-                        />
-                        <button onClick={addCustomHobby} className="p-2.5 rounded-full bg-foreground text-background cursor-pointer">
-                          <Check size={14} />
-                        </button>
-                        <button onClick={() => { setShowCustomHobbyInput(false); setCustomHobby(''); }} className="p-2.5 rounded-full bg-gray-100 cursor-pointer">
-                          <X size={14} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                    );
+                  })}
                 </div>
 
-                {/* <div>
-                  <div className="relative mb-3">
-                    <label className="block text-xs font-mono uppercase tracking-wider text-foreground/70 font-medium">
-                      Current focus <span className="text-secondary/50 text-[9px] normal-case tracking-normal ml-2">(optional)</span>
-                      <HelpTooltip content="Tells us what you're actively working on so we can surface timely, actionable content that helps you right now" />
-                    </label>
-                  </div>
-                  <input
-                    type="text"
-                    value={currentWorkFocus}
-                    onChange={(e) => setCurrentWorkFocus(e.target.value)}
-                    placeholder="What are you trying to improve or learn?"
-                    className="w-full bg-transparent border-b-2 border-border py-4 text-lg font-serif text-foreground outline-none focus:border-primary transition-colors placeholder:text-secondary/30"
-                  />
-                </div> */}
-              </div>
-            </motion.div>
-          )}
-
-          
-
-          {/* Step 1: Skills & Goals */}
-          {step === 1 && (
-            <motion.div
-              key="step1"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-8"
-            >
-              <div className="text-center mb-10">
-                <h1 className="text-3xl md:text-4xl font-semibold tracking-tight mb-3">
-                  Skills <span className="text-secondary/50">&</span> Goals
-                </h1>
-                <p className="text-secondary text-base">
-                  Help us match content to your level
-                </p>
-              </div>
-
-              <div className="space-y-8">
-                {/* Skills */}
-                <div>
-                  <div className="relative mb-2">
-                    <label className="block text-sm font-medium text-foreground/80">
-                      Your skills or strengths <span className="text-primary">(minimum 1)</span>
-                      <HelpTooltip content="Helps us match depth - quick tips when you want them, deep dives when you do." />
-                    </label>
-                  </div>
-                  <p className="text-sm text-secondary/70 mb-4">
-                    🎯 Helps us calibrate content difficulty • {selectedSkills.length} selected
+                <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-lg bg-amber-50/80 border border-amber-100">
+                  <span className="text-amber-500 text-sm">💡</span>
+                  <p className="text-xs text-amber-800/80 leading-relaxed">
+                    90% of users say their feed feels more useful after picking all 4 topics
                   </p>
-                  
-                  <div className="flex flex-wrap gap-2">
-                    {SKILL_SUGGESTIONS.map((skill) => {
-                      const isSelected = selectedSkills.includes(skill.id);
-                      return (
-                        <button
-                          key={skill.id}
-                          onClick={() => toggleSkill(skill.id)}
-                          className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
-                            isSelected
-                              ? 'bg-foreground text-background'
-                              : 'bg-gray-100 text-secondary hover:bg-gray-200'
-                          }`}
-                        >
-                          <span>{skill.label}</span>
-                          {isSelected && <Check size={14} />}
-                        </button>
-                      );
-                    })}
-
-                    {/* Custom skills that were added */}
-                    {selectedSkills
-                      .filter(id => !SKILL_SUGGESTIONS.some(s => s.id === id))
-                      .map(customId => (
-                        <button
-                          key={customId}
-                          onClick={() => toggleSkill(customId)}
-                          className="px-4 py-2.5 rounded-full bg-foreground text-background text-sm font-medium transition-all flex items-center gap-2"
-                        >
-                          <span>{customId.replace(/-/g, ' ')}</span>
-                          <X size={14} />
-                        </button>
-                      ))}
-
-                    {/* Add custom skill */}
-                    {!showCustomSkillInput ? (
-                      <button
-                        onClick={() => setShowCustomSkillInput(true)}
-                        className="px-4 py-2.5 rounded-full border-2 border-dashed border-gray-200 hover:border-gray-300 text-sm font-medium transition-all flex items-center gap-2 text-secondary"
-                      >
-                        <Plus size={14} />
-                        Add custom
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={customSkill}
-                          onChange={(e) => setCustomSkill(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && addCustomSkill()}
-                          placeholder="Your skill"
-                          autoFocus
-                          className="px-4 py-2.5 rounded-full border-2 border-foreground bg-transparent text-sm font-medium outline-none w-36"
-                        />
-                        <button onClick={addCustomSkill} className="p-2.5 rounded-full bg-foreground text-background">
-                          <Check size={14} />
-                        </button>
-                        <button onClick={() => { setShowCustomSkillInput(false); setCustomSkill(''); }} className="p-2.5 rounded-full bg-gray-100">
-                          <X size={14} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
                 </div>
-             
 
-                <div>
-                  <div className="relative mb-2">
-                    <label className="block text-sm font-medium text-foreground/80">
-                      Short-term goals <span className="text-secondary/50 text-xs ml-2">(optional)</span>
-                      <HelpTooltip content="Surfaces content aligned with what you want more of right now." />
-                    </label>
-                  </div>
-                  <p className="text-sm text-secondary/70 mb-4">
-                    What are you working towards?
+                {selectedInterests.length < MIN_INTERESTS && (
+                  <p className="text-xs text-red-500">
+                    Select at least {MIN_INTERESTS} interests
                   </p>
-                  
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {GOAL_SUGGESTIONS.map((goal) => {
-                      const isSelected = goalsShortTerm.toLowerCase().includes(goal.label.toLowerCase());
-                      return (
-                        <button
-                          key={goal.id}
-                          onClick={() => {
-                            if (isSelected) {
-                              // Remove from goals
-                              const regex = new RegExp(goal.label + ',?\\s*', 'gi');
-                              setGoalsShortTerm(prev => prev.replace(regex, '').trim().replace(/,\s*$/, ''));
-                            } else {
-                              // Add to goals
-                              setGoalsShortTerm(prev => prev ? `${prev}, ${goal.label}` : goal.label);
-                            }
-                          }}
-                          className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
-                            isSelected
-                              ? 'bg-foreground text-background'
-                              : 'bg-gray-100 text-secondary hover:bg-gray-200'
-                          }`}
-                        >
-                          <span>{goal.label}</span>
-                          {isSelected && <Check size={14} />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  
-                  <input
-                    type="text"
-                    value={goalsShortTerm}
-                    onChange={(e) => setGoalsShortTerm(e.target.value)}
-                    placeholder="Or type your own goals..."
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 text-base text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-secondary/40"
-                  />
-                </div>
-
-              
-
-               
-
-              </div>
-            </motion.div>
-          )}
-
-        </AnimatePresence>
-
-        <div className="flex justify-between items-center mt-12">
-          {step > 0 ? (
-            <button
-              onClick={prevStep}
-              className="flex items-center gap-2 px-5 py-3 rounded-full text-sm font-medium transition-all text-secondary hover:text-foreground hover:bg-gray-100"
-            >
-              <ChevronLeft size={16} />
-              Back
-            </button>
-          ) : (
-            <button
-              onClick={skipOnboarding}
-              className="flex items-center gap-2 px-5 py-3 rounded-full text-sm font-medium transition-all text-secondary hover:text-foreground hover:bg-gray-100"
-            >
-              Skip for now
-            </button>
-          )}
-
-          <button
-            onClick={nextStep}
-            disabled={!canProceed() || isSubmitting}
-            className={`flex items-center gap-2 px-8 py-4 rounded-full text-sm font-medium transition-all ${
-              canProceed() && !isSubmitting
-                ? 'bg-foreground text-background hover:bg-foreground/90'
-                : 'bg-gray-200 text-secondary cursor-not-allowed'
-            }`}
-          >
-            {isSubmitting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                Continue
-                <ChevronRight size={16} />
+                )}
               </>
             )}
-          </button>
+
+            {step === 2 && (
+              <>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.2em] text-secondary/60">Step 2</div>
+                    <h2 className="text-lg font-semibold">Let's get specific (optional)</h2>
+                    <p className="text-xs text-secondary/60 mt-1">
+                      This helps us find exactly what you care about.
+                    </p>
+                  </div>
+                  <div className="text-xs text-secondary/60">
+                    {focusInterestCount}/{MAX_FOCUS_INTERESTS} refined
+                  </div>
+                </div>
+                <div className="space-y-8 mt-2">
+                  {selectedInterests.map((interestId, index) => {
+                    const interest = INTERESTS.find((i) => i.id === interestId);
+                    const subtopics = INTEREST_SUBTOPICS[interestId] || [];
+                    if (!interest || subtopics.length === 0) return null;
+                    const selectedSubtopics = selectedFocus[interestId] || [];
+                    const isFocusFull = selectedSubtopics.length === 0 && focusInterestCount >= MAX_FOCUS_INTERESTS;
+                    
+                    const prompts = [
+                      <>You like <span className="font-semibold text-foreground">{interest.label.toLowerCase()}</span>... what about it interests you the most?</>,
+                      <><span className="font-semibold text-foreground">{interest.label}</span> is broad—any angle you&apos;re drawn to?</>,
+                      <>Anything specific about <span className="font-semibold text-foreground">{interest.label.toLowerCase()}</span> you want to dive into?</>,
+                      <>Last one! What&apos;s your <span className="font-semibold text-foreground">{interest.label.toLowerCase()}</span> sweet spot?</>,
+                    ];
+                    const prompt = prompts[index] || prompts[0];
+                    
+                    return (
+                      <div key={interestId}>
+                        <p className="text-sm text-foreground/70 mb-3">
+                          {prompt}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {subtopics.map((subtopic) => {
+                            const isSelected = selectedSubtopics.includes(subtopic.id);
+                            const isDisabled =
+                              (!isSelected && selectedSubtopics.length >= MAX_SUBTOPICS_PER_INTEREST) || isFocusFull;
+                            return (
+                              <button
+                                key={subtopic.id}
+                                onClick={() => toggleSubtopic(interestId, subtopic.id)}
+                                disabled={isDisabled}
+                                className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 border ${
+                                  isSelected
+                                    ? 'border-foreground bg-foreground text-background'
+                                    : 'border-gray-200 bg-white text-foreground/80 hover:border-foreground/40'
+                                } ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                              >
+                                {subtopic.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {selectedInterests.length === 0 && (
+                    <p className="text-xs text-secondary/60">Select interests first to refine them.</p>
+                  )}
+                </div>
+              </>
+            )}
+
+            {step === 3 && (
+              <>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.2em] text-secondary/60">Step 3</div>
+                    <h2 className="text-lg font-semibold">Your skills (optional)</h2>
+                    <p className="text-xs text-secondary/60 mt-1">
+                      Skills help us tune the angle and depth.
+                    </p>
+                  </div>
+                  <div className="text-xs text-secondary/60">
+                    {selectedSkills.length} selected
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {SKILL_OPTIONS.map((skill) => {
+                    const isSelected = selectedSkills.includes(skill.id);
+                    return (
+                      <button
+                        key={skill.id}
+                        onClick={() => toggleSkill(skill.id)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 border ${
+                          isSelected
+                            ? 'border-foreground bg-foreground text-background'
+                            : 'border-gray-200 bg-white text-foreground/80 hover:border-foreground/40'
+                        }`}
+                      >
+                        <span>{skill.label}</span>
+                        {isSelected && <Check size={12} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            <div className="flex items-center justify-between pt-2">
+              <button
+                onClick={handleBack}
+                disabled={step === 1}
+                className="text-xs text-secondary/70 disabled:opacity-40"
+              >
+                Back
+              </button>
+              {step < TOTAL_STEPS ? (
+                <button
+                  onClick={handleNext}
+                  disabled={step === 1 && selectedInterests.length < MIN_INTERESTS}
+                  className="px-5 py-2.5 rounded-lg text-sm font-medium bg-foreground text-background shadow-sm hover:bg-foreground/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Continue
+                </button>
+              ) : (
+                <button
+                  onClick={handleComplete}
+                  disabled={isSubmitting || selectedInterests.length < MIN_INTERESTS}
+                  className="px-5 py-2.5 rounded-lg text-sm font-medium bg-foreground text-background shadow-sm hover:bg-foreground/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? 'Building...' : 'Build my signal'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="lg:sticky lg:top-10 hidden lg:block">
+            <div className="rounded-xl border border-gray-100 bg-white/60 p-5">
+              <div className="text-xs uppercase tracking-[0.2em] text-secondary/50 mb-5">
+                Your feed preview
+              </div>
+              <div className="space-y-5">
+                {selectedInterests.slice(0, 3).map((id, index) => {
+                  const interest = INTERESTS.find((i) => i.id === id);
+                  const focusIds = selectedFocus[id] || [];
+                  const primaryFocus = focusIds[0];
+                  const focusLabel = primaryFocus
+                    ? (INTEREST_SUBTOPICS[id] || []).find((s) => s.id === primaryFocus)?.label
+                    : null;
+                  
+                  // Use subtopic preview if available, otherwise fall back to interest preview
+                  const subtopicPreview = primaryFocus ? SUBTOPIC_PREVIEWS[primaryFocus] : null;
+                  const basePreview = FEED_PREVIEWS[id];
+                  const preview = subtopicPreview || basePreview;
+                  
+                  // Get skill angle if any skills selected
+                  const skillAngle = selectedSkills.length > 0 ? SKILL_ANGLES[selectedSkills[0]] : null;
+                  
+                  const hasChanges = !!subtopicPreview || !!skillAngle;
+                  
+                  return (
+                    <div 
+                      key={`${id}-${primaryFocus || 'base'}-${selectedSkills[0] || 'none'}`} 
+                      className={`transition-all duration-300 ${index > 0 ? 'pt-5 border-t border-gray-100' : ''}`}
+                    >
+                      <div className="flex items-center gap-2 text-[11px] text-secondary/50">
+                        <span className="uppercase tracking-[0.15em]">
+                          {interest?.label}
+                          {focusLabel ? ` · ${focusLabel}` : ''}
+                        </span>
+                        {hasChanges && (
+                          <span className="text-violet-500">✦</span>
+                        )}
+                      </div>
+                      <div className="mt-1.5 text-sm font-medium leading-snug text-foreground/90">
+                        {preview?.title || 'Curated insight for you'}
+                      </div>
+                      <div className="mt-1 text-xs text-secondary/60 leading-relaxed">
+                        {preview?.summary || 'Short, clear summary of what\'s worth your time today.'}
+                      </div>
+                    </div>
+                  );
+                })}
+                {selectedInterests.length === 0 && (
+                  <div className="text-xs text-secondary/40 italic">
+                    Pick topics to see your feed
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -20,10 +20,7 @@ from v1.flows.build_feed_from_topics import build_feed_from_topics
 from v1.flows.build_topics_for_user import build_topics_for_user
 from v1.flows.build_unsubscribed_feed_from_topics import build_unsubscribed_feed
 from v1.flows.build_suggested_items_for_user import build_suggested_items_for_user
-from v1.flows.normalize_user_interests import (
-    normalize_user_interests,
-    update_user_profile_interests,
-)
+from v1.algorithm.interest_schema import get_interest_ids, get_interest_queries
 
 
 def main():
@@ -49,31 +46,24 @@ def main():
 
     print(f"Onboarding user {args.user_id} (status: {status})")
 
-    # Step 0: Normalize interests to prevent duplicate topics
+    # Step 0: Ensure interest_ids / interest_queries are present
     if not args.skip_normalize:
-        print("\nNormalizing user interests...")
+        interest_ids = get_interest_ids(profile)
+        interest_queries = get_interest_queries(profile)
+        updates = {
+            "interest_ids": interest_ids,
+            "interest_queries": interest_queries,
+            "interestQueries": interest_queries,
+        }
         raw_interests = profile.get("interests", []) or []
-        raw_hobbies = profile.get("hobbies", []) or []
+        if raw_interests and raw_interests != interest_ids:
+            updates["legacy_interests"] = raw_interests
+            updates["interests"] = interest_ids
+        elif interest_ids and not raw_interests:
+            updates["interests"] = interest_ids
 
-        if raw_interests or raw_hobbies:
-            normalized = normalize_user_interests(
-                interests=raw_interests,
-                hobbies=raw_hobbies,
-                store=store,
-            )
-
-            # Update profile with normalized interests
-            if normalized["interests"] or normalized["hobbies"]:
-                update_user_profile_interests(
-                    user_id=args.user_id,
-                    normalized_interests=normalized["interests"],
-                    normalized_hobbies=normalized["hobbies"],
-                    store=store,
-                )
-                print(
-                    f"  Normalized: {len(raw_interests)} → {len(normalized['interests'])} interests, "
-                    f"{len(raw_hobbies)} → {len(normalized['hobbies'])} hobbies"
-                )
+        store.db.collection("user_profiles").document(args.user_id).update(updates)
+        print(f"  Updated interest schema for {args.user_id}")
 
     if is_subscribed:
         print("\nBuilding topics for subscribed user...")

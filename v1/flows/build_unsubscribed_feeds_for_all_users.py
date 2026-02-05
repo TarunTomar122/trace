@@ -4,6 +4,7 @@ Build topic-based feeds for all unsubscribed onboarded users using LLM matching.
 Usage:
   python v1/flows/build_unsubscribed_feeds_for_all_users.py
   python v1/flows/build_unsubscribed_feeds_for_all_users.py --limit 10 --skip-seen
+  python v1/flows/build_unsubscribed_feeds_for_all_users.py --user-id USER_ID
 """
 import argparse
 import sys
@@ -26,14 +27,19 @@ def build_unsubscribed_feeds(
     skip_seen: bool = False,
     start_index: int = 0,
     start_after: str | None = None,
+    user_id: str | None = None,
+    force: bool = False,
 ) -> dict:
     store = FirestoreStore()
-    profiles = store.get_all_user_profiles()
-    users = [
-        p for p in profiles
-        if p.get("onboarded") is True
-        and p.get("subscriptionStatus") not in ["trial", "active"]
-    ]
+    if user_id:
+        users = [{"uid": user_id}]
+    else:
+        profiles = store.get_all_user_profiles()
+        users = [
+            p for p in profiles
+            if p.get("onboarded") is True
+            and p.get("subscriptionStatus") not in ["trial", "active"]
+        ]
     users = sorted(users, key=lambda u: u.get("uid", ""))
 
     if start_after:
@@ -69,12 +75,12 @@ def build_unsubscribed_feeds(
             continue
         print(f"[{i}/{total}] Building unsubscribed feed for {user_id}...")
         try:
-            result = build_unsubscribed_feed(user_id, skip_seen=skip_seen)
+            result = build_unsubscribed_feed(user_id, skip_seen=skip_seen, force=force)
             if result.get("skipped"):
                 skipped += 1
                 print(f"  Skipped (feed already exists)")
             else:
-                print(f"  Items written: {result.get('items_written', 0)}")
+                print(f"  ✓ {result.get('items_written', 0)} items written")
                 success += 1
         except Exception as e:
             failed += 1
@@ -109,6 +115,15 @@ def main():
         action="store_true",
         help="Skip seen URL filtering and updates",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force regenerate feeds even if they exist for today",
+    )
+    parser.add_argument(
+        "--user-id",
+        help="Run for a single user instead of all unsubscribed users",
+    )
     args = parser.parse_args()
 
     result = build_unsubscribed_feeds(
@@ -116,6 +131,8 @@ def main():
         skip_seen=args.skip_seen,
         start_index=args.start_index,
         start_after=args.start_after,
+        user_id=args.user_id,
+        force=args.force,
     )
     print(f"Done. Users processed: {result['users_processed']}")
 

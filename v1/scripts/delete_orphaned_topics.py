@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 from v1.storage import FirestoreStore
+from v1.algorithm.interest_schema import get_interest_ids
 
 
 def _normalize_topic_id(name: str) -> str:
@@ -44,7 +45,7 @@ def get_user_referenced_topics(store: FirestoreStore) -> set[str]:
     referenced = set()
     for doc in docs:
         data = doc.to_dict() or {}
-        interests = data.get("interests", []) or []
+        interests = get_interest_ids(data)
         hobbies = data.get("hobbies", []) or []
         for i in interests:
             if isinstance(i, str):

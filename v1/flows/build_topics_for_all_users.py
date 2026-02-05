@@ -6,6 +6,7 @@ Usage:
   python v1/flows/build_topics_for_all_users.py
   python v1/flows/build_topics_for_all_users.py --limit 10
   python v1/flows/build_topics_for_all_users.py --min-refresh-days 5
+  python v1/flows/build_topics_for_all_users.py --user-id USER_ID
 """
 
 import argparse
@@ -30,9 +31,13 @@ from v1.flows.build_topics_for_user import (  # noqa: E402
 def build_topics_for_all_users(
     limit: int | None = None,
     min_refresh_days: int = 4,
+    user_id: str | None = None,
 ) -> dict:
     store = FirestoreStore()
-    users = store.get_onboarded_users()
+    if user_id:
+        users = [{"uid": user_id}]
+    else:
+        users = store.get_onboarded_users()
     if limit:
         users = users[:limit]
 
@@ -87,11 +92,16 @@ def main():
         default=5,
         help="Skip topics refreshed within this many days",
     )
+    parser.add_argument(
+        "--user-id",
+        help="Run for a single user instead of all subscribed users",
+    )
     args = parser.parse_args()
 
     result = build_topics_for_all_users(
         limit=args.limit,
         min_refresh_days=args.min_refresh_days,
+        user_id=args.user_id,
     )
     print(f"Done. Users processed: {result['users_processed']}")
 

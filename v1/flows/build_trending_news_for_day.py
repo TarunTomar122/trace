@@ -33,67 +33,121 @@ from v1.algorithm.tavily_search import tavily_search
 MAX_NEWS_PER_TOPIC = 5
 DELAY_BETWEEN_SEARCHES = 0.3
 
-# 10 hardcoded trending topics with keywords for user matching
+# Topic-specific article-first domains for news fetching (aligned with canonical interests)
+NEWS_DOMAINS_BY_TOPIC: dict[str, list[str]] = {
+    "technology": [
+        "theverge.com",
+        "techcrunch.com",
+        "arstechnica.com",
+        "engadget.com",
+        "techmeme.com",
+        "slashdot.org",
+        "venturebeat.com",
+    ],
+    "science": [
+        "sciencenews.org",
+        "scientificamerican.com",
+        "sciencedaily.com",
+        "phys.org",
+        "livescience.com",
+        "iflscience.com",
+    ],
+    "business": [
+        "techcrunch.com",
+        "venturebeat.com",
+        "fastcompany.com",
+        "entrepreneur.com",
+        "businessinsider.com",
+        "forbes.com",
+    ],
+    "money": [
+        "investopedia.com",
+        "nerdwallet.com",
+        "bankrate.com",
+        "thebalancemoney.com",
+        "bloomberg.com",
+    ],
+    "psychology": [
+        "psychologytoday.com",
+        "psychcentral.com",
+        "greatergood.berkeley.edu",
+        "mindful.org",
+        "psyche.co",
+    ],
+    "ideas": [
+        "aeon.co",
+        "themarginalian.org",
+        "psyche.co",
+        "theatlantic.com",
+        "longreads.com",
+    ],
+    "society": [
+        "reuters.com",
+        "apnews.com",
+        "bbc.com",
+        "theguardian.com",
+        "foreignpolicy.com",
+        "theatlantic.com",
+    ],
+    "health": [
+        "healthline.com",
+        "menshealth.com",
+        "womenshealthmag.com",
+        "self.com",
+        "runnersworld.com",
+    ],
+}
+
+# Canonical interests that typically have news (aligned with our 14-ID model)
+# Only fetching for interests where news is actually relevant/common
 TRENDING_TOPICS = [
     {
-        "id": "mental-wellness",
-        "name": "Mental Wellness",
-        "search_query": "mental wellness habits stress anxiety mindfulness news",
-        "keywords": ["mental wellness", "mindfulness", "stress", "anxiety", "wellbeing", "self care"],
+        "id": "technology",
+        "name": "Technology",
+        "search_query": "technology ai software engineering dev tools cybersecurity data analytics news",
+        "keywords": ["technology", "ai", "software", "engineering", "dev tools", "cybersecurity", "data"],
     },
     {
-        "id": "health-fitness",
-        "name": "Health & Fitness",
-        "search_query": "health fitness habits nutrition exercise news",
-        "keywords": ["health", "fitness", "exercise", "nutrition", "workout", "wellness"],
+        "id": "science",
+        "name": "Science",
+        "search_query": "science environment astronomy biology medicine physics chemistry research news",
+        "keywords": ["science", "environment", "astronomy", "biology", "medicine", "physics", "chemistry"],
     },
     {
-        "id": "relationships",
-        "name": "Relationships",
-        "search_query": "relationships communication habits psychology news",
-        "keywords": ["relationships", "communication", "family", "friendship", "dating", "marriage"],
+        "id": "business",
+        "name": "Business",
+        "search_query": "business startups entrepreneurship venture funding strategy growth leadership news",
+        "keywords": ["business", "startups", "entrepreneurship", "funding", "strategy", "growth"],
     },
     {
         "id": "money",
-        "name": "Money & Personal Finance",
-        "search_query": "personal finance budgeting saving investing news",
-        "keywords": ["money", "personal finance", "budgeting", "saving", "investing", "debt"],
+        "name": "Money",
+        "search_query": "personal finance investing markets budgeting saving cryptocurrency news",
+        "keywords": ["money", "finance", "investing", "markets", "budgeting", "saving", "crypto"],
     },
     {
-        "id": "career",
-        "name": "Career & Work",
-        "search_query": "career growth workplace jobs hiring news",
-        "keywords": ["career", "work", "jobs", "hiring", "salary", "workplace"],
+        "id": "psychology",
+        "name": "Psychology",
+        "search_query": "psychology mental health cognitive personality social clinical research news",
+        "keywords": ["psychology", "mental health", "cognitive", "personality", "social", "clinical"],
     },
     {
-        "id": "learning",
-        "name": "Learning & Skills",
-        "search_query": "learning skills education study tips news",
-        "keywords": ["learning", "skills", "education", "study", "courses", "training"],
+        "id": "ideas",
+        "name": "Ideas",
+        "search_query": "big ideas philosophy creativity innovation purpose stories thought leadership news",
+        "keywords": ["ideas", "philosophy", "creativity", "innovation", "purpose", "stories", "thought leadership"],
     },
     {
-        "id": "productivity",
-        "name": "Productivity",
-        "search_query": "productivity habits focus time management news",
-        "keywords": ["productivity", "focus", "time management", "habits", "planning"],
+        "id": "society",
+        "name": "Society",
+        "search_query": "society global issues politics public policy diplomacy media democracy news",
+        "keywords": ["society", "politics", "world", "policy", "diplomacy", "democracy", "global"],
     },
     {
-        "id": "creativity",
-        "name": "Creativity",
-        "search_query": "creativity inspiration writing art music news",
-        "keywords": ["creativity", "writing", "art", "music", "design", "inspiration"],
-    },
-    {
-        "id": "travel",
-        "name": "Travel & Adventure",
-        "search_query": "travel tips destinations adventure news",
-        "keywords": ["travel", "destinations", "adventure", "trips", "tourism"],
-    },
-    {
-        "id": "culture",
-        "name": "Culture & Entertainment",
-        "search_query": "culture entertainment books movies tv music news",
-        "keywords": ["culture", "entertainment", "books", "movies", "tv", "music"],
+        "id": "health",
+        "name": "Health",
+        "search_query": "health fitness exercise nutrition wellness habits medicine news",
+        "keywords": ["health", "fitness", "exercise", "nutrition", "wellness", "habits"],
     },
 ]
 
@@ -136,7 +190,6 @@ def fetch_news_for_topics(
     """
     news_by_topic: dict[str, dict[str, Any]] = {}
 
-    topics = topics[:10]
     print(f"Fetching news for {len(topics)} topics...")
     start_time = time.time()
 
@@ -145,12 +198,14 @@ def fetch_news_for_topics(
         search_query = topic["search_query"]
 
         try:
+            include_domains = NEWS_DOMAINS_BY_TOPIC.get(topic_id, [])
             results = tavily_search(
                 query=search_query,
                 max_results=max_results,
                 days=days,
                 topic="news",
                 search_depth="basic",
+                include_domains=include_domains or None,
             )
 
             articles = []
@@ -263,9 +318,9 @@ def build_trending_news_for_day(date: str | None = None) -> dict[str, Any]:
     start_time = time.time()
     store = FirestoreStore()
 
-    # Step 1: Use hardcoded topics
-    topics = TRENDING_TOPICS[:10]
-    print(f"\n[1/2] Using {len(topics)} hardcoded topics")
+    # Step 1: Use hardcoded topics (only news-heavy interests)
+    topics = TRENDING_TOPICS  # All 8 canonical interests with news
+    print(f"\n[1/2] Using {len(topics)} hardcoded topics (news-heavy canonical interests)")
     for t in topics:
         print(f"  - {t['name']}")
 

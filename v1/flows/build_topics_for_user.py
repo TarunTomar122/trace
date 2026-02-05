@@ -1,20 +1,14 @@
 """
 Build topic pools for a single subscribed user using Exa.
 
-For each interest (capped), runs two Exa searches:
-- "blogs about <interest>"
-- "discussions about <interest>"
-
-Stores results in Firestore collection "topics":
-topics/{topic_id} -> generations[date_key] and latest with
-blogs/discussions URLs.
+- Umbrella pools: topics/{interest_id}
+- Query pools: topics/{interest_id}/__q/{query_id}
 
 Usage:
   python v1/flows/build_topics_for_user.py --user_id USER_ID
 """
 
 import argparse
-import json
 import os
 import random
 import sys
@@ -32,8 +26,14 @@ from dotenv import load_dotenv  # noqa: E402
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 from v1.storage import FirestoreStore  # noqa: E402
+from v1.algorithm.interest_schema import (  # noqa: E402
+    build_query_id,
+    get_interest_ids,
+    get_interest_label,
+    get_interest_queries,
+    normalize_query_text,
+)
 from v1.tools.youtube_search import youtube_search  # noqa: E402
-from openai import OpenAI  # noqa: E402
 
 try:
     from exa_py import Exa
@@ -49,56 +49,144 @@ RESULTS_PER_SEARCH = 10
 LOOKBACK_DAYS_DEFAULT = 60
 VIDEO_LOOKBACK_DAYS = 60
 MIN_REFRESH_DAYS_DEFAULT = 4
+MIN_QUERY_POOL_ITEMS = 4
 
-ROLE_QUERY_MODIFIERS = {
-    "founder": [
-        "launch",
-        "pricing",
-        "distribution",
-        "growth",
-        "customer discovery",
-    ],
-    "ux designer": [
-        "usability",
+ARTICLE_DOMAINS = [
+    "medium.com",
+    "substack.com",
+    "wordpress.com",
+    "blogspot.com",
+    "ghost.io",
+    "tumblr.com",
+    "beehiiv.com",
+    "longreads.com",
+    "notion.site",
+    "wixsite.com",
+    "weebly.com",
+    "write.as",
+    "mirror.xyz",
+]
+
+DISCUSSION_DOMAINS = [
+    "reddit.com",
+    "news.ycombinator.com",
+    "lobste.rs",
+    "dev.to",
+    "twitter.com",
+    "x.com",
+    "threads.net",
+    "quora.com",
+    "stackexchange.com",
+]
+
+SKILL_QUERY_MODIFIERS = {
+    "design": [
         "design systems",
-        "user research",
+        "visual design",
+        "ux research",
         "product design",
-        "prototyping",
+        "typography",
     ],
-    "software engineer": [
-        "architecture",
-        "performance",
-        "testing",
-        "developer tooling",
-        "production",
+    "writing": [
+        "storytelling",
+        "editing",
+        "publishing",
+        "copywriting",
+        "narrative",
     ],
     "marketing": [
         "positioning",
         "growth",
-        "copywriting",
         "seo",
         "distribution",
+        "brand",
     ],
-    "student": [
+    "business": [
+        "strategy",
+        "operations",
+        "pricing",
+        "customer",
+        "management",
+    ],
+    "software-tech": [
+        "architecture",
+        "performance",
+        "developer tooling",
+        "automation",
+        "production",
+    ],
+    "data-analytics": [
+        "analytics",
+        "data visualization",
+        "dashboards",
+        "metrics",
+        "data tools",
+    ],
+    "finance": [
+        "budgeting",
+        "investing",
+        "markets",
+        "risk management",
+        "personal finance",
+    ],
+    "education": [
         "learning",
-        "foundations",
-        "beginner",
-        "projects",
-        "study guide",
+        "teaching",
+        "curriculum",
+        "study",
+        "training",
     ],
-    "other": [
+    "health-wellness": [
+        "wellness",
+        "fitness",
+        "mental health",
+        "nutrition",
+        "habits",
+    ],
+    "creative-arts": [
+        "creativity",
+        "art",
+        "music",
+        "photography",
+        "illustration",
+    ],
+    "general": [
         "practical",
         "workflow",
         "playbook",
     ],
 }
 
-ROLE_MATCHERS = {
-    "founder": ["founder", "entrepreneur", "indie", "startup"],
-    "ux designer": ["ux", "ui", "product designer", "designer"],
-    "software engineer": ["software engineer", "engineer", "developer", "programmer"],
-    "marketing": ["marketing", "growth", "brand", "demand gen"],
-    "student": ["student", "learner"],
+SKILL_MATCHERS = {
+    "design": ["design", "ux", "ui", "product designer", "ux-designer"],
+    "writing": ["writing", "writer", "storytelling", "copywriting", "editor"],
+    "marketing": ["marketing", "growth", "seo", "copywriting", "brand"],
+    "business": ["business", "strategy", "operations", "management", "founder", "entrepreneur"],
+    "software-tech": [
+        "software-tech",
+        "software engineering",
+        "software-engineering",
+        "engineer",
+        "developer",
+        "programmer",
+        "frontend",
+        "backend",
+        "ai-engineer",
+        "artificial intelligence",
+        "machine learning",
+    ],
+    "data-analytics": [
+        "data",
+        "analytics",
+        "data science",
+        "quant-researcher",
+        "quant researcher",
+        "quant",
+    ],
+    "finance": ["finance", "investing", "trading", "markets"],
+    "education": ["education", "teacher", "teaching", "student", "learning"],
+    "health-wellness": ["health", "wellness", "fitness", "nutrition", "mental health"],
+    "creative-arts": ["creative", "creator", "art", "music", "photography", "illustration"],
 }
 
 
@@ -189,21 +277,48 @@ def _search_exa(
     start_date: str,
     end_date: str,
     max_retries: int = 3,
+    include_domains: list[str] | None = None,
+    min_results: int = 4,
 ) -> list[dict]:
     """Search Exa with retry logic for transient failures (502, 503, etc.)"""
     last_error = None
+    include_domains = include_domains or None
     for attempt in range(max_retries):
         try:
-            response = exa.search(
-                query,
-                num_results=RESULTS_PER_SEARCH,
-                start_published_date=start_date,
-                end_published_date=end_date,
-                type="auto",
-                exclude_text=["docs"],
-            )
-            results = getattr(response, "results", response)
-            return _extract_items(results)[:RESULTS_PER_SEARCH]
+            try:
+                response = exa.search(
+                    query,
+                    num_results=RESULTS_PER_SEARCH,
+                    start_published_date=start_date,
+                    end_published_date=end_date,
+                    type="auto",
+                    exclude_text=["docs"],
+                    include_domains=include_domains,
+                )
+            except TypeError:
+                response = exa.search(
+                    query,
+                    num_results=RESULTS_PER_SEARCH,
+                    start_published_date=start_date,
+                    end_published_date=end_date,
+                    type="auto",
+                    exclude_text=["docs"],
+                )
+            results = _extract_items(getattr(response, "results", response))
+            if include_domains and len(results) < min_results:
+                # Fallback to broader search to avoid empty feeds
+                fallback = exa.search(
+                    query,
+                    num_results=RESULTS_PER_SEARCH,
+                    start_published_date=start_date,
+                    end_published_date=end_date,
+                    type="auto",
+                    exclude_text=["docs"],
+                )
+                fallback_results = _extract_items(getattr(fallback, "results", fallback))
+                merged = _extract_items(results + fallback_results)
+                return merged[:RESULTS_PER_SEARCH]
+            return results[:RESULTS_PER_SEARCH]
         except (ValueError, Exception) as e:
             last_error = e
             error_str = str(e)
@@ -221,88 +336,42 @@ def _search_exa(
     return []
 
 
-def _get_role_modifiers(role: str | None) -> list[str]:
-    role_value = (role or "").strip().lower()
-    if not role_value:
-        return ROLE_QUERY_MODIFIERS["other"]
-    for key, matchers in ROLE_MATCHERS.items():
-        if any(m in role_value for m in matchers):
-            return ROLE_QUERY_MODIFIERS.get(key, ROLE_QUERY_MODIFIERS["other"])
-    return ROLE_QUERY_MODIFIERS["other"]
+def _get_skill_modifiers(skills: list[str] | None) -> list[str]:
+    if not skills:
+        return SKILL_QUERY_MODIFIERS["general"]
+    modifiers: list[str] = []
+    for skill in skills:
+        skill_value = (skill or "").strip().lower()
+        if not skill_value:
+            continue
+        for key, matchers in SKILL_MATCHERS.items():
+            if any(m in skill_value for m in matchers):
+                modifiers.extend(SKILL_QUERY_MODIFIERS.get(key, []))
+                break
+    if not modifiers:
+        modifiers = SKILL_QUERY_MODIFIERS["general"]
+    seen = set()
+    deduped = []
+    for mod in modifiers:
+        if mod in seen:
+            continue
+        seen.add(mod)
+        deduped.append(mod)
+    return deduped[:8]
 
 
-def _is_role_inflected(query: str, role_modifiers: list[str]) -> bool:
+def _is_skill_inflected(query: str, skill_modifiers: list[str]) -> bool:
     query_lower = query.lower()
-    return any(mod in query_lower for mod in role_modifiers)
+    return any(mod in query_lower for mod in skill_modifiers)
 
 
-def _generate_topic_queries(interest: str, user_profile: dict) -> list[str]:
-    context_lines = []
-    for key in ["role", "company", "goals", "learningStyle", "contentDepth"]:
-        value = user_profile.get(key)
-        if value:
-            context_lines.append(f"{key}: {value}")
-    interests = user_profile.get("interests", []) or []
-    hobbies = user_profile.get("hobbies", []) or []
-    if interests:
-        context_lines.append(f"interests: {', '.join(interests[:12])}")
-    if hobbies:
-        context_lines.append(f"hobbies: {', '.join(hobbies[:12])}")
-    context_block = "\n".join(context_lines)
-
-    role = user_profile.get("role", "")
-    role_modifiers = _get_role_modifiers(role)
-
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", "").strip())
-    print(f"  Generating topic queries for: {interest}")
-    prompt = (
-        "Generate 5 concise, specific search queries for this interest.\n"
-        f"Interest: {interest}\n\n"
-        f"User context:\n{context_block}\n\n"
-        f"Role: {role or 'unknown'}\n"
-        f"Role modifiers: {', '.join(role_modifiers)}\n\n"
-        f"Current year: {datetime.now(timezone.utc).year}\n\n"
-        "Rules:\n"
-        "- Total 5 queries, 2 to 5 words each\n"
-        "- 3 queries should stay very close to the interest while respecting the user's role modifier (if provided)\n"
-        "- 2 queries should blend the interest with the user's profile\n"
-        "- At least 3 queries must include a role modifier (if provided)\n"
-        "- Diverse angles (tools, methods, niche)\n"
-        "- Avoid basic docs-related queries\n"
-        "- Return JSON with this exact shape:\n"
-        '{ "queries": ["q1", "q2", "q3", "q4", "q5"] }\n'
-        "- No markdown\n"
-    )
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0.2,
-            max_tokens=500,
-        )
-        text = response.choices[0].message.content.strip()
-        data = json.loads(text)
-        queries = data.get("queries", [])
-        if isinstance(queries, list):
-            cleaned = [
-                q.strip()
-                for q in queries
-                if isinstance(q, str) and q.strip()
-            ]
-            if cleaned:
-                if role_modifiers and not any(
-                    _is_role_inflected(q, role_modifiers) for q in cleaned
-                ):
-                    modifier = random.choice(role_modifiers)
-                    injected = f"{interest} {modifier}"
-                    if injected not in cleaned:
-                        cleaned = cleaned[:4] + [injected]
-                print(f"  Queries generated: {cleaned}")
-                return cleaned[:5]
-    except Exception as e:
-        print(f"  Warning: Query generation failed for {interest}: {e}")
-    return [interest]
+def _build_umbrella_queries(interest_id: str, skills: list[str] | None) -> list[str]:
+    label = get_interest_label(interest_id)
+    modifiers = _get_skill_modifiers(skills)
+    queries = [label]
+    for mod in modifiers[:3]:
+        queries.append(f"{label} {mod}")
+    return _dedupe_preserve_order(queries)
 
 
 def _get_subscribed_user_profile(store: FirestoreStore, user_id: str) -> dict:
@@ -326,13 +395,8 @@ def build_topics_for_user(
     store = FirestoreStore()
     profile = _get_subscribed_user_profile(store, user_id)
 
-    interests = profile.get("interests", []) or []
-    interests = [
-        i.strip()
-        for i in interests
-        if isinstance(i, str) and i.strip()
-    ]
-    interests = list(dict.fromkeys(interests))[:max_interests]
+    interest_ids = get_interest_ids(profile)[:max_interests]
+    interest_queries = get_interest_queries(profile)
 
     hobbies = profile.get("hobbies", []) or []
     hobbies = [
@@ -342,7 +406,7 @@ def build_topics_for_user(
     ]
     hobbies = list(dict.fromkeys(hobbies))[:MAX_HOBBIES_DEFAULT]
 
-    if not interests and not hobbies:
+    if not interest_ids and not hobbies:
         print("No interests or hobbies found for this user.")
         return {
             "user_id": user_id,
@@ -366,37 +430,39 @@ def build_topics_for_user(
     generated_at = _iso_z(now)
 
     topics_written = 0
+    query_pools_written = 0
     topics_skipped = 0
 
-    def _write_topic(topic_name: str, topic_kind: str) -> None:
+    def _write_topic(
+        topic_id: str,
+        display_name: str,
+        topic_kind: str,
+        query_used: str,
+        queries: list[str],
+    ) -> None:
         nonlocal topics_written, topics_skipped
-        topic_id = _normalize_interest(topic_name)
         doc_ref = store.db.collection("topics").document(topic_id)
         existing = doc_ref.get()
         data = existing.to_dict() if existing.exists else {}
         if not _should_refresh_topic(data, min_refresh_days):
             print(
                 "Skipping topic (fresh): "
-                f"{topic_name} ({topic_id}) [{topic_kind}]"
+                f"{topic_id} [{topic_kind}]"
             )
             topics_skipped += 1
             return
 
-        print(f"Processing topic: {topic_name} ({topic_id}) [{topic_kind}]")
-
-        queries = _generate_topic_queries(topic_name, profile)
-        role_modifiers = _get_role_modifiers(profile.get("role"))
-        role_queries = [
-            q for q in queries if _is_role_inflected(q, role_modifiers)
-        ]
-        if role_queries and random.random() < 0.7:
-            query_used = random.choice(role_queries)
-        else:
-            query_used = random.choice(queries)
+        print(f"Processing topic: {topic_id} [{topic_kind}]")
 
         blogs_query = f"blogs about {query_used}"
         print(f"  Exa blog search: {blogs_query}")
-        blogs = _search_exa(exa, blogs_query, start_date, end_date)
+        blogs = _search_exa(
+            exa,
+            blogs_query,
+            start_date,
+            end_date,
+            include_domains=ARTICLE_DOMAINS,
+        )
 
         discussions = []
         videos = []
@@ -404,7 +470,11 @@ def build_topics_for_user(
             discussions_query = f"discussions about {query_used}"
             print(f"  Exa discussion search: {discussions_query}")
             discussions = _search_exa(
-                exa, discussions_query, start_date, end_date
+                exa,
+                discussions_query,
+                start_date,
+                end_date,
+                include_domains=DISCUSSION_DOMAINS,
             )
         else:
             videos_query = f"videos about {query_used}"
@@ -446,32 +516,138 @@ def build_topics_for_user(
         )
         generations[date_key] = generation
 
+        payload = {
+            "topic_id": topic_id,
+            "display_name": display_name,
+            "topic_kind": topic_kind,
+            "updated_at": generated_at,
+            "latest": generation,
+            "queries": queries,
+            "generations": generations,
+        }
+        if topic_kind == "interest":
+            payload["interest_id"] = topic_id
+
+        doc_ref.set(payload, merge=True)
+
+        topics_written += 1
+
+    def _write_query_pool(
+        interest_id: str,
+        query_text: str,
+        query_used: str,
+    ) -> None:
+        nonlocal query_pools_written, topics_skipped
+        query_id = build_query_id(query_text)
+        doc_ref = (
+            store.db.collection("topics")
+            .document(interest_id)
+            .collection("__q")
+            .document(query_id)
+        )
+        existing = doc_ref.get()
+        data = existing.to_dict() if existing.exists else {}
+        if not _should_refresh_topic(data, min_refresh_days):
+            print(f"Skipping query pool (fresh): {interest_id}::{query_text}")
+            topics_skipped += 1
+            return
+
+        print(f"Processing query pool: {interest_id}::{query_text}")
+
+        blogs_query = f"blogs about {query_used}"
+        print(f"  Exa blog search: {blogs_query}")
+        blogs = _search_exa(
+            exa,
+            blogs_query,
+            start_date,
+            end_date,
+            include_domains=ARTICLE_DOMAINS,
+        )
+
+        discussions_query = f"discussions about {query_used}"
+        print(f"  Exa discussion search: {discussions_query}")
+        discussions = _search_exa(
+            exa,
+            discussions_query,
+            start_date,
+            end_date,
+            include_domains=DISCUSSION_DOMAINS,
+        )
+
+        generation = {
+            "generated_at": generated_at,
+            "window_start": start_date,
+            "window_end": end_date,
+            "blogs": blogs,
+            "discussions": discussions,
+            "videos": [],
+            "source": "exa",
+            "generated_by_user_id": user_id,
+            "queries": [query_text],
+            "query_text": query_text,
+            "query_used": query_used,
+            "topic_kind": "interest_query",
+            "pool_kind": "query",
+        }
+
+        generations = (
+            data.get("generations", {}) if isinstance(data, dict) else {}
+        )
+        generations[date_key] = generation
+
         doc_ref.set(
             {
-                "topic_id": topic_id,
-                "display_name": topic_name,
-                "topic_kind": topic_kind,
+                "interest_id": interest_id,
+                "query_id": query_id,
+                "query_text": query_text,
                 "updated_at": generated_at,
                 "latest": generation,
-                "queries": queries,
                 "generations": generations,
+                "pool_kind": "query",
             },
             merge=True,
         )
 
-        topics_written += 1
+        query_pools_written += 1
 
-    for interest in interests:
-        _write_topic(interest, "interest")
+    for interest_id in interest_ids:
+        queries = _build_umbrella_queries(interest_id, profile.get("skills"))
+        query_used = random.choice(queries)
+        _write_topic(
+            interest_id,
+            get_interest_label(interest_id),
+            "interest",
+            query_used,
+            queries,
+        )
+
+        raw_queries = interest_queries.get(interest_id, [])[:2]
+        query_texts = [
+            normalize_query_text(interest_id, q)
+            for q in raw_queries
+            if isinstance(q, str) and q.strip()
+        ]
+        for query_text in query_texts:
+            query_used = f"{get_interest_label(interest_id)} {query_text}".strip()
+            _write_query_pool(interest_id, query_text, query_used)
 
     for hobby in hobbies:
-        _write_topic(hobby, "hobby")
+        hobby_id = _normalize_interest(hobby)
+        hobby_queries = _dedupe_preserve_order([hobby])
+        _write_topic(
+            hobby_id,
+            hobby.strip(),
+            "hobby",
+            hobby,
+            hobby_queries,
+        )
 
     return {
         "user_id": user_id,
         "topics_written": topics_written,
+        "query_pools_written": query_pools_written,
         "topics_skipped": topics_skipped,
-        "interests": interests,
+        "interests": interest_ids,
         "hobbies": hobbies,
         "date_key": date_key,
     }

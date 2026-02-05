@@ -253,6 +253,7 @@ export interface UserProfile {
   attentionConstraints?: string;
   motivationTriggers?: string[];
   interests: string[]; // Free-form interest tags
+  interestQueries?: Record<string, string[]>; // Optional focus subtopics per interest
   hobbies: string[]; // Free-form hobby tags
   skills: string[]; // Free-form skill tags
   dislikedTopics: string[]; // Topics to avoid
@@ -322,17 +323,122 @@ export interface UserProfile {
 }
 
 export const INTERESTS = [
-  { id: 'mental-wellness', label: 'Mental Wellness' },
-  { id: 'health-fitness', label: 'Health & Fitness' },
+  { id: 'technology', label: 'Technology' },
+  { id: 'science', label: 'Science' },
+  { id: 'psychology', label: 'Psychology' },
+  { id: 'ideas', label: 'Ideas' },
+  { id: 'business', label: 'Business' },
+  { id: 'money', label: 'Money' },
+  { id: 'design', label: 'Design' },
+  { id: 'career', label: 'Career' },
+  { id: 'self-development', label: 'Self development' },
+  { id: 'health', label: 'Health' },
+  { id: 'cooking', label: 'Cooking' },
+  { id: 'culture', label: 'Culture' },
   { id: 'relationships', label: 'Relationships' },
-  { id: 'money', label: 'Money & Personal Finance' },
-  { id: 'career', label: 'Career & Work' },
-  { id: 'learning', label: 'Learning & Skills' },
-  { id: 'productivity', label: 'Productivity' },
-  { id: 'creativity', label: 'Creativity' },
-  { id: 'travel', label: 'Travel & Adventure' },
-  { id: 'culture', label: 'Culture & Entertainment' },
+  { id: 'society', label: 'Society' },
 ];
+
+export const INTEREST_SUBTOPICS: Record<string, { id: string; label: string }[]> = {
+  technology: [
+    { id: 'ai', label: 'AI' },
+    { id: 'automation', label: 'Automation' },
+    { id: 'software', label: 'Software' },
+    { id: 'productivity-tools', label: 'Productivity Tools' },
+    { id: 'future-tech', label: 'Future Tech' },
+  ],
+  science: [
+    { id: 'space', label: 'Space' },
+    { id: 'biology', label: 'Biology' },
+    { id: 'physics', label: 'Physics' },
+    { id: 'climate', label: 'Climate' },
+    { id: 'explained', label: 'Explained' },
+  ],
+  psychology: [
+    { id: 'mental-health', label: 'Mental Health' },
+    { id: 'habits', label: 'Habits' },
+    { id: 'learning', label: 'Learning' },
+    { id: 'relationships', label: 'Relationships' },
+    { id: 'emotions', label: 'Emotions' },
+  ],
+  ideas: [
+    { id: 'philosophy', label: 'Philosophy' },
+    { id: 'essays', label: 'Essays' },
+    { id: 'creativity', label: 'Creativity' },
+    { id: 'meaning', label: 'Meaning' },
+    { id: 'big-ideas', label: 'Big Ideas' },
+  ],
+  business: [
+    { id: 'startups', label: 'Startups' },
+    { id: 'product', label: 'Product' },
+    { id: 'marketing', label: 'Marketing' },
+    { id: 'operations', label: 'Operations' },
+    { id: 'leadership', label: 'Leadership' },
+  ],
+  money: [
+    { id: 'personal-finance', label: 'Personal Finance' },
+    { id: 'investing', label: 'Investing' },
+    { id: 'income', label: 'Income' },
+    { id: 'markets', label: 'Markets' },
+    { id: 'crypto', label: 'Crypto' },
+  ],
+  design: [
+    { id: 'visual-design', label: 'Visual Design' },
+    { id: 'ux', label: 'UX' },
+    { id: 'branding', label: 'Branding' },
+    { id: 'creative-process', label: 'Creative Process' },
+    { id: 'tools', label: 'Tools' },
+  ],
+  career: [
+    { id: 'job-search', label: 'Job Search' },
+    { id: 'skills', label: 'Skills' },
+    { id: 'portfolio', label: 'Portfolio' },
+    { id: 'career-growth', label: 'Career Growth' },
+    { id: 'workplace', label: 'Workplace' },
+  ],
+  'self-development': [
+    { id: 'focus', label: 'Focus' },
+    { id: 'routines', label: 'Routines' },
+    { id: 'mindset', label: 'Mindset' },
+    { id: 'confidence', label: 'Confidence' },
+    { id: 'life-design', label: 'Life Design' },
+  ],
+  health: [
+    { id: 'workouts', label: 'Workouts' },
+    { id: 'nutrition', label: 'Nutrition' },
+    { id: 'sleep', label: 'Sleep' },
+    { id: 'recovery', label: 'Recovery' },
+    { id: 'fitness', label: 'Fitness' },
+  ],
+  cooking: [
+    { id: 'recipes', label: 'Recipes' },
+    { id: 'healthy-meals', label: 'Healthy Meals' },
+    { id: 'baking', label: 'Baking' },
+    { id: 'drinks', label: 'Drinks' },
+    { id: 'food-culture', label: 'Food Culture' },
+  ],
+  culture: [
+    { id: 'movies', label: 'Movies' },
+    { id: 'music', label: 'Music' },
+    { id: 'games', label: 'Games' },
+    { id: 'books', label: 'Books' },
+    { id: 'internet', label: 'Internet' },
+  ],
+  relationships: [
+    { id: 'dating', label: 'Dating' },
+    { id: 'family', label: 'Family' },
+    { id: 'friendships', label: 'Friendships' },
+    { id: 'communication', label: 'Communication' },
+    { id: 'conflict', label: 'Conflict' },
+  ],
+  society: [
+    { id: 'politics', label: 'Politics' },
+    { id: 'economics', label: 'Economics' },
+    { id: 'history', label: 'History' },
+    { id: 'media', label: 'Media' },
+    { id: 'technology-impact', label: 'Technology Impact' },
+  ],
+};
 
 export const ROLES = [
   'Software Engineer',
@@ -505,7 +611,7 @@ export async function completeOnboarding(
   uid: string,
   data: {
     name: string;
-    role: string;
+    role?: string;
     company?: string;
     location?: string;
     experienceYears?: number | null;
@@ -523,6 +629,7 @@ export async function completeOnboarding(
     attentionConstraints?: string;
     motivationTriggers?: string[];
     interests: string[];
+    interestQueries?: Record<string, string[]>;
     hobbies: string[];
     skills: string[];
     dislikedTopics: string[];

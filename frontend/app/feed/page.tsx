@@ -1021,7 +1021,7 @@ export default function FeedPage() {
         </div>
       ) : !hasAccess && profile ? (
         // Onboarded but not subscribed: Show limited feed callout
-        <div className="sticky top-14 md:top-16 z-40 bg-amber-100 border-b border-amber-100">
+        <div className="hidden md:block sticky top-14 md:top-16 z-40 bg-amber-100 border-b border-amber-100">
           <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-3 md:py-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">

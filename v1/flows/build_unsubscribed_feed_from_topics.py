@@ -1,5 +1,5 @@
 """
-Build a topic-based feed for an unsubscribed user using LLM topic matching.
+Build a topic-based feed for an unsubscribed user using deterministic matching.
 
 Trending news is added separately via add_trending_news_to_feed.py
 
@@ -8,9 +8,10 @@ Usage:
   python v1/flows/build_unsubscribed_feed_from_topics.py --user_id USER_ID --skip-seen
 """
 import argparse
+import hashlib
 import json
-import os
 import random
+import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -23,24 +24,45 @@ if project_root not in sys.path:
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
-from google import genai
 from v1.storage import FirestoreStore
+from v1.algorithm.interest_schema import (
+    build_query_id,
+    get_interest_ids,
+    get_interest_label,
+    get_interest_queries,
+    normalize_query_text,
+)
 
 
-MAX_FEED_ITEMS = 10
+MAX_FEED_ITEMS = 10  # Unsubscribed users get limited content
 
 
 MAX_TOPICS_DEFAULT = 10
+CACHE_COLLECTION = "user_topic_selection_cache"
+MIN_QUERY_POOL_ITEMS = 4
+
+DEFAULT_SOURCE_WEIGHTS = {
+    "blog": 5,
+    "discussion": 4,
+    "video": 3,
+}
 
 
 def _normalize_interest(interest: str) -> str:
-    return (interest.lower().strip()
-            .replace(" ", "-")
-            .replace("&", "and")
-            .replace("/", "-")
-            .replace("\\", "-")
-            .replace("(", "")
-            .replace(")", ""))
+    return _normalize_text(interest)
+
+
+def _normalize_text(value: str) -> str:
+    if not value:
+        return ""
+    normalized = re.sub(r"[^a-z0-9]+", "-", value.lower().strip())
+    return normalized.strip("-")
+
+
+def _tokenize(value: str) -> set[str]:
+    if not value:
+        return set()
+    return {t for t in re.split(r"[^a-z0-9]+", value.lower().strip()) if t}
 
 
 def _title_matches_topic(title: str, topic_name: str) -> bool:
@@ -70,16 +92,16 @@ def _title_matches_topic(title: str, topic_name: str) -> bool:
     return False
 
 
-def _get_why_relevant(title: str, topic_name: str, topic_kind: str) -> str:
+def _get_why_relevant(title: str, topic_name: str, topic_kind: str, query_text: str | None = None) -> str:
     """Generate appropriate why_relevant text based on actual relevance."""
     if _title_matches_topic(title, topic_name):
         if topic_kind == "hobby":
             return f"Matches your hobby in {topic_name.replace('-', ' ')}"
-        else:
-            return f"Matches your interest in {topic_name.replace('-', ' ')}"
-    else:
-        # Fallback for items that don't clearly match
-        return "Curated for you"
+        if query_text:
+            return f"Matches your interest in {topic_name} · {query_text}"
+        return f"Matches your interest in {topic_name.replace('-', ' ')}"
+    # Fallback for items that don't clearly match
+    return "Curated for you"
 
 
 def _get_today_ist_date() -> str:
@@ -177,10 +199,16 @@ def _get_topics(store: FirestoreStore) -> list[dict]:
     for doc in docs:
         data = doc.to_dict() or {}
         topic_id = data.get("topic_id") or doc.id
+        latest = data.get("latest", {}) or {}
+        blogs = latest.get("blogs", []) or []
+        discussions = latest.get("discussions", []) or []
+        videos = latest.get("videos", []) or []
+        content_score = min(len(blogs), 3) + min(len(discussions), 3) + min(len(videos), 3)
         topics.append({
             "topic_id": topic_id,
             "display_name": data.get("display_name", topic_id),
             "topic_kind": data.get("topic_kind"),
+            "content_score": content_score,
         })
     return topics
 
@@ -205,99 +233,135 @@ def _extract_json_from_response(text: str) -> str:
     return text
 
 
-def _select_topics_with_llm(
+def _profile_signature(profile: dict) -> str:
+    interest_ids = get_interest_ids(profile)
+    interest_queries = get_interest_queries(profile)
+    payload = {
+        "interest_ids": sorted([_normalize_text(i) for i in interest_ids if i]),
+        "interest_queries": sorted(
+            [
+                (_normalize_text(k), [_normalize_text(q) for q in v])
+                for k, v in interest_queries.items()
+            ]
+        ),
+        "hobbies": sorted([_normalize_text(h) for h in (profile.get("hobbies") or []) if h]),
+        "skills": sorted([_normalize_text(s) for s in (profile.get("skills") or []) if s]),
+    }
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _get_cached_topic_selection(store: FirestoreStore, user_id: str, signature: str) -> list[str]:
+    doc = store.db.collection(CACHE_COLLECTION).document(user_id).get()
+    if not doc.exists:
+        return []
+    data = doc.to_dict() or {}
+    if data.get("signature") != signature:
+        return []
+    cached = data.get("topic_ids") or []
+    return [t for t in cached if isinstance(t, str) and t.strip()]
+
+
+def _save_cached_topic_selection(
+    store: FirestoreStore,
+    user_id: str,
+    signature: str,
+    topic_ids: list[str],
+) -> None:
+    store.db.collection(CACHE_COLLECTION).document(user_id).set(
+        {
+            "signature": signature,
+            "topic_ids": topic_ids,
+            "updated_at": datetime.utcnow().isoformat(),
+        }
+    )
+
+
+def _extract_profile_terms(profile: dict) -> dict[str, set[str]]:
+    interests = get_interest_ids(profile)
+    hobbies = profile.get("hobbies") or []
+    skills = profile.get("skills") or []
+
+    interest_slugs = {_normalize_text(i) for i in interests if isinstance(i, str)}
+    hobby_slugs = {_normalize_text(h) for h in hobbies if isinstance(h, str)}
+    interest_tokens = set()
+    for i in interests:
+        interest_tokens |= _tokenize(str(i))
+    hobby_tokens = set()
+    for h in hobbies:
+        hobby_tokens |= _tokenize(str(h))
+
+    skill_tokens = set()
+    for s in skills:
+        skill_tokens |= _tokenize(str(s))
+
+    return {
+        "interest_slugs": interest_slugs,
+        "hobby_slugs": hobby_slugs,
+        "interest_tokens": interest_tokens,
+        "hobby_tokens": hobby_tokens,
+        "skill_tokens": skill_tokens,
+    }
+
+
+def _score_topic(topic: dict, terms: dict[str, set[str]]) -> int:
+    topic_id = topic.get("topic_id", "")
+    display_name = topic.get("display_name", "")
+    display_slug = _normalize_text(display_name)
+    tokens = _tokenize(topic_id) | _tokenize(display_name)
+
+    score = 0
+    if topic_id in terms["interest_slugs"] or display_slug in terms["interest_slugs"]:
+        score += 6
+    if topic_id in terms["hobby_slugs"] or display_slug in terms["hobby_slugs"]:
+        score += 6
+
+    overlap_interest = len(tokens & terms["interest_tokens"])
+    overlap_hobby = len(tokens & terms["hobby_tokens"])
+    overlap_skill = len(tokens & terms["skill_tokens"])
+
+    score += min(overlap_interest + overlap_hobby, 3) * 2
+    score += min(overlap_skill, 1)
+
+    if topic.get("content_score", 0) > 0:
+        score += 1
+    return score
+
+
+def _select_topics_deterministic(
     profile: dict,
     topics: list[dict],
     max_topics: int = MAX_TOPICS_DEFAULT,
 ) -> list[str]:
-    api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    if not api_key:
+    if not topics:
         return []
+    terms = _extract_profile_terms(profile)
+    eligible = [t for t in topics if t.get("content_score", 0) > 0]
+    if not eligible:
+        eligible = topics
 
-    context_lines = []
-    for key in ["role", "company", "goals", "learningStyle", "contentDepth"]:
-        value = profile.get(key)
-        if value:
-            context_lines.append(f"{key}: {value}")
-    interests = profile.get("interests", []) or []
-    hobbies = profile.get("hobbies", []) or []
-    if interests:
-        context_lines.append(f"interests: {', '.join(interests[:12])}")
-    if hobbies:
-        context_lines.append(f"hobbies: {', '.join(hobbies[:12])}")
-    context_block = "\n".join(context_lines)
+    scored = []
+    for t in eligible:
+        scored.append((t.get("topic_id"), _score_topic(t, terms), t.get("content_score", 0)))
 
-    topics_list = "\n".join(
-        [f"- {t['topic_id']} ({t.get('display_name')})" for t in topics]
-    )
+    scored.sort(key=lambda x: (x[1], x[2], x[0]), reverse=True)
+    selected = [topic_id for topic_id, score, _ in scored if score > 0][:max_topics]
 
-    prompt = f"""Select up to 10 topic_ids that best match this user's interests and profile.
+    if len(selected) < max_topics:
+        fallback = [
+            t.get("topic_id")
+            for t in sorted(eligible, key=lambda x: (x.get("content_score", 0), x.get("topic_id", "")), reverse=True)
+            if t.get("topic_id") not in selected
+        ]
+        selected.extend(fallback[: max_topics - len(selected)])
 
-USER CONTEXT:
-{context_block}
-
-AVAILABLE TOPICS:
-{topics_list}
-
-INSTRUCTIONS:
-- Select topic_ids that match the user's interests, role, and goals
-- Return ONLY valid JSON, nothing else
-- Use this exact format:
-
-{{"topic_ids": ["machine-learning", "python", "web-development"]}}
-
-YOUR RESPONSE (valid JSON only):"""
-
-    try:
-        client = genai.Client(api_key=api_key)
-    except Exception as e:
-        print(f"  Warning: Failed to create Gemini client: {e}")
-        return []
-    
-    # Try up to 2 times
-    for attempt in range(2):
-        try:
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                config={
-                    "temperature": 0.2,
-                    "max_output_tokens": 2000,
-                    "response_mime_type": "application/json",
-                }
-            )
-            raw_text = response.text.strip() if response.text else ""
-            if not raw_text:
-                if attempt == 0:
-                    continue
-                print(f"  Warning: Gemini returned empty response")
-                return []
-            cleaned_text = _extract_json_from_response(raw_text)
-            data = json.loads(cleaned_text)
-            topic_ids = data.get("topic_ids", [])
-            if isinstance(topic_ids, list):
-                cleaned = [
-                    t for t in topic_ids
-                    if isinstance(t, str) and t.strip()
-                ]
-                return cleaned[:max_topics]
-        except json.JSONDecodeError as e:
-            if attempt == 0:
-                continue
-            # Log what we actually got for debugging
-            snippet = raw_text[:100] if raw_text else "(empty)"
-            print(f"  Warning: JSON parse failed: {e} | Response: {snippet}")
-        except Exception as e:
-            if attempt == 0:
-                continue
-            print(f"  Warning: Topic selection failed: {e}")
-    return []
+    return selected[:max_topics]
 
 
 def _fallback_topic_match(profile: dict, topics: list[dict], max_topics: int) -> list[str]:
     interest_set = {
         _normalize_interest(i)
-        for i in (profile.get("interests") or [])
+        for i in get_interest_ids(profile)
         if isinstance(i, str)
     }
     hobby_set = {
@@ -312,6 +376,100 @@ def _fallback_topic_match(profile: dict, topics: list[dict], max_topics: int) ->
         if topic_id in target:
             matches.append(topic_id)
     return matches[:max_topics]
+
+
+def _source_weights(profile: dict) -> dict[str, int]:
+    prefs = profile.get("sourcePreferences") or {}
+    return {
+        "blog": int(prefs.get("articles", DEFAULT_SOURCE_WEIGHTS["blog"]) or 0),
+        "discussion": int(prefs.get("discussions", DEFAULT_SOURCE_WEIGHTS["discussion"]) or 0),
+        "video": int(prefs.get("youtube", DEFAULT_SOURCE_WEIGHTS["video"]) or 0),
+    }
+
+
+def _pool_item_count(latest: dict) -> int:
+    blogs = latest.get("blogs", []) or []
+    discussions = latest.get("discussions", []) or []
+    return len(blogs) + len(discussions)
+
+
+def _load_interest_pools(
+    store: FirestoreStore,
+    interest_id: str,
+    interest_queries: dict[str, list[str]],
+) -> list[dict]:
+    pools: list[dict] = []
+    raw_queries = interest_queries.get(interest_id, [])[:2]
+    for raw in raw_queries:
+        query_text = normalize_query_text(interest_id, raw)
+        query_id = build_query_id(query_text)
+        doc_ref = (
+            store.db.collection("topics")
+            .document(interest_id)
+            .collection("__q")
+            .document(query_id)
+        )
+        doc = doc_ref.get()
+        if not doc.exists:
+            continue
+        data = doc.to_dict() or {}
+        pools.append({
+            "latest": data.get("latest", {}) or {},
+            "query_text": query_text,
+            "topic_kind": "interest",
+            "display_name": get_interest_label(interest_id),
+        })
+
+    if pools:
+        total_items = sum(_pool_item_count(p["latest"]) for p in pools)
+        if total_items >= MIN_QUERY_POOL_ITEMS:
+            return pools
+
+    doc = store.db.collection("topics").document(interest_id).get()
+    if not doc.exists:
+        return []
+    data = doc.to_dict() or {}
+    latest = data.get("latest", {}) or {}
+    topic_kind = latest.get("topic_kind") or data.get("topic_kind") or "interest"
+    display_name = data.get("display_name") or get_interest_label(interest_id)
+    return [{
+        "latest": latest,
+        "query_text": None,
+        "topic_kind": topic_kind,
+        "display_name": display_name,
+    }]
+
+
+def _merge_pool_items(pools: list[dict], key: str) -> list[dict]:
+    merged = []
+    for pool in pools:
+        latest = pool.get("latest", {}) or {}
+        items = latest.get(key, []) or []
+        for item in items:
+            if isinstance(item, dict):
+                url = item.get("url")
+                title = item.get("title", "")
+                payload = {**item, "url": url, "title": title}
+            else:
+                payload = {"url": item, "title": ""}
+            payload["query_text"] = pool.get("query_text")
+            merged.append(payload)
+    return _dedupe_preserve_order(merged)
+
+
+def _allocate_two_types(max_items: int, weight_a: int, weight_b: int) -> tuple[int, int]:
+    if max_items <= 0:
+        return 0, 0
+    total = max(weight_a, 0) + max(weight_b, 0)
+    if total == 0:
+        a_count = max_items // 2
+        return a_count, max_items - a_count
+    a_share = max(weight_a, 0) / total
+    a_count = int(round(max_items * a_share))
+    if weight_a > 0 and weight_b > 0 and max_items >= 2:
+        a_count = max(1, min(max_items - 1, a_count))
+    b_count = max_items - a_count
+    return a_count, b_count
 
 
 def build_unsubscribed_feed(
@@ -346,14 +504,40 @@ def build_unsubscribed_feed(
         _mark_previous_feed_seen(store, user_id, date)
         seen_urls = _get_user_seen_urls(store, user_id)
 
-    topics = _get_topics(store)
-    if not topics:
-        print("No topics found in Firestore.")
-        return {"user_id": user_id, "items_written": 0}
+    interest_ids = get_interest_ids(profile)
+    interest_queries = get_interest_queries(profile)
 
-    selected = _select_topics_with_llm(profile, topics, max_topics=max_topics)
-    if not selected:
-        selected = _fallback_topic_match(profile, topics, max_topics=max_topics)
+    if interest_ids:
+        selected = interest_ids[:max_topics]
+        hobbies = profile.get("hobbies", []) or []
+        hobby_ids = [
+            _normalize_interest(h)
+            for h in hobbies
+            if isinstance(h, str) and h.strip()
+        ]
+        if hobby_ids:
+            for hobby_id in hobby_ids:
+                if hobby_id in selected:
+                    continue
+                if len(selected) >= max_topics:
+                    break
+                selected.append(hobby_id)
+    else:
+        topics = _get_topics(store)
+        if not topics:
+            print("No topics found in Firestore.")
+            return {"user_id": user_id, "items_written": 0}
+
+        signature = _profile_signature(profile)
+        selected = _get_cached_topic_selection(store, user_id, signature)
+        if not selected:
+            selected = _select_topics_deterministic(profile, topics, max_topics=max_topics)
+            if not selected:
+                selected = _fallback_topic_match(profile, topics, max_topics=max_topics)
+            if selected:
+                _save_cached_topic_selection(store, user_id, signature, selected[:max_topics])
+        if selected:
+            selected = selected[:max_topics]
 
     if not selected:
         print("No matching topics selected.")
@@ -361,42 +545,67 @@ def build_unsubscribed_feed(
 
     items = []
     chosen_urls: set[str] = set()
+    source_weights = _source_weights(profile)
 
     for topic_id in selected:
-        doc = store.db.collection("topics").document(topic_id).get()
-        if not doc.exists:
+        pools = _load_interest_pools(store, topic_id, interest_queries)
+        if not pools:
             continue
-        topic = doc.to_dict() or {}
-        latest = topic.get("latest", {}) or {}
-        raw_blogs = latest.get("blogs", []) or []
-        raw_discussions = latest.get("discussions", []) or []
-        raw_videos = latest.get("videos", []) or []
-        topic_kind = latest.get("topic_kind") or topic.get("topic_kind")
+        interest_label = pools[0].get("display_name") or get_interest_label(topic_id)
+        topic_kind = pools[0].get("topic_kind") or "interest"
 
-        blogs = _dedupe_preserve_order([
-            b if isinstance(b, dict) else {"url": b, "title": ""}
-            for b in raw_blogs
-        ])
-        discussions = _dedupe_preserve_order([
-            d if isinstance(d, dict) else {"url": d, "title": ""}
-            for d in raw_discussions
-        ])
-        videos = _dedupe_preserve_order([
-            v if isinstance(v, dict) else {"url": v, "title": ""}
-            for v in raw_videos
-        ])
+        blogs = _merge_pool_items(pools, "blogs")
+        discussions = _merge_pool_items(pools, "discussions")
+        videos = _merge_pool_items(pools, "videos")
 
         if topic_kind == "hobby":
-            picked_blogs = _pick_items(blogs, 1, seen_urls, chosen_urls)
-            picked_videos = _pick_items(videos, 1, seen_urls, chosen_urls)
+            blog_limit, video_limit = _allocate_two_types(
+                max_items=2,
+                weight_a=source_weights["blog"],
+                weight_b=source_weights["video"],
+            )
+            picked_blogs = _pick_items(blogs, blog_limit, seen_urls, chosen_urls)
+            picked_videos = _pick_items(videos, video_limit, seen_urls, chosen_urls)
             picked_discussions = []
+
+            remaining = 2 - len(picked_blogs) - len(picked_videos)
+            if remaining > 0:
+                if source_weights["blog"] >= source_weights["video"]:
+                    picked_blogs += _pick_items(blogs, remaining, seen_urls, chosen_urls)
+                    remaining = 2 - len(picked_blogs) - len(picked_videos)
+                    if remaining > 0:
+                        picked_videos += _pick_items(videos, remaining, seen_urls, chosen_urls)
+                else:
+                    picked_videos += _pick_items(videos, remaining, seen_urls, chosen_urls)
+                    remaining = 2 - len(picked_blogs) - len(picked_videos)
+                    if remaining > 0:
+                        picked_blogs += _pick_items(blogs, remaining, seen_urls, chosen_urls)
         else:
-            picked_blogs = _pick_items(blogs, 2, seen_urls, chosen_urls)
+            blog_limit, discussion_limit = _allocate_two_types(
+                max_items=4,
+                weight_a=source_weights["blog"],
+                weight_b=source_weights["discussion"],
+            )
+            picked_blogs = _pick_items(blogs, blog_limit, seen_urls, chosen_urls)
+            picked_discussions = _pick_items(discussions, discussion_limit, seen_urls, chosen_urls)
             picked_videos = []
-            picked_discussions = _pick_items(discussions, 2, seen_urls, chosen_urls)
+
+            remaining = 4 - len(picked_blogs) - len(picked_discussions)
+            if remaining > 0:
+                if source_weights["blog"] >= source_weights["discussion"]:
+                    picked_blogs += _pick_items(blogs, remaining, seen_urls, chosen_urls)
+                    remaining = 4 - len(picked_blogs) - len(picked_discussions)
+                    if remaining > 0:
+                        picked_discussions += _pick_items(discussions, remaining, seen_urls, chosen_urls)
+                else:
+                    picked_discussions += _pick_items(discussions, remaining, seen_urls, chosen_urls)
+                    remaining = 4 - len(picked_blogs) - len(picked_discussions)
+                    if remaining > 0:
+                        picked_blogs += _pick_items(blogs, remaining, seen_urls, chosen_urls)
 
         for idx, item in enumerate(picked_blogs):
             title = item.get("title", "")
+            query_text = item.get("query_text")
             items.append({
                 "id": f"topic_{topic_id}_blog_{idx}_{date}",
                 "type": "blog",
@@ -406,13 +615,14 @@ def build_unsubscribed_feed(
                 "tags": [topic_id],
                 "source": "exa",
                 "metadata": {
-                    "why_relevant": _get_why_relevant(title, topic_id, topic_kind or "interest"),
+                    "why_relevant": _get_why_relevant(title, interest_label, topic_kind or "interest", query_text),
                     "feed_category": "topics",
                 },
             })
 
         for idx, item in enumerate(picked_discussions):
             title = item.get("title", "")
+            query_text = item.get("query_text")
             items.append({
                 "id": f"topic_{topic_id}_discussion_{idx}_{date}",
                 "type": "discussion",
@@ -422,13 +632,14 @@ def build_unsubscribed_feed(
                 "tags": [topic_id],
                 "source": "exa",
                 "metadata": {
-                    "why_relevant": _get_why_relevant(title, topic_id, topic_kind or "interest"),
+                    "why_relevant": _get_why_relevant(title, interest_label, topic_kind or "interest", query_text),
                     "feed_category": "topics",
                 },
             })
 
         for idx, item in enumerate(picked_videos):
             title = item.get("title", "")
+            query_text = item.get("query_text")
             items.append({
                 "id": f"topic_{topic_id}_video_{idx}_{date}",
                 "type": "video",
@@ -439,7 +650,7 @@ def build_unsubscribed_feed(
                 "tags": [topic_id],
                 "source": "youtube",
                 "metadata": {
-                    "why_relevant": _get_why_relevant(title, topic_id, topic_kind or "interest"),
+                    "why_relevant": _get_why_relevant(title, interest_label, topic_kind or "interest", query_text),
                     "feed_category": "topics",
                 },
             })

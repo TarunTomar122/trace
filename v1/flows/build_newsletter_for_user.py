@@ -28,6 +28,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 from v1.storage import FirestoreStore
+from v1.algorithm.interest_schema import get_interest_ids, get_interest_label
 from v1.tools.fetch_article_content import fetch_article_content
 
 
@@ -71,7 +72,7 @@ def _select_items_with_gemini(
     max_items: int = MAX_NEWSLETTER_ITEMS,
 ) -> list[str]:
     """
-    Use Gemini to select the best items for the newsletter.
+    Use OpenAI to select the best items for the newsletter.
 
     Args:
         items: List of feed items
@@ -85,9 +86,9 @@ def _select_items_with_gemini(
         return []
 
     try:
-        from google import genai
+        from openai import OpenAI
 
-        client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
         # Build compact item list for the prompt
         item_list = []
@@ -101,9 +102,10 @@ def _select_items_with_gemini(
             })
 
         # Build user context
+        interest_ids = get_interest_ids(user_profile)
         user_context = {
-            "role": user_profile.get("role", ""),
-            "interests": user_profile.get("interests", [])[:5],
+            "skills": user_profile.get("skills", [])[:5],
+            "interests": [get_interest_label(i) for i in interest_ids[:5]],
             "goals_short_term": user_profile.get("goals", {}).get("shortTerm", ""),
             "learning_style": user_profile.get("learningStyle", ""),
             "content_depth": user_profile.get("contentDepth", ""),
@@ -123,26 +125,23 @@ SELECTION CRITERIA:
 3. Quality indicators (clear titles, good tags)
 
 INSTRUCTIONS:
-- Return ONLY a JSON array of item IDs
+- Return a JSON object with a "selected_ids" array containing item IDs
 - Order by relevance (best first)
 - Select up to {max_items} items
 
 EXAMPLE OUTPUT:
-["topic_ai-agents_blog_0_2026-01-29", "topic_python_discussion_1_2026-01-29", "trending_tech_0_2026-01-29"]
+{{"selected_ids": ["topic_ai-agents_blog_0_2026-01-29", "topic_python_discussion_1_2026-01-29", "trending_tech_0_2026-01-29"]}}"""
 
-YOUR RESPONSE (valid JSON array only):"""
-
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-            config={
-                "temperature": 0.2,
-                "max_output_tokens": 500,
-                "response_mime_type": "application/json",
-            }
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.2,
+            max_tokens=500,
         )
 
-        selected_ids = json.loads(response.text.strip())
+        result = json.loads(response.choices[0].message.content)
+        selected_ids = result.get("selected_ids", [])
 
         # Validate IDs exist in items
         valid_ids = {item.get("id") for item in items}
@@ -151,7 +150,7 @@ YOUR RESPONSE (valid JSON array only):"""
         return selected_ids[:max_items]
 
     except Exception as e:
-        print(f"  Warning: Gemini selection failed: {e}")
+        print(f"  Warning: OpenAI selection failed: {e}")
         return []
 
 
@@ -224,7 +223,7 @@ def _summarize_items_batch(
     user_profile: dict,
 ) -> dict[str, str]:
     """
-    Batch summarize multiple items using Gemini.
+    Batch summarize multiple items using OpenAI.
 
     Args:
         items_with_content: List of dicts with 'id', 'title', 'content'
@@ -237,9 +236,9 @@ def _summarize_items_batch(
         return {}
 
     try:
-        from google import genai
+        from openai import OpenAI
 
-        client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
         # Build items for summarization
         items_for_prompt = []
@@ -255,8 +254,9 @@ def _summarize_items_batch(
                 "content": content,
             })
 
-        user_context = f"""User role: {user_profile.get('role', 'professional')}
-User interests: {', '.join(user_profile.get('interests', [])[:3])}
+        interest_ids = get_interest_ids(user_profile)
+        user_context = f"""User skills: {', '.join(user_profile.get('skills', [])[:3])}
+User interests: {', '.join([get_interest_label(i) for i in interest_ids[:3]])}
 User goals: {user_profile.get('goals', {}).get('shortTerm', '')}"""
 
         prompt = f"""Summarize each article for a daily newsletter.
@@ -267,28 +267,24 @@ ARTICLES TO SUMMARIZE:
 {json.dumps(items_for_prompt, indent=2)}
 
 INSTRUCTIONS:
-- Each summary: 2-3 engaging sentences (NO bullet points)
+- Each summary: EXACTLY 2 sentences (NO bullet points, NO more than 2 sentences)
 - Focus on key insights and why it matters
 - If an article has empty or minimal content, write an intriguing teaser based on the title that makes readers want to click through
 - NEVER say things like "the content wasn't provided" or "I need the article first" - always write something engaging
 - Return a JSON object mapping item ID to summary string
 
 EXAMPLE OUTPUT:
-{{"topic_ai_blog_0_2026-01-29": "New research shows AI agents can now autonomously debug code with 90% accuracy. This could dramatically reduce developer time spent on bug fixes.", "topic_python_discussion_1_2026-01-29": "The Python community debates async vs sync patterns for web APIs. Key takeaway: async shines for I/O-bound workloads but adds complexity."}}
+{{"topic_ai_blog_0_2026-01-29": "New research shows AI agents can now autonomously debug code with 90% accuracy. This could dramatically reduce developer time spent on bug fixes.", "topic_python_discussion_1_2026-01-29": "The Python community debates async vs sync patterns for web APIs. Key takeaway: async shines for I/O-bound workloads but adds complexity."}}"""
 
-YOUR RESPONSE (valid JSON object only):"""
-
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-            config={
-                "temperature": 0.3,
-                "max_output_tokens": 2000,
-                "response_mime_type": "application/json",
-            }
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
+            max_tokens=2000,
         )
 
-        summaries = json.loads(response.text.strip())
+        summaries = json.loads(response.choices[0].message.content)
         return summaries
 
     except Exception as e:
@@ -300,11 +296,11 @@ def _summarize_single_item(
     item: dict,
     user_profile: dict,
 ) -> Optional[str]:
-    """Fallback: summarize a single item."""
+    """Fallback: summarize a single item using OpenAI."""
     try:
-        from google import genai
+        from openai import OpenAI
 
-        client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
         content = item.get("content", "") or item.get("description", "")
         title = item.get("title", "")
@@ -318,26 +314,28 @@ def _summarize_single_item(
 
         # Different prompt based on whether we have content
         if content and len(content.strip()) > 50:
-            prompt = f"""Summarize this article in 2-3 sentences for a newsletter. No bullets, just flowing text.
+            prompt = f"""Summarize this article in EXACTLY 2 sentences for a newsletter. No bullets, just flowing text.
 
 Title: {title}
 Content: {content}
 
-Write an engaging summary that highlights key insights."""
+Write an engaging summary that highlights key insights. Must be exactly 2 sentences."""
         else:
             # Title-only mode: generate a teaser based on the title
-            prompt = f"""Write a 2-3 sentence teaser for this article based on its title. No bullets, just flowing text. Make it engaging and hint at what the reader might learn.
+            prompt = f"""Write EXACTLY 2 sentences as a teaser for this article based on its title. No bullets, just flowing text. Make it engaging and hint at what the reader might learn.
 
 Title: {title}
 
-Write an intriguing teaser that makes readers want to click through."""
+Write an intriguing teaser that makes readers want to click through. Must be exactly 2 sentences."""
 
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=200,
         )
 
-        return response.text.strip()
+        return response.choices[0].message.content.strip()
 
     except Exception as e:
         print(f"  Warning: Single summarization failed: {e}")

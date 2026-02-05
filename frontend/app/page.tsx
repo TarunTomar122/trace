@@ -108,25 +108,30 @@ const Nav = () => {
                 </a>
               )}
               {user ? (
-                <a href="/feed" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100">
-                  Your Feed
-                </a>
+                <>
+                  <a href="/feed" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100">
+                    Your Feed
+                  </a>
+                  <Link href="/research" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100">
+                    Research
+                  </Link>
+                </>
               ) : (
-                <a href="/trending" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100">
+                <Link href="/trending" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100">
                   Trending
-                </a>
+                </Link>
               )}
             </div>
 
             {/* Logo - Centered */}
-            <div className="text-lg md:text-xl text-foreground uppercase flex items-center gap-2.5 tracking-wide font-semibold md:absolute md:left-1/2 md:-translate-x-1/2">
+            <Link href="/" className="text-lg md:text-xl text-foreground uppercase flex items-center gap-2.5 tracking-wide font-semibold md:absolute md:left-1/2 md:-translate-x-1/2">
               <img
                 src="/trace.png"
                 alt="Trace Logo"
                 className="h-6 md:h-7 w-auto object-contain"
               />
-              TRACE
-            </div>
+              <span>TRACE</span>
+            </Link>
 
             {/* Desktop Right Nav */}
             <div className="hidden md:flex items-center gap-3 flex-1 justify-end">
@@ -497,7 +502,7 @@ const Hero = () => {
                   transition={{ duration: 0.6, delay: 0.2 }}
                   className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-tight font-semibold tracking-tight text-foreground mb-4 md:mb-6"
                 >
-                  Your Feed{' '}
+                  Your Anti Brainrot Feed{' '}
                   <span className="text-secondary/50">Awaits</span>
                 </motion.h1>
 
@@ -507,7 +512,7 @@ const Hero = () => {
                   transition={{ duration: 0.6, delay: 0.3 }}
                   className="text-base md:text-lg text-secondary leading-relaxed mb-6 md:mb-8 max-w-lg"
                 >
-                  Your personalized feed curated from across the web is ready.
+                  Checkout what Trace has curated for you.
                 </motion.p>
 
                 <motion.div
@@ -518,7 +523,7 @@ const Hero = () => {
                 >
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 rounded-full">
                     <Lightbulb size={14} className="text-primary" />
-                    <span className="text-sm font-medium text-primary">Help Trace learn what matters by interacting with your feed items.</span>
+                    <span className="text-sm font-medium text-primary">Upvote and downvote items to help Trace learn what matters to you.</span>
                   </div>
                 </motion.div>
 
@@ -1343,8 +1348,8 @@ const InteractiveDemo = () => {
                   key={filter.id}
                   onClick={() => setActiveFilter(filter.id)}
                   className={`px-3 py-1 text-[10px] font-mono uppercase tracking-wider transition-colors ${activeFilter === filter.id
-                      ? 'bg-primary text-primary-foreground'
-                      : 'border border-border text-secondary/60 hover:border-primary/50'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'border border-border text-secondary/60 hover:border-primary/50'
                     }`}
                 >
                   {filter.label}
@@ -1426,8 +1431,8 @@ const HeroDemo = () => {
             <div
               key={filter.id}
               className={`px-3 py-1 rounded-full text-[11px] font-medium cursor-default select-none ${i === 0
-                  ? 'bg-foreground text-background'
-                  : 'bg-gray-100 text-secondary'
+                ? 'bg-foreground text-background'
+                : 'bg-gray-100 text-secondary'
                 }`}
             >
               {filter.label}
@@ -2628,7 +2633,7 @@ const Footer = () => (
             TRACE
           </div>
           <p className="text-secondary text-sm leading-relaxed max-w-[240px]">
-            Build your own feed with content from across the web
+            Stop letting algorithms hijack your brain. Trace gives you a feed you actually control.
           </p>
         </div>
 

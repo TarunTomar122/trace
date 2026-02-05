@@ -27,25 +27,55 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 from v1.storage import FirestoreStore
+from v1.algorithm.interest_schema import get_interest_ids
 
 
 MAX_NEWS_PER_FEED = 4
 MAX_NEWS_PER_TOPIC = 2
 
-ROLE_KEYWORDS = {
-    "founder": ["founder", "startup", "startups", "entrepreneur", "bootstrapping", "launch"],
-    "ux designer": ["ux", "ui", "design", "product design", "user research"],
-    "software engineer": ["software", "engineering", "developer", "programming", "code"],
-    "marketing": ["marketing", "growth", "seo", "copywriting", "distribution"],
-    "student": ["learning", "beginner", "study", "career"],
+SKILL_KEYWORDS = {
+    "design": ["design", "ux", "ui", "product design", "typography"],
+    "writing": ["writing", "storytelling", "publishing", "editing", "copywriting"],
+    "marketing": ["marketing", "growth", "seo", "brand", "distribution"],
+    "business": ["business", "strategy", "operations", "management", "startup"],
+    "software-tech": ["software", "engineering", "developer", "programming", "automation"],
+    "data-analytics": ["data", "analytics", "dashboards", "metrics", "insights"],
+    "finance": ["finance", "investing", "markets", "budgeting", "risk"],
+    "education": ["education", "learning", "teaching", "study", "training"],
+    "health-wellness": ["health", "wellness", "fitness", "nutrition", "mental health"],
+    "creative-arts": ["creative", "art", "music", "photography", "illustration"],
 }
 
-ROLE_MATCHERS = {
-    "founder": ["founder", "entrepreneur", "indie", "startup"],
-    "ux designer": ["ux", "ui", "product designer", "designer"],
-    "software engineer": ["software engineer", "engineer", "developer", "programmer"],
-    "marketing": ["marketing", "growth", "brand", "demand gen"],
-    "student": ["student", "learner"],
+SKILL_MATCHERS = {
+    "design": ["design", "ux", "ui", "product designer", "ux-designer"],
+    "writing": ["writing", "writer", "storytelling", "copywriting", "editor"],
+    "marketing": ["marketing", "growth", "seo", "copywriting", "brand"],
+    "business": ["business", "strategy", "operations", "management", "founder", "entrepreneur"],
+    "software-tech": [
+        "software-tech",
+        "software engineering",
+        "software-engineering",
+        "engineer",
+        "developer",
+        "programmer",
+        "frontend",
+        "backend",
+        "ai-engineer",
+        "artificial intelligence",
+        "machine learning",
+    ],
+    "data-analytics": [
+        "data",
+        "analytics",
+        "data science",
+        "quant-researcher",
+        "quant researcher",
+        "quant",
+    ],
+    "finance": ["finance", "investing", "trading", "markets"],
+    "education": ["education", "teacher", "teaching", "student", "learning"],
+    "health-wellness": ["health", "wellness", "fitness", "nutrition", "mental health"],
+    "creative-arts": ["creative", "creator", "art", "music", "photography", "illustration"],
 }
 
 
@@ -68,14 +98,27 @@ def _normalize(text: str) -> str:
     return text.lower().strip()
 
 
-def _get_role_keywords(role: str | None) -> list[str]:
-    role_value = (role or "").strip().lower()
-    if not role_value:
+def _get_skill_keywords(skills: list[str] | None) -> list[str]:
+    if not skills:
         return []
-    for key, matchers in ROLE_MATCHERS.items():
-        if any(m in role_value for m in matchers):
-            return ROLE_KEYWORDS.get(key, [])
-    return []
+    keywords: list[str] = []
+    for skill in skills:
+        skill_value = (skill or "").strip().lower()
+        if not skill_value:
+            continue
+        for key, matchers in SKILL_MATCHERS.items():
+            if any(m in skill_value for m in matchers):
+                keywords.extend(SKILL_KEYWORDS.get(key, []))
+                break
+    # Dedupe while preserving order
+    seen = set()
+    deduped = []
+    for kw in keywords:
+        if kw in seen:
+            continue
+        seen.add(kw)
+        deduped.append(kw)
+    return deduped
 
 
 def _user_matches_topic(user_interests: set[str], topic_keywords: list[str]) -> bool:
@@ -232,7 +275,7 @@ def add_trending_news_to_feed(
         return {"user_id": user_id, "date": date, "items_added": 0}
 
     # Gather user's interests + hobbies (normalized for matching)
-    interests = profile.get("interests", []) or []
+    interests = get_interest_ids(profile)
     hobbies = profile.get("hobbies", []) or []
     user_interests: set[str] = set()
 
@@ -243,8 +286,8 @@ def add_trending_news_to_feed(
         if isinstance(hobby, str) and hobby.strip():
             user_interests.add(_normalize(hobby))
 
-    role_keywords = _get_role_keywords(profile.get("role"))
-    for keyword in role_keywords:
+    skill_keywords = _get_skill_keywords(profile.get("skills"))
+    for keyword in skill_keywords:
         user_interests.add(_normalize(keyword))
 
     if not user_interests:

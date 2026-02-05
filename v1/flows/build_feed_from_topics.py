@@ -27,9 +27,17 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 from v1.storage import FirestoreStore
+from v1.algorithm.interest_schema import (
+    build_query_id,
+    get_interest_ids,
+    get_interest_label,
+    get_interest_queries,
+    normalize_query_text,
+)
 
 
-MAX_FEED_ITEMS = 10
+MAX_FEED_ITEMS = 25  # Subscribed users get more content
+MIN_QUERY_POOL_ITEMS = 4
 
 
 def _normalize_interest(interest: str) -> str:
@@ -69,16 +77,72 @@ def _title_matches_topic(title: str, topic_name: str) -> bool:
     return False
 
 
-def _get_why_relevant(title: str, topic_name: str, topic_kind: str) -> str:
+def _get_why_relevant(title: str, topic_name: str, topic_kind: str, query_text: str | None = None) -> str:
     """Generate appropriate why_relevant text based on actual relevance."""
     if _title_matches_topic(title, topic_name):
         if topic_kind == "hobby":
             return f"Matches your hobby in {topic_name}"
-        else:
-            return f"Matches your interest in {topic_name}"
-    else:
-        # Fallback for items that don't clearly match
-        return "Curated for you"
+        if query_text:
+            return f"Matches your interest in {topic_name} · {query_text}"
+        return f"Matches your interest in {topic_name}"
+    return "Curated for you"
+
+
+def _pool_item_count(latest: dict) -> int:
+    blogs = latest.get("blogs", []) or []
+    discussions = latest.get("discussions", []) or []
+    return len(blogs) + len(discussions)
+
+
+def _load_interest_pools(
+    store: FirestoreStore,
+    interest_id: str,
+    interest_queries: dict[str, list[str]],
+) -> list[dict]:
+    pools: list[dict] = []
+    raw_queries = interest_queries.get(interest_id, [])[:2]
+    for raw in raw_queries:
+        query_text = normalize_query_text(interest_id, raw)
+        query_id = build_query_id(query_text)
+        doc_ref = (
+            store.db.collection("topics")
+            .document(interest_id)
+            .collection("__q")
+            .document(query_id)
+        )
+        doc = doc_ref.get()
+        if not doc.exists:
+            continue
+        data = doc.to_dict() or {}
+        pools.append({"latest": data.get("latest", {}) or {}, "query_text": query_text})
+
+    if pools:
+        total_items = sum(_pool_item_count(p["latest"]) for p in pools)
+        if total_items >= MIN_QUERY_POOL_ITEMS:
+            return pools
+
+    doc = store.db.collection("topics").document(interest_id).get()
+    if not doc.exists:
+        return []
+    data = doc.to_dict() or {}
+    return [{"latest": data.get("latest", {}) or {}, "query_text": None}]
+
+
+def _merge_pool_items(pools: list[dict], key: str) -> list[dict]:
+    merged = []
+    for pool in pools:
+        latest = pool.get("latest", {}) or {}
+        items = latest.get(key, []) or []
+        for item in items:
+            if isinstance(item, dict):
+                url = item.get("url")
+                title = item.get("title", "")
+                payload = {**item, "url": url, "title": title}
+            else:
+                payload = {"url": item, "title": ""}
+            payload["query_text"] = pool.get("query_text")
+            merged.append(payload)
+    return _dedupe_preserve_order(merged)
 
 
 def _get_today_ist_date() -> str:
@@ -196,13 +260,8 @@ def build_feed_from_topics(
                 "reason": "feed_exists",
             }
 
-    interests = profile.get("interests", []) or []
-    interests = [
-        i.strip()
-        for i in interests
-        if isinstance(i, str) and i.strip()
-    ]
-    interests = list(dict.fromkeys(interests))
+    interest_ids = get_interest_ids(profile)
+    interest_queries = get_interest_queries(profile)
 
     hobbies = profile.get("hobbies", []) or []
     hobbies = [
@@ -220,55 +279,47 @@ def build_feed_from_topics(
     items = []
     chosen_urls: set[str] = set()
 
-    for interest in interests:
-        topic_id = _normalize_interest(interest)
-        doc = store.db.collection("topics").document(topic_id).get()
-        if not doc.exists:
+    for interest_id in interest_ids:
+        pools = _load_interest_pools(store, interest_id, interest_queries)
+        if not pools:
             continue
-        topic = doc.to_dict() or {}
-        latest = topic.get("latest", {}) or {}
-        raw_blogs = latest.get("blogs", []) or []
-        raw_discussions = latest.get("discussions", []) or []
-        blogs = _dedupe_preserve_order([
-            b if isinstance(b, dict) else {"url": b, "title": ""}
-            for b in raw_blogs
-        ])
-        discussions = _dedupe_preserve_order([
-            d if isinstance(d, dict) else {"url": d, "title": ""}
-            for d in raw_discussions
-        ])
+        interest_label = get_interest_label(interest_id)
+        blogs = _merge_pool_items(pools, "blogs")
+        discussions = _merge_pool_items(pools, "discussions")
 
         picked_blogs = _pick_urls(blogs, 2, seen_urls, chosen_urls)
         picked_discussions = _pick_urls(discussions, 2, seen_urls, chosen_urls)
 
         for idx, item in enumerate(picked_blogs):
             title = item.get("title", "")
+            query_text = item.get("query_text")
             items.append({
-                "id": f"topic_{topic_id}_blog_{idx}_{date}",
+                "id": f"topic_{interest_id}_blog_{idx}_{date}",
                 "type": "blog",
                 "title": title,
                 "description": "",
                 "url": item.get("url", ""),
-                "tags": [topic_id],
+                "tags": [interest_id],
                 "source": "exa",
                 "metadata": {
-                    "why_relevant": _get_why_relevant(title, interest, "interest"),
+                    "why_relevant": _get_why_relevant(title, interest_label, "interest", query_text),
                     "feed_category": "topics",
                 },
             })
 
         for idx, item in enumerate(picked_discussions):
             title = item.get("title", "")
+            query_text = item.get("query_text")
             items.append({
-                "id": f"topic_{topic_id}_discussion_{idx}_{date}",
+                "id": f"topic_{interest_id}_discussion_{idx}_{date}",
                 "type": "discussion",
                 "title": title,
                 "description": "",
                 "url": item.get("url", ""),
-                "tags": [topic_id],
+                "tags": [interest_id],
                 "source": "exa",
                 "metadata": {
-                    "why_relevant": _get_why_relevant(title, interest, "interest"),
+                    "why_relevant": _get_why_relevant(title, interest_label, "interest", query_text),
                     "feed_category": "topics",
                 },
             })

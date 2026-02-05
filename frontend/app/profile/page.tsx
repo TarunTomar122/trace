@@ -7,19 +7,16 @@ import Link from 'next/link';
 import {
   User,
   Check,
-  Plus,
-  X,
   Trash2,
   Save,
   Send,
   Sparkles,
   MessageCircle,
   Bot,
-  CreditCard,
-  Mail
+  CreditCard
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getUserProfile, getUserPatterns, updateUserProfile, updateUserInsights, addChatMessage, clearChatHistory, UserProfile, INTERESTS, ROLES, ChatMessage } from '@/lib/firestore';
+import { getUserProfile, getUserPatterns, updateUserProfile, updateUserInsights, addChatMessage, clearChatHistory, UserProfile, INTERESTS, INTEREST_SUBTOPICS, ROLES, ChatMessage } from '@/lib/firestore';
 import { isAlphaMode } from '@/lib/alpha';
 import Header from '@/components/Header';
 import SubscriptionManager from '@/components/SubscriptionManager';
@@ -39,6 +36,18 @@ function ProfileContent() {
 
   const [activeTab, setActiveTab] = useState<'profile' | 'chat' | 'subscription'>('profile');
   const hasLoadedProfile = useRef(false);
+  const SKILL_OPTIONS = [
+    { id: 'design', label: 'Design' },
+    { id: 'writing', label: 'Writing' },
+    { id: 'marketing', label: 'Marketing' },
+    { id: 'business', label: 'Business' },
+    { id: 'software-tech', label: 'Software & Tech' },
+    { id: 'data-analytics', label: 'Data & Analytics' },
+    { id: 'finance', label: 'Finance' },
+    { id: 'education', label: 'Education' },
+    { id: 'health-wellness', label: 'Health & Wellness' },
+    { id: 'creative-arts', label: 'Creative Arts' },
+  ];
 
   // Switch to subscription tab if coming from onboarding or feed redirect
   const applyProfile = (p: UserProfile) => {
@@ -68,10 +77,11 @@ function ProfileContent() {
     const loadedInterests = (p.interests || []).map(i =>
       i.startsWith('custom-') ? i.replace('custom-', '') : i
     );
-    setSelectedInterests(loadedInterests.slice(0, 8));
+    setSelectedInterests(loadedInterests.slice(0, 4));
+    setSelectedFocus((p.interestQueries as Record<string, string[]>) || {});
     setContentDepth(p.contentDepth);
-    setHobbiesText(p.hobbies?.join(', ') || '');
-    setSkillsText(p.skills?.join(', ') || '');
+    setNewsletterOptIn(p.newsletterOptIn !== false);
+    setSelectedSkills(p.skills || []);
     setDislikedTopicsText(p.dislikedTopics?.join(', ') || '');
     if (p.sourcePreferences) {
       setSourcePreferences(p.sourcePreferences);
@@ -79,8 +89,6 @@ function ProfileContent() {
     if (p.chatHistory) {
       setChatMessages(p.chatHistory.map(m => ({ role: m.role, content: m.content })));
     }
-    // Newsletter opt-in defaults to true if not set
-    setNewsletterOptIn(p.newsletterOptIn !== false);
   };
 
   useEffect(() => {
@@ -118,12 +126,10 @@ function ProfileContent() {
   const [petPeevesText, setPetPeevesText] = useState('');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [contentDepth, setContentDepth] = useState<'quick' | 'deep' | 'surprise' | null>(null);
-  const [customInterest, setCustomInterest] = useState('');
-  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [selectedFocus, setSelectedFocus] = useState<Record<string, string[]>>({});
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
   // Additional fields from onboarding
-  const [hobbiesText, setHobbiesText] = useState('');
-  const [skillsText, setSkillsText] = useState('');
   const [dislikedTopicsText, setDislikedTopicsText] = useState('');
   const [sourcePreferences, setSourcePreferences] = useState({
     youtube: 30,
@@ -285,19 +291,44 @@ function ProfileContent() {
   const toggleInterest = (id: string) => {
     if (selectedInterests.includes(id)) {
       setSelectedInterests(selectedInterests.filter(i => i !== id));
-    } else if (selectedInterests.length < 8) {
+      if (selectedFocus[id]) {
+        const next = { ...selectedFocus };
+        delete next[id];
+        setSelectedFocus(next);
+      }
+    } else if (selectedInterests.length < 4) {
       setSelectedInterests([...selectedInterests, id]);
     }
   };
 
-  const addCustomInterest = () => {
-    if (customInterest.trim() && selectedInterests.length < 8) {
-      const customId = customInterest.toLowerCase().trim().replace(/\s+/g, '-');
-      if (!selectedInterests.includes(customId)) {
-        setSelectedInterests([...selectedInterests, customId]);
-      }
-      setCustomInterest('');
-      setShowCustomInput(false);
+  const focusInterestCount = Object.values(selectedFocus).filter((list) => list.length > 0).length;
+
+  const toggleSubtopic = (interestId: string, subtopicId: string) => {
+    if (!selectedInterests.includes(interestId)) return;
+    const current = selectedFocus[interestId] || [];
+    const isSelected = current.includes(subtopicId);
+    if (!isSelected) {
+      const isNewInterest = current.length === 0;
+      if (isNewInterest && focusInterestCount >= 4) return;
+      if (current.length >= 2) return;
+      setSelectedFocus({ ...selectedFocus, [interestId]: [...current, subtopicId] });
+      return;
+    }
+    const nextList = current.filter((id) => id !== subtopicId);
+    if (nextList.length === 0) {
+      const next = { ...selectedFocus };
+      delete next[interestId];
+      setSelectedFocus(next);
+      return;
+    }
+    setSelectedFocus({ ...selectedFocus, [interestId]: nextList });
+  };
+
+  const toggleSkill = (id: string) => {
+    if (selectedSkills.includes(id)) {
+      setSelectedSkills(selectedSkills.filter((s) => s !== id));
+    } else {
+      setSelectedSkills([...selectedSkills, id]);
     }
   };
 
@@ -319,20 +350,13 @@ function ProfileContent() {
           const normalizedInterests = selectedInterests.map(interest =>
             interest.startsWith('custom-') ? interest.replace('custom-', '') : interest
           );
-          profileUpdate = { interests: normalizedInterests };
-          localProfileUpdate = { interests: normalizedInterests };
-          break;
-        }
-        case 'hobbies': {
-          const parsedHobbies = parseCommaSeparated(hobbiesText, 3);
-          profileUpdate = { hobbies: parsedHobbies };
-          localProfileUpdate = { hobbies: parsedHobbies };
+          profileUpdate = { interests: normalizedInterests, interestQueries: selectedFocus };
+          localProfileUpdate = { interests: normalizedInterests, interestQueries: selectedFocus };
           break;
         }
         case 'skills': {
-          const parsedSkills = parseCommaSeparated(skillsText);
-          profileUpdate = { skills: parsedSkills };
-          localProfileUpdate = { skills: parsedSkills };
+          profileUpdate = { skills: selectedSkills };
+          localProfileUpdate = { skills: selectedSkills };
           break;
         }
         case 'goals': {
@@ -358,7 +382,7 @@ function ProfileContent() {
 
       // Trigger feed refresh if onboarded
       const isOnboarded = Boolean(profile.onboarded);
-      if (isOnboarded && ['interests', 'hobbies', 'skills', 'goals', 'contentPreferences'].includes(section)) {
+      if (isOnboarded && ['interests', 'skills', 'goals', 'contentPreferences'].includes(section)) {
         try {
           await fetch('/api/onboard', {
             method: 'POST',
@@ -372,8 +396,8 @@ function ProfileContent() {
 
       setProfile({ ...profile, ...localProfileUpdate });
       setEditingSection(null);
-      setSaveMessage('Saved!');
-      setTimeout(() => setSaveMessage(''), 2000);
+      setSaveMessage("Saved — updates show in tomorrow's feed.");
+      setTimeout(() => setSaveMessage(''), 3500);
     } catch (error) {
       console.error('Error saving section:', error);
       setSaveMessage('Error saving');
@@ -387,16 +411,11 @@ function ProfileContent() {
     if (profile) {
       switch (section) {
         case 'interests':
-          setSelectedInterests((profile.interests || []).map(i => i.startsWith('custom-') ? i.replace('custom-', '') : i).slice(0, 8));
-          break;
-        case 'hobbies':
-          setHobbiesText(profile.hobbies?.join(', ') || '');
+          setSelectedInterests((profile.interests || []).map(i => i.startsWith('custom-') ? i.replace('custom-', '') : i).slice(0, 4));
+          setSelectedFocus((profile.interestQueries as Record<string, string[]>) || {});
           break;
         case 'skills':
-          setSkillsText(profile.skills?.join(', ') || '');
-          break;
-        case 'goals':
-          setGoalsShortTerm(profile.goals?.shortTerm || '');
+          setSelectedSkills(profile.skills || []);
           break;
         case 'contentPreferences':
           if (profile.sourcePreferences) setSourcePreferences(profile.sourcePreferences);
@@ -404,6 +423,13 @@ function ProfileContent() {
           break;
         case 'newsletter':
           setNewsletterOptIn(profile.newsletterOptIn !== false);
+          break;
+        case 'goals':
+          setGoalsShortTerm(profile.goals?.shortTerm || '');
+          break;
+        case 'contentPreferences':
+          if (profile.sourcePreferences) setSourcePreferences(profile.sourcePreferences);
+          setContentDepth(profile.contentDepth);
           break;
       }
     }
@@ -587,11 +613,11 @@ function ProfileContent() {
                 </div>
               </section> */}
 
-              {/* Interests */}
-              <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
+              {/* Interests + Focus */}
+              <section className="pb-6 border-b border-gray-200">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
-                    Topics you want more of ({selectedInterests.length}/8)
+                    Topics you want more of ({selectedInterests.length}/4)
                   </h2>
                   {profile?.onboarded && (
                     editingSection === 'interests' ? (
@@ -611,200 +637,90 @@ function ProfileContent() {
                 <div className="flex flex-wrap gap-2">
                   {INTERESTS.map((interest) => {
                     const isSelected = selectedInterests.includes(interest.id);
+                    const isMaxed = !isSelected && selectedInterests.length >= 4;
                     return editingSection === 'interests' ? (
-                      <button key={interest.id} onClick={() => toggleInterest(interest.id)} className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${isSelected ? 'bg-foreground text-background' : 'bg-gray-100 text-secondary hover:bg-gray-200'}`}>
+                      <button
+                        key={interest.id}
+                        onClick={() => toggleInterest(interest.id)}
+                        disabled={isMaxed}
+                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 border ${
+                          isSelected
+                            ? 'border-foreground bg-foreground text-background'
+                            : 'border-gray-200 bg-white text-foreground/80 hover:border-foreground/40'
+                        } ${isMaxed ? 'opacity-40 cursor-not-allowed' : ''}`}
+                      >
                         <span>{interest.label}</span>
                         {isSelected && <Check size={14} />}
                       </button>
                     ) : isSelected ? (
-                      <span key={interest.id} className="px-4 py-2.5 rounded-full bg-gray-100 text-sm font-medium flex items-center gap-2">
+                      <span key={interest.id} className="px-4 py-2 rounded-full bg-gray-100 text-sm font-medium flex items-center gap-2">
                         <span>{interest.label}</span>
                       </span>
                     ) : null;
                   })}
+                </div>
 
-                  {selectedInterests.filter(i => i.startsWith('custom-') || !INTERESTS.some(interest => interest.id === i)).map(customId => (
-                    editingSection === 'interests' ? (
-                      <button key={customId} onClick={() => toggleInterest(customId)} className="px-4 py-2.5 rounded-full bg-foreground text-background text-sm font-medium transition-all flex items-center gap-2">
-                        <span>{customId.startsWith('custom-') ? customId.replace('custom-', '').replace(/-/g, ' ') : customId}</span>
-                        <X size={14} />
-                      </button>
-                    ) : (
-                      <span key={customId} className="px-4 py-2.5 rounded-full bg-gray-100 text-sm font-medium flex items-center gap-2">
-                        <span>{customId.startsWith('custom-') ? customId.replace('custom-', '').replace(/-/g, ' ') : customId}</span>
-                      </span>
-                    )
-                  ))}
-
-                  {editingSection === 'interests' && (
-                    !showCustomInput ? (
-                      <button onClick={() => setShowCustomInput(true)} className="px-4 py-2.5 rounded-full border-2 border-dashed border-gray-200 hover:border-gray-300 text-sm font-medium transition-all flex items-center gap-2 text-secondary">
-                        <Plus size={14} />
-                        Add custom
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <input type="text" value={customInterest} onChange={(e) => setCustomInterest(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addCustomInterest()} placeholder="Interest" autoFocus className="px-4 py-2.5 rounded-full border-2 border-foreground bg-transparent text-sm font-medium outline-none w-32" />
-                        <button onClick={addCustomInterest} className="p-2.5 rounded-full bg-foreground text-background"><Check size={14} /></button>
-                        <button onClick={() => { setShowCustomInput(false); setCustomInterest(''); }} className="p-2.5 rounded-full bg-gray-100"><X size={14} /></button>
-                      </div>
-                    )
-                  )}
+                <div className="mt-6 border-t border-gray-200 pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
+                      Focus areas (optional)
+                    </h3>
+                    <span className="text-xs text-secondary/60">
+                      {focusInterestCount}/4 refined
+                    </span>
+                  </div>
+                  <div className="space-y-4">
+                    {selectedInterests.map((interestId) => {
+                      const interest = INTERESTS.find((i) => i.id === interestId);
+                      const subtopics = INTEREST_SUBTOPICS[interestId] || [];
+                      if (!interest || subtopics.length === 0) return null;
+                      const selectedSubtopics = selectedFocus[interestId] || [];
+                      const isFocusFull = selectedSubtopics.length === 0 && focusInterestCount >= 4;
+                      return (
+                        <div key={interestId} className="space-y-2">
+                          <div className="text-xs font-medium text-secondary/70">
+                            {interest.label}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {subtopics.map((subtopic) => {
+                              const isSelected = selectedSubtopics.includes(subtopic.id);
+                              const isDisabled =
+                                (!isSelected && selectedSubtopics.length >= 2) || isFocusFull;
+                              return editingSection === 'interests' ? (
+                                <button
+                                  key={subtopic.id}
+                                  onClick={() => toggleSubtopic(interestId, subtopic.id)}
+                                  disabled={isDisabled}
+                                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 border ${
+                                    isSelected
+                                      ? 'border-foreground bg-foreground text-background'
+                                      : 'border-gray-200 bg-white text-foreground/80 hover:border-foreground/40'
+                                  } ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                >
+                                  {subtopic.label}
+                                </button>
+                              ) : isSelected ? (
+                                <span
+                                  key={subtopic.id}
+                                  className="px-4 py-2 rounded-full bg-gray-100 text-sm font-medium flex items-center gap-2"
+                                >
+                                  {subtopic.label}
+                                </span>
+                              ) : null;
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </section>
 
-              {/* Hobbies */}
-              <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
+              {/* Content preferences */}
+              <section className="pb-6 border-b border-gray-200">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
-                    Hobbies
-                  </h2>
-                  {profile?.onboarded && (
-                    editingSection === 'hobbies' ? (
-                      <div className="flex gap-2">
-                        <button onClick={() => cancelEditSection('hobbies')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-red-500 transition-colors">Cancel</button>
-                        <button onClick={() => handleSaveSection('hobbies')} disabled={savingSection === 'hobbies'} className="px-3 py-1.5 rounded-lg bg-foreground text-background text-xs font-medium flex items-center gap-1.5 hover:bg-foreground/90 transition-colors disabled:opacity-50">
-                          {savingSection === 'hobbies' ? <div className="w-3 h-3 border-2 border-background border-t-transparent rounded-full animate-spin" /> : <Check size={12} />}
-                          Save
-                        </button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setEditingSection('hobbies')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-foreground hover:bg-gray-100 transition-colors">Edit</button>
-                    )
-                  )}
-                </div>
-
-                <div>
-                  {editingSection === 'hobbies' ? (
-                    <>
-                      <label className="block text-sm font-medium text-secondary mb-2">
-                        Things you enjoy outside of work
-                      </label>
-                      <textarea
-                        value={hobbiesText}
-                        onChange={(e) => setHobbiesText(e.target.value)}
-                        placeholder="marathon training, sourdough baking, film photography, ceramics"
-                        rows={2}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-secondary/40 resize-none"
-                      />
-                    </>
-                  ) : (
-                    <p className="text-base font-medium text-slate-700">{profile?.hobbies?.length ? profile.hobbies.join(', ') : 'Not set'}</p>
-                  )}
-                </div>
-              </section>
-
-              {/* Projects */}
-              {/* <section className="border border-border p-6 md:p-8">
-                <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-6">
-                  Projects
-                </h2>
-
-                <div>
-                  <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
-                    What are you building or working on?
-                  </label>
-                  {isEditing ? (
-                    <textarea
-                      value={projectsText}
-                      onChange={(e) => setProjectsText(e.target.value)}
-                      placeholder="portfolio site, side project, newsletter"
-                      rows={2}
-                      className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
-                    />
-                  ) : (
-                    <p className="text-lg font-serif py-3 text-secondary">{profile?.projects?.length ? profile.projects.join(', ') : 'Not set'}</p>
-                  )}
-                </div>
-              </section> */}
-
-              {/* Skills */}
-              <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
-                    Skills
-                  </h2>
-                  {profile?.onboarded && (
-                    editingSection === 'skills' ? (
-                      <div className="flex gap-2">
-                        <button onClick={() => cancelEditSection('skills')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-red-500 transition-colors">Cancel</button>
-                        <button onClick={() => handleSaveSection('skills')} disabled={savingSection === 'skills'} className="px-3 py-1.5 rounded-lg bg-foreground text-background text-xs font-medium flex items-center gap-1.5 hover:bg-foreground/90 transition-colors disabled:opacity-50">
-                          {savingSection === 'skills' ? <div className="w-3 h-3 border-2 border-background border-t-transparent rounded-full animate-spin" /> : <Check size={12} />}
-                          Save
-                        </button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setEditingSection('skills')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-foreground hover:bg-gray-100 transition-colors">Edit</button>
-                    )
-                  )}
-                </div>
-
-                <div>
-                  {editingSection === 'skills' ? (
-                    <>
-                      <label className="block text-sm font-medium text-secondary mb-2">
-                        Your skills & expertise
-                      </label>
-                      <textarea
-                        value={skillsText}
-                        onChange={(e) => setSkillsText(e.target.value)}
-                        placeholder="TypeScript, Figma, financial modeling, user interviews"
-                        rows={2}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-secondary/40 resize-none"
-                      />
-                    </>
-                  ) : (
-                    <p className="text-base font-medium text-slate-700">{profile?.skills?.length ? profile.skills.join(', ') : 'Not set'}</p>
-                  )}
-                </div>
-              </section>
-
-              {/* Short-term Goals */}
-              <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
-                    Short-term Goals
-                  </h2>
-                  {profile?.onboarded && (
-                    editingSection === 'goals' ? (
-                      <div className="flex gap-2">
-                        <button onClick={() => cancelEditSection('goals')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-red-500 transition-colors">Cancel</button>
-                        <button onClick={() => handleSaveSection('goals')} disabled={savingSection === 'goals'} className="px-3 py-1.5 rounded-lg bg-foreground text-background text-xs font-medium flex items-center gap-1.5 hover:bg-foreground/90 transition-colors disabled:opacity-50">
-                          {savingSection === 'goals' ? <div className="w-3 h-3 border-2 border-background border-t-transparent rounded-full animate-spin" /> : <Check size={12} />}
-                          Save
-                        </button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setEditingSection('goals')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-foreground hover:bg-gray-100 transition-colors">Edit</button>
-                    )
-                  )}
-                </div>
-
-                <div>
-                  {editingSection === 'goals' ? (
-                    <>
-                      <label className="block text-sm font-medium text-secondary mb-2">
-                        What do you want to achieve soon?
-                      </label>
-                      <textarea
-                        value={goalsShortTerm}
-                        onChange={(e) => setGoalsShortTerm(e.target.value)}
-                        placeholder="Ship MVP, learn TypeScript"
-                        rows={2}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-secondary/40 resize-none"
-                      />
-                    </>
-                  ) : (
-                    <p className="text-base font-medium text-slate-700">{profile?.goals?.shortTerm || 'Not set'}</p>
-                  )}
-                </div>
-              </section>
-
-              {/* Content Mix - Source Preferences */}
-              <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
-                    Content Source Preferences
+                    Content preferences
                   </h2>
                   {profile?.onboarded && (
                     editingSection === 'contentPreferences' ? (
@@ -822,7 +738,6 @@ function ProfileContent() {
                 </div>
 
                 <div className="space-y-6">
-                  {/* Sliders */}
                   {(Object.keys(sourcePreferences) as Array<keyof typeof sourcePreferences>).map(key => (
                     <div key={key}>
                       <div className="flex justify-between items-center mb-2">
@@ -856,7 +771,6 @@ function ProfileContent() {
                     </div>
                   ))}
 
-                  {/* Content Depth */}
                   <div className="pt-6 border-t border-gray-100">
                     <label className="block text-sm font-medium text-secondary mb-4">
                       Content Depth <span className="text-secondary/50 text-xs font-normal ml-2">(optional)</span>
@@ -871,10 +785,11 @@ function ProfileContent() {
                           <button
                             key={opt.id}
                             onClick={() => setContentDepth(opt.id as 'quick' | 'deep' | 'surprise')}
-                            className={`px-4 py-3 rounded-xl text-sm font-medium transition-all ${contentDepth === opt.id
+                            className={`px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                              contentDepth === opt.id
                                 ? 'bg-foreground text-background'
                                 : 'bg-gray-100 text-secondary hover:bg-gray-200'
-                              }`}
+                            }`}
                           >
                             {opt.label}
                           </button>
@@ -892,66 +807,130 @@ function ProfileContent() {
                 </div>
               </section>
 
-              {/* Newsletter Settings */}
+              {/* Newsletter */}
               {profile?.onboarded && ['trial', 'active'].includes(profile?.subscriptionStatus || '') && (
-                <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
-                  <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6 flex items-center gap-2">
-                    <Mail size={14} className="text-foreground" />
-                    Daily Newsletter
-                  </h2>
+                <section className="pb-6 border-b border-gray-200">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
+                      Daily newsletter
+                    </h2>
+                    {profile?.onboarded && (
+                      editingSection === 'newsletter' ? (
+                        <div className="flex gap-2">
+                          <button onClick={() => cancelEditSection('newsletter')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-red-500 transition-colors">Cancel</button>
+                          <button onClick={() => handleSaveSection('newsletter')} disabled={savingSection === 'newsletter'} className="px-3 py-1.5 rounded-lg bg-foreground text-background text-xs font-medium flex items-center gap-1.5 hover:bg-foreground/90 transition-colors disabled:opacity-50">
+                            {savingSection === 'newsletter' ? <div className="w-3 h-3 border-2 border-background border-t-transparent rounded-full animate-spin" /> : <Check size={12} />}
+                            Save
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setEditingSection('newsletter')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-foreground hover:bg-gray-100 transition-colors">Edit</button>
+                      )
+                    )}
+                  </div>
 
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-700">Receive daily newsletter</p>
-                        <p className="text-xs text-secondary/70 mt-1">
-                          Get your personalized feed delivered to your inbox at 10:00 AM IST
-                        </p>
-                      </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-slate-700">Receive daily newsletter</p>
+                      <p className="text-xs text-secondary/70 mt-1">
+                        Your summary lands at 10:00 AM IST.
+                      </p>
+                    </div>
+                    {editingSection === 'newsletter' ? (
                       <button
-                        onClick={async () => {
-                          const newValue = !newsletterOptIn;
-                          setNewsletterOptIn(newValue);
-                          // Auto-save newsletter preference
-                          if (user) {
-                            try {
-                              await updateUserProfile(user.uid, { newsletterOptIn: newValue });
-                              setSaveMessage('Saved!');
-                              setTimeout(() => setSaveMessage(''), 2000);
-                            } catch (error) {
-                              console.error('Error saving newsletter preference:', error);
-                              setNewsletterOptIn(!newValue); // Revert on error
-                            }
-                          }
-                        }}
-                        className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer ${
-                          newsletterOptIn
-                            ? 'bg-foreground'
-                            : 'bg-gray-200'
+                        onClick={() => setNewsletterOptIn(!newsletterOptIn)}
+                        className={`relative w-12 h-6 rounded-full transition-colors ${
+                          newsletterOptIn ? 'bg-foreground' : 'bg-gray-200'
                         }`}
                       >
                         <span
-                          className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${
+                          className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
                             newsletterOptIn ? 'left-7' : 'left-1'
                           }`}
                         />
                       </button>
-                    </div>
-
-                    <div className="pt-4 border-t border-gray-100">
-                      <div className="flex items-center gap-2 text-xs text-secondary/60">
-                        <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                        <span>Newsletter delivery time: 10:00 AM IST daily</span>
-                      </div>
-                      <p className="text-xs text-secondary/50 mt-2">
-                        Your newsletter includes up to 8 hand-picked articles summarized by AI, curated based on your interests.
-                      </p>
-                    </div>
+                    ) : (
+                      <span className="text-xs text-secondary/70">
+                        {newsletterOptIn ? 'On' : 'Off'}
+                      </span>
+                    )}
                   </div>
                 </section>
               )}
 
-            
+              {/* Projects */}
+              {/* <section className="border border-border p-6 md:p-8">
+                <h2 className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary mb-6">
+                  Projects
+                </h2>
+
+                <div>
+                  <label className="block text-[10px] font-mono uppercase tracking-[0.2em] text-secondary mb-2">
+                    What are you building or working on?
+                  </label>
+                  {isEditing ? (
+                    <textarea
+                      value={projectsText}
+                      onChange={(e) => setProjectsText(e.target.value)}
+                      placeholder="portfolio site, side project, newsletter"
+                      rows={2}
+                      className="w-full bg-transparent border-2 border-border px-4 py-3 text-base font-mono outline-none focus:border-primary transition-colors placeholder:text-secondary/30 resize-none"
+                    />
+                  ) : (
+                    <p className="text-lg font-serif py-3 text-secondary">{profile?.projects?.length ? profile.projects.join(', ') : 'Not set'}</p>
+                  )}
+                </div>
+              </section> */}
+
+              {/* Skills */}
+              <section className="pb-6 border-b border-gray-200">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
+                    Skills
+                  </h2>
+                  {profile?.onboarded && (
+                    editingSection === 'skills' ? (
+                      <div className="flex gap-2">
+                        <button onClick={() => cancelEditSection('skills')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-red-500 transition-colors">Cancel</button>
+                        <button onClick={() => handleSaveSection('skills')} disabled={savingSection === 'skills'} className="px-3 py-1.5 rounded-lg bg-foreground text-background text-xs font-medium flex items-center gap-1.5 hover:bg-foreground/90 transition-colors disabled:opacity-50">
+                          {savingSection === 'skills' ? <div className="w-3 h-3 border-2 border-background border-t-transparent rounded-full animate-spin" /> : <Check size={12} />}
+                          Save
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setEditingSection('skills')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-foreground hover:bg-gray-100 transition-colors">Edit</button>
+                    )
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {SKILL_OPTIONS.map((skill) => {
+                    const isSelected = selectedSkills.includes(skill.id);
+                    return editingSection === 'skills' ? (
+                      <button
+                        key={skill.id}
+                        onClick={() => toggleSkill(skill.id)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 border ${
+                          isSelected
+                            ? 'border-foreground bg-foreground text-background'
+                            : 'border-gray-200 bg-white text-foreground/80 hover:border-foreground/40'
+                        }`}
+                      >
+                        <span>{skill.label}</span>
+                        {isSelected && <Check size={14} />}
+                      </button>
+                    ) : isSelected ? (
+                      <span
+                        key={skill.id}
+                        className="px-4 py-2 rounded-full bg-gray-100 text-sm font-medium flex items-center gap-2"
+                      >
+                        <span>{skill.label}</span>
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              </section>
+
 
               {/* AI Insights */}
               {profile?.insights && Object.keys(profile.insights).some(k => {

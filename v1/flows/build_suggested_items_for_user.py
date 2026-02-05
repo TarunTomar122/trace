@@ -28,6 +28,7 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 from openai import OpenAI
 from v1.storage import FirestoreStore
+from v1.algorithm.interest_schema import get_interest_ids, get_interest_label
 
 
 MAX_SUGGESTED_TOPICS = 4
@@ -140,16 +141,20 @@ def _select_suggested_topics(
     client = OpenAI(api_key=api_key)
 
     context_lines = []
-    for key in ["role", "company", "goals", "learningStyle", "contentDepth"]:
+    for key in ["company", "goals", "learningStyle", "contentDepth"]:
         value = profile.get(key)
         if value:
             context_lines.append(f"{key}: {value}")
-    interests = profile.get("interests", []) or []
+    interest_ids = get_interest_ids(profile)
+    interests = [get_interest_label(i) for i in interest_ids]
     hobbies = profile.get("hobbies", []) or []
+    skills = profile.get("skills", []) or []
     if interests:
         context_lines.append(f"interests: {', '.join(interests[:12])}")
     if hobbies:
         context_lines.append(f"hobbies: {', '.join(hobbies[:12])}")
+    if skills:
+        context_lines.append(f"skills: {', '.join(skills[:12])}")
     context_block = "\n".join(context_lines)
 
     available = [t for t in topics if t["topic_id"] not in excluded_ids]
@@ -160,7 +165,7 @@ def _select_suggested_topics(
     prompt = (
         "Select up to 4 topic_ids that are NOT the user's direct topics, "
         "but are likely interesting based on their profile.\n"
-        "Bias toward topics that help someone in this role ship results.\n\n"
+        "Bias toward topics that help someone with these skills learn or apply them.\n\n"
         f"User context:\n{context_block}\n\n"
         "Available topics:\n"
         f"{topics_list}\n\n"
@@ -229,9 +234,12 @@ def build_suggested_items_for_user(
         print("No topics found in Firestore.")
         return {"user_id": user_id, "items_added": 0}
 
+    # Get user's current interests to exclude from suggestions
+    interest_ids = get_interest_ids(profile)
+    
     excluded_ids = {
         _normalize_interest(i)
-        for i in (profile.get("interests") or [])
+        for i in interest_ids
         if isinstance(i, str)
     } | {
         _normalize_interest(h)

@@ -21,7 +21,7 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 # Default sender configuration
 DEFAULT_SENDER_EMAIL = "yourtrace.online@gmail.com"
-DEFAULT_SENDER_NAME = "Your Online Trace"
+DEFAULT_SENDER_NAME = "Trace"
 
 # Retry configuration
 MAX_RETRIES = 3

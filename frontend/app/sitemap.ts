@@ -1,4 +1,5 @@
 import { MetadataRoute } from 'next'
+import { researchPosts } from './research/content'
 
 const TRENDING_TOPICS = [
   'frontend-performance',
@@ -50,6 +51,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.5,
     },
+    {
+      url: `${baseUrl}/research`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
   ];
 
   // Trending topic pages - high priority for SEO
@@ -60,5 +67,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.8,
   }));
 
-  return [...staticPages, ...trendingPages];
+  const researchPages: MetadataRoute.Sitemap = researchPosts.map((post) => ({
+    url: `${baseUrl}/research/${post.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'monthly' as const,
+    priority: 0.7,
+  }));
+
+  return [...staticPages, ...trendingPages, ...researchPages];
 }

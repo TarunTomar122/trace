@@ -115,14 +115,16 @@ export const HOBBY_SUGGESTIONS = [
 ];
 
 export const SKILL_SUGGESTIONS = [
-  { id: 'software-engineering', label: 'Software Engineering' },
-  { id: 'ai-engineer', label: 'AI Engineer' },
-  { id: 'ux-designer', label: 'UX Designer' },
-  { id: 'quant-researcher', label: 'Quant Researcher' },
-  { id: 'frontend', label: 'Frontend' },
-  { id: 'backend', label: 'Backend' },
-  { id: 'trading', label: 'Trading' },
+  { id: 'design', label: 'Design' },
+  { id: 'writing', label: 'Writing' },
   { id: 'marketing', label: 'Marketing' },
+  { id: 'business', label: 'Business' },
+  { id: 'software-tech', label: 'Software & Tech' },
+  { id: 'data-analytics', label: 'Data & Analytics' },
+  { id: 'finance', label: 'Finance' },
+  { id: 'education', label: 'Education' },
+  { id: 'health-wellness', label: 'Health & Wellness' },
+  { id: 'creative-arts', label: 'Creative Arts' },
 ];
 
 export const ROLES = [
@@ -253,7 +255,7 @@ export async function completeOnboarding(
   uid: string,
   data: {
     name: string;
-    role: string;
+    role?: string;
     interests: string[];
     hobbies: string[];
     skills: string[];
@@ -274,7 +276,6 @@ export async function completeOnboarding(
     
     const updateData: Record<string, unknown> = {
       name: data.name,
-      role: data.role,
       interests: data.interests,
       hobbies: data.hobbies,
       skills: data.skills,
@@ -285,6 +286,10 @@ export async function completeOnboarding(
       updatedAt: serverTimestamp(),
       onboardedAt: serverTimestamp(),
     };
+
+    if (data.role) {
+      updateData.role = data.role;
+    }
     
     // Only set goals if provided (Firebase doesn't accept undefined)
     if (data.goalsShortTerm) {

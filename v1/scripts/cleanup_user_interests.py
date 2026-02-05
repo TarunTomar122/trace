@@ -1,10 +1,10 @@
 """
-Cleanup script to normalize interests for all existing users.
+Cleanup script to migrate interests to the canonical schema.
 
 This script:
 1. Fetches all user profiles with interests/hobbies
-2. Normalizes their interests using LLM semantic matching
-3. Updates their profiles with normalized interests
+2. Maps interests to canonical interest_ids
+3. Stores interest_queries (if present)
 4. Optionally identifies orphaned topics for cleanup
 
 Usage:
@@ -27,11 +27,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 from v1.storage import FirestoreStore
-from v1.flows.normalize_user_interests import (
-    normalize_user_interests,
-    update_user_profile_interests,
-    get_existing_topics,
-)
+from v1.algorithm.interest_schema import get_interest_ids, get_interest_queries
 
 
 def get_all_users_with_interests(store: FirestoreStore) -> list[dict]:
@@ -81,9 +77,10 @@ def cleanup_user_interests(
     dry_run: bool = False,
     limit: int | None = None,
     show_orphans: bool = False,
+    user_id: str | None = None,
 ) -> dict:
     """
-    Normalize interests for all existing users.
+    Migrate interests to canonical interest_ids for all existing users.
 
     Args:
         dry_run: If True, don't actually update profiles
@@ -103,13 +100,20 @@ def cleanup_user_interests(
 
     # Get all users with interests
     print("Fetching users with interests/hobbies...")
-    users = get_all_users_with_interests(store)
-    print(f"Found {len(users)} users with interests/hobbies\n")
-
-    # Fetch existing topics ONCE
-    print("Fetching existing topics...")
-    existing_topics = get_existing_topics(store)
-    print(f"Found {len(existing_topics)} existing topics\n")
+    if user_id:
+        profile = store.get_user_profile(user_id)
+        if not profile:
+            print(f"User {user_id} not found")
+            return {"users_processed": 0, "users_updated": 0, "users_skipped": 0}
+        users = [{
+            "uid": user_id,
+            "interests": profile.get("interests", []) or [],
+            "hobbies": profile.get("hobbies", []) or [],
+            "name": profile.get("name", "Unknown"),
+        }]
+    else:
+        users = get_all_users_with_interests(store)
+        print(f"Found {len(users)} users with interests/hobbies\n")
 
     if limit:
         users = users[:limit]
@@ -136,45 +140,34 @@ def cleanup_user_interests(
         total_interests_before += len(interests) + len(hobbies)
 
         try:
-            # Normalize (pass pre-fetched topics to avoid repeated DB calls)
-            normalized = normalize_user_interests(
-                interests=interests,
-                hobbies=hobbies,
-                store=store,
-                existing_topics=existing_topics,
-            )
+            interest_ids = get_interest_ids(user)
+            interest_queries = get_interest_queries(user)
+            updates = {
+                "interest_ids": interest_ids,
+                "interest_queries": interest_queries,
+                "interestQueries": interest_queries,
+            }
 
-            new_interests = normalized["interests"]
-            new_hobbies = normalized["hobbies"]
+            if interests and interests != interest_ids:
+                updates["legacy_interests"] = interests
+                updates["interests"] = interest_ids
+            elif interest_ids and not interests:
+                updates["interests"] = interest_ids
 
-            # Track topic IDs for orphan detection
-            for m in normalized["interest_mappings"]:
-                tid = m.get("normalized_id")
+            total_interests_after += len(interest_ids) + len(hobbies)
+
+            for tid in interest_ids:
                 if tid:
                     all_normalized_topic_ids.add(tid)
                     topic_usage[tid] += 1
-            for m in normalized["hobby_mappings"]:
-                tid = m.get("normalized_id")
-                if tid:
-                    all_normalized_topic_ids.add(tid)
-                    topic_usage[tid] += 1
 
-            total_interests_after += len(new_interests) + len(new_hobbies)
-
-            # Check if anything changed
-            if set(interests) == set(new_interests) and set(hobbies) == set(new_hobbies):
+            if interests == interest_ids:
                 print("  No changes needed")
                 users_skipped += 1
             else:
-                print(f"  Normalized: {len(new_interests)} interests, {len(new_hobbies)} hobbies")
-
+                print(f"  Normalized: {len(interest_ids)} interests, {len(hobbies)} hobbies")
                 if not dry_run:
-                    update_user_profile_interests(
-                        user_id=uid,
-                        normalized_interests=new_interests,
-                        normalized_hobbies=new_hobbies,
-                        store=store,
-                    )
+                    store.db.collection("user_profiles").document(uid).update(updates)
                 users_updated += 1
 
             users_processed += 1
@@ -247,6 +240,10 @@ def main():
         action="store_true",
         help="Show orphaned topics at the end",
     )
+    parser.add_argument(
+        "--user-id",
+        help="Run for a single user",
+    )
 
     args = parser.parse_args()
 
@@ -254,6 +251,7 @@ def main():
         dry_run=args.dry_run,
         limit=args.limit,
         show_orphans=args.show_orphans,
+        user_id=args.user_id,
     )
 
 
