@@ -36,9 +36,9 @@ export default function Header({
   return (
     <header className="border-b border-gray-100 sticky top-0 bg-white/95 backdrop-blur-md z-50">
       <div className="container mx-auto px-4 md:px-6 lg:px-8 max-w-6xl">
-        <div className="flex items-center justify-between h-14 md:h-16">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center h-14 md:h-16">
           {/* Left side */}
-          <div className="flex items-center gap-2 flex-1">
+          <div className="flex items-center gap-2 min-w-0">
             {backHref ? (
               <Link 
                 href={backHref} 
@@ -69,7 +69,7 @@ export default function Header({
           {/* Center - Logo */}
           <Link 
             href="/" 
-            className="text-lg md:text-xl text-foreground uppercase flex items-center gap-3 md:gap-4 tracking-[0.1em] font-semibold absolute left-1/2 -translate-x-1/2"
+            className="justify-self-center text-lg md:text-xl text-foreground uppercase flex items-center gap-3 md:gap-4 tracking-[0.1em] font-semibold"
           >
             <img 
               src="/trace.png" 
@@ -80,7 +80,7 @@ export default function Header({
           </Link>
 
           {/* Right side */}
-          <div className="flex items-center gap-2 md:gap-3 flex-1 justify-end">
+          <div className="flex items-center gap-2 md:gap-3 justify-end min-w-0">
             {showBackToFeed ? (
               <button
                 onClick={handleSignOut}

@@ -46,6 +46,8 @@ except Exception as exc:  # pragma: no cover - runtime import guard
 MAX_INTERESTS_DEFAULT = 8
 MAX_HOBBIES_DEFAULT = 3
 RESULTS_PER_SEARCH = 10
+# Fetch extra to compensate for filtered junk URLs (tag pages, homepages, etc.)
+EXA_OVERFETCH_BUFFER = 5
 LOOKBACK_DAYS_DEFAULT = 60
 VIDEO_LOOKBACK_DAYS = 60
 MIN_REFRESH_DAYS_DEFAULT = 4
@@ -242,6 +244,57 @@ def _should_refresh_topic(topic_doc: dict, min_days: int) -> bool:
     return datetime.now(timezone.utc) - parsed >= timedelta(days=min_days)
 
 
+# URL patterns that indicate non-article pages (tag pages, homepages, etc.)
+JUNK_URL_PATTERNS = [
+    "/tag/",
+    "/tags/",
+    "/category/",
+    "/categories/",
+    "/top/",
+    "/topics/",
+    "/topic/",
+    "/replay/",
+    "/embed/",
+    "/search?",
+    "/search/",
+    "/author/",
+    "/authors/",
+    "/archive/",
+    "/archives/",
+    "/page/",
+    "/feed/",
+    "/rss/",
+    "/about/",
+    "/contact/",
+    "/privacy",
+    "/terms",
+    "/login",
+    "/signup",
+    "/subscribe",
+    "/pricing",
+]
+
+
+def _is_junk_url(url: str) -> bool:
+    """Check if URL is a tag page, homepage, or other non-article page."""
+    if not url:
+        return True
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        path = parsed.path.lower()
+        # Homepage check: empty path or just "/"
+        if not path or path == "/" or path == "/index.html":
+            return True
+        # Check for junk patterns
+        for pattern in JUNK_URL_PATTERNS:
+            if pattern in path:
+                return True
+        return False
+    except Exception:
+        return False
+
+
 def _extract_items(results) -> list[dict]:
     items = []
     for r in results or []:
@@ -254,7 +307,7 @@ def _extract_items(results) -> list[dict]:
         else:
             url = None
             title = None
-        if url:
+        if url and not _is_junk_url(url):
             items.append(
                 {
                     "url": url,
@@ -283,12 +336,14 @@ def _search_exa(
     """Search Exa with retry logic for transient failures (502, 503, etc.)"""
     last_error = None
     include_domains = include_domains or None
+    # Over-fetch to compensate for junk URLs that get filtered out
+    fetch_count = RESULTS_PER_SEARCH + EXA_OVERFETCH_BUFFER
     for attempt in range(max_retries):
         try:
             try:
                 response = exa.search(
                     query,
-                    num_results=RESULTS_PER_SEARCH,
+                    num_results=fetch_count,
                     start_published_date=start_date,
                     end_published_date=end_date,
                     type="auto",
@@ -298,7 +353,7 @@ def _search_exa(
             except TypeError:
                 response = exa.search(
                     query,
-                    num_results=RESULTS_PER_SEARCH,
+                    num_results=fetch_count,
                     start_published_date=start_date,
                     end_published_date=end_date,
                     type="auto",
@@ -309,7 +364,7 @@ def _search_exa(
                 # Fallback to broader search to avoid empty feeds
                 fallback = exa.search(
                     query,
-                    num_results=RESULTS_PER_SEARCH,
+                    num_results=fetch_count,
                     start_published_date=start_date,
                     end_published_date=end_date,
                     type="auto",

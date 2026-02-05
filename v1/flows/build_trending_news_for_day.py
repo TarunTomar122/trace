@@ -158,6 +158,38 @@ def _get_today_ist_date() -> str:
     return datetime.now(ist_tz).strftime("%Y-%m-%d")
 
 
+# URL patterns that indicate non-article pages
+JUNK_URL_PATTERNS = [
+    "/tag/", "/tags/", "/category/", "/categories/",
+    "/top/", "/topics/", "/topic/",
+    "/replay/", "/embed/", "/video/",
+    "/search?", "/search/",
+    "/author/", "/authors/",
+    "/archive/", "/archives/",
+    "/page/", "/feed/", "/rss/",
+    "/about/", "/contact/",
+    "/privacy", "/terms", "/login", "/signup", "/subscribe",
+]
+
+
+def _is_junk_url(url: str) -> bool:
+    """Check if URL is a tag page, homepage, or other non-article page."""
+    if not url:
+        return True
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        path = parsed.path.lower()
+        if not path or path == "/" or path == "/index.html":
+            return True
+        for pattern in JUNK_URL_PATTERNS:
+            if pattern in path:
+                return True
+        return False
+    except Exception:
+        return False
+
+
 def _dedupe_articles_by_url(articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Deduplicate articles by URL, keeping the first occurrence."""
     seen_urls: set[str] = set()
@@ -165,7 +197,7 @@ def _dedupe_articles_by_url(articles: list[dict[str, Any]]) -> list[dict[str, An
 
     for article in articles:
         url = article.get("url")
-        if url and url not in seen_urls:
+        if url and url not in seen_urls and not _is_junk_url(url):
             seen_urls.add(url)
             deduped.append(article)
 

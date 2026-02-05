@@ -21,12 +21,15 @@
     "posthog-js": "^1.336.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "standardwebhooks": "^1.0.0",
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@remotion/cli": "^4.0.409",
     "@tailwindcss/postcss": "^4",
+    "@tailwindcss/typography": "^0.5.19",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

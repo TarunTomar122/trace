@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Youtube,
   Github,
@@ -18,10 +19,10 @@ import {
   Brain,
   Zap,
   Eye,
-  Check,
   Newspaper,
   Flame,
-  Loader2
+  Loader2,
+  ChevronRight
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,6 +32,7 @@ import { getUserPatterns } from '@/lib/firestore';
 import { buildTraceInsights, TraceInsights } from '@/lib/traceInsights';
 import TraceInsightCard from '@/components/TraceInsightCard';
 import { trackFeedViewed, trackFeedItemUpvoted, trackFeedItemDownvoted, trackFeedItemBookmarked, trackFeedItemClicked } from '@/lib/posthog';
+import remarkGfm from 'remark-gfm';
 
 type FeedItem = {
   id: string;
@@ -43,6 +45,14 @@ type FeedItem = {
   view_count?: number | null;
   stars?: number | null;
   tags?: string[];
+  summary?: {
+    short_article?: {
+      subtitle?: string;
+      outline?: string[];
+      body?: string;
+    };
+    reading_time_minutes?: number;
+  };
   metadata?: {
     why_relevant?: string;
     is_hot?: boolean;
@@ -82,52 +92,113 @@ const sourceConfig: Record<string, { icon: typeof Youtube; color: string; label:
   news: { icon: Newspaper, color: 'text-orange-500', label: 'News', accent: 'bg-orange-500', bg: 'bg-orange-50' },
 };
 
-function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, onDisabledClick, onVisible, initialBookmarked, isBookmarkLoading }: {
+const formatSummaryBody = (body: string): string => {
+  let formatted = body.trim();
+  formatted = formatted.replace(/(#{2,3}\s*[^\n]+)/g, '$1\n\n');
+  formatted = formatted.replace(/(?<!\n)\n?(#{2,3}\s)/g, '\n\n$1');
+  formatted = formatted.replace(/\n(?!\n|#|[-*]\s|\d+\.\s)/g, '\n\n');
+  if (!formatted.includes('\n\n')) {
+    formatted = formatted.replace(/([.!?])\s+(?=[A-Z])/g, '$1\n\n');
+  }
+  return formatted.replace(/\n{3,}/g, '\n\n').trim();
+};
+
+// Simple feed item card for the list view
+function FeedListItem({ item, onClick, showSubscribeCta }: {
   item: FeedItem;
+  onClick: () => void;
+  showSubscribeCta?: boolean;
+}) {
+  const itemKind = item.type || item.source || 'blog';
+  const config = sourceConfig[itemKind] || sourceConfig.blog;
+  const Icon = config.icon;
+  const subtitle = item.summary?.short_article?.subtitle;
+  const hasSummary = Boolean(item.summary?.short_article?.body);
+
+  return (
+    <article
+      className="group p-4 md:p-5 rounded-xl transition-colors cursor-pointer hover:bg-gray-50"
+      onClick={onClick}
+    >
+      <div className="flex items-start gap-3 md:gap-4">
+        {/* Source icon - hidden on mobile */}
+        <div className={`hidden md:flex w-12 h-12 rounded-xl items-center justify-center shrink-0 ${config.bg}`}>
+          <Icon size={20} className={config.color} strokeWidth={1.5} />
+        </div>
+        
+        <div className="flex-1 min-w-0">
+          {/* Source label + badges */}
+          <div className="flex items-center gap-2 mb-1.5 md:mb-2">
+            <span className={`text-[10px] font-medium uppercase tracking-wider ${config.color}`}>{config.label}</span>
+            {item.metadata?.is_hot && itemKind !== 'news' && (
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">
+                <Flame size={10} strokeWidth={2} />
+                <span className="text-[9px] font-medium uppercase tracking-wider">Hot</span>
+              </span>
+            )}
+          </div>
+
+          {/* Title */}
+          <h3 className="text-base md:text-lg font-medium leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2 mb-1.5">
+            {item.title}
+            {hasSummary ? (
+              <ChevronRight size={14} className="inline ml-1 opacity-40 group-hover:opacity-70 transition-opacity" />
+            ) : (
+              <ArrowUpRight size={14} className="inline ml-1 opacity-40 group-hover:opacity-70 transition-opacity" />
+            )}
+          </h3>
+
+          {/* Subtitle from summary OR subscribe hint */}
+          {subtitle ? (
+            <p className="text-sm text-secondary/70 line-clamp-2">
+              {subtitle}
+            </p>
+          ) : showSubscribeCta ? (
+            <p className="text-xs text-secondary/50 mt-1 italic">
+              Subscribe to unlock AI lessons
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+// Article detail view component
+function ArticleView({ 
+  item, 
+  onBack,
+  onUpvote,
+  onDownvote,
+  onStar,
+  initialVote,
+  initialBookmarked,
+  isBookmarkLoading,
+  disabled,
+  onDisabledClick,
+  hasAccess
+}: {
+  item: FeedItem;
+  onBack: () => void;
   onUpvote: (note?: string) => void;
   onDownvote: (note?: string) => void;
   onStar: () => void;
   initialVote?: 'upvote' | 'downvote';
-  disabled?: boolean;
-  onDisabledClick?: () => void;
-  onVisible?: (itemId: string) => void;
   initialBookmarked?: boolean;
   isBookmarkLoading?: boolean;
+  disabled?: boolean;
+  onDisabledClick?: () => void;
+  hasAccess: boolean;
 }) {
-  const cardRef = useRef<HTMLElement>(null);
-  const hasBeenSeen = useRef(false);
   const itemKind = item.type || item.source || 'blog';
   const config = sourceConfig[itemKind] || sourceConfig.blog;
   const Icon = config.icon;
+  const shortSummary = item.summary?.short_article;
   const [upvoted, setUpvoted] = useState(initialVote === 'upvote');
   const [downvoted, setDownvoted] = useState(initialVote === 'downvote');
   const [bookmarked, setBookmarked] = useState(initialBookmarked || false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedback, setFeedback] = useState('');
-  const relevance = item.metadata?.why_relevant;
-
-  // Intersection Observer to track when item becomes visible
-  useEffect(() => {
-    if (!onVisible || hasBeenSeen.current || item._seen) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && !hasBeenSeen.current) {
-            hasBeenSeen.current = true;
-            onVisible(item.id);
-          }
-        });
-      },
-      { threshold: 0.5 } // Item is 50% visible
-    );
-
-    if (cardRef.current) {
-      observer.observe(cardRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, [item.id, item._seen, onVisible]);
 
   useEffect(() => {
     setUpvoted(initialVote === 'upvote');
@@ -173,184 +244,201 @@ function FeedCard({ item, onUpvote, onDownvote, onStar, initialVote, disabled, o
   };
 
   return (
-    <article
-      ref={cardRef}
-      className="group p-4 md:p-5 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
-      onClick={(e) => {
-        // Only navigate if not clicking on action buttons
-        const target = e.target as HTMLElement;
-        if (!target.closest('button')) {
-          trackFeedItemClicked(item.id, itemKind, item.source || 'unknown');
-          window.open(item.url, '_blank', 'noopener,noreferrer');
-        }
-      }}
-    >
-      {/* Top row: icon + source + context */}
-      <div className="flex items-start gap-3 md:gap-4">
-        {/* Source icon - hidden on mobile, visible on desktop */}
-        <div className={`hidden md:flex w-12 h-12 rounded-xl items-center justify-center shrink-0 ${config.bg}`}>
-          <Icon size={20} className={config.color} strokeWidth={1.5} />
+    <div className="max-w-3xl mx-auto">
+      {/* Breadcrumbs */}
+      <nav className="flex items-center gap-2 text-sm text-secondary/70 mb-6">
+        <button 
+          onClick={onBack}
+          className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+        >
+          Feed
+        </button>
+        <ChevronRight size={14} className="text-secondary/40" />
+        <span className="text-foreground font-medium truncate max-w-[200px] md:max-w-md">
+          {item.title}
+        </span>
+      </nav>
+
+      {/* Free lesson callout for unsubscribed users */}
+      {!hasAccess && (
+        <div className="mb-6 p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center gap-3">
+          <Sparkles size={18} className="text-emerald-600 shrink-0" />
+          <p className="text-sm text-emerald-800">
+            Enjoy this free AI lesson! <Link href="/profile?tab=subscription" className="font-medium underline underline-offset-2 hover:text-emerald-900">Subscribe</Link> to unlock lessons for every article.
+          </p>
+        </div>
+      )}
+
+      {/* Article header */}
+      <header className="mb-8">
+        <div className="flex items-center gap-2 mb-3">
+          <div className={`flex w-8 h-8 rounded-lg items-center justify-center ${config.bg}`}>
+            <Icon size={16} className={config.color} strokeWidth={1.5} />
+          </div>
+          <span className={`text-xs font-medium uppercase tracking-wider ${config.color}`}>{config.label}</span>
+          {item.metadata?.is_hot && itemKind !== 'news' && (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">
+              <Flame size={10} strokeWidth={2} />
+              <span className="text-[9px] font-medium uppercase tracking-wider">Hot</span>
+            </span>
+          )}
         </div>
         
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          {/* Source label */}
-          <div className="flex items-center gap-2 mb-1.5 md:mb-2">
-            <span className={`text-[10px] font-medium uppercase tracking-wider ${config.color}`}>{config.label}</span>
-            {item.metadata?.is_hot && itemKind !== 'news' && (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">
-                <Flame size={10} strokeWidth={2} />
-                <span className="text-[9px] font-medium uppercase tracking-wider">Hot</span>
-              </span>
-            )}
-          </div>
+        <h1 className="text-2xl md:text-3xl font-semibold leading-tight text-foreground mb-4">
+          {item.title}
+        </h1>
 
-          {/* Title - the main focus */}
-          <div className="mb-2 md:mb-3">
-            <h3 className="text-base md:text-lg font-medium leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
-              {item.title}
-              <ArrowUpRight
-                size={14}
-                className="inline ml-1 opacity-40 md:opacity-0 group-hover:opacity-60 transition-opacity"
-              />
-            </h3>
-          </div>
+        {shortSummary?.subtitle && (
+          <p className="text-lg text-secondary italic">
+            {shortSummary.subtitle}
+          </p>
+        )}
+      </header>
 
-          {/* Relevance below title (no clamp) */}
-          {relevance && (
-            <p className="text-xs text-secondary/70 mb-3 md:mb-4">
-              {relevance}
-            </p>
-          )}
-
-          {/* Actions row - rounded buttons */}
-          <div className="flex items-center gap-1 md:gap-1.5">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleUpvote();
-              }}
-              className={`flex items-center gap-1.5 p-2 rounded-lg transition-colors active:scale-95 ${disabled
-                  ? 'text-secondary/20 cursor-not-allowed'
-                  : upvoted
-                    ? 'text-green-500 bg-green-50'
-                    : 'text-secondary/40 hover:text-green-500 hover:bg-green-50'
-                }`}
-              title={disabled ? "Subscribe to teach Trace" : "Upvote"}
-            >
-              <ThumbsUp size={18} className="md:hidden" fill={upvoted ? 'currentColor' : 'none'} strokeWidth={1.5} />
-              <ThumbsUp size={16} className="hidden md:block" fill={upvoted ? 'currentColor' : 'none'} strokeWidth={1.5} />
-            </button>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDownvote();
-              }}
-              className={`flex items-center gap-1.5 p-2 rounded-lg transition-colors active:scale-95 ${disabled
-                  ? 'text-secondary/20 cursor-not-allowed'
-                  : downvoted
-                    ? 'text-red-500 bg-red-50'
-                    : 'text-secondary/40 hover:text-red-500 hover:bg-red-50'
-                }`}
-              title={disabled ? "Subscribe to teach Trace" : "Downvote"}
-            >
-              <ThumbsDown size={18} className="md:hidden" fill={downvoted ? 'currentColor' : 'none'} strokeWidth={1.5} />
-              <ThumbsDown size={16} className="hidden md:block" fill={downvoted ? 'currentColor' : 'none'} strokeWidth={1.5} />
-            </button>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (disabled) {
-                  onDisabledClick?.();
-                  return;
-                }
-                setShowFeedback(!showFeedback);
-              }}
-              className={`flex items-center gap-1.5 p-2 rounded-lg transition-colors active:scale-95 ${disabled
-                  ? 'text-secondary/20 cursor-not-allowed'
-                  : 'text-secondary/40 hover:text-blue-500 hover:bg-blue-50'
-                }`}
-              title={disabled ? "Subscribe to teach Trace" : "Add feedback"}
-            >
-              <MessageSquare size={18} className="md:hidden" strokeWidth={1.5} />
-              <MessageSquare size={16} className="hidden md:block" strokeWidth={1.5} />
-            </button>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (disabled) {
-                  onDisabledClick?.();
-                  return;
-                }
-                if (isBookmarkLoading) return;
-                setBookmarked(!bookmarked);
-                onStar();
-              }}
-              className={`flex items-center gap-1.5 p-2 rounded-lg transition-colors ml-auto active:scale-95 ${disabled
-                  ? 'text-secondary/20 cursor-not-allowed'
-                  : isBookmarkLoading
-                    ? 'text-secondary/40'
-                    : bookmarked
-                      ? 'text-primary bg-primary/10'
-                      : 'text-secondary/40 hover:text-primary hover:bg-primary/10'
-                }`}
-              title={disabled ? "Subscribe to teach Trace" : "Bookmark"}
-              disabled={isBookmarkLoading}
-            >
-              {isBookmarkLoading ? (
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <>
-                  <Bookmark size={18} className="md:hidden" fill={bookmarked ? 'currentColor' : 'none'} strokeWidth={1.5} />
-                  <Bookmark size={16} className="hidden md:block" fill={bookmarked ? 'currentColor' : 'none'} strokeWidth={1.5} />
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Feedback input - expandable */}
-          <AnimatePresence>
-            {showFeedback && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="mt-3 md:mt-4 flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="text"
-                    value={feedback}
-                    onChange={(e) => setFeedback(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleFeedbackSubmit()}
-                    placeholder="Notes for Trace?"
-                    className="flex-1 px-3 md:px-4 py-2.5 md:py-2 text-sm font-mono bg-transparent border border-border focus:border-primary focus:outline-none transition-colors"
-                    autoFocus
-                  />
-                  <button
-                    onClick={handleFeedbackSubmit}
-                    disabled={!feedback.trim()}
-                    className="px-6 py-2.5 md:py-2 text-[10px] font-mono uppercase tracking-widest bg-primary text-primary-foreground disabled:opacity-40 transition-opacity active:scale-98"
-                  >
-                    Send
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+      {/* Article body */}
+      {shortSummary?.body && (
+        <div className="prose prose-lg max-w-none text-foreground prose-headings:font-semibold prose-headings:text-foreground prose-h2:text-xl prose-h2:mt-8 prose-h2:mb-4 prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-3 prose-p:leading-relaxed prose-p:mb-5 prose-ul:my-5 prose-li:my-1.5 mb-10">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {formatSummaryBody(shortSummary.body)}
+          </ReactMarkdown>
         </div>
+      )}
+
+      {/* Actions bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-5 border-t border-gray-200">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleUpvote}
+            className={`flex items-center gap-1 p-2 rounded-lg transition-colors ${disabled
+                ? 'text-secondary/20 cursor-not-allowed'
+                : upvoted
+                  ? 'text-green-500 bg-green-50'
+                  : 'text-secondary/60 hover:text-green-500 hover:bg-green-50'
+              }`}
+            title={disabled ? "Subscribe to teach Trace" : "Upvote"}
+          >
+            <ThumbsUp size={18} fill={upvoted ? 'currentColor' : 'none'} strokeWidth={1.5} />
+            <span className="text-xs font-medium hidden sm:inline">Like</span>
+          </button>
+
+          <button
+            onClick={handleDownvote}
+            className={`flex items-center gap-1 p-2 rounded-lg transition-colors ${disabled
+                ? 'text-secondary/20 cursor-not-allowed'
+                : downvoted
+                  ? 'text-red-500 bg-red-50'
+                  : 'text-secondary/60 hover:text-red-500 hover:bg-red-50'
+              }`}
+            title={disabled ? "Subscribe to teach Trace" : "Downvote"}
+          >
+            <ThumbsDown size={18} fill={downvoted ? 'currentColor' : 'none'} strokeWidth={1.5} />
+            <span className="text-xs font-medium hidden sm:inline">Dislike</span>
+          </button>
+
+          <button
+            onClick={() => {
+              if (disabled) {
+                onDisabledClick?.();
+                return;
+              }
+              setShowFeedback(!showFeedback);
+            }}
+            className={`flex items-center gap-1 p-2 rounded-lg transition-colors ${disabled
+                ? 'text-secondary/20 cursor-not-allowed'
+                : showFeedback
+                  ? 'text-blue-500 bg-blue-50'
+                  : 'text-secondary/60 hover:text-blue-500 hover:bg-blue-50'
+              }`}
+            title={disabled ? "Subscribe to teach Trace" : "Add feedback"}
+          >
+            <MessageSquare size={18} strokeWidth={1.5} />
+            <span className="text-xs font-medium hidden sm:inline">Notes</span>
+          </button>
+
+          <button
+            onClick={() => {
+              if (disabled) {
+                onDisabledClick?.();
+                return;
+              }
+              if (isBookmarkLoading) return;
+              setBookmarked(!bookmarked);
+              onStar();
+            }}
+            className={`flex items-center gap-1 p-2 rounded-lg transition-colors ${disabled
+                ? 'text-secondary/20 cursor-not-allowed'
+                : isBookmarkLoading
+                  ? 'text-secondary/40'
+                  : bookmarked
+                    ? 'text-primary bg-primary/10'
+                    : 'text-secondary/60 hover:text-primary hover:bg-primary/10'
+              }`}
+            title={disabled ? "Subscribe to teach Trace" : "Bookmark"}
+            disabled={isBookmarkLoading}
+          >
+            {isBookmarkLoading ? (
+              <div className="w-[18px] h-[18px] border-2 border-current border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Bookmark size={18} fill={bookmarked ? 'currentColor' : 'none'} strokeWidth={1.5} />
+            )}
+            <span className="text-xs font-medium hidden sm:inline">Save</span>
+          </button>
+        </div>
+
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full bg-foreground text-background hover:bg-foreground/90 transition-colors w-full sm:w-auto"
+        >
+          <ArrowUpRight size={14} />
+          Open original
+        </a>
       </div>
-    </article>
+
+      {/* Feedback input */}
+      <AnimatePresence>
+        {showFeedback && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="py-4 border-t border-gray-100">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleFeedbackSubmit()}
+                  placeholder="Tell Trace what you think about this article..."
+                  className="flex-1 px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
+                  autoFocus
+                />
+                <button
+                  onClick={handleFeedbackSubmit}
+                  disabled={!feedback.trim()}
+                  className="px-5 py-3 text-sm font-medium rounded-xl bg-foreground text-background disabled:opacity-40 hover:bg-foreground/90 transition-all"
+                >
+                  Send feedback
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
 type FilterType = 'all' | string;
 
-export default function FeedPage() {
+function FeedPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const selectedItemId = searchParams.get('item');
+  
   const { user, loading, profile } = useAuth();
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [feedDate, setFeedDate] = useState<string>('');
@@ -376,22 +464,10 @@ export default function FeedPage() {
   const isLoadingRef = useRef(false);
   const hasLoadedInitialFeed = useRef(false);
 
-  // Feed generation timer state (for newly onboarded users)
-  const [feedGenTimeRemaining, setFeedGenTimeRemaining] = useState(90); // 90 seconds total
+  const [feedGenTimeRemaining, setFeedGenTimeRemaining] = useState(90);
   const [feedGenActive, setFeedGenActive] = useState(false);
   const feedGenRefreshAttempted = useRef(false);
 
-  // Feedback state
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [feedbackMessage, setFeedbackMessage] = useState('');
-  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
-
-  // Seen items tracking - batch updates
-  const seenItemsBuffer = useRef<Set<string>>(new Set());
-  const seenFlushTimeout = useRef<NodeJS.Timeout | null>(null);
-
-  // Check if user has seen the hint before
   useEffect(() => {
     const hasSeenHint = localStorage.getItem('feed-hint-dismissed');
     if (!hasSeenHint) {
@@ -405,11 +481,11 @@ export default function FeedPage() {
     setInsightDismissed(dismissed);
   }, []);
 
-  // Use personalized feed for onboarded users (subscribed or not), otherwise general feed
   const isOnboarded = profile?.onboarded ?? false;
-  const showPersonalizedFeed = isOnboarded; // Show feed for ALL onboarded users
+  const showPersonalizedFeed = isOnboarded;
   const isFallbackFeed = showPersonalizedFeed && !isFeedLoading && feed.length === 0;
   const currentFeed = isFallbackFeed ? generalFeed : (!showPersonalizedFeed ? generalFeed : feed);
+  
   const normalizeInterest = (interest: string) => {
     return interest
       .toLowerCase()
@@ -440,11 +516,9 @@ export default function FeedPage() {
   }));
 
   const availableProfileFilters = profileFilters.filter((filter) => availableTagIds.has(filter.id));
-  // Use profile filters that match feed tags, fall back to all feed tags if no match
   const topicFilters = availableProfileFilters.length > 0 ? availableProfileFilters : tagFilters;
   const insightInsertIndex = 2;
   const canShowTraceInsight = Boolean(showTraceInsight && traceInsights && !traceInsightsLoading);
-  const primaryFilterLabel = showPersonalizedFeed && !isFallbackFeed ? 'For you' : 'Discover';
 
   useEffect(() => {
     if (!user || !profile?.onboarded) {
@@ -476,12 +550,23 @@ export default function FeedPage() {
     };
   }, [user, profile]);
 
-  const filteredFeed = activeFilter === 'all'
+  const filteredByTopic = activeFilter === 'all'
     ? currentFeed
     : currentFeed.filter((item) => {
       const tags = item.tags || [];
       return tags.includes(activeFilter);
     });
+
+  // For subscribed users: only show items with summaries
+  // For unsubscribed users: show all items (they can still view summaries if they exist)
+  const filteredFeed = hasAccess
+    ? filteredByTopic.filter((item) => item.summary?.short_article?.body)
+    : filteredByTopic;
+
+  // Find selected item
+  const selectedItem = selectedItemId 
+    ? filteredFeed.find(item => item.id === selectedItemId) || currentFeed.find(item => item.id === selectedItemId)
+    : null;
 
   useEffect(() => {
     if (!traceInsights || insightDismissed || !hasAccess) return;
@@ -490,7 +575,6 @@ export default function FeedPage() {
     }
   }, [interactionCount, traceInsights, insightDismissed, showTraceInsight, hasAccess]);
 
-
   useEffect(() => {
     if (activeFilter === 'all') return;
     if (!topicFilters.some((filter) => filter.id === activeFilter)) {
@@ -498,19 +582,13 @@ export default function FeedPage() {
     }
   }, [activeFilter, topicFilters]);
 
-  // Check subscription access
   useEffect(() => {
     if (profile) {
       const subscriptionStatus = profile.subscriptionStatus || 'none';
-
-      // Check if they have active/trial status
       let hasValidAccess = ['trial', 'active'].includes(subscriptionStatus);
 
-      // If cancelled but still active, check if cancellation date has passed
       if (hasValidAccess && profile.cancelledAt) {
         const now = new Date();
-
-        // Helper to convert Firestore Timestamp to Date
         const toDate = (ts: Date | { seconds: number } | null | undefined): Date | null => {
           if (!ts) return null;
           if (ts instanceof Date) return ts;
@@ -522,11 +600,8 @@ export default function FeedPage() {
 
         const willCancelAt = toDate(profile.willCancelAt);
         const nextBilling = toDate(profile.nextBillingDate);
-
-        // Use willCancelAt if available, otherwise nextBillingDate
         const cancelDate = willCancelAt || nextBilling;
 
-        // If cancellation date has passed, revoke access
         if (cancelDate && now >= cancelDate) {
           hasValidAccess = false;
         }
@@ -537,7 +612,6 @@ export default function FeedPage() {
   }, [profile]);
 
   useEffect(() => {
-    // Alpha mode check: if not in alpha mode, redirect to waitlist
     if (!isAlphaMode()) {
       if (user) {
         router.push('/waitlist');
@@ -560,7 +634,6 @@ export default function FeedPage() {
       const token = await user?.getIdToken();
       if (!token) return;
 
-      // Load interactions for this specific feed (by its generation date)
       const response = await fetch(`/api/interactions?date=${feedGenDate}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -589,71 +662,7 @@ export default function FeedPage() {
     }
   }, [user]);
 
-  // Flush seen items to server (batched)
-  const flushSeenItems = useCallback(async () => {
-    if (!user || !feedDate || seenItemsBuffer.current.size === 0) return;
-
-    const itemIds = Array.from(seenItemsBuffer.current);
-    seenItemsBuffer.current.clear();
-
-    try {
-      const token = await user.getIdToken();
-      await fetch('/api/feed/seen', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          date: feedDate,
-          item_ids: itemIds,
-        }),
-      });
-
-      // Update unseen count locally
-      setUnseenCount(prev => Math.max(0, prev - itemIds.length));
-    } catch (error) {
-      console.error('Error marking items as seen:', error);
-      // Re-add failed items back to buffer
-      itemIds.forEach(id => seenItemsBuffer.current.add(id));
-    }
-  }, [user, feedDate]);
-
-  // Handle item becoming visible
-  const handleItemVisible = useCallback((itemId: string) => {
-    seenItemsBuffer.current.add(itemId);
-
-    // Update local feed state to mark as seen
-    setFeed(prev => prev.map(item =>
-      item.id === itemId ? { ...item, _seen: true } : item
-    ));
-
-    // Debounce flush - wait 2 seconds after last seen item
-    if (seenFlushTimeout.current) {
-      clearTimeout(seenFlushTimeout.current);
-    }
-    seenFlushTimeout.current = setTimeout(flushSeenItems, 2000);
-  }, [flushSeenItems]);
-
-  // Flush on unmount
-  useEffect(() => {
-    const timeoutRef = seenFlushTimeout.current;
-    const bufferRef = seenItemsBuffer.current;
-
-    return () => {
-      if (timeoutRef) {
-        clearTimeout(timeoutRef);
-      }
-      // Sync flush on unmount - copy buffer size to avoid ref access in cleanup
-      if (bufferRef.size > 0) {
-        flushSeenItems();
-      }
-    };
-  }, [flushSeenItems]);
-
-  // Load full feed and shuffle on each visit
   const loadFeed = useCallback(async (uid: string, dateOverride?: string) => {
-    // Prevent concurrent loads
     if (isLoadingRef.current) return;
     isLoadingRef.current = true;
 
@@ -680,19 +689,22 @@ export default function FeedPage() {
       if (response.ok) {
         const data = await response.json();
         const items = Array.isArray(data.items) ? data.items : [];
-        setFeed(shuffleItems(items));
-        setFeedMetadata(data.metadata || null);  // Store feed metadata
-        setFeedDate(data.feedDate || '');
-        setUnseenCount(data.unseenCount || 0);
-        
-        // Track feed view
-        trackFeedViewed(items.length, data.metadata?.is_preview);
+        const sortedItems = items.map((item: FeedItem, index: number) => ({
+          ...item,
+          _originalIndex: index,
+        }));
 
-        // Defer interactions loading - don't block feed render
+        setFeed(sortedItems);
+        setFeedMetadata(data.metadata || null);
+
         if (data.feedDate) {
-          // Load interactions in background after feed is displayed
-          setTimeout(() => loadInteractions(uid, data.feedDate), 100);
+          setFeedDate(data.feedDate);
         }
+
+        const unseenItems = sortedItems.filter((item: FeedItem) => !item._seen);
+        setUnseenCount(unseenItems.length);
+
+        trackFeedViewed(items.length, data.metadata?.is_preview);
       }
     } catch (error) {
       console.error('Error loading feed:', error);
@@ -700,10 +712,8 @@ export default function FeedPage() {
       setIsFeedLoading(false);
       isLoadingRef.current = false;
     }
-  }, [user, loadInteractions]);
+  }, [user]);
 
-  // Load general feed for non-onboarded users
-  // Sample feed from topics (10 items)
   const loadGeneralFeed = useCallback(async () => {
     if (!user) return;
     setIsLoadingGeneral(true);
@@ -726,9 +736,9 @@ export default function FeedPage() {
     setIsLoadingGeneral(false);
   }, [user]);
 
-  // Load bookmarks lazily (only when needed)
   const loadBookmarks = useCallback(async () => {
     if (!user || bookmarksLoaded) return;
+
     try {
       const token = await user.getIdToken();
       const response = await fetch('/api/bookmarks', {
@@ -738,7 +748,9 @@ export default function FeedPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        const bookmarkIds = new Set<string>(data.bookmarks.map((b: { item_id: string }) => b.item_id));
+        const bookmarkIds = new Set<string>(
+          (data.bookmarks || []).map((b: { item_id: string }) => b.item_id)
+        );
         setBookmarkedItems(bookmarkIds);
         setBookmarksLoaded(true);
       }
@@ -747,82 +759,53 @@ export default function FeedPage() {
     }
   }, [user, bookmarksLoaded]);
 
-  // Bookmarks are now loaded lazily when user clicks bookmark icon
-
   useEffect(() => {
-    // Load feed for ALL onboarded users (subscribed and unsubscribed)
-    // Feed content differs based on subscription (handled by backend)
-    if (user && profile?.onboarded && !hasLoadedInitialFeed.current) {
-      hasLoadedInitialFeed.current = true;
+    if (!user || loading) return;
+
+    if (hasLoadedInitialFeed.current) return;
+    hasLoadedInitialFeed.current = true;
+
+    if (showPersonalizedFeed) {
       loadFeed(user.uid);
     }
-  }, [user, profile?.onboarded, loadFeed]);
+    loadGeneralFeed();
+  }, [user, loading, showPersonalizedFeed, loadFeed, loadGeneralFeed]);
 
-  // Fallback: Load sample topics feed for non-onboarded users only
   useEffect(() => {
-    const isNotOnboarded = profile && !profile.onboarded;
-    const shouldLoadFallback = isFallbackFeed && generalFeed.length === 0 && !isLoadingGeneral;
-    if (user && isNotOnboarded && generalFeed.length === 0 && feed.length === 0) {
-      loadGeneralFeed();
-      return;
-    }
-    if (user && shouldLoadFallback) {
-      loadGeneralFeed();
-    }
-  }, [user, profile, generalFeed.length, feed.length, loadGeneralFeed, isFallbackFeed, isLoadingGeneral]);
+    if (!showPersonalizedFeed || !isFallbackFeed || feedGenActive) return;
 
-  // Feed generation timer for newly onboarded users
-  useEffect(() => {
-    // Start timer when we detect fallback feed (user onboarded but no personalized feed yet)
-    if (isFallbackFeed && !feedGenActive && feedGenTimeRemaining === 90) {
-      setFeedGenActive(true);
-    }
-    
-    // Stop timer if we got a real feed
-    if (!isFallbackFeed && feed.length > 0) {
-      setFeedGenActive(false);
-    }
-  }, [isFallbackFeed, feed.length, feedGenActive, feedGenTimeRemaining]);
+    setFeedGenActive(true);
 
-  // Countdown timer
-  useEffect(() => {
-    if (!feedGenActive || feedGenTimeRemaining <= 0) return;
-
-    const interval = setInterval(() => {
-      setFeedGenTimeRemaining(prev => {
-        const newTime = prev - 1;
-        
-        // At 10 seconds remaining (80 seconds elapsed), try to refresh feed
-        if (newTime === 10 && !feedGenRefreshAttempted.current && user) {
-          feedGenRefreshAttempted.current = true;
-          hasLoadedInitialFeed.current = false; // Reset to allow reload
-          loadFeed(user.uid);
-        }
-        
-        // Timer complete
-        if (newTime <= 0) {
-          setFeedGenActive(false);
+    const timer = setInterval(() => {
+      setFeedGenTimeRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
           return 0;
         }
-        
-        return newTime;
+        return prev - 1;
       });
     }, 1000);
 
-    return () => clearInterval(interval);
-  }, [feedGenActive, feedGenTimeRemaining, user, loadFeed]);
+    return () => clearInterval(timer);
+  }, [showPersonalizedFeed, isFallbackFeed, feedGenActive]);
 
-  // History sidebar removed - just showing today's feed
+  useEffect(() => {
+    if (feedGenTimeRemaining !== 0 || feedGenRefreshAttempted.current) return;
+    feedGenRefreshAttempted.current = true;
 
-  const recordInteraction = async (itemId: string, action: 'upvote' | 'downvote' | 'remove', note?: string) => {
+    if (user) {
+      isLoadingRef.current = false;
+      hasLoadedInitialFeed.current = false;
+      loadFeed(user.uid);
+    }
+  }, [feedGenTimeRemaining, user, loadFeed]);
+
+  const recordInteraction = async (itemId: string, action: 'upvote' | 'downvote', note?: string) => {
     if (!user || !feedDate) return;
-
-    const item = feed.find(i => i.id === itemId);
-    if (!item) return;
 
     try {
       const token = await user.getIdToken();
-      const response = await fetch('/api/interactions', {
+      await fetch('/api/interactions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -831,38 +814,40 @@ export default function FeedPage() {
         body: JSON.stringify({
           item_id: itemId,
           action,
-          item_metadata: {
-            type: item.type || item.source,
-            title: item.title,
-            url: item.url,
-            description: item.description,
-            tags: Array.isArray(item.tags) && item.tags.length
-              ? item.tags
-              : (item.metadata?.why_relevant ? [item.metadata.why_relevant] : []),
-          },
-          feed_date: feedDate, // Use the feed's generation date, not today
+          date: feedDate,
           note,
         }),
       });
 
-      if (!response.ok) {
-        console.error('Failed to record interaction:', await response.text());
-      }
+      setInteractions((prev) => ({
+        ...prev,
+        [itemId]: action,
+      }));
     } catch (error) {
       console.error('Error recording interaction:', error);
     }
   };
 
-  const handleUpvote = (itemId: string, note?: string) => {
+  const handleUpvote = async (itemId: string, note?: string) => {
     console.log('Upvoted:', itemId);
+    
+    if (Object.keys(interactions).length === 0 && user && feedDate) {
+      await loadInteractions(user.uid, feedDate);
+    }
+    
     const item = feed.find(i => i.id === itemId);
     trackFeedItemUpvoted(itemId, item?.type || item?.source || 'unknown');
     recordInteraction(itemId, 'upvote', note);
     setInteractionCount((prev) => prev + 1);
   };
 
-  const handleDownvote = (itemId: string, note?: string) => {
+  const handleDownvote = async (itemId: string, note?: string) => {
     console.log('Downvoted:', itemId, note ? `with note: ${note}` : '');
+    
+    if (Object.keys(interactions).length === 0 && user && feedDate) {
+      await loadInteractions(user.uid, feedDate);
+    }
+    
     const item = feed.find(i => i.id === itemId);
     trackFeedItemDownvoted(itemId, item?.type || item?.source || 'unknown');
     recordInteraction(itemId, 'downvote', note);
@@ -877,53 +862,17 @@ export default function FeedPage() {
     }
   };
 
-  // Submit feedback
-  const handleSubmitFeedback = async () => {
-    if (!user || !feedbackMessage.trim()) return;
-
-    setIsSubmittingFeedback(true);
-    try {
-      const token = await user.getIdToken();
-      const response = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          message: feedbackMessage.trim(),
-          type: 'general',
-        }),
-      });
-
-      if (response.ok) {
-        setFeedbackSubmitted(true);
-        setFeedbackMessage('');
-        setTimeout(() => {
-          setShowFeedback(false);
-          setFeedbackSubmitted(false);
-        }, 2000);
-      }
-    } catch (error) {
-      console.error('Error submitting feedback:', error);
-    } finally {
-      setIsSubmittingFeedback(false);
-    }
-  };
-
   const handleStar = async (itemId: string) => {
     if (!user) return;
 
     const item = feed.find(i => i.id === itemId) || generalFeed.find(i => i.id === itemId);
     if (!item) return;
 
-    // Show loading state for this bookmark
     setLoadingBookmarks(prev => new Set(prev).add(itemId));
 
     try {
       const token = await user.getIdToken();
 
-      // Lazy load bookmarks if not loaded yet
       if (!bookmarksLoaded) {
         await loadBookmarks();
       }
@@ -931,7 +880,6 @@ export default function FeedPage() {
       const isCurrentlyBookmarked = bookmarkedItems.has(itemId);
 
       if (isCurrentlyBookmarked) {
-        // Remove bookmark
         await fetch(`/api/bookmarks?item_id=${itemId}`, {
           method: 'DELETE',
           headers: {
@@ -944,7 +892,6 @@ export default function FeedPage() {
           return newSet;
         });
       } else {
-        // Add bookmark
         await fetch('/api/bookmarks', {
           method: 'POST',
           headers: {
@@ -978,6 +925,25 @@ export default function FeedPage() {
     }
   };
 
+  const handleItemClick = (itemId: string) => {
+    const item = filteredFeed.find(i => i.id === itemId);
+    if (item) {
+      trackFeedItemClicked(itemId, item.type || item.source || 'blog', item.source || 'unknown');
+      
+      // If item has summary, go to article view; otherwise open original link
+      const hasSummary = Boolean(item.summary?.short_article?.body);
+      if (hasSummary) {
+        router.push(`/feed?item=${itemId}`);
+      } else {
+        window.open(item.url, '_blank', 'noopener,noreferrer');
+      }
+    }
+  };
+
+  const handleBackToFeed = () => {
+    router.push('/feed');
+  };
+
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -986,13 +952,83 @@ export default function FeedPage() {
     );
   }
 
+  // Article detail view
+  if (selectedItem) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <Header backHref="/feed" backLabel="Feed" />
+
+        <main className="w-full mt-6 md:mt-10 px-4 md:px-6 lg:px-8 pb-20">
+          <ArticleView
+            item={selectedItem}
+            onBack={handleBackToFeed}
+            onUpvote={(note) => handleUpvote(selectedItem.id, note)}
+            onDownvote={(note) => handleDownvote(selectedItem.id, note)}
+            onStar={() => handleStar(selectedItem.id)}
+            initialVote={interactions[selectedItem.id]}
+            initialBookmarked={bookmarkedItems.has(selectedItem.id)}
+            isBookmarkLoading={loadingBookmarks.has(selectedItem.id)}
+            disabled={!hasAccess}
+            onDisabledClick={() => setShowSubscribePrompt(true)}
+            hasAccess={hasAccess}
+          />
+        </main>
+
+        {/* Subscribe prompt modal */}
+        <AnimatePresence>
+          {showSubscribePrompt && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm px-4"
+              onClick={() => setShowSubscribePrompt(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8 max-w-md w-full shadow-xl"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Brain size={22} className="text-primary" />
+                  </div>
+                  <h3 className="text-lg font-semibold">Unlock the full feed</h3>
+                </div>
+                <p className="text-sm text-secondary mb-6">
+                  Subscribe to unlock the full daily feed. Your interactions teach Trace what to find and what to skip, so it gets smarter every day.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowSubscribePrompt(false)}
+                    className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-secondary hover:bg-gray-50 transition-colors"
+                  >
+                    Not now
+                  </button>
+                  <Link
+                    href="/profile?tab=subscription"
+                    className="flex-1 px-4 py-3 rounded-xl bg-foreground text-background text-sm font-medium text-center hover:bg-foreground/90 transition-colors"
+                  >
+                    Unlock full feed
+                  </Link>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  // Feed list view
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header backHref="/" backLabel="Back" />
 
-      {/* Callout banner - show ONE based on state */}
+      {/* Callout banner */}
       {profile && !profile.onboarded ? (
-        // Non-onboarded users: Show onboarding callout
         <div className="sticky top-14 md:top-16 z-40 bg-violet-50 border-b border-violet-100">
           <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-3 md:py-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -1020,7 +1056,6 @@ export default function FeedPage() {
           </div>
         </div>
       ) : !hasAccess && profile ? (
-        // Onboarded but not subscribed: Show limited feed callout
         <div className="hidden md:block sticky top-14 md:top-16 z-40 bg-amber-100 border-b border-amber-100">
           <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-3 md:py-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -1033,7 +1068,7 @@ export default function FeedPage() {
                     You&apos;re seeing a starter feed
                   </p>
                   <p className="text-xs text-secondary/70 mt-0.5">
-                    Unlock the full daily feed + Trace learning loop. Early users say it saves ~30 mins/week.
+                    Unlock the full feed + AI-generated lessons from every article.
                   </p>
                 </div>
               </div>
@@ -1095,7 +1130,7 @@ export default function FeedPage() {
       </AnimatePresence>
 
       <main className="w-full mt-6 md:mt-10">
-        {/* Mobile: Feed date with dropdown for history (only for subscribed AND onboarded users) */}
+        {/* Mobile: Feed date */}
         {showPersonalizedFeed && (
           <div className="md:hidden px-4 mb-4">
             <div className="flex items-center justify-between">
@@ -1116,94 +1151,7 @@ export default function FeedPage() {
           </div>
         )}
 
-        {/* Mobile Feedback Callout - Below date picker */}
-        {isOnboarded && !showFeedback && (
-          <div className="md:hidden px-4 mb-4">
-            <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-              <div className="flex items-start gap-3 mb-3">
-                <div className="flex-1">
-                  <p className="text-xs font-medium text-foreground mb-0.5">
-                    Got feedback?
-                  </p>
-                  <p className="text-[11px] text-secondary/80 leading-relaxed">
-                    Help us improve Trace! Share bugs, feature requests, or feedback.
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowFeedback(true)}
-                className="w-full px-4 py-2.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium transition-colors"
-              >
-                Send Feedback
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Mobile Feedback Form */}
-        <AnimatePresence>
-          {showFeedback && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="md:hidden px-4 mb-4 overflow-hidden"
-            >
-              <div className="p-4 bg-white rounded-xl border border-gray-200">
-                {feedbackSubmitted ? (
-                  <div className="flex items-center gap-3 text-green-600">
-                    <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                      <Check size={16} />
-                    </div>
-                    <p className="text-sm font-medium">Thanks! Your feedback has been submitted.</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-medium text-foreground">Send Feedback</h3>
-                      <button
-                        onClick={() => setShowFeedback(false)}
-                        className="p-1.5 rounded-lg text-secondary/60 hover:text-foreground hover:bg-gray-100 transition-colors"
-                        aria-label="Close feedback"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-
-                    <div className="mb-3">
-                      <label className="block text-xs font-medium text-secondary/80 mb-2">Message</label>
-                      <textarea
-                        value={feedbackMessage}
-                        onChange={(e) => setFeedbackMessage(e.target.value)}
-                        placeholder="Tell us what's on your mind..."
-                        className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-foreground placeholder:text-secondary/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none"
-                        rows={4}
-                      />
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setShowFeedback(false)}
-                        className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-secondary border border-gray-200 hover:border-gray-300 transition-colors"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleSubmitFeedback}
-                        disabled={!feedbackMessage.trim() || isSubmittingFeedback}
-                        className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-foreground text-background hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isSubmittingFeedback ? 'Sending...' : 'Submit'}
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Mobile filters - horizontal scroll */}
+        {/* Mobile filters */}
         <div className="md:hidden overflow-x-auto mb-4 px-4 scrollbar-hide">
           <div className="flex items-center gap-2 pb-2">
             {[
@@ -1227,20 +1175,19 @@ export default function FeedPage() {
           </div>
         </div>
 
-        <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 md:flex md:gap-12">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 md:flex md:gap-8">
           {/* Filters - left sidebar, sticky (desktop only) */}
           <aside className={`hidden md:block w-48 shrink-0 sticky h-fit ${
-            // Add extra top margin when sticky banners are visible
             (profile && !profile.onboarded) || (!hasAccess && profile)
               ? 'top-40'
               : 'top-24'
             }`}>
             <nav className="space-y-1.5">
-              <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-4 px-3">
+              <h2 className="text-xs font-medium tracking-wider text-secondary/60 mb-4 px-3 lowercase">
                 Filters
               </h2>
               {[
-                { id: 'all', label: primaryFilterLabel },
+                { id: 'all', label: showPersonalizedFeed && !isFallbackFeed ? 'For you' : 'Discover' },
                 ...topicFilters,
               ].map(filter => {
                 const isActive = activeFilter === filter.id;
@@ -1248,7 +1195,7 @@ export default function FeedPage() {
                   <button
                     key={filter.id}
                     onClick={() => setActiveFilter(filter.id as FilterType)}
-                    className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive
+                    className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium transition-all lowercase ${isActive
                         ? 'text-foreground bg-gray-100'
                         : 'text-secondary/70 hover:text-foreground hover:bg-gray-50'
                       }`}
@@ -1261,25 +1208,10 @@ export default function FeedPage() {
           </aside>
 
           {/* Feed content */}
-          <div className="flex-1 max-w-2xl mx-auto md:mx-0 w-full">
-            {/* Desktop: Feed stats (only for subscribed users) */}
-            {/* {hasAccess && feedDate && (
-              <div className="hidden md:flex items-center gap-3 text-xs font-mono text-secondary/60 mb-6">
-                <span>Feed from: {feedDate}</span>
-                {unseenCount > 0 && (
-                  <span className="flex items-center gap-1 text-primary">
-                    <Eye size={12} />
-                    {unseenCount} new
-                  </span>
-                )}
-                <span className="text-secondary/40">·</span>
-                <span>{totalItems} items total</span>
-              </div>
-            )} */}
-
-            {/* Feed generation progress (for newly onboarded users) */}
+          <div className="flex-1 w-full">
+            {/* Feed generation progress */}
             {isFallbackFeed && feedGenActive && (
-              <div className="mb-4 md:mb-6 p-4 md:p-5 bg-gradient-to-r from-violet-50 to-indigo-50 rounded-xl border border-violet-100">
+              <div className="mb-4 md:mb-6 p-4 md:p-5 bg-linear-to-r from-violet-50 to-indigo-50 rounded-xl border border-violet-100">
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
                     <Loader2 size={20} className="text-violet-600 animate-spin" />
@@ -1291,7 +1223,6 @@ export default function FeedPage() {
                     <p className="text-xs text-secondary/70 mb-3">
                       Trace is analyzing your interests to find the best content. This usually takes about a minute.
                     </p>
-                    {/* Progress bar */}
                     <div className="w-full bg-violet-100 rounded-full h-1.5 overflow-hidden">
                       <div 
                         className="bg-violet-500 h-full rounded-full transition-all duration-1000 ease-linear"
@@ -1309,7 +1240,7 @@ export default function FeedPage() {
               </div>
             )}
 
-            {/* Hint about feedback (only for subscribed AND onboarded users) */}
+            {/* Hint about feedback */}
             <AnimatePresence>
               {showPersonalizedFeed && showHint && !isFeedLoading && filteredFeed.length > 0 && (
                 <motion.div
@@ -1340,10 +1271,8 @@ export default function FeedPage() {
               )}
             </AnimatePresence>
 
-
             {((showPersonalizedFeed && isFeedLoading) || (!showPersonalizedFeed && isLoadingGeneral) || (isFallbackFeed && isLoadingGeneral)) ? (
               <div className="space-y-3">
-                {/* Skeleton loader - 5 placeholder cards */}
                 {[...Array(5)].map((_, i) => (
                   <div key={i} className="p-4 md:p-5 rounded-xl bg-gray-50 animate-pulse">
                     <div className="flex gap-3 md:gap-4">
@@ -1351,13 +1280,7 @@ export default function FeedPage() {
                       <div className="flex-1 space-y-3">
                         <div className="h-3 bg-gray-200 rounded-full w-20" />
                         <div className="h-5 bg-gray-200 rounded-lg w-full" />
-                        <div className="h-5 bg-gray-200 rounded-lg w-3/4" />
-                        <div className="h-3 bg-gray-200 rounded-full w-1/2" />
-                        <div className="flex gap-2 pt-2">
-                          <div className="h-8 w-8 bg-gray-200 rounded-lg" />
-                          <div className="h-8 w-8 bg-gray-200 rounded-lg" />
-                          <div className="h-8 w-8 bg-gray-200 rounded-lg" />
-                        </div>
+                        <div className="h-4 bg-gray-200 rounded-lg w-3/4" />
                       </div>
                     </div>
                   </div>
@@ -1368,18 +1291,11 @@ export default function FeedPage() {
                 <div className="divide-y divide-border/20">
                   {filteredFeed.map((item, index) => (
                     <React.Fragment key={item.id}>
-                      <FeedCard
-                        item={item}
-                        onUpvote={(note) => handleUpvote(item.id, note)}
-                        onDownvote={(note) => handleDownvote(item.id, note)}
-                        onStar={() => handleStar(item.id)}
-                        initialVote={interactions[item.id]}
-                        initialBookmarked={bookmarkedItems.has(item.id)}
-                        isBookmarkLoading={loadingBookmarks.has(item.id)}
-                        disabled={!hasAccess}
-                        onDisabledClick={() => setShowSubscribePrompt(true)}
-                        onVisible={showPersonalizedFeed ? handleItemVisible : undefined}
-                      />
+                    <FeedListItem
+                      item={item}
+                      onClick={() => handleItemClick(item.id)}
+                      showSubscribeCta={!hasAccess && !item.summary?.short_article?.subtitle}
+                    />
                       {canShowTraceInsight && index === insightInsertIndex && traceInsights && (
                         <div className="py-3 md:py-4" key="trace-insight-card">
                           <TraceInsightCard
@@ -1395,28 +1311,15 @@ export default function FeedPage() {
                 </div>
 
                 {filteredFeed.length === 0 && (
-                  <div className="text-center py-16 md:py-20 px-4">
-                    <>
-                      <div className="w-12 h-12 bg-primary/5 border border-primary/20 flex items-center justify-center mx-auto mb-4">
-                        <Sparkles size={24} className="text-primary" />
-                      </div>
-                      <p className="text-lg font-serif mb-2">
-                        {activeFilter === 'all' ? 'No items yet' : `No ${activeFilter}s yet`}
+                  <div className="py-10 md:py-12 px-4">
+                    <div className="rounded-xl border border-gray-200 bg-white p-5 md:p-6">
+                      <p className="text-sm font-medium text-foreground">
+                        Trace is working on finding items for you. Check back soon.
                       </p>
-                      <p className="text-sm font-mono text-secondary mb-4">
-                        {activeFilter === 'all'
-                          ? 'Check back soon or try a different filter.'
-                          : 'Try a different filter'}
+                      <p className="text-xs text-secondary/70 mt-2">
+                        Pro tip: You get a more aligned feed if you set up at least 4 interests in your profile.
                       </p>
-                      {activeFilter !== 'all' && (
-                        <button
-                          onClick={() => setActiveFilter('all')}
-                          className="text-sm font-mono text-primary hover:underline uppercase tracking-wider"
-                        >
-                          View all content
-                        </button>
-                      )}
-                    </>
+                    </div>
                   </div>
                 )}
 
@@ -1430,7 +1333,7 @@ export default function FeedPage() {
                             Want more?
                           </p>
                           <p className="text-sm text-secondary/70 mt-0.5">
-                            This is a taste. Unlock the full daily feed and let Trace learn your patterns for sharper picks.
+                            Unlock the full feed + AI-generated lessons from every article.
                           </p>
                         </div>
                       </div>
@@ -1448,125 +1351,26 @@ export default function FeedPage() {
                 {/* End of feed indicator */}
                 {filteredFeed.length > 0 && (
                   <div className="py-8 md:py-12 text-center border-t border-border/20">
-                    <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary/50">Youre all caught up</p>
+                    <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary/50">You&apos;re all caught up</p>
                   </div>
                 )}
               </>
             )}
           </div>
-
-          {/* Right sidebar (desktop only) - Feedback */}
-          <aside className={`hidden md:block w-48 shrink-0 sticky h-fit ${
-            (profile && !profile.onboarded) || (!hasAccess && profile) 
-              ? 'top-40' 
-              : 'top-24'
-          }`}>
-            {/* Feedback Callout */}
-            {isOnboarded && !showFeedback && (
-              <div className="mt-6">
-                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="flex-1">
-                      <p className="text-xs font-medium text-foreground mb-0.5">Feedback/Complaint?</p>
-                      <p className="text-[11px] text-secondary/80 leading-relaxed">
-                        Help us improve Trace! Share bugs, feature requests, or general feedback.
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowFeedback(true)}
-                    className="w-full px-4 py-2.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium transition-colors"
-                  >
-                    Send Feedback
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Feedback Form */}
-            <AnimatePresence>
-              {showFeedback && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mt-4 overflow-hidden"
-                >
-                  <div className="p-4 bg-white rounded-xl border border-gray-200">
-                    {feedbackSubmitted ? (
-                      <div className="flex items-center gap-3 text-green-600">
-                        <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                          <Check size={16} />
-                        </div>
-                        <p className="text-sm font-medium">Thanks! Your feedback has been submitted.</p>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-sm font-medium text-foreground">Send Feedback</h3>
-                          <button
-                            onClick={() => setShowFeedback(false)}
-                            className="p-1.5 rounded-lg text-secondary/60 hover:text-foreground hover:bg-gray-100 transition-colors"
-                            aria-label="Close feedback"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-
-                        <div className="mb-3">
-                          <label className="block text-xs font-medium text-secondary/80 mb-2">Message</label>
-                          <textarea
-                            value={feedbackMessage}
-                            onChange={(e) => setFeedbackMessage(e.target.value)}
-                            placeholder="Tell us what's on your mind..."
-                            className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-foreground placeholder:text-secondary/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none"
-                            rows={4}
-                          />
-                        </div>
-
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setShowFeedback(false)}
-                            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-secondary border border-gray-200 hover:border-gray-300 transition-colors"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={handleSubmitFeedback}
-                            disabled={!feedbackMessage.trim() || isSubmittingFeedback}
-                            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-foreground text-background hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isSubmittingFeedback ? 'Sending...' : 'Submit'}
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {!showPersonalizedFeed && (
-              <div className="bg-white rounded-xl border border-gray-200 p-4">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
-                  <Sparkles size={18} className="text-primary" />
-                </div>
-                <h3 className="text-sm font-medium mb-2">Unlock the full feed</h3>
-                <p className="text-xs text-secondary/70 mb-4">
-                  Daily picks tuned to your interests, with Trace learning every day.
-                </p>
-                <Link
-                  href="/profile?tab=subscription"
-                  className="block w-full px-3 py-2 bg-primary text-primary-foreground text-[10px] font-mono uppercase tracking-widest text-center hover:bg-primary/90 transition-colors"
-                >
-                  Unlock full feed
-                </Link>
-              </div>
-            )}
-          </aside>
         </div>
       </main>
-
     </div>
+  );
+}
+
+export default function FeedPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <FeedPageContent />
+    </Suspense>
   );
 }

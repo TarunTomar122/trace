@@ -2687,7 +2687,7 @@ export default function LandingPage() {
       <WaitlistBanner />
       <Nav />
       <Hero />
-      <DemoVideo />
+      {/* <DemoVideo /> */}
       <HowItWorks />
       {/* <InteractiveDemo />
       <DemoFeed /> */}

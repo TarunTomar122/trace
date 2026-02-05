@@ -973,6 +973,19 @@ function ProfileContent() {
                     </div>
                   </section>
                 )}
+
+              {/* Feedback link */}
+              <div className="text-center pt-4 pb-8 border-t border-gray-100">
+                <p className="text-sm text-secondary/70">
+                  Got feedback, bugs, or feature requests?{' '}
+                  <a
+                    href="mailto:trace@example.com?subject=Trace Feedback"
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Let us know
+                  </a>
+                </p>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
