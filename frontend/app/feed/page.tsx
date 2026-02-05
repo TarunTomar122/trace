@@ -934,6 +934,7 @@ function FeedPageContent() {
       const hasSummary = Boolean(item.summary?.short_article?.body);
       if (hasSummary) {
         router.push(`/feed?item=${itemId}`);
+        window.scrollTo(0, 0);
       } else {
         window.open(item.url, '_blank', 'noopener,noreferrer');
       }
@@ -942,6 +943,7 @@ function FeedPageContent() {
 
   const handleBackToFeed = () => {
     router.push('/feed');
+    window.scrollTo(0, 0);
   };
 
   if (loading || !user) {

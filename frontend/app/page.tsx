@@ -1262,10 +1262,21 @@ const DemoFeedCard = ({ item, index, compact = false }: { item: typeof DEMO_FEED
 const InteractiveDemo = () => {
   const { signInWithGoogle } = useAuth();
   const [activeFilter, setActiveFilter] = useState('all');
+  const [isLoading, setIsLoading] = useState(false);
 
   const filteredItems = activeFilter === 'all'
     ? DEMO_FEED_ITEMS
     : DEMO_FEED_ITEMS.filter(item => item.tag === activeFilter);
+
+  const handleFilterClick = (filterId: string) => {
+    if (filterId === activeFilter) return;
+    setIsLoading(true);
+    // Small delay to simulate fetching from sources
+    setTimeout(() => {
+      setActiveFilter(filterId);
+      setIsLoading(false);
+    }, 450);
+  };
 
   return (
     <section className="py-16 md:py-24 lg:py-32 bg-background relative overflow-hidden z-10">
@@ -1346,7 +1357,7 @@ const InteractiveDemo = () => {
               {DEMO_FILTERS.map(filter => (
                 <button
                   key={filter.id}
-                  onClick={() => setActiveFilter(filter.id)}
+                  onClick={() => handleFilterClick(filter.id)}
                   className={`px-3 py-1 text-[10px] font-mono uppercase tracking-wider transition-colors ${activeFilter === filter.id
                     ? 'bg-primary text-primary-foreground'
                     : 'border border-border text-secondary/60 hover:border-primary/50'
@@ -1360,17 +1371,30 @@ const InteractiveDemo = () => {
             {/* Feed Items */}
             <div className="px-5">
               <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeFilter}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {filteredItems.map((item, i) => (
-                    <DemoFeedCard key={item.id} item={item} index={i} />
-                  ))}
-                </motion.div>
+                {isLoading ? (
+                  <motion.div
+                    key="loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="py-12 flex flex-col items-center justify-center gap-3"
+                  >
+                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <span className="text-[10px] font-mono text-secondary/50">Fetching articles...</span>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key={activeFilter}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {filteredItems.map((item, i) => (
+                      <DemoFeedCard key={item.id} item={item} index={i} />
+                    ))}
+                  </motion.div>
+                )}
               </AnimatePresence>
             </div>
 
