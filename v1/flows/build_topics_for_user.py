@@ -52,6 +52,8 @@ LOOKBACK_DAYS_DEFAULT = 60
 VIDEO_LOOKBACK_DAYS = 60
 MIN_REFRESH_DAYS_DEFAULT = 4
 MIN_QUERY_POOL_ITEMS = 4
+# Parallel processing for topic generation
+MAX_CONCURRENT_TOPICS = 5
 
 ARTICLE_DOMAINS = [
     "medium.com",
@@ -447,6 +449,8 @@ def build_topics_for_user(
     lookback_days: int = LOOKBACK_DAYS_DEFAULT,
     min_refresh_days: int = MIN_REFRESH_DAYS_DEFAULT,
 ) -> dict:
+    from concurrent.futures import ThreadPoolExecutor
+
     store = FirestoreStore()
     profile = _get_subscribed_user_profile(store, user_id)
 
@@ -484,28 +488,19 @@ def build_topics_for_user(
     date_key = now.date().isoformat()
     generated_at = _iso_z(now)
 
-    topics_written = 0
-    query_pools_written = 0
-    topics_skipped = 0
-
-    def _write_topic(
+    def _process_topic(
         topic_id: str,
         display_name: str,
         topic_kind: str,
         query_used: str,
         queries: list[str],
-    ) -> None:
-        nonlocal topics_written, topics_skipped
+    ) -> tuple[str, bool, str]:
+        """Process a single topic. Returns (topic_id, written, status)."""
         doc_ref = store.db.collection("topics").document(topic_id)
         existing = doc_ref.get()
         data = existing.to_dict() if existing.exists else {}
         if not _should_refresh_topic(data, min_refresh_days):
-            print(
-                "Skipping topic (fresh): "
-                f"{topic_id} [{topic_kind}]"
-            )
-            topics_skipped += 1
-            return
+            return (topic_id, False, "skipped_fresh")
 
         print(f"Processing topic: {topic_id} [{topic_kind}]")
 
@@ -584,15 +579,14 @@ def build_topics_for_user(
             payload["interest_id"] = topic_id
 
         doc_ref.set(payload, merge=True)
+        return (topic_id, True, "written")
 
-        topics_written += 1
-
-    def _write_query_pool(
+    def _process_query_pool(
         interest_id: str,
         query_text: str,
         query_used: str,
-    ) -> None:
-        nonlocal query_pools_written, topics_skipped
+    ) -> tuple[str, bool, str]:
+        """Process a query pool. Returns (query_id, written, status)."""
         query_id = build_query_id(query_text)
         doc_ref = (
             store.db.collection("topics")
@@ -603,9 +597,7 @@ def build_topics_for_user(
         existing = doc_ref.get()
         data = existing.to_dict() if existing.exists else {}
         if not _should_refresh_topic(data, min_refresh_days):
-            print(f"Skipping query pool (fresh): {interest_id}::{query_text}")
-            topics_skipped += 1
-            return
+            return (query_id, False, "skipped_fresh")
 
         print(f"Processing query pool: {interest_id}::{query_text}")
 
@@ -662,19 +654,22 @@ def build_topics_for_user(
             },
             merge=True,
         )
+        return (query_id, True, "written")
 
-        query_pools_written += 1
+    # Build all tasks
+    topic_tasks = []
+    query_pool_tasks = []
 
     for interest_id in interest_ids:
         queries = _build_umbrella_queries(interest_id, profile.get("skills"))
         query_used = random.choice(queries)
-        _write_topic(
+        topic_tasks.append((
             interest_id,
             get_interest_label(interest_id),
             "interest",
             query_used,
             queries,
-        )
+        ))
 
         raw_queries = interest_queries.get(interest_id, [])[:2]
         query_texts = [
@@ -683,19 +678,56 @@ def build_topics_for_user(
             if isinstance(q, str) and q.strip()
         ]
         for query_text in query_texts:
-            query_used = f"{get_interest_label(interest_id)} {query_text}".strip()
-            _write_query_pool(interest_id, query_text, query_used)
+            q_used = f"{get_interest_label(interest_id)} {query_text}".strip()
+            query_pool_tasks.append((interest_id, query_text, q_used))
 
     for hobby in hobbies:
         hobby_id = _normalize_interest(hobby)
         hobby_queries = _dedupe_preserve_order([hobby])
-        _write_topic(
+        topic_tasks.append((
             hobby_id,
             hobby.strip(),
             "hobby",
             hobby,
             hobby_queries,
-        )
+        ))
+
+    total_tasks = len(topic_tasks) + len(query_pool_tasks)
+    print(f"Processing {total_tasks} tasks concurrently "
+          f"({len(topic_tasks)} topics, {len(query_pool_tasks)} query pools)...")
+
+    topics_written = 0
+    query_pools_written = 0
+    topics_skipped = 0
+
+    # Process topics and query pools concurrently
+    with ThreadPoolExecutor(max_workers=MAX_CONCURRENT_TOPICS) as executor:
+        futures = []
+
+        # Submit topic tasks
+        for args in topic_tasks:
+            futures.append(("topic", executor.submit(_process_topic, *args)))
+
+        # Submit query pool tasks
+        for args in query_pool_tasks:
+            futures.append(("pool", executor.submit(_process_query_pool, *args)))
+
+        # Collect results
+        for task_type, future in futures:
+            try:
+                _, written, status = future.result()
+                if task_type == "topic":
+                    if written:
+                        topics_written += 1
+                    elif status == "skipped_fresh":
+                        topics_skipped += 1
+                else:
+                    if written:
+                        query_pools_written += 1
+                    elif status == "skipped_fresh":
+                        topics_skipped += 1
+            except Exception as e:
+                print(f"  Error in {task_type} task: {e}")
 
     return {
         "user_id": user_id,
