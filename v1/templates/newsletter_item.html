@@ -1,31 +1,44 @@
 <!--
     NEWSLETTER ITEM TEMPLATE
 
-    This template is used for each item in the newsletter.
     Placeholders:
     - {{ITEM_URL}}: Link to the article
     - {{ITEM_TITLE}}: Article title
-    - {{ITEM_SUMMARY}}: 2-3 sentence summary
+    - {{ITEM_SUMMARY}}: Structured HTML summary
+    - {{ITEM_TYPE_LABEL}}: Type badge text (BLOG, NEWS, etc.)
+    - {{ITEM_TYPE_COLOR}}: Badge accent color
 -->
-<tr>
-    <td style="padding: 24px 0 0 0;">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 0;">
+    <!-- Separator line -->
+    <tr>
+        <td style="padding: 0 0 24px 0;">
+            <div style="border-top: 1px solid #e4e4e7;"></div>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <!-- Type badge -->
+            <div style="margin-bottom: 8px;">
+                <span style="display: inline-block; font-size: 10px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: {{ITEM_TYPE_COLOR}}; text-transform: uppercase; letter-spacing: 1.2px;">
+                    {{ITEM_TYPE_LABEL}}
+                </span>
+            </div>
             <!-- Title -->
-            <tr>
-                <td style="padding-bottom: 8px;">
-                    <a href="{{ITEM_URL}}" style="color: #363737; font-size: 20px; font-family: -apple-system-headline, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-weight: bold; text-decoration: none; line-height: 1.16; display: block;">
-                        {{ITEM_TITLE}} <span style="color: #888; font-weight: normal;">→</span>
-                    </a>
-                </td>
-            </tr>
-            <!-- Summary -->
-            <tr>
-                <td style="padding-bottom: 0;">
-                    <p style="color: #363737; font-size: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.625; margin: 0 0 20px 0;">
-                        {{ITEM_SUMMARY}}
-                    </p>
-                </td>
-            </tr>
-        </table>
-    </td>
-</tr>
+            <a href="{{ITEM_URL}}" style="display: block; margin-bottom: 12px; font-size: 19px; font-family: Georgia, 'Times New Roman', serif; font-weight: 700; color: #18181b; text-decoration: none; line-height: 1.35;">
+                {{ITEM_TITLE}}
+            </a>
+            <!-- Summary body -->
+            <div style="font-size: 15px; color: #3f3f46; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.65; margin-bottom: 14px;">
+                {{ITEM_SUMMARY}}
+            </div>
+            <!-- Read more link -->
+            <a href="{{ITEM_URL}}" style="display: inline-block; font-size: 13px; font-weight: 600; color: {{ITEM_TYPE_COLOR}}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; text-decoration: none;">
+                Read more &rarr;
+            </a>
+        </td>
+    </tr>
+    <!-- Bottom spacing -->
+    <tr>
+        <td style="height: 24px;"></td>
+    </tr>
+</table>

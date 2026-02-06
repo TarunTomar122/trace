@@ -37,6 +37,97 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// --- Newsletter Signup Section ---
+const NewsletterSignupSection = () => {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [message, setMessage] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+
+    setStatus('loading');
+    try {
+      const res = await fetch('/api/newsletter-subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStatus('success');
+        setMessage(data.message || "You're in! Check your inbox soon.");
+        setEmail('');
+      } else {
+        setStatus('error');
+        setMessage(data.error || 'Something went wrong.');
+      }
+    } catch {
+      setStatus('error');
+      setMessage('Something went wrong. Try again.');
+    }
+  };
+
+  return (
+    <section className="relative md:py-16">
+      <div className="container mx-auto px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="max-w-6xl mx-auto text-center"
+        >
+          <p className="text-sm text-secondary/70 mb-3 font-sans">
+            Want to get the best reads in your inbox? Subscribe for free.
+          </p>
+
+          {status === 'success' ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-50 border border-emerald-200 rounded-full"
+            >
+              <Mail size={15} className="text-emerald-600" />
+              <span className="text-sm font-medium text-emerald-700 font-sans">{message}</span>
+            </motion.div>
+          ) : (
+            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center justify-center gap-2 max-w-md mx-auto">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setStatus('idle'); }}
+                placeholder="your@email.com"
+                required
+                className="w-full sm:flex-1 px-4 py-2.5 text-sm border border-border rounded-full bg-background text-foreground placeholder:text-secondary/40 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 font-sans"
+              />
+              <button
+                type="submit"
+                disabled={status === 'loading'}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 py-2.5 text-sm font-medium bg-foreground text-background rounded-full hover:bg-foreground/90 transition-colors disabled:opacity-50 font-sans whitespace-nowrap"
+              >
+                {status === 'loading' ? (
+                  <div className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Mail size={14} />
+                    Subscribe free
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+
+          {status === 'error' && (
+            <p className="text-xs text-red-500 mt-2 font-sans">{message}</p>
+          )}
+        </motion.div>
+      </div>
+    </section>
+  );
+};
+
 // --- Waitlist Banner Component ---
 const WaitlistBanner = () => {
   if (isAlphaMode()) return null;
@@ -585,25 +676,11 @@ const Hero = () => {
                   ))}
                 </motion.div>
 
-                {isAlphaMode() && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.25 }}
-                    className="flex items-center gap-2 mb-6 md:mb-8"
-                  >
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full">
-                      <Mail size={14} className="text-primary" />
-                      <span className="text-sm font-medium text-primary">Plus a daily newsletter</span>
-                    </div>
-                  </motion.div>
-                )}
-
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.3 }}
-                  className="flex flex-col sm:flex-row gap-3 mb-8"
+                  transition={{ duration: 0.6, delay: 0.25 }}
+                  className="flex flex-col sm:flex-row gap-3 mb-4"
                 >
                   {heroCtaHref ? (
                     <a href={heroCtaHref}>
@@ -622,6 +699,9 @@ const Hero = () => {
                     </button>
                   )}
                 </motion.div>
+
+
+
 
                 {/* Social Proof */}
                 <motion.div
@@ -650,7 +730,7 @@ const Hero = () => {
                       ))}
                     </div>
                     <span className="text-sm text-secondary">
-                      Loved by <span className="font-medium text-foreground">people done with doomscrolling</span>
+                      Loved by <span className="font-medium text-foreground">1K+ users</span>
                     </span>
                   </div>
                 </motion.div>
@@ -2711,6 +2791,7 @@ export default function LandingPage() {
       <WaitlistBanner />
       <Nav />
       <Hero />
+      <NewsletterSignupSection />
       {/* <DemoVideo /> */}
       <HowItWorks />
       {/* <InteractiveDemo />

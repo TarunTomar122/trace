@@ -333,6 +333,106 @@ class FirestoreStore:
 
         return users
 
+    # =========================================================
+    # FREE NEWSLETTER SUBSCRIBERS
+    # =========================================================
+
+    def get_free_newsletter_subscribers(
+        self,
+    ) -> list[dict[str, Any]]:
+        """Get all active free newsletter subscribers.
+
+        Returns:
+            List of subscriber dicts with email, subscribedAt, etc.
+        """
+        docs = (
+            self.db.collection("free_newsletter_subscribers")
+            .where("active", "==", True)
+            .stream()
+        )
+        return [
+            {"email": doc.id, **_serialize_firestore(doc.to_dict())}
+            for doc in docs
+        ]
+
+    def get_all_free_newsletter_emails(
+        self,
+    ) -> set[str]:
+        """Get deduplicated set of emails for free newsletter.
+
+        Combines:
+        - free_newsletter_subscribers (landing page signups)
+        - unsubscribed users with email (user_profiles with
+          no active subscription but with an email)
+
+        Excludes emails of users who already get the paid
+        newsletter (trial/active with newsletterOptIn).
+        """
+        # 1. Paid newsletter emails (to exclude)
+        paid_users = self.get_newsletter_opted_in_users()
+        paid_emails = {
+            u.get("email", "").lower()
+            for u in paid_users
+            if u.get("email")
+        }
+
+        # 2. Free subscribers from landing page
+        free_subs = self.get_free_newsletter_subscribers()
+        free_emails = {
+            s.get("email", "").lower()
+            for s in free_subs
+            if s.get("email")
+        }
+
+        # 3. All user profiles without active sub
+        all_docs = (
+            self.db.collection("user_profiles").stream()
+        )
+        for doc in all_docs:
+            data = doc.to_dict()
+            status = data.get("subscriptionStatus", "")
+            email = (data.get("email") or "").lower()
+            opted_out = data.get("newsletterOptIn") is False
+            if (
+                email
+                and status not in ("trial", "active")
+                and not opted_out
+            ):
+                free_emails.add(email)
+
+        # Remove anyone already getting paid newsletter
+        free_emails -= paid_emails
+        # Remove empty strings
+        free_emails.discard("")
+
+        return free_emails
+
+    def save_free_newsletter(
+        self,
+        date: str,
+        newsletter_data: dict[str, Any],
+    ) -> None:
+        """Save the free newsletter for a date."""
+        (
+            self.db.collection("free_newsletters")
+            .document(date)
+            .set(newsletter_data)
+        )
+
+    def get_free_newsletter(
+        self,
+        date: str,
+    ) -> Optional[dict[str, Any]]:
+        """Get the free newsletter for a date."""
+        doc = (
+            self.db.collection("free_newsletters")
+            .document(date)
+            .get()
+        )
+        if doc.exists:
+            return _serialize_firestore(doc.to_dict())
+        return None
+
 
 def get_store() -> FirestoreStore:
     """Get the FirestoreStore instance."""

@@ -1,283 +1,261 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { 
+import {
   Sparkles,
   ArrowUpRight,
-  Palette,
+  BookOpen,
+  MessageCircle,
   Newspaper,
-  Brain,
-  Radar,
-  HeartPulse,
-  Users,
-  Wallet,
-  Briefcase,
-  GraduationCap,
-  Timer,
-  Compass,
-  Film,
+  Youtube,
+  Code,
+  Rocket,
 } from 'lucide-react';
 import PublicHeader from '@/components/PublicHeader';
+import { adminFirestore } from '@/lib/firebase-admin';
 
-// Static page - no data fetching needed
-export const dynamic = 'force-static';
+// Dynamic — fetches fresh data on each request
+export const dynamic = 'force-dynamic';
+export const revalidate = 3600; // cache for 1 hour
 
 export const metadata: Metadata = {
-  title: 'Trending Topics on Trace — Focus, Wellness, Money, Culture',
+  title: "Today's Top Reads — Trace",
   description:
-    'Browse trending topics curated daily across life, work, wellness, money, and culture. No doomscrolling, just signal.',
+    "The best articles from across the web, summarized daily. Free to read, no login required.",
   keywords: [
-    'curated topics',
-    'focus',
-    'wellness',
-    'personal finance',
-    'learning',
-    'culture',
-    'Trace trending',
+    'daily reads',
+    'curated articles',
+    'AI summaries',
+    'trending articles',
+    'tech news',
+    'Trace',
   ],
   alternates: {
     canonical: 'https://www.yourtrace.online/trending',
   },
   openGraph: {
-    title: 'Trending Topics on Trace — Focus, Wellness, Money, Culture',
+    title: "Today's Top Reads — Trace",
     description:
-      'Daily curated topics across life, work, wellness, money, and culture. No doomscrolling required.',
+      "The best articles from across the web, summarized daily. Free to read.",
     url: 'https://www.yourtrace.online/trending',
     type: 'website',
     siteName: 'Trace',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Trending Topics on Trace',
+    title: "Today's Top Reads — Trace",
     description:
-      'Daily curated topics across life, work, wellness, money, and culture. No doomscrolling required.',
+      "The best articles from across the web, summarized daily.",
   },
 };
 
-const TOPICS = [
-  {
-    id: 'mental-wellness',
-    name: 'Mental Wellness',
-    description: 'Calm, focus, and habits that reduce stress without the noise',
-    icon: Brain,
-    color: 'text-emerald-600',
-    bgColor: 'bg-emerald-600/10',
-    borderColor: 'border-emerald-600/20',
-    for: ['Everyday life'],
-  },
-  {
-    id: 'health-fitness',
-    name: 'Health & Fitness',
-    description: 'Simple routines, movement, and nutrition you can actually keep',
-    icon: HeartPulse,
-    color: 'text-rose-500',
-    bgColor: 'bg-rose-500/10',
-    borderColor: 'border-rose-500/20',
-    for: ['Wellbeing'],
-  },
-  {
-    id: 'relationships',
-    name: 'Relationships',
-    description: 'Better communication, boundaries, and connection with people you care about',
-    icon: Users,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-600/10',
-    borderColor: 'border-blue-600/20',
-    for: ['Connection'],
-  },
-  {
-    id: 'money',
-    name: 'Money & Personal Finance',
-    description: 'Budgeting, saving, and smarter money habits without jargon',
-    icon: Wallet,
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-600/10',
-    borderColor: 'border-yellow-600/20',
-    for: ['Everyday money'],
-  },
-  {
-    id: 'career',
-    name: 'Career & Work',
-    description: 'Practical advice for growth, job changes, and work that fits your life',
-    icon: Briefcase,
-    color: 'text-slate-600',
-    bgColor: 'bg-slate-600/10',
-    borderColor: 'border-slate-600/20',
-    for: ['Work life'],
-  },
-  {
-    id: 'learning',
-    name: 'Learning & Skills',
-    description: 'Learn faster, stay consistent, and build skills that stick',
-    icon: GraduationCap,
-    color: 'text-indigo-600',
-    bgColor: 'bg-indigo-600/10',
-    borderColor: 'border-indigo-600/20',
-    for: ['Growth'],
-  },
-  {
-    id: 'productivity',
-    name: 'Productivity',
-    description: 'Focus, time, and systems that work in real life',
-    icon: Timer,
-    color: 'text-amber-600',
-    bgColor: 'bg-amber-600/10',
-    borderColor: 'border-amber-600/20',
-    for: ['Focus'],
-  },
-  {
-    id: 'creativity',
-    name: 'Creativity',
-    description: 'Ideas, inspiration, and making things you care about',
-    icon: Palette,
-    color: 'text-pink-500',
-    bgColor: 'bg-pink-500/10',
-    borderColor: 'border-pink-500/20',
-    for: ['Creative'],
-  },
-  {
-    id: 'travel',
-    name: 'Travel & Adventure',
-    description: 'Trips, planning, and experiences worth your time',
-    icon: Compass,
-    color: 'text-teal-600',
-    bgColor: 'bg-teal-600/10',
-    borderColor: 'border-teal-600/20',
-    for: ['Explore'],
-  },
-  {
-    id: 'culture',
-    name: 'Culture & Entertainment',
-    description: 'Books, film, music, and stories people are talking about',
-    icon: Film,
-    color: 'text-violet-600',
-    bgColor: 'bg-violet-600/10',
-    borderColor: 'border-violet-600/20',
-    for: ['Culture'],
-  },
-];
+type TrendingItem = {
+  id: string;
+  title: string;
+  url: string;
+  summary: string;
+  type: string;
+  source: string;
+  tags: string[];
+};
 
-export default function TrendingPage() {
+const typeConfig: Record<string, { icon: typeof BookOpen; color: string; label: string }> = {
+  blog: { icon: BookOpen, color: 'text-emerald-600', label: 'Article' },
+  news: { icon: Newspaper, color: 'text-orange-500', label: 'News' },
+  discussion: { icon: MessageCircle, color: 'text-amber-500', label: 'Discussion' },
+  video: { icon: Youtube, color: 'text-red-500', label: 'Video' },
+  repo: { icon: Code, color: 'text-violet-500', label: 'Repo' },
+  launch: { icon: Rocket, color: 'text-fuchsia-500', label: 'Launch' },
+};
+
+
+function getTodayIstDate(): string {
+  const now = new Date();
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  const ist = new Date(utc + 5.5 * 60 * 60 * 1000);
+  return ist.toISOString().slice(0, 10);
+}
+
+
+async function getTodaysItems(): Promise<{ items: TrendingItem[]; date: string }> {
+  if (!adminFirestore) {
+    return { items: [], date: getTodayIstDate() };
+  }
+
+  // Try today first, then fall back to latest available
+  const today = getTodayIstDate();
+  let doc = await adminFirestore.collection('free_newsletters').doc(today).get();
+
+  if (!doc.exists) {
+    // Fall back to latest
+    const snapshot = await adminFirestore
+      .collection('free_newsletters')
+      .orderBy('date', 'desc')
+      .limit(1)
+      .get();
+    if (snapshot.empty) {
+      return { items: [], date: today };
+    }
+    doc = snapshot.docs[0];
+  }
+
+  const data = doc.data();
+  const items: TrendingItem[] = (data?.items || []).map((item: Record<string, unknown>) => ({
+    id: item.id || '',
+    title: item.title || '',
+    url: item.url || '',
+    summary: item.summary || '',
+    type: item.type || 'blog',
+    source: item.source || '',
+    tags: item.tags || [],
+  }));
+
+  return { items, date: data?.date || today };
+}
+
+
+function ItemCard({ item, index }: { item: TrendingItem; index: number }) {
+  const config = typeConfig[item.type] || typeConfig.blog;
+  const Icon = config.icon;
+  const host = (() => {
+    try {
+      return new URL(item.url).hostname.replace('www.', '');
+    } catch {
+      return '';
+    }
+  })();
+
+  return (
+    <article className="py-6 first:pt-0">
+      <div className="flex items-start gap-4">
+        {/* Number */}
+        <span className="text-2xl font-bold text-secondary/20 tabular-nums leading-none pt-1 hidden sm:block">
+          {String(index + 1).padStart(2, '0')}
+        </span>
+
+        <div className="flex-1 min-w-0">
+          {/* Meta row */}
+          <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-1.5">
+              <Icon size={13} className={config.color} />
+              <span className={`text-[10px] font-semibold uppercase tracking-wider ${config.color}`}>
+                {config.label}
+              </span>
+            </div>
+            {host && (
+              <span className="text-[10px] font-mono text-secondary/40">
+                {host}
+              </span>
+            )}
+          </div>
+
+          {/* Title */}
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group"
+          >
+            <h2 className="text-lg font-semibold text-foreground leading-snug mb-2 group-hover:text-primary transition-colors">
+              {item.title}
+              <ArrowUpRight
+                size={14}
+                className="inline ml-1 opacity-0 group-hover:opacity-60 transition-opacity"
+              />
+            </h2>
+          </a>
+
+          {/* Summary */}
+          {item.summary && (
+            <div
+              className="text-sm text-secondary/80 leading-relaxed [&_strong]:text-foreground [&_strong]:font-semibold [&_ul]:mt-1.5 [&_ul]:ml-4 [&_ul]:list-disc [&_li]:text-sm [&_li]:text-secondary/70 [&_li]:mb-0.5"
+              dangerouslySetInnerHTML={{ __html: item.summary }}
+            />
+          )}
+
+          {/* Read more */}
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block mt-3 text-xs font-semibold text-foreground hover:text-primary transition-colors"
+          >
+            Read full article →
+          </a>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+
+export default async function TrendingPage() {
+  const { items, date } = await getTodaysItems();
+
+  // Format date nicely
+  const displayDate = (() => {
+    try {
+      const d = new Date(date + 'T00:00:00');
+      return d.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch {
+      return date;
+    }
+  })();
+
   return (
     <div className="min-h-screen bg-background">
       <PublicHeader showHome={true} backHref="/" backLabel="Back to Home" />
 
       <main className="w-full mt-6 md:mt-12">
-        <div className="max-w-4xl mx-auto px-4 md:px-6">
+        <div className="max-w-2xl mx-auto px-4 md:px-6">
           {/* Header */}
-          <div className="mb-8 md:mb-12">
-            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground mb-3">
-              What&apos;s Actually Worth Your Attention
+          <div className="mb-8 md:mb-10">
+            <p className="text-xs font-medium uppercase tracking-widest text-secondary/50 mb-2">
+              {displayDate}
+            </p>
+            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground mb-2">
+              Today&apos;s Top Reads
             </h1>
-            <p className="text-sm md:text-base text-secondary max-w-2xl">
-              No algorithm trying to keep you hooked. Just topics that matter — across life, work, money, wellness, and culture — curated daily without the brainrot.
+            <p className="text-sm text-secondary">
+              The best articles from across the web, summarized for you. Free to read, no login required.
             </p>
           </div>
 
-          {/* Value Props */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-8">
-            {[
-              {
-                icon: Radar,
-                title: 'No engagement tricks',
-                description: 'Zero outrage bait. Zero infinite scroll traps. Just signal.',
-              },
-              {
-                icon: Brain,
-                title: 'You control it',
-                description: 'Your interests decide what shows up. Not some engagement machine.',
-              },
-              {
-                icon: Newspaper,
-                title: 'Updated daily',
-                description: 'Fresh content without the doomscroll rabbit holes.',
-              },
-            ].map((item) => (
-              <div
-                key={item.title}
-                className="p-4 md:p-5 rounded-2xl border border-gray-200 bg-white"
-              >
-                <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center mb-3">
-                  <item.icon size={18} className="text-foreground" strokeWidth={1.5} />
-                </div>
-                <h3 className="text-sm md:text-base font-semibold text-foreground mb-1">
-                  {item.title}
-                </h3>
-                <p className="text-xs text-secondary/70 leading-relaxed">
-                  {item.description}
-                </p>
+          {/* Items */}
+          {items.length > 0 ? (
+            <div className="divide-y divide-border/30 mb-12">
+              {items.map((item, i) => (
+                <ItemCard key={item.id || i} item={item} index={i} />
+              ))}
+            </div>
+          ) : (
+            <div className="py-16 text-center">
+              <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Sparkles size={24} className="text-foreground" />
               </div>
-            ))}
-          </div>
+              <p className="text-lg font-semibold text-foreground mb-2">
+                Today&apos;s reads are on the way
+              </p>
+              <p className="text-sm text-secondary max-w-sm mx-auto">
+                We curate fresh articles every morning. Check back soon — or subscribe to get them in your inbox.
+              </p>
+            </div>
+          )}
 
-          {/* Topics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-12">
-            {TOPICS.map((topic) => {
-              const Icon = topic.icon;
-              return (
-                <Link
-                  key={topic.id}
-                  href={`/trending/${topic.id}`}
-                  className="group block p-4 md:p-5 rounded-xl hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-start gap-4">
-                    {/* Icon */}
-                    <div className={`w-12 h-12 rounded-xl ${topic.bgColor} flex items-center justify-center shrink-0`}>
-                      <Icon size={22} className={topic.color} strokeWidth={1.5} />
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <h2 className="text-base md:text-lg font-medium text-foreground group-hover:text-primary transition-colors">
-                          {topic.name}
-                        </h2>
-                        <ArrowUpRight 
-                          size={16} 
-                          className="text-secondary/40 group-hover:text-primary opacity-0 group-hover:opacity-100 transition-all shrink-0" 
-                          strokeWidth={1.5}
-                        />
-                      </div>
-                      <p className="text-xs text-secondary/70 leading-relaxed line-clamp-2">
-                        {topic.description}
-                      </p>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {topic.for.map((label) => (
-                          <span
-                            key={label}
-                            className="text-[10px] uppercase tracking-widest font-medium text-secondary/60 bg-gray-100 px-2 py-0.5 rounded-full"
-                          >
-                            {label}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-
-          {/* SEO Copy */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6 mb-12">
-            <h2 className="text-lg md:text-xl font-semibold text-foreground mb-2">
-              Take back your attention
-            </h2>
-            <p className="text-sm text-secondary leading-relaxed">
-              Social feeds are built to keep you scrolling — outrage, fear, endless loops. Trace is the opposite: a feed you control,
-              curated around what you actually care about. No manipulation. No brainrot. Just what matters.
-            </p>
-          </div>
-
-          {/* CTA Section */}
+          {/* CTA */}
           <div className="bg-gray-50 rounded-2xl p-6 md:p-8 text-center mb-12">
             <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
               <Sparkles size={22} className="text-foreground" strokeWidth={1.5} />
             </div>
-            <h2 className="text-lg md:text-xl font-semibold text-foreground mb-2">
-              Ready to escape the algorithm?
+            <h2 className="text-lg font-semibold text-foreground mb-2">
+              Want these personalized to you?
             </h2>
             <p className="text-sm text-secondary mb-6 max-w-lg mx-auto">
-              Build a feed that works for you, not against you. No manipulation, no brainrot — just what you actually want to see.
+              Sign up for Trace and get a daily feed tailored to your interests — with AI-powered summaries that match what you care about.
             </p>
             <Link href="/">
               <button className="bg-foreground text-background px-6 py-3 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all">

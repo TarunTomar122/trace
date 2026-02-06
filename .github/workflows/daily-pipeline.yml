@@ -28,7 +28,9 @@ on:
           - feeds
           - newsletters
           - build_newsletters
+          - build_free_newsletter
           - send_newsletters
+          - send_free_newsletter
           - reflection
           - cleanup
 
@@ -42,7 +44,7 @@ env:
 
 jobs:
   morning-pipeline:
-    if: github.event.schedule == '30 2 * * *' || (github.event_name == 'workflow_dispatch' && (inputs.jobs == 'all' || inputs.jobs == 'morning' || inputs.jobs == 'batch' || inputs.jobs == 'feeds' || inputs.jobs == 'newsletters' || inputs.jobs == 'build_newsletters' || inputs.jobs == 'send_newsletters'))
+    if: github.event.schedule == '30 2 * * *' || (github.event_name == 'workflow_dispatch' && (inputs.jobs == 'all' || inputs.jobs == 'morning' || inputs.jobs == 'batch' || inputs.jobs == 'feeds' || inputs.jobs == 'newsletters' || inputs.jobs == 'build_newsletters' || inputs.jobs == 'build_free_newsletter' || inputs.jobs == 'send_newsletters' || inputs.jobs == 'send_free_newsletter'))
     runs-on: ubuntu-latest
     
     steps:

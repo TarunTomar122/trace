@@ -5,36 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Your Daily Trace</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f9fafb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f9fafb;">
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f4f5;">
         <tr>
-            <td align="center" style="padding: 20px 10px;">
+            <td align="center" style="padding: 24px 12px;">
                 <!-- Main Container -->
-                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 800px; background-color: #ffffff;">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 640px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
 
                     <!-- ============================================
-                         HEADER SECTION
+                         HEADER - Brand bar
                          ============================================ -->
                     <tr>
-                        <td style="padding: 32px 32px 24px 32px;">
+                        <td style="background-color: #18181b; padding: 20px 32px;">
                             <table width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
-                                    <!-- Logo and Brand -->
                                     <td style="vertical-align: middle;">
-                                        <table cellpadding="0" cellspacing="0" border="0">
-                                            <tr>
-                                                <td style="padding-right: 8px; vertical-align: middle;">
-                                                    <img src="https://yourtrace.online/trace.png" alt="Trace" style="height: 24px; width: auto; display: block; vertical-align: middle;" />
-                                                </td>
-                                                <td style="vertical-align: middle;">
-                                                    <span style="font-size: 14px; color: #6b7280; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-weight: 500;"><a href="https://yourtrace.online" style="color: #6b7280; text-decoration: none;">YourTrace</a></span>
-                                                </td>
-                                            </tr>
-                                        </table>
+                                        <a href="https://yourtrace.online" style="text-decoration: none;">
+                                            <img src="https://www.yourtrace.online/tc.png" alt="Trace" width="28" height="28" style="display: inline-block; vertical-align: middle; border: 0; border-radius: 6px;" />
+                                            <span style="font-size: 16px; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-weight: 800; text-decoration: none; letter-spacing: 1.5px; text-transform: uppercase; vertical-align: middle; margin-left: 8px;">TRACE</span>
+                                        </a>
                                     </td>
-                                    <!-- Date -->
                                     <td align="right" style="vertical-align: middle;">
-                                        <span style="font-size: 11px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500;">
+                                        <span style="font-size: 12px; color: #a1a1aa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-weight: 500;">
                                             {{DATE}}
                                         </span>
                                     </td>
@@ -43,73 +35,73 @@
                         </td>
                     </tr>
 
-                    <!-- Top Border -->
-                    <tr>
-                        <td style="padding: 0 32px;">
-                            <div style="border-top: 1px solid rgba(0,0,0,0.1);"></div>
-                        </td>
-                    </tr>
-
                     <!-- ============================================
                          GREETING SECTION
                          ============================================ -->
                     <tr>
-                        <td style="padding: 32px 32px 16px 32px;">
-                            <p style="margin: 0; font-size: 16px; color: #363737; line-height: 1.625; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                                Good Global Greetings{{USER_NAME_GREETING}}!
+                        <td style="padding: 32px 32px 8px 32px;">
+                            <p style="margin: 0 0 6px 0; font-size: 22px; color: #18181b; line-height: 1.35; font-family: Georgia, 'Times New Roman', serif; font-weight: 700;">
+                                Hey{{USER_NAME_GREETING}} &#128075;
                             </p>
-                            <p style="margin: 8px 0 0 0; font-size: 16px; color: #363737; line-height: 1.625; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                                Here are {{ITEM_COUNT}} hand-picked reads curated just for you.
+                            <p style="margin: 0; font-size: 15px; color: #52525b; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+                                Here are <strong style="color: #18181b;">{{ITEM_COUNT}} stories</strong> we picked for you today. Enjoy!
                             </p>
                         </td>
                     </tr>
 
                     <!-- ============================================
                          NEWSLETTER ITEMS
-                         This section is auto-generated
                          ============================================ -->
                     <tr>
-                        <td style="padding: 16px 32px 32px 32px;">
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
-                                {{ITEMS_HTML}}
-                            </table>
-                        </td>
-                    </tr>
-
-                    <!-- Bottom Border -->
-                    <tr>
-                        <td style="padding: 0 32px;">
-                            <div style="border-top: 1px solid rgba(0,0,0,0.1);"></div>
+                        <td style="padding: 16px 32px 8px 32px;">
+                            {{ITEMS_HTML}}
                         </td>
                     </tr>
 
                     <!-- ============================================
-                         FOOTER SECTION
+                         CTA - View full feed
                          ============================================ -->
                     <tr>
-                        <td style="padding: 24px 32px 32px 32px;">
-                            <p style="margin: 0 0 16px 0; font-size: 12px; color: #777777; line-height: 1.67; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                                Curated by AI, delivered by Trace
+                        <td align="center" style="padding: 8px 32px 32px 32px;">
+                            <table cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="background-color: #18181b; border-radius: 8px;">
+                                        <a href="https://yourtrace.online/feed" style="display: inline-block; padding: 12px 28px; font-size: 14px; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-weight: 600; text-decoration: none; letter-spacing: 0.3px;">
+                                            View your full feed &rarr;
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- ============================================
+                         FOOTER
+                         ============================================ -->
+                    <tr>
+                        <td style="background-color: #fafafa; padding: 24px 32px; border-top: 1px solid #e4e4e7;">
+                            <p style="margin: 0 0 8px 0; font-size: 12px; color: #a1a1aa; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+                                Curated by AI, personalized for you, delivered by <a href="https://yourtrace.online" style="color: #71717a; text-decoration: none; font-weight: 600;">Trace</a>.
                             </p>
-                            <p style="margin: 0; font-size: 12px; color: #777777; line-height: 1.67; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                                <a href="https://yourtrace.online/profile" style="color: #777777; text-decoration: underline;">Manage preferences</a>
-                                <span style="color: #cccccc;">&nbsp;·&nbsp;</span>
-                                <a href="https://yourtrace.online/feed" style="color: #777777; text-decoration: underline;">View full feed</a>
+                            <p style="margin: 0; font-size: 12px; color: #a1a1aa; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+                                <a href="https://yourtrace.online/profile" style="color: #71717a; text-decoration: underline;">Manage preferences</a>
+                                <span style="color: #d4d4d8;">&nbsp;&middot;&nbsp;</span>
+                                <a href="https://yourtrace.online/feed" style="color: #71717a; text-decoration: underline;">View full feed</a>
                             </p>
                         </td>
                     </tr>
                 </table>
 
                 <!-- ============================================
-                     UNSUBSCRIBE SECTION
+                     UNSUBSCRIBE
                      ============================================ -->
-                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 550px;">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 640px;">
                     <tr>
-                        <td align="center" style="padding: 24px 20px;">
-                            <p style="margin: 0; font-size: 12px; color: #777777; line-height: 1.67; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; text-align: center;">
-                                You're receiving this because you subscribed to YourTrace.
+                        <td align="center" style="padding: 20px 20px 8px 20px;">
+                            <p style="margin: 0; font-size: 11px; color: #a1a1aa; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; text-align: center;">
+                                You&rsquo;re receiving this because you subscribed to Trace.
                                 <br>
-                                <a href="https://yourtrace.online/profile" style="color: #777777; text-decoration: underline;">Unsubscribe from daily newsletter</a>
+                                <a href="https://yourtrace.online/profile" style="color: #a1a1aa; text-decoration: underline;">Unsubscribe</a>
                             </p>
                         </td>
                     </tr>

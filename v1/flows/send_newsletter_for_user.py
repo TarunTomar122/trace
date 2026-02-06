@@ -38,15 +38,15 @@ def _load_template(template_name: str) -> str:
     raise FileNotFoundError(f"Template not found: {template_path}")
 
 
-# Type colors for visual variety - edit these to change badge colors
+# Type colors for numbered pills and badges
 TYPE_COLORS = {
-    "blog": "#10b981",      # Emerald
-    "discussion": "#f59e0b", # Amber
-    "news": "#f97316",      # Orange
-    "repo": "#8b5cf6",      # Violet
-    "paper": "#3b82f6",     # Blue
-    "tweet": "#0ea5e9",     # Sky
-    "launch": "#d946ef",    # Fuchsia
+    "blog": "#10b981",
+    "discussion": "#f59e0b",
+    "news": "#f97316",
+    "repo": "#8b5cf6",
+    "paper": "#3b82f6",
+    "tweet": "#0ea5e9",
+    "launch": "#d946ef",
 }
 
 
@@ -76,9 +76,9 @@ def _generate_newsletter_html(
 
     # Build items HTML
     items_html = ""
-    for item in items:
+    for idx, item in enumerate(items, 1):
         item_type = item.get("type", "blog")
-        type_color = TYPE_COLORS.get(item_type, "#6b7280")
+        type_color = TYPE_COLORS.get(item_type, "#71717a")
         type_label = item_type.upper()
 
         item_html = item_template
@@ -96,9 +96,17 @@ def _generate_newsletter_html(
         first_name = user_name.split()[0]
         user_name_greeting = f", {first_name}"
 
+    # Format date nicely (2026-02-05 → February 05, 2026)
+    try:
+        from datetime import datetime as dt
+        date_obj = dt.strptime(date, "%Y-%m-%d")
+        display_date = date_obj.strftime("%B %d, %Y")
+    except Exception:
+        display_date = date
+
     # Fill main template
     html = main_template
-    html = html.replace("{{DATE}}", date)
+    html = html.replace("{{DATE}}", display_date)
     html = html.replace("{{USER_NAME_GREETING}}", user_name_greeting)
     html = html.replace("{{ITEM_COUNT}}", str(len(items)))
     html = html.replace("{{ITEMS_HTML}}", items_html)
@@ -148,6 +156,7 @@ def _generate_newsletter_text(
 def send_newsletter_for_user(
     user_id: str,
     date: str | None = None,
+    force: bool = False,
 ) -> dict[str, Any]:
     """
     Send a newsletter for a single user.
@@ -197,11 +206,11 @@ def send_newsletter_for_user(
             "date": date,
         }
 
-    # Check if already sent
-    if newsletter.get("status") == "sent":
+    # Check if already sent (skip with --force)
+    if newsletter.get("status") == "sent" and not force:
         return {
             "success": False,
-            "error": "Newsletter already sent",
+            "error": "Newsletter already sent (use --force to resend)",
             "user_id": user_id,
             "date": date,
         }
@@ -392,12 +401,15 @@ def main():
     parser.add_argument("--date", help="Date (YYYY-MM-DD), defaults to today IST")
     parser.add_argument("--dry-run", action="store_true", help="Only report, don't send")
     parser.add_argument("--all", action="store_true", help="Send to all users with draft newsletters")
+    parser.add_argument("--force", action="store_true", help="Resend even if already sent")
     args = parser.parse_args()
 
     if args.all or not args.user_id:
         send_newsletters_for_all_users(args.date, args.dry_run)
     else:
-        result = send_newsletter_for_user(args.user_id, args.date)
+        result = send_newsletter_for_user(
+            args.user_id, args.date, force=args.force,
+        )
         if result["success"]:
             print(f"\nNewsletter sent to {result['email']}")
         else:

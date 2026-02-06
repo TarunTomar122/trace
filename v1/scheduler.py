@@ -4,8 +4,10 @@ Master Scheduler - orchestrates all daily jobs in correct order.
 This is the ONE script to run via cron. It handles:
 - 4:00 AM: run_daily_batch.py (Trend Discovery + Pool Harvest)
 - 5:00 AM: run_user_feeds.py (Generate feeds for all users)
-- 6:00 AM: build_newsletters_for_all_users.py (Build newsletters)
-- 6:30 AM: send_newsletters_for_all_users.py (Send newsletters)
+- 6:00 AM: build_newsletters_for_all_users.py (Build paid newsletters)
+- 6:10 AM: build_free_newsletter.py (Build free newsletter from best summaries)
+- 6:30 AM: send_newsletters_for_all_users.py (Send paid newsletters)
+- 6:40 AM: send_free_newsletter.py (Send free newsletter to free subscribers)
 - 11:00 PM: run_daily_reflection.py (Process day's interactions)
 - 11:30 PM: cleanup_expired_signals.py
 
@@ -15,7 +17,7 @@ Usage:
     python v1/scheduler.py --jobs evening       # Run evening jobs (reflection + cleanup)
     python v1/scheduler.py --jobs batch         # Run only batch job
     python v1/scheduler.py --jobs feeds         # Run only feeds job
-    python v1/scheduler.py --jobs newsletters   # Run only newsletter jobs (build + send)
+    python v1/scheduler.py --jobs newsletters   # Run only newsletter jobs (build + send, paid + free)
     python v1/scheduler.py --jobs reflection    # Run only reflection job
     python v1/scheduler.py --jobs cleanup       # Run only cleanup job
 """
@@ -114,6 +116,18 @@ def job_send_newsletters():
     return send_newsletters_for_all_users()
 
 
+def job_build_free_newsletter():
+    """Build free newsletter from best summaries across subscribed users."""
+    from v1.flows.build_free_newsletter import build_free_newsletter
+    return build_free_newsletter()
+
+
+def job_send_free_newsletter():
+    """Send free newsletter to all free subscribers."""
+    from v1.flows.send_free_newsletter import send_free_newsletter
+    return send_free_newsletter()
+
+
 # Job definitions with scheduled times (for documentation)
 JOBS = {
     "batch": {
@@ -128,13 +142,23 @@ JOBS = {
     },
     "build_newsletters": {
         "fn": job_build_newsletters,
-        "description": "Build newsletters for all users",
+        "description": "Build newsletters for subscribed users",
         "scheduled_time": "6:00 AM"
+    },
+    "build_free_newsletter": {
+        "fn": job_build_free_newsletter,
+        "description": "Build free newsletter from best summaries",
+        "scheduled_time": "6:10 AM"
     },
     "send_newsletters": {
         "fn": job_send_newsletters,
-        "description": "Send newsletters to all users",
+        "description": "Send newsletters to subscribed users",
         "scheduled_time": "6:30 AM"
+    },
+    "send_free_newsletter": {
+        "fn": job_send_free_newsletter,
+        "description": "Send free newsletter to free subscribers",
+        "scheduled_time": "6:40 AM"
     },
     "reflection": {
         "fn": job_daily_reflection,
@@ -150,10 +174,10 @@ JOBS = {
 
 # Job groups
 JOB_GROUPS = {
-    "all": ["batch", "feeds", "build_newsletters", "send_newsletters", "reflection", "cleanup"],
-    "morning": ["batch", "feeds", "build_newsletters", "send_newsletters"],
+    "all": ["batch", "feeds", "build_newsletters", "build_free_newsletter", "send_newsletters", "send_free_newsletter", "reflection", "cleanup"],
+    "morning": ["batch", "feeds", "build_newsletters", "build_free_newsletter", "send_newsletters", "send_free_newsletter"],
     "evening": ["reflection", "cleanup"],
-    "newsletters": ["build_newsletters", "send_newsletters"]
+    "newsletters": ["build_newsletters", "build_free_newsletter", "send_newsletters", "send_free_newsletter"]
 }
 
 
@@ -230,22 +254,25 @@ def main():
         epilog="""
 Job Groups:
   all         - Run all jobs (batch, feeds, newsletters, reflection, cleanup)
-  morning     - Run morning jobs (batch, feeds, newsletters)
+  morning     - Run morning jobs (batch, feeds, all newsletters)
   evening     - Run evening jobs (reflection, cleanup)
-  newsletters - Run newsletter jobs only (build + send)
+  newsletters - Run all newsletter jobs (build + send, paid + free)
 
 Individual Jobs:
-  batch            - Trend Discovery + Pool Harvest (4:00 AM)
-  feeds            - Generate feeds for all users (5:00 AM)
-  build_newsletters - Build newsletters for all users (6:00 AM)
-  send_newsletters  - Send newsletters to all users (6:30 AM)
-  reflection       - Process day's interactions (11:00 PM)
-  cleanup          - Cleanup expired signals (11:30 PM)
+  batch                - Trend Discovery + Pool Harvest (4:00 AM)
+  feeds                - Generate feeds for all users (5:00 AM)
+  build_newsletters    - Build newsletters for subscribed users (6:00 AM)
+  build_free_newsletter - Build free newsletter from best summaries (6:10 AM)
+  send_newsletters     - Send newsletters to subscribed users (6:30 AM)
+  send_free_newsletter - Send free newsletter to free subscribers (6:40 AM)
+  reflection           - Process day's interactions (11:00 PM)
+  cleanup              - Cleanup expired signals (11:30 PM)
 
 Examples:
   python v1/scheduler.py --jobs all
   python v1/scheduler.py --jobs morning
   python v1/scheduler.py --jobs newsletters
+  python v1/scheduler.py --jobs build_free_newsletter
   python v1/scheduler.py --jobs reflection
 """
     )
