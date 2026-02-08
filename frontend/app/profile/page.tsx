@@ -467,10 +467,10 @@ function ProfileContent() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    Make your feed feel personal
+                    Tell us what you care about
                   </p>
                   <p className="text-xs text-secondary/70 mt-0.5">
-                    Most early users say picking interests makes the feed feel 2–3x more relevant
+                    Pick your interests so Trace can pull the best content from hundreds of sources for you
                   </p>
                 </div>
               </div>
@@ -573,7 +573,7 @@ function ProfileContent() {
                     <TraceInsightCard insights={traceInsights} />
                   ) : (
                     <div className="text-sm text-secondary/70">
-                      Interact with your feed to teach Trace what helps you focus and avoid doomscrolling.
+                      Interact with your feed to help Trace learn what matters most to you.
                     </div>
                   )}
                 </section>
@@ -717,7 +717,7 @@ function ProfileContent() {
               </section>
 
               {/* Content preferences */}
-              <section className="pb-6 border-b border-gray-200">
+              {/* <section className="pb-6 border-b border-gray-200">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
                     Content preferences
@@ -805,7 +805,7 @@ function ProfileContent() {
                     )}
                   </div>
                 </div>
-              </section>
+              </section> */}
 
               {/* Newsletter */}
               {profile?.onboarded && ['trial', 'active'].includes(profile?.subscriptionStatus || '') && (

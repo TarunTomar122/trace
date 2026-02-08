@@ -69,9 +69,9 @@ def _get_user_feed(
     return non_video_items
 
 
-def _extract_section(body: str, heading: str) -> Optional[str]:
+def _extract_section(body: str, headings: list[str]) -> Optional[str]:
     """
-    Extract content under a specific ## heading from markdown body.
+    Extract content under any matching ## heading from markdown body.
 
     Returns the text between the heading and the next ## heading
     (or end of body), stripped of markdown formatting.
@@ -79,42 +79,43 @@ def _extract_section(body: str, heading: str) -> Optional[str]:
     if not body:
         return None
 
-    # Pattern: ## heading (case-insensitive), capture until next ## or end
-    pattern = (
-        rf"##\s*{re.escape(heading)}"
-        r"(.*?)(?=\n##\s|\Z)"
-    )
-    match = re.search(pattern, body, re.DOTALL | re.IGNORECASE)
-    if not match:
-        return None
+    for heading in headings:
+        pattern = (
+            rf"##\s*{re.escape(heading)}"
+            r"(.*?)(?=\n##\s|\Z)"
+        )
+        match = re.search(pattern, body, re.DOTALL | re.IGNORECASE)
+        if not match:
+            continue
 
-    content = match.group(1).strip()
-    if not content:
-        return None
+        content = match.group(1).strip()
+        if not content:
+            continue
 
-    # Clean up markdown formatting for email
-    # Remove ### sub-headings but keep text
-    content = re.sub(r"###\s*", "", content)
-    # Remove bold markers
-    content = re.sub(r"\*\*(.*?)\*\*", r"\1", content)
-    # Remove italic markers
-    content = re.sub(r"\*(.*?)\*", r"\1", content)
-    # Convert markdown bullet lists to plain text
-    content = re.sub(r"^\s*[-*]\s+", "• ", content, flags=re.MULTILINE)
+        # Clean up markdown formatting for email
+        # Remove ### sub-headings but keep text
+        content = re.sub(r"###\s*", "", content)
+        # Remove bold markers
+        content = re.sub(r"\*\*(.*?)\*\*", r"\1", content)
+        # Remove italic markers
+        content = re.sub(r"\*(.*?)\*", r"\1", content)
+        # Convert markdown bullet lists to plain text
+        content = re.sub(r"^\s*[-*]\s+", "• ", content, flags=re.MULTILINE)
 
-    return content.strip()
+        return content.strip()
+
+    return None
 
 
 def _extract_first_section(body: str) -> Optional[str]:
     """
-    Extract the first section of the body (before Key examples).
-    This is typically "The Core Insight" or similar.
+    Extract the first section of the body (content after first heading).
+    Used as a lede fallback when no subtitle exists.
     """
     if not body:
         return None
 
-    # Take content from start up to ## Key examples (or second ##)
-    # Skip the first heading itself
+    # Take content from the first section up to the next heading
     lines = body.strip().split("\n")
     result_lines = []
     found_first_heading = False
@@ -145,10 +146,10 @@ def _build_newsletter_summary(item: dict) -> str:
     Build a newsletter-friendly summary from an item's existing
     AI summary. Extracts the core insight, key details, and relevance.
 
-    Structure (inspired by The Rundown newsletter):
-    - The Core Insight: subtitle or first section paragraph
-    - The details: outline bullets
-    - Why it matters: personalized relevance (if available)
+    Structure:
+    - Lede paragraph from subtitle or first section
+    - Optional bullets from outline
+    - Optional personalization paragraph
     """
     summary = item.get("summary", {}) or {}
     short_article = summary.get("short_article", {}) or {}
@@ -159,7 +160,7 @@ def _build_newsletter_summary(item: dict) -> str:
 
     parts = []
 
-    # The Core Insight: use subtitle + first body section
+    # Lede: use subtitle or the first body section
     insight_text = subtitle
     first_section = _extract_first_section(body)
     if first_section:
@@ -171,38 +172,25 @@ def _build_newsletter_summary(item: dict) -> str:
 
     if insight_text:
         parts.append(
-            f"<strong>The Core Insight:</strong> {insight_text}"
+            f"<p style=\"margin: 0 0 10px 0;\">{insight_text}</p>"
         )
 
-    # The details: outline bullets
+    # Detail bullets from outline
     if outline:
         bullets = "".join(
             f"<li style=\"margin-bottom: 4px;\">{b}</li>"
             for b in outline[:4]
         )
         parts.append(
-            f"<strong>The details:</strong>"
-            f"<ul style=\"margin: 6px 0 0 0; "
-            f"padding-left: 20px;\">"
+            f"<ul style=\"margin: 0 0 10px 18px; padding-left: 16px;\">"
             f"{bullets}</ul>"
         )
-
-    # Why it matters: personalized section
-    why_matters = _extract_section(body, "Why this matters for you")
-    if why_matters:
-        # Take first 2 sentences
-        sentences = re.split(r"(?<=[.!?])\s+", why_matters)
-        excerpt = " ".join(sentences[:2]).strip()
-        if excerpt:
-            parts.append(
-                f"<strong>Why it matters:</strong> {excerpt}"
-            )
 
     if not parts:
         # Ultimate fallback: just use subtitle
         return subtitle or ""
 
-    return "<br><br>".join(parts)
+    return "".join(parts)
 
 
 def _select_items_with_summaries(

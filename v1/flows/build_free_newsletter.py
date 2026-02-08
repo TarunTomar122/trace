@@ -122,7 +122,7 @@ def _build_free_summary(item: dict) -> str:
 
     parts = []
 
-    # Core insight
+    # Lede paragraph
     insight = subtitle
     first_section = _extract_first_section(body)
     if first_section:
@@ -132,7 +132,7 @@ def _build_free_summary(item: dict) -> str:
             insight = excerpt
     if insight:
         parts.append(
-            f"<strong>The Core Insight:</strong> {insight}"
+            f"<p style=\"margin: 0 0 10px 0;\">{insight}</p>"
         )
 
     # Detail bullets
@@ -142,15 +142,14 @@ def _build_free_summary(item: dict) -> str:
             for b in outline[:4]
         )
         parts.append(
-            '<strong>The details:</strong>'
-            '<ul style="margin: 6px 0 0 0; '
-            f'padding-left: 20px;">{bullets}</ul>'
+            '<ul style="margin: 0 0 10px 18px; padding-left: 16px;">'
+            f'{bullets}</ul>'
         )
 
     if not parts:
         return subtitle or ""
 
-    return "<br><br>".join(parts)
+    return "".join(parts)
 
 
 def _select_diverse_items(

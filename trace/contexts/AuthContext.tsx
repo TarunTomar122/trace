@@ -8,7 +8,7 @@ import {
   User,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { getOrCreateUserProfile, getUserProfile, UserProfile } from '@/lib/firestore';
+import { getOrCreateUserProfile, getUserProfile, deleteUserData, UserProfile } from '@/lib/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -16,6 +16,7 @@ interface AuthContextType {
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -25,6 +26,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   signInWithGoogle: async () => {},
   signOut: async () => {},
+  deleteAccount: async () => {},
   refreshProfile: async () => {},
 });
 
@@ -121,8 +123,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const deleteAccount = async () => {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error('No user signed in');
+      // Delete all Firestore data first
+      await deleteUserData(currentUser.uid);
+      // Sign out of Google
+      await GoogleSignin.signOut();
+      // Delete the Firebase auth account
+      await currentUser.delete();
+      setProfile(null);
+      setUser(null);
+    } catch (error) {
+      console.error('Delete Account Error:', error);
+      throw error;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, signOut, deleteAccount, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

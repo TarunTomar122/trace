@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -11,168 +11,293 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { Check, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import Slider from '@react-native-community/slider';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Colors, Fonts } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  INTERESTS, 
+import {
+  INTERESTS,
+  INTEREST_SUBTOPICS,
   SKILL_SUGGESTIONS,
-  completeOnboarding 
+  completeOnboarding,
 } from '@/lib/firestore';
 
-// Sample feed items per interest (for preview)
-const INTEREST_FEED_SAMPLES: Record<string, { title: string; category: string }[]> = {
-  'mental-wellness': [
-    { title: 'Small Habits That Reduce Daily Stress', category: 'Mental Wellness' },
-    { title: 'A Calm Start to Your Day in 10 Minutes', category: 'Mental Wellness' },
-  ],
-  'health-fitness': [
-    { title: 'The 20-Minute Strength Routine That Works', category: 'Health & Fitness' },
-    { title: 'Walking Habits That Boost Your Energy', category: 'Health & Fitness' },
-  ],
-  relationships: [
-    { title: 'How to Have Better Conversations', category: 'Relationships' },
-    { title: 'Kind Boundaries That Actually Stick', category: 'Relationships' },
-  ],
-  money: [
-    { title: 'A Budget You Will Actually Keep', category: 'Money' },
-    { title: 'How to Start Investing with $50', category: 'Money' },
-  ],
-  career: [
-    { title: 'How to Ask for a Raise (Without Panic)', category: 'Career' },
-    { title: 'Switching Careers Without Burning Out', category: 'Career' },
-  ],
-  learning: [
-    { title: 'Learn Anything Faster with Spaced Repetition', category: 'Learning' },
-    { title: 'A 30-Day Plan to Build a Skill', category: 'Learning' },
-  ],
-  productivity: [
-    { title: 'A Simple Daily System That Works', category: 'Productivity' },
-    { title: 'Phone-Free Mornings That Stick', category: 'Productivity' },
-  ],
-  creativity: [
-    { title: 'Finding Ideas When You Feel Stuck', category: 'Creativity' },
-    { title: 'Small Creative Habits You Can Keep', category: 'Creativity' },
-  ],
-  travel: [
-    { title: 'How to Plan a Low-Stress Trip', category: 'Travel' },
-    { title: 'Travel Smarter on a Small Budget', category: 'Travel' },
-  ],
-  culture: [
-    { title: 'Great Books and Podcasts to Add This Week', category: 'Culture' },
-    { title: 'What Everyone Is Watching Right Now', category: 'Culture' },
-  ],
-};
+// ─── Design tokens ───
+const ACCENT = '#22c55e';
 
-type PillProps = {
+const MAX_INTERESTS = 4;
+const MIN_INTERESTS = 4;
+const MAX_SUBTOPICS_PER_INTEREST = 2;
+// Step 1: Interests | Steps 2-5: Subtopics (one per interest) | Step 6: Skills | Step 7: Sliders
+const TOTAL_STEPS = 7;
+
+
+// ─── Pill Component (dot-indicator style) ───
+function Pill({
+  label,
+  selected,
+  disabled,
+  onPress,
+  colorScheme,
+}: {
   label: string;
   selected: boolean;
+  disabled?: boolean;
   onPress: () => void;
   colorScheme: 'light' | 'dark';
-};
+}) {
+  const selectedBg = colorScheme === 'dark' ? '#052e16' : '#f0fdf4';
+  const unselectedBg = Colors[colorScheme].card;
+  const selectedBorder = ACCENT;
+  const unselectedBorder = colorScheme === 'dark' ? '#333' : '#e5e7eb';
+  const dotInactive = colorScheme === 'dark' ? '#444' : '#d1d5db';
 
-function Pill({ label, selected, onPress, colorScheme }: PillProps) {
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       style={[
         styles.pill,
-        selected
-          ? { backgroundColor: Colors[colorScheme].foreground }
-          : { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border, borderWidth: 1 },
-      ]}>
+        {
+          backgroundColor: selected ? selectedBg : unselectedBg,
+          borderColor: selected ? selectedBorder : unselectedBorder,
+          borderWidth: selected ? 1.5 : 1,
+        },
+        disabled && !selected && { opacity: 0.35 },
+      ]}
+    >
+      <View
+        style={[
+          styles.pillDot,
+          {
+            backgroundColor: selected ? ACCENT : dotInactive,
+          },
+        ]}
+      />
       <ThemedText
         style={[
           styles.pillText,
-          { color: selected ? Colors[colorScheme].background : Colors[colorScheme].text },
-        ]}>
+          { color: selected ? ACCENT : Colors[colorScheme].text },
+        ]}
+      >
         {label}
       </ThemedText>
-      {selected && (
-        <ThemedText style={[styles.pillCheck, { color: Colors[colorScheme].background }]}>✓</ThemedText>
-      )}
     </Pressable>
   );
 }
 
+// ─── Option Row Component (for subtopic multiselect) ───
+function OptionRow({
+  label,
+  selected,
+  disabled,
+  onPress,
+  colorScheme,
+}: {
+  label: string;
+  selected: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+  colorScheme: 'light' | 'dark';
+}) {
+  const selectedBg = colorScheme === 'dark' ? '#052e16' : '#f0fdf4';
+  const unselectedBg = Colors[colorScheme].card;
+  const selectedBorder = ACCENT;
+  const unselectedBorder = colorScheme === 'dark' ? '#333' : '#e5e7eb';
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={[
+        styles.optionRow,
+        {
+          backgroundColor: selected ? selectedBg : unselectedBg,
+          borderColor: selected ? selectedBorder : unselectedBorder,
+          borderWidth: selected ? 1.5 : 1,
+        },
+        disabled && !selected && { opacity: 0.35 },
+      ]}
+    >
+      <ThemedText
+        style={[
+          styles.optionRowText,
+          { color: selected ? ACCENT : Colors[colorScheme].text },
+        ]}
+      >
+        {label}
+      </ThemedText>
+      <View
+        style={[
+          styles.optionRowCheck,
+          {
+            backgroundColor: selected ? ACCENT : 'transparent',
+            borderColor: selected
+              ? ACCENT
+              : colorScheme === 'dark'
+                ? '#555'
+                : '#d1d5db',
+          },
+        ]}
+      >
+        {selected && <Check size={14} color="#fff" strokeWidth={3} />}
+      </View>
+    </Pressable>
+  );
+}
+
+// ─── Main Onboarding Screen ───
 export default function OnboardingScreen() {
   const router = useRouter();
   const { user, profile, refreshProfile } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
-  
+
   const isEditMode = profile?.onboarded ?? false;
-  
-  const step = 0;
+
+  const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Step 0: Interests & Skills
+
+  // Step 1: Interests
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
 
-  // Skills
+  // Step 2: Subtopics / Focus
+  const [selectedFocus, setSelectedFocus] = useState<Record<string, string[]>>({});
+
+  // Step 3: Skills
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
-  // Name (kept for existing profiles)
-  const [name, setName] = useState(user?.displayName || '');
-  
-  // Pre-fill form with existing profile data when editing
-  useEffect(() => {
-    if (profile) {
-      if (profile.interests?.length) setSelectedInterests(profile.interests);
-      if (profile.skills?.length) setSelectedSkills(profile.skills);
-      if (profile.name) setName(profile.name);
-    }
-  }, [profile]);
+  // Step 4: Interest weights (0–10 per interest)
+  const [interestWeights, setInterestWeights] = useState<Record<string, number>>({});
 
-  // Compute preview feed items
-  const previewItems = useMemo(() => {
-    if (selectedInterests.length === 0) {
-      return [
-        { title: 'A Calm Feed That Helps You Focus', category: 'Wellbeing' },
-        { title: 'Small Habits That Add Up Over Time', category: 'Growth' },
-      ];
-    }
-    
-    const items: { title: string; category: string }[] = [];
-    for (const interest of selectedInterests) {
-      const samples = INTEREST_FEED_SAMPLES[interest];
-      if (samples && items.length < 3) {
-        items.push(samples[0]);
+  // NOTE: No pre-fill. Onboarding always starts fresh.
+  // The AuthGate ensures onboarded users go to (tabs), not here.
+  // If we add an "Edit Preferences" flow later, it should pass
+  // a route param and load existing data explicitly.
+
+  // Initialise weights when interests change
+  useEffect(() => {
+    setInterestWeights((prev) => {
+      const next: Record<string, number> = {};
+      for (const id of selectedInterests) {
+        next[id] = prev[id] ?? 5;
       }
-    }
-    return items.length > 0 ? items : [{ title: 'Personalized content loading...', category: 'Feed' }];
+      return next;
+    });
   }, [selectedInterests]);
 
-  const toggleInterest = (id: string) => {
-    if (selectedInterests.includes(id)) {
-      setSelectedInterests(selectedInterests.filter(i => i !== id));
-    } else if (selectedInterests.length < 8) {
-      setSelectedInterests([...selectedInterests, id]);
-    }
+  // ─── Interest toggle ───
+  const toggleInterest = useCallback(
+    (id: string) => {
+      if (selectedInterests.includes(id)) {
+        setSelectedInterests(selectedInterests.filter((i) => i !== id));
+        const nextFocus = { ...selectedFocus };
+        delete nextFocus[id];
+        setSelectedFocus(nextFocus);
+      } else if (selectedInterests.length < MAX_INTERESTS) {
+        setSelectedInterests([...selectedInterests, id]);
+      }
+    },
+    [selectedInterests, selectedFocus],
+  );
+
+  // ─── Subtopic toggle ───
+  const toggleSubtopic = useCallback(
+    (interestId: string, subtopicId: string) => {
+      const current = selectedFocus[interestId] || [];
+      if (current.includes(subtopicId)) {
+        const nextList = current.filter((s) => s !== subtopicId);
+        if (nextList.length === 0) {
+          const next = { ...selectedFocus };
+          delete next[interestId];
+          setSelectedFocus(next);
+        } else {
+          setSelectedFocus({ ...selectedFocus, [interestId]: nextList });
+        }
+      } else if (current.length < MAX_SUBTOPICS_PER_INTEREST) {
+        setSelectedFocus({ ...selectedFocus, [interestId]: [...current, subtopicId] });
+      }
+    },
+    [selectedFocus],
+  );
+
+  // ─── Skill toggle ───
+  const toggleSkill = useCallback(
+    (id: string) => {
+      if (selectedSkills.includes(id)) {
+        setSelectedSkills(selectedSkills.filter((s) => s !== id));
+      } else {
+        setSelectedSkills([...selectedSkills, id]);
+      }
+    },
+    [selectedSkills],
+  );
+
+  // ─── Weight slider ───
+  const setWeight = useCallback((id: string, value: number) => {
+    setInterestWeights((prev) => ({ ...prev, [id]: Math.round(value) }));
+  }, []);
+
+  // ─── Step helpers ───
+  const isSubtopicStep = step >= 2 && step <= 5;
+  const subtopicIndex = step - 2; // 0–3 for steps 2–5
+  const currentSubtopicInterestId = isSubtopicStep ? selectedInterests[subtopicIndex] : null;
+  const currentSubtopicInterest = currentSubtopicInterestId
+    ? INTERESTS.find((i) => i.id === currentSubtopicInterestId)
+    : null;
+  const currentSubtopics = currentSubtopicInterestId
+    ? INTEREST_SUBTOPICS[currentSubtopicInterestId] || []
+    : [];
+  const currentSubtopicSelected = currentSubtopicInterestId
+    ? selectedFocus[currentSubtopicInterestId] || []
+    : [];
+
+  // Conversational prompts (matching web frontend)
+  const subtopicPrompts = currentSubtopicInterest
+    ? [
+        `You like ${currentSubtopicInterest.label.toLowerCase()}... what about it interests you the most?`,
+        `${currentSubtopicInterest.label} is broad — any angle you're drawn to?`,
+        `Anything specific about ${currentSubtopicInterest.label.toLowerCase()} you want to dive into?`,
+        `Last one! What's your ${currentSubtopicInterest.label.toLowerCase()} sweet spot?`,
+      ]
+    : [];
+
+
+  // ─── Navigation ───
+  const progressWidth = `${(step / TOTAL_STEPS) * 100}%`;
+
+  const canGoNext = () => {
+    if (step === 1) return selectedInterests.length >= MIN_INTERESTS;
+    return true; // All other steps are optional
   };
 
-  const toggleSkill = (id: string) => {
-    if (selectedSkills.includes(id)) {
-      setSelectedSkills(selectedSkills.filter(s => s !== id));
+  const handleNext = () => {
+    if (!canGoNext()) return;
+    if (step < TOTAL_STEPS) {
+      setStep(step + 1);
     } else {
-      setSelectedSkills([...selectedSkills, id]);
+      handleSubmit();
     }
   };
 
-  const canProceed = () => selectedInterests.length >= 4 && selectedSkills.length >= 1;
+  const handleBack = () => {
+    if (step > 1) setStep(step - 1);
+  };
 
+  // ─── Submit ───
   const handleSubmit = async () => {
     if (!user) return;
-    
     setIsSubmitting(true);
     try {
-      const existingHobbies = profile?.hobbies || [];
       await completeOnboarding(user.uid, {
-        name: name.trim(),
+        name: user.displayName || '',
         interests: selectedInterests,
-        hobbies: existingHobbies,
+        interestQueries: Object.keys(selectedFocus).length > 0 ? selectedFocus : undefined,
+        interestWeights:
+          Object.keys(interestWeights).length > 0 ? interestWeights : undefined,
+        hobbies: profile?.hobbies || [],
         skills: selectedSkills,
         sourcePreferences: {
           youtube: 5,
@@ -182,9 +307,9 @@ export default function OnboardingScreen() {
           tweets: 3,
           discussions: 4,
         },
-        contentDepth: null,
+        contentDepth: 'surprise',
       });
-      
+
       await refreshProfile();
       router.replace('/(tabs)');
     } catch (error) {
@@ -193,167 +318,286 @@ export default function OnboardingScreen() {
     }
   };
 
-  const nextStep = () => {
-    if (!canProceed()) return;
-    handleSubmit();
-  };
+  // ─── Render ───
+  const showBackInHeader = step > 1 || isEditMode;
 
   return (
-    <SafeAreaView 
+    <SafeAreaView
       style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
-      edges={['top', 'bottom']}>
-      <KeyboardAvoidingView 
+      edges={['top', 'bottom']}
+    >
+      <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        
-        {/* Header */}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        {/* ═══════ Header: back chevron + green progress bar ═══════ */}
         <View style={styles.header}>
           <View style={styles.headerRow}>
-            {isEditMode ? (
-              <Pressable 
-                onPress={() => router.replace('/(tabs)/explore')} 
-                style={styles.closeButton}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <ThemedText style={[styles.closeButtonText, { color: Colors[colorScheme].muted }]}>
-                  Cancel
-                </ThemedText>
+            {showBackInHeader && (
+              <Pressable
+                onPress={step > 1 ? handleBack : () => router.replace('/(tabs)/explore')}
+                style={styles.backChevron}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <ChevronLeft size={26} color={Colors[colorScheme].text} strokeWidth={2} />
               </Pressable>
-            ) : (
-              <View style={styles.closeButton} />
             )}
-            <View style={styles.logoRow}>
-              <Image
-                source={require('@/assets/images/trace-logo.png')}
-                style={styles.logo}
-                resizeMode="contain"
+
+            <View style={[styles.progressBar, { backgroundColor: colorScheme === 'dark' ? '#1c1c1c' : '#e5e7eb' }]}>
+              <Animated.View
+                style={[
+                  styles.progressFill,
+                  { backgroundColor: ACCENT, width: progressWidth as any },
+                ]}
               />
-              <ThemedText style={styles.logoText}>
-                {isEditMode ? 'Edit Preferences' : 'TRACE'}
-              </ThemedText>
             </View>
-            <View style={styles.closeButton} />
-          </View>
-          
-          {/* Progress bar */}
-          <View style={[styles.progressBar, { backgroundColor: Colors[colorScheme].border }]}>
-            <View 
-              style={[
-                styles.progressFill, 
-                { 
-                  backgroundColor: Colors[colorScheme].foreground,
-                  width: '100%' 
-                }
-              ]} 
-            />
-          </View>
-          
-          <View style={styles.stepIndicator}>
-            <ThemedText style={[styles.stepText, { color: Colors[colorScheme].muted }]}>
-              Step 1 of 1
-            </ThemedText>
           </View>
         </View>
 
-        <ScrollView 
+        {/* ═══════ Content ═══════ */}
+        <ScrollView
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled">
-          
-          {/* Step 0: Interests & Skills */}
-          {step === 0 && (
-            <Animated.View entering={FadeIn} exiting={FadeOut}>
-              <ThemedText style={styles.pageTitle}>Let's get started</ThemedText>
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* ═══════ STEP 1: Interests ═══════ */}
+          {step === 1 && (
+            <Animated.View entering={FadeIn.duration(250)} exiting={FadeOut.duration(150)}>
+              {/* Logo + Question */}
+              <View style={styles.questionRow}>
+                <Image
+                  source={require('@/assets/images/trace-logo.png')}
+                  style={styles.questionLogo}
+                  resizeMode="contain"
+                />
+                <ThemedText style={styles.pageTitle}>
+                  What are you most{'\n'}interested in?
+                </ThemedText>
+              </View>
+
               <ThemedText style={[styles.pageSubtitle, { color: Colors[colorScheme].muted }]}>
-                Build a calmer feed in minutes (no doomscrolling)
+                Pick {MIN_INTERESTS} topics • {selectedInterests.length}/{MAX_INTERESTS} selected
               </ThemedText>
 
-              <View style={styles.section}>
-                <ThemedText style={styles.sectionTitle}>
-                  What do you want more of?
-                </ThemedText>
-                <ThemedText style={[styles.sectionSubtitle, { color: Colors[colorScheme].muted }]}>
-                  Pick at least 4 topics to keep your feed focused • {selectedInterests.length}/8 selected
-                </ThemedText>
-
-                <View style={styles.pillsContainer}>
-                  {INTERESTS.map((interest) => (
+              <View style={styles.pillsContainer}>
+                {INTERESTS.map((interest) => {
+                  const isSelected = selectedInterests.includes(interest.id);
+                  const isMaxed = !isSelected && selectedInterests.length >= MAX_INTERESTS;
+                  return (
                     <Pill
                       key={interest.id}
                       label={interest.label}
-                      selected={selectedInterests.includes(interest.id)}
+                      selected={isSelected}
+                      disabled={isMaxed}
                       onPress={() => toggleInterest(interest.id)}
                       colorScheme={colorScheme}
                     />
-                  ))}
-                </View>
+                  );
+                })}
               </View>
 
-              <View style={styles.section}>
-                <ThemedText style={styles.sectionTitle}>
-                  Your skills or strengths
-                </ThemedText>
-                <ThemedText style={[styles.sectionSubtitle, { color: Colors[colorScheme].muted }]}>
-                  Pick at least 1 • helps us match depth • {selectedSkills.length} selected
-                </ThemedText>
-
-                <View style={styles.pillsContainer}>
-                  {SKILL_SUGGESTIONS.map((skill) => (
-                    <Pill
-                      key={skill.id}
-                      label={skill.label}
-                      selected={selectedSkills.includes(skill.id)}
-                      onPress={() => toggleSkill(skill.id)}
-                      colorScheme={colorScheme}
-                    />
-                  ))}
-                </View>
-              </View>
-
-              {/* Feed Preview */}
-              <View style={[styles.previewCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-                <ThemedText style={[styles.previewLabel, { color: Colors[colorScheme].muted }]}>
-                  Your feed preview
-                </ThemedText>
-                {previewItems.map((item, index) => (
-                  <View key={index} style={[styles.previewItem, index > 0 && { borderTopWidth: 1, borderTopColor: Colors[colorScheme].border }]}>
-                    <ThemedText style={styles.previewTitle}>{item.title}</ThemedText>
-                    <ThemedText style={[styles.previewMeta, { color: Colors[colorScheme].muted }]}>
-                      Trending in {item.category}
-                    </ThemedText>
-                  </View>
-                ))}
-              </View>
-
-              <View style={[styles.tipCard, { backgroundColor: '#eff6ff' }]}>
-                <ThemedText style={styles.tipText}>
-                  👋 We use this to cut noise and keep your feed calm
-                </ThemedText>
-              </View>
             </Animated.View>
           )}
 
+          {/* ═══════ STEPS 2–5: Subtopics (one per interest) ═══════ */}
+          {isSubtopicStep && currentSubtopicInterest && currentSubtopics.length > 0 && (
+            <Animated.View
+              key={`subtopic-${subtopicIndex}`}
+              entering={FadeIn.duration(250)}
+              exiting={FadeOut.duration(150)}
+            >
+              <View style={styles.questionRow}>
+                <Image
+                  source={require('@/assets/images/trace-logo.png')}
+                  style={styles.questionLogo}
+                  resizeMode="contain"
+                />
+                <ThemedText style={styles.pageTitle}>
+                  {subtopicPrompts[subtopicIndex] || subtopicPrompts[0]}
+                </ThemedText>
+              </View>
+
+              <ThemedText style={[styles.pageSubtitle, { color: Colors[colorScheme].muted }]}>
+                Pick up to {MAX_SUBTOPICS_PER_INTEREST} • {currentSubtopicSelected.length}/{MAX_SUBTOPICS_PER_INTEREST} selected
+              </ThemedText>
+
+              <View style={styles.optionRowsContainer}>
+                {currentSubtopics.map((sub) => {
+                  const isSel = currentSubtopicSelected.includes(sub.id);
+                  const isMaxed = !isSel && currentSubtopicSelected.length >= MAX_SUBTOPICS_PER_INTEREST;
+                  return (
+                    <OptionRow
+                      key={sub.id}
+                      label={sub.label}
+                      selected={isSel}
+                      disabled={isMaxed}
+                      onPress={() => toggleSubtopic(currentSubtopicInterestId!, sub.id)}
+                      colorScheme={colorScheme}
+                    />
+                  );
+                })}
+              </View>
+
+            </Animated.View>
+          )}
+
+          {/* ═══════ STEP 6: Skills ═══════ */}
+          {step === 6 && (
+            <Animated.View entering={FadeIn.duration(250)} exiting={FadeOut.duration(150)}>
+              <View style={styles.questionRow}>
+                <Image
+                  source={require('@/assets/images/trace-logo.png')}
+                  style={styles.questionLogo}
+                  resizeMode="contain"
+                />
+                <ThemedText style={styles.pageTitle}>
+                  What are your skills?
+                </ThemedText>
+              </View>
+
+              <ThemedText style={[styles.pageSubtitle, { color: Colors[colorScheme].muted }]}>
+                Helps us tune the depth of content we surface • {selectedSkills.length} selected
+              </ThemedText>
+
+              <View style={styles.pillsContainer}>
+                {SKILL_SUGGESTIONS.map((skill) => (
+                  <Pill
+                    key={skill.id}
+                    label={skill.label}
+                    selected={selectedSkills.includes(skill.id)}
+                    onPress={() => toggleSkill(skill.id)}
+                    colorScheme={colorScheme}
+                  />
+                ))}
+              </View>
+
+            </Animated.View>
+          )}
+
+          {/* ═══════ STEP 7: Interest Weight Sliders ═══════ */}
+          {step === 7 && (
+            <Animated.View entering={FadeIn.duration(250)} exiting={FadeOut.duration(150)}>
+              <View style={styles.questionRow}>
+                <Image
+                  source={require('@/assets/images/trace-logo.png')}
+                  style={styles.questionLogo}
+                  resizeMode="contain"
+                />
+                <ThemedText style={styles.pageTitle}>
+                  Tune your mix
+                </ThemedText>
+              </View>
+
+              <ThemedText style={[styles.pageSubtitle, { color: Colors[colorScheme].muted }]}>
+                Adjust how much of each topic shows up in your daily feed.
+              </ThemedText>
+
+              <View style={styles.slidersContainer}>
+                {selectedInterests.map((interestId) => {
+                  const interest = INTERESTS.find((i) => i.id === interestId);
+                  if (!interest) return null;
+                  const value = interestWeights[interestId] ?? 5;
+
+                  return (
+                    <View
+                      key={interestId}
+                      style={[
+                        styles.sliderCard,
+                        {
+                          backgroundColor: Colors[colorScheme].card,
+                          borderColor: Colors[colorScheme].border,
+                        },
+                      ]}
+                    >
+                      <View style={styles.sliderHeader}>
+                        <ThemedText style={styles.sliderLabel}>{interest.label}</ThemedText>
+                        <ThemedText style={[styles.sliderValue, { color: ACCENT }]}>
+                          {value <= 3 ? 'Less' : value >= 7 ? 'More' : 'Balanced'}
+                        </ThemedText>
+                      </View>
+                      <Slider
+                        style={styles.slider}
+                        minimumValue={0}
+                        maximumValue={10}
+                        step={1}
+                        value={value}
+                        onValueChange={(v) => setWeight(interestId, v)}
+                        minimumTrackTintColor={ACCENT}
+                        maximumTrackTintColor={colorScheme === 'dark' ? '#2c2c2c' : '#e5e7eb'}
+                        thumbTintColor={ACCENT}
+                      />
+                      <View style={styles.sliderLabelsRow}>
+                        <ThemedText style={[styles.sliderEndLabel, { color: Colors[colorScheme].muted }]}>
+                          Less
+                        </ThemedText>
+                        <ThemedText style={[styles.sliderEndLabel, { color: Colors[colorScheme].muted }]}>
+                          More
+                        </ThemedText>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </Animated.View>
           )}
         </ScrollView>
 
-        {/* Footer */}
-        <View style={[styles.footer, { borderTopColor: Colors[colorScheme].border }]}>
-          <View style={styles.backButton} />
+        {/* ═══════ Footer ═══════ */}
+        <View style={styles.footer}>
+          {/* Skip link on the left (only for optional steps) */}
+          {isSubtopicStep || step === 6 ? (
+            <Pressable onPress={handleNext} hitSlop={12} style={styles.skipButton}>
+              <ThemedText style={[styles.skipText, { color: Colors[colorScheme].muted }]}>
+                Skip
+              </ThemedText>
+            </Pressable>
+          ) : (
+            <View style={styles.skipButton} />
+          )}
 
+          {/* Next / Build my feed button */}
           <Pressable
-            onPress={nextStep}
-            disabled={!canProceed() || isSubmitting}
+            onPress={handleNext}
+            disabled={!canGoNext() || isSubmitting}
             style={[
               styles.nextButton,
-              { backgroundColor: canProceed() && !isSubmitting ? Colors[colorScheme].foreground : Colors[colorScheme].border },
-            ]}>
+              {
+                backgroundColor:
+                  canGoNext() && !isSubmitting
+                    ? Colors[colorScheme].foreground
+                    : colorScheme === 'dark'
+                      ? '#1c1c1c'
+                      : '#e5e7eb',
+              },
+            ]}
+          >
             <ThemedText
               style={[
                 styles.nextButtonText,
-                { color: canProceed() && !isSubmitting ? Colors[colorScheme].background : Colors[colorScheme].muted },
-              ]}>
-              {isSubmitting ? 'Saving...' : isEditMode ? 'Save Changes' : 'Finish'}
+                {
+                  color:
+                    canGoNext() && !isSubmitting
+                      ? Colors[colorScheme].background
+                      : Colors[colorScheme].muted,
+                },
+              ]}
+            >
+              {isSubmitting
+                ? 'Building your feed...'
+                : step === TOTAL_STEPS
+                  ? isEditMode
+                    ? 'Save Changes'
+                    : 'Build my feed'
+                  : 'Next'}
             </ThemedText>
+            {!isSubmitting && step < TOTAL_STEPS && canGoNext() && (
+              <ChevronRight
+                size={18}
+                color={Colors[colorScheme].background}
+                strokeWidth={2.5}
+              />
+            )}
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -361,6 +605,7 @@ export default function OnboardingScreen() {
   );
 }
 
+// ─── Styles ───
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -368,176 +613,191 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
+
+  // ─── Header ───
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingHorizontal: 16,
+    paddingTop: 16,
     paddingBottom: 16,
-    gap: 12,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 32,
+    gap: 14,
   },
-  closeButton: {
-    minWidth: 70,
-    paddingVertical: 4,
-  },
-  closeButtonText: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  logoRow: {
-    flex: 1,
-    flexDirection: 'row',
+  backChevron: {
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-  },
-  logo: {
-    width: 24,
-    height: 24,
-  },
-  logoText: {
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: 2,
   },
   progressBar: {
-    height: 4,
-    borderRadius: 2,
+    flex: 1,
+    height: 5,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 2,
+    borderRadius: 3,
   },
-  stepIndicator: {
-    alignItems: 'center',
-  },
-  stepText: {
-    fontSize: 13,
-    fontFamily: Fonts.mono,
-  },
+
+  // ─── Content ───
   content: {
     flex: 1,
   },
   contentContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 24,
+    paddingHorizontal: 24,
+    paddingTop: 4,
+    paddingBottom: 40,
+  },
+
+  // ─── Question row (logo + title) ───
+  questionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 8,
+  },
+  questionLogo: {
+    width: 32,
+    height: 32,
+    marginTop: 3,
   },
   pageTitle: {
-    fontSize: 28,
+    flex: 1,
+    fontSize: 24,
     fontWeight: '700',
-    marginBottom: 8,
-    paddingTop: 4,
-    textAlign: 'center',
+    lineHeight: 32,
   },
   pageSubtitle: {
-    fontSize: 15,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  section: {
+    fontSize: 14,
+    lineHeight: 20,
     marginBottom: 28,
+    paddingLeft: 44,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  sectionSubtitle: {
-    fontSize: 13,
-    marginBottom: 14,
-  },
+
+  // ─── Pills ───
   pillsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 28,
   },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
     borderRadius: 999,
-    gap: 6,
+    gap: 8,
+  },
+  pillDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   pillText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  pillCheck: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  textInput: {
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
     fontSize: 15,
-  },
-  previewCard: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-  },
-  previewLabel: {
-    fontSize: 12,
     fontWeight: '500',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
   },
-  previewItem: {
-    paddingVertical: 12,
+
+
+
+  // ─── Option Rows (subtopics) ───
+  optionRowsContainer: {
+    gap: 10,
+    marginBottom: 28,
+    paddingHorizontal: 4,
   },
-  previewTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  previewMeta: {
-    fontSize: 12,
-  },
-  tipCard: {
-    padding: 16,
-    borderRadius: 12,
-  },
-  tipText: {
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  tipBold: {
-    fontWeight: '600',
-  },
-  footer: {
+  optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    borderTopWidth: 1,
+    borderRadius: 14,
   },
-  backButton: {
-    padding: 12,
-    minWidth: 80,
+  optionRowText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
-  backButtonText: {
+  optionRowCheck: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // ─── Sliders (Step 4) ───
+  slidersContainer: {
+    gap: 16,
+    marginBottom: 20,
+  },
+  sliderCard: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
+  },
+  sliderHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  sliderLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  sliderValue: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  slider: {
+    width: '100%',
+    height: 36,
+  },
+  sliderLabelsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: -4,
+  },
+  sliderEndLabel: {
+    fontSize: 11,
+  },
+
+  // ─── Footer ───
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 20,
+  },
+  skipButton: {
+    minWidth: 50,
+    paddingVertical: 8,
+  },
+  skipText: {
     fontSize: 15,
     fontWeight: '500',
   },
   nextButton: {
-    paddingHorizontal: 28,
-    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
     borderRadius: 999,
+    gap: 4,
   },
   nextButtonText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
 });
+

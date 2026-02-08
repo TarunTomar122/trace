@@ -1,20 +1,44 @@
-import { StyleSheet, View, Pressable, Image, ScrollView, Linking, Alert } from 'react-native';
+import { StyleSheet, View, Pressable, Image, ScrollView, Alert } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import {
+  Settings,
+  Shield,
+  FileText,
+  ChevronRight,
+  ExternalLink,
+  LogOut,
+  Sparkles,
+  ArrowRight,
+  Trash2,
+  CreditCard,
+  Crown,
+  Zap,
+  AlertTriangle,
+} from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 
 const PRIVACY_URL = 'https://www.yourtrace.online/privacy-policy';
 const TERMS_URL = 'https://www.yourtrace.online/terms';
+const MANAGE_SUBSCRIPTION_URL = 'https://www.yourtrace.online/profile';
+
+const SUBSCRIPTION_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: typeof Crown; description: string }> = {
+  none: { label: 'Free', color: '#6b7280', bgColor: '#f3f4f6', icon: Zap, description: 'Upgrade to unlock your personalized daily feed.' },
+  trial: { label: 'Trial', color: '#8b5cf6', bgColor: '#f5f3ff', icon: Sparkles, description: 'You\'re on a free trial. Enjoy full access!' },
+  active: { label: 'Pro', color: '#22c55e', bgColor: '#f0fdf4', icon: Crown, description: 'You have full access to your personalized feed.' },
+  on_hold: { label: 'On Hold', color: '#f59e0b', bgColor: '#fffbeb', icon: AlertTriangle, description: 'Payment issue. Update your billing to continue.' },
+  cancelled: { label: 'Cancelled', color: '#ef4444', bgColor: '#fef2f2', icon: AlertTriangle, description: 'Your subscription has been cancelled.' },
+  expired: { label: 'Expired', color: '#6b7280', bgColor: '#f3f4f6', icon: AlertTriangle, description: 'Your subscription has expired. Resubscribe to continue.' },
+};
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, deleteAccount } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
 
   const isOnboarded = profile?.onboarded ?? false;
@@ -23,27 +47,37 @@ export default function ProfileScreen() {
     await signOut();
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete account',
+      'This will permanently delete your account and all your data. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAccount();
+            } catch (e) {
+              Alert.alert('Error', 'Could not delete your account. Please try again or contact support.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
       edges={['top']}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: Colors[colorScheme].border }]}>
-        <ThemedText style={styles.headerTitle}>Profile</ThemedText>
-      </View>
-
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        {/* Profile Card */}
-        <ThemedView
-          style={[
-            styles.profileCard,
-            {
-              backgroundColor: Colors[colorScheme].card,
-              borderColor: Colors[colorScheme].border,
-            },
-          ]}>
+
+        {/* ─── Profile header ─── */}
+        <View style={styles.profileHeader}>
           {user?.photoURL ? (
             <Image source={{ uri: user.photoURL }} style={styles.avatar} />
           ) : (
@@ -57,171 +91,167 @@ export default function ProfileScreen() {
               </ThemedText>
             </View>
           )}
-          <View style={styles.profileInfo}>
-            <ThemedText type="subtitle" style={styles.profileName}>
-              {profile?.name || user?.displayName || 'User'}
-            </ThemedText>
-            <ThemedText style={[styles.profileEmail, { color: Colors[colorScheme].muted }]}>
-              {user?.email || 'No email'}
-            </ThemedText>
-            {profile?.role && (
-              <View style={[styles.roleBadge, { backgroundColor: Colors[colorScheme].foreground + '15' }]}>
-                <ThemedText style={[styles.roleText, { color: Colors[colorScheme].foreground }]}>
-                  {profile.role}
-                </ThemedText>
-              </View>
-            )}
-          </View>
-        </ThemedView>
+          <ThemedText style={styles.profileName}>
+            {profile?.name || user?.displayName || 'User'}
+          </ThemedText>
+          <ThemedText style={[styles.profileEmail, { color: Colors[colorScheme].muted }]}>
+            {user?.email || 'No email'}
+          </ThemedText>
+          {profile?.role && (
+            <View style={[styles.roleBadge, { backgroundColor: Colors[colorScheme].foreground + '0D' }]}>
+              <ThemedText style={[styles.roleText, { color: Colors[colorScheme].foreground }]}>
+                {profile.role}
+              </ThemedText>
+            </View>
+          )}
+        </View>
 
-        {/* Onboarding Callout */}
+        {/* ─── Onboarding nudge ─── */}
         {!isOnboarded && (
-          <Pressable 
+          <Pressable
             onPress={() => router.push('/onboarding')}
-            style={[styles.calloutCard, { backgroundColor: '#f3e8ff', borderColor: '#e9d5ff' }]}>
-            <View style={styles.calloutIcon}>
-              <ThemedText style={{ fontSize: 24 }}>✨</ThemedText>
-            </View>
-            <View style={styles.calloutContent}>
-              <ThemedText style={styles.calloutTitle}>
-                Complete your profile
-              </ThemedText>
-              <ThemedText style={[styles.calloutSubtitle, { color: '#7c3aed' }]}>
-                Set up your interests to get a personalized feed.
+            style={[styles.nudge, { borderColor: Colors[colorScheme].border }]}>
+            <Sparkles size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+            <View style={{ flex: 1 }}>
+              <ThemedText style={styles.nudgeTitle}>Personalize your feed</ThemedText>
+              <ThemedText style={[styles.nudgeSub, { color: Colors[colorScheme].muted }]}>
+                Tell us your interests to get started.
               </ThemedText>
             </View>
-            <ThemedText style={[styles.calloutArrow, { color: '#7c3aed' }]}>→</ThemedText>
+            <ArrowRight size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
           </Pressable>
         )}
 
-        {/* Interests Section */}
+        {/* ─── Interests ─── */}
         {isOnboarded && profile?.interests && profile.interests.length > 0 && (
           <View style={styles.section}>
-            <ThemedText
-              style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
+            <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
               Interests
             </ThemedText>
-            <ThemedView
-              style={[
-                styles.pillsCard,
-                {
-                  backgroundColor: Colors[colorScheme].card,
-                  borderColor: Colors[colorScheme].border,
-                },
-              ]}>
-              <View style={styles.pillsContainer}>
-                {profile.interests.map((interest, index) => (
-                  <View 
-                    key={index} 
-                    style={[styles.pill, { backgroundColor: Colors[colorScheme].foreground + '10' }]}>
-                    <ThemedText style={styles.pillText}>
-                      {interest.replace(/-/g, ' ')}
-                    </ThemedText>
-                  </View>
-                ))}
-              </View>
-            </ThemedView>
+            <View style={styles.pillsWrap}>
+              {profile.interests.map((interest, index) => (
+                <View
+                  key={index}
+                  style={[styles.pill, { backgroundColor: Colors[colorScheme].foreground + '0A' }]}>
+                  <ThemedText style={[styles.pillText, { color: Colors[colorScheme].text }]}>
+                    {interest.replace(/-/g, ' ')}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
           </View>
         )}
 
-        {/* Skills Section */}
+        {/* ─── Skills ─── */}
         {isOnboarded && profile?.skills && profile.skills.length > 0 && (
           <View style={styles.section}>
-            <ThemedText
-              style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
+            <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
               Skills
             </ThemedText>
-            <ThemedView
-              style={[
-                styles.pillsCard,
-                {
-                  backgroundColor: Colors[colorScheme].card,
-                  borderColor: Colors[colorScheme].border,
-                },
-              ]}>
-              <View style={styles.pillsContainer}>
-                {profile.skills.map((skill, index) => (
-                  <View 
-                    key={index} 
-                    style={[styles.pill, { backgroundColor: Colors[colorScheme].foreground + '10' }]}>
-                    <ThemedText style={styles.pillText}>
-                      {skill.replace(/-/g, ' ')}
-                    </ThemedText>
-                  </View>
-                ))}
-              </View>
-            </ThemedView>
+            <View style={styles.pillsWrap}>
+              {profile.skills.map((skill, index) => (
+                <View
+                  key={index}
+                  style={[styles.pill, { backgroundColor: Colors[colorScheme].foreground + '0A' }]}>
+                  <ThemedText style={[styles.pillText, { color: Colors[colorScheme].text }]}>
+                    {skill.replace(/-/g, ' ')}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
           </View>
         )}
 
-        {/* Settings Section */}
-        <View style={styles.section}>
-          <ThemedText
-            style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
-            Settings
-          </ThemedText>
-          <ThemedView
-            style={[
-              styles.settingsCard,
-              {
-                backgroundColor: Colors[colorScheme].card,
-                borderColor: Colors[colorScheme].border,
-              },
-            ]}>
-            {isOnboarded && (
-              <Pressable
-                style={[styles.settingsRow, { borderBottomColor: Colors[colorScheme].border }]}
-                onPress={() => router.push('/onboarding')}>
-                <View style={styles.settingsRowLeft}>
-                  <MaterialIcons name="tune" size={20} color={Colors[colorScheme].foreground} />
-                  <ThemedText style={styles.settingsText}>Edit Preferences</ThemedText>
-                </View>
-                <MaterialIcons name="chevron-right" size={20} color={Colors[colorScheme].muted} />
-              </Pressable>
-            )}
+        {/* ─── Subscription ─── */}
+        {(() => {
+          const status = profile?.subscriptionStatus || 'none';
+          const config = SUBSCRIPTION_CONFIG[status] || SUBSCRIPTION_CONFIG.none;
+          const StatusIcon = config.icon;
+          return (
             <Pressable
-              style={[styles.settingsRow, { borderBottomColor: Colors[colorScheme].border }]}
-              onPress={() => Alert.alert('Coming Soon', 'Notification settings will be available in a future update.')}>
-              <View style={styles.settingsRowLeft}>
-                <MaterialIcons name="notifications-none" size={20} color={Colors[colorScheme].foreground} />
-                <ThemedText style={styles.settingsText}>Notifications</ThemedText>
+              onPress={() => WebBrowser.openBrowserAsync(MANAGE_SUBSCRIPTION_URL)}
+              style={[styles.subscriptionCard, { backgroundColor: config.bgColor }]}>
+              <View style={styles.subscriptionTop}>
+                <View style={styles.subscriptionBadge}>
+                  <StatusIcon size={16} color={config.color} strokeWidth={2} />
+                  <ThemedText style={[styles.subscriptionLabel, { color: config.color }]}>
+                    {config.label}
+                  </ThemedText>
+                </View>
+                <ChevronRight size={18} color={config.color} strokeWidth={1.5} />
               </View>
-              <MaterialIcons name="chevron-right" size={20} color={Colors[colorScheme].muted} />
+              <ThemedText style={[styles.subscriptionDesc, { color: Colors[colorScheme].secondary }]}>
+                {config.description}
+              </ThemedText>
+              {(status === 'none' || status === 'cancelled' || status === 'expired') && (
+                <View style={[styles.upgradeButton, { backgroundColor: '#22c55e18', borderColor: '#22c55e30' }]}>
+                  <ThemedText style={[styles.upgradeButtonText, { color: '#22c55e' }]}>
+                    {status === 'none' ? 'Upgrade to Pro' : 'Resubscribe'}
+                  </ThemedText>
+                </View>
+              )}
+              {(status === 'active' || status === 'trial' || status === 'on_hold') && (
+                <ThemedText style={[styles.manageText, { color: config.color }]}>
+                  Manage subscription →
+                </ThemedText>
+              )}
             </Pressable>
-            <Pressable 
-              style={[styles.settingsRow, { borderBottomColor: Colors[colorScheme].border }]}
-              onPress={() => Linking.openURL(PRIVACY_URL)}>
-              <View style={styles.settingsRowLeft}>
-                <MaterialIcons name="privacy-tip" size={20} color={Colors[colorScheme].foreground} />
-                <ThemedText style={styles.settingsText}>Privacy Policy</ThemedText>
-              </View>
-              <MaterialIcons name="open-in-new" size={18} color={Colors[colorScheme].muted} />
+          );
+        })()}
+
+        {/* ─── Divider ─── */}
+        <View style={[styles.divider, { backgroundColor: Colors[colorScheme].border }]} />
+
+        {/* ─── Menu rows ─── */}
+        <View style={styles.menuSection}>
+          {isOnboarded && (
+            <Pressable
+              style={styles.menuRow}
+              onPress={() => router.push('/onboarding')}>
+              <Settings size={20} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+              <ThemedText style={[styles.menuText, { color: Colors[colorScheme].text }]}>
+                Edit preferences
+              </ThemedText>
+              <ChevronRight size={18} color={Colors[colorScheme].border} strokeWidth={1.5} />
             </Pressable>
-            <Pressable 
-              style={styles.settingsRow}
-              onPress={() => Linking.openURL(TERMS_URL)}>
-              <View style={styles.settingsRowLeft}>
-                <MaterialIcons name="description" size={20} color={Colors[colorScheme].foreground} />
-                <ThemedText style={styles.settingsText}>Terms of Service</ThemedText>
-              </View>
-              <MaterialIcons name="open-in-new" size={18} color={Colors[colorScheme].muted} />
-            </Pressable>
-          </ThemedView>
+          )}
+          <Pressable
+            style={styles.menuRow}
+            onPress={() => WebBrowser.openBrowserAsync(PRIVACY_URL)}>
+            <Shield size={20} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+            <ThemedText style={[styles.menuText, { color: Colors[colorScheme].text }]}>
+              Privacy policy
+            </ThemedText>
+            <ExternalLink size={16} color={Colors[colorScheme].border} strokeWidth={1.5} />
+          </Pressable>
+          <Pressable
+            style={styles.menuRow}
+            onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)}>
+            <FileText size={20} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+            <ThemedText style={[styles.menuText, { color: Colors[colorScheme].text }]}>
+              Terms of service
+            </ThemedText>
+            <ExternalLink size={16} color={Colors[colorScheme].border} strokeWidth={1.5} />
+          </Pressable>
         </View>
 
-        {/* Sign Out Button */}
-        <Pressable
-          style={[
-            styles.signOutButton,
-            { borderColor: Colors[colorScheme].border },
-          ]}
-          onPress={handleSignOut}>
-          <ThemedText style={[styles.signOutText, { color: '#b91c1c' }]}>
-            Sign Out
+        {/* ─── Sign out ─── */}
+        <Pressable style={styles.actionRow} onPress={handleSignOut}>
+          <LogOut size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+          <ThemedText style={[styles.actionRowText, { color: Colors[colorScheme].text }]}>
+            Sign out
           </ThemedText>
         </Pressable>
 
-        {/* Footer */}
+        {/* ─── Delete account ─── */}
+        <Pressable style={styles.actionRow} onPress={handleDeleteAccount}>
+          <Trash2 size={18} color="#b91c1c" strokeWidth={1.5} />
+          <ThemedText style={[styles.actionRowText, { color: '#b91c1c' }]}>
+            Delete account
+          </ThemedText>
+        </Pressable>
+
+        {/* ─── Footer ─── */}
         <ThemedText style={[styles.footer, { color: Colors[colorScheme].muted }]}>
           Trace v1.0.0
         </ThemedText>
@@ -234,122 +264,97 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingTop: 32,
     paddingBottom: 40,
-    gap: 24,
   },
-  profileCard: {
-    flexDirection: 'row',
+
+  // ─── Profile header ───
+  profileHeader: {
     alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 20,
-    padding: 20,
-    gap: 16,
+    marginBottom: 32,
   },
   avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    marginBottom: 16,
   },
   avatarPlaceholder: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 16,
   },
   avatarInitial: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '600',
-  },
-  profileInfo: {
-    flex: 1,
-    gap: 4,
   },
   profileName: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    marginBottom: 4,
   },
   profileEmail: {
     fontSize: 14,
+    marginBottom: 8,
   },
   roleBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: 999,
-    marginTop: 6,
+    marginTop: 4,
   },
   roleText: {
     fontSize: 12,
     fontWeight: '500',
   },
-  calloutCard: {
+
+  // ─── Onboarding nudge ───
+  nudge: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
     gap: 12,
-  },
-  calloutIcon: {
-    width: 44,
-    height: 44,
+    borderWidth: 1,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 28,
   },
-  calloutContent: {
-    flex: 1,
-    gap: 4,
-  },
-  calloutTitle: {
+  nudgeTitle: {
     fontSize: 15,
     fontWeight: '600',
+    marginBottom: 2,
   },
-  calloutSubtitle: {
+  nudgeSub: {
     fontSize: 13,
     lineHeight: 18,
   },
-  calloutArrow: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
+
+  // ─── Sections ───
   section: {
-    gap: 10,
+    marginBottom: 24,
   },
   sectionLabel: {
     fontFamily: Fonts.mono,
     fontSize: 11,
+    fontWeight: '500',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
-    paddingLeft: 4,
+    marginBottom: 12,
   },
-  pillsCard: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
-  },
-  pillsContainer: {
+  pillsWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
   pill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 999,
   },
   pillText: {
@@ -357,43 +362,87 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textTransform: 'capitalize',
   },
-  settingsCard: {
-    borderWidth: 1,
+
+  // ─── Subscription ───
+  subscriptionCard: {
     borderRadius: 16,
-    overflow: 'hidden',
+    padding: 18,
+    marginBottom: 24,
+    gap: 10,
   },
-  settingsRow: {
+  subscriptionTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
   },
-  settingsRowLeft: {
+  subscriptionBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
-  settingsText: {
-    fontSize: 15,
+  subscriptionLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
-  signOutButton: {
-    paddingVertical: 14,
+  subscriptionDesc: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  upgradeButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1,
-    alignItems: 'center',
-    marginTop: 8,
+    marginTop: 4,
   },
-  signOutText: {
-    fontFamily: Fonts.mono,
+  upgradeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  manageText: {
     fontSize: 13,
-    fontWeight: '500',
-    letterSpacing: 0.5,
+    fontWeight: '600',
+    marginTop: 2,
   },
+
+  // ─── Divider ───
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginBottom: 8,
+  },
+
+  // ─── Menu ───
+  menuSection: {
+    gap: 0,
+  },
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 16,
+  },
+  menuText: {
+    flex: 1,
+    fontSize: 16,
+  },
+
+  // ─── Action rows ───
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 16,
+  },
+  actionRowText: {
+    fontSize: 16,
+  },
+
+  // ─── Footer ───
   footer: {
     fontSize: 12,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 32,
   },
 });

@@ -262,7 +262,7 @@ export default function OnboardingPage() {
     )
   );
   const signalLabel =
-    signalScore >= 80 ? 'High fidelity' : signalScore >= 55 ? 'Dialed in' : 'Warming up';
+    signalScore >= 80 ? 'Highly targeted' : signalScore >= 55 ? 'Getting specific' : 'Warming up';
 
   const toggleSubtopic = (interestId: string, subtopicId: string) => {
     if (!selectedInterests.includes(interestId)) return;
@@ -375,16 +375,16 @@ export default function OnboardingPage() {
             className="text-2xl md:text-3xl font-semibold mb-2"
             style={{ fontFamily: '"Space Grotesk", "DM Sans", sans-serif' }}
           >
-            Let's refine your feed
+            Tell us what you care about
           </h1>
           <p className="text-sm text-secondary/70 max-w-xl mx-auto">
-            Pick a few topics and we will tune your feed.
+            We pull from hundreds of sources — pick your topics so we know what to find for you.
           </p>
           
           {/* Signal strength - always visible */}
           <div className="mt-6 max-w-md mx-auto">
             <div className="flex items-center justify-between text-xs mb-2">
-              <span className="text-secondary/60">Signal strength</span>
+              <span className="text-secondary/60">Feed precision</span>
               <span className={`font-medium ${signalScore >= 80 ? 'text-emerald-600' : signalScore >= 55 ? 'text-amber-600' : 'text-secondary/60'}`}>
                 {signalLabel} · {signalScore}%
               </span>
@@ -409,7 +409,7 @@ export default function OnboardingPage() {
                     <div className="text-xs uppercase tracking-[0.2em] text-secondary/60">Step 1</div>
                     <h2 className="text-lg font-semibold">Choose your topics</h2>
                     <p className="text-xs text-secondary/60 mt-1">
-                      We’ll pull the best articles from these topics each day.
+                      We&apos;ll scan YouTube, Reddit, HN, blogs, and hundreds more for these topics daily.
                     </p>
                   </div>
                   <div className="text-xs text-secondary/60">
@@ -442,7 +442,7 @@ export default function OnboardingPage() {
                 <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-lg bg-amber-50/80 border border-amber-100">
                   <span className="text-amber-500 text-sm">💡</span>
                   <p className="text-xs text-amber-800/80 leading-relaxed">
-                    90% of users say their feed feels more useful after picking all 4 topics
+                    More topics = more sources we can pull from. Most users pick all 4 for the best feed.
                   </p>
                 </div>
 
@@ -459,9 +459,9 @@ export default function OnboardingPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-xs uppercase tracking-[0.2em] text-secondary/60">Step 2</div>
-                    <h2 className="text-lg font-semibold">Let's get specific (optional)</h2>
+                    <h2 className="text-lg font-semibold">Get specific (optional)</h2>
                     <p className="text-xs text-secondary/60 mt-1">
-                      This helps us find exactly what you care about.
+                      Narrowing down helps us pull the most relevant content from across the web.
                     </p>
                   </div>
                   <div className="text-xs text-secondary/60">
@@ -527,7 +527,7 @@ export default function OnboardingPage() {
                     <div className="text-xs uppercase tracking-[0.2em] text-secondary/60">Step 3</div>
                     <h2 className="text-lg font-semibold">Your skills (optional)</h2>
                     <p className="text-xs text-secondary/60 mt-1">
-                      Skills help us tune the angle and depth.
+                      This helps us pick the right angle and depth when curating content for you.
                     </p>
                   </div>
                   <div className="text-xs text-secondary/60">
@@ -578,7 +578,7 @@ export default function OnboardingPage() {
                   disabled={isSubmitting || selectedInterests.length < MIN_INTERESTS}
                   className="px-5 py-2.5 rounded-lg text-sm font-medium bg-foreground text-background shadow-sm hover:bg-foreground/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? 'Building...' : 'Build my signal'}
+                  {isSubmitting ? 'Building your feed...' : 'Build my feed'}
                 </button>
               )}
             </div>

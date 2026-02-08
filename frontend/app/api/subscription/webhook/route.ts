@@ -72,6 +72,50 @@ export async function POST(request: NextRequest) {
     }
 
     const userRef = adminDb.collection('user_profiles').doc(userId);
+    
+    // Helper: trigger feed generation for a newly subscribed user
+    const triggerFeedGeneration = async (reason: string) => {
+      try {
+        // Check if user has completed onboarding (has interests set)
+        const userDoc = await userRef.get();
+        const userData = userDoc.data();
+        if (!userData?.onboarded) {
+          console.log(`Skipping feed generation for user ${userId} - not yet onboarded (reason: ${reason})`);
+          return;
+        }
+        
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+        if (!appUrl) {
+          console.error(`NEXT_PUBLIC_APP_URL not set! Cannot trigger feed generation for user ${userId} (reason: ${reason})`);
+          return;
+        }
+        
+        console.log(`Triggering feed generation for user ${userId} (reason: ${reason}) via ${appUrl}/api/onboard`);
+        
+        const onboardResponse = await fetch(`${appUrl}/api/onboard`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ uid: userId }),
+        });
+        
+        if (onboardResponse.ok) {
+          const result = await onboardResponse.json();
+          if (result.triggered) {
+            console.log(`Feed generation DISPATCHED for user ${userId} (reason: ${reason})`);
+          } else {
+            console.error(`Feed generation NOT dispatched for user ${userId} (reason: ${reason}): ${result.message || result.error || 'triggered=false'}`);
+          }
+        } else {
+          console.error(`Failed to trigger feed generation for user ${userId} (reason: ${reason}): HTTP ${onboardResponse.status}`);
+        }
+      } catch (error) {
+        console.error(`Error triggering feed generation for user ${userId} (reason: ${reason}):`, error);
+        // Don't fail the webhook if feed generation fails
+      }
+    };
+    
     const triggerUnsubscribe = async () => {
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/unsubscribe`, {
@@ -115,24 +159,7 @@ export async function POST(request: NextRequest) {
         console.log(`Subscription created for user ${userId}: ${eventData.subscription_id}`);
         
         // Trigger feed generation for new subscriber
-        try {
-          const onboardResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/onboard`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ uid: userId }),
-          });
-          
-          if (onboardResponse.ok) {
-            console.log(`Feed generation triggered for newly subscribed user ${userId}`);
-          } else {
-            console.error(`Failed to trigger feed generation for user ${userId}`);
-          }
-        } catch (error) {
-          console.error(`Error triggering feed generation for user ${userId}:`, error);
-          // Don't fail the webhook if feed generation fails
-        }
+        await triggerFeedGeneration('subscription.created');
         break;
 
       case 'subscription.active':
@@ -147,6 +174,9 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date(),
         });
         console.log(`Subscription activated for user ${userId}`);
+        
+        // Also trigger feed generation as safety net (in case subscription.created didn't fire or failed)
+        await triggerFeedGeneration('subscription.active');
         break;
 
       case 'subscription.renewed':
@@ -280,6 +310,9 @@ export async function POST(request: NextRequest) {
         await userRef.update(updateData);
         if (subscriptionStatus === 'cancelled' || subscriptionStatus === 'expired') {
           await triggerUnsubscribe();
+        } else if (subscriptionStatus === 'active' && !cancelAtNextBilling) {
+          // Reactivation or status became active — trigger feed generation as safety net
+          await triggerFeedGeneration('subscription.updated (active)');
         }
         break;
 

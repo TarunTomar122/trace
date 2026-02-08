@@ -80,7 +80,7 @@ const NewsletterSignupSection = () => {
           className="max-w-6xl mx-auto text-center"
         >
           <p className="text-sm text-secondary/70 mb-3 font-sans">
-            Want to get the best reads in your inbox? Subscribe for free.
+            Get a daily digest of the best reads from across the web — free in your inbox.
           </p>
 
           {status === 'success' ? (
@@ -593,8 +593,8 @@ const Hero = () => {
                   transition={{ duration: 0.6, delay: 0.2 }}
                   className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-tight font-semibold tracking-tight text-foreground mb-4 md:mb-6"
                 >
-                  Your Anti Brainrot Feed{' '}
-                  <span className="text-secondary/50">Awaits</span>
+                  Your Feed Is{' '}
+                  <span className="text-secondary/50">Ready</span>
                 </motion.h1>
 
                 <motion.p
@@ -603,7 +603,7 @@ const Hero = () => {
                   transition={{ duration: 0.6, delay: 0.3 }}
                   className="text-base md:text-lg text-secondary leading-relaxed mb-6 md:mb-8 max-w-lg"
                 >
-                  Checkout what Trace has curated for you.
+                  Fresh picks from across the web, curated around what you care about.
                 </motion.p>
 
                 <motion.div
@@ -641,9 +641,8 @@ const Hero = () => {
                   transition={{ duration: 0.6, delay: 0.1 }}
                   className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-tight font-serif tracking-tight text-secondary/80 mb-4 md:mb-6"
                 >
-                  F*ck the algorithm.
-                  <br />
-                  <span className="italic text-primary">Build your own feed.</span>
+                  One feed.{' '}
+                  <span className="italic text-primary">Every source. Your topics.</span>
                 </motion.h1>
 
                 <motion.p
@@ -653,8 +652,8 @@ const Hero = () => {
                   className="text-base md:text-lg text-secondary leading-relaxed mb-4 max-w-md"
                 >
                   {isAlphaMode()
-                    ? "Stop letting algorithms hijack your brain. Trace gives you a feed you actually control — no engagement bait, no outrage loops, just signal."
-                    : "Join the waitlist for early access. Stop letting algorithms hijack your brain — Trace gives you a feed you actually control."
+                    ? "Trace pulls from YouTube, GitHub, Reddit, Hacker News, research papers, blogs, and more — so you never miss what matters in your world."
+                    : "Join the waitlist for early access. Trace pulls from hundreds of sources so you never have to check them all yourself."
                   }
                 </motion.p>
 
@@ -665,7 +664,7 @@ const Hero = () => {
                   className="flex flex-wrap gap-2 mb-6 md:mb-8"
                 >
                   {[
-                    "Anti-brainrot",
+                    "Your RSS for the web",
                   ].map((item) => (
                     <div
                       key={item}
@@ -783,7 +782,7 @@ const DemoVideo = () => {
             See Trace in action
           </h2>
           <p className="text-secondary text-base md:text-lg max-w-xl mx-auto">
-            A personalized feed that learns what matters to you
+            One feed from hundreds of sources, personalized to what you care about
           </p>
         </motion.div>
 
@@ -814,15 +813,15 @@ const HowItWorks = () => {
       number: "01",
       icon: User,
       title: "Choose topics",
-      description: "Tell us what you’re building — AI, product, design, startups, or anything else.",
+      description: "Pick what you care about — AI, product, design, startups, finance, science, or anything else.",
       color: "text-blue-500",
       bgColor: "bg-blue-50"
     },
     {
       number: "02",
       icon: Search,
-      title: "Trace builds your feed",
-      description: "We scan YouTube, GitHub, Hacker News, Reddit, arXiv, blogs and more.",
+      title: "We find the best stuff",
+      description: "Trace scans YouTube, GitHub, Hacker News, Reddit, arXiv, top blogs, and hundreds more sources — daily.",
       color: "text-purple-500",
       bgColor: "bg-purple-50"
     },
@@ -838,15 +837,15 @@ const HowItWorks = () => {
       number: "04",
       icon: Brain,
       title: "Trace adapts",
-      description: "Your agent learns your patterns and sharpens your feed over time.",
+      description: "Your feed learns what you like and sharpens itself over time. More signal, less noise.",
       color: "text-orange-500",
       bgColor: "bg-orange-50"
     },
     {
       number: "05",
       icon: TrendingUp,
-      title: "Your feed gets better",
-      description: "Every day, your feed aligns more with what you build and care about.",
+      title: "Never miss what matters",
+      description: "Every day, your feed surfaces the most important content from across the web, tailored to your interests.",
       color: "text-pink-500",
       bgColor: "bg-pink-50"
     }
@@ -865,7 +864,7 @@ const HowItWorks = () => {
             How It <span className="text-secondary/50">Works</span>
           </h2>
           <p className="text-secondary text-base md:text-lg leading-relaxed max-w-2xl mx-auto">
-            A simple process that gets smarter every day
+            Hundreds of sources, one feed that gets smarter every day
           </p>
         </motion.div>
 
@@ -964,7 +963,7 @@ const HowItWorks = () => {
           className="text-center mt-12 md:mt-16"
         >
           <p className="text-secondary text-sm mb-4">
-            Ready to build your own feed?
+            Ready to never miss what matters?
           </p>
           <a href="#get-started">
             <button className="inline-flex items-center gap-2 bg-foreground text-background px-6 py-3 rounded-full text-sm font-medium hover:bg-foreground/90 transition-colors">
@@ -982,34 +981,34 @@ const HowItWorks = () => {
 const WhatTraceReplaces = () => {
   const habits = [
     {
-      icon: "🔄",
-      title: "Doomscrolling Twitter/X",
-      description: "for tech news and AI updates"
+      icon: "🐦",
+      title: "Twitter / X",
+      description: "Tech news, AI updates, and threads from the people you actually want to hear from"
     },
     {
       icon: "📱",
-      title: "Checking Reddit 5x/day",
-      description: "for signal across AI, product, and engineering"
+      title: "Reddit",
+      description: "Discussions across AI, product, engineering, and niche communities"
     },
     {
       icon: "💬",
-      title: "Missing great threads",
-      description: "You find them after the momentum is gone"
+      title: "Hacker News",
+      description: "Launches, deep technical discussions, and Show HN gems"
     },
     {
       icon: "🎥",
-      title: "YouTube rabbit holes",
-      description: "Searching for one insight, losing 2 hours"
+      title: "YouTube",
+      description: "Tutorials, breakdowns, and the best video content from creators you care about"
     },
     {
       icon: "📰",
-      title: "Forgetting your favorite blogs",
-      description: "You mean to check them... but never do"
+      title: "Blogs & Newsletters",
+      description: "The best writing from across the web — posts you'd never find on your own"
     },
     {
-      icon: "⏰",
-      title: "The 'I should check...' loop",
-      description: "X → Reddit → HN → Repeat"
+      icon: "📄",
+      title: "Research & GitHub",
+      description: "arXiv papers, trending repos, and open-source projects worth knowing about"
     }
   ];
 
@@ -1023,7 +1022,7 @@ const WhatTraceReplaces = () => {
             viewport={{ once: true }}
             className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-3 md:mb-4"
           >
-            What Trace <span className="text-secondary/50">Replaces</span>
+            What Trace <span className="text-secondary/50">Brings Together</span>
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -1032,7 +1031,7 @@ const WhatTraceReplaces = () => {
             transition={{ delay: 0.1 }}
             className="text-secondary text-base md:text-lg leading-relaxed max-w-2xl mx-auto"
           >
-            If you recognize these habits, Trace is for you
+            All the places you used to check — now in one feed
           </motion.p>
         </div>
 
@@ -1082,7 +1081,7 @@ const HowPeopleUseTrace = () => {
             transition={{ delay: 0.1 }}
             className="text-secondary text-base md:text-lg"
           >
-            Most people start in their inbox, then open the feed when something matters.
+            A daily digest pulls the best from everywhere — you just open it and you&apos;re caught up.
           </motion.p>
         </div>
 
@@ -1141,12 +1140,12 @@ const HowPeopleUseTrace = () => {
           <p className="text-base text-secondary leading-relaxed mb-6">
             Every morning, Trace sends you one brief.<br />
             The best from Reddit, Hacker News, YouTube, blogs, and research —<br />
-            filtered for what you’re building and how you think.
+            filtered for what you care about.
           </p>
           <div className="flex flex-col items-center gap-1 text-sm text-foreground/70">
-            <span>No scrolling.</span>
-            <span>No notifications.</span>
-            <span className="font-medium text-foreground">5 minutes. You&apos;re done.</span>
+            <span>Hundreds of sources.</span>
+            <span>One feed.</span>
+            <span className="font-medium text-foreground">Never miss what matters.</span>
           </div>
         </motion.div>
       </div>
@@ -1167,42 +1166,42 @@ const DEMO_FEED_ITEMS = [
   {
     id: '1',
     type: 'youtube',
-    title: 'The creative process behind Studio Ghibli backgrounds',
-    description: 'How Kazuo Oga painted those dreamy landscapes and what digital artists can learn from his techniques.',
+    title: 'How Figma rebuilt their multiplayer engine from scratch',
+    description: 'A deep dive into CRDTs, syncing, and the infra that makes real-time collaboration actually work.',
     source: 'YouTube',
-    author: 'Art of Animation',
+    author: 'Figma Engineering',
     tag: 'design',
-    tagLabel: 'You liked illustration content',
+    tagLabel: 'From YouTube · matched your design interest',
   },
   {
     id: '2',
     type: 'article',
-    title: 'Why your side project needs a 2-hour weekly ritual',
-    description: 'A simple system for making consistent progress without burning out or losing momentum.',
+    title: 'The quiet revolution in solo SaaS: 11 founders hitting $1M ARR alone',
+    description: 'How indie builders are using AI, no-code tools, and niche markets to build real businesses.',
     source: 'Blog',
-    author: 'Indie Hackers',
+    author: 'Lenny\'s Newsletter',
     tag: 'startups',
-    tagLabel: 'You follow productivity',
+    tagLabel: 'From Lenny\'s Newsletter · matched startups',
   },
   {
     id: '3',
     type: 'news',
-    title: 'Claude 4 benchmarks show major reasoning improvements',
-    description: 'New model excels at multi-step tasks and code generation, with notable gains in math.',
-    source: 'News',
-    author: 'AI Weekly',
+    title: 'Anthropic releases Claude 4 with 10x context and real-time vision',
+    description: 'The new model handles multi-step reasoning and code generation at a level that surprised benchmarks.',
+    source: 'arXiv',
+    author: 'Anthropic Research',
     tag: 'ai-tools',
-    tagLabel: 'You follow AI news',
+    tagLabel: 'From arXiv · matched your AI interest',
   },
   {
     id: '4',
     type: 'discussion',
-    title: "What's your unpopular opinion about React in 2026?",
-    description: 'Devs debate server components, build complexity, and whether the ecosystem has peaked.',
-    source: 'Discussion',
-    author: 'Hacker News',
+    title: 'Show HN: I built a local-first Notion alternative in Rust',
+    description: '800+ points. Devs discuss offline-first architecture, WASM, and why local-first is making a comeback.',
+    source: 'Hacker News',
+    author: 'dang',
     tag: 'product',
-    tagLabel: 'You follow web dev',
+    tagLabel: 'From Hacker News · matched web dev',
   },
 ];
 
@@ -1385,7 +1384,7 @@ const InteractiveDemo = () => {
             transition={{ delay: 0.1 }}
             className="text-secondary font-mono text-xs md:text-sm leading-relaxed max-w-2xl mx-auto"
           >
-            This is what your daily feed could look like. Go ahead — shape it.
+            This is what your daily feed could look like — content from across the web, just for you.
           </motion.p>
         </div>
 
@@ -1482,7 +1481,7 @@ const InteractiveDemo = () => {
             <div className="px-5 py-6 bg-gradient-to-t from-primary/5 to-transparent border-t border-border/30">
               <div className="text-center">
                 <p className="text-sm font-mono text-foreground mb-3">
-                  Like what you see? Get your own builder-focused feed.
+                  Like what you see? Get your own personalized feed from hundreds of sources.
                 </p>
                 <button
                   onClick={signInWithGoogle}
@@ -1503,65 +1502,331 @@ const InteractiveDemo = () => {
   );
 };
 
-// --- Compact Hero Demo (for right side of hero) ---
+// --- Animated Hero Demo (for right side of hero) ---
+const heroDelay = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
+
 const HeroDemo = () => {
-  const displayItems = DEMO_FEED_ITEMS.slice(0, 4);
+  const [view, setView] = useState<'feed' | 'article'>('feed');
+  const [cursorPos, setCursorPos] = useState({ x: 80, y: -5 });
+  const [cursorVisible, setCursorVisible] = useState(false);
+  const [cursorClicking, setCursorClicking] = useState(false);
+  const [hoveredItem, setHoveredItem] = useState<number | null>(null);
+  const [scrollY, setScrollY] = useState(0);
+  const [thumbsUp, setThumbsUp] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      while (!cancelled) {
+        // Reset everything
+        setView('feed');
+        setCursorVisible(false);
+        setHoveredItem(null);
+        setScrollY(0);
+        setThumbsUp(false);
+
+        // 1. Show feed list
+        await heroDelay(2800);
+        if (cancelled) return;
+
+        // 2. Cursor enters from top-right, glides to second item (blog)
+        setCursorVisible(true);
+        setCursorPos({ x: 78, y: -4 });
+        await heroDelay(80);
+        if (cancelled) return;
+        setCursorPos({ x: 42, y: 42 });
+        await heroDelay(900);
+        if (cancelled) return;
+
+        // 3. Hover highlight on second card (blog)
+        setHoveredItem(1);
+        await heroDelay(450);
+        if (cancelled) return;
+
+        // 4. Click
+        setCursorClicking(true);
+        await heroDelay(150);
+        if (cancelled) return;
+        setCursorClicking(false);
+        await heroDelay(250);
+        if (cancelled) return;
+
+        // 5. Transition to article view
+        setView('article');
+        setCursorVisible(false);
+        setHoveredItem(null);
+        await heroDelay(1600);
+        if (cancelled) return;
+
+        // 6. Smooth-scroll the article content
+        const steps = 90;
+        const maxScroll = 200;
+        for (let i = 1; i <= steps; i++) {
+          if (cancelled) return;
+          const t = i / steps;
+          const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+          setScrollY(eased * maxScroll);
+          await heroDelay(45);
+        }
+        await heroDelay(700);
+        if (cancelled) return;
+
+        // 7. Cursor reappears, moves to thumbs-up button
+        setCursorVisible(true);
+        setCursorPos({ x: 78, y: 88 });
+        await heroDelay(80);
+        if (cancelled) return;
+        setCursorPos({ x: 14, y: 85 });
+        await heroDelay(850);
+        if (cancelled) return;
+
+        // 8. Click thumbs-up
+        setCursorClicking(true);
+        await heroDelay(150);
+        if (cancelled) return;
+        setCursorClicking(false);
+        setThumbsUp(true);
+        await heroDelay(2200);
+        if (cancelled) return;
+
+        // 9. Fade cursor, pause, loop
+        setCursorVisible(false);
+        await heroDelay(1200);
+      }
+    };
+
+    run();
+    return () => { cancelled = true; };
+  }, []);
+
+  const clickedItem = DEMO_FEED_ITEMS[1]; // Blog post
 
   return (
     <div className="relative w-full mt-6 md:mt-0">
-      {/* Clean Card Container - Light Mode */}
-      <div className="bg-white rounded-2xl border border-border/60 overflow-hidden shadow-xl shadow-black/5">
-        {/* App Header with Trace Logo */}
+      <div className="bg-white rounded-2xl border border-border/60 overflow-hidden shadow-xl shadow-black/5 relative">
+        {/* ── Header ── */}
         <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between bg-gray-50/50">
-          <div className="flex items-center gap-2">
-            <img
-              src="/trace.png"
-              alt="Trace"
-              className="h-5 w-auto"
-            />
-            <span className="text-xs font-semibold text-foreground uppercase tracking-wider">Your Feed</span>
-          </div>
+          <AnimatePresence mode="wait">
+            {view === 'article' ? (
+              <motion.div
+                key="back"
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -8 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-center gap-1.5 text-secondary"
+              >
+                <ChevronRight size={14} className="rotate-180" />
+                <span className="text-[11px]">Back to feed</span>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="logo"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center gap-2"
+              >
+                <img src="/trace.png" alt="Trace" className="h-5 w-auto" />
+                <span className="text-xs font-semibold text-foreground uppercase tracking-wider">Your Feed</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-secondary/60 font-mono">Today</span>
-            <span className="px-2 py-0.5 rounded-full bg-gray-100 text-secondary text-[10px] font-medium">
-              {displayItems.length} new
-            </span>
+            {view === 'feed' && (
+              <span className="px-2 py-0.5 rounded-full bg-gray-100 text-secondary text-[10px] font-medium">4 new</span>
+            )}
           </div>
         </div>
 
-        {/* Filter Pills - Static/Unclickable */}
-        <div className="px-4 py-2.5 border-b border-border/40 flex gap-1.5 overflow-x-auto scrollbar-hide">
-          {DEMO_FILTERS.slice(0, 4).map((filter, i) => (
-            <div
-              key={filter.id}
-              className={`px-3 py-1 rounded-full text-[11px] font-medium cursor-default select-none ${i === 0
-                ? 'bg-foreground text-background'
-                : 'bg-gray-100 text-secondary'
-                }`}
-            >
-              {filter.label}
-            </div>
-          ))}
-        </div>
+        {/* ── Content area (fixed height) ── */}
+        <div className="relative h-[440px] overflow-hidden select-none">
+          <AnimatePresence mode="wait">
+            {view === 'feed' ? (
+              <motion.div
+                key="feed-view"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0, x: -30 }}
+                transition={{ duration: 0.25 }}
+              >
+                {/* Filter pills */}
+                <div className="px-4 py-2.5 border-b border-border/40 flex gap-1.5">
+                  {DEMO_FILTERS.slice(0, 4).map((filter, i) => (
+                    <div
+                      key={filter.id}
+                      className={`px-3 py-1 rounded-full text-[11px] font-medium ${
+                        i === 0 ? 'bg-foreground text-background' : 'bg-gray-100 text-secondary'
+                      }`}
+                    >
+                      {filter.label}
+                    </div>
+                  ))}
+                </div>
 
-        {/* Feed Items */}
-        <div className="divide-y divide-border/30">
-          {displayItems.map((item, i) => (
-            <HeroDemoCard key={item.id} item={item} index={i} />
-          ))}
+                {/* Feed items */}
+                <div className="divide-y divide-border/30">
+                  {DEMO_FEED_ITEMS.map((item, i) => (
+                    <HeroDemoCard key={item.id} item={item} index={i} isHovered={hoveredItem === i} />
+                  ))}
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="article-view"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 30 }}
+                transition={{ duration: 0.3 }}
+                className="h-full overflow-hidden"
+              >
+                {/* Scrollable article body */}
+                <div
+                  className="px-5 py-4"
+                  style={{ transform: `translateY(-${scrollY}px)`, transition: 'transform 0.06s linear' }}
+                >
+                  {/* Source badge */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
+                      <BookOpen size={14} className="text-emerald-600" strokeWidth={1.5} />
+                    </div>
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-emerald-600">Blog</span>
+                    <span className="text-[10px] text-secondary/40">·</span>
+                    <span className="text-[10px] text-secondary/50">{clickedItem.author}</span>
+                  </div>
+
+                  {/* Title */}
+                  <h3 className="text-[15px] font-semibold leading-snug text-foreground mb-1.5">
+                    {clickedItem.title}
+                  </h3>
+
+                  {/* Subtitle */}
+                  <p className="text-[11px] text-secondary italic mb-5">
+                    What the most successful indie builders are doing differently — and the playbook behind their growth.
+                  </p>
+
+                  {/* Article body */}
+                  <div className="space-y-3 text-[11.5px] leading-[1.7] text-foreground/80">
+                    <h4 className="text-[12px] font-semibold text-foreground">The $1M Solo Founder Is No Longer Rare</h4>
+                    <p>
+                      Five years ago, building a million-dollar SaaS alone was a unicorn story. Now Lenny counts
+                      11 founders who&apos;ve done it — and the number is accelerating. The common thread
+                      isn&apos;t talent or luck. It&apos;s leverage.
+                    </p>
+                    <p>
+                      AI handles the grunt work. No-code tools replaced entire engineering teams. And niche
+                      markets turned out to be <strong>far more profitable</strong> than anyone expected.
+                    </p>
+
+                    <h4 className="text-[12px] font-semibold text-foreground mt-1">The Playbook That Keeps Showing Up</h4>
+                    <p>
+                      Nearly every founder in the list followed the same rough sequence — and it&apos;s not
+                      what the YC playbook tells you.
+                    </p>
+                    <ul className="space-y-1 text-[11px] text-foreground/70 ml-3">
+                      <li className="flex items-start gap-1.5">
+                        <span className="mt-1.5 w-1 h-1 rounded-full bg-foreground/30 shrink-0" />
+                        <span><strong>Pick a boring niche</strong> — payroll, invoicing, niche CRMs</span>
+                      </li>
+                      <li className="flex items-start gap-1.5">
+                        <span className="mt-1.5 w-1 h-1 rounded-full bg-foreground/30 shrink-0" />
+                        <span><strong>Ship ugly, iterate fast</strong> — design polish came after $10K MRR</span>
+                      </li>
+                      <li className="flex items-start gap-1.5">
+                        <span className="mt-1.5 w-1 h-1 rounded-full bg-foreground/30 shrink-0" />
+                        <span><strong>SEO + community &gt; ads</strong> — organic channels compound</span>
+                      </li>
+                    </ul>
+
+                    <h4 className="text-[12px] font-semibold text-foreground mt-1">Why Now</h4>
+                    <p>
+                      The cost of building dropped by <strong>10× in two years</strong>. What used to take
+                      a 5-person team and $500K now takes one founder, a few AI tools, and a weekend.
+                      The golden age of solo SaaS is just getting started.
+                    </p>
+                  </div>
+
+                  {/* Vote actions */}
+                  <div className="flex items-center gap-2 mt-6 pt-4 border-t border-border/30">
+                    <div
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-200 ${
+                        thumbsUp
+                          ? 'bg-green-50 text-green-600'
+                          : 'text-secondary/40'
+                      }`}
+                    >
+                      <ThumbsUp size={13} fill={thumbsUp ? 'currentColor' : 'none'} strokeWidth={1.5} />
+                      <span>Useful</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-secondary/40">
+                      <ThumbsDown size={13} strokeWidth={1.5} />
+                      <span>Not for me</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-secondary/40 ml-auto">
+                      <Bookmark size={13} strokeWidth={1.5} />
+                    </div>
+                  </div>
+
+                  {/* "Trace learned" nudge after vote */}
+                  <AnimatePresence>
+                    {thumbsUp && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50/80 border border-emerald-100"
+                      >
+                        <Sparkles size={12} className="text-emerald-500" />
+                        <span className="text-[10px] text-emerald-700">Trace learned you like startup strategy from newsletters</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* ── Animated cursor ── */}
+          <motion.div
+            className="absolute pointer-events-none z-50"
+            animate={{
+              left: `${cursorPos.x}%`,
+              top: `${cursorPos.y}%`,
+              opacity: cursorVisible ? 1 : 0,
+              scale: cursorClicking ? 0.8 : 1,
+            }}
+            transition={{
+              left: { type: 'tween', duration: 0.85, ease: [0.4, 0, 0.2, 1] },
+              top: { type: 'tween', duration: 0.85, ease: [0.4, 0, 0.2, 1] },
+              opacity: { duration: 0.25 },
+              scale: { duration: 0.1 },
+            }}
+          >
+            <svg width="18" height="22" viewBox="0 0 18 22" fill="none" className="drop-shadow-md">
+              <path
+                d="M1 1L1 17.5L5.2 13L9.2 21.5L12 20L8 11.5L14.5 11.5L1 1Z"
+                fill="white"
+                stroke="#222"
+                strokeWidth="1.4"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </motion.div>
         </div>
       </div>
     </div>
   );
 };
 
-// Simplified card for Hero demo - Matches actual feed style
-const HeroDemoCard = ({ item, index }: { item: typeof DEMO_FEED_ITEMS[0]; index: number }) => {
-  const typeConfig: Record<string, { icon: React.ElementType; color: string; bg: string; label: string }> = {
-    youtube: { icon: Youtube, color: 'text-red-500', bg: 'bg-red-50', label: 'Video' },
-    article: { icon: BookOpen, color: 'text-emerald-600', bg: 'bg-emerald-50', label: 'Article' },
-    news: { icon: Newspaper, color: 'text-orange-500', bg: 'bg-orange-50', label: 'News' },
-    discussion: { icon: MessageCircle, color: 'text-amber-600', bg: 'bg-amber-50', label: 'Discussion' },
+// Card for the Hero demo feed list
+const HeroDemoCard = ({ item, index, isHovered = false }: { item: typeof DEMO_FEED_ITEMS[0]; index: number; isHovered?: boolean }) => {
+  const typeConfig: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
+    youtube: { icon: Youtube, color: 'text-red-500', bg: 'bg-red-50' },
+    article: { icon: BookOpen, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    news: { icon: Newspaper, color: 'text-orange-500', bg: 'bg-orange-50' },
+    discussion: { icon: MessageCircle, color: 'text-amber-600', bg: 'bg-amber-50' },
   };
 
   const config = typeConfig[item.type] || typeConfig.article;
@@ -1570,41 +1835,34 @@ const HeroDemoCard = ({ item, index }: { item: typeof DEMO_FEED_ITEMS[0]; index:
   return (
     <motion.div
       initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: index * 0.05 }}
-      className="group p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+      animate={{ opacity: 1, backgroundColor: isHovered ? 'rgb(249 250 251)' : 'rgb(255 255 255)' }}
+      transition={{ delay: index * 0.05, backgroundColor: { duration: 0.2 } }}
+      className="p-4 cursor-pointer transition-colors"
     >
       <div className="flex items-start gap-3">
-        {/* Source icon - hidden on mobile */}
-        <div className={`w-10 h-10 rounded-xl ${config.bg} hidden md:flex items-center justify-center shrink-0`}>
+        <div className={`w-10 h-10 rounded-xl ${config.bg} flex items-center justify-center shrink-0`}>
           <Icon size={18} className={config.color} strokeWidth={1.5} />
         </div>
 
-        {/* Content */}
         <div className="flex-1 min-w-0">
-          {/* Source label */}
-          <div className="flex items-center gap-2 mb-1">
-            <span className={`text-[10px] font-medium uppercase tracking-wider ${config.color}`}>
-              {config.label}
-            </span>
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className={`text-[10px] font-medium uppercase tracking-wider ${config.color}`}>{item.source}</span>
+            <span className="text-[10px] text-secondary/40">·</span>
+            <span className="text-[10px] text-secondary/50">{item.author}</span>
           </div>
 
-          {/* Title */}
-          <h3 className="text-sm font-medium leading-snug text-foreground group-hover:text-foreground/70 transition-colors line-clamp-2 mb-2">
+          <h3 className="text-[13px] font-medium leading-snug text-foreground line-clamp-2">
             {item.title}
           </h3>
 
-          {/* Actions row */}
+          <p className="text-[11px] text-secondary/60 leading-relaxed line-clamp-1 mt-0.5 mb-2">
+            {item.description}
+          </p>
+
           <div className="flex items-center gap-1">
-            <div className="flex items-center gap-1 p-1.5 rounded-lg text-secondary/40">
-              <ThumbsUp size={14} strokeWidth={1.5} />
-            </div>
-            <div className="flex items-center gap-1 p-1.5 rounded-lg text-secondary/40">
-              <ThumbsDown size={14} strokeWidth={1.5} />
-            </div>
-            <div className="flex items-center gap-1 p-1.5 rounded-lg text-secondary/40">
-              <Bookmark size={14} strokeWidth={1.5} />
-            </div>
+            <div className="p-1 text-secondary/30"><ThumbsUp size={13} strokeWidth={1.5} /></div>
+            <div className="p-1 text-secondary/30"><ThumbsDown size={13} strokeWidth={1.5} /></div>
+            <div className="p-1 text-secondary/30 ml-auto"><Bookmark size={13} strokeWidth={1.5} /></div>
           </div>
         </div>
       </div>
@@ -1633,7 +1891,7 @@ const DemoFeed = () => {
             transition={{ delay: 0.1 }}
             className="text-secondary font-mono text-xs md:text-sm leading-relaxed max-w-2xl mx-auto"
           >
-            Articles, videos, discussions — all filtered by your interests and skill level
+            Articles, videos, discussions — pulled from hundreds of sources and filtered by your interests
           </motion.p>
         </div>
 
@@ -1684,17 +1942,17 @@ const DemoFeed = () => {
 const Testimonials = () => {
   const testimonials = [
     {
-      quote: "I deleted Twitter and Reddit. Trace is the only feed I check now — 15 minutes in the morning and I'm done. No rabbit holes.",
+      quote: "I used to check Twitter, Reddit, and HN separately every morning. Now I open Trace once and I've got everything. It's like RSS but it actually works.",
       name: "Zeba",
       role: "AI Engineer"
     },
     {
-      quote: "I used to lose hours to doomscrolling. Now I get the same info in a fraction of the time, without the anxiety spiral.",
+      quote: "Trace catches things I would have completely missed — blog posts, threads, papers. It's like having a research assistant who knows exactly what I care about.",
       name: "Monisha",
       role: "Product Designer"
     },
     {
-      quote: "Finally, a feed that doesn't try to manipulate me. I see what I want to see, not what some algorithm thinks will keep me hooked.",
+      quote: "I stopped worrying about missing important launches or discussions. If it matters for my interests, Trace finds it. That peace of mind is worth everything.",
       name: "Sebastian",
       role: "Indie Hacker"
     }
@@ -1710,7 +1968,7 @@ const Testimonials = () => {
             viewport={{ once: true }}
             className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-4 md:mb-6"
           >
-            People Who <span className="text-secondary/50">Escaped</span>
+            What People <span className="text-secondary/50">Are Saying</span>
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -1719,7 +1977,7 @@ const Testimonials = () => {
             transition={{ delay: 0.1 }}
             className="text-secondary text-base md:text-lg leading-relaxed max-w-2xl mx-auto"
           >
-            Real people who took back their attention
+            Real people who never miss what matters anymore
           </motion.p>
         </div>
 
@@ -1817,8 +2075,8 @@ const LivingFeed = () => {
           </h2>
           <p className="text-secondary font-mono text-xs md:text-sm uppercase tracking-wider md:tracking-widest mb-4">
             {isLoggedIn
-              ? `Curated for ${profile?.interests.length || 0}+ interests // Real-time adaptation`
-              : 'It learns from your interactions, understands your patterns, and updates itself daily.'
+              ? `Curated for ${profile?.interests.length || 0}+ interests // Updated daily from hundreds of sources`
+              : 'Content from across the entire web, curated around your interests and updated every day.'
             }
           </p>
         </div>
@@ -2556,7 +2814,7 @@ const Pricing = () => {
                 <span className="text-green-600 text-xs">✓</span>
               </div>
               <div className="text-sm text-foreground">
-                AI learns from your interactions
+                Content from 1,000+ sources, curated for you
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
@@ -2564,7 +2822,7 @@ const Pricing = () => {
                 <span className="text-green-600 text-xs">✓</span>
               </div>
               <div className="text-sm text-foreground">
-                Unlimited bookmarks
+                Feed that learns and gets better over time
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
@@ -2572,7 +2830,7 @@ const Pricing = () => {
                 <span className="text-green-600 text-xs">✓</span>
               </div>
               <div className="text-sm text-foreground">
-                All 1,000+ sources included
+                Unlimited bookmarks &amp; summaries
               </div>
             </div>
           </div>
@@ -2603,7 +2861,7 @@ const Pricing = () => {
           className="text-center"
         >
           <p className="text-sm text-secondary mb-3">
-            Cancel anytime before trial ends. No credit card charged until day 4.
+            Cancel anytime. No credit card charged until day 4.
           </p>
           <p className="text-sm text-secondary">
             Questions? We&apos;re humans: <a href="mailto:yourtrace.online@gmail.com" className="text-primary hover:underline">yourtrace.online@gmail.com</a>
@@ -2737,7 +2995,7 @@ const Footer = () => (
             TRACE
           </div>
           <p className="text-secondary text-sm leading-relaxed max-w-[240px]">
-            Stop letting algorithms hijack your brain. Trace gives you a feed you actually control.
+            Your RSS for the web. One feed with content from hundreds of sources, curated around your interests.
           </p>
         </div>
 

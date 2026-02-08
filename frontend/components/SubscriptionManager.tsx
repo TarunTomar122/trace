@@ -346,7 +346,7 @@ export default function SubscriptionManager() {
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="w-5 h-5 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs shrink-0">✓</span>
-                  <span>AI-curated to reduce noise and avoid doomscrolling</span>
+                  <span>Content from 1,000+ sources, curated around your interests</span>
                 </li>
               </ul>
             </div>

@@ -3,6 +3,73 @@ import { adminAuth, adminFirestore } from '@/lib/firebase-admin';
 
 const PAGE_SIZE = 50;
 const MAX_FEED_ITEMS = 50;
+const SAMPLE_SUMMARY_COUNT = 3;
+
+// Showcase user whose feed items (with real summaries) are used as
+// samples for unsubscribed / preview feeds.
+const SHOWCASE_USER_ID = 'TTK4PNFSO2PxTBrSCvvXBmHsCIE2';
+
+/**
+ * Pull up to SAMPLE_SUMMARY_COUNT items **with real summaries** from
+ * the showcase user's latest feed.  These are actual AI-generated
+ * summaries so free users can see what the product feels like.
+ */
+async function getSampleSummaryItems(): Promise<any[]> {
+  if (!adminFirestore) return [];
+
+  try {
+    // Get the showcase user's latest feed
+    const latestSnap = await adminFirestore
+      .collection('user_feeds')
+      .doc(SHOWCASE_USER_ID)
+      .collection('daily')
+      .orderBy('__name__', 'desc')
+      .limit(1)
+      .get();
+
+    if (latestSnap.empty) return [];
+
+    const feedDoc = latestSnap.docs[0];
+    const feedData = feedDoc.data();
+    const allItems: any[] = feedData?.items || [];
+
+    // Only keep items that actually have a summary body
+    const withSummary = allItems.filter(
+      (item) => item.summary?.short_article?.body
+    );
+
+    // Pick diverse items (one per unique tag/category)
+    const picked: any[] = [];
+    const seenTags = new Set<string>();
+
+    for (const item of withSummary) {
+      if (picked.length >= SAMPLE_SUMMARY_COUNT) break;
+      const tag = (item.tags || [])[0] || '';
+      if (!seenTags.has(tag)) {
+        seenTags.add(tag);
+        picked.push(item);
+      }
+    }
+    // Fill remaining slots
+    for (const item of withSummary) {
+      if (picked.length >= SAMPLE_SUMMARY_COUNT) break;
+      if (!picked.includes(item)) picked.push(item);
+    }
+
+    // Return them with a sample marker (keep original summary intact)
+    return picked.map((item) => ({
+      ...item,
+      id: `sample_${item.id}`,
+      metadata: {
+        ...(item.metadata || {}),
+        feed_category: 'sample_summary',
+      },
+    }));
+  } catch (err) {
+    console.error('Error fetching sample summary items:', err);
+    return [];
+  }
+}
 
 /**
  * Paginated feed endpoint for subscribed users.
@@ -12,7 +79,9 @@ const MAX_FEED_ITEMS = 50;
  * - cursor: Item index to start from (0-based)
  * - limit: Number of items to return (default 50, max 50)
  * 
- * Returns items sorted: unseen first, then seen (by original order)
+ * Returns items sorted: unseen first, then seen (by original order).
+ * For preview (unsubscribed) feeds, injects up to 3 real summary items
+ * from a showcase user's feed so free users can experience the product.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -80,6 +149,7 @@ export async function GET(request: NextRequest) {
     const feedData = feedDoc.data();
     const allItems: any[] = feedData?.items || [];
     const seenItemIds: Set<string> = new Set(feedData?.seen_item_ids || []);
+    const isPreview = feedData?.metadata?.is_preview === true;
 
     // Limit total items to MAX_FEED_ITEMS
     const limitedItems = allItems.slice(0, MAX_FEED_ITEMS);
@@ -98,7 +168,18 @@ export async function GET(request: NextRequest) {
     });
 
     // Combine: unseen first, then seen
-    const sortedItems = [...unseenItems, ...seenItems];
+    let sortedItems = [...unseenItems, ...seenItems];
+
+    // For preview feeds: inject real summary items from the showcase user
+    if (isPreview && cursor === 0) {
+      const sampleItems = await getSampleSummaryItems();
+      if (sampleItems.length > 0) {
+        // Remove any duplicates by URL
+        const sampleUrls = new Set(sampleItems.map((si: any) => si.url));
+        sortedItems = sortedItems.filter((item) => !sampleUrls.has(item.url));
+        sortedItems = [...sampleItems, ...sortedItems];
+      }
+    }
     
     // Apply pagination
     const paginatedItems = sortedItems.slice(cursor, cursor + limit);

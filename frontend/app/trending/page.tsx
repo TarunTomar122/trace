@@ -20,13 +20,14 @@ export const revalidate = 3600; // cache for 1 hour
 export const metadata: Metadata = {
   title: "Today's Top Reads — Trace",
   description:
-    "The best articles from across the web, summarized daily. Free to read, no login required.",
+    "The most interesting articles from hundreds of sources, curated and summarized daily. Free to read.",
   keywords: [
     'daily reads',
     'curated articles',
-    'AI summaries',
+    'content curation',
     'trending articles',
     'tech news',
+    'RSS alternative',
     'Trace',
   ],
   alternates: {
@@ -35,7 +36,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Today's Top Reads — Trace",
     description:
-      "The best articles from across the web, summarized daily. Free to read.",
+      "The most interesting articles from hundreds of sources, curated daily. Free to read.",
     url: 'https://www.yourtrace.online/trending',
     type: 'website',
     siteName: 'Trace',
@@ -44,7 +45,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: "Today's Top Reads — Trace",
     description:
-      "The best articles from across the web, summarized daily.",
+      "The most interesting articles from hundreds of sources, curated daily.",
   },
 };
 
@@ -221,7 +222,7 @@ export default async function TrendingPage() {
               Today&apos;s Top Reads
             </h1>
             <p className="text-sm text-secondary">
-              The best articles from across the web, summarized for you. Free to read, no login required.
+              The most interesting reads from hundreds of sources, curated and summarized daily. Free to read.
             </p>
           </div>
 
@@ -241,7 +242,7 @@ export default async function TrendingPage() {
                 Today&apos;s reads are on the way
               </p>
               <p className="text-sm text-secondary max-w-sm mx-auto">
-                We curate fresh articles every morning. Check back soon — or subscribe to get them in your inbox.
+                We pull the best content from hundreds of sources every morning. Check back soon — or subscribe to get them in your inbox.
               </p>
             </div>
           )}
@@ -252,10 +253,10 @@ export default async function TrendingPage() {
               <Sparkles size={22} className="text-foreground" strokeWidth={1.5} />
             </div>
             <h2 className="text-lg font-semibold text-foreground mb-2">
-              Want these personalized to you?
+              Want a feed curated just for you?
             </h2>
             <p className="text-sm text-secondary mb-6 max-w-lg mx-auto">
-              Sign up for Trace and get a daily feed tailored to your interests — with AI-powered summaries that match what you care about.
+              Sign up for Trace and get content from hundreds of sources — filtered by your interests, summarized, and delivered daily.
             </p>
             <Link href="/">
               <button className="bg-foreground text-background px-6 py-3 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all">

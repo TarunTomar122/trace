@@ -92,6 +92,15 @@ const sourceConfig: Record<string, { icon: typeof Youtube; color: string; label:
   news: { icon: Newspaper, color: 'text-orange-500', label: 'News', accent: 'bg-orange-500', bg: 'bg-orange-50' },
 };
 
+/** Strip the "Why this matters for you" personalised section from a summary body. */
+const stripPersonalizedSection = (body: string): string => {
+  // Remove ## / ### headings containing "why" + "matters" / "care" and everything until the next heading or end
+  return body.replace(
+    /#{2,3}\s*(?:Why\s+(?:this\s+matters|it\s+matters|you\s+might\s+care)[^\n]*)\n[\s\S]*?(?=\n#{2,3}\s|\n*$)/gi,
+    ''
+  ).trim();
+};
+
 const formatSummaryBody = (body: string): string => {
   let formatted = body.trim();
   formatted = formatted.replace(/(#{2,3}\s*[^\n]+)/g, '$1\n\n');
@@ -114,6 +123,7 @@ function FeedListItem({ item, onClick, showSubscribeCta }: {
   const Icon = config.icon;
   const subtitle = item.summary?.short_article?.subtitle;
   const hasSummary = Boolean(item.summary?.short_article?.body);
+  const isSample = item.metadata?.feed_category === 'sample_summary';
 
   return (
     <article
@@ -130,6 +140,12 @@ function FeedListItem({ item, onClick, showSubscribeCta }: {
           {/* Source label + badges */}
           <div className="flex items-center gap-2 mb-1.5 md:mb-2">
             <span className={`text-[10px] font-medium uppercase tracking-wider ${config.color}`}>{config.label}</span>
+            {isSample && (
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
+                <Sparkles size={10} strokeWidth={2} />
+                <span className="text-[9px] font-medium uppercase tracking-wider">Free summary</span>
+              </span>
+            )}
             {item.metadata?.is_hot && itemKind !== 'news' && (
               <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">
                 <Flame size={10} strokeWidth={2} />
@@ -155,7 +171,7 @@ function FeedListItem({ item, onClick, showSubscribeCta }: {
             </p>
           ) : showSubscribeCta ? (
             <p className="text-xs text-secondary/50 mt-1 italic">
-              Subscribe to unlock AI lessons
+              Subscribe to unlock all summaries
             </p>
           ) : null}
         </div>
@@ -193,7 +209,12 @@ function ArticleView({
   const itemKind = item.type || item.source || 'blog';
   const config = sourceConfig[itemKind] || sourceConfig.blog;
   const Icon = config.icon;
-  const shortSummary = item.summary?.short_article;
+  const isSample = item.metadata?.feed_category === 'sample_summary';
+  const rawSummary = item.summary?.short_article;
+  // Strip the personalised "Why this matters for you" section for sample items
+  const shortSummary = rawSummary && isSample
+    ? { ...rawSummary, body: rawSummary.body ? stripPersonalizedSection(rawSummary.body) : undefined }
+    : rawSummary;
   const [upvoted, setUpvoted] = useState(initialVote === 'upvote');
   const [downvoted, setDownvoted] = useState(initialVote === 'downvote');
   const [bookmarked, setBookmarked] = useState(initialBookmarked || false);
@@ -264,7 +285,7 @@ function ArticleView({
         <div className="mb-6 p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center gap-3">
           <Sparkles size={18} className="text-emerald-600 shrink-0" />
           <p className="text-sm text-emerald-800">
-            Enjoy this free AI lesson! <Link href="/profile?tab=subscription" className="font-medium underline underline-offset-2 hover:text-emerald-900">Subscribe</Link> to unlock lessons for every article.
+            This summary is free! <Link href="/profile?tab=subscription" className="font-medium underline underline-offset-2 hover:text-emerald-900">Subscribe</Link> to unlock summaries for every article in your feed.
           </p>
         </div>
       )}
@@ -558,10 +579,36 @@ function FeedPageContent() {
     });
 
   // For subscribed users: only show items with summaries
-  // For unsubscribed users: show all items (they can still view summaries if they exist)
+  // For unsubscribed users: bubble up to 3 summary items (different topics) to the top
   const filteredFeed = hasAccess
     ? filteredByTopic.filter((item) => item.summary?.short_article?.body)
-    : filteredByTopic;
+    : (() => {
+        const items = [...filteredByTopic];
+        const promoted: FeedItem[] = [];
+        const seenCats = new Set<string>();
+
+        // First pass: one summary item per unique category (up to 3)
+        for (let i = 0; i < items.length && promoted.length < 3; i++) {
+          if (items[i].summary?.short_article?.body) {
+            const cat = items[i].metadata?.feed_category || items[i].tags?.[0] || `_${i}`;
+            if (!seenCats.has(cat)) {
+              seenCats.add(cat);
+              promoted.push(...items.splice(i, 1));
+              i--;
+            }
+          }
+        }
+
+        // Second pass: fill remaining slots with any summary items
+        for (let i = 0; i < items.length && promoted.length < 3; i++) {
+          if (items[i].summary?.short_article?.body) {
+            promoted.push(...items.splice(i, 1));
+            i--;
+          }
+        }
+
+        return [...promoted, ...items];
+      })();
 
   // Find selected item
   const selectedItem = selectedItemId 
@@ -1000,7 +1047,7 @@ function FeedPageContent() {
                   <h3 className="text-lg font-semibold">Unlock the full feed</h3>
                 </div>
                 <p className="text-sm text-secondary mb-6">
-                  Subscribe to unlock the full daily feed. Your interactions teach Trace what to find and what to skip, so it gets smarter every day.
+                  Subscribe to unlock summaries for every article. Your interactions help Trace learn what to curate for you across hundreds of sources.
                 </p>
                 <div className="flex gap-3">
                   <button

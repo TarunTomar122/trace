@@ -71,6 +71,14 @@ export interface FeedItem {
   view_count?: number | null;
   stars?: number | null;
   tags?: string[];
+  summary?: {
+    short_article?: {
+      subtitle?: string;
+      outline?: string[];
+      body?: string;
+    };
+    reading_time_minutes?: number;
+  };
   metadata?: {
     why_relevant?: string;
     is_hot?: boolean;
@@ -91,28 +99,122 @@ export interface UserFeed {
 
 // ============ Constants ============
 export const INTERESTS = [
-  { id: 'mental-wellness', label: 'Mental Wellness' },
-  { id: 'health-fitness', label: 'Health & Fitness' },
+  { id: 'technology', label: 'Technology' },
+  { id: 'science', label: 'Science' },
+  { id: 'psychology', label: 'Psychology' },
+  { id: 'ideas', label: 'Ideas' },
+  { id: 'business', label: 'Business' },
+  { id: 'money', label: 'Money' },
+  { id: 'design', label: 'Design' },
+  { id: 'career', label: 'Career' },
+  { id: 'self-development', label: 'Self development' },
+  { id: 'health', label: 'Health' },
+  { id: 'cooking', label: 'Cooking' },
+  { id: 'culture', label: 'Culture' },
   { id: 'relationships', label: 'Relationships' },
-  { id: 'money', label: 'Money & Personal Finance' },
-  { id: 'career', label: 'Career & Work' },
-  { id: 'learning', label: 'Learning & Skills' },
-  { id: 'productivity', label: 'Productivity' },
-  { id: 'creativity', label: 'Creativity' },
-  { id: 'travel', label: 'Travel & Adventure' },
-  { id: 'culture', label: 'Culture & Entertainment' },
+  { id: 'society', label: 'Society' },
 ];
 
-export const HOBBY_SUGGESTIONS = [
-  { id: 'running', label: 'Running' },
-  { id: 'cycling', label: 'Cycling' },
-  { id: 'pottery', label: 'Pottery' },
-  { id: 'sketching', label: 'Sketching' },
-  { id: 'photography', label: 'Photography' },
-  { id: 'music', label: 'Music' },
-  { id: 'reading', label: 'Reading' },
-  { id: 'fitness', label: 'Fitness' },
-];
+export const INTEREST_SUBTOPICS: Record<string, { id: string; label: string }[]> = {
+  technology: [
+    { id: 'ai', label: 'AI' },
+    { id: 'automation', label: 'Automation' },
+    { id: 'software', label: 'Software' },
+    { id: 'productivity-tools', label: 'Productivity Tools' },
+    { id: 'future-tech', label: 'Future Tech' },
+  ],
+  science: [
+    { id: 'space', label: 'Space' },
+    { id: 'biology', label: 'Biology' },
+    { id: 'physics', label: 'Physics' },
+    { id: 'climate', label: 'Climate' },
+    { id: 'explained', label: 'Explained' },
+  ],
+  psychology: [
+    { id: 'mental-health', label: 'Mental Health' },
+    { id: 'habits', label: 'Habits' },
+    { id: 'learning', label: 'Learning' },
+    { id: 'relationships', label: 'Relationships' },
+    { id: 'emotions', label: 'Emotions' },
+  ],
+  ideas: [
+    { id: 'philosophy', label: 'Philosophy' },
+    { id: 'essays', label: 'Essays' },
+    { id: 'creativity', label: 'Creativity' },
+    { id: 'meaning', label: 'Meaning' },
+    { id: 'big-ideas', label: 'Big Ideas' },
+  ],
+  business: [
+    { id: 'startups', label: 'Startups' },
+    { id: 'product', label: 'Product' },
+    { id: 'marketing', label: 'Marketing' },
+    { id: 'operations', label: 'Operations' },
+    { id: 'leadership', label: 'Leadership' },
+  ],
+  money: [
+    { id: 'personal-finance', label: 'Personal Finance' },
+    { id: 'investing', label: 'Investing' },
+    { id: 'income', label: 'Income' },
+    { id: 'markets', label: 'Markets' },
+    { id: 'crypto', label: 'Crypto' },
+  ],
+  design: [
+    { id: 'visual-design', label: 'Visual Design' },
+    { id: 'ux', label: 'UX' },
+    { id: 'branding', label: 'Branding' },
+    { id: 'creative-process', label: 'Creative Process' },
+    { id: 'tools', label: 'Tools' },
+  ],
+  career: [
+    { id: 'job-search', label: 'Job Search' },
+    { id: 'skills', label: 'Skills' },
+    { id: 'portfolio', label: 'Portfolio' },
+    { id: 'career-growth', label: 'Career Growth' },
+    { id: 'workplace', label: 'Workplace' },
+  ],
+  'self-development': [
+    { id: 'focus', label: 'Focus' },
+    { id: 'routines', label: 'Routines' },
+    { id: 'mindset', label: 'Mindset' },
+    { id: 'confidence', label: 'Confidence' },
+    { id: 'life-design', label: 'Life Design' },
+  ],
+  health: [
+    { id: 'workouts', label: 'Workouts' },
+    { id: 'nutrition', label: 'Nutrition' },
+    { id: 'sleep', label: 'Sleep' },
+    { id: 'recovery', label: 'Recovery' },
+    { id: 'fitness', label: 'Fitness' },
+  ],
+  cooking: [
+    { id: 'recipes', label: 'Recipes' },
+    { id: 'healthy-meals', label: 'Healthy Meals' },
+    { id: 'baking', label: 'Baking' },
+    { id: 'drinks', label: 'Drinks' },
+    { id: 'food-culture', label: 'Food Culture' },
+  ],
+  culture: [
+    { id: 'movies', label: 'Movies' },
+    { id: 'music', label: 'Music' },
+    { id: 'games', label: 'Games' },
+    { id: 'books', label: 'Books' },
+    { id: 'internet', label: 'Internet' },
+  ],
+  relationships: [
+    { id: 'dating', label: 'Dating' },
+    { id: 'family', label: 'Family' },
+    { id: 'friendships', label: 'Friendships' },
+    { id: 'communication', label: 'Communication' },
+    { id: 'conflict', label: 'Conflict' },
+  ],
+  society: [
+    { id: 'politics', label: 'Politics' },
+    { id: 'economics', label: 'Economics' },
+    { id: 'history', label: 'History' },
+    { id: 'media', label: 'Media' },
+    { id: 'technology-impact', label: 'Technology Impact' },
+  ],
+};
 
 export const SKILL_SUGGESTIONS = [
   { id: 'design', label: 'Design' },
@@ -125,15 +227,6 @@ export const SKILL_SUGGESTIONS = [
   { id: 'education', label: 'Education' },
   { id: 'health-wellness', label: 'Health & Wellness' },
   { id: 'creative-arts', label: 'Creative Arts' },
-];
-
-export const ROLES = [
-  'Founder',
-  'UX Designer',
-  'Software Engineer',
-  'Marketing',
-  'Student',
-  'Other'
 ];
 
 // Sample feed items for preview
@@ -257,6 +350,8 @@ export async function completeOnboarding(
     name: string;
     role?: string;
     interests: string[];
+    interestQueries?: Record<string, string[]>;
+    interestWeights?: Record<string, number>;
     hobbies: string[];
     skills: string[];
     goalsShortTerm?: string;
@@ -289,6 +384,14 @@ export async function completeOnboarding(
 
     if (data.role) {
       updateData.role = data.role;
+    }
+    
+    if (data.interestQueries && Object.keys(data.interestQueries).length > 0) {
+      updateData.interestQueries = data.interestQueries;
+    }
+    
+    if (data.interestWeights && Object.keys(data.interestWeights).length > 0) {
+      updateData.interestWeights = data.interestWeights;
     }
     
     // Only set goals if provided (Firebase doesn't accept undefined)
@@ -387,6 +490,20 @@ export async function updateUserProfile(
     await setDoc(docRef, cleanData, { merge: true });
   } catch (error) {
     console.error('Error updating user profile:', error);
+    throw error;
+  }
+}
+
+export async function deleteUserData(uid: string): Promise<void> {
+  try {
+    const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
+    await setDoc(docRef, {
+      deleted: true,
+      deletedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error soft-deleting user data:', error);
     throw error;
   }
 }

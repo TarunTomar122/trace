@@ -182,7 +182,7 @@ not an article, such as:
 - signup or promotional pages with no real article text
 
 IMPORTANT: News articles, opinion pieces, and announcements ARE valid articles.
-If you are unsure, treat it as an article and summarize it.
+If you are unsure, treat it as an article and write the mini-article.
 
 USER CONTEXT:
 {json.dumps(user_context, indent=2)}
@@ -196,9 +196,9 @@ Content:
 If this IS a real article, return JSON with EXACT structure:
 {{
   "short_article": {{
-    "subtitle": "One compelling sentence that hooks the reader",
-    "outline": ["3 key takeaways as bullets"],
-    "body": "The mini-article with proper markdown formatting"
+    "subtitle": "One compelling lede sentence that feels human",
+    "outline": ["3-5 concrete, specific bullets pulled from the article"],
+    "body": "A narrative mini-article in markdown"
   }}
 }}
 
@@ -206,35 +206,38 @@ CRITICAL FORMATTING RULES for body:
 - Use markdown headings: ## for main sections, ### for subsections
 - ALWAYS put a blank line between paragraphs (two newlines: \\n\\n)
 - ALWAYS put a blank line after headings before the paragraph
-- Write 3-5 short paragraphs (2-4 sentences each)
+- Write 4-8 paragraphs (2-4 sentences each) — be generous with content
 - Each paragraph should be separated by a blank line
 - The result must render nicely with proper spacing
 
 CONTENT RULES:
+- Write like a sharp human editor, not an AI summary
+- Do NOT say "The core insight", "The details", "In summary", or similar meta labels
 - Mimic the source article's tone and voice
 - Be specific to facts in the source - no invented information
-- Prioritize concrete details, named entities, and examples from the article
-- Include at least 3 specific examples or organizations mentioned in the source
-- If the article lists multiple items/sections, preserve that structure
+- Prioritize concrete details: names, numbers, dates, programs, quotes
+- Include at least 5 specific entities, examples, or data points from the source
+- If the article lists multiple items/sections, preserve that structure with detail
+- Retain interesting anecdotes, surprising stats, and notable quotes from the source
 - Focus on what's most relevant to the user's interests/skills
-- Write like a real author, not an AI summary
-- Keep outline bullets under 12 words each
-- Avoid generic closing statements, future-looking platitudes, or filler.
-- Emphasize micro-learning: tight, specific insights and actionable steps.
-- Prefer concrete takeaways over broad commentary.
+- Keep outline bullets under 12 words each, and make them concrete
+- Avoid generic closing statements, future-looking platitudes, or filler
+- Prefer tight, specific insights over broad commentary
+- Use bullet lists when the article itself lists items, steps, or comparisons
 
-MANDATORY SECTION in body:
-- Add a "## Key examples" section with 3-6 points with specific details or examples pulled from the source.
-- If the article has numbers, dates, or named programs, include them in that section.
+DEPTH GUIDANCE:
+- Cover the article thoroughly — the reader should feel they got the full picture
+- Don't just skim the surface; include supporting evidence, context, and examples
+- If the article has multiple angles or arguments, represent them
+- When there are numbers or data, include them — readers value specifics
 
-IMPORTANT PERSONALIZATION:
-- If the user context makes it relevant, add a short section titled
-  "## Why this matters for you" with 1 sentence bullets tying specific details
-  from the article to the user's skills, interests, or goals.
-- If it is not necessary or specific enough for the user, omit this section entirely.
+SECTION GUIDANCE:
+- Use 3-5 sections with headings that read like editorial headings
+- At least two sections must surface concrete details (numbers, names, programs)
+- Do NOT use a heading called "Key examples"
 
 Example body formatting (notice the blank lines):
-## The Core Insight
+## What's happening
 
 First paragraph explaining the main point. This has 2-3 sentences that flow
 naturally and cover the key idea.
@@ -242,12 +245,15 @@ naturally and cover the key idea.
 Second paragraph with more detail. Notice the blank line above separating it
 from the first paragraph.
 
-### Practical Application
+### The details
+
+A paragraph diving into specifics — names, numbers, timelines, and context
+that make this story concrete and useful.
+
+### What this changes
 
 Another paragraph here after the heading. The blank line after the heading
 is important for proper rendering.
-
-Final paragraph wrapping up with actionable insight for the reader.
 """
 
     try:

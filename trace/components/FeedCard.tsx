@@ -1,222 +1,154 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, View, Linking } from 'react-native';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { Pressable, StyleSheet, View } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import {
+  Youtube,
+  Github,
+  BookOpen,
+  MessageCircle,
+  Sparkles,
+  Newspaper,
+  Flame,
+  ExternalLink,
+  FileText,
+} from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors, Fonts } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import { FeedItem } from '@/lib/firestore';
 
-// Source type configurations
-const SOURCE_CONFIG: Record<string, { color: string; bgColor: string; label: string }> = {
-  video: { color: '#ef4444', bgColor: '#fef2f2', label: 'VIDEO' },
-  repo: { color: '#8b5cf6', bgColor: '#f5f3ff', label: 'REPO' },
-  paper: { color: '#3b82f6', bgColor: '#eff6ff', label: 'PAPER' },
-  blog: { color: '#10b981', bgColor: '#ecfdf5', label: 'ARTICLE' },
-  discussion: { color: '#f59e0b', bgColor: '#fffbeb', label: 'DISCUSSION' },
-  tweet: { color: '#0ea5e9', bgColor: '#f0f9ff', label: 'THREAD' },
-  launch: { color: '#d946ef', bgColor: '#fdf4ff', label: 'LAUNCH' },
-  model: { color: '#6366f1', bgColor: '#eef2ff', label: 'MODEL' },
-  news: { color: '#f97316', bgColor: '#fff7ed', label: 'NEWS' },
+const SOURCE_LABEL: Record<string, { icon: typeof Youtube; label: string; color: string }> = {
+  video: { icon: Youtube, label: 'Video', color: '#ef4444' },
+  repo: { icon: Github, label: 'Repo', color: '#8b5cf6' },
+  paper: { icon: BookOpen, label: 'Paper', color: '#3b82f6' },
+  blog: { icon: BookOpen, label: 'Article', color: '#10b981' },
+  discussion: { icon: MessageCircle, label: 'Discussion', color: '#f59e0b' },
+  tweet: { icon: MessageCircle, label: 'Thread', color: '#0ea5e9' },
+  launch: { icon: Sparkles, label: 'Launch', color: '#d946ef' },
+  model: { icon: Sparkles, label: 'Model', color: '#6366f1' },
+  news: { icon: Newspaper, label: 'News', color: '#f97316' },
 };
 
 type FeedCardProps = {
   item: FeedItem;
   colorScheme: 'light' | 'dark';
-  disabled?: boolean;
-  onUpvote?: () => void;
-  onDownvote?: () => void;
-  onBookmark?: () => void;
+  onPress?: () => void;
 };
 
-export function FeedCard({ 
-  item, 
-  colorScheme, 
-  disabled = false,
-  onUpvote,
-  onDownvote,
-  onBookmark,
-}: FeedCardProps) {
-  const [upvoted, setUpvoted] = useState(false);
-  const [downvoted, setDownvoted] = useState(false);
-  const [bookmarked, setBookmarked] = useState(false);
-  
+export function FeedCard({ item, colorScheme, onPress }: FeedCardProps) {
   const itemType = item.type || item.source || 'blog';
-  const config = SOURCE_CONFIG[itemType] || SOURCE_CONFIG.blog;
+  const config = SOURCE_LABEL[itemType] || SOURCE_LABEL.blog;
+  const Icon = config.icon;
   const relevance = item.metadata?.why_relevant;
   const isHot = item.metadata?.is_hot;
+  const hasSummary = !!item.summary?.short_article?.body;
 
   const handlePress = () => {
-    if (item.url) {
-      Linking.openURL(item.url);
+    if (onPress) {
+      onPress();
+    } else if (item.url) {
+      WebBrowser.openBrowserAsync(item.url);
     }
-  };
-
-  const handleUpvote = () => {
-    if (disabled) return;
-    const newUpvoted = !upvoted;
-    setUpvoted(newUpvoted);
-    if (newUpvoted) {
-      setDownvoted(false);
-      onUpvote?.();
-    }
-  };
-
-  const handleDownvote = () => {
-    if (disabled) return;
-    const newDownvoted = !downvoted;
-    setDownvoted(newDownvoted);
-    if (newDownvoted) {
-      setUpvoted(false);
-      onDownvote?.();
-    }
-  };
-
-  const handleBookmark = () => {
-    if (disabled) return;
-    setBookmarked(!bookmarked);
-    onBookmark?.();
   };
 
   return (
-    <Pressable 
-      style={[styles.card, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}
-      onPress={handlePress}>
-      {/* Header: Type badge + Hot badge */}
-      <View style={styles.header}>
-        <View style={[styles.typeBadge, { backgroundColor: config.bgColor }]}>
-          <ThemedText style={[styles.typeText, { color: config.color }]}>
-            {config.label}
-          </ThemedText>
-        </View>
+    <Pressable style={styles.container} onPress={handlePress}>
+      {/* Source + meta line */}
+      <View style={styles.metaRow}>
+        <Icon size={14} color={config.color} strokeWidth={1.8} />
+        <ThemedText style={[styles.sourceLabel, { color: Colors[colorScheme].muted }]}>
+          {config.label}
+        </ThemedText>
         {isHot && itemType !== 'news' && (
-          <View style={styles.hotBadge}>
-            <MaterialIcons name="local-fire-department" size={12} color="#ea580c" />
-            <ThemedText style={styles.hotText}>Hot</ThemedText>
-          </View>
+          <>
+            <ThemedText style={[styles.dot, { color: Colors[colorScheme].border }]}>·</ThemedText>
+            <Flame size={12} color="#ea580c" strokeWidth={2} />
+            <ThemedText style={styles.hotLabel}>Trending</ThemedText>
+          </>
         )}
       </View>
 
       {/* Title */}
-      <ThemedText style={styles.title} numberOfLines={2}>
+      <ThemedText style={styles.title} numberOfLines={3}>
         {item.title}
       </ThemedText>
 
-      {/* Relevance */}
-      {relevance && (
-        <ThemedText style={[styles.relevance, { color: Colors[colorScheme].muted }]}>
-          {relevance}
-        </ThemedText>
-      )}
-
-      {/* Actions */}
-      <View style={styles.actions}>
-        <Pressable 
-          onPress={handleUpvote}
-          style={[
-            styles.actionButton,
-            upvoted && { backgroundColor: '#dcfce7' },
-          ]}>
-          <MaterialIcons 
-            name={upvoted ? 'thumb-up' : 'thumb-up-off-alt'} 
-            size={18} 
-            color={upvoted ? '#22c55e' : Colors[colorScheme].muted} 
-          />
-        </Pressable>
-
-        <Pressable 
-          onPress={handleDownvote}
-          style={[
-            styles.actionButton,
-            downvoted && { backgroundColor: '#fee2e2' },
-          ]}>
-          <MaterialIcons 
-            name={downvoted ? 'thumb-down' : 'thumb-down-off-alt'} 
-            size={18} 
-            color={downvoted ? '#ef4444' : Colors[colorScheme].muted} 
-          />
-        </Pressable>
-
-        <View style={{ flex: 1 }} />
-
-        <Pressable 
-          onPress={handleBookmark}
-          style={[
-            styles.actionButton,
-            bookmarked && { backgroundColor: Colors[colorScheme].foreground + '15' },
-          ]}>
-          <MaterialIcons 
-            name={bookmarked ? 'bookmark' : 'bookmark-outline'} 
-            size={20} 
-            color={bookmarked ? Colors[colorScheme].foreground : Colors[colorScheme].muted} 
-          />
-        </Pressable>
-
-        <Pressable style={styles.actionButton} onPress={handlePress}>
-          <MaterialIcons 
-            name="open-in-new" 
-            size={18} 
-            color={Colors[colorScheme].muted} 
-          />
-        </Pressable>
+      {/* Bottom row: relevance + summary/external indicator */}
+      <View style={styles.bottomRow}>
+        {relevance ? (
+          <ThemedText style={[styles.relevance, { color: Colors[colorScheme].muted }]} numberOfLines={1}>
+            {relevance}
+          </ThemedText>
+        ) : <View />}
+        {hasSummary ? (
+          <View style={styles.summaryBadge}>
+            <FileText size={11} color="#22c55e" strokeWidth={2} />
+            <ThemedText style={styles.summaryBadgeText}>Summary</ThemedText>
+          </View>
+        ) : (
+          <View style={styles.externalBadge}>
+            <ExternalLink size={11} color={Colors[colorScheme].muted} strokeWidth={2} />
+          </View>
+        )}
       </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    gap: 10,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  container: {
+    paddingVertical: 20,
+    paddingHorizontal: 4,
     gap: 8,
   },
-  typeBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  typeText: {
-    fontFamily: Fonts.mono,
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-  hotBadge: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    backgroundColor: '#fff7ed',
+    gap: 5,
   },
-  hotText: {
-    fontSize: 11,
+  sourceLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  dot: {
+    fontSize: 13,
+  },
+  hotLabel: {
+    fontSize: 12,
     fontWeight: '600',
     color: '#ea580c',
   },
   title: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
-    lineHeight: 22,
+    lineHeight: 25,
+    letterSpacing: -0.2,
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   relevance: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
+    flex: 1,
+    marginRight: 8,
   },
-  actions: {
+  summaryBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 4,
+    backgroundColor: '#22c55e12',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
   },
-  actionButton: {
-    padding: 8,
-    borderRadius: 10,
+  summaryBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#22c55e',
+  },
+  externalBadge: {
+    padding: 3,
   },
 });
