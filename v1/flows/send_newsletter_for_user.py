@@ -81,11 +81,23 @@ def _generate_newsletter_html(
         type_color = TYPE_COLORS.get(item_type, "#71717a")
         type_label = item_type.upper()
 
+        # Build image HTML (only if thumbnail exists)
+        thumbnail = item.get("thumbnail", "")
+        if thumbnail:
+            image_html = (
+                f'<a href="{item.get("url", "#")}" style="display: block; margin-bottom: 14px;">'
+                f'<img src="{thumbnail}" alt="" width="576" style="display: block; width: 100%; max-width: 576px; height: auto; border-radius: 8px; border: 1px solid #e4e4e7;" />'
+                f'</a>'
+            )
+        else:
+            image_html = ""
+
         item_html = item_template
         item_html = item_html.replace("{{ITEM_TYPE_COLOR}}", type_color)
         item_html = item_html.replace("{{ITEM_TYPE_LABEL}}", type_label)
         item_html = item_html.replace("{{ITEM_URL}}", item.get("url", "#"))
         item_html = item_html.replace("{{ITEM_TITLE}}", item.get("title", "Untitled"))
+        item_html = item_html.replace("{{ITEM_IMAGE_HTML}}", image_html)
         item_html = item_html.replace("{{ITEM_SUMMARY}}", item.get("summary", ""))
 
         items_html += item_html

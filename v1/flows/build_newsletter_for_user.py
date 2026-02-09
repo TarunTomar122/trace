@@ -311,7 +311,7 @@ def build_newsletter_for_user(
     for item in selected_items:
         newsletter_summary = _build_newsletter_summary(item)
 
-        newsletter_items.append({
+        newsletter_item = {
             "id": item.get("id"),
             "title": item.get("title", ""),
             "url": item.get("url", ""),
@@ -325,7 +325,12 @@ def build_newsletter_for_user(
                 ),
                 "has_summary": True,
             },
-        })
+        }
+        # Pass through thumbnail if it exists
+        if item.get("thumbnail"):
+            newsletter_item["thumbnail"] = item["thumbnail"]
+
+        newsletter_items.append(newsletter_item)
 
     # Generate email subject
     email_subject = (

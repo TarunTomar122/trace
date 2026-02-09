@@ -65,7 +65,22 @@ def _tokenize(value: str) -> set[str]:
     return {t for t in re.split(r"[^a-z0-9]+", value.lower().strip()) if t}
 
 
-def _title_matches_topic(title: str, topic_name: str) -> bool:
+# Extended keyword map for interests whose names are too short/generic
+_INTEREST_KEYWORDS: dict[str, list[str]] = {
+    "technology": ["tech", "software", "hardware", "digital", "computing", "internet", "app", "startup", "code", "programming", "developer", "engineering", "algorithm", "blockchain", "cloud", "cyber"],
+    "money": ["finance", "investing", "investment", "wealth", "budget", "savings", "stock", "crypto", "economic", "financial", "dollar", "income", "debt", "retire"],
+    "health": ["medical", "wellness", "fitness", "nutrition", "mental health", "exercise", "diet", "sleep", "disease", "therapy", "doctor", "hospital", "vaccine"],
+    "design": ["ux", "ui", "graphic", "visual", "typography", "layout", "interface", "prototype", "figma", "creative", "aesthetic", "branding"],
+    "business": ["startup", "entrepreneur", "company", "founder", "revenue", "market", "customer", "product", "leadership", "management", "ceo", "growth", "strategy"],
+    "career": ["job", "hire", "hiring", "interview", "resume", "promotion", "workplace", "salary", "profession", "skill", "mentor", "career change"],
+    "psychology": ["mental", "cognitive", "behavior", "emotion", "therapy", "mindset", "habit", "bias", "brain", "consciousness", "motivation", "anxiety"],
+    "culture": ["society", "cultural", "tradition", "art", "music", "film", "literature", "history", "identity", "diversity", "social", "community"],
+    "ideas": ["concept", "innovation", "creativity", "philosophy", "thought", "theory", "insight", "perspective", "paradigm", "framework"],
+    "science": ["research", "experiment", "discovery", "physics", "biology", "chemistry", "space", "climate", "evolution", "scientific"],
+}
+
+
+def _title_matches_topic(title: str, topic_name: str, interest_id: str | None = None) -> bool:
     """Check if an article title is roughly related to the topic."""
     if not title or not topic_name:
         return False
@@ -78,6 +93,10 @@ def _title_matches_topic(title: str, topic_name: str) -> bool:
     # Remove common filler words
     filler_words = {"the", "a", "an", "in", "on", "for", "to", "and", "or", "of", "with"}
     topic_words = topic_words - filler_words
+
+    # Add extended keywords if available
+    if interest_id and interest_id in _INTEREST_KEYWORDS:
+        topic_words.update(_INTEREST_KEYWORDS[interest_id])
     
     # Check if any topic keyword appears in title
     for word in topic_words:
@@ -92,9 +111,32 @@ def _title_matches_topic(title: str, topic_name: str) -> bool:
     return False
 
 
-def _get_why_relevant(title: str, topic_name: str, topic_kind: str, query_text: str | None = None) -> str:
+def _is_junk_url(url: str) -> bool:
+    """Quick check for homepage/archive URLs that shouldn't be in feeds."""
+    if not url:
+        return True
+    from urllib.parse import urlparse
+    try:
+        parsed = urlparse(url)
+        host = parsed.hostname or ""
+        path = (parsed.path or "").lower().rstrip("/")
+        if not path or path == "/" or path == "/index.html":
+            return True
+        if path in ("/blog", "/blogs", "/articles", "/posts", "/news",
+                     "/newsletter", "/latest", "/stories"):
+            return True
+        if "blogspot" in host and re.match(r"^/\d{4}(/\d{2})?/?$", path):
+            return True
+        if "medium.com" in host and re.match(r"^/[a-z0-9][\w-]*/?$", path):
+            return True
+        return False
+    except Exception:
+        return False
+
+
+def _get_why_relevant(title: str, topic_name: str, topic_kind: str, query_text: str | None = None, interest_id: str | None = None) -> str:
     """Generate appropriate why_relevant text based on actual relevance."""
-    if _title_matches_topic(title, topic_name):
+    if _title_matches_topic(title, topic_name, interest_id=interest_id):
         if topic_kind == "hobby":
             return f"Matches your hobby in {topic_name.replace('-', ' ')}"
         if query_text:
@@ -176,18 +218,28 @@ def _pick_items(
     limit: int,
     seen_urls: set[str],
     chosen_urls: set[str],
+    interest_id: str | None = None,
+    topic_name: str | None = None,
 ) -> list[dict]:
-    picked = []
+    """Pick items, prioritizing those whose title matches the topic."""
+    relevant = []
+    other = []
     for item in items:
         url = item.get("url")
-        if not url:
+        if not url or url in chosen_urls or url in seen_urls:
             continue
-        if url in chosen_urls:
+        if _is_junk_url(url):
             continue
-        if url in seen_urls:
-            continue
+        title = item.get("title", "")
+        if topic_name and _title_matches_topic(title, topic_name, interest_id=interest_id):
+            relevant.append(item)
+        else:
+            other.append(item)
+
+    picked = []
+    for item in relevant + other:
         picked.append(item)
-        chosen_urls.add(url)
+        chosen_urls.add(item["url"])
         if len(picked) >= limit:
             break
     return picked
@@ -564,44 +616,56 @@ def build_unsubscribed_feed(
                 weight_a=source_weights["blog"],
                 weight_b=source_weights["video"],
             )
-            picked_blogs = _pick_items(blogs, blog_limit, seen_urls, chosen_urls)
-            picked_videos = _pick_items(videos, video_limit, seen_urls, chosen_urls)
+            picked_blogs = _pick_items(blogs, blog_limit, seen_urls, chosen_urls,
+                                       interest_id=topic_id, topic_name=interest_label)
+            picked_videos = _pick_items(videos, video_limit, seen_urls, chosen_urls,
+                                        interest_id=topic_id, topic_name=interest_label)
             picked_discussions = []
 
             remaining = 2 - len(picked_blogs) - len(picked_videos)
             if remaining > 0:
                 if source_weights["blog"] >= source_weights["video"]:
-                    picked_blogs += _pick_items(blogs, remaining, seen_urls, chosen_urls)
+                    picked_blogs += _pick_items(blogs, remaining, seen_urls, chosen_urls,
+                                                interest_id=topic_id, topic_name=interest_label)
                     remaining = 2 - len(picked_blogs) - len(picked_videos)
                     if remaining > 0:
-                        picked_videos += _pick_items(videos, remaining, seen_urls, chosen_urls)
+                        picked_videos += _pick_items(videos, remaining, seen_urls, chosen_urls,
+                                                     interest_id=topic_id, topic_name=interest_label)
                 else:
-                    picked_videos += _pick_items(videos, remaining, seen_urls, chosen_urls)
+                    picked_videos += _pick_items(videos, remaining, seen_urls, chosen_urls,
+                                                 interest_id=topic_id, topic_name=interest_label)
                     remaining = 2 - len(picked_blogs) - len(picked_videos)
                     if remaining > 0:
-                        picked_blogs += _pick_items(blogs, remaining, seen_urls, chosen_urls)
+                        picked_blogs += _pick_items(blogs, remaining, seen_urls, chosen_urls,
+                                                    interest_id=topic_id, topic_name=interest_label)
         else:
             blog_limit, discussion_limit = _allocate_two_types(
                 max_items=4,
                 weight_a=source_weights["blog"],
                 weight_b=source_weights["discussion"],
             )
-            picked_blogs = _pick_items(blogs, blog_limit, seen_urls, chosen_urls)
-            picked_discussions = _pick_items(discussions, discussion_limit, seen_urls, chosen_urls)
+            picked_blogs = _pick_items(blogs, blog_limit, seen_urls, chosen_urls,
+                                       interest_id=topic_id, topic_name=interest_label)
+            picked_discussions = _pick_items(discussions, discussion_limit, seen_urls, chosen_urls,
+                                             interest_id=topic_id, topic_name=interest_label)
             picked_videos = []
 
             remaining = 4 - len(picked_blogs) - len(picked_discussions)
             if remaining > 0:
                 if source_weights["blog"] >= source_weights["discussion"]:
-                    picked_blogs += _pick_items(blogs, remaining, seen_urls, chosen_urls)
+                    picked_blogs += _pick_items(blogs, remaining, seen_urls, chosen_urls,
+                                                interest_id=topic_id, topic_name=interest_label)
                     remaining = 4 - len(picked_blogs) - len(picked_discussions)
                     if remaining > 0:
-                        picked_discussions += _pick_items(discussions, remaining, seen_urls, chosen_urls)
+                        picked_discussions += _pick_items(discussions, remaining, seen_urls, chosen_urls,
+                                                          interest_id=topic_id, topic_name=interest_label)
                 else:
-                    picked_discussions += _pick_items(discussions, remaining, seen_urls, chosen_urls)
+                    picked_discussions += _pick_items(discussions, remaining, seen_urls, chosen_urls,
+                                                      interest_id=topic_id, topic_name=interest_label)
                     remaining = 4 - len(picked_blogs) - len(picked_discussions)
                     if remaining > 0:
-                        picked_blogs += _pick_items(blogs, remaining, seen_urls, chosen_urls)
+                        picked_blogs += _pick_items(blogs, remaining, seen_urls, chosen_urls,
+                                                    interest_id=topic_id, topic_name=interest_label)
 
         for idx, item in enumerate(picked_blogs):
             title = item.get("title", "")
@@ -615,7 +679,7 @@ def build_unsubscribed_feed(
                 "tags": [topic_id],
                 "source": "exa",
                 "metadata": {
-                    "why_relevant": _get_why_relevant(title, interest_label, topic_kind or "interest", query_text),
+                    "why_relevant": _get_why_relevant(title, interest_label, topic_kind or "interest", query_text, interest_id=topic_id),
                     "feed_category": "topics",
                 },
             })
@@ -632,7 +696,7 @@ def build_unsubscribed_feed(
                 "tags": [topic_id],
                 "source": "exa",
                 "metadata": {
-                    "why_relevant": _get_why_relevant(title, interest_label, topic_kind or "interest", query_text),
+                    "why_relevant": _get_why_relevant(title, interest_label, topic_kind or "interest", query_text, interest_id=topic_id),
                     "feed_category": "topics",
                 },
             })
@@ -650,7 +714,7 @@ def build_unsubscribed_feed(
                 "tags": [topic_id],
                 "source": "youtube",
                 "metadata": {
-                    "why_relevant": _get_why_relevant(title, interest_label, topic_kind or "interest", query_text),
+                    "why_relevant": _get_why_relevant(title, interest_label, topic_kind or "interest", query_text, interest_id=topic_id),
                     "feed_category": "topics",
                 },
             })

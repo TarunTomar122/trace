@@ -65,22 +65,16 @@ ARTICLE_DOMAINS = [
     "tumblr.com",
     "beehiiv.com",
     "longreads.com",
-    "notion.site",
-    "wixsite.com",
-    "weebly.com",
     "write.as",
-    "mirror.xyz",
+    # Removed: wixsite.com, weebly.com, notion.site, mirror.xyz — consistently low quality
 ]
 
 DISCUSSION_DOMAINS = [
     "reddit.com",
     "news.ycombinator.com",
     "lobste.rs",
-    "dev.to",
-    "twitter.com",
-    "x.com",
-    "threads.net",
-    "quora.com",
+    # Removed: dev.to (mostly self-promo spam), quora.com (trivial questions),
+    # twitter.com/x.com/threads.net (short-form, no substance)
     "stackexchange.com",
 ]
 
@@ -348,6 +342,29 @@ JUNK_URL_PATTERNS = [
     "/pricing",
 ]
 
+# Paths that are index/listing pages, not articles
+_INDEX_PATH_ENDINGS = {
+    "/blog", "/blogs", "/blog/", "/blogs/",
+    "/articles", "/articles/",
+    "/posts", "/posts/",
+    "/news", "/news/",
+    "/stories", "/stories/",
+    "/newsletter", "/newsletter/",
+    "/latest", "/latest/",
+}
+
+import re as _re
+
+# Blogspot date-only archive: /YYYY/ or /YYYY/MM/ without a slug after
+_BLOGSPOT_DATE_ARCHIVE = _re.compile(
+    r"^/\d{4}(/\d{2})?/?(\?.*)?$"
+)
+
+# Medium publication page (medium.com/<publication>) — no article hash at end
+_MEDIUM_PUB_PAGE = _re.compile(
+    r"^/[a-z0-9][\w-]*/?$"  # single path segment, no article slug
+)
+
 
 def _is_junk_url(url: str) -> bool:
     """Check if URL is a tag page, homepage, or other non-article page."""
@@ -356,14 +373,54 @@ def _is_junk_url(url: str) -> bool:
     try:
         from urllib.parse import urlparse
         parsed = urlparse(url)
-        path = parsed.path.lower()
+        host = parsed.hostname or ""
+        path = parsed.path.lower().rstrip("/")
+        query = parsed.query.lower()
+
         # Homepage check: empty path or just "/"
         if not path or path == "/" or path == "/index.html":
             return True
-        # Check for junk patterns
+
+        # Check for junk URL path patterns
         for pattern in JUNK_URL_PATTERNS:
             if pattern in path:
                 return True
+
+        # Blogspot date-only archives (e.g. /2025/ or /2024/03/ with optional ?m=0)
+        if "blogspot" in host and _BLOGSPOT_DATE_ARCHIVE.match(path or "/"):
+            return True
+
+        # Medium publication pages (medium.com/<publication>) — not articles
+        if "medium.com" in host and _MEDIUM_PUB_PAGE.match(path):
+            return True
+
+        # Index/listing paths (e.g. /blog, /articles, /posts)
+        if path in _INDEX_PATH_ENDINGS:
+            return True
+
+        # Beehiiv newsletter archives (bare domain or /subscribe)
+        if "beehiiv.com" in host and (not path or path == "/"):
+            return True
+
+        # Ghost.io / WordPress / Substack bare homepages
+        # (already caught by empty-path check above, but catch trailing-slash edge cases)
+        if any(d in host for d in ("ghost.io", "wordpress.com", "wixsite.com", "weebly.com")):
+            segments = [s for s in path.split("/") if s]
+            if len(segments) == 0:
+                return True
+
+        # Very short paths that are likely index pages
+        # e.g. /some-blog-name with no further slug
+        segments = [s for s in path.split("/") if s]
+        if len(segments) == 1:
+            seg = segments[0]
+            # Substack root /p/ needs at least one more segment to be an article
+            if seg == "p":
+                return True
+            # Blogspot /search is already caught, but catch /search?q=...
+            if seg == "search":
+                return True
+
         return False
     except Exception:
         return False
@@ -434,6 +491,8 @@ def _search_exa(
                     exclude_text=["docs"],
                 )
             results = _extract_items(getattr(response, "results", response))
+            # Filter out junk URLs right at ingestion time
+            results = [r for r in results if not _is_junk_url(r.get("url", ""))]
             if include_domains and len(results) < min_results:
                 # Fallback to broader search to avoid empty feeds
                 fallback = exa.search(
@@ -445,6 +504,7 @@ def _search_exa(
                     exclude_text=["docs"],
                 )
                 fallback_results = _extract_items(getattr(fallback, "results", fallback))
+                fallback_results = [r for r in fallback_results if not _is_junk_url(r.get("url", ""))]
                 merged = _extract_items(results + fallback_results)
                 return merged[:RESULTS_PER_SEARCH]
             return results[:RESULTS_PER_SEARCH]

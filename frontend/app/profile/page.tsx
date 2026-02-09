@@ -460,7 +460,7 @@ function ProfileContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       <Header
         showBackToFeed
         onSignOut={handleSignOut}
@@ -468,11 +468,11 @@ function ProfileContent() {
 
       {/* Onboarding banner for non-onboarded users */}
       {profile && !profile.onboarded && (
-        <div className="bg-gray-100 border-b border-gray-200">
+        <div className="bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
           <div className="container mx-auto px-4 max-w-4xl py-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gray-200 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
                   <Sparkles size={18} className="text-foreground" />
                 </div>
                 <div>
@@ -486,7 +486,7 @@ function ProfileContent() {
               </div>
               <Link
                 href="/onboarding"
-                className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-foreground text-background text-xs font-medium hover:bg-foreground/90 transition-colors shrink-0"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent text-accent-foreground text-xs font-medium hover:bg-accent/90 transition-colors shrink-0"
               >
                 <Sparkles size={14} />
                 Personalize my feed
@@ -515,24 +515,24 @@ function ProfileContent() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
           <div className="flex items-center gap-5">
             {user.photoURL ? (
-              <img src={user.photoURL} alt="Profile" className="w-16 h-16 md:w-20 md:h-20 rounded-2xl border border-gray-200" />
+              <img src={user.photoURL} alt="Profile" className="w-16 h-16 md:w-20 md:h-20 rounded-2xl border border-gray-200 dark:border-gray-800" />
             ) : (
-              <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-100 rounded-2xl flex items-center justify-center border border-gray-200">
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center border border-gray-200 dark:border-gray-800">
                 <User size={32} className="text-foreground" />
               </div>
             )}
             <div>
-              <h1 className="text-2xl md:text-3xl font-semibold text-slate-800">{profile?.name || user.displayName}</h1>
-              <p className="text-sm text-slate-500 mt-1">{user.email}</p>
+              <h1 className="text-2xl md:text-3xl font-semibold text-foreground">{profile?.name || user.displayName}</h1>
+              <p className="text-sm text-secondary mt-1">{user.email}</p>
             </div>
           </div>
 
           {/* Tab Switcher */}
-          <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">
+          <div className="flex gap-2 p-1 dark:bg-gray-800 rounded-xl">
             <button
               onClick={() => setActiveTab('profile')}
               className={`px-4 md:px-6 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${activeTab === 'profile'
-                  ? 'bg-white text-foreground shadow-sm'
+                  ? 'bg-white dark:bg-gray-950 text-foreground shadow-sm'
                   : 'text-secondary hover:text-foreground'
                 }`}
             >
@@ -542,7 +542,7 @@ function ProfileContent() {
             <button
               onClick={() => setActiveTab('subscription')}
               className={`px-4 md:px-6 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${activeTab === 'subscription'
-                  ? 'bg-white text-foreground shadow-sm'
+                  ? 'bg-white dark:bg-gray-950 text-foreground shadow-sm'
                   : 'text-secondary hover:text-foreground'
                 }`}
             >
@@ -569,47 +569,47 @@ function ProfileContent() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -20, scale: 0.95 }}
                     transition={{ type: 'spring', duration: 0.6, bounce: 0.3 }}
-                    className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 border border-emerald-200 rounded-2xl p-6 md:p-8"
+                    className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 dark:from-emerald-950 dark:via-green-950 dark:to-teal-950 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-6 md:p-8"
                   >
                     {/* Dismiss button */}
                     <button
                       onClick={() => setShowSubscriptionSuccess(false)}
-                      className="absolute top-4 right-4 p-1.5 rounded-lg text-emerald-400 hover:text-emerald-600 hover:bg-emerald-100 transition-colors"
+                      className="absolute top-4 right-4 p-1.5 rounded-lg text-emerald-400 hover:text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors"
                     >
                       <X size={16} />
                     </button>
 
                     {/* Decorative background circles */}
-                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-100/50 rounded-full blur-2xl" />
-                    <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-teal-100/50 rounded-full blur-2xl" />
+                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-100/50 dark:bg-emerald-900/50 rounded-full blur-2xl" />
+                    <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-teal-100/50 dark:bg-teal-900/50 rounded-full blur-2xl" />
 
                     <div className="relative">
                       {/* Header */}
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
                           <PartyPopper size={24} className="text-emerald-600" />
                         </div>
                         <div>
-                          <h3 className="text-lg font-semibold text-emerald-900">
+                          <h3 className="text-lg font-semibold text-emerald-900 dark:text-emerald-100">
                             Welcome to Trace Premium!
                           </h3>
-                          <p className="text-sm text-emerald-600">
+                          <p className="text-sm text-emerald-600 dark:text-emerald-300">
                             You&apos;re all set — great choice.
                           </p>
                         </div>
                       </div>
 
                       {/* What's happening now */}
-                      <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 md:p-5 mb-4 border border-emerald-100">
+                      <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm rounded-xl p-4 md:p-5 mb-4 border border-emerald-100 dark:border-emerald-900">
                         <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center shrink-0 mt-0.5">
+                          <div className="w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-900 flex items-center justify-center shrink-0 mt-0.5">
                             <Clock size={16} className="text-violet-600" />
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-slate-800 mb-1">
+                            <p className="text-sm font-medium text-foreground mb-1">
                               Your personalized feed is being built right now
                             </p>
-                            <p className="text-xs text-slate-500 leading-relaxed">
+                            <p className="text-xs text-secondary leading-relaxed">
                               We&apos;re searching across hundreds of sources to find the best content for your interests. This usually takes 5–10 minutes. Head to your feed — it&apos;ll be ready by the time you get there.
                             </p>
                           </div>
@@ -618,31 +618,31 @@ function ProfileContent() {
 
                       {/* What you unlocked */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-                        <div className="flex items-center gap-2.5 bg-white/60 rounded-xl p-3 border border-emerald-100">
-                          <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                        <div className="flex items-center gap-2.5 bg-white/60 dark:bg-gray-900/60 rounded-xl p-3 border border-emerald-100 dark:border-emerald-900">
+                          <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center shrink-0">
                             <Sparkles size={14} className="text-emerald-600" />
                           </div>
                           <div>
-                            <p className="text-xs font-medium text-slate-700">Personalized feed</p>
-                            <p className="text-[10px] text-slate-400">Curated to your interests</p>
+                            <p className="text-xs font-medium text-secondary">Personalized feed</p>
+                            <p className="text-[10px] text-secondary">Curated to your interests</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2.5 bg-white/60 rounded-xl p-3 border border-emerald-100">
-                          <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                        <div className="flex items-center gap-2.5 bg-white/60 dark:bg-gray-900/60 rounded-xl p-3 border border-emerald-100 dark:border-emerald-900">
+                          <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center shrink-0">
                             <Newspaper size={14} className="text-blue-600" />
                           </div>
                           <div>
-                            <p className="text-xs font-medium text-slate-700">Daily newsletter</p>
-                            <p className="text-[10px] text-slate-400">In your inbox every morning</p>
+                            <p className="text-xs font-medium text-secondary">Daily newsletter</p>
+                            <p className="text-[10px] text-secondary">In your inbox every morning</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2.5 bg-white/60 rounded-xl p-3 border border-emerald-100">
-                          <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                        <div className="flex items-center gap-2.5 bg-white/60 dark:bg-gray-900/60 rounded-xl p-3 border border-emerald-100 dark:border-emerald-900">
+                          <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900 flex items-center justify-center shrink-0">
                             <Zap size={14} className="text-amber-600" />
                           </div>
                           <div>
-                            <p className="text-xs font-medium text-slate-700">AI summaries</p>
-                            <p className="text-[10px] text-slate-400">Read any article in 2 min</p>
+                            <p className="text-xs font-medium text-secondary">AI summaries</p>
+                            <p className="text-[10px] text-secondary">Read any article in 2 min</p>
                           </div>
                         </div>
                       </div>
@@ -650,7 +650,7 @@ function ProfileContent() {
                       {/* CTA */}
                       <Link
                         href="/feed"
-                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors active:scale-[0.98]"
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 dark:bg-emerald-700 text-white text-sm font-medium hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors active:scale-[0.98]"
                       >
                         Go to your feed
                         <ArrowRight size={16} />
@@ -672,7 +672,7 @@ function ProfileContent() {
             >
               {/* Trace Snapshot */}
               {profile?.onboarded && (
-                <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
+                <section className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 md:p-8">
                   <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6 flex items-center gap-2">
                     <Sparkles size={14} className="text-foreground" />
                     Your focus snapshot
@@ -691,7 +691,7 @@ function ProfileContent() {
 
 
               {/* Basic Info */}
-              {/* <section className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8">
+              {/* <section className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 md:p-8">
                 <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6">
                   Basic Information
                 </h2>
@@ -700,7 +700,7 @@ function ProfileContent() {
                   <div>
                     <label className="block text-sm font-medium text-secondary mb-2">Name</label>
                     {isEditing ? (
-                      <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" />
+                      <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-3 text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" />
                     ) : (
                       <p className="text-base py-3">{profile?.name}</p>
                     )}
@@ -711,20 +711,20 @@ function ProfileContent() {
                     {isEditing ? (
                       <div className="flex flex-wrap gap-2">
                         {ROLES.map((r) => (
-                          <button key={r} onClick={() => setRole(r)} className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all ${role === r ? 'bg-foreground text-background' : 'bg-gray-100 text-secondary hover:bg-gray-200'}`}>
+                          <button key={r} onClick={() => setRole(r)} className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all ${role === r ? 'bg-foreground text-background' : 'bg-gray-100 dark:bg-gray-800 text-secondary hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
                             {r}
                           </button>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-base py-3 text-slate-700">{profile?.role}</p>
+                      <p className="text-base py-3 text-secondary">{profile?.role}</p>
                     )}
                   </div>
                 </div>
               </section> */}
 
               {/* Interests + Focus */}
-              <section className="pb-6 border-b border-gray-200">
+              <section className="pb-6 border-b border-gray-200 dark:border-gray-800">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
                     Topics you want more of ({selectedInterests.length}/4)
@@ -732,14 +732,14 @@ function ProfileContent() {
                   {profile?.onboarded && (
                     editingSection === 'interests' ? (
                       <div className="flex gap-2">
-                        <button onClick={() => cancelEditSection('interests')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-red-500 transition-colors">Cancel</button>
-                        <button onClick={() => handleSaveSection('interests')} disabled={savingSection === 'interests'} className="px-3 py-1.5 rounded-lg bg-foreground text-background text-xs font-medium flex items-center gap-1.5 hover:bg-foreground/90 transition-colors disabled:opacity-50">
-                          {savingSection === 'interests' ? <div className="w-3 h-3 border-2 border-background border-t-transparent rounded-full animate-spin" /> : <Check size={12} />}
+                        <button onClick={() => cancelEditSection('interests')} className="px-3 py-1.5 rounded-md text-xs font-medium text-secondary hover:text-red-500 transition-colors">Cancel</button>
+                        <button onClick={() => handleSaveSection('interests')} disabled={savingSection === 'interests'} className="px-4 py-1.5 rounded-md bg-accent text-accent-foreground text-xs font-medium flex items-center gap-1.5 hover:bg-accent/90 transition-colors disabled:opacity-50">
+                          {savingSection === 'interests' ? <div className="w-3 h-3 border-2 border-accent-foreground border-t-transparent rounded-full animate-spin" /> : <Check size={12} />}
                           Save
                         </button>
                       </div>
                     ) : (
-                      <button onClick={() => setEditingSection('interests')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-foreground hover:bg-gray-100 transition-colors">Edit</button>
+                      <button onClick={() => setEditingSection('interests')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Edit</button>
                     )
                   )}
                 </div>
@@ -756,21 +756,21 @@ function ProfileContent() {
                         className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 border ${
                           isSelected
                             ? 'border-foreground bg-foreground text-background'
-                            : 'border-gray-200 bg-white text-foreground/80 hover:border-foreground/40'
+                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-foreground/80 hover:border-foreground/40'
                         } ${isMaxed ? 'opacity-40 cursor-not-allowed' : ''}`}
                       >
                         <span>{interest.label}</span>
                         {isSelected && <Check size={14} />}
                       </button>
                     ) : isSelected ? (
-                      <span key={interest.id} className="px-4 py-2 rounded-full bg-gray-100 text-sm font-medium flex items-center gap-2">
+                      <span key={interest.id} className="px-4 py-2 rounded-full bg-gray-100 dark:bg-gray-800 text-sm font-medium flex items-center gap-2">
                         <span>{interest.label}</span>
                       </span>
                     ) : null;
                   })}
                 </div>
 
-                <div className="mt-6 border-t border-gray-200 pt-6">
+                <div className="mt-6 border-t border-gray-200 dark:border-gray-800 pt-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
                       Focus areas (optional)
@@ -804,7 +804,7 @@ function ProfileContent() {
                                   className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 border ${
                                     isSelected
                                       ? 'border-foreground bg-foreground text-background'
-                                      : 'border-gray-200 bg-white text-foreground/80 hover:border-foreground/40'
+                                      : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-foreground/80 hover:border-foreground/40'
                                   } ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
                                 >
                                   {subtopic.label}
@@ -812,7 +812,7 @@ function ProfileContent() {
                               ) : isSelected ? (
                                 <span
                                   key={subtopic.id}
-                                  className="px-4 py-2 rounded-full bg-gray-100 text-sm font-medium flex items-center gap-2"
+                                  className="px-4 py-2 rounded-full bg-gray-100 dark:bg-gray-800 text-sm font-medium flex items-center gap-2"
                                 >
                                   {subtopic.label}
                                 </span>
@@ -827,7 +827,7 @@ function ProfileContent() {
               </section>
 
               {/* Content preferences */}
-              {/* <section className="pb-6 border-b border-gray-200">
+              {/* <section className="pb-6 border-b border-gray-200 dark:border-gray-800">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
                     Content preferences
@@ -842,7 +842,7 @@ function ProfileContent() {
                         </button>
                       </div>
                     ) : (
-                      <button onClick={() => setEditingSection('contentPreferences')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-foreground hover:bg-gray-100 transition-colors">Edit</button>
+                      <button onClick={() => setEditingSection('contentPreferences')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Edit</button>
                     )
                   )}
                 </div>
@@ -851,7 +851,7 @@ function ProfileContent() {
                   {(Object.keys(sourcePreferences) as Array<keyof typeof sourcePreferences>).map(key => (
                     <div key={key}>
                       <div className="flex justify-between items-center mb-2">
-                        <label className="text-sm font-medium text-slate-700">
+                        <label className="text-sm font-medium text-secondary">
                           {key === 'youtube' && '📹 YouTube Videos'}
                           {key === 'articles' && '📰 Articles & Blogs'}
                           {key === 'papers' && '📄 Research Papers'}
@@ -881,7 +881,7 @@ function ProfileContent() {
                     </div>
                   ))}
 
-                  <div className="pt-6 border-t border-gray-100">
+                  <div className="pt-6 border-t border-gray-100 dark:border-gray-800">
                     <label className="block text-sm font-medium text-secondary mb-4">
                       Content Depth <span className="text-secondary/50 text-xs font-normal ml-2">(optional)</span>
                     </label>
@@ -898,7 +898,7 @@ function ProfileContent() {
                             className={`px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                               contentDepth === opt.id
                                 ? 'bg-foreground text-background'
-                                : 'bg-gray-100 text-secondary hover:bg-gray-200'
+                                : 'bg-gray-100 dark:bg-gray-800 text-secondary hover:bg-gray-200 dark:hover:bg-gray-700'
                             }`}
                           >
                             {opt.label}
@@ -918,52 +918,45 @@ function ProfileContent() {
               </section> */}
 
               {/* Newsletter */}
-              {profile?.onboarded && ['trial', 'active'].includes(profile?.subscriptionStatus || '') && (
-                <section className="pb-6 border-b border-gray-200">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
-                      Daily newsletter
-                    </h2>
-                    {profile?.onboarded && (
-                      editingSection === 'newsletter' ? (
-                        <div className="flex gap-2">
-                          <button onClick={() => cancelEditSection('newsletter')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-red-500 transition-colors">Cancel</button>
-                          <button onClick={() => handleSaveSection('newsletter')} disabled={savingSection === 'newsletter'} className="px-3 py-1.5 rounded-lg bg-foreground text-background text-xs font-medium flex items-center gap-1.5 hover:bg-foreground/90 transition-colors disabled:opacity-50">
-                            {savingSection === 'newsletter' ? <div className="w-3 h-3 border-2 border-background border-t-transparent rounded-full animate-spin" /> : <Check size={12} />}
-                            Save
-                          </button>
-                        </div>
-                      ) : (
-                        <button onClick={() => setEditingSection('newsletter')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-foreground hover:bg-gray-100 transition-colors">Edit</button>
-                      )
-                    )}
-                  </div>
+              {profile?.onboarded && (
+                <section className="pb-6 border-b border-gray-200 dark:border-gray-800">
+                  <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6">
+                    Daily newsletter
+                  </h2>
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-700">Receive daily newsletter</p>
+                      <p className="text-sm font-medium text-secondary">Receive daily newsletter</p>
                       <p className="text-xs text-secondary/70 mt-1">
-                        Your summary lands at 10:00 AM IST.
+                        {['trial', 'active'].includes(profile?.subscriptionStatus || '')
+                          ? 'Your personalized summary lands at 10:00 AM IST.'
+                          : 'A curated digest lands in your inbox every morning.'}
                       </p>
                     </div>
-                    {editingSection === 'newsletter' ? (
-                      <button
-                        onClick={() => setNewsletterOptIn(!newsletterOptIn)}
-                        className={`relative w-12 h-6 rounded-full transition-colors ${
-                          newsletterOptIn ? 'bg-foreground' : 'bg-gray-200'
+                    <button
+                      onClick={async () => {
+                        const newValue = !newsletterOptIn;
+                        setNewsletterOptIn(newValue);
+                        if (user) {
+                          try {
+                            await updateUserProfile(user.uid, { newsletterOptIn: newValue });
+                          } catch (error) {
+                            console.error('Error saving newsletter preference:', error);
+                            setNewsletterOptIn(!newValue);
+                          }
+                        }
+                      }}
+                      disabled={savingSection === 'newsletter'}
+                      className={`relative w-12 h-6 rounded-full transition-colors shrink-0 ${
+                        newsletterOptIn ? 'bg-accent' : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                          newsletterOptIn ? 'left-7' : 'left-1'
                         }`}
-                      >
-                        <span
-                          className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                            newsletterOptIn ? 'left-7' : 'left-1'
-                          }`}
-                        />
-                      </button>
-                    ) : (
-                      <span className="text-xs text-secondary/70">
-                        {newsletterOptIn ? 'On' : 'Off'}
-                      </span>
-                    )}
+                      />
+                    </button>
                   </div>
                 </section>
               )}
@@ -993,7 +986,7 @@ function ProfileContent() {
               </section> */}
 
               {/* Skills */}
-              <section className="pb-6 border-b border-gray-200">
+              <section className="pb-6 border-b border-gray-200 dark:border-gray-800">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60">
                     Skills
@@ -1001,14 +994,14 @@ function ProfileContent() {
                   {profile?.onboarded && (
                     editingSection === 'skills' ? (
                       <div className="flex gap-2">
-                        <button onClick={() => cancelEditSection('skills')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-red-500 transition-colors">Cancel</button>
-                        <button onClick={() => handleSaveSection('skills')} disabled={savingSection === 'skills'} className="px-3 py-1.5 rounded-lg bg-foreground text-background text-xs font-medium flex items-center gap-1.5 hover:bg-foreground/90 transition-colors disabled:opacity-50">
-                          {savingSection === 'skills' ? <div className="w-3 h-3 border-2 border-background border-t-transparent rounded-full animate-spin" /> : <Check size={12} />}
+                        <button onClick={() => cancelEditSection('skills')} className="px-3 py-1.5 rounded-md text-xs font-medium text-secondary hover:text-red-500 transition-colors">Cancel</button>
+                        <button onClick={() => handleSaveSection('skills')} disabled={savingSection === 'skills'} className="px-4 py-1.5 rounded-md bg-accent text-accent-foreground text-xs font-medium flex items-center gap-1.5 hover:bg-accent/90 transition-colors disabled:opacity-50">
+                          {savingSection === 'skills' ? <div className="w-3 h-3 border-2 border-accent-foreground border-t-transparent rounded-full animate-spin" /> : <Check size={12} />}
                           Save
                         </button>
                       </div>
                     ) : (
-                      <button onClick={() => setEditingSection('skills')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-foreground hover:bg-gray-100 transition-colors">Edit</button>
+                      <button onClick={() => setEditingSection('skills')} className="px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Edit</button>
                     )
                   )}
                 </div>
@@ -1023,7 +1016,7 @@ function ProfileContent() {
                         className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 border ${
                           isSelected
                             ? 'border-foreground bg-foreground text-background'
-                            : 'border-gray-200 bg-white text-foreground/80 hover:border-foreground/40'
+                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-foreground/80 hover:border-foreground/40'
                         }`}
                       >
                         <span>{skill.label}</span>
@@ -1032,7 +1025,7 @@ function ProfileContent() {
                     ) : isSelected ? (
                       <span
                         key={skill.id}
-                        className="px-4 py-2 rounded-full bg-gray-100 text-sm font-medium flex items-center gap-2"
+                        className="px-4 py-2 rounded-full bg-gray-100 dark:bg-gray-800 text-sm font-medium flex items-center gap-2"
                       >
                         <span>{skill.label}</span>
                       </span>
@@ -1085,7 +1078,7 @@ function ProfileContent() {
                 )}
 
               {/* Feedback link */}
-              <div className="text-center pt-4 pb-8 border-t border-gray-100">
+              <div className="text-center pt-4 pb-8 border-t border-gray-100 dark:border-gray-800">
                 <p className="text-sm text-secondary/70">
                   Got feedback, bugs, or feature requests?{' '}
                   <a

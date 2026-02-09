@@ -30,7 +30,7 @@ export default function TraceInsightCard({
         {onDismiss && (
           <button
             onClick={onDismiss}
-            className="text-secondary/60 hover:text-foreground transition-colors p-1 rounded-lg hover:bg-gray-100"
+            className="text-secondary/60 hover:text-foreground transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
             aria-label="Dismiss Trace insight"
           >
             <X size={14} />
@@ -51,4 +51,3 @@ export default function TraceInsightCard({
     </div>
   );
 }
-

@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Menu, X, LogOut } from "lucide-react";
+import { Menu, X, LogOut, Sun, Moon, Lightbulb } from "lucide-react";
+import { useTheme } from "next-themes";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,13 +20,17 @@ function cn(...inputs: ClassValue[]) {
 export default function MainNav({ showBanner = false }: MainNavProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { user, profile, signInWithGoogle, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => setMounted(true), []);
 
   return (
     <nav
@@ -42,14 +47,14 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
           className={cn(
             "bg-background/95 backdrop-blur-md w-full transition-all duration-500 rounded-2xl mt-4",
             scrolled
-              ? "border border-gray-200 shadow-sm px-4 py-3"
+              ? "border border-gray-200 dark:border-gray-800 shadow-sm dark:shadow-none px-4 py-3"
               : "border-transparent px-4 py-5"
           )}
         >
           <div className="flex items-center justify-between w-full">
             {/* Mobile Menu Button */}
             <button
-              className="md:hidden p-2 rounded-lg hover:bg-gray-100 text-foreground transition-colors"
+              className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-foreground transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -60,51 +65,50 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
               {!user && (
                 <a
                   href="#how"
-                  className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100"
+                  className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
                 >
                   How It Works
                 </a>
               )}
-              {user ? (
+              {user && (
                 <a
                   href="/feed"
-                  className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100"
+                  className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
                 >
                   Your Feed
                 </a>
-              ) : (
-                <a
-                  href="/trending"
-                  className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100"
-                >
-                  Trending
-                </a>
               )}
               <a
-                href="/research"
-                className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100"
+                href="/trending"
+                className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
               >
-                Research
+                Trending
               </a>
             </div>
 
             {/* Logo - Centered */}
-            <div className="text-lg md:text-xl text-foreground uppercase flex items-center gap-2.5 tracking-wide font-semibold md:absolute md:left-1/2 md:-translate-x-1/2">
-              <img
-                src="/trace.png"
-                alt="Trace Logo"
-                className="h-6 md:h-7 w-auto object-contain"
-              />
+            <div className="text-lg md:text-xl text-foreground uppercase flex items-center gap-2 tracking-wide font-semibold md:absolute md:left-1/2 md:-translate-x-1/2">
+              <Lightbulb size={20} className="md:w-[22px] md:h-[22px]" strokeWidth={1.5} />
               TRACE
             </div>
 
             {/* Desktop Right Nav */}
             <div className="hidden md:flex items-center gap-3 flex-1 justify-end">
+              {/* Theme toggle */}
+              {mounted && (
+                <button
+                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-secondary hover:text-foreground"
+                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                >
+                  {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                </button>
+              )}
               {user ? (
                 <div className="flex items-center gap-3">
                   <Link
                     href="/profile"
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
                     {user.photoURL && (
                       <img
@@ -130,7 +134,17 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
             </div>
 
             {/* Mobile CTA */}
-            <div className="md:hidden">
+            <div className="md:hidden flex items-center gap-2">
+              {/* Mobile Theme toggle */}
+              {mounted && (
+                <button
+                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-secondary hover:text-foreground"
+                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                >
+                  {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                </button>
+              )}
               {user ? (
                 <Link
                   href="/profile"
@@ -165,39 +179,31 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
                 transition={{ duration: 0.2 }}
                 className="md:hidden overflow-hidden"
               >
-                <div className="pt-4 pb-2 flex flex-col gap-1 border-t border-gray-200 mt-4">
+                <div className="pt-4 pb-2 flex flex-col gap-1 border-t border-gray-200 dark:border-gray-800 mt-4">
                   {!user && (
                     <a
                       href="#how"
-                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors"
+                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       How It Works
                     </a>
                   )}
-                  {user ? (
+                  {user && (
                     <a
                       href="/feed"
-                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors"
+                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Your Feed
                     </a>
-                  ) : (
-                    <a
-                      href="/trending"
-                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Trending
-                    </a>
                   )}
                   <a
-                    href="/research"
-                    className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors"
+                    href="/trending"
+                    className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    Research
+                    Trending
                   </a>
                   {user ? (
                     <button
@@ -205,7 +211,7 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
                         signOut();
                         setMobileMenuOpen(false);
                       }}
-                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors text-left flex items-center gap-2"
+                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-left flex items-center gap-2"
                     >
                       <LogOut size={14} />
                       Sign Out
@@ -216,7 +222,7 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
                         signInWithGoogle();
                         setMobileMenuOpen(false);
                       }}
-                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors text-left"
+                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-left"
                     >
                       Sign In with Google
                     </button>

@@ -196,6 +196,7 @@ class FirestoreStore:
         content: str,
         is_paywalled: bool = False,
         error: Optional[str] = None,
+        image: Optional[str] = None,
     ) -> None:
         """Save article content to cache.
 
@@ -204,6 +205,7 @@ class FirestoreStore:
             content: Extracted article content
             is_paywalled: Whether the content was detected as paywalled
             error: Any error message if fetch failed
+            image: Article image URL from Exa (if available)
         """
         import hashlib
         url_hash = hashlib.sha256(url.encode()).hexdigest()[:32]
@@ -217,6 +219,8 @@ class FirestoreStore:
             "error": error,
             "fetched_at": datetime.now(timezone.utc).isoformat(),
         }
+        if image:
+            doc_data["image"] = image
 
         self.db.collection("article_content_cache").document(url_hash).set(doc_data)
 

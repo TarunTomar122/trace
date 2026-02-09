@@ -66,6 +66,17 @@ def _generate_html(
         color = TYPE_COLORS.get(item_type, "#71717a")
         label = item_type.upper()
 
+        # Build image HTML (only if thumbnail exists)
+        thumbnail = item.get("thumbnail", "")
+        if thumbnail:
+            image_html = (
+                f'<a href="{item.get("url", "#")}" style="display: block; margin-bottom: 14px;">'
+                f'<img src="{thumbnail}" alt="" width="576" style="display: block; width: 100%; max-width: 576px; height: auto; border-radius: 8px; border: 1px solid #e4e4e7;" />'
+                f'</a>'
+            )
+        else:
+            image_html = ""
+
         html = item_tpl
         html = html.replace("{{ITEM_TYPE_COLOR}}", color)
         html = html.replace("{{ITEM_TYPE_LABEL}}", label)
@@ -75,6 +86,7 @@ def _generate_html(
         html = html.replace(
             "{{ITEM_TITLE}}", item.get("title", "Untitled")
         )
+        html = html.replace("{{ITEM_IMAGE_HTML}}", image_html)
         html = html.replace(
             "{{ITEM_SUMMARY}}", item.get("summary", "")
         )

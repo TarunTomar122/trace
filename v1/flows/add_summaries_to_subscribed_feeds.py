@@ -44,6 +44,19 @@ SUMMARY_TEMPERATURE = 0.3
 MIN_CONTENT_LENGTH = 300
 MAX_CONCURRENT_SUMMARIES = 10  # Parallel GPT calls per user
 
+OG_IMAGE_CACHE_COLLECTION = "og_image_cache"
+
+
+def _cache_og_image(store: FirestoreStore, url: str, image_url: str) -> None:
+    """Cache an image in og_image_cache so other users (incl. unsubscribed) benefit."""
+    import hashlib
+    url_hash = hashlib.sha256(url.encode()).hexdigest()[:32]
+    store.db.collection(OG_IMAGE_CACHE_COLLECTION).document(url_hash).set({
+        "url": url,
+        "image_url": image_url,
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+    }, merge=True)
+
 
 def _get_today_ist_date() -> str:
     ist_tz = timezone(timedelta(hours=5, minutes=30))
@@ -76,22 +89,31 @@ def _fetch_exa_contents(
     store: FirestoreStore,
     urls: list[str],
     max_chars: int = EXA_TEXT_MAX_CHARS,
-) -> dict[str, str]:
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Fetch article content (and images) from Exa contents API.
+
+    Returns:
+        (content_map, image_map) — url→text and url→image_url
+    """
     api_key = os.getenv("EXA_API_KEY", "").strip()
     if not api_key:
         raise ValueError("EXA_API_KEY not set")
 
     cached_map: dict[str, str] = {}
+    image_map: dict[str, str] = {}
     missing = []
     for url in urls:
         cached = store.get_cached_content(url)
         if cached and cached.get("content"):
             cached_map[url] = cached["content"]
+            # Check if image was cached alongside content
+            if cached.get("image"):
+                image_map[url] = cached["image"]
         else:
             missing.append(url)
 
     if not missing:
-        return cached_map
+        return cached_map, image_map
 
     headers = {
         "Content-Type": "application/json",
@@ -127,13 +149,17 @@ def _fetch_exa_contents(
             for item in results:
                 url = item.get("url")
                 text = (item.get("text") or "").strip()
+                image = (item.get("image") or "").strip()
                 if url and text:
                     cached_map[url] = text
                     store.save_cached_content(
                         url=url,
                         content=text,
                         error=None,
+                        image=image,
                     )
+                if url and image and _is_valid_exa_image(image):
+                    image_map[url] = image
 
             statuses = data.get("statuses", []) or []
             for status in statuses:
@@ -157,6 +183,28 @@ def _fetch_exa_contents(
                     content="",
                     error=f"exa_exception:{exc}",
                 )
+
+    return cached_map, image_map
+
+
+# Tiny Medium avatars (64x64 etc.) aren't useful as article images
+_MEDIUM_TINY_RE = re.compile(r"resize:\w+:(\d+):(\d+)")
+
+
+def _is_valid_exa_image(url: str) -> bool:
+    """Check if an Exa-returned image URL is a real article image."""
+    if not url or len(url) < 10:
+        return False
+    # Reject tiny Medium avatars
+    if "miro.medium.com" in url:
+        m = _MEDIUM_TINY_RE.search(url)
+        if m:
+            w, h = int(m.group(1)), int(m.group(2))
+            if w <= 128 or h <= 128:
+                return False
+    if url.endswith(".svg"):
+        return False
+    return True
 
     return cached_map
 
@@ -312,7 +360,12 @@ def add_summaries_to_subscribed_feeds(
     if user_id:
         users = [{"uid": user_id}]
     else:
+        # get_onboarded_users() returns only trial/active subscribed users
         users = store.get_onboarded_users()
+        if not users:
+            print("  No subscribed users found, skipping summaries.")
+            return {"users_processed": 0, "items_summarized": 0, "errors": 0}
+        print(f"  Found {len(users)} subscribed users to process.")
         if limit:
             users = users[:limit]
 
@@ -358,29 +411,38 @@ def add_summaries_to_subscribed_feeds(
         user_context = _build_user_context(user_profile)
 
         eligible = []
+        skipped_video = 0
+        skipped_has_summary = 0
+        skipped_no_url = 0
         for item in items:
             if not isinstance(item, dict):
                 continue
             if item.get("type") == "video" or item.get("source") == "youtube":
+                skipped_video += 1
                 continue
             # Skip items with existing summary unless force=True
             if not force:
                 if item.get("summary"):
+                    skipped_has_summary += 1
                     continue
                 if item.get("metadata", {}).get("summary"):
+                    skipped_has_summary += 1
                     continue
             url = item.get("url")
             if url:
                 eligible.append(url)
+            else:
+                skipped_no_url += 1
 
         if not eligible:
-            print("  No eligible items for summarization, skipping.")
+            print(f"  No eligible items (total={len(items)}, videos={skipped_video}, "
+                  f"has_summary={skipped_has_summary}, no_url={skipped_no_url}), skipping.")
             users_processed += 1
             continue
 
         print(f"  Eligible items: {len(eligible)}")
-        content_map = _fetch_exa_contents(store, eligible)
-        print(f"  Content fetched: {len(content_map)}")
+        content_map, image_map = _fetch_exa_contents(store, eligible)
+        print(f"  Content fetched: {len(content_map)} | Images from Exa: {len(image_map)}")
 
         # Build list of items to summarize
         items_to_summarize = []
@@ -457,6 +519,18 @@ def add_summaries_to_subscribed_feeds(
                     errors += 1
                     user_errors += 1
 
+        # Attach Exa images to feed items (free — came from the same API call)
+        images_set = 0
+        for idx, item in enumerate(items):
+            if not isinstance(item, dict):
+                continue
+            url = item.get("url", "")
+            if url and url in image_map and not item.get("thumbnail"):
+                items[idx]["thumbnail"] = image_map[url]
+                images_set += 1
+                # Also cache in og_image_cache so unsubscribed users benefit
+                _cache_og_image(store, url, image_map[url])
+
         # items list was updated in place
         feed_data["items"] = items
         feed_data.setdefault("metadata", {})
@@ -467,6 +541,7 @@ def add_summaries_to_subscribed_feeds(
 
         print(
             f"  Summaries added: {user_summaries} | "
+            f"Images set: {images_set} | "
             f"Errors: {user_errors}"
         )
 

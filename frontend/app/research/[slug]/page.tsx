@@ -100,7 +100,7 @@ export default async function ResearchPostPage({ params }: PageProps) {
             ))}
           </div>
 
-          <section className="mt-12 pt-8 border-t border-gray-200">
+          <section className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-800">
             <h2 className="text-lg md:text-xl font-semibold text-foreground mb-4">Sources</h2>
             <ul className="space-y-2">
               {post.sources.map((source) => (

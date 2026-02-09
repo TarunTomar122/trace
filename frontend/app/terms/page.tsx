@@ -9,10 +9,10 @@ export default function TermsOfServicePage() {
     return (
         <div className="min-h-screen bg-background text-foreground">
             {/* Header */}
-            <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100">
+            <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-background/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
                 <div className="container mx-auto px-4 max-w-7xl">
                     <div className="flex items-center justify-between py-4">
-                        <Link href="/" className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 transition-all">
+                        <Link href="/" className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
                             <ArrowLeft size={16} />
                             Back to Home
                         </Link>
@@ -40,7 +40,7 @@ export default function TermsOfServicePage() {
                         className="mb-12"
                     >
                         <div className="flex items-center gap-4 mb-6">
-                            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                            <div className="w-14 h-14 rounded-2xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
                                 <FileText className="text-primary" size={24} strokeWidth={1.5} />
                             </div>
                             <div>
@@ -59,10 +59,10 @@ export default function TermsOfServicePage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6, delay: 0.1 }}
-                        className="prose prose-sm md:prose-base max-w-none"
+                        className="prose prose-sm md:prose-base dark:prose-invert max-w-none"
                     >
                         <div className="space-y-8 text-sm leading-relaxed text-secondary">
-                            <section className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8">
+                            <section className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 md:p-8">
                                 <h2 className="text-xl font-semibold text-foreground mb-4">Acceptance of Terms</h2>
                                 <p>
                                     By accessing or using Trace (&quot;the Service&quot;), you agree to be bound by these Terms of Service
@@ -232,12 +232,12 @@ export default function TermsOfServicePage() {
                                 </p>
                             </section>
 
-                            <section className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8">
+                            <section className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 md:p-8">
                                 <h2 className="text-xl font-semibold text-foreground mb-4">Contact Information</h2>
                                 <p className="mb-4">
                                     If you have questions about these Terms of Service, please contact us:
                                 </p>
-                                <div className="bg-gray-50 rounded-xl p-5">
+                                <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-5">
                                     <p className="mb-2"><strong>Email:</strong> yourtrace.online@gmail.com</p>
                                     <p className="mb-2"><strong>Twitter:</strong> <a href="https://x.com/tarat_211" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@tarat_211</a></p>
                                     <p><strong>GitHub:</strong> <a href="https://github.com/TarunTomar122" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">TarunTomar122</a></p>
@@ -255,7 +255,7 @@ export default function TermsOfServicePage() {
             </main>
 
             {/* Footer */}
-            <footer className="py-8 bg-background border-t border-gray-100">
+            <footer className="py-8 bg-background border-t border-gray-100 dark:border-gray-800">
                 <div className="container mx-auto px-4 max-w-4xl text-center">
                     <p className="text-sm text-secondary">
                         © 2026 Trace — Built with intention

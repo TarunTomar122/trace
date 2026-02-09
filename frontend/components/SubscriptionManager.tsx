@@ -262,11 +262,11 @@ export default function SubscriptionManager() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8"
+        className="bg-white dark:bg-[#16161e] border border-gray-200 dark:border-gray-800 rounded-2xl p-6 md:p-8"
       >
         <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
               {getStatusIcon(status)}
             </div>
             <div>
@@ -279,7 +279,7 @@ export default function SubscriptionManager() {
             </div>
           </div>
           {hasAccess && (
-            <span className="px-3 py-1.5 rounded-full bg-green-50 text-green-600 text-xs font-medium">
+            <span className="px-3 py-1.5 rounded-full bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs font-medium">
               Active
             </span>
           )}
@@ -287,7 +287,7 @@ export default function SubscriptionManager() {
 
         {/* Subscription Details */}
         {status !== 'none' && (
-          <div className="space-y-3 mb-6 p-4 bg-gray-50 rounded-xl">
+          <div className="space-y-3 mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
             {status === 'trial' && subscriptionStatus?.trialEndDate && (
               <div className="flex items-center gap-3 text-sm">
                 <Calendar size={16} className="text-secondary" />
@@ -319,7 +319,7 @@ export default function SubscriptionManager() {
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 rounded-xl border border-red-100 text-red-600 text-sm">
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/40 text-red-600 dark:text-red-400 text-sm">
             {error}
           </div>
         )}
@@ -327,26 +327,26 @@ export default function SubscriptionManager() {
         {/* Benefits Section - only show when not subscribed */}
         {status === 'none' && (
           <div className="mb-6 space-y-4">
-            <div className="p-5 bg-gray-50 rounded-xl">
+            <div className="p-5 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
               <h4 className="text-sm font-medium text-foreground mb-4">
                 What you get:
               </h4>
               <ul className="space-y-3 text-sm text-secondary">
                 <li className="flex items-start gap-3">
-                  <span className="w-5 h-5 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs shrink-0">✓</span>
+                  <span className="w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 flex items-center justify-center text-xs shrink-0">✓</span>
                   <span>A calm, focused daily feed tailored to your interests</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="w-5 h-5 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs shrink-0">✓</span>
+                  <span className="w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 flex items-center justify-center text-xs shrink-0">✓</span>
                   <span>A daily briefing delivered to your inbox</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="w-5 h-5 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs shrink-0">✓</span>
+                  <span className="w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 flex items-center justify-center text-xs shrink-0">✓</span>
                   <span>High-signal picks from trusted sources across the web</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="w-5 h-5 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs shrink-0">✓</span>
-                  <span>Content from 1,000+ sources, curated around your interests</span>
+                  <span className="w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 flex items-center justify-center text-xs shrink-0">✓</span>
+                  <span>Content from 1,000+ sources, curated around your interests + AI Generated Summaries</span>
                 </li>
               </ul>
             </div>
@@ -356,10 +356,14 @@ export default function SubscriptionManager() {
         {/* Action Buttons */}
         <div className="space-y-3">
           {status === 'none' && (
+            <>
+              <span className="text-[10px] md:text-[11px] text-secondary leading-tight max-w-64">
+                Cancel anytime before your trial ends and you won&apos;t be charged.
+              </span>
             <button
               onClick={handleSubscribe}
               disabled={isCreatingCheckout}
-              className="w-full bg-foreground text-background py-3.5 rounded-xl text-sm font-medium hover:bg-foreground/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full bg-accent text-accent-foreground py-3.5 rounded-xl text-sm font-medium hover:bg-accent/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isCreatingCheckout ? (
                 <>
@@ -368,24 +372,22 @@ export default function SubscriptionManager() {
                 </>
               ) : (
                 <span className="flex flex-col items-center text-center gap-1">
-                  <span className="flex items-center gap-2 text-white text-sm">
+                    <span className="flex items-center gap-2 text-accent-foreground text-sm">
                     <Zap size={16} />
                     Start 3-Day Free Trial
-                  </span>
-                  <span className="text-[10px] md:text-[11px] text-white/70 leading-tight max-w-64">
-                    Cancel anytime before your trial ends and you won&apos;t be charged.
                   </span>
                 </span>
               )}
             </button>
+            </>
           )}
 
           {(status === 'trial' || status === 'active') && (
             <>
               {subscriptionStatus?.cancelledAt ? (
-                <div className="space-y-3 p-4 bg-yellow-50 rounded-xl border border-yellow-100">
+                <div className="space-y-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-100 dark:border-yellow-900/40">
                   <div className="flex items-center gap-2">
-                    <AlertCircle size={16} className="text-yellow-600" />
+                    <AlertCircle size={16} className="text-yellow-600 dark:text-yellow-400" />
                     <p className="text-sm font-medium text-foreground">
                       Subscription cancelled
                     </p>
@@ -396,7 +398,7 @@ export default function SubscriptionManager() {
                   <button
                     onClick={handleResumeSubscription}
                     disabled={isResuming}
-                    className="w-full bg-foreground text-background py-3 rounded-xl text-sm font-medium hover:bg-foreground/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full bg-accent text-accent-foreground py-3 rounded-xl text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {isResuming ? (
                       <>
@@ -411,12 +413,12 @@ export default function SubscriptionManager() {
               ) : !showCancelConfirm ? (
                 <button
                   onClick={() => setShowCancelConfirm(true)}
-                  className="w-full border border-gray-200 text-secondary hover:border-red-300 hover:text-red-500 py-3 rounded-xl text-sm font-medium transition-colors"
+                  className="w-full border border-gray-200 dark:border-gray-700 text-secondary hover:border-red-300 dark:hover:border-red-700 hover:text-red-500 py-3 rounded-xl text-sm font-medium transition-colors"
                 >
                   Cancel Subscription
                 </button>
               ) : (
-                <div className="space-y-3 p-4 bg-red-50 rounded-xl border border-red-100">
+                <div className="space-y-3 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/40">
                   <p className="text-sm text-foreground">
                     Are you sure you want to cancel? You&apos;ll lose access to your premium feed.
                   </p>
@@ -430,7 +432,7 @@ export default function SubscriptionManager() {
                     </button>
                     <button
                       onClick={() => setShowCancelConfirm(false)}
-                      className="flex-1 border border-gray-200 text-secondary py-2.5 rounded-lg text-sm font-medium hover:border-foreground hover:text-foreground transition-colors"
+                      className="flex-1 border border-gray-200 dark:border-gray-700 text-secondary py-2.5 rounded-lg text-sm font-medium hover:border-foreground hover:text-foreground transition-colors"
                     >
                       Keep Subscription
                     </button>
@@ -444,7 +446,7 @@ export default function SubscriptionManager() {
             <button
               onClick={handleSubscribe}
               disabled={isCreatingCheckout}
-              className="w-full bg-foreground text-background py-4 rounded-xl text-sm font-medium hover:bg-foreground/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full bg-accent text-accent-foreground py-4 rounded-xl text-sm font-medium hover:bg-accent/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isCreatingCheckout ? (
                 <>
@@ -467,7 +469,7 @@ export default function SubscriptionManager() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-white border border-gray-200 rounded-2xl p-6"
+        className="bg-white dark:bg-[#16161e] border border-gray-200 dark:border-gray-800 rounded-2xl p-6"
       >
         <h4 className="text-sm font-medium text-foreground mb-4">
           Plan Details
@@ -475,7 +477,7 @@ export default function SubscriptionManager() {
         <div className="space-y-3 text-sm">
           <div className="flex justify-between">
             <span className="text-secondary">Price:</span>
-            <span className="text-foreground font-medium">$5.90/month</span>
+            <span className="text-foreground font-medium">$2.99/month</span>
           </div>
           <div className="flex justify-between">
             <span className="text-secondary"></span>

@@ -68,10 +68,10 @@ function FeedCard({ item }: { item: FeedItem }) {
   })();
 
   const bgColors: Record<string, string> = {
-    video: 'bg-red-50',
-    blog: 'bg-emerald-50',
-    discussion: 'bg-amber-50',
-    news: 'bg-sky-50',
+    video: 'bg-red-50 dark:bg-red-950',
+    blog: 'bg-emerald-50 dark:bg-emerald-950',
+    discussion: 'bg-amber-50 dark:bg-amber-950',
+    news: 'bg-sky-50 dark:bg-sky-950',
   };
 
   return (
@@ -79,7 +79,7 @@ function FeedCard({ item }: { item: FeedItem }) {
       href={item.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group block p-4 md:p-5 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
+      className="group block p-4 md:p-5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors cursor-pointer"
     >
       <div className="flex items-start gap-3 md:gap-4">
         <div className="flex-1 min-w-0">
@@ -301,7 +301,7 @@ export default async function TrendingTopicPage({
           </div>
 
           {/* Value summary */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6 mb-8">
+            <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 mb-8">
             <h2 className="text-base md:text-lg font-semibold text-foreground mb-2">
               Why this topic matters
             </h2>
@@ -320,7 +320,7 @@ export default async function TrendingTopicPage({
             </div>
           ) : (
             <div className="py-16 text-center">
-              <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <div className="w-14 h-14 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Sparkles size={24} className="text-foreground" />
               </div>
               <p className="text-lg font-semibold text-foreground mb-2">No content yet</p>
@@ -332,8 +332,8 @@ export default async function TrendingTopicPage({
 
           {/* CTA to sign in */}
           <div className="py-8 md:py-12">
-            <div className="bg-gray-50 rounded-2xl p-6 md:p-8 text-center">
-              <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-6 md:p-8 text-center">
+              <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
                 <Sparkles size={22} className="text-foreground" strokeWidth={1.5} />
               </div>
               <p className="text-base font-semibold text-foreground mb-2">
@@ -358,7 +358,7 @@ export default async function TrendingTopicPage({
                 <Link
                   key={t}
                   href={`/trending/${t}`}
-                  className="px-3 py-1.5 rounded-full bg-gray-100 text-xs text-secondary/80 hover:text-foreground hover:bg-gray-200 transition-colors"
+                  className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-xs text-secondary/80 hover:text-foreground hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                 >
                   {TOPIC_DISPLAY_NAMES[t]}
                 </Link>

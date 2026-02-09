@@ -7,6 +7,7 @@
     - {{ITEM_SUMMARY}}: Structured HTML summary
     - {{ITEM_TYPE_LABEL}}: Type badge text (BLOG, NEWS, etc.)
     - {{ITEM_TYPE_COLOR}}: Badge accent color
+    - {{ITEM_IMAGE_HTML}}: Article thumbnail (pre-rendered HTML or empty)
 -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 0;">
     <!-- Separator line -->
@@ -27,6 +28,8 @@
             <a href="{{ITEM_URL}}" style="display: block; margin-bottom: 12px; font-size: 19px; font-family: Georgia, 'Times New Roman', serif; font-weight: 700; color: #18181b; text-decoration: none; line-height: 1.35;">
                 {{ITEM_TITLE}}
             </a>
+            <!-- Article image (only present when available) -->
+            {{ITEM_IMAGE_HTML}}
             <!-- Summary body -->
             <div style="font-size: 15px; color: #3f3f46; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.65; margin-bottom: 14px;">
                 {{ITEM_SUMMARY}}

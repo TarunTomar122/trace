@@ -234,7 +234,7 @@ def build_free_newsletter(
     # Build newsletter items
     newsletter_items = []
     for item in selected:
-        newsletter_items.append({
+        nl_item = {
             "id": item.get("id"),
             "title": item.get("title", ""),
             "url": item.get("url", ""),
@@ -242,7 +242,14 @@ def build_free_newsletter(
             "type": item.get("type", "blog"),
             "source": item.get("source", ""),
             "tags": item.get("tags", []),
-        })
+        }
+        # Pass through thumbnail if it exists
+        if item.get("thumbnail"):
+            nl_item["thumbnail"] = item["thumbnail"]
+        # Store full AI summary for /trending page rendering
+        if item.get("summary"):
+            nl_item["full_summary"] = item["summary"]
+        newsletter_items.append(nl_item)
 
     email_subject = (
         f"Trace Daily — {len(newsletter_items)} "

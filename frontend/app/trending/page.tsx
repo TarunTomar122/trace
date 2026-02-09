@@ -10,6 +10,8 @@ import {
   Code,
   Rocket,
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import PublicHeader from '@/components/PublicHeader';
 import { adminFirestore } from '@/lib/firebase-admin';
 
@@ -57,6 +59,14 @@ type TrendingItem = {
   type: string;
   source: string;
   tags: string[];
+  thumbnail?: string;
+  fullSummary?: {
+    short_article?: {
+      subtitle?: string;
+      body?: string;
+      outline?: string[];
+    };
+  };
 };
 
 const typeConfig: Record<string, { icon: typeof BookOpen; color: string; label: string }> = {
@@ -101,13 +111,15 @@ async function getTodaysItems(): Promise<{ items: TrendingItem[]; date: string }
 
   const data = doc.data();
   const items: TrendingItem[] = (data?.items || []).map((item: Record<string, unknown>) => ({
-    id: item.id || '',
-    title: item.title || '',
-    url: item.url || '',
-    summary: item.summary || '',
-    type: item.type || 'blog',
-    source: item.source || '',
-    tags: item.tags || [],
+    id: (item.id as string) || '',
+    title: (item.title as string) || '',
+    url: (item.url as string) || '',
+    summary: (item.summary as string) || '',
+    type: (item.type as string) || 'blog',
+    source: (item.source as string) || '',
+    tags: (item.tags as string[]) || [],
+    thumbnail: (item.thumbnail as string) || undefined,
+    fullSummary: (item.full_summary as TrendingItem['fullSummary']) || undefined,
   }));
 
   return { items, date: data?.date || today };
@@ -128,10 +140,6 @@ function ItemCard({ item, index }: { item: TrendingItem; index: number }) {
   return (
     <article className="py-6 first:pt-0">
       <div className="flex items-start gap-4">
-        {/* Number */}
-        <span className="text-2xl font-bold text-secondary/20 tabular-nums leading-none pt-1 hidden sm:block">
-          {String(index + 1).padStart(2, '0')}
-        </span>
 
         <div className="flex-1 min-w-0">
           {/* Meta row */}
@@ -156,7 +164,7 @@ function ItemCard({ item, index }: { item: TrendingItem; index: number }) {
             rel="noopener noreferrer"
             className="group"
           >
-            <h2 className="text-lg font-semibold text-foreground leading-snug mb-2 group-hover:text-primary transition-colors">
+            <h2 className="text-xl font-semibold text-foreground leading-snug mb-2 group-hover:text-primary transition-colors">
               {item.title}
               <ArrowUpRight
                 size={14}
@@ -165,13 +173,39 @@ function ItemCard({ item, index }: { item: TrendingItem; index: number }) {
             </h2>
           </a>
 
-          {/* Summary */}
-          {item.summary && (
+          {/* Subtitle */}
+          {item.fullSummary?.short_article?.subtitle && (
+            <p className="text-base text-secondary/70 italic mb-3">
+              {item.fullSummary.short_article.subtitle}
+            </p>
+          )}
+
+          {/* Article image */}
+          {item.thumbnail && (
+            <a href={item.url} target="_blank" rel="noopener noreferrer" className="block mb-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={item.thumbnail}
+                alt=""
+                className="w-full h-auto rounded-lg border border-border/30 object-cover max-h-72"
+                loading="lazy"
+              />
+            </a>
+          )}
+
+          {/* Full summary (markdown) or fallback to abbreviated HTML */}
+          {item.fullSummary?.short_article?.body ? (
+            <div className="prose prose-sm max-w-none text-secondary/80 prose-headings:font-semibold prose-headings:text-foreground prose-h2:text-base prose-h2:mt-5 prose-h2:mb-2 prose-p:leading-relaxed prose-p:mb-3 prose-ul:my-2 prose-li:my-0.5">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {item.fullSummary.short_article.body}
+              </ReactMarkdown>
+            </div>
+          ) : item.summary ? (
             <div
               className="text-sm text-secondary/80 leading-relaxed [&_strong]:text-foreground [&_strong]:font-semibold [&_ul]:mt-1.5 [&_ul]:ml-4 [&_ul]:list-disc [&_li]:text-sm [&_li]:text-secondary/70 [&_li]:mb-0.5"
               dangerouslySetInnerHTML={{ __html: item.summary }}
             />
-          )}
+          ) : null}
 
           {/* Read more */}
           <a
@@ -228,14 +262,14 @@ export default async function TrendingPage() {
 
           {/* Items */}
           {items.length > 0 ? (
-            <div className="divide-y divide-border/30 mb-12">
+            <div className="divide-y divide-gray-400 dark:divide-gray-600 mb-12">
               {items.map((item, i) => (
                 <ItemCard key={item.id || i} item={item} index={i} />
               ))}
             </div>
           ) : (
             <div className="py-16 text-center">
-              <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <div className="w-14 h-14 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Sparkles size={24} className="text-foreground" />
               </div>
               <p className="text-lg font-semibold text-foreground mb-2">
@@ -248,8 +282,8 @@ export default async function TrendingPage() {
           )}
 
           {/* CTA */}
-          <div className="bg-gray-50 rounded-2xl p-6 md:p-8 text-center mb-12">
-            <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+          <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-6 md:p-8 text-center mb-12">
+            <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
               <Sparkles size={22} className="text-foreground" strokeWidth={1.5} />
             </div>
             <h2 className="text-lg font-semibold text-foreground mb-2">

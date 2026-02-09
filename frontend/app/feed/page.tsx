@@ -81,15 +81,15 @@ type InteractionItem = {
 };
 
 const sourceConfig: Record<string, { icon: typeof Youtube; color: string; label: string; accent: string; bg: string }> = {
-  video: { icon: Youtube, color: 'text-red-500', label: 'Video', accent: 'bg-red-500', bg: 'bg-red-50' },
-  repo: { icon: Github, color: 'text-violet-500', label: 'Repo', accent: 'bg-violet-500', bg: 'bg-violet-50' },
-  paper: { icon: BookOpen, color: 'text-blue-500', label: 'Paper', accent: 'bg-blue-500', bg: 'bg-blue-50' },
-  blog: { icon: BookOpen, color: 'text-emerald-600', label: 'Article', accent: 'bg-emerald-500', bg: 'bg-emerald-50' },
-  discussion: { icon: MessageCircle, color: 'text-amber-600', label: 'Discussion', accent: 'bg-amber-500', bg: 'bg-amber-50' },
-  tweet: { icon: MessageCircle, color: 'text-sky-500', label: 'Thread', accent: 'bg-sky-500', bg: 'bg-sky-50' },
-  launch: { icon: Sparkles, color: 'text-fuchsia-500', label: 'Launch', accent: 'bg-fuchsia-500', bg: 'bg-fuchsia-50' },
-  model: { icon: Sparkles, color: 'text-indigo-500', label: 'Model', accent: 'bg-indigo-500', bg: 'bg-indigo-50' },
-  news: { icon: Newspaper, color: 'text-orange-500', label: 'News', accent: 'bg-orange-500', bg: 'bg-orange-50' },
+  video: { icon: Youtube, color: 'text-red-500', label: 'Video', accent: 'bg-red-500', bg: 'bg-red-50 dark:bg-red-950/40' },
+  repo: { icon: Github, color: 'text-violet-500', label: 'Repo', accent: 'bg-violet-500', bg: 'bg-violet-50 dark:bg-violet-950/40' },
+  paper: { icon: BookOpen, color: 'text-blue-500', label: 'Paper', accent: 'bg-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/40' },
+  blog: { icon: BookOpen, color: 'text-emerald-600 dark:text-emerald-400', label: 'Article', accent: 'bg-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/40' },
+  discussion: { icon: MessageCircle, color: 'text-amber-600 dark:text-amber-400', label: 'Discussion', accent: 'bg-amber-500', bg: 'bg-amber-50 dark:bg-amber-950/40' },
+  tweet: { icon: MessageCircle, color: 'text-sky-500', label: 'Thread', accent: 'bg-sky-500', bg: 'bg-sky-50 dark:bg-sky-950/40' },
+  launch: { icon: Sparkles, color: 'text-fuchsia-500', label: 'Launch', accent: 'bg-fuchsia-500', bg: 'bg-fuchsia-50 dark:bg-fuchsia-950/40' },
+  model: { icon: Sparkles, color: 'text-indigo-500', label: 'Model', accent: 'bg-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-950/40' },
+  news: { icon: Newspaper, color: 'text-orange-500', label: 'News', accent: 'bg-orange-500', bg: 'bg-orange-50 dark:bg-orange-950/40' },
 };
 
 /** Strip the "Why this matters for you" personalised section from a summary body. */
@@ -100,6 +100,70 @@ const stripPersonalizedSection = (body: string): string => {
     ''
   ).trim();
 };
+
+// Pastel colors for fallback thumbnails (deterministic by URL)
+const PASTEL_COLORS = [
+  'bg-rose-100 dark:bg-rose-900/40 text-rose-400 dark:text-rose-300',
+  'bg-sky-100 dark:bg-sky-900/40 text-sky-400 dark:text-sky-300',
+  'bg-amber-100 dark:bg-amber-900/40 text-amber-400 dark:text-amber-300',
+  'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-400 dark:text-emerald-300',
+  'bg-violet-100 dark:bg-violet-900/40 text-violet-400 dark:text-violet-300',
+  'bg-teal-100 dark:bg-teal-900/40 text-teal-400 dark:text-teal-300',
+  'bg-orange-100 dark:bg-orange-900/40 text-orange-400 dark:text-orange-300',
+  'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-400 dark:text-indigo-300',
+  'bg-pink-100 dark:bg-pink-900/40 text-pink-400 dark:text-pink-300',
+  'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-400 dark:text-cyan-300',
+];
+
+function getDomainLetter(url: string): string {
+  try {
+    const hostname = new URL(url).hostname.replace('www.', '');
+    return hostname.charAt(0).toUpperCase();
+  } catch {
+    return '?';
+  }
+}
+
+function getPastelColor(url: string): string {
+  let hash = 0;
+  for (let i = 0; i < url.length; i++) {
+    hash = ((hash << 5) - hash + url.charCodeAt(i)) | 0;
+  }
+  return PASTEL_COLORS[Math.abs(hash) % PASTEL_COLORS.length];
+}
+
+function ArticleThumbnail({ url, thumbnail, size = 'sm' }: { url: string; thumbnail?: string | null; size?: 'sm' | 'lg' }) {
+  const [imgError, setImgError] = React.useState(false);
+  const pastel = getPastelColor(url);
+  const letter = getDomainLetter(url);
+
+  const sizeClasses = size === 'lg'
+    ? 'w-full rounded-xl'
+    : 'w-16 h-16 md:w-20 md:h-20 rounded-xl';
+
+  if (thumbnail && !imgError) {
+    return (
+      <div className={`${sizeClasses} overflow-hidden shrink-0`}>
+        <img
+          src={thumbnail}
+          alt=""
+          className={`w-full ${size === 'lg' ? 'h-auto' : 'h-full object-cover'}`}
+          onError={() => setImgError(true)}
+          loading="lazy"
+        />
+      </div>
+    );
+  }
+
+  // Pastel fallback with letter
+  return (
+    <div className={`${sizeClasses} shrink-0 flex items-center justify-center ${pastel.split(' ').filter(c => c.startsWith('bg-') || c.startsWith('dark:')).join(' ')}`}>
+      <span className={`${size === 'lg' ? 'text-4xl' : 'text-xl'} font-semibold ${pastel.split(' ').filter(c => c.startsWith('text-') || (c.startsWith('dark:') && c.includes('text-'))).join(' ')}`}>
+        {letter}
+      </span>
+    </div>
+  );
+}
 
 const formatSummaryBody = (body: string): string => {
   let formatted = body.trim();
@@ -120,42 +184,20 @@ function FeedListItem({ item, onClick, showSubscribeCta }: {
 }) {
   const itemKind = item.type || item.source || 'blog';
   const config = sourceConfig[itemKind] || sourceConfig.blog;
-  const Icon = config.icon;
-  const subtitle = item.summary?.short_article?.subtitle;
   const hasSummary = Boolean(item.summary?.short_article?.body);
   const isSample = item.metadata?.feed_category === 'sample_summary';
+  const snippet = item.summary?.short_article?.subtitle || item.description || '';
 
   return (
     <article
-      className="group p-4 md:p-5 rounded-xl transition-colors cursor-pointer hover:bg-gray-50"
+      className="group py-4 md:py-5 transition-colors cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 px-3 md:px-4"
       onClick={onClick}
     >
-      <div className="flex items-start gap-3 md:gap-4">
-        {/* Source icon - hidden on mobile */}
-        <div className={`hidden md:flex w-12 h-12 rounded-xl items-center justify-center shrink-0 ${config.bg}`}>
-          <Icon size={20} className={config.color} strokeWidth={1.5} />
-        </div>
-        
-        <div className="flex-1 min-w-0">
-          {/* Source label + badges */}
-          <div className="flex items-center gap-2 mb-1.5 md:mb-2">
-            <span className={`text-[10px] font-medium uppercase tracking-wider ${config.color}`}>{config.label}</span>
-            {isSample && (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
-                <Sparkles size={10} strokeWidth={2} />
-                <span className="text-[9px] font-medium uppercase tracking-wider">Free summary</span>
-              </span>
-            )}
-            {item.metadata?.is_hot && itemKind !== 'news' && (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">
-                <Flame size={10} strokeWidth={2} />
-                <span className="text-[9px] font-medium uppercase tracking-wider">Hot</span>
-              </span>
-            )}
-          </div>
-
-          {/* Title */}
-          <h3 className="text-base md:text-lg font-medium leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2 mb-1.5">
+      {/* Mobile: image on top (only if real thumbnail), content below */}
+      <div className="flex flex-col gap-3 md:hidden">
+        {item.thumbnail && <ArticleThumbnail url={item.url} thumbnail={item.thumbnail} size="lg" />}
+        <div className="min-w-0">
+          <h3 className="text-base font-semibold leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
             {item.title}
             {hasSummary ? (
               <ChevronRight size={14} className="inline ml-1 opacity-40 group-hover:opacity-70 transition-opacity" />
@@ -163,17 +205,51 @@ function FeedListItem({ item, onClick, showSubscribeCta }: {
               <ArrowUpRight size={14} className="inline ml-1 opacity-40 group-hover:opacity-70 transition-opacity" />
             )}
           </h3>
-
-          {/* Subtitle from summary OR subscribe hint */}
-          {subtitle ? (
-            <p className="text-sm text-secondary/70 line-clamp-2">
-              {subtitle}
+          {snippet ? (
+            <p className="text-sm text-secondary/70 leading-relaxed line-clamp-2 mt-1.5">
+              {snippet}
             </p>
           ) : showSubscribeCta ? (
-            <p className="text-xs text-secondary/50 mt-1 italic">
+            <p className="text-xs text-secondary/50 mt-1.5 italic">
               Subscribe to unlock all summaries
             </p>
           ) : null}
+          {isSample && (
+            <span className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 w-fit">
+              <Sparkles size={10} strokeWidth={2} />
+              <span className="text-[9px] font-medium uppercase tracking-wider">Free summary</span>
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Desktop: thumbnail left, content right */}
+      <div className="hidden md:flex items-start gap-4">
+        <ArticleThumbnail url={item.url} thumbnail={item.thumbnail} size="sm" />
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg font-semibold leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
+            {item.title}
+            {hasSummary ? (
+              <ChevronRight size={14} className="inline ml-1 opacity-40 group-hover:opacity-70 transition-opacity" />
+            ) : (
+              <ArrowUpRight size={14} className="inline ml-1 opacity-40 group-hover:opacity-70 transition-opacity" />
+            )}
+          </h3>
+          {snippet ? (
+            <p className="text-sm text-secondary/70 leading-relaxed line-clamp-2 mt-1.5">
+              {snippet}
+            </p>
+          ) : showSubscribeCta ? (
+            <p className="text-xs text-secondary/50 mt-1.5 italic">
+              Subscribe to unlock all summaries
+            </p>
+          ) : null}
+          {isSample && (
+            <span className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 w-fit">
+              <Sparkles size={10} strokeWidth={2} />
+              <span className="text-[9px] font-medium uppercase tracking-wider">Free summary</span>
+            </span>
+          )}
         </div>
       </div>
     </article>
@@ -282,9 +358,9 @@ function ArticleView({
 
       {/* Free lesson callout for unsubscribed users */}
       {!hasAccess && (
-        <div className="mb-6 p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center gap-3">
-          <Sparkles size={18} className="text-emerald-600 shrink-0" />
-          <p className="text-sm text-emerald-800">
+        <div className="mb-6 p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-100 dark:border-emerald-900/40 flex items-center gap-3">
+          <Sparkles size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <p className="text-sm text-emerald-800 dark:text-emerald-300">
             This summary is free! <Link href="/profile?tab=subscription" className="font-medium underline underline-offset-2 hover:text-emerald-900">Subscribe</Link> to unlock summaries for every article in your feed.
           </p>
         </div>
@@ -298,7 +374,7 @@ function ArticleView({
           </div>
           <span className={`text-xs font-medium uppercase tracking-wider ${config.color}`}>{config.label}</span>
           {item.metadata?.is_hot && itemKind !== 'news' && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400">
               <Flame size={10} strokeWidth={2} />
               <span className="text-[9px] font-medium uppercase tracking-wider">Hot</span>
             </span>
@@ -314,6 +390,18 @@ function ArticleView({
             {shortSummary.subtitle}
           </p>
         )}
+
+        {/* Hero image — only show if there's a real thumbnail */}
+        {itemKind !== 'video' && item.thumbnail && (
+          <div className="mt-6 w-full rounded-xl overflow-hidden">
+            <img
+              src={item.thumbnail}
+              alt=""
+              className="w-full h-auto rounded-xl"
+              loading="lazy"
+            />
+          </div>
+        )}
       </header>
 
       {/* Article body */}
@@ -326,7 +414,7 @@ function ArticleView({
       )}
 
       {/* Actions bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-5 border-t border-gray-200">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-5 border-t border-gray-200 dark:border-gray-800">
         <div className="flex items-center gap-1">
           <button
             onClick={handleUpvote}
@@ -426,7 +514,7 @@ function ArticleView({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="py-4 border-t border-gray-100">
+            <div className="py-4 border-t border-gray-100 dark:border-gray-800">
               <div className="flex flex-col sm:flex-row gap-3">
                 <input
                   type="text"
@@ -434,7 +522,7 @@ function ArticleView({
                   onChange={(e) => setFeedback(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleFeedbackSubmit()}
                   placeholder="Tell Trace what you think about this article..."
-                  className="flex-1 px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
+                  className="flex-1 px-4 py-3 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
                   autoFocus
                 />
                 <button
@@ -1038,7 +1126,7 @@ function FeedPageContent() {
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8 max-w-md w-full shadow-xl"
+                className="bg-white dark:bg-[#16161e] rounded-2xl border border-gray-200 dark:border-gray-800 p-6 md:p-8 max-w-md w-full shadow-xl"
               >
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -1052,13 +1140,13 @@ function FeedPageContent() {
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowSubscribePrompt(false)}
-                    className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-secondary hover:bg-gray-50 transition-colors"
+                    className="flex-1 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-secondary hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   >
                     Not now
                   </button>
                   <Link
                     href="/profile?tab=subscription"
-                    className="flex-1 px-4 py-3 rounded-xl bg-foreground text-background text-sm font-medium text-center hover:bg-foreground/90 transition-colors"
+                    className="flex-1 px-4 py-3 rounded-xl bg-accent text-accent-foreground text-sm font-medium text-center hover:bg-accent/90 transition-colors"
                   >
                     Unlock full feed
                   </Link>
@@ -1078,12 +1166,12 @@ function FeedPageContent() {
 
       {/* Callout banner */}
       {profile && !profile.onboarded ? (
-        <div className="sticky top-14 md:top-16 z-40 bg-violet-50 border-b border-violet-100">
+        <div className="sticky top-14 md:top-16 z-40 bg-violet-50 dark:bg-violet-950/30 border-b border-violet-100 dark:border-violet-900/40">
           <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-3 md:py-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
-                  <Brain size={18} className="text-violet-600" />
+                <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0">
+                  <Brain size={18} className="text-violet-600 dark:text-violet-400" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">
@@ -1096,7 +1184,7 @@ function FeedPageContent() {
               </div>
               <Link
                 href="/onboarding"
-                className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-violet-600 text-white text-xs font-medium hover:bg-violet-700 transition-colors shrink-0"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent text-accent-foreground text-xs font-medium hover:bg-accent/90 transition-colors shrink-0"
               >
                 <Sparkles size={14} />
                 Personalize my feed
@@ -1105,12 +1193,12 @@ function FeedPageContent() {
           </div>
         </div>
       ) : !hasAccess && profile ? (
-        <div className="hidden md:block sticky top-14 md:top-16 z-40 bg-amber-100 border-b border-amber-100">
+        <div className="hidden md:block sticky top-14 md:top-16 z-40 bg-amber-100 dark:bg-[#1a1a10] border-b border-amber-200 dark:border-amber-900/60">
           <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-3 md:py-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-                  <Brain size={18} className="text-amber-600" />
+                <div className="w-10 h-10 rounded-xl bg-amber-200 dark:bg-amber-900 flex items-center justify-center shrink-0">
+                  <Brain size={18} className="text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">
@@ -1123,7 +1211,7 @@ function FeedPageContent() {
               </div>
               <Link
                 href="/profile?tab=subscription"
-                className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-foreground text-background text-xs font-medium hover:bg-foreground/90 transition-colors shrink-0"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent text-accent-foreground text-xs font-medium hover:bg-accent/90 transition-colors shrink-0"
               >
                 <Zap size={14} />
                 Unlock full feed
@@ -1148,7 +1236,7 @@ function FeedPageContent() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8 max-w-md w-full shadow-xl"
+              className="bg-white dark:bg-[#16161e] rounded-2xl border border-gray-200 dark:border-gray-800 p-6 md:p-8 max-w-md w-full shadow-xl"
             >
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -1162,13 +1250,13 @@ function FeedPageContent() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowSubscribePrompt(false)}
-                  className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-secondary hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-secondary hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
                   Not now
                 </button>
                 <Link
                   href="/profile?tab=subscription"
-                  className="flex-1 px-4 py-3 rounded-xl bg-foreground text-background text-sm font-medium text-center hover:bg-foreground/90 transition-colors"
+                  className="flex-1 px-4 py-3 rounded-xl bg-accent text-accent-foreground text-sm font-medium text-center hover:bg-accent/90 transition-colors"
                 >
                   Unlock full feed
                 </Link>
@@ -1214,7 +1302,7 @@ function FeedPageContent() {
                   onClick={() => setActiveFilter(filter.id as FilterType)}
                   className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${isActive
                       ? 'bg-foreground text-background'
-                      : 'bg-gray-100 text-secondary hover:bg-gray-200'
+                      : 'bg-gray-100 dark:bg-gray-800 text-secondary hover:bg-gray-200 dark:hover:bg-gray-700'
                     }`}
                 >
                   {filter.label}
@@ -1245,8 +1333,8 @@ function FeedPageContent() {
                     key={filter.id}
                     onClick={() => setActiveFilter(filter.id as FilterType)}
                     className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium transition-all lowercase ${isActive
-                        ? 'text-foreground bg-gray-100'
-                        : 'text-secondary/70 hover:text-foreground hover:bg-gray-50'
+                        ? 'text-foreground bg-gray-100 dark:bg-gray-800'
+                        : 'text-secondary/70 hover:text-foreground hover:bg-gray-50 dark:hover:bg-gray-800/50'
                       }`}
                   >
                     {filter.label}
@@ -1260,10 +1348,10 @@ function FeedPageContent() {
           <div className="flex-1 w-full">
             {/* Feed generation progress */}
             {isFallbackFeed && feedGenActive && (
-              <div className="mb-4 md:mb-6 p-4 md:p-5 bg-linear-to-r from-violet-50 to-indigo-50 rounded-xl border border-violet-100">
+              <div className="mb-4 md:mb-6 p-4 md:p-5 bg-linear-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 rounded-xl border border-violet-100 dark:border-violet-900/40">
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
-                    <Loader2 size={20} className="text-violet-600 animate-spin" />
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0">
+                    <Loader2 size={20} className="text-violet-600 dark:text-violet-400 animate-spin" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground mb-1">
@@ -1296,7 +1384,7 @@ function FeedPageContent() {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="mb-4 md:mb-6 p-4 bg-blue-50 rounded-xl border border-blue-100 flex items-start gap-3"
+                  className="mb-4 md:mb-6 p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-100 dark:border-blue-900/40 flex items-start gap-3"
                 >
                   <div className="flex-1">
                     <p className="text-sm font-medium text-foreground mb-1">
@@ -1311,7 +1399,7 @@ function FeedPageContent() {
                       setShowHint(false);
                       localStorage.setItem('feed-hint-dismissed', 'true');
                     }}
-                    className="text-secondary/60 hover:text-foreground transition-colors shrink-0 p-1 rounded-lg hover:bg-gray-100"
+                    className="text-secondary/60 hover:text-foreground transition-colors shrink-0 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
                     aria-label="Dismiss hint"
                   >
                     <X size={16} />
@@ -1323,13 +1411,13 @@ function FeedPageContent() {
             {((showPersonalizedFeed && isFeedLoading) || (!showPersonalizedFeed && isLoadingGeneral) || (isFallbackFeed && isLoadingGeneral)) ? (
               <div className="space-y-3">
                 {[...Array(5)].map((_, i) => (
-                  <div key={i} className="p-4 md:p-5 rounded-xl bg-gray-50 animate-pulse">
+                  <div key={i} className="p-4 md:p-5 rounded-xl bg-gray-50 dark:bg-gray-800/50 animate-pulse">
                     <div className="flex gap-3 md:gap-4">
-                      <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-200 rounded-xl shrink-0" />
+                      <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-200 dark:bg-gray-700 rounded-xl shrink-0" />
                       <div className="flex-1 space-y-3">
-                        <div className="h-3 bg-gray-200 rounded-full w-20" />
-                        <div className="h-5 bg-gray-200 rounded-lg w-full" />
-                        <div className="h-4 bg-gray-200 rounded-lg w-3/4" />
+                        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full w-20" />
+                        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded-lg w-full" />
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-lg w-3/4" />
                       </div>
                     </div>
                   </div>
@@ -1337,7 +1425,7 @@ function FeedPageContent() {
               </div>
             ) : (
               <>
-                <div className="divide-y divide-border/20">
+                <div className="divide-y divide-gray-200 dark:divide-gray-800">
                   {filteredFeed.map((item, index) => (
                     <React.Fragment key={item.id}>
                     <FeedListItem
@@ -1361,7 +1449,7 @@ function FeedPageContent() {
 
                 {filteredFeed.length === 0 && (
                   <div className="py-10 md:py-12 px-4">
-                    <div className="rounded-xl border border-gray-200 bg-white p-5 md:p-6">
+                    <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16161e] p-5 md:p-6">
                       <p className="text-sm font-medium text-foreground">
                         Trace is working on finding items for you. Check back soon.
                       </p>
@@ -1374,7 +1462,7 @@ function FeedPageContent() {
 
                 {/* Bottom callout for unsubscribed users */}
                 {feedMetadata?.is_preview && filteredFeed.length > 0 && (
-                  <div className="mt-6 mb-4 p-5 md:p-6 bg-amber-100 rounded-2xl border border-amber-100">
+                  <div className="mt-6 mb-4 p-5 md:p-6 bg-amber-100 dark:bg-[#1a1a10] rounded-2xl border border-amber-200 dark:border-amber-900/60">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div className="flex items-center gap-4">
                         <div>
@@ -1388,7 +1476,7 @@ function FeedPageContent() {
                       </div>
                       <Link
                         href="/profile?tab=subscription"
-                        className="flex items-center gap-2 px-6 py-3 rounded-full bg-foreground text-background text-sm font-medium hover:bg-foreground/90 transition-colors shrink-0"
+                        className="flex items-center gap-2 px-6 py-3 rounded-full bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors shrink-0"
                       >
                         <Zap size={16} />
                         Unlock full feed
@@ -1399,7 +1487,7 @@ function FeedPageContent() {
 
                 {/* End of feed indicator */}
                 {filteredFeed.length > 0 && (
-                  <div className="py-8 md:py-12 text-center border-t border-border/20">
+                  <div className="py-8 md:py-12 text-center border-t border-gray-100 dark:border-gray-800">
                     <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-secondary/50">You&apos;re all caught up</p>
                   </div>
                 )}

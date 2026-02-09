@@ -31,9 +31,9 @@ from v1.storage import FirestoreStore
 from v1.algorithm.interest_schema import get_interest_ids, get_interest_label
 
 
-MAX_SUGGESTED_TOPICS = 4
-ITEMS_PER_TOPIC = 2
-MAX_SUGGESTED_ITEMS = 4
+MAX_SUGGESTED_TOPICS = 2
+ITEMS_PER_TOPIC = 1
+MAX_SUGGESTED_ITEMS = 2
 
 
 def _normalize_interest(interest: str) -> str:
@@ -92,6 +92,30 @@ def _update_seen_urls(store: FirestoreStore, user_id: str, urls: list[str]) -> N
         })
 
 
+def _is_junk_url(url: str) -> bool:
+    """Quick check for homepage/archive URLs that shouldn't be in feeds."""
+    if not url:
+        return True
+    from urllib.parse import urlparse
+    try:
+        parsed = urlparse(url)
+        host = parsed.hostname or ""
+        path = (parsed.path or "").lower().rstrip("/")
+        if not path or path == "/" or path == "/index.html":
+            return True
+        if path in ("/blog", "/blogs", "/articles", "/posts", "/news",
+                     "/newsletter", "/latest", "/stories"):
+            return True
+        import re
+        if "blogspot" in host and re.match(r"^/\d{4}(/\d{2})?/?$", path):
+            return True
+        if "medium.com" in host and re.match(r"^/[a-z0-9][\w-]*/?$", path):
+            return True
+        return False
+    except Exception:
+        return False
+
+
 def _pick_items(
     items: list[dict],
     limit: int,
@@ -106,6 +130,8 @@ def _pick_items(
         if url in chosen_urls:
             continue
         if url in seen_urls:
+            continue
+        if _is_junk_url(url):
             continue
         picked.append(item)
         chosen_urls.add(url)
@@ -163,14 +189,20 @@ def _select_suggested_topics(
     )
 
     prompt = (
-        "Select up to 4 topic_ids that are NOT the user's direct topics, "
-        "but are likely interesting based on their profile.\n"
-        "Bias toward topics that help someone with these skills learn or apply them.\n\n"
+        "Select 1 or 2 topic_ids that this person would genuinely enjoy reading about, "
+        "based on a clear connection to their existing interests, hobbies, or skills.\n\n"
+        "RULES:\n"
+        "- Only pick topics with an OBVIOUS link to the person's profile.\n"
+        "- If someone likes Technology, 'science' might be a good suggestion — but 'product-design' is NOT unless they have design skills.\n"
+        "- If no available topic is a natural fit, return an EMPTY list. Do not force suggestions.\n"
+        "- Never pick more than 2 topics.\n"
+        "- Prefer topics that complement their interests (adjacent fields), not random topics.\n\n"
         f"User context:\n{context_block}\n\n"
         "Available topics:\n"
         f"{topics_list}\n\n"
         "Return JSON with exact shape:\n"
-        '{ "topic_ids": ["topic-1", "topic-2"] }\n'
+        '{ "topic_ids": ["topic-1"] }\n'
+        "Return { \"topic_ids\": [] } if nothing genuinely fits.\n"
         "No markdown."
     )
 
@@ -248,8 +280,11 @@ def build_suggested_items_for_user(
     }
 
     suggested = _select_suggested_topics(profile, topics, excluded_ids, max_topics)
+    # Don't fall back to random topics — if GPT found nothing relevant,
+    # random suggestions will just be noise in the feed.
     if not suggested:
-        suggested = _fallback_suggested_topics(topics, excluded_ids, max_topics)
+        print(f"  No relevant suggested topics found for {user_id}, skipping suggestions.")
+        return {"user_id": user_id, "items_added": 0, "topics_used": []}
 
     items_to_add = []
 

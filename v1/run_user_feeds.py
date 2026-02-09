@@ -28,6 +28,7 @@ from v1.flows.build_unsubscribed_feeds_for_all_users import build_unsubscribed_f
 from v1.flows.build_suggested_items_for_all_users import build_suggested_items_for_all_users
 from v1.flows.add_trending_news_to_all_feeds import add_trending_news_to_all_feeds
 from v1.flows.add_summaries_to_subscribed_feeds import add_summaries_to_subscribed_feeds
+from v1.flows.fetch_og_images_for_feeds import enrich_all_feeds_with_images
 
 
 def run_user_feeds(date: str | None = None, limit: int | None = None) -> dict:
@@ -89,6 +90,9 @@ def run_user_feeds(date: str | None = None, limit: int | None = None) -> dict:
     print("\nGenerating personalized summaries for subscribed feeds...")
     summaries_result = add_summaries_to_subscribed_feeds(date=date, limit=limit)
 
+    print("\nFetching article images for all feeds...")
+    images_result = enrich_all_feeds_with_images(date=date, limit=limit)
+
     success_count = subscribed_result.get("success", 0) + unsubscribed_result.get("success", 0)
     error_count = subscribed_result.get("failed", 0) + unsubscribed_result.get("failed", 0)
 
@@ -104,6 +108,7 @@ def run_user_feeds(date: str | None = None, limit: int | None = None) -> dict:
     print(f"\nSuggested items added for subscribed users: {suggested_result.get('success', 0)}")
     print(f"Trending news items added: {trending_result.get('items_added', 0)}")
     print(f"Summaries generated: {summaries_result.get('items_summarized', 0)}")
+    print(f"Article images added: {images_result.get('images_added', 0)}")
     
     return {
         "users_processed": len(all_users),

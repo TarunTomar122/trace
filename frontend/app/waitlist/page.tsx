@@ -30,7 +30,7 @@ export default function WaitlistPage() {
         {/* Icon */}
         <div className="flex justify-center mb-6">
           <div className="relative">
-            <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center">
+            <div className="w-24 h-24 bg-primary/10 dark:bg-primary/20 rounded-full flex items-center justify-center">
               <Mail className="text-primary" size={48} />
             </div>
             <motion.div
@@ -54,7 +54,7 @@ export default function WaitlistPage() {
             Thanks for joining Trace! We're putting the finishing touches on your personalized feed.
           </p>
 
-          <div className="bg-secondary/10 border border-border p-6 space-y-4 text-left max-w-md mx-auto">
+          <div className="bg-secondary/10 dark:bg-secondary/20 border border-border dark:border-border/50 p-6 space-y-4 text-left max-w-md mx-auto">
             <div className="flex items-start gap-3">
               <Sparkles className="text-primary mt-1 flex-shrink-0" size={20} />
               <div>

@@ -47,7 +47,7 @@ export default function ResearchPage() {
               <Link
                 key={post.title}
                 href={`/research/${post.slug}`}
-                className="bg-white rounded-2xl border border-gray-200 p-6 md:p-7 shadow-sm hover:shadow-md transition-shadow block group"
+                className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 md:p-7 shadow-sm hover:shadow-md dark:shadow-gray-900/50 transition-shadow block group"
               >
                 <div className="text-xs font-semibold uppercase tracking-wider text-secondary mb-3">
                   {post.tag}

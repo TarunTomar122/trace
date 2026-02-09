@@ -26,8 +26,11 @@ import {
   ArrowUpRight,
   Lightbulb,
   Search,
-  TrendingUp
+  TrendingUp,
+  Sun,
+  Moon
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useAuth } from '@/contexts/AuthContext';
@@ -79,7 +82,7 @@ const NewsletterSignupSection = () => {
           transition={{ duration: 0.5 }}
           className="max-w-6xl mx-auto text-center"
         >
-          <p className="text-sm text-secondary/70 mb-3 font-sans">
+            <p className="text-sm text-secondary mb-3 font-sans">
             Get a daily digest of the best reads from across the web — free in your inbox.
           </p>
 
@@ -87,10 +90,10 @@ const NewsletterSignupSection = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-50 border border-emerald-200 rounded-full"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 rounded-full"
             >
               <Mail size={15} className="text-emerald-600" />
-              <span className="text-sm font-medium text-emerald-700 font-sans">{message}</span>
+              <span className="text-sm font-medium text-emerald-700 dark:text-emerald-200 font-sans">{message}</span>
             </motion.div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center justify-center gap-2 max-w-md mx-auto">
@@ -137,7 +140,7 @@ const WaitlistBanner = () => {
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6 }}
-      className="fixed top-0 left-0 right-0 z-60 bg-gray-100 border-b border-gray-200"
+      className="fixed top-0 left-0 right-0 z-60 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800"
     >
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-center gap-3 text-sm">
@@ -155,13 +158,17 @@ const WaitlistBanner = () => {
 const Nav = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { user, profile, signInWithGoogle, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => setMounted(true), []);
 
   const showBanner = !isAlphaMode();
 
@@ -178,14 +185,14 @@ const Nav = () => {
           className={cn(
             "bg-background/95 backdrop-blur-md w-full transition-all duration-500 rounded-2xl mt-4",
             scrolled
-              ? "border border-gray-200 shadow-sm px-4 py-3"
+              ? "border border-gray-200 dark:border-gray-800 shadow-sm px-4 py-3"
               : "border-transparent px-4 py-5"
           )}
         >
           <div className="flex items-center justify-between w-full">
             {/* Mobile Menu Button */}
             <button
-              className="md:hidden p-2 rounded-lg hover:bg-gray-100 text-foreground transition-colors"
+              className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-foreground transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -194,41 +201,47 @@ const Nav = () => {
             {/* Desktop Left Nav */}
             <div className="hidden md:flex items-center gap-1 flex-1">
               {!user && (
-                <a href="#how" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100">
+                <a href="#how" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
                   How It Works
                 </a>
               )}
               {user ? (
                 <>
-                  <a href="/feed" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100">
+                  <a href="/feed" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
                     Your Feed
                   </a>
-                  <Link href="/research" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100">
-                    Research
+                  <Link href="/trending" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+                    Trending
                   </Link>
                 </>
               ) : (
-                <Link href="/trending" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100">
+                <Link href="/trending" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
                   Trending
                 </Link>
               )}
             </div>
 
             {/* Logo - Centered */}
-            <Link href="/" className="text-lg md:text-xl text-foreground uppercase flex items-center gap-2.5 tracking-wide font-semibold md:absolute md:left-1/2 md:-translate-x-1/2">
-              <img
-                src="/trace.png"
-                alt="Trace Logo"
-                className="h-6 md:h-7 w-auto object-contain"
-              />
+            <Link href="/" className="text-lg md:text-xl text-foreground uppercase flex items-center gap-2 tracking-wide font-semibold md:absolute md:left-1/2 md:-translate-x-1/2">
+              <Lightbulb size={20} className="md:w-[22px] md:h-[22px]" strokeWidth={1.5} />
               <span>TRACE</span>
             </Link>
 
             {/* Desktop Right Nav */}
             <div className="hidden md:flex items-center gap-3 flex-1 justify-end">
+              {/* Theme toggle */}
+              {mounted && (
+                <button
+                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-secondary hover:text-foreground"
+                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                >
+                  {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                </button>
+              )}
               {user ? (
                 <div className="flex items-center gap-3">
-                  <Link href="/profile" className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
+                  <Link href="/profile" className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                     {user.photoURL && (
                       <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" />
                     )}
@@ -248,7 +261,17 @@ const Nav = () => {
             </div>
 
             {/* Mobile CTA */}
-            <div className="md:hidden">
+            <div className="md:hidden flex items-center gap-2">
+              {/* Mobile Theme toggle */}
+              {mounted && (
+                <button
+                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-secondary hover:text-foreground"
+                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                >
+                  {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                </button>
+              )}
               {user ? (
                 <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                   {user.photoURL && (
@@ -276,11 +299,11 @@ const Nav = () => {
                 transition={{ duration: 0.2 }}
                 className="md:hidden overflow-hidden"
               >
-                <div className="pt-4 pb-2 flex flex-col gap-1 border-t border-gray-200 mt-4">
+                <div className="pt-4 pb-2 flex flex-col gap-1 border-t border-gray-200 dark:border-gray-800 mt-4">
                   {!user && (
                     <a
                       href="#how"
-                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors"
+                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       How It Works
@@ -289,7 +312,7 @@ const Nav = () => {
                   {user ? (
                     <a
                       href="/feed"
-                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors"
+                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Your Feed
@@ -297,7 +320,7 @@ const Nav = () => {
                   ) : (
                     <a
                       href="/trending"
-                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors"
+                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Trending
@@ -306,7 +329,7 @@ const Nav = () => {
                   {user ? (
                     <button
                       onClick={() => { signOut(); setMobileMenuOpen(false); }}
-                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors text-left flex items-center gap-2"
+                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-left flex items-center gap-2"
                     >
                       <LogOut size={14} />
                       Sign Out
@@ -314,7 +337,7 @@ const Nav = () => {
                   ) : (
                     <button
                       onClick={() => { signInWithGoogle(); setMobileMenuOpen(false); }}
-                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors text-left"
+                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-left"
                     >
                       Sign In with Google
                     </button>
@@ -625,7 +648,7 @@ const Hero = () => {
                   className="flex flex-col sm:flex-row gap-3"
                 >
                   <a href="/feed" className="w-full sm:w-auto">
-                    <button className="inline-flex items-center justify-center gap-2 bg-foreground text-background px-6 py-3.5 rounded-full text-sm font-medium hover:bg-foreground/90 transition-colors w-full sm:w-auto">
+                    <button className="inline-flex items-center justify-center gap-2 bg-accent text-accent-foreground px-6 py-3.5 rounded-full text-sm font-medium hover:bg-accent/90 transition-colors w-full sm:w-auto">
                       View Your Feed
                       <ChevronRight size={16} />
                     </button>
@@ -683,7 +706,7 @@ const Hero = () => {
                 >
                   {heroCtaHref ? (
                     <a href={heroCtaHref}>
-                      <button className="inline-flex items-center gap-2 bg-foreground text-background px-6 py-3.5 rounded-full text-sm font-medium hover:bg-foreground/90 transition-colors">
+                      <button className="inline-flex items-center gap-2 bg-accent text-accent-foreground px-6 py-3.5 rounded-full text-sm font-medium hover:bg-accent/90 transition-colors">
                         {heroCtaText}
                         <ChevronRight size={16} />
                       </button>
@@ -691,7 +714,7 @@ const Hero = () => {
                   ) : (
                     <button
                       onClick={signInWithGoogle}
-                      className="inline-flex items-center gap-2 bg-foreground text-background px-6 py-3.5 rounded-full text-sm font-medium hover:bg-foreground/90 transition-colors"
+                      className="inline-flex items-center gap-2 bg-accent text-accent-foreground px-6 py-3.5 rounded-full text-sm font-medium hover:bg-accent/90 transition-colors"
                     >
                       {heroCtaText}
                       <ChevronRight size={16} />
@@ -815,7 +838,7 @@ const HowItWorks = () => {
       title: "Choose topics",
       description: "Pick what you care about — AI, product, design, startups, finance, science, or anything else.",
       color: "text-blue-500",
-      bgColor: "bg-blue-50"
+      bgColor: "bg-blue-50 dark:bg-blue-950"
     },
     {
       number: "02",
@@ -823,15 +846,15 @@ const HowItWorks = () => {
       title: "We find the best stuff",
       description: "Trace scans YouTube, GitHub, Hacker News, Reddit, arXiv, top blogs, and hundreds more sources — daily.",
       color: "text-purple-500",
-      bgColor: "bg-purple-50"
+      bgColor: "bg-purple-50 dark:bg-purple-950"
     },
     {
       number: "03",
       icon: ThumbsUp,
       title: "You steer",
-      description: "Upvote what matters, downvote what doesn’t. Add notes when you want.",
+      description: "Upvote what matters, downvote what doesn't. Add notes when you want.",
       color: "text-green-500",
-      bgColor: "bg-green-50"
+      bgColor: "bg-green-50 dark:bg-green-950"
     },
     {
       number: "04",
@@ -839,7 +862,7 @@ const HowItWorks = () => {
       title: "Trace adapts",
       description: "Your feed learns what you like and sharpens itself over time. More signal, less noise.",
       color: "text-orange-500",
-      bgColor: "bg-orange-50"
+      bgColor: "bg-orange-50 dark:bg-orange-950"
     },
     {
       number: "05",
@@ -847,7 +870,7 @@ const HowItWorks = () => {
       title: "Never miss what matters",
       description: "Every day, your feed surfaces the most important content from across the web, tailored to your interests.",
       color: "text-pink-500",
-      bgColor: "bg-pink-50"
+      bgColor: "bg-pink-50 dark:bg-pink-950"
     }
   ];
 
@@ -878,7 +901,7 @@ const HowItWorks = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="relative p-6 md:p-8 rounded-2xl border border-gray-200 bg-white hover:shadow-lg transition-all"
+                className="relative p-6 md:p-8 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:shadow-lg dark:hover:shadow-gray-900/50 transition-all"
               >
                 {/* Step number */}
                 <div className="absolute top-4 right-4 text-2xl font-bold text-secondary/10">
@@ -920,7 +943,7 @@ const HowItWorks = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: (index + 3) * 0.1 }}
-                className="relative p-6 md:p-8 rounded-2xl border border-gray-200 bg-white hover:shadow-lg transition-all flex-1"
+                className="relative p-6 md:p-8 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:shadow-lg dark:hover:shadow-gray-900/50 transition-all flex-1"
               >
                 {/* Step number */}
                 <div className="absolute top-4 right-4 text-2xl font-bold text-secondary/10">
@@ -966,7 +989,7 @@ const HowItWorks = () => {
             Ready to never miss what matters?
           </p>
           <a href="#get-started">
-            <button className="inline-flex items-center gap-2 bg-foreground text-background px-6 py-3 rounded-full text-sm font-medium hover:bg-foreground/90 transition-colors">
+            <button className="inline-flex items-center gap-2 bg-accent text-accent-foreground px-6 py-3 rounded-full text-sm font-medium hover:bg-accent/90 transition-colors">
               Get Started
               <ChevronRight size={16} />
             </button>
@@ -1013,7 +1036,7 @@ const WhatTraceReplaces = () => {
   ];
 
   return (
-    <section className="py-16 md:py-24 lg:py-32 bg-gray-50 relative overflow-hidden z-10">
+    <section className="py-16 md:py-24 lg:py-32 bg-gray-50 dark:bg-gray-900 relative overflow-hidden z-10">
       <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
         <div className="text-center mb-12 md:mb-16">
           <motion.h2
@@ -1043,7 +1066,7 @@ const WhatTraceReplaces = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6 hover:border-gray-300 hover:shadow-sm transition-all group"
+              className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-sm transition-all group"
             >
               <div className="text-3xl mb-3">{habit.icon}</div>
               <h3 className="text-base md:text-lg font-semibold text-foreground mb-2 group-hover:text-foreground/80 transition-colors">
@@ -1091,12 +1114,12 @@ const HowPeopleUseTrace = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl border border-gray-200 shadow-lg mb-10 md:mb-14 overflow-hidden"
+          className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-lg dark:shadow-gray-900/50 mb-10 md:mb-14 overflow-hidden"
         >
           {/* Email Header */}
-          <div className="border-b border-gray-100 px-4 md:px-6 py-3 md:py-4">
+          <div className="border-b border-gray-100 dark:border-gray-800 px-4 md:px-6 py-3 md:py-4">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                 <Mail className="w-4 h-4 text-foreground" />
               </div>
               <div>
@@ -1118,7 +1141,7 @@ const HowPeopleUseTrace = () => {
               { icon: "📄", title: "New research on evaluation for applied AI systems", source: "arXiv" },
               { icon: "📝", title: "How great product teams triage signal vs noise", source: "Blog" },
             ].map((item, i) => (
-              <div key={i} className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
+              <div key={i} className="flex items-start gap-3 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
                 <span className="text-lg">{item.icon}</span>
                 <div>
                   <div className="text-sm font-medium text-foreground">{item.title}</div>
@@ -1397,7 +1420,7 @@ const InteractiveDemo = () => {
           className="relative max-w-3xl mx-auto"
         >
           {/* Browser Chrome */}
-          <div className="bg-[#1a1a1a] rounded-t-xl border border-border/50 border-b-0">
+          <div className="bg-[#1c1c28] rounded-t-xl border border-border/50 border-b-0">
             {/* Traffic lights & URL bar */}
             <div className="flex items-center gap-3 px-4 py-3">
               <div className="flex gap-2">
@@ -1406,7 +1429,7 @@ const InteractiveDemo = () => {
                 <div className="w-3 h-3 rounded-full bg-[#28c840]" />
               </div>
               <div className="flex-1 flex justify-center">
-                <div className="bg-[#2a2a2a] rounded-md px-4 py-1.5 text-xs font-mono text-secondary/60 flex items-center gap-2">
+                <div className="bg-[#26263a] rounded-md px-4 py-1.5 text-xs font-mono text-secondary/60 flex items-center gap-2">
                   <span className="text-green-500">🔒</span>
                   trace.club/feed
                 </div>
@@ -1604,9 +1627,9 @@ const HeroDemo = () => {
 
   return (
     <div className="relative w-full mt-6 md:mt-0">
-      <div className="bg-white rounded-2xl border border-border/60 overflow-hidden shadow-xl shadow-black/5 relative">
+      <div className="bg-white dark:bg-gray-950 rounded-2xl border border-border/60 overflow-hidden shadow-xl shadow-black/5 dark:shadow-gray-950/20 relative">
         {/* ── Header ── */}
-        <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between bg-gray-50/50">
+        <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between bg-gray-50/50 dark:bg-gray-900/50">
           <AnimatePresence mode="wait">
             {view === 'article' ? (
               <motion.div
@@ -1636,7 +1659,7 @@ const HeroDemo = () => {
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-secondary/60 font-mono">Today</span>
             {view === 'feed' && (
-              <span className="px-2 py-0.5 rounded-full bg-gray-100 text-secondary text-[10px] font-medium">4 new</span>
+              <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-secondary text-[10px] font-medium">4 new</span>
             )}
           </div>
         </div>
@@ -1658,7 +1681,7 @@ const HeroDemo = () => {
                     <div
                       key={filter.id}
                       className={`px-3 py-1 rounded-full text-[11px] font-medium ${
-                        i === 0 ? 'bg-foreground text-background' : 'bg-gray-100 text-secondary'
+                        i === 0 ? 'bg-foreground text-background' : 'bg-gray-100 dark:bg-gray-800 text-secondary'
                       }`}
                     >
                       {filter.label}
@@ -1689,7 +1712,7 @@ const HeroDemo = () => {
                 >
                   {/* Source badge */}
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center">
                       <BookOpen size={14} className="text-emerald-600" strokeWidth={1.5} />
                     </div>
                     <span className="text-[10px] font-medium uppercase tracking-wider text-emerald-600">Blog</span>
@@ -1753,7 +1776,7 @@ const HeroDemo = () => {
                     <div
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-200 ${
                         thumbsUp
-                          ? 'bg-green-50 text-green-600'
+                          ? 'bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400'
                           : 'text-secondary/40'
                       }`}
                     >
@@ -1776,10 +1799,10 @@ const HeroDemo = () => {
                         initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50/80 border border-emerald-100"
+                        className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50/80 dark:bg-emerald-950/80 border border-emerald-100 dark:border-emerald-900"
                       >
                         <Sparkles size={12} className="text-emerald-500" />
-                        <span className="text-[10px] text-emerald-700">Trace learned you like startup strategy from newsletters</span>
+                        <span className="text-[10px] text-emerald-700 dark:text-emerald-200">Trace learned you like startup strategy from newsletters</span>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -1823,10 +1846,10 @@ const HeroDemo = () => {
 // Card for the Hero demo feed list
 const HeroDemoCard = ({ item, index, isHovered = false }: { item: typeof DEMO_FEED_ITEMS[0]; index: number; isHovered?: boolean }) => {
   const typeConfig: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
-    youtube: { icon: Youtube, color: 'text-red-500', bg: 'bg-red-50' },
-    article: { icon: BookOpen, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    news: { icon: Newspaper, color: 'text-orange-500', bg: 'bg-orange-50' },
-    discussion: { icon: MessageCircle, color: 'text-amber-600', bg: 'bg-amber-50' },
+    youtube: { icon: Youtube, color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-950' },
+    article: { icon: BookOpen, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950' },
+    news: { icon: Newspaper, color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-950' },
+    discussion: { icon: MessageCircle, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-950' },
   };
 
   const config = typeConfig[item.type] || typeConfig.article;
@@ -1835,9 +1858,9 @@ const HeroDemoCard = ({ item, index, isHovered = false }: { item: typeof DEMO_FE
   return (
     <motion.div
       initial={{ opacity: 0 }}
-      animate={{ opacity: 1, backgroundColor: isHovered ? 'rgb(249 250 251)' : 'rgb(255 255 255)' }}
-      transition={{ delay: index * 0.05, backgroundColor: { duration: 0.2 } }}
-      className="p-4 cursor-pointer transition-colors"
+      animate={{ opacity: 1 }}
+      transition={{ delay: index * 0.05 }}
+      className={`p-4 cursor-pointer transition-colors ${isHovered ? 'bg-gray-50 dark:bg-gray-800/60' : 'bg-white dark:bg-gray-950'}`}
     >
       <div className="flex items-start gap-3">
         <div className={`w-10 h-10 rounded-xl ${config.bg} flex items-center justify-center shrink-0`}>
@@ -1903,7 +1926,7 @@ const DemoFeed = () => {
           transition={{ delay: 0.2, duration: 0.6 }}
           className="relative max-w-5xl mx-auto"
         >
-          <div className="border-2 border-border bg-background shadow-2xl overflow-hidden">
+          <div className="border-2 border-border bg-background shadow-2xl dark:shadow-gray-900/50 overflow-hidden">
             <img
               src="/feed.png"
               alt="Trace Feed - Personalized content from across the web"
@@ -1989,12 +2012,12 @@ const Testimonials = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8 hover:border-gray-300 hover:shadow-sm transition-all"
+              className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 md:p-8 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-sm transition-all"
             >
               <blockquote className="text-sm md:text-base text-secondary leading-relaxed mb-6">
                 &ldquo;{testimonial.quote}&rdquo;
               </blockquote>
-              <div className="border-t border-gray-100 pt-4">
+              <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
                 <p className="text-sm font-semibold text-foreground">{testimonial.name}</p>
                 <p className="text-xs text-secondary/70">{testimonial.role}</p>
               </div>
@@ -2009,9 +2032,9 @@ const Testimonials = () => {
 // --- Feed Card Component ---
 const FeedCard = ({ title, source, description, index }: { title: string; source: string; description: string; index: number }) => {
   const sources: Record<string, { icon: React.ElementType; name: string; color: string }> = {
-    youtube: { icon: Youtube, name: 'YouTube', color: 'bg-red-50 text-red-600' },
-    github: { icon: Github, name: 'GitHub', color: 'bg-purple-50 text-purple-600' },
-    arxiv: { icon: BookOpen, name: 'ArXiv', color: 'bg-blue-50 text-blue-600' },
+    youtube: { icon: Youtube, name: 'YouTube', color: 'bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400' },
+    github: { icon: Github, name: 'GitHub', color: 'bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400' },
+    arxiv: { icon: BookOpen, name: 'ArXiv', color: 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400' },
   };
 
   const sourceConfig = sources[source];
@@ -2022,13 +2045,13 @@ const FeedCard = ({ title, source, description, index }: { title: string; source
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: index * 0.1 }}
       viewport={{ once: true }}
-      className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6 hover:border-gray-300 hover:shadow-sm transition-all group relative"
+      className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-sm transition-all group relative"
     >
       <div className="absolute top-4 right-4">
         <SourceBadge {...sourceConfig} />
       </div>
       <div className="flex items-start gap-3 md:gap-4 mb-3 md:mb-4">
-        <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-foreground shrink-0">
+        <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-foreground shrink-0">
           <sourceConfig.icon size={18} strokeWidth={1.5} />
         </div>
       </div>
@@ -2786,11 +2809,11 @@ const Pricing = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-3xl border border-gray-200 shadow-xl p-6 md:p-10 lg:p-12 mb-8"
+          className="bg-white dark:bg-gray-950 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl dark:shadow-gray-900/50 p-6 md:p-10 lg:p-12 mb-8"
         >
           <div className="text-center mb-8 md:mb-10">
             <div className="text-5xl md:text-6xl font-semibold text-foreground mb-2">
-              $5.90<span className="text-2xl md:text-3xl text-secondary/60">/month</span>
+              $2.99<span className="text-2xl md:text-3xl text-secondary/60">/month</span>
             </div>
             <p className="text-sm text-secondary mb-2">
               after 3-day free trial
@@ -2801,33 +2824,33 @@ const Pricing = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-8 md:mb-10">
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                <span className="text-green-600 text-xs">✓</span>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl">
+              <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center shrink-0">
+                <span className="text-green-600 dark:text-green-400 text-xs">✓</span>
               </div>
               <div className="text-sm text-foreground">
                 Daily personalized email digest
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                <span className="text-green-600 text-xs">✓</span>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl">
+              <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center shrink-0">
+                <span className="text-green-600 dark:text-green-400 text-xs">✓</span>
               </div>
               <div className="text-sm text-foreground">
                 Content from 1,000+ sources, curated for you
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                <span className="text-green-600 text-xs">✓</span>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl">
+              <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center shrink-0">
+                <span className="text-green-600 dark:text-green-400 text-xs">✓</span>
               </div>
               <div className="text-sm text-foreground">
                 Feed that learns and gets better over time
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                <span className="text-green-600 text-xs">✓</span>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl">
+              <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center shrink-0">
+                <span className="text-green-600 dark:text-green-400 text-xs">✓</span>
               </div>
               <div className="text-sm text-foreground">
                 Unlimited bookmarks &amp; summaries
@@ -2838,14 +2861,14 @@ const Pricing = () => {
           <div className="text-center">
             {pricingCtaHref ? (
               <a href={pricingCtaHref}>
-                <button className="bg-foreground text-background px-10 py-4 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all active:scale-[0.98] w-full md:w-auto">
+                <button className="bg-accent text-accent-foreground px-10 py-4 rounded-full text-sm font-medium hover:bg-accent/90 transition-all active:scale-[0.98] w-full md:w-auto">
                   {pricingCtaText}
                 </button>
               </a>
             ) : (
               <button
                 onClick={signInWithGoogle}
-                className="bg-foreground text-background px-10 py-4 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all active:scale-[0.98] w-full md:w-auto"
+                className="bg-accent text-accent-foreground px-10 py-4 rounded-full text-sm font-medium hover:bg-accent/90 transition-all active:scale-[0.98] w-full md:w-auto"
               >
                 {pricingCtaText}
               </button>
@@ -2926,24 +2949,24 @@ const GetStarted = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-3xl border border-gray-200 shadow-lg p-6 md:p-10 lg:p-12"
+            className="bg-white dark:bg-gray-950 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-lg dark:shadow-gray-900/50 p-6 md:p-10 lg:p-12"
           >
             {user ? (
               <div className="space-y-6 md:space-y-8">
                 <div className="flex flex-col items-center gap-3 md:gap-4">
                   {user.photoURL && (
-                    <img src={user.photoURL} alt="Profile" className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-gray-200" />
+                    <img src={user.photoURL} alt="Profile" className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-gray-200 dark:border-gray-800" />
                   )}
                   <div>
                     <p className="text-lg md:text-xl font-semibold text-foreground mb-1">{profile?.name || user.displayName}</p>
                     <p className="text-sm text-secondary">{user.email}</p>
                   </div>
                 </div>
-                <div className={`py-4 md:py-5 rounded-xl text-sm font-medium ${profile?.onboarded ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>
+                <div className={`py-4 md:py-5 rounded-xl text-sm font-medium ${profile?.onboarded ? 'bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400' : 'bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400'}`}>
                   {getStatusText()}
                 </div>
                 <a href={getCtaLink()}>
-                  <button className="w-full bg-foreground text-background py-4 md:py-5 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all active:scale-[0.98]">
+                  <button className="w-full bg-accent text-accent-foreground py-4 md:py-5 rounded-full text-sm font-medium hover:bg-accent/90 transition-all active:scale-[0.98]">
                     {getCtaText()}
                   </button>
                 </a>
@@ -2951,7 +2974,7 @@ const GetStarted = () => {
             ) : (
               <div className="space-y-6 md:space-y-8">
                 <div className="flex flex-col items-center gap-4 md:gap-5">
-                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary">
                     <Sparkles size={32} className="md:hidden" strokeWidth={1.5} />
                     <Sparkles size={40} className="hidden md:block" strokeWidth={1.5} />
                   </div>
@@ -2961,7 +2984,7 @@ const GetStarted = () => {
                 </div>
                 <button
                   onClick={signInWithGoogle}
-                  className="w-full bg-foreground text-background py-4 md:py-5 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+                  className="w-full bg-accent text-accent-foreground py-4 md:py-5 rounded-full text-sm font-medium hover:bg-accent/90 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -2982,7 +3005,7 @@ const GetStarted = () => {
 
 // --- Footer Component ---
 const Footer = () => (
-  <footer className="py-12 md:py-16 lg:py-20 bg-gray-50 border-t border-gray-100 z-10 relative">
+  <footer className="py-12 md:py-16 lg:py-20 bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 z-10 relative">
     <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
       <div className="flex flex-col md:flex-row justify-between items-start gap-10 md:gap-12 lg:gap-16 mb-12 md:mb-16 lg:mb-20">
         <div className="flex flex-col gap-4 md:gap-5">
@@ -3003,9 +3026,8 @@ const Footer = () => (
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground mb-4 md:mb-5">Product</h4>
             <div className="flex flex-col gap-3 md:gap-4">
-              <a href="#demo" className="text-sm text-secondary hover:text-foreground transition-colors">See Example Feed</a>
-              <a href="#get-started" className="text-sm text-secondary hover:text-foreground transition-colors">Unlock full feed</a>
-              <a href="/trending" className="text-sm text-secondary hover:text-foreground transition-colors">Trending Topics</a>
+              <Link href="#get-started" className="text-sm text-secondary hover:text-foreground transition-colors">Unlock full feed</Link>
+              <Link href="/trending" className="text-sm text-secondary hover:text-foreground transition-colors">Trending Topics</Link>
             </div>
           </div>
           <div>
@@ -3026,15 +3048,9 @@ const Footer = () => (
         </div>
       </div>
 
-      <div className="pt-8 md:pt-10 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6">
+      <div className="pt-8 md:pt-10 border-t border-gray-200 dark:border-gray-800 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6">
         <div className="text-sm text-secondary text-center md:text-left">
           © 2026 Trace — Built with intention
-        </div>
-        <div className="flex gap-4">
-          <div className="px-3 py-1.5 rounded-full bg-green-100 text-green-600 text-xs font-medium flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            Alpha v0.1.0
-          </div>
         </div>
       </div>
     </div>

@@ -39,6 +39,21 @@ from v1.algorithm.interest_schema import (
 MAX_FEED_ITEMS = 25  # Subscribed users get more content
 MIN_QUERY_POOL_ITEMS = 4
 
+# Extended keyword map for interests whose names are too short/generic
+# to match article titles directly. Maps interest_id → extra keywords.
+_INTEREST_KEYWORDS: dict[str, list[str]] = {
+    "technology": ["tech", "software", "hardware", "digital", "computing", "internet", "app", "startup", "code", "programming", "developer", "engineering", "algorithm", "blockchain", "cloud", "cyber"],
+    "money": ["finance", "investing", "investment", "wealth", "budget", "savings", "stock", "crypto", "economic", "financial", "dollar", "income", "debt", "retire"],
+    "health": ["medical", "wellness", "fitness", "nutrition", "mental health", "exercise", "diet", "sleep", "disease", "therapy", "doctor", "hospital", "vaccine"],
+    "design": ["ux", "ui", "graphic", "visual", "typography", "layout", "interface", "prototype", "figma", "creative", "aesthetic", "branding"],
+    "business": ["startup", "entrepreneur", "company", "founder", "revenue", "market", "customer", "product", "leadership", "management", "ceo", "growth", "strategy"],
+    "career": ["job", "hire", "hiring", "interview", "resume", "promotion", "workplace", "salary", "profession", "skill", "mentor", "career change"],
+    "psychology": ["mental", "cognitive", "behavior", "emotion", "therapy", "mindset", "habit", "bias", "brain", "consciousness", "motivation", "anxiety"],
+    "culture": ["society", "cultural", "tradition", "art", "music", "film", "literature", "history", "identity", "diversity", "social", "community"],
+    "ideas": ["concept", "innovation", "creativity", "philosophy", "thought", "theory", "insight", "perspective", "paradigm", "framework"],
+    "science": ["research", "experiment", "discovery", "physics", "biology", "chemistry", "space", "climate", "evolution", "scientific"],
+}
+
 
 def _normalize_interest(interest: str) -> str:
     return (interest.lower().strip()
@@ -50,7 +65,7 @@ def _normalize_interest(interest: str) -> str:
             .replace(")", ""))
 
 
-def _title_matches_topic(title: str, topic_name: str) -> bool:
+def _title_matches_topic(title: str, topic_name: str, interest_id: str | None = None) -> bool:
     """Check if an article title is roughly related to the topic."""
     if not title or not topic_name:
         return False
@@ -63,6 +78,10 @@ def _title_matches_topic(title: str, topic_name: str) -> bool:
     # Remove common filler words
     filler_words = {"the", "a", "an", "in", "on", "for", "to", "and", "or", "of", "with"}
     topic_words = topic_words - filler_words
+    
+    # Add extended keywords if available
+    if interest_id and interest_id in _INTEREST_KEYWORDS:
+        topic_words.update(_INTEREST_KEYWORDS[interest_id])
     
     # Check if any topic keyword appears in title
     for word in topic_words:
@@ -77,9 +96,9 @@ def _title_matches_topic(title: str, topic_name: str) -> bool:
     return False
 
 
-def _get_why_relevant(title: str, topic_name: str, topic_kind: str, query_text: str | None = None) -> str:
+def _get_why_relevant(title: str, topic_name: str, topic_kind: str, query_text: str | None = None, interest_id: str | None = None) -> str:
     """Generate appropriate why_relevant text based on actual relevance."""
-    if _title_matches_topic(title, topic_name):
+    if _title_matches_topic(title, topic_name, interest_id=interest_id):
         if topic_kind == "hobby":
             return f"Matches your hobby in {topic_name}"
         if query_text:
@@ -212,23 +231,65 @@ def _mark_previous_feed_seen(store: FirestoreStore, user_id: str, date: str) -> 
         _update_seen_urls(store, user_id, urls)
 
 
+def _is_junk_url(url: str) -> bool:
+    """Quick check for homepage/archive URLs that slipped into pools."""
+    if not url:
+        return True
+    from urllib.parse import urlparse
+    try:
+        parsed = urlparse(url)
+        host = parsed.hostname or ""
+        path = (parsed.path or "").lower().rstrip("/")
+        # Bare domain / homepage
+        if not path or path == "/" or path == "/index.html":
+            return True
+        # Blog index pages
+        if path in ("/blog", "/blogs", "/articles", "/posts", "/news",
+                     "/newsletter", "/latest", "/stories"):
+            return True
+        # Blogspot date archives (e.g. /2024/03/)
+        import re
+        if "blogspot" in host and re.match(r"^/\d{4}(/\d{2})?/?$", path):
+            return True
+        # Medium publication pages (single-segment path without article hash)
+        if "medium.com" in host and re.match(r"^/[a-z0-9][\w-]*/?$", path):
+            return True
+        # Beehiiv bare archive
+        if "beehiiv.com" in host and len([s for s in path.split("/") if s]) == 0:
+            return True
+        return False
+    except Exception:
+        return False
+
+
 def _pick_urls(
     items: list[dict],
     limit: int,
     seen_urls: set[str],
     chosen_urls: set[str],
+    interest_id: str | None = None,
+    topic_name: str | None = None,
 ) -> list[dict]:
-    picked = []
+    """Pick items, prioritizing those whose title matches the topic."""
+    relevant = []
+    other = []
     for item in items:
         url = item.get("url")
-        if not url:
+        if not url or url in chosen_urls or url in seen_urls:
             continue
-        if url in chosen_urls:
+        if _is_junk_url(url):
             continue
-        if url in seen_urls:
-            continue
+        title = item.get("title", "")
+        if topic_name and _title_matches_topic(title, topic_name, interest_id=interest_id):
+            relevant.append(item)
+        else:
+            other.append(item)
+
+    # Pick from relevant first, then fill from other
+    picked = []
+    for item in relevant + other:
         picked.append(item)
-        chosen_urls.add(url)
+        chosen_urls.add(item["url"])
         if len(picked) >= limit:
             break
     return picked
@@ -287,8 +348,10 @@ def build_feed_from_topics(
         blogs = _merge_pool_items(pools, "blogs")
         discussions = _merge_pool_items(pools, "discussions")
 
-        picked_blogs = _pick_urls(blogs, 2, seen_urls, chosen_urls)
-        picked_discussions = _pick_urls(discussions, 2, seen_urls, chosen_urls)
+        picked_blogs = _pick_urls(blogs, 2, seen_urls, chosen_urls,
+                                  interest_id=interest_id, topic_name=interest_label)
+        picked_discussions = _pick_urls(discussions, 2, seen_urls, chosen_urls,
+                                        interest_id=interest_id, topic_name=interest_label)
 
         for idx, item in enumerate(picked_blogs):
             title = item.get("title", "")
@@ -302,7 +365,7 @@ def build_feed_from_topics(
                 "tags": [interest_id],
                 "source": "exa",
                 "metadata": {
-                    "why_relevant": _get_why_relevant(title, interest_label, "interest", query_text),
+                    "why_relevant": _get_why_relevant(title, interest_label, "interest", query_text, interest_id=interest_id),
                     "feed_category": "topics",
                 },
             })
@@ -319,7 +382,7 @@ def build_feed_from_topics(
                 "tags": [interest_id],
                 "source": "exa",
                 "metadata": {
-                    "why_relevant": _get_why_relevant(title, interest_label, "interest", query_text),
+                    "why_relevant": _get_why_relevant(title, interest_label, "interest", query_text, interest_id=interest_id),
                     "feed_category": "topics",
                 },
             })
@@ -342,8 +405,10 @@ def build_feed_from_topics(
             for v in raw_videos
         ])
 
-        picked_blogs = _pick_urls(blogs, 1, seen_urls, chosen_urls)
-        picked_videos = _pick_urls(videos, 1, seen_urls, chosen_urls)
+        picked_blogs = _pick_urls(blogs, 1, seen_urls, chosen_urls,
+                                  topic_name=hobby)
+        picked_videos = _pick_urls(videos, 1, seen_urls, chosen_urls,
+                                   topic_name=hobby)
 
         for idx, item in enumerate(picked_blogs):
             title = item.get("title", "")
@@ -413,12 +478,14 @@ def main():
     parser.add_argument("--user_id", required=True, help="User ID to build feed for")
     parser.add_argument("--date", help="Date string (YYYY-MM-DD), defaults to today IST")
     parser.add_argument("--skip-seen", action="store_true", help="Skip seen URL filtering and updates")
+    parser.add_argument("--force", action="store_true", help="Rebuild even if feed already exists for date")
     args = parser.parse_args()
 
     result = build_feed_from_topics(
         user_id=args.user_id,
         date=args.date,
         skip_seen=args.skip_seen,
+        force=args.force,
     )
     print(f"Done. Items written: {result['items_written']}")
 

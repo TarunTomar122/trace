@@ -364,7 +364,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen text-foreground bg-[radial-gradient(circle_at_top,_#f9f5ff_0%,_#ffffff_45%,_#f6f8ff_100%)]">
+    <div className="min-h-screen text-foreground bg-[radial-gradient(circle_at_top,_#f9f5ff_0%,_#ffffff_45%,_#f6f8ff_100%)] dark:bg-none dark:bg-background">
       <div className="container mx-auto px-4 max-w-5xl py-8 md:py-12">
         <div className="text-center mb-10">
           <div className="text-base text-foreground uppercase flex items-center justify-center gap-2 tracking-[0.15em] font-semibold mb-6">
@@ -389,7 +389,7 @@ export default function OnboardingPage() {
                 {signalLabel} · {signalScore}%
               </span>
             </div>
-            <div className="h-2 rounded-full bg-gray-200 overflow-hidden">
+            <div className="h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
               <div
                 className={`h-full transition-all duration-500 ${
                   signalScore >= 80 ? 'bg-emerald-500' : signalScore >= 55 ? 'bg-amber-500' : 'bg-gray-400'
@@ -429,7 +429,7 @@ export default function OnboardingPage() {
                         className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 border ${
                           isSelected
                             ? 'border-foreground bg-foreground text-background'
-                            : 'border-gray-200 bg-white text-foreground/80 hover:border-foreground/40'
+                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-foreground/80 hover:border-foreground/40'
                         } ${isMaxed ? 'opacity-40 cursor-not-allowed' : ''}`}
                       >
                         <span>{interest.label}</span>
@@ -439,9 +439,9 @@ export default function OnboardingPage() {
                   })}
                 </div>
 
-                <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-lg bg-amber-50/80 border border-amber-100">
+                <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-lg bg-amber-50/80 dark:bg-amber-950/80 border border-amber-100 dark:border-amber-900">
                   <span className="text-amber-500 text-sm">💡</span>
-                  <p className="text-xs text-amber-800/80 leading-relaxed">
+                  <p className="text-xs text-amber-800/80 dark:text-amber-200/80 leading-relaxed">
                     More topics = more sources we can pull from. Most users pick all 4 for the best feed.
                   </p>
                 </div>
@@ -502,7 +502,7 @@ export default function OnboardingPage() {
                                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 border ${
                                   isSelected
                                     ? 'border-foreground bg-foreground text-background'
-                                    : 'border-gray-200 bg-white text-foreground/80 hover:border-foreground/40'
+                                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-foreground/80 hover:border-foreground/40'
                                 } ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
                               >
                                 {subtopic.label}
@@ -544,7 +544,7 @@ export default function OnboardingPage() {
                         className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 border ${
                           isSelected
                             ? 'border-foreground bg-foreground text-background'
-                            : 'border-gray-200 bg-white text-foreground/80 hover:border-foreground/40'
+                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-foreground/80 hover:border-foreground/40'
                         }`}
                       >
                         <span>{skill.label}</span>
@@ -568,7 +568,7 @@ export default function OnboardingPage() {
                 <button
                   onClick={handleNext}
                   disabled={step === 1 && selectedInterests.length < MIN_INTERESTS}
-                  className="px-5 py-2.5 rounded-lg text-sm font-medium bg-foreground text-background shadow-sm hover:bg-foreground/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-5 py-2.5 rounded-lg text-sm font-medium bg-accent text-accent-foreground shadow-sm hover:bg-accent/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Continue
                 </button>
@@ -576,7 +576,7 @@ export default function OnboardingPage() {
                 <button
                   onClick={handleComplete}
                   disabled={isSubmitting || selectedInterests.length < MIN_INTERESTS}
-                  className="px-5 py-2.5 rounded-lg text-sm font-medium bg-foreground text-background shadow-sm hover:bg-foreground/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-5 py-2.5 rounded-lg text-sm font-medium bg-accent text-accent-foreground shadow-sm hover:bg-accent/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? 'Building your feed...' : 'Build my feed'}
                 </button>
@@ -585,7 +585,7 @@ export default function OnboardingPage() {
           </div>
 
           <div className="lg:sticky lg:top-10 hidden lg:block">
-            <div className="rounded-xl border border-gray-100 bg-white/60 p-5">
+            <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white/60 dark:bg-gray-950/60 p-5">
               <div className="text-xs uppercase tracking-[0.2em] text-secondary/50 mb-5">
                 Your feed preview
               </div>
@@ -611,7 +611,7 @@ export default function OnboardingPage() {
                   return (
                     <div 
                       key={`${id}-${primaryFocus || 'base'}-${selectedSkills[0] || 'none'}`} 
-                      className={`transition-all duration-300 ${index > 0 ? 'pt-5 border-t border-gray-100' : ''}`}
+                      className={`transition-all duration-300 ${index > 0 ? 'pt-5 border-t border-gray-100 dark:border-gray-800' : ''}`}
                     >
                       <div className="flex items-center gap-2 text-[11px] text-secondary/50">
                         <span className="uppercase tracking-[0.15em]">
