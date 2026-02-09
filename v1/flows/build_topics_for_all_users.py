@@ -30,7 +30,7 @@ from v1.flows.build_topics_for_user import (  # noqa: E402
 
 def build_topics_for_all_users(
     limit: int | None = None,
-    min_refresh_days: int = 4,
+    min_refresh_days: int = 6,
     user_id: str | None = None,
 ) -> dict:
     store = FirestoreStore()
@@ -96,11 +96,16 @@ def main():
         "--user-id",
         help="Run for a single user instead of all subscribed users",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force refresh all topics, ignoring min-refresh-days",
+    )
     args = parser.parse_args()
 
     result = build_topics_for_all_users(
         limit=args.limit,
-        min_refresh_days=args.min_refresh_days,
+        min_refresh_days=0 if args.force else args.min_refresh_days,
         user_id=args.user_id,
     )
     print(f"Done. Users processed: {result['users_processed']}")

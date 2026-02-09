@@ -9,6 +9,7 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import random
 import sys
@@ -48,9 +49,9 @@ MAX_HOBBIES_DEFAULT = 3
 RESULTS_PER_SEARCH = 10
 # Fetch extra to compensate for filtered junk URLs (tag pages, homepages, etc.)
 EXA_OVERFETCH_BUFFER = 5
-LOOKBACK_DAYS_DEFAULT = 60
-VIDEO_LOOKBACK_DAYS = 60
-MIN_REFRESH_DAYS_DEFAULT = 4
+LOOKBACK_DAYS_DEFAULT = 1095  # ~3 years — quality content doesn't expire fast
+VIDEO_LOOKBACK_DAYS = 365  # 1 year for videos
+MIN_REFRESH_DAYS_DEFAULT = 6
 MIN_QUERY_POOL_ITEMS = 4
 # Parallel processing for topic generation
 MAX_CONCURRENT_TOPICS = 5
@@ -192,6 +193,77 @@ SKILL_MATCHERS = {
     "health-wellness": ["health", "wellness", "fitness", "nutrition", "mental health"],
     "creative-arts": ["creative", "creator", "art", "music", "photography", "illustration"],
 }
+
+
+# ---------------------------------------------------------------------------
+# Quality query templates (loaded from JSON)
+# ---------------------------------------------------------------------------
+_QUALITY_QUERIES_PATH = Path(__file__).parent.parent / "algorithm" / "quality_queries.json"
+_QUALITY_QUERIES: dict | None = None
+
+
+def _load_quality_queries() -> dict:
+    global _QUALITY_QUERIES
+    if _QUALITY_QUERIES is None:
+        try:
+            with open(_QUALITY_QUERIES_PATH, "r") as f:
+                _QUALITY_QUERIES = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"Warning: Could not load quality queries: {e}")
+            _QUALITY_QUERIES = {}
+    return _QUALITY_QUERIES
+
+
+def _subtopic_label_to_id(interest_id: str, label: str) -> str | None:
+    """Reverse-map a subtopic label (e.g. 'AI') back to its key (e.g. 'ai')."""
+    from v1.algorithm.interest_schema import SUBTOPIC_LABELS
+
+    subtopics = SUBTOPIC_LABELS.get(interest_id, {})
+    # Check if label matches a subtopic value
+    for sid, slabel in subtopics.items():
+        if slabel.lower() == label.lower():
+            return sid
+    # Check if the label itself is already a subtopic key
+    label_lower = label.lower().strip()
+    if label_lower in subtopics:
+        return label_lower
+    return None
+
+
+def _get_quality_query(
+    interest_id: str,
+    subtopic_id: str | None = None,
+    fallback_topic: str | None = None,
+) -> str:
+    """Pick a random quality query from the curated JSON.
+
+    Falls back to a descriptive template if the interest/subtopic isn't found.
+    """
+    queries = _load_quality_queries()
+    interest_queries = queries.get(interest_id, {})
+
+    pool: list[str] | None = None
+    if subtopic_id and subtopic_id in interest_queries:
+        pool = interest_queries[subtopic_id]
+    elif "_umbrella" in interest_queries:
+        pool = interest_queries["_umbrella"]
+
+    if pool:
+        return random.choice(pool)
+
+    # Fallback for hobbies or interests not in the JSON
+    topic = fallback_topic or interest_id.replace("-", " ").title()
+    return f"Here is a great article about {topic} worth reading:"
+
+
+def _get_discussion_query(topic: str) -> str:
+    """Build an Exa-friendly discussion query."""
+    templates = [
+        f"Here is an interesting discussion about {topic}:",
+        f"Here is a thoughtful thread about {topic} with great insights:",
+        f"Here is a popular discussion about {topic} worth reading:",
+    ]
+    return random.choice(templates)
 
 
 def _normalize_interest(interest: str) -> str:
@@ -504,7 +576,8 @@ def build_topics_for_user(
 
         print(f"Processing topic: {topic_id} [{topic_kind}]")
 
-        blogs_query = f"blogs about {query_used}"
+        # Use curated quality queries (falls back to generic template for hobbies)
+        blogs_query = _get_quality_query(topic_id, fallback_topic=display_name)
         print(f"  Exa blog search: {blogs_query}")
         blogs = _search_exa(
             exa,
@@ -517,7 +590,7 @@ def build_topics_for_user(
         discussions = []
         videos = []
         if topic_kind == "interest":
-            discussions_query = f"discussions about {query_used}"
+            discussions_query = _get_discussion_query(display_name)
             print(f"  Exa discussion search: {discussions_query}")
             discussions = _search_exa(
                 exa,
@@ -601,7 +674,11 @@ def build_topics_for_user(
 
         print(f"Processing query pool: {interest_id}::{query_text}")
 
-        blogs_query = f"blogs about {query_used}"
+        # Map subtopic label → subtopic id for quality query lookup
+        subtopic_id = _subtopic_label_to_id(interest_id, query_text)
+        blogs_query = _get_quality_query(
+            interest_id, subtopic_id=subtopic_id, fallback_topic=query_used,
+        )
         print(f"  Exa blog search: {blogs_query}")
         blogs = _search_exa(
             exa,
@@ -611,7 +688,7 @@ def build_topics_for_user(
             include_domains=ARTICLE_DOMAINS,
         )
 
-        discussions_query = f"discussions about {query_used}"
+        discussions_query = _get_discussion_query(query_used)
         print(f"  Exa discussion search: {discussions_query}")
         discussions = _search_exa(
             exa,
@@ -761,12 +838,18 @@ def main():
         default=LOOKBACK_DAYS_DEFAULT,
         help="Days to look back for content",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force refresh all topics, ignoring min-refresh-days",
+    )
     args = parser.parse_args()
 
     result = build_topics_for_user(
         user_id=args.user_id,
         max_interests=args.max_interests,
         lookback_days=args.lookback_days,
+        min_refresh_days=0 if args.force else MIN_REFRESH_DAYS_DEFAULT,
     )
     print(f"Done. Topics written: {result['topics_written']}")
 

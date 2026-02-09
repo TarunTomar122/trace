@@ -13,7 +13,13 @@ import {
   Sparkles,
   MessageCircle,
   Bot,
-  CreditCard
+  CreditCard,
+  PartyPopper,
+  Newspaper,
+  Zap,
+  ArrowRight,
+  Clock,
+  X
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserProfile, getUserPatterns, updateUserProfile, updateUserInsights, addChatMessage, clearChatHistory, UserProfile, INTERESTS, INTEREST_SUBTOPICS, ROLES, ChatMessage } from '@/lib/firestore';
@@ -35,6 +41,7 @@ function ProfileContent() {
   const [traceInsightsLoading, setTraceInsightsLoading] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'profile' | 'chat' | 'subscription'>('profile');
+  const [showSubscriptionSuccess, setShowSubscriptionSuccess] = useState(false);
   const hasLoadedProfile = useRef(false);
   const SKILL_OPTIONS = [
     { id: 'design', label: 'Design' },
@@ -96,6 +103,9 @@ function ProfileContent() {
     const subscriptionParam = searchParams.get('subscription');
     if (tabParam === 'subscription' || subscriptionParam === 'required' || subscriptionParam === 'success') {
       setActiveTab('subscription');
+    }
+    if (subscriptionParam === 'success') {
+      setShowSubscriptionSuccess(true);
     }
   }, [searchParams]);
 
@@ -549,7 +559,107 @@ function ProfileContent() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
+              className="space-y-6"
             >
+              {/* Subscription Success Banner */}
+              <AnimatePresence>
+                {showSubscriptionSuccess && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                    transition={{ type: 'spring', duration: 0.6, bounce: 0.3 }}
+                    className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 border border-emerald-200 rounded-2xl p-6 md:p-8"
+                  >
+                    {/* Dismiss button */}
+                    <button
+                      onClick={() => setShowSubscriptionSuccess(false)}
+                      className="absolute top-4 right-4 p-1.5 rounded-lg text-emerald-400 hover:text-emerald-600 hover:bg-emerald-100 transition-colors"
+                    >
+                      <X size={16} />
+                    </button>
+
+                    {/* Decorative background circles */}
+                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-100/50 rounded-full blur-2xl" />
+                    <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-teal-100/50 rounded-full blur-2xl" />
+
+                    <div className="relative">
+                      {/* Header */}
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center">
+                          <PartyPopper size={24} className="text-emerald-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-emerald-900">
+                            Welcome to Trace Premium!
+                          </h3>
+                          <p className="text-sm text-emerald-600">
+                            You&apos;re all set — great choice.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* What's happening now */}
+                      <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 md:p-5 mb-4 border border-emerald-100">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center shrink-0 mt-0.5">
+                            <Clock size={16} className="text-violet-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-800 mb-1">
+                              Your personalized feed is being built right now
+                            </p>
+                            <p className="text-xs text-slate-500 leading-relaxed">
+                              We&apos;re searching across hundreds of sources to find the best content for your interests. This usually takes 5–10 minutes. Head to your feed — it&apos;ll be ready by the time you get there.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* What you unlocked */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+                        <div className="flex items-center gap-2.5 bg-white/60 rounded-xl p-3 border border-emerald-100">
+                          <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                            <Sparkles size={14} className="text-emerald-600" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-slate-700">Personalized feed</p>
+                            <p className="text-[10px] text-slate-400">Curated to your interests</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2.5 bg-white/60 rounded-xl p-3 border border-emerald-100">
+                          <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                            <Newspaper size={14} className="text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-slate-700">Daily newsletter</p>
+                            <p className="text-[10px] text-slate-400">In your inbox every morning</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2.5 bg-white/60 rounded-xl p-3 border border-emerald-100">
+                          <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                            <Zap size={14} className="text-amber-600" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-slate-700">AI summaries</p>
+                            <p className="text-[10px] text-slate-400">Read any article in 2 min</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* CTA */}
+                      <Link
+                        href="/feed"
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors active:scale-[0.98]"
+                      >
+                        Go to your feed
+                        <ArrowRight size={16} />
+                      </Link>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <SubscriptionManager />
             </motion.div>
           ) : (
