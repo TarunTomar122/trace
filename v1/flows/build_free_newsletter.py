@@ -243,9 +243,12 @@ def build_free_newsletter(
             "source": item.get("source", ""),
             "tags": item.get("tags", []),
         }
-        # Pass through thumbnail if it exists
-        if item.get("thumbnail"):
-            nl_item["thumbnail"] = item["thumbnail"]
+        # Only include thumbnail if it's a valid HTTP/HTTPS URL
+        thumbnail = item.get("thumbnail", "")
+        if thumbnail and isinstance(thumbnail, str):
+            thumbnail_lower = thumbnail.lower()
+            if thumbnail_lower.startswith(("http://", "https://")):
+                nl_item["thumbnail"] = thumbnail
         # Store full AI summary for /trending page rendering
         if item.get("summary"):
             nl_item["full_summary"] = item["summary"]

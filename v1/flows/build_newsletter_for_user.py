@@ -326,9 +326,12 @@ def build_newsletter_for_user(
                 "has_summary": True,
             },
         }
-        # Pass through thumbnail if it exists
-        if item.get("thumbnail"):
-            newsletter_item["thumbnail"] = item["thumbnail"]
+        # Only include thumbnail if it's a valid HTTP/HTTPS URL
+        thumbnail = item.get("thumbnail", "")
+        if thumbnail and isinstance(thumbnail, str):
+            thumbnail_lower = thumbnail.lower()
+            if thumbnail_lower.startswith(("http://", "https://")):
+                newsletter_item["thumbnail"] = thumbnail
 
         newsletter_items.append(newsletter_item)
 
