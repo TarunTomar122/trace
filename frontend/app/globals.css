@@ -53,6 +53,15 @@ button {
   cursor: pointer;
 }
 
+/* Hide scrollbar globally */
+html, body {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+html::-webkit-scrollbar, body::-webkit-scrollbar {
+  display: none;
+}
+
 /* Hide scrollbar for horizontal scroll areas */
 .scrollbar-hide {
   -ms-overflow-style: none;
@@ -79,4 +88,22 @@ button {
   --tw-prose-pre-bg: #1c1c28;
   --tw-prose-th-borders: #26263a;
   --tw-prose-td-borders: #1c1c28;
+}
+
+/* Infinite marquee animation */
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
 }

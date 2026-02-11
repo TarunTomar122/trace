@@ -5,53 +5,91 @@ import {
   FlatList,
   Image,
   TouchableOpacity,
+  ScrollView,
   StyleSheet,
   Dimensions,
   Platform,
 } from 'react-native';
 import Constants from 'expo-constants';
+import { useTheme } from '../ThemeContext';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } =
   Dimensions.get('window');
 const STATUS_BAR_HEIGHT = Constants.statusBarHeight || 0;
 const BOTTOM_INSET = Platform.OS === 'ios' ? 34 : 0;
 
-function IdeaCard({ card, book }) {
+const HEADER_ZONE = STATUS_BAR_HEIGHT + 56;
+const FOOTER_ZONE = BOTTOM_INSET + 72;
+const CARD_MAX_HEIGHT = SCREEN_HEIGHT - HEADER_ZONE - FOOTER_ZONE;
+
+function IdeaCard({ card, book, colors }) {
   return (
     <View style={[styles.cardContainer, { height: SCREEN_HEIGHT }]}>
-      {/* One card with everything */}
-      <View style={[styles.contentCard, { borderColor: book.color + '12' }]}>
-        {/* Title */}
-        <Text style={styles.cardTitle}>{card.title}</Text>
+      {/* The card */}
+      <View
+        style={[
+          styles.contentCard,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.surfaceBorder,
+            maxHeight: CARD_MAX_HEIGHT,
+          },
+        ]}
+      >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          contentContainerStyle={styles.cardScrollContent}
+        >
+          {/* Title */}
+          <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+            {card.title}
+          </Text>
 
-        {/* Divider after title */}
-        <View style={[styles.cardDivider, { backgroundColor: book.color + '20' }]} />
+          {/* Idea */}
+          <Text style={[styles.ideaText, { color: colors.textPrimary + 'CC' }]}>
+            {card.idea}
+          </Text>
 
-        {/* Idea */}
-        <Text style={styles.ideaText}>{card.idea}</Text>
+          {/* Divider */}
+          <View
+            style={[
+              styles.cardDivider,
+              { backgroundColor: book.color + '25' },
+            ]}
+          />
 
-        {/* Divider before description */}
-        <View style={[styles.cardDivider, { backgroundColor: book.color + '12' }]} />
-
-        {/* Description */}
-        <Text style={styles.descriptionText}>{card.description}</Text>
+          {/* Description */}
+          <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>
+            {card.description}
+          </Text>
+        </ScrollView>
       </View>
 
       {/* Book info pinned near bottom */}
-      <View style={[styles.bookInfoRow, { marginBottom: BOTTOM_INSET + 20 }]}>
+      <View style={[styles.bookInfoRow, { bottom: BOTTOM_INSET + 16 }]}>
         {book.cover && (
           <Image
             source={{ uri: book.cover }}
-            style={styles.smallCover}
+            style={[
+              styles.smallCover,
+              { backgroundColor: colors.coverPlaceholder },
+            ]}
             resizeMode="cover"
           />
         )}
         <View style={styles.bookInfoText}>
-          <Text style={styles.bookInfoTitle} numberOfLines={1}>
+          <Text
+            style={[styles.bookInfoTitle, { color: colors.textTertiary }]}
+            numberOfLines={1}
+          >
             {book.title}
           </Text>
-          <Text style={styles.bookInfoAuthor} numberOfLines={1}>
-            by {book.author}
+          <Text
+            style={[styles.bookInfoAuthor, { color: colors.textMuted }]}
+            numberOfLines={1}
+          >
+            {book.subtitle || `by ${book.author}`}
           </Text>
         </View>
       </View>
@@ -59,8 +97,10 @@ function IdeaCard({ card, book }) {
   );
 }
 
-export default function IdeaReel({ book, onBack }) {
+export default function IdeaReel({ route, navigation }) {
+  const { book } = route.params;
   const [currentIndex, setCurrentIndex] = useState(0);
+  const { colors } = useTheme();
 
   const onScrollEnd = useCallback((e) => {
     const idx = Math.round(e.nativeEvent.contentOffset.y / SCREEN_HEIGHT);
@@ -68,8 +108,8 @@ export default function IdeaReel({ book, onBack }) {
   }, []);
 
   const renderItem = useCallback(
-    ({ item }) => <IdeaCard card={item} book={book} />,
-    [book]
+    ({ item }) => <IdeaCard card={item} book={book} colors={colors} />,
+    [book, colors]
   );
 
   const getItemLayout = useCallback(
@@ -82,7 +122,7 @@ export default function IdeaReel({ book, onBack }) {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         data={book.cards}
         renderItem={renderItem}
@@ -97,14 +137,32 @@ export default function IdeaReel({ book, onBack }) {
       {/* Floating header */}
       <View style={[styles.floatingHeader, { top: STATUS_BAR_HEIGHT + 6 }]}>
         <TouchableOpacity
-          onPress={onBack}
-          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          style={[
+            styles.backButton,
+            {
+              backgroundColor: colors.floatingBg,
+              borderColor: colors.floatingBorder,
+              borderWidth: StyleSheet.hairlineWidth,
+            },
+          ]}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Text style={styles.backText}>← back</Text>
+          <Text style={[styles.backText, { color: colors.textPrimary }]}>
+            ← back
+          </Text>
         </TouchableOpacity>
-        <View style={styles.counterPill}>
-          <Text style={styles.counterText}>
+        <View
+          style={[
+            styles.counterPill,
+            {
+              backgroundColor: colors.floatingBg,
+              borderColor: colors.floatingBorder,
+              borderWidth: StyleSheet.hairlineWidth,
+            },
+          ]}
+        >
+          <Text style={[styles.counterText, { color: colors.textSecondary }]}>
             {currentIndex + 1} / {book.cards.length}
           </Text>
         </View>
@@ -116,7 +174,6 @@ export default function IdeaReel({ book, onBack }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0F',
   },
 
   // Floating header
@@ -131,30 +188,26 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   backButton: {
-    backgroundColor: 'rgba(22, 22, 42, 0.85)',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
   },
   backText: {
-    color: '#F5F5F7',
     fontSize: 14,
     fontWeight: '600',
   },
   counterPill: {
-    backgroundColor: 'rgba(22, 22, 42, 0.85)',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
   },
   counterText: {
-    color: '#8E8EA0',
     fontSize: 13,
     fontWeight: '600',
     fontVariant: ['tabular-nums'],
   },
 
-  // Card layout
+  // Full-screen page for each card
   cardContainer: {
     width: SCREEN_WIDTH,
     justifyContent: 'center',
@@ -162,65 +215,64 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
 
-  // Single content card — title + idea + description all in one
+  // The visible card
   contentCard: {
-    backgroundColor: '#111120',
-    borderRadius: 20,
+    borderRadius: 24,
     borderWidth: 1,
-    paddingHorizontal: 22,
-    paddingVertical: 26,
     width: '100%',
     maxWidth: 440,
+    overflow: 'hidden',
+  },
+  cardScrollContent: {
+    paddingHorizontal: 26,
+    paddingVertical: 30,
   },
 
-  // Title inside card
+  // Title
   cardTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
-    color: '#F5F5F7',
-    letterSpacing: -0.3,
-    marginBottom: 16,
+    letterSpacing: -0.4,
+    lineHeight: 32,
+    marginBottom: 18,
   },
 
-  // Dividers inside card
-  cardDivider: {
-    height: StyleSheet.hairlineWidth,
-    marginBottom: 16,
-  },
-
-  // Idea text
+  // Idea — the punchy one-liner
   ideaText: {
     fontSize: 16,
-    color: '#CDCDD8',
+    fontWeight: '500',
     lineHeight: 26,
     letterSpacing: 0.1,
-    marginBottom: 16,
+    marginBottom: 22,
   },
 
-  // Description text
+  // Divider
+  cardDivider: {
+    height: 2,
+    borderRadius: 1,
+    marginBottom: 22,
+  },
+
+  // Description
   descriptionText: {
-    fontSize: 13.5,
-    color: '#6B6B80',
-    lineHeight: 21,
+    fontSize: 15,
+    lineHeight: 25,
     letterSpacing: 0.1,
   },
 
-  // Book info
+  // Book info at bottom
   bookInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     position: 'absolute',
-    bottom: 0,
-    left: 36,
-    right: 36,
-    paddingVertical: 10,
+    left: 28,
+    right: 28,
     gap: 12,
   },
   smallCover: {
-    width: 32,
-    height: 46,
+    width: 30,
+    height: 44,
     borderRadius: 5,
-    backgroundColor: '#1A1A30',
   },
   bookInfoText: {
     flex: 1,
@@ -228,11 +280,9 @@ const styles = StyleSheet.create({
   bookInfoTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#8E8E9A',
   },
   bookInfoAuthor: {
     fontSize: 11,
-    color: '#4A4A5E',
     marginTop: 1,
   },
 });

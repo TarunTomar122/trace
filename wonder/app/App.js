@@ -1,28 +1,67 @@
-import React, { useState, useMemo } from 'react';
+import React from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { NavigationContainer } from '@react-navigation/native';
 
-import BookFeed from './screens/BookFeed';
-import IdeaReel from './screens/IdeaReel';
-import { getAllBooks } from './data';
+import { ThemeProvider, useTheme } from './ThemeContext';
+import { AuthProvider, useAuth } from './lib/AuthContext';
+import WelcomeScreen from './screens/WelcomeScreen';
+import AppNavigator from './navigation/AppNavigator';
+import colors from './theme';
+
+function Main() {
+  const { colors } = useTheme();
+  const { session, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.background,
+        }}
+      >
+        <ActivityIndicator color={colors.accent} size="large" />
+      </View>
+    );
+  }
+
+  if (!session) {
+    return <WelcomeScreen />;
+  }
+
+  return <AppNavigator />;
+}
+
+const navTheme = {
+  dark: true,
+  colors: {
+    primary: colors.accent,
+    background: colors.background,
+    card: colors.surface,
+    text: colors.textPrimary,
+    border: colors.surfaceBorder,
+    notification: colors.accent,
+  },
+  fonts: {
+    regular: { fontFamily: 'System', fontWeight: '400' },
+    medium: { fontFamily: 'System', fontWeight: '500' },
+    bold: { fontFamily: 'System', fontWeight: '700' },
+    heavy: { fontFamily: 'System', fontWeight: '800' },
+  },
+};
 
 export default function App() {
-  const [selectedBook, setSelectedBook] = useState(null);
-  const books = useMemo(() => getAllBooks(), []);
-
   return (
-    <>
-      <StatusBar style="light" />
-      {selectedBook ? (
-        <IdeaReel
-          book={selectedBook}
-          onBack={() => setSelectedBook(null)}
-        />
-      ) : (
-        <BookFeed
-          books={books}
-          onSelectBook={setSelectedBook}
-        />
-      )}
-    </>
+    <ThemeProvider>
+      <AuthProvider>
+        <NavigationContainer theme={navTheme}>
+          <StatusBar style="light" />
+          <Main />
+        </NavigationContainer>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

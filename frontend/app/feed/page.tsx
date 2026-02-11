@@ -182,11 +182,27 @@ function FeedListItem({ item, onClick, showSubscribeCta }: {
   onClick: () => void;
   showSubscribeCta?: boolean;
 }) {
-  const itemKind = item.type || item.source || 'blog';
-  const config = sourceConfig[itemKind] || sourceConfig.blog;
   const hasSummary = Boolean(item.summary?.short_article?.body);
-  const isSample = item.metadata?.feed_category === 'sample_summary';
+  const feedCategory = item.metadata?.feed_category;
+  const isSample = feedCategory === 'sample_summary';
+  const isHot = item.metadata?.is_hot;
   const snippet = item.summary?.short_article?.subtitle || item.description || '';
+
+  // Category badge configuration
+  const getCategoryBadge = () => {
+    if (feedCategory === 'trending_news' || isHot) {
+      return { label: 'Trending', color: 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800' };
+    }
+    if (feedCategory === 'suggested') {
+      return { label: 'Suggested', color: 'bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800' };
+    }
+    if (feedCategory === 'topics') {
+      return { label: 'For You', color: 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800' };
+    }
+    return null;
+  };
+
+  const categoryBadge = getCategoryBadge();
 
   return (
     <article
@@ -197,6 +213,11 @@ function FeedListItem({ item, onClick, showSubscribeCta }: {
       <div className="flex flex-col gap-3 md:hidden">
         {item.thumbnail && <ArticleThumbnail url={item.url} thumbnail={item.thumbnail} size="lg" />}
         <div className="min-w-0">
+          {categoryBadge && (
+            <span className={`inline-flex items-center gap-1 mb-1.5 px-2 py-0.5 rounded-full border ${categoryBadge.color} w-fit`}>
+              <span className="text-[9px] font-medium uppercase tracking-wider">{categoryBadge.label}</span>
+            </span>
+          )}
           <h3 className="text-base font-semibold leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
             {item.title}
             {hasSummary ? (
@@ -250,6 +271,11 @@ function FeedListItem({ item, onClick, showSubscribeCta }: {
               <span className="text-[9px] font-medium uppercase tracking-wider">Free summary</span>
             </span>
           )}
+          {categoryBadge && (
+            <span className={`inline-flex items-center gap-1 mb-1.5 px-2 py-0.5 text-secondary/70 w-fit`}>
+              <span className="text-[9px] font-medium uppercase tracking-wider">{categoryBadge.label}</span>
+            </span>
+          )}
         </div>
       </div>
     </article>
@@ -257,8 +283,8 @@ function FeedListItem({ item, onClick, showSubscribeCta }: {
 }
 
 // Article detail view component
-function ArticleView({ 
-  item, 
+function ArticleView({
+  item,
   onBack,
   onUpvote,
   onDownvote,
@@ -344,7 +370,7 @@ function ArticleView({
     <div className="max-w-3xl mx-auto">
       {/* Breadcrumbs */}
       <nav className="flex items-center gap-2 text-sm text-secondary/70 mb-6">
-        <button 
+        <button
           onClick={onBack}
           className="flex items-center gap-1.5 hover:text-foreground transition-colors"
         >
@@ -380,7 +406,7 @@ function ArticleView({
             </span>
           )}
         </div>
-        
+
         <h1 className="text-2xl md:text-3xl font-semibold leading-tight text-foreground mb-4">
           {item.title}
         </h1>
@@ -419,10 +445,10 @@ function ArticleView({
           <button
             onClick={handleUpvote}
             className={`flex items-center gap-1 p-2 rounded-lg transition-colors ${disabled
-                ? 'text-secondary/20 cursor-not-allowed'
-                : upvoted
-                  ? 'text-green-500 bg-green-50'
-                  : 'text-secondary/60 hover:text-green-500 hover:bg-green-50'
+              ? 'text-secondary/20 cursor-not-allowed'
+              : upvoted
+                ? 'text-green-500 bg-green-50'
+                : 'text-secondary/60 hover:text-green-500 hover:bg-green-50'
               }`}
             title={disabled ? "Subscribe to teach Trace" : "Upvote"}
           >
@@ -433,10 +459,10 @@ function ArticleView({
           <button
             onClick={handleDownvote}
             className={`flex items-center gap-1 p-2 rounded-lg transition-colors ${disabled
-                ? 'text-secondary/20 cursor-not-allowed'
-                : downvoted
-                  ? 'text-red-500 bg-red-50'
-                  : 'text-secondary/60 hover:text-red-500 hover:bg-red-50'
+              ? 'text-secondary/20 cursor-not-allowed'
+              : downvoted
+                ? 'text-red-500 bg-red-50'
+                : 'text-secondary/60 hover:text-red-500 hover:bg-red-50'
               }`}
             title={disabled ? "Subscribe to teach Trace" : "Downvote"}
           >
@@ -453,10 +479,10 @@ function ArticleView({
               setShowFeedback(!showFeedback);
             }}
             className={`flex items-center gap-1 p-2 rounded-lg transition-colors ${disabled
-                ? 'text-secondary/20 cursor-not-allowed'
-                : showFeedback
-                  ? 'text-blue-500 bg-blue-50'
-                  : 'text-secondary/60 hover:text-blue-500 hover:bg-blue-50'
+              ? 'text-secondary/20 cursor-not-allowed'
+              : showFeedback
+                ? 'text-blue-500 bg-blue-50'
+                : 'text-secondary/60 hover:text-blue-500 hover:bg-blue-50'
               }`}
             title={disabled ? "Subscribe to teach Trace" : "Add feedback"}
           >
@@ -475,12 +501,12 @@ function ArticleView({
               onStar();
             }}
             className={`flex items-center gap-1 p-2 rounded-lg transition-colors ${disabled
-                ? 'text-secondary/20 cursor-not-allowed'
-                : isBookmarkLoading
-                  ? 'text-secondary/40'
-                  : bookmarked
-                    ? 'text-primary bg-primary/10'
-                    : 'text-secondary/60 hover:text-primary hover:bg-primary/10'
+              ? 'text-secondary/20 cursor-not-allowed'
+              : isBookmarkLoading
+                ? 'text-secondary/40'
+                : bookmarked
+                  ? 'text-primary bg-primary/10'
+                  : 'text-secondary/60 hover:text-primary hover:bg-primary/10'
               }`}
             title={disabled ? "Subscribe to teach Trace" : "Bookmark"}
             disabled={isBookmarkLoading}
@@ -541,13 +567,13 @@ function ArticleView({
   );
 }
 
-type FilterType = 'all' | string;
+type FilterType = 'all' | 'category:for-you' | 'category:trending' | 'category:suggested' | string;
 
 function FeedPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedItemId = searchParams.get('item');
-  
+
   const { user, loading, profile } = useAuth();
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [feedDate, setFeedDate] = useState<string>('');
@@ -594,7 +620,7 @@ function FeedPageContent() {
   const showPersonalizedFeed = isOnboarded;
   const isFallbackFeed = showPersonalizedFeed && !isFeedLoading && feed.length === 0;
   const currentFeed = isFallbackFeed ? generalFeed : (!showPersonalizedFeed ? generalFeed : feed);
-  
+
   const normalizeInterest = (interest: string) => {
     return interest
       .toLowerCase()
@@ -626,6 +652,14 @@ function FeedPageContent() {
 
   const availableProfileFilters = profileFilters.filter((filter) => availableTagIds.has(filter.id));
   const topicFilters = availableProfileFilters.length > 0 ? availableProfileFilters : tagFilters;
+  
+  // Category filters (shown only if feed has items with those categories)
+  const categoryFilters = [
+    { id: 'category:for-you', label: 'For You', hasItems: currentFeed.some(item => item.metadata?.feed_category === 'topics') },
+    { id: 'category:trending', label: 'Trending', hasItems: currentFeed.some(item => item.metadata?.feed_category === 'trending_news' || item.metadata?.is_hot) },
+    { id: 'category:suggested', label: 'Suggested', hasItems: currentFeed.some(item => item.metadata?.feed_category === 'suggested') },
+  ].filter(f => f.hasItems);
+  
   const insightInsertIndex = 2;
   const canShowTraceInsight = Boolean(showTraceInsight && traceInsights && !traceInsightsLoading);
 
@@ -661,45 +695,59 @@ function FeedPageContent() {
 
   const filteredByTopic = activeFilter === 'all'
     ? currentFeed
-    : currentFeed.filter((item) => {
-      const tags = item.tags || [];
-      return tags.includes(activeFilter);
-    });
+    : activeFilter.startsWith('category:')
+      ? (() => {
+        const category = activeFilter.replace('category:', '');
+        return currentFeed.filter((item) => {
+          const feedCategory = item.metadata?.feed_category;
+          const isHot = item.metadata?.is_hot;
+          
+          if (category === 'for-you') return feedCategory === 'topics';
+          if (category === 'trending') return feedCategory === 'trending_news' || isHot;
+          if (category === 'suggested') return feedCategory === 'suggested';
+          
+          return false;
+        });
+      })()
+      : currentFeed.filter((item) => {
+        const tags = item.tags || [];
+        return tags.includes(activeFilter);
+      });
 
   // For subscribed users: only show items with summaries
   // For unsubscribed users: bubble up to 3 summary items (different topics) to the top
   const filteredFeed = hasAccess
     ? filteredByTopic.filter((item) => item.summary?.short_article?.body)
     : (() => {
-        const items = [...filteredByTopic];
-        const promoted: FeedItem[] = [];
-        const seenCats = new Set<string>();
+      const items = [...filteredByTopic];
+      const promoted: FeedItem[] = [];
+      const seenCats = new Set<string>();
 
-        // First pass: one summary item per unique category (up to 3)
-        for (let i = 0; i < items.length && promoted.length < 3; i++) {
-          if (items[i].summary?.short_article?.body) {
-            const cat = items[i].metadata?.feed_category || items[i].tags?.[0] || `_${i}`;
-            if (!seenCats.has(cat)) {
-              seenCats.add(cat);
-              promoted.push(...items.splice(i, 1));
-              i--;
-            }
-          }
-        }
-
-        // Second pass: fill remaining slots with any summary items
-        for (let i = 0; i < items.length && promoted.length < 3; i++) {
-          if (items[i].summary?.short_article?.body) {
+      // First pass: one summary item per unique category (up to 3)
+      for (let i = 0; i < items.length && promoted.length < 3; i++) {
+        if (items[i].summary?.short_article?.body) {
+          const cat = items[i].metadata?.feed_category || items[i].tags?.[0] || `_${i}`;
+          if (!seenCats.has(cat)) {
+            seenCats.add(cat);
             promoted.push(...items.splice(i, 1));
             i--;
           }
         }
+      }
 
-        return [...promoted, ...items];
-      })();
+      // Second pass: fill remaining slots with any summary items
+      for (let i = 0; i < items.length && promoted.length < 3; i++) {
+        if (items[i].summary?.short_article?.body) {
+          promoted.push(...items.splice(i, 1));
+          i--;
+        }
+      }
+
+      return [...promoted, ...items];
+    })();
 
   // Find selected item
-  const selectedItem = selectedItemId 
+  const selectedItem = selectedItemId
     ? filteredFeed.find(item => item.id === selectedItemId) || currentFeed.find(item => item.id === selectedItemId)
     : null;
 
@@ -712,10 +760,21 @@ function FeedPageContent() {
 
   useEffect(() => {
     if (activeFilter === 'all') return;
+    
+    // Check if it's a category filter
+    if (activeFilter.startsWith('category:')) {
+      const categoryExists = categoryFilters.some((filter) => filter.id === activeFilter);
+      if (!categoryExists) {
+        setActiveFilter('all');
+      }
+      return;
+    }
+    
+    // Check if it's a topic filter
     if (!topicFilters.some((filter) => filter.id === activeFilter)) {
       setActiveFilter('all');
     }
-  }, [activeFilter, topicFilters]);
+  }, [activeFilter, topicFilters, categoryFilters]);
 
   useEffect(() => {
     if (profile) {
@@ -965,11 +1024,11 @@ function FeedPageContent() {
 
   const handleUpvote = async (itemId: string, note?: string) => {
     console.log('Upvoted:', itemId);
-    
+
     if (Object.keys(interactions).length === 0 && user && feedDate) {
       await loadInteractions(user.uid, feedDate);
     }
-    
+
     const item = feed.find(i => i.id === itemId);
     trackFeedItemUpvoted(itemId, item?.type || item?.source || 'unknown');
     recordInteraction(itemId, 'upvote', note);
@@ -978,11 +1037,11 @@ function FeedPageContent() {
 
   const handleDownvote = async (itemId: string, note?: string) => {
     console.log('Downvoted:', itemId, note ? `with note: ${note}` : '');
-    
+
     if (Object.keys(interactions).length === 0 && user && feedDate) {
       await loadInteractions(user.uid, feedDate);
     }
-    
+
     const item = feed.find(i => i.id === itemId);
     trackFeedItemDownvoted(itemId, item?.type || item?.source || 'unknown');
     recordInteraction(itemId, 'downvote', note);
@@ -1064,7 +1123,7 @@ function FeedPageContent() {
     const item = filteredFeed.find(i => i.id === itemId);
     if (item) {
       trackFeedItemClicked(itemId, item.type || item.source || 'blog', item.source || 'unknown');
-      
+
       // If item has summary, go to article view; otherwise open original link
       const hasSummary = Boolean(item.summary?.short_article?.body);
       if (hasSummary) {
@@ -1291,18 +1350,45 @@ function FeedPageContent() {
         {/* Mobile filters */}
         <div className="md:hidden overflow-x-auto mb-4 px-4 scrollbar-hide">
           <div className="flex items-center gap-2 pb-2">
-            {[
-              { id: 'all', label: showPersonalizedFeed ? 'For you' : 'Discover' },
-              ...topicFilters,
-            ].map(filter => {
+            <button
+              onClick={() => setActiveFilter('all')}
+              className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${activeFilter === 'all'
+                ? 'bg-foreground text-background'
+                : 'bg-gray-100 dark:bg-gray-800 text-secondary hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+            >
+              {showPersonalizedFeed ? 'All' : 'Discover'}
+            </button>
+            
+            {categoryFilters.map(filter => {
               const isActive = activeFilter === filter.id;
               return (
                 <button
                   key={filter.id}
                   onClick={() => setActiveFilter(filter.id as FilterType)}
                   className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${isActive
-                      ? 'bg-foreground text-background'
-                      : 'bg-gray-100 dark:bg-gray-800 text-secondary hover:bg-gray-200 dark:hover:bg-gray-700'
+                    ? 'bg-foreground text-background'
+                    : 'bg-gray-100 dark:bg-gray-800 text-secondary hover:bg-gray-200 dark:hover:bg-gray-700'
+                    }`}
+                >
+                  {filter.label}
+                </button>
+              );
+            })}
+            
+            {categoryFilters.length > 0 && topicFilters.length > 0 && (
+              <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1" />
+            )}
+            
+            {topicFilters.map(filter => {
+              const isActive = activeFilter === filter.id;
+              return (
+                <button
+                  key={filter.id}
+                  onClick={() => setActiveFilter(filter.id as FilterType)}
+                  className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${isActive
+                    ? 'bg-foreground text-background'
+                    : 'bg-gray-100 dark:bg-gray-800 text-secondary hover:bg-gray-200 dark:hover:bg-gray-700'
                     }`}
                 >
                   {filter.label}
@@ -1314,8 +1400,7 @@ function FeedPageContent() {
 
         <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 md:flex md:gap-8">
           {/* Filters - left sidebar, sticky (desktop only) */}
-          <aside className={`hidden md:block w-48 shrink-0 sticky h-fit ${
-            (profile && !profile.onboarded) || (!hasAccess && profile)
+          <aside className={`hidden md:block w-48 shrink-0 sticky h-fit ${(profile && !profile.onboarded) || (!hasAccess && profile)
               ? 'top-40'
               : 'top-24'
             }`}>
@@ -1323,18 +1408,46 @@ function FeedPageContent() {
               <h2 className="text-xs font-medium tracking-wider text-secondary/60 mb-4 px-3 lowercase">
                 Filters
               </h2>
-              {[
-                { id: 'all', label: showPersonalizedFeed && !isFallbackFeed ? 'For you' : 'Discover' },
-                ...topicFilters,
-              ].map(filter => {
+              
+              <button
+                onClick={() => setActiveFilter('all')}
+                className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium transition-all lowercase ${activeFilter === 'all'
+                  ? 'text-foreground bg-gray-100 dark:bg-gray-800'
+                  : 'text-secondary/70 hover:text-foreground hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                  }`}
+              >
+                {showPersonalizedFeed && !isFallbackFeed ? 'All' : 'Discover'}
+              </button>
+              
+              {categoryFilters.map(filter => {
                 const isActive = activeFilter === filter.id;
                 return (
                   <button
                     key={filter.id}
                     onClick={() => setActiveFilter(filter.id as FilterType)}
                     className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium transition-all lowercase ${isActive
-                        ? 'text-foreground bg-gray-100 dark:bg-gray-800'
-                        : 'text-secondary/70 hover:text-foreground hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                      ? 'text-foreground bg-gray-100 dark:bg-gray-800'
+                      : 'text-secondary/70 hover:text-foreground hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                      }`}
+                  >
+                    {filter.label}
+                  </button>
+                );
+              })}
+              
+              {categoryFilters.length > 0 && topicFilters.length > 0 && (
+                <div className="my-3 mx-3 border-t border-gray-200 dark:border-gray-700" />
+              )}
+              
+              {topicFilters.map(filter => {
+                const isActive = activeFilter === filter.id;
+                return (
+                  <button
+                    key={filter.id}
+                    onClick={() => setActiveFilter(filter.id as FilterType)}
+                    className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium transition-all lowercase ${isActive
+                      ? 'text-foreground bg-gray-100 dark:bg-gray-800'
+                      : 'text-secondary/70 hover:text-foreground hover:bg-gray-50 dark:hover:bg-gray-800/50'
                       }`}
                   >
                     {filter.label}
@@ -1350,7 +1463,7 @@ function FeedPageContent() {
             {isFallbackFeed && feedGenActive && (
               <div className="mb-4 md:mb-6 p-4 md:p-5 bg-linear-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 rounded-xl border border-violet-100 dark:border-violet-900/40">
                 <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0">
                     <Loader2 size={20} className="text-violet-600 dark:text-violet-400 animate-spin" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -1361,7 +1474,7 @@ function FeedPageContent() {
                       Trace is analyzing your interests to find the best content. This usually takes about a minute.
                     </p>
                     <div className="w-full bg-violet-100 rounded-full h-1.5 overflow-hidden">
-                      <div 
+                      <div
                         className="bg-violet-500 h-full rounded-full transition-all duration-1000 ease-linear"
                         style={{ width: `${((90 - feedGenTimeRemaining) / 90) * 100}%` }}
                       />
@@ -1428,11 +1541,11 @@ function FeedPageContent() {
                 <div className="divide-y divide-gray-200 dark:divide-gray-800">
                   {filteredFeed.map((item, index) => (
                     <React.Fragment key={item.id}>
-                    <FeedListItem
-                      item={item}
-                      onClick={() => handleItemClick(item.id)}
-                      showSubscribeCta={!hasAccess && !item.summary?.short_article?.subtitle}
-                    />
+                      <FeedListItem
+                        item={item}
+                        onClick={() => handleItemClick(item.id)}
+                        showSubscribeCta={!hasAccess && !item.summary?.short_article?.subtitle}
+                      />
                       {canShowTraceInsight && index === insightInsertIndex && traceInsights && (
                         <div className="py-3 md:py-4" key="trace-insight-card">
                           <TraceInsightCard

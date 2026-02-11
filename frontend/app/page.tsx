@@ -82,7 +82,7 @@ const NewsletterSignupSection = () => {
           transition={{ duration: 0.5 }}
           className="max-w-6xl mx-auto text-center"
         >
-            <p className="text-sm text-secondary mb-3 font-sans">
+          <p className="text-sm text-secondary mb-3 font-sans">
             Get a daily digest of the best reads from across the web — free in your inbox.
           </p>
 
@@ -128,6 +128,83 @@ const NewsletterSignupSection = () => {
         </motion.div>
       </div>
     </section>
+  );
+};
+
+// --- Badge Marquee Component ---
+const BadgeMarquee = () => {
+  const badges = [
+    {
+      src: "https://neeed.directory/badges/neeed-badge-light.svg",
+      darkSrc: "https://neeed.directory/badges/neeed-badge-dark.svg",
+      alt: "Featured on neeed.directory",
+      href: "https://neeed.directory/products/trace?utm_source=trace",
+      width: 140,
+    },
+    {
+      src: "https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1064894&amp;theme=light&amp;t=1770707483335",
+      alt: "Featured on Product Hunt",
+      href: "https://www.producthunt.com/products/trace-23/launches/trace-529d0891-421d-450f-8263-879fe3b9370c?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-trace-529d0891-421d-450f-8263-879fe3b9370c",
+      width: 190,
+    },
+    {
+      src: "https://foundrlist.com/api/badge/trace",
+      alt: "Live on FoundrList",
+      href: "https://foundrlist.com/product/trace",
+      width: 106,
+    },
+    // Add more badges here as you get featured on more platforms
+    // {
+    //   src: "https://producthunt.com/badge.svg",
+    //   alt: "Featured on Product Hunt",
+    //   href: "https://producthunt.com/...",
+    //   width: 139,
+    // },
+  ];
+
+  // Duplicate badges for seamless loop
+  const duplicatedBadges = [...badges, ...badges];
+
+  return (
+    <div className="overflow-hidden py-6 relative">
+      <div className="flex gap-8 animate-marquee">
+        {duplicatedBadges.map((badge, idx) => (
+          <a
+            key={idx}
+            href={badge.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 opacity-80 hover:opacity-100 transition-opacity"
+          >
+            <img
+              src={badge.src}
+              alt={badge.alt}
+              width={badge.width}
+              className="h-auto dark:hidden"
+            />
+            {badge.darkSrc && (
+              <img
+                src={badge.darkSrc}
+                alt={badge.alt}
+                width={badge.width}
+                className="h-auto hidden dark:block"
+              />
+            )}
+            {!badge.darkSrc && (
+              <img
+                src={badge.src}
+                alt={badge.alt}
+                width={badge.width}
+                className="h-auto hidden dark:block"
+              />
+            )}
+          </a>
+        ))}
+      </div>
+      {/* Gradient fades on sides */}
+      <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-background to-transparent pointer-events-none" />
+      <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-background to-transparent pointer-events-none" />
+    </div>
   );
 };
 
@@ -363,234 +440,6 @@ const GridBackground = () => (
   </div>
 );
 
-// --- Flow Diagram Component ---
-const FlowDiagram = () => {
-  const sources = [
-    { icon: Youtube, name: 'YouTube', color: 'text-red-500' },
-    { icon: Github, name: 'GitHub', color: 'text-purple-500' },
-    { icon: BookOpen, name: 'Research', color: 'text-blue-500' },
-    { icon: Sparkles, name: 'More', color: 'text-amber-500' },
-  ];
-
-  return (
-    <div className="relative w-full h-full min-h-[300px] md:min-h-[400px] flex items-center justify-center hidden md:block">
-      {/* Source Nodes - Stacked vertically on the left */}
-      <div className="absolute left-0 top-1/2 -translate-y-3/5 flex flex-col gap-3 md:gap-5">
-        {sources.map((source, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 + i * 0.1 }}
-          >
-            <div className="flex items-center gap-2 md:gap-3">
-              <div className={cn("w-8 h-8 md:w-12 md:h-12 bg-background border border-border flex items-center justify-center", source.color)}>
-                <source.icon size={16} className="md:hidden" strokeWidth={1.5} />
-                <source.icon size={22} className="hidden md:block" strokeWidth={1.5} />
-              </div>
-              <span className="text-[8px] md:text-[9px] font-mono uppercase tracking-widest text-secondary">
-                {source.name}
-              </span>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Animated Lines */}
-      <svg className="absolute inset-0 w-full h-full overflow-visible" style={{ zIndex: 1 }}>
-        {/* Source 1 to Agent - Mobile responsive paths */}
-        <motion.path
-          d="M 80 60 Q 130 60 160 130"
-          className="md:hidden text-border"
-          stroke="currentColor"
-          strokeWidth="1"
-          fill="none"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 1, delay: 0.6 }}
-        />
-        <motion.path
-          d="M 120 85 Q 190 85 230 175"
-          className="hidden md:block text-border"
-          stroke="currentColor"
-          strokeWidth="1"
-          fill="none"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 1, delay: 0.6 }}
-        />
-        {/* Source 2 to Agent */}
-        <motion.path
-          d="M 80 95 Q 120 95 160 130"
-          className="md:hidden text-border"
-          stroke="currentColor"
-          strokeWidth="1"
-          fill="none"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 1, delay: 0.7 }}
-        />
-        <motion.path
-          d="M 120 145 Q 175 145 230 175"
-          className="hidden md:block text-border"
-          stroke="currentColor"
-          strokeWidth="1"
-          fill="none"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 1, delay: 0.7 }}
-        />
-        {/* Source 3 to Agent */}
-        <motion.path
-          d="M 80 130 Q 120 130 160 130"
-          className="md:hidden text-border"
-          stroke="currentColor"
-          strokeWidth="1"
-          fill="none"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 1, delay: 0.8 }}
-        />
-        <motion.path
-          d="M 120 205 Q 175 205 230 175"
-          className="hidden md:block text-border"
-          stroke="currentColor"
-          strokeWidth="1"
-          fill="none"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 1, delay: 0.8 }}
-        />
-        {/* Source 4 to Agent */}
-        <motion.path
-          d="M 80 165 Q 130 165 160 130"
-          className="md:hidden text-border"
-          stroke="currentColor"
-          strokeWidth="1"
-          fill="none"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 1, delay: 0.9 }}
-        />
-        <motion.path
-          d="M 120 265 Q 190 265 230 175"
-          className="hidden md:block text-border"
-          stroke="currentColor"
-          strokeWidth="1"
-          fill="none"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 1, delay: 0.9 }}
-        />
-        {/* Agent to Feed - Mobile */}
-        <motion.line
-          x1="220" y1="130" x2="280" y2="130"
-          className="md:hidden text-primary"
-          stroke="currentColor"
-          strokeWidth="2"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 0.8, delay: 1.2 }}
-        />
-        <motion.line
-          x1="320" y1="175" x2="400" y2="175"
-          className="hidden md:block text-primary"
-          stroke="currentColor"
-          strokeWidth="2"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 0.8, delay: 1.2 }}
-        />
-        {/* Arrow head - Mobile */}
-        <motion.polygon
-          points="275,125 285,130 275,135"
-          fill="currentColor"
-          className="md:hidden text-primary"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5 }}
-        />
-        <motion.polygon
-          points="395,170 405,175 395,180"
-          fill="currentColor"
-          className="hidden md:block text-primary"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5 }}
-        />
-      </svg>
-
-      {/* Central Agent Node */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.8, delay: 1 }}
-        className="absolute left-[160px] md:left-[230px] top-1/2 -translate-y-[80%]"
-        style={{ zIndex: 2 }}
-      >
-        <div className="relative">
-          <div className="w-14 h-14 md:w-20 md:h-20 bg-primary text-primary-foreground flex items-center justify-center">
-            <Brain size={28} className="md:hidden" strokeWidth={1.5} />
-            <Brain size={36} className="hidden md:block" strokeWidth={1.5} />
-          </div>
-          <div className="absolute -bottom-6 md:-bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[8px] md:text-[9px] font-mono uppercase tracking-widest text-foreground font-bold">
-            AI Agent
-          </div>
-          <motion.div
-            className="absolute inset-0 border border-primary"
-            initial={{ scale: 1, opacity: 0.5 }}
-            animate={{ scale: 1.5, opacity: 0 }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
-          />
-        </div>
-      </motion.div>
-
-      {/* Feed Output */}
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.8, delay: 1.5 }}
-        className="absolute left-[290px] md:left-[410px] top-1/2 -translate-y-[90%]"
-        style={{ zIndex: 2 }}
-      >
-        <div className="relative flex items-center gap-2 md:gap-3">
-          <div className="w-10 h-10 md:w-14 md:h-14 bg-background border-2 border-primary flex items-center justify-center text-primary">
-            <Layers size={20} className="md:hidden" strokeWidth={1.5} />
-            <Layers size={26} className="hidden md:block" strokeWidth={1.5} />
-          </div>
-          <span className="text-[8px] md:text-[9px] font-mono uppercase tracking-widest text-foreground font-bold">
-            Your Feed
-          </span>
-        </div>
-      </motion.div>
-
-      {/* Floating Particles around agent */}
-      {[
-        { left: '52%', top: '30%', duration: 2.5 },
-        { left: '58%', top: '35%', duration: 3 },
-        { left: '55%', top: '45%', duration: 2.8 },
-      ].map((particle, i) => (
-        <motion.div
-          key={`particle-${i}`}
-          className="absolute w-1 h-1 bg-primary/60 rounded-full"
-          style={{
-            left: particle.left,
-            top: particle.top,
-          }}
-          animate={{
-            y: [0, -8, 0],
-            opacity: [0.2, 0.6, 0.2],
-          }}
-          transition={{
-            duration: particle.duration,
-            repeat: Infinity,
-            delay: i * 0.3,
-          }}
-        />
-      ))}
-    </div>
-  );
-};
 
 // --- Hero Component ---
 const Hero = () => {
@@ -756,6 +605,7 @@ const Hero = () => {
                     </span>
                   </div>
                 </motion.div>
+                <BadgeMarquee />
               </>
             )}
           </div>
@@ -1680,9 +1530,8 @@ const HeroDemo = () => {
                   {DEMO_FILTERS.slice(0, 4).map((filter, i) => (
                     <div
                       key={filter.id}
-                      className={`px-3 py-1 rounded-full text-[11px] font-medium ${
-                        i === 0 ? 'bg-foreground text-background' : 'bg-gray-100 dark:bg-gray-800 text-secondary'
-                      }`}
+                      className={`px-3 py-1 rounded-full text-[11px] font-medium ${i === 0 ? 'bg-foreground text-background' : 'bg-gray-100 dark:bg-gray-800 text-secondary'
+                        }`}
                     >
                       {filter.label}
                     </div>
@@ -1774,11 +1623,10 @@ const HeroDemo = () => {
                   {/* Vote actions */}
                   <div className="flex items-center gap-2 mt-6 pt-4 border-t border-border/30">
                     <div
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-200 ${
-                        thumbsUp
-                          ? 'bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400'
-                          : 'text-secondary/40'
-                      }`}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-200 ${thumbsUp
+                        ? 'bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400'
+                        : 'text-secondary/40'
+                        }`}
                     >
                       <ThumbsUp size={13} fill={thumbsUp ? 'currentColor' : 'none'} strokeWidth={1.5} />
                       <span>Useful</span>
