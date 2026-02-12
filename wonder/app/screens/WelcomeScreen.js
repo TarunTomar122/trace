@@ -22,29 +22,54 @@ export default function WelcomeScreen() {
   const { colors } = useTheme();
   const [loading, setLoading] = useState(false);
 
+  const finishAuthFromUrl = async (url) => {
+    if (!url) return false;
+
+    // Handle PKCE callback: wonder://auth/callback?code=...
+    const query = url.includes('?') ? url.split('?')[1].split('#')[0] : '';
+    const queryParams = new URLSearchParams(query);
+    const code = queryParams.get('code');
+    if (code) {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) {
+        console.error('exchangeCodeForSession error:', error.message);
+        return false;
+      }
+      return true;
+    }
+
+    // Handle implicit callback: wonder://auth/callback#access_token=...&refresh_token=...
+    const fragment = url.includes('#') ? url.split('#')[1] : '';
+    const hashParams = new URLSearchParams(fragment);
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+    if (accessToken && refreshToken) {
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      if (error) {
+        console.error('setSession error:', error.message);
+        return false;
+      }
+      return true;
+    }
+
+    return false;
+  };
+
   // Listen for OAuth redirect
   useEffect(() => {
     const handleUrl = async (event) => {
       const url = event.url;
       if (url?.includes('auth/callback')) {
         try {
-          const parsedUrl = new URL(url);
-          const fragment = parsedUrl.hash?.substring(1);
-          const params = new URLSearchParams(fragment);
-
-          const accessToken = params.get('access_token');
-          const refreshToken = params.get('refresh_token');
-
-          if (accessToken && refreshToken) {
-            await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            });
-          }
+          await finishAuthFromUrl(url);
         } catch (e) {
           console.error('Error handling redirect:', e);
+        } finally {
+          setLoading(false);
         }
-        setLoading(false);
       }
     };
 
@@ -77,11 +102,17 @@ export default function WelcomeScreen() {
       }
 
       if (data?.url) {
-        // Open Supabase's auth URL in a browser
-        await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+        // Open Supabase's auth URL and process return URL directly.
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+        if (result?.type === 'success' && result.url) {
+          await finishAuthFromUrl(result.url);
+        } else if (result?.type !== 'cancel') {
+          console.log('OAuth result:', result?.type);
+        }
       }
     } catch (e) {
       console.error('Sign-in failed:', e);
+    } finally {
       setLoading(false);
     }
   }
@@ -92,7 +123,7 @@ export default function WelcomeScreen() {
       <View style={styles.brandSection}>
         <Text style={[styles.logo, { color: colors.accent }]}>wonder</Text>
         <Text style={[styles.tagline, { color: colors.textSecondary }]}>
-          big ideas from great books,{'\n'}one card at a time
+          big ideas from books, articles, and videos,{'\n'}one card at a time
         </Text>
       </View>
 

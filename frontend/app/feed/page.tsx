@@ -31,7 +31,16 @@ import Header from '@/components/Header';
 import { getUserPatterns } from '@/lib/firestore';
 import { buildTraceInsights, TraceInsights } from '@/lib/traceInsights';
 import TraceInsightCard from '@/components/TraceInsightCard';
-import { trackFeedViewed, trackFeedItemUpvoted, trackFeedItemDownvoted, trackFeedItemBookmarked, trackFeedItemClicked } from '@/lib/posthog';
+import {
+  trackFeedViewed,
+  trackFeedItemUpvoted,
+  trackFeedItemDownvoted,
+  trackFeedItemBookmarked,
+  trackFeedItemClicked,
+  trackSummaryOpened,
+  trackPaywallShown,
+  trackCheckoutClicked,
+} from '@/lib/posthog';
 import remarkGfm from 'remark-gfm';
 
 type FeedItem = {
@@ -568,11 +577,13 @@ function ArticleView({
 }
 
 type FilterType = 'all' | 'category:for-you' | 'category:trending' | 'category:suggested' | string;
+const FREE_SUMMARY_UNLOCK_COUNT = 1;
 
 function FeedPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedItemId = searchParams.get('item');
+  const fromOnboarding = searchParams.get('from') === 'onboarding';
 
   const { user, loading, profile } = useAuth();
   const [feed, setFeed] = useState<FeedItem[]>([]);
@@ -585,6 +596,9 @@ function FeedPageContent() {
   const [generalFeed, setGeneralFeed] = useState<FeedItem[]>([]);
   const [isLoadingGeneral, setIsLoadingGeneral] = useState(false);
   const [showSubscribePrompt, setShowSubscribePrompt] = useState(false);
+  const [subscribePromptSource, setSubscribePromptSource] = useState<'summary_gate' | 'engagement_gate' | 'post_onboarding_gate' | 'manual'>('manual');
+  const [summaryOpenCount, setSummaryOpenCount] = useState(0);
+  const [showPostOnboardingGate, setShowPostOnboardingGate] = useState(false);
   const [bookmarkedItems, setBookmarkedItems] = useState<Set<string>>(new Set());
   const [loadingBookmarks, setLoadingBookmarks] = useState<Set<string>>(new Set());
   const [bookmarksLoaded, setBookmarksLoaded] = useState(false);
@@ -598,6 +612,7 @@ function FeedPageContent() {
   const [feedMetadata, setFeedMetadata] = useState<FeedMetadata | null>(null);
   const isLoadingRef = useRef(false);
   const hasLoadedInitialFeed = useRef(false);
+  const postOnboardingGateHandled = useRef(false);
 
   const [feedGenTimeRemaining, setFeedGenTimeRemaining] = useState(90);
   const [feedGenActive, setFeedGenActive] = useState(false);
@@ -620,6 +635,18 @@ function FeedPageContent() {
   const showPersonalizedFeed = isOnboarded;
   const isFallbackFeed = showPersonalizedFeed && !isFeedLoading && feed.length === 0;
   const currentFeed = isFallbackFeed ? generalFeed : (!showPersonalizedFeed ? generalFeed : feed);
+
+  const openSubscribePrompt = useCallback(
+    (
+      source: 'summary_gate' | 'engagement_gate' | 'post_onboarding_gate' | 'manual',
+      props?: Record<string, unknown>,
+    ) => {
+      setSubscribePromptSource(source);
+      setShowSubscribePrompt(true);
+      trackPaywallShown(source, props);
+    },
+    [],
+  );
 
   const normalizeInterest = (interest: string) => {
     return interest
@@ -715,30 +742,26 @@ function FeedPageContent() {
       });
 
   // For subscribed users: only show items with summaries
-  // For unsubscribed users: bubble up to 3 summary items (different topics) to the top
+  // For unsubscribed users: keep only a single free summary sample at the top.
   const filteredFeed = hasAccess
-    ? filteredByTopic.filter((item) => item.summary?.short_article?.body)
+    ? filteredByTopic.filter((item) =>
+        item.summary?.short_article?.body ||
+        item.metadata?.feed_category === 'trending_news'
+      )
     : (() => {
       const items = [...filteredByTopic];
       const promoted: FeedItem[] = [];
-      const seenCats = new Set<string>();
-
-      // First pass: one summary item per unique category (up to 3)
-      for (let i = 0; i < items.length && promoted.length < 3; i++) {
+      for (let i = 0; i < items.length && promoted.length < FREE_SUMMARY_UNLOCK_COUNT; i++) {
         if (items[i].summary?.short_article?.body) {
-          const cat = items[i].metadata?.feed_category || items[i].tags?.[0] || `_${i}`;
-          if (!seenCats.has(cat)) {
-            seenCats.add(cat);
-            promoted.push(...items.splice(i, 1));
-            i--;
-          }
-        }
-      }
-
-      // Second pass: fill remaining slots with any summary items
-      for (let i = 0; i < items.length && promoted.length < 3; i++) {
-        if (items[i].summary?.short_article?.body) {
-          promoted.push(...items.splice(i, 1));
+          const sampleItem = {
+            ...items[i],
+            metadata: {
+              ...(items[i].metadata || {}),
+              feed_category: 'sample_summary',
+            },
+          };
+          promoted.push(sampleItem);
+          items.splice(i, 1);
           i--;
         }
       }
@@ -804,6 +827,23 @@ function FeedPageContent() {
       setHasAccess(hasValidAccess);
     }
   }, [profile]);
+
+  useEffect(() => {
+    if (!user || !profile?.onboarded || hasAccess || postOnboardingGateHandled.current) return;
+    if (!fromOnboarding) return;
+
+    const gateKey = `post_onboarding_gate_seen:${user.uid}`;
+    const alreadySeen = typeof window !== 'undefined' && sessionStorage.getItem(gateKey) === '1';
+    if (alreadySeen) return;
+
+    postOnboardingGateHandled.current = true;
+    setShowPostOnboardingGate(true);
+    openSubscribePrompt('post_onboarding_gate');
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(gateKey, '1');
+    }
+    router.replace('/feed');
+  }, [user, profile, hasAccess, fromOnboarding, router, openSubscribePrompt]);
 
   useEffect(() => {
     if (!isAlphaMode()) {
@@ -966,14 +1006,18 @@ function FeedPageContent() {
   }, [user, loading, showPersonalizedFeed, loadFeed, loadGeneralFeed]);
 
   useEffect(() => {
-    if (!showPersonalizedFeed || !isFallbackFeed || feedGenActive) return;
+    if (!showPersonalizedFeed || !isFallbackFeed) {
+      setFeedGenActive(false);
+      setFeedGenTimeRemaining(90);
+      feedGenRefreshAttempted.current = false;
+      return;
+    }
 
     setFeedGenActive(true);
 
     const timer = setInterval(() => {
       setFeedGenTimeRemaining((prev) => {
         if (prev <= 1) {
-          clearInterval(timer);
           return 0;
         }
         return prev - 1;
@@ -981,7 +1025,20 @@ function FeedPageContent() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [showPersonalizedFeed, isFallbackFeed, feedGenActive]);
+  }, [showPersonalizedFeed, isFallbackFeed]);
+
+  // While fallback feed is showing, keep checking for personalized feed readiness.
+  useEffect(() => {
+    if (!showPersonalizedFeed || !isFallbackFeed || !user) return;
+
+    const poll = setInterval(() => {
+      if (!isLoadingRef.current) {
+        loadFeed(user.uid);
+      }
+    }, 15000);
+
+    return () => clearInterval(poll);
+  }, [showPersonalizedFeed, isFallbackFeed, user, loadFeed]);
 
   useEffect(() => {
     if (feedGenTimeRemaining !== 0 || feedGenRefreshAttempted.current) return;
@@ -1127,6 +1184,18 @@ function FeedPageContent() {
       // If item has summary, go to article view; otherwise open original link
       const hasSummary = Boolean(item.summary?.short_article?.body);
       if (hasSummary) {
+        const isSample = item.metadata?.feed_category === 'sample_summary';
+        if (!hasAccess && !isSample) {
+          openSubscribePrompt('summary_gate', {
+            item_id: itemId,
+            summary_open_count: summaryOpenCount,
+          });
+          return;
+        }
+        trackSummaryOpened(itemId, hasAccess);
+        if (!hasAccess) {
+          setSummaryOpenCount((prev) => prev + 1);
+        }
         router.push(`/feed?item=${itemId}`);
         window.scrollTo(0, 0);
       } else {
@@ -1139,6 +1208,31 @@ function FeedPageContent() {
     router.push('/feed');
     window.scrollTo(0, 0);
   };
+
+  const subscribeModalContent = (() => {
+    if (subscribePromptSource === 'post_onboarding_gate' || showPostOnboardingGate) {
+      return {
+        title: 'Your personalized feed is ready. Unlock full access?',
+        body:
+          'You just set up your interests. Start your trial to unlock every summary, daily premium curation, and a newsletter tuned to your topics.',
+        cta: 'Start 3-day trial',
+      };
+    }
+    if (subscribePromptSource === 'engagement_gate') {
+      return {
+        title: 'Unlock full feed + actions',
+        body:
+          'You are engaging like a power user. Subscribe to unlock all summaries, voting, notes, and smarter daily recommendations.',
+        cta: 'Unlock full feed',
+      };
+    }
+    return {
+      title: 'Unlock the full feed',
+      body:
+        'Subscribe to unlock summaries for every article. Your interactions help Trace learn what to curate for you across hundreds of sources.',
+      cta: 'Unlock full feed',
+    };
+  })();
 
   if (loading || !user) {
     return (
@@ -1165,7 +1259,12 @@ function FeedPageContent() {
             initialBookmarked={bookmarkedItems.has(selectedItem.id)}
             isBookmarkLoading={loadingBookmarks.has(selectedItem.id)}
             disabled={!hasAccess}
-            onDisabledClick={() => setShowSubscribePrompt(true)}
+            onDisabledClick={() =>
+              openSubscribePrompt('engagement_gate', {
+                context: 'article_actions_disabled',
+                item_id: selectedItem.id,
+              })
+            }
             hasAccess={hasAccess}
           />
         </main>
@@ -1178,7 +1277,10 @@ function FeedPageContent() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm px-4"
-              onClick={() => setShowSubscribePrompt(false)}
+              onClick={() => {
+                setShowSubscribePrompt(false);
+                setShowPostOnboardingGate(false);
+              }}
             >
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
@@ -1191,23 +1293,31 @@ function FeedPageContent() {
                   <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                     <Brain size={22} className="text-primary" />
                   </div>
-                  <h3 className="text-lg font-semibold">Unlock the full feed</h3>
+                  <h3 className="text-lg font-semibold">{subscribeModalContent.title}</h3>
                 </div>
                 <p className="text-sm text-secondary mb-6">
-                  Subscribe to unlock summaries for every article. Your interactions help Trace learn what to curate for you across hundreds of sources.
+                  {subscribeModalContent.body}
                 </p>
                 <div className="flex gap-3">
                   <button
-                    onClick={() => setShowSubscribePrompt(false)}
+                    onClick={() => {
+                      setShowSubscribePrompt(false);
+                      setShowPostOnboardingGate(false);
+                    }}
                     className="flex-1 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-secondary hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   >
                     Not now
                   </button>
                   <Link
                     href="/profile?tab=subscription"
+                    onClick={() =>
+                      trackCheckoutClicked(subscribePromptSource, {
+                        from_onboarding: showPostOnboardingGate,
+                      })
+                    }
                     className="flex-1 px-4 py-3 rounded-xl bg-accent text-accent-foreground text-sm font-medium text-center hover:bg-accent/90 transition-colors"
                   >
-                    Unlock full feed
+                    {subscribeModalContent.cta}
                   </Link>
                 </div>
               </motion.div>
@@ -1288,7 +1398,10 @@ function FeedPageContent() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm px-4"
-            onClick={() => setShowSubscribePrompt(false)}
+            onClick={() => {
+              setShowSubscribePrompt(false);
+              setShowPostOnboardingGate(false);
+            }}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
@@ -1301,23 +1414,31 @@ function FeedPageContent() {
                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                   <Brain size={22} className="text-primary" />
                 </div>
-                <h3 className="text-lg font-semibold">Unlock the full feed</h3>
+                <h3 className="text-lg font-semibold">{subscribeModalContent.title}</h3>
               </div>
               <p className="text-sm text-secondary mb-6">
-                Subscribe to unlock the full daily feed. Your interactions teach Trace what to find and what to skip, so it gets smarter every day.
+                {subscribeModalContent.body}
               </p>
               <div className="flex gap-3">
                 <button
-                  onClick={() => setShowSubscribePrompt(false)}
+                  onClick={() => {
+                    setShowSubscribePrompt(false);
+                    setShowPostOnboardingGate(false);
+                  }}
                   className="flex-1 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-secondary hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
                   Not now
                 </button>
                 <Link
                   href="/profile?tab=subscription"
+                  onClick={() =>
+                    trackCheckoutClicked(subscribePromptSource, {
+                      from_onboarding: showPostOnboardingGate,
+                    })
+                  }
                   className="flex-1 px-4 py-3 rounded-xl bg-accent text-accent-foreground text-sm font-medium text-center hover:bg-accent/90 transition-colors"
                 >
-                  Unlock full feed
+                  {subscribeModalContent.cta}
                 </Link>
               </div>
             </motion.div>

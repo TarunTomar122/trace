@@ -345,7 +345,7 @@ export default function OnboardingPage() {
       await refreshProfile();
 
       if (isAlphaMode()) {
-        router.push('/feed');
+        router.push('/feed?from=onboarding');
       } else {
         router.push('/waitlist');
       }

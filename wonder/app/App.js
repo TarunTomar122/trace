@@ -6,12 +6,19 @@ import { NavigationContainer } from '@react-navigation/native';
 import { ThemeProvider, useTheme } from './ThemeContext';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import WelcomeScreen from './screens/WelcomeScreen';
+import OnboardingScreen from './screens/OnboardingScreen';
 import AppNavigator from './navigation/AppNavigator';
 import colors from './theme';
 
 function Main() {
   const { colors } = useTheme();
   const { session, loading } = useAuth();
+  const [onboardingDone, setOnboardingDone] = React.useState(false);
+
+  // For now, always run onboarding at app start.
+  if (!onboardingDone) {
+    return <OnboardingScreen onComplete={() => setOnboardingDone(true)} />;
+  }
 
   if (loading) {
     return (

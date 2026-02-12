@@ -320,7 +320,7 @@ const Nav = () => {
                 <div className="flex items-center gap-3">
                   <Link href="/profile" className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                     {user.photoURL && (
-                      <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" />
+                      <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" loading="lazy" />
                     )}
                     <span className="text-sm font-medium text-secondary">
                       {profile?.name?.split(' ')[0] || user.displayName?.split(' ')[0]}
@@ -352,7 +352,7 @@ const Nav = () => {
               {user ? (
                 <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                   {user.photoURL && (
-                    <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" />
+                    <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" loading="lazy" />
                   )}
                 </Link>
               ) : (
@@ -511,10 +511,9 @@ const Hero = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.1 }}
-                  className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-tight font-serif tracking-tight text-secondary/80 mb-4 md:mb-6"
+                  className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-tight font-serif tracking-tight text-foreground mb-4 md:mb-6"
                 >
-                  One feed.{' '}
-                  <span className="italic text-primary">Every source. Your topics.</span>
+                  Stop checking 10 apps every morning.
                 </motion.h1>
 
                 <motion.p
@@ -524,8 +523,8 @@ const Hero = () => {
                   className="text-base md:text-lg text-secondary leading-relaxed mb-4 max-w-md"
                 >
                   {isAlphaMode()
-                    ? "Trace pulls from YouTube, GitHub, Reddit, Hacker News, research papers, blogs, and more — so you never miss what matters in your world."
-                    : "Join the waitlist for early access. Trace pulls from hundreds of sources so you never have to check them all yourself."
+                    ? "Trace scans the sources you care about and gives you a short daily brief with links worth opening. Read fast. Stay sharp. Move on."
+                    : "Join the waitlist for early access. Trace scans the sources you care about and gives you a short daily brief with links worth opening."
                   }
                 </motion.p>
 
@@ -536,7 +535,7 @@ const Hero = () => {
                   className="flex flex-wrap gap-2 mb-6 md:mb-8"
                 >
                   {[
-                    "Your RSS for the web",
+                    "Your daily brief, personalized",
                   ].map((item) => (
                     <div
                       key={item}
@@ -627,7 +626,7 @@ const Hero = () => {
               <span className="text-secondary/60 text-sm italic font-serif pb-3">This could be your feed</span>
               <img
                 src="/arrow.png"
-                alt=""
+                alt="Arrow pointing to feed preview"
                 className="w-6 h-6 opacity-50 pt-1"
               />
             </motion.div>
@@ -1501,7 +1500,7 @@ const HeroDemo = () => {
                 exit={{ opacity: 0 }}
                 className="flex items-center gap-2"
               >
-                <img src="/trace.png" alt="Trace" className="h-5 w-auto" />
+                <img src="/trace.png" alt="Trace" className="h-5 w-auto" loading="lazy" />
                 <span className="text-xs font-semibold text-foreground uppercase tracking-wider">Your Feed</span>
               </motion.div>
             )}
@@ -1779,6 +1778,7 @@ const DemoFeed = () => {
               src="/feed.png"
               alt="Trace Feed - Personalized content from across the web"
               className="w-full h-auto"
+              loading="lazy"
             />
           </div>
 
@@ -2803,7 +2803,7 @@ const GetStarted = () => {
               <div className="space-y-6 md:space-y-8">
                 <div className="flex flex-col items-center gap-3 md:gap-4">
                   {user.photoURL && (
-                    <img src={user.photoURL} alt="Profile" className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-gray-200 dark:border-gray-800" />
+                    <img src={user.photoURL} alt="Profile" className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-gray-200 dark:border-gray-800" loading="lazy" />
                   )}
                   <div>
                     <p className="text-lg md:text-xl font-semibold text-foreground mb-1">{profile?.name || user.displayName}</p>
@@ -2862,11 +2862,12 @@ const Footer = () => (
               src="/trace.png"
               alt="Trace Logo"
               className="h-7 md:h-9 w-auto object-contain"
+              loading="lazy"
             />
             TRACE
           </div>
           <p className="text-secondary text-sm leading-relaxed max-w-[240px]">
-            Your RSS for the web. One feed with content from hundreds of sources, curated around your interests.
+            Trace scans the sources you care about and gives you a short daily brief with links worth opening.
           </p>
         </div>
 

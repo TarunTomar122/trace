@@ -49,7 +49,7 @@ MAX_HOBBIES_DEFAULT = 3
 RESULTS_PER_SEARCH = 10
 # Fetch extra to compensate for filtered junk URLs (tag pages, homepages, etc.)
 EXA_OVERFETCH_BUFFER = 5
-LOOKBACK_DAYS_DEFAULT = 1095  # ~3 years — quality content doesn't expire fast
+LOOKBACK_DAYS_DEFAULT = 28  # 4 weeks for fresher feed content
 VIDEO_LOOKBACK_DAYS = 365  # 1 year for videos
 MIN_REFRESH_DAYS_DEFAULT = 6
 MIN_QUERY_POOL_ITEMS = 4

@@ -33,6 +33,7 @@ def add_trending_news_to_all_feeds(
     date: str | None = None,
     limit: int | None = None,
     subscribed_only: bool = False,
+    force: bool = False,
 ) -> dict:
     """
     Add trending news to feeds for all users.
@@ -41,6 +42,7 @@ def add_trending_news_to_all_feeds(
         date: Date string (YYYY-MM-DD), defaults to today IST
         limit: Max number of users to process
         subscribed_only: If True, only process subscribed users
+        force: If True, replace already-added trending news for the date
 
     Returns:
         Summary dict with counts
@@ -76,7 +78,11 @@ def add_trending_news_to_all_feeds(
     for i, user_id in enumerate(user_ids, 1):
         print(f"[{i}/{total}] Adding trending news for {user_id}...")
         try:
-            result = add_trending_news_to_feed(user_id, date)
+            result = add_trending_news_to_feed(
+                user_id=user_id,
+                date=date,
+                force=force,
+            )
             items_added = result.get("items_added", 0)
             total_items += items_added
             if items_added > 0:
@@ -89,7 +95,7 @@ def add_trending_news_to_all_feeds(
             print(f"  Error: {e}")
         time.sleep(0.1)
 
-    print(f"\nSummary:")
+    print("\nSummary:")
     print(f"  Users processed: {total}")
     print(f"  Success: {success}")
     print(f"  Failed: {failed}")
@@ -122,6 +128,11 @@ def main():
         action="store_true",
         help="Only process subscribed users",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace existing trending news items for the given date",
+    )
 
     args = parser.parse_args()
 
@@ -129,6 +140,7 @@ def main():
         date=args.date,
         limit=args.limit,
         subscribed_only=args.subscribed_only,
+        force=args.force,
     )
     print(f"\nDone. Total items added: {result['items_added']}")
 

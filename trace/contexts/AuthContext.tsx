@@ -84,26 +84,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = async () => {
     try {
       // Check if device supports Google Play (no-op on iOS)
+      console.log('[Auth] Checking Play Services...');
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      console.log('[Auth] Play Services OK. Starting Google Sign-In...');
 
       // Sign in with native Google Sign-In
       const signInResult = await GoogleSignin.signIn();
+      console.log('[Auth] Google Sign-In returned, checking token...');
       const idToken = signInResult.data?.idToken;
 
       if (!idToken) {
         throw new Error('No ID token received from Google Sign-In');
       }
+      console.log('[Auth] Got ID token. Signing into Firebase...');
+
+      // Quick network check
+      try {
+        const testResp = await fetch('https://identitytoolkit.googleapis.com/v1/projects', { method: 'HEAD' });
+        console.log('[Auth] Network to Firebase: reachable, status', testResp.status);
+      } catch (netErr) {
+        console.error('[Auth] Network to Firebase FAILED:', netErr);
+      }
 
       // Create Firebase credential from Google ID token
       const credential = GoogleAuthProvider.credential(idToken);
 
-      // Sign in to Firebase with the credential
-      const result = await signInWithCredential(auth, credential);
+      console.log('[Auth] Calling signInWithCredential...');
+      // Add timeout so it doesn't hang forever
+      const result = await Promise.race([
+        signInWithCredential(auth, credential),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('signInWithCredential timed out after 15s')), 15000)
+        ),
+      ]);
+      console.log('[Auth] Firebase sign-in complete. Loading profile...');
       
       // Load or create profile
       if (result.user) {
         await loadProfile(result.user);
       }
+      console.log('[Auth] Sign-in flow complete.');
     } catch (error) {
       console.error('Google Sign-In Error:', error);
       throw error;

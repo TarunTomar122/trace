@@ -134,3 +134,25 @@ export function trackSubscriptionCancelled(plan: string) {
   posthog.capture("subscription_cancelled", { plan });
 }
 
+// Conversion funnel events
+export function trackSummaryOpened(itemId: string, isPaidUser: boolean) {
+  posthog.capture("summary_opened", {
+    item_id: itemId,
+    is_paid_user: isPaidUser,
+  });
+}
+
+export function trackPaywallShown(source: string, props?: Record<string, unknown>) {
+  posthog.capture("paywall_shown", {
+    source,
+    ...props,
+  });
+}
+
+export function trackCheckoutClicked(source: string, props?: Record<string, unknown>) {
+  posthog.capture("checkout_clicked", {
+    source,
+    ...props,
+  });
+}
+

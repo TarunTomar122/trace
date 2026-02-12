@@ -3,8 +3,9 @@ Build trending news for a day using OpenAI web search.
 
 This flow:
 1. Uses canonical interests + subtopics from interest schema
-2. Runs one global web-search query per interest for last 24h
-3. Saves results to trending_news Firestore collection
+2. Runs multi-pass web search per interest (broad + subtopic-focused)
+3. Keeps only strict last-24-hours results
+4. Saves results to trending_news Firestore collection
 
 Usage:
     python v1/flows/build_trending_news_for_day.py
@@ -39,10 +40,21 @@ from v1.algorithm.interest_schema import (  # noqa: E402
 )
 
 
-MAX_NEWS_PER_TOPIC = 8
-DELAY_BETWEEN_SEARCHES = 0.2
+MAX_NEWS_PER_TOPIC = 12
 OPENAI_TRENDING_MODEL = os.getenv("OPENAI_TRENDING_MODEL", "gpt-4.1-mini")
-MAX_DAILY_INTERESTS = 5
+MAX_DAILY_INTERESTS = 4
+TRENDING_MAX_AGE_HOURS = 24
+IST_TZ = timezone(timedelta(hours=5, minutes=30))
+MAX_PROMPT_PASSES_PER_TOPIC = 6
+OPENAI_TIMEOUT_SECONDS = 90.0
+OPENAI_FETCH_RETRIES = 2
+
+try:
+    DELAY_BETWEEN_SEARCHES = float(
+        os.getenv("OPENAI_TRENDING_DELAY_SECONDS", "0.75")
+    )
+except ValueError:
+    DELAY_BETWEEN_SEARCHES = 0.75
 
 # Interests that consistently produce timely, useful "news" updates.
 NEWS_HEAVY_INTEREST_POOL = [
@@ -71,8 +83,39 @@ NEWS_INTEREST_PRIORITY = {
 
 def _get_today_ist_date() -> str:
     """Get today's date in IST timezone as YYYY-MM-DD string."""
-    ist_tz = timezone(timedelta(hours=5, minutes=30))
-    return datetime.now(ist_tz).strftime("%Y-%m-%d")
+    return datetime.now(IST_TZ).strftime("%Y-%m-%d")
+
+
+def _validate_date_string(date_str: str) -> str:
+    """Validate date format (YYYY-MM-DD) and return normalized value."""
+    value = (date_str or "").strip()
+    try:
+        parsed = datetime.strptime(value, "%Y-%m-%d")
+    except ValueError as exc:
+        raise ValueError(
+            "Invalid --date. Expected YYYY-MM-DD, got: "
+            f"{date_str!r}"
+        ) from exc
+    return parsed.strftime("%Y-%m-%d")
+
+
+def _reference_cutoff_utc(
+    reference_date: str | None = None,
+    max_age_hours: int = TRENDING_MAX_AGE_HOURS,
+) -> datetime:
+    """Build UTC cutoff for strict recent-content filtering."""
+    if reference_date:
+        ref_date = datetime.strptime(
+            _validate_date_string(reference_date), "%Y-%m-%d"
+        ).date()
+        ref_dt = datetime.combine(
+            ref_date,
+            datetime.max.time().replace(microsecond=0),
+            tzinfo=IST_TZ,
+        )
+    else:
+        ref_dt = datetime.now(IST_TZ)
+    return ref_dt.astimezone(timezone.utc) - timedelta(hours=max_age_hours)
 
 
 def _build_interest_topics(
@@ -261,25 +304,30 @@ def _normalize_url(url: str) -> str:
 
 def _is_recent_enough(
     published_date: str,
-    reference_date: str,
-    max_age_days: int = 2,
+    reference_date: str | None = None,
+    max_age_hours: int = TRENDING_MAX_AGE_HOURS,
 ) -> bool:
-    """Return True if published_date is within max_age_days of reference_date.
-    If parsing fails or date is missing, return True (do not hard-fail).
-    """
+    """Return True only when article timestamp is within max_age_hours."""
     if not published_date:
-        return True
+        return False
     try:
-        ref = datetime.strptime(reference_date, "%Y-%m-%d").date()
+        cutoff = _reference_cutoff_utc(
+            reference_date=reference_date,
+            max_age_hours=max_age_hours,
+        )
         raw = published_date.strip().replace("Z", "+00:00")
         if "T" in raw:
-            pub = datetime.fromisoformat(raw).date()
+            pub_dt = datetime.fromisoformat(raw)
+            if pub_dt.tzinfo is None:
+                pub_dt = pub_dt.replace(tzinfo=timezone.utc)
+            pub_dt = pub_dt.astimezone(timezone.utc)
         else:
-            pub = datetime.strptime(raw[:10], "%Y-%m-%d").date()
-        age = (ref - pub).days
-        return age <= max_age_days
+            pub_dt = datetime.strptime(raw[:10], "%Y-%m-%d").replace(
+                tzinfo=timezone.utc
+            )
+        return pub_dt >= cutoff
     except Exception:
-        return True
+        return False
 
 
 def _dedupe_articles_by_url(
@@ -304,31 +352,42 @@ def _search_openai_for_interest(
     date: str,
     max_results: int,
 ) -> list[dict[str, Any]]:
-    """Run one OpenAI web-search query and parse structured output."""
+    """Run multi-pass OpenAI web search and parse structured output."""
     interest_id = topic.get("id", "")
     subtopics = topic.get("subtopics", []) or []
     subtopic_text = ", ".join(subtopics) if subtopics else "None"
-    focus_lines = "\n".join(
+    base_focus_lines = "\n".join(
         [f"- {topic['name']} + {subtopic}" for subtopic in subtopics]
     ) if subtopics else f"- {topic['name']}"
     extra_rules = _interest_specific_rules(interest_id)
 
-    prompt = f"""
+    def _build_prompt(
+        focus_lines: str,
+        subtopic_scope: str,
+        target_count: int,
+        pass_name: str,
+    ) -> str:
+        return f"""
 Find the most credible and important updates from the last 24 hours for:
 Interest: {topic['name']}
-Subtopics: {subtopic_text}
+Subtopics: {subtopic_scope}
+Pass objective: {pass_name}
 Search focuses (each item should clearly map to one focus):
 {focus_lines}
 
 Rules:
+- Treat {date} (IST) as the reference date for recency.
+- Only include items published in the last {TRENDING_MAX_AGE_HOURS} hours
+  (published at or after {(_reference_cutoff_utc(date).isoformat())} UTC).
 - Return only genuinely important updates, not generic explainers.
 - Prefer official announcements, primary reporting, or well-sourced analysis.
 - Exclude listicles, SEO content, and opinion fluff.
 - Prefer reputable/official sources; avoid press-release wire syndication.
 - Only include links to specific articles/posts (not homepages).
-- Every result MUST map to one listed subtopic.
-- If no subtopics exist, map it to the broad interest.
-- If fewer than {max_results} high-quality updates exist, return fewer.
+- Prefer mapping each result to one listed subtopic where possible.
+- If no subtopics exist or mapping is unclear, use the broad interest.
+- Target up to {target_count} high-quality updates in this pass.
+- If fewer than {target_count} high-quality updates exist, return fewer.
 {extra_rules}
 
 Return STRICT JSON only in this exact shape:
@@ -342,79 +401,145 @@ Return STRICT JSON only in this exact shape:
       "published_date": "YYYY-MM-DD or ISO datetime if available",
       "source_domain": "example.com",
       "subtopic": "one of the listed subtopics, else empty string",
-      "importance": 1
+      "importance": "number 1-5 (5 = highest importance)"
     }}
   ]
 }}
 """.strip()
 
     def _fetch_raw_articles(prompt_text: str) -> list[dict[str, Any]]:
-        response = client.responses.create(
-            model=OPENAI_TRENDING_MODEL,
-            tools=[{"type": "web_search_preview"}],
-            temperature=0.2,
-            max_output_tokens=2200,
-            input=prompt_text,
-        )
-        text = (response.output_text or "").strip()
-        data = _extract_json_object(text)
-        raw = data.get("articles", []) if isinstance(data, dict) else []
-        return raw if isinstance(raw, list) else []
+        for attempt in range(OPENAI_FETCH_RETRIES + 1):
+            try:
+                response = client.responses.create(
+                    model=OPENAI_TRENDING_MODEL,
+                    tools=[{"type": "web_search_preview"}],
+                    temperature=0.2,
+                    max_output_tokens=2200,
+                    input=prompt_text,
+                    timeout=OPENAI_TIMEOUT_SECONDS,
+                )
+                text = (response.output_text or "").strip()
+                data = _extract_json_object(text)
+                raw = data.get("articles", []) if isinstance(data, dict) else []
+                return raw if isinstance(raw, list) else []
+            except Exception as exc:
+                if attempt >= OPENAI_FETCH_RETRIES:
+                    print(f"    pass request failed after retries: {exc}")
+                    return []
+                backoff = (attempt + 1) * 1.5
+                print(
+                    f"    pass request failed (attempt {attempt + 1}), "
+                    f"retrying in {backoff:.1f}s..."
+                )
+                time.sleep(backoff)
 
-    raw_articles = _fetch_raw_articles(prompt)
+    prompts: list[tuple[str, int]] = [
+        (
+            _build_prompt(
+                base_focus_lines,
+                subtopic_text,
+                max(max_results, 10),
+                "broad coverage across the full interest",
+            ),
+            max(max_results, 10),
+        )
+    ]
+    for subtopic in subtopics:
+        if len(prompts) >= MAX_PROMPT_PASSES_PER_TOPIC:
+            break
+        focus = f"- {topic['name']} + {subtopic}"
+        prompts.append(
+            (
+                _build_prompt(
+                    focus,
+                    subtopic,
+                    min(6, max_results),
+                    f"deep dive for subtopic: {subtopic}",
+                ),
+                min(6, max_results),
+            )
+        )
+    if len(prompts) < MAX_PROMPT_PASSES_PER_TOPIC:
+        prompts.append(
+            (
+                _build_prompt(
+                    f"- {topic['name']} major global developments",
+                    subtopic_text,
+                    min(8, max_results),
+                    "catch-all for missed but high-impact updates",
+                ),
+                min(8, max_results),
+            )
+        )
 
     fresh_articles: list[dict[str, Any]] = []
-    fallback_articles: list[dict[str, Any]] = []
-    for r in raw_articles:
-        if not isinstance(r, dict):
-            continue
-        url = _normalize_url(str(r.get("url", "")))
-        title = str(r.get("title", "")).strip()
-        details = str(r.get("details", "")).strip()
-        subtitle = str(r.get("subtitle", "")).strip()
-        if not url or not title or _is_junk_url(url):
-            continue
-        published_date = str(r.get("published_date", "")).strip()
-        desc = details or subtitle
-        importance = r.get("importance")
-        try:
-            score = float(importance) if importance is not None else None
-        except Exception:
-            score = None
-        payload = {
-            "title": title,
-            "url": url,
-            "content": desc,
-            "published_date": published_date,
-            "score": score,
-            "source": "openai_web_search",
-            "subtopic": str(r.get("subtopic", "")).strip(),
-        }
-        if _is_recent_enough(published_date, date):
-            fresh_articles.append(payload)
-        else:
-            fallback_articles.append(payload)
+    seen_urls: set[str] = set()
+    for pass_idx, (prompt, _) in enumerate(prompts, start=1):
+        raw_articles = _fetch_raw_articles(prompt)
+        pass_added = 0
+        for r in raw_articles:
+            if not isinstance(r, dict):
+                continue
+            url = _normalize_url(str(r.get("url", "")))
+            title = str(r.get("title", "")).strip()
+            details = str(r.get("details", "")).strip()
+            subtitle = str(r.get("subtitle", "")).strip()
+            if not url or not title or _is_junk_url(url) or url in seen_urls:
+                continue
+            published_date = str(r.get("published_date", "")).strip()
+            desc = details or subtitle
+            importance = r.get("importance")
+            try:
+                score = float(importance) if importance is not None else None
+            except Exception:
+                score = None
+            payload = {
+                "title": title,
+                "url": url,
+                "content": desc,
+                "published_date": published_date,
+                "score": score,
+                "source": "openai_web_search",
+                "subtopic": str(r.get("subtopic", "")).strip(),
+            }
+            if _is_recent_enough(published_date, reference_date=date):
+                seen_urls.add(url)
+                fresh_articles.append(payload)
+                pass_added += 1
+            if len(fresh_articles) >= max_results:
+                break
+        print(
+            f"    pass {pass_idx}/{len(prompts)}: "
+            f"added {pass_added}, total {len(fresh_articles)}"
+        )
+        if len(fresh_articles) >= max_results:
+            break
+        if pass_idx < len(prompts):
+            time.sleep(DELAY_BETWEEN_SEARCHES)
 
-    # Prefer genuinely recent items; if model returns only older items,
-    # degrade gracefully instead of returning an empty topic.
+    # Hard cutoff: keep only strict last-24-hours items.
+    fresh_articles.sort(
+        key=lambda article: article.get("score")
+        if article.get("score") is not None
+        else 0.0,
+        reverse=True,
+    )
     fresh_articles = _dedupe_articles_by_url(fresh_articles)
-    if fresh_articles:
-        return fresh_articles[:max_results]
-
-    fallback_articles = _dedupe_articles_by_url(fallback_articles)
-    return fallback_articles[:max_results]
+    return fresh_articles[:max_results]
 
 
 def fetch_news_for_topics(
     topics: list[dict[str, Any]],
-    max_results: int = 8,
+    date: str,
+    max_results: int = MAX_NEWS_PER_TOPIC,
 ) -> dict[str, dict[str, Any]]:
     """
     Fetch news articles for each topic using OpenAI web search.
 
     Args:
         topics: List of topic dicts with id, name, subtopics, keywords
-        max_results: Max results to request from Tavily (default: 8)
+        date: Reference date in YYYY-MM-DD (IST)
+        max_results: Max results to request per topic
 
     Returns:
         Dict mapping topic_id to {name, search_query, keywords, articles}
@@ -431,9 +556,7 @@ def fetch_news_for_topics(
                 "articles": [],
             }
         return news_by_topic
-    client = OpenAI(api_key=api_key)
-    date = _get_today_ist_date()
-
+    client = OpenAI(api_key=api_key, timeout=OPENAI_TIMEOUT_SECONDS)
     print(f"Fetching news for {len(topics)} topics...")
     start_time = time.time()
 
@@ -446,7 +569,7 @@ def fetch_news_for_topics(
                 client=client,
                 topic=topic,
                 date=date,
-                max_results=MAX_NEWS_PER_TOPIC,
+                max_results=max_results,
             )
 
             news_by_topic[topic_id] = {
@@ -504,18 +627,36 @@ def save_trending_news(
     """
     generated_at = datetime.now(timezone.utc).isoformat()
 
+    # Safety gate: re-filter before save to hard-enforce 24h freshness.
+    filtered_news_by_topic: dict[str, dict[str, Any]] = {}
+    for topic_id, data in news_by_topic.items():
+        filtered_articles = [
+            a
+            for a in data.get("articles", [])
+            if _is_recent_enough(
+                str(a.get("published_date", "")).strip(),
+                reference_date=date,
+            )
+        ]
+        filtered_news_by_topic[topic_id] = {
+            **data,
+            "articles": filtered_articles,
+        }
+
     # Save metadata doc
-    total_articles = sum(len(t["articles"]) for t in news_by_topic.values())
+    total_articles = sum(
+        len(t["articles"]) for t in filtered_news_by_topic.values()
+    )
     metadata = {
         "date": date,
         "generated_at": generated_at,
-        "topic_count": len(news_by_topic),
+        "topic_count": len(filtered_news_by_topic),
         "total_articles": total_articles,
     }
     store.db.collection("trending_news").document(date).set(metadata)
 
     # Save each topic's news
-    for topic_id, data in news_by_topic.items():
+    for topic_id, data in filtered_news_by_topic.items():
         (
             store.db.collection("trending_news")
             .document(date)
@@ -556,6 +697,8 @@ def build_trending_news_for_day(date: str | None = None) -> dict[str, Any]:
     """
     if not date:
         date = _get_today_ist_date()
+    else:
+        date = _validate_date_string(date)
 
     print("=" * 60)
     print(f"TRENDING NEWS BUILD FOR {date}")
@@ -564,7 +707,7 @@ def build_trending_news_for_day(date: str | None = None) -> dict[str, Any]:
     start_time = time.time()
     store = FirestoreStore()
 
-    # Step 1: Select top daily interests, then build topic configs
+    # Step 1: Select interests and build topic configs
     selected_interest_ids = _select_daily_news_interests(
         store, max_interests=MAX_DAILY_INTERESTS
     )
@@ -578,7 +721,11 @@ def build_trending_news_for_day(date: str | None = None) -> dict[str, Any]:
 
     # Step 2: Fetch news
     print("\n[2/2] Fetching news for topics...")
-    news_by_topic = fetch_news_for_topics(topics)
+    news_by_topic = fetch_news_for_topics(
+        topics=topics,
+        date=date,
+        max_results=MAX_NEWS_PER_TOPIC,
+    )
 
     # Step 3: Save to Firestore
     print("\nSaving to Firestore...")

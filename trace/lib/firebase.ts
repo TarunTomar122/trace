@@ -18,9 +18,13 @@ let auth: Auth;
 
 if (getApps().length === 0) {
   app = initializeApp(firebaseConfig);
+  // Use AsyncStorage persistence for session persistence across app restarts
+  const persistence = getReactNativePersistence(AsyncStorage);
+  console.log('[Firebase] Initializing auth with persistence...');
   auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage),
+    persistence,
   });
+  console.log('[Firebase] Auth initialized.');
 } else {
   app = getApps()[0];
   auth = getAuth(app);

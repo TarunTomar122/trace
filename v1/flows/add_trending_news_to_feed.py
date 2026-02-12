@@ -229,6 +229,7 @@ def _get_trending_news_for_user(
 def add_trending_news_to_feed(
     user_id: str,
     date: str | None = None,
+    force: bool = False,
 ) -> dict[str, Any]:
     """
     Append trending news items to a user's existing feed.
@@ -236,6 +237,7 @@ def add_trending_news_to_feed(
     Args:
         user_id: User ID to add news for
         date: Date string (YYYY-MM-DD), defaults to today IST
+        force: If True, replace already-added trending news for the date
 
     Returns:
         Summary dict with items_added count
@@ -270,9 +272,17 @@ def add_trending_news_to_feed(
         i.get("metadata", {}).get("feed_category") == "trending_news"
         for i in existing_items
     )
-    if has_trending:
+    if has_trending and not force:
         print(f"  Trending news already added for {user_id}")
         return {"user_id": user_id, "date": date, "items_added": 0}
+    if has_trending and force:
+        existing_items = [
+            i
+            for i in existing_items
+            if i.get("metadata", {}).get("feed_category") != "trending_news"
+        ]
+        existing_urls = {i.get("url") for i in existing_items if i.get("url")}
+        print(f"  Force mode: removed existing trending news for {user_id}")
 
     # Gather user's interests + hobbies (normalized for matching)
     interests = get_interest_ids(profile)
@@ -370,12 +380,18 @@ def main():
         "--date",
         help="Date string (YYYY-MM-DD), defaults to today IST",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace existing trending news items for this date",
+    )
 
     args = parser.parse_args()
 
     result = add_trending_news_to_feed(
         user_id=args.user_id,
         date=args.date,
+        force=args.force,
     )
     print(f"Done. Items added: {result['items_added']}")
 

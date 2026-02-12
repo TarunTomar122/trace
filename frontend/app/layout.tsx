@@ -19,30 +19,33 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Trace — Your RSS for the Web",
+  title: "Trace — Your Personalized Feed from Across the Web",
   description: "Never miss what matters. Trace curates content from YouTube, GitHub, Reddit, Hacker News, blogs, and hundreds more sources — all in one personalized feed.",
   keywords: ["personalized feed", "RSS alternative", "content curation", "reddit", "hacker news", "youtube", "arxiv", "github", "curated news", "topic feed", "daily digest"],
   authors: [{ name: "Trace" }],
   metadataBase: new URL('https://www.yourtrace.online'),
+  alternates: {
+    canonical: 'https://www.yourtrace.online/',
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
     url: "https://www.yourtrace.online",
     siteName: "Trace",
-    title: "Trace — Your RSS for the Web",
+    title: "Trace — Your Personalized Feed from Across the Web",
     description: "Never miss what matters. Trace curates content from YouTube, GitHub, Reddit, Hacker News, blogs, and hundreds more sources — all in one personalized feed.",
     images: [
       {
         url: "/trace.png",
         width: 1200,
         height: 630,
-        alt: "Trace — Your RSS for the Web",
+        alt: "Trace — Your Personalized Feed from Across the Web",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Trace — Your RSS for the Web",
+    title: "Trace — Your Personalized Feed from Across the Web",
     description: "Never miss what matters. Content from hundreds of sources, curated around your interests.",
     images: ["/trace.png"],
   },
@@ -58,8 +61,10 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    icon: [
+      { url: "/trace.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: "/trace.png",
   },
   manifest: "/site.webmanifest",
   themeColor: "#000000",
@@ -78,7 +83,7 @@ export default function RootLayout({
         "@id": "https://www.yourtrace.online/#website",
         "url": "https://www.yourtrace.online",
         "name": "Trace",
-        "description": "Your RSS for the web — content from hundreds of sources, curated around your interests",
+        "description": "Stop checking 10 apps every morning. Trace scans the sources you care about and gives you a short daily brief with links worth opening.",
         "potentialAction": {
           "@type": "SearchAction",
           "target": "https://www.yourtrace.online/feed?q={search_term_string}",
@@ -117,8 +122,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <head>
-        <Script
-          id="structured-data"
+        <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
