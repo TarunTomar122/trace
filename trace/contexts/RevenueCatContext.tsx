@@ -169,7 +169,9 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
     };
 
     Purchases.addCustomerInfoUpdateListener(listener);
-    return () => Purchases.removeCustomerInfoUpdateListener(listener);
+    return () => {
+      Purchases.removeCustomerInfoUpdateListener(listener);
+    };
   }, [syncAppSubStatus]);
 
   // ─── Present custom paywall screen ───
@@ -209,10 +211,12 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
         const success = !!info.entitlements.active[ENTITLEMENT_ID];
 
         if (success) {
-          // Sync the new status to Firestore so the backend knows
-          syncAppSubStatus(info);
-          // Feed generation is triggered by the feed screen when it detects
-          // the subscription status change (via isSubscribed effect)
+          // Ensure Firestore reflects app subscription before backend hook runs.
+          await syncAppSubStatus(info);
+          const uid = userRef.current?.uid;
+          if (uid) {
+            await triggerFeedGeneration(uid);
+          }
         }
 
         return success;
@@ -233,8 +237,15 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
     try {
       const info = await Purchases.restorePurchases();
       setCustomerInfo(info);
-      syncAppSubStatus(info);
-      return !!info.entitlements.active[ENTITLEMENT_ID];
+      const success = !!info.entitlements.active[ENTITLEMENT_ID];
+      await syncAppSubStatus(info);
+      if (success) {
+        const uid = userRef.current?.uid;
+        if (uid) {
+          await triggerFeedGeneration(uid);
+        }
+      }
+      return success;
     } catch (error) {
       console.error('[RevenueCat] Restore error:', error);
       return false;

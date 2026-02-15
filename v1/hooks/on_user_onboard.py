@@ -20,6 +20,7 @@ from v1.flows.build_feed_from_topics import build_feed_from_topics
 from v1.flows.build_topics_for_user import build_topics_for_user
 from v1.flows.build_unsubscribed_feed_from_topics import build_unsubscribed_feed
 from v1.flows.build_suggested_items_for_user import build_suggested_items_for_user
+from v1.flows.add_summaries_to_subscribed_feeds import add_summaries_to_subscribed_feeds
 from v1.algorithm.interest_schema import get_interest_ids, get_interest_queries
 
 
@@ -75,6 +76,9 @@ def main():
 
         print("\nAdding suggested items...")
         build_suggested_items_for_user(args.user_id)
+
+        print("\nGenerating summaries for subscribed user feed...")
+        add_summaries_to_subscribed_feeds(user_id=args.user_id)
     else:
         print("\nBuilding preview feed from topics...")
         build_unsubscribed_feed(args.user_id)

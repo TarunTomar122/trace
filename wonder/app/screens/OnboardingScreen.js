@@ -1,7 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import {
+  Animated,
   Dimensions,
+  Easing,
   Image,
+  PanResponder,
   Platform,
   ScrollView,
   StyleSheet,
@@ -17,15 +20,23 @@ import {
   ChevronLeft,
   ArrowRight,
   CircleHelp,
+  FileText,
+  Film,
   Goal,
+  Heart,
   Sparkles,
   UserRound,
+  X,
 } from 'lucide-react-native';
 import { useTheme } from '../ThemeContext';
 
 const STATUS_BAR_HEIGHT = Constants.statusBarHeight || 0;
 const BOTTOM_INSET = Platform.OS === 'ios' ? 34 : 24;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
+const CARD_WIDTH = SCREEN_WIDTH - 90;
+
+/* ────────────────────────── Data ── */
 
 const INTEREST_OPTIONS = [
   'Technology',
@@ -44,36 +55,80 @@ const INTEREST_OPTIONS = [
 
 const GOAL_OPTIONS = ['10 min/day', '20 min/day', '30+ min/day'];
 
-const BOOK_PICKS = [
-  { title: 'Atomic Habits', author: 'James Clear', cover: 'https://covers.openlibrary.org/b/id/12539702-L.jpg' },
-  { title: 'Sapiens', author: 'Yuval Noah Harari', cover: 'https://covers.openlibrary.org/b/id/8634250-L.jpg' },
-  { title: 'Thinking, Fast and Slow', author: 'Daniel Kahneman', cover: 'https://covers.openlibrary.org/b/id/13290711-L.jpg' },
-  { title: 'The Psychology of Money', author: 'Morgan Housel', cover: 'https://covers.openlibrary.org/b/id/10389354-L.jpg' },
-  { title: 'Zero to One', author: 'Peter Thiel', cover: 'https://covers.openlibrary.org/b/id/9002334-L.jpg' },
-  { title: 'Deep Work', author: 'Cal Newport', cover: 'https://covers.openlibrary.org/b/id/7988607-L.jpg' },
-  { title: 'A Brief History of Time', author: 'Stephen Hawking', cover: 'https://covers.openlibrary.org/b/id/10432365-L.jpg' },
-  { title: 'The Lean Startup', author: 'Eric Ries', cover: 'https://covers.openlibrary.org/b/id/7104760-L.jpg' },
+const SWIPE_PICKS = [
+  {
+    type: 'book',
+    title: 'Atomic Habits',
+    by: 'James Clear',
+    cover: 'https://covers.openlibrary.org/b/id/12539702-L.jpg',
+  },
+  {
+    type: 'video',
+    title: 'How Great Leaders Inspire Action',
+    by: 'Simon Sinek',
+    source: 'TED',
+    cover:
+      'https://pi.tedcdn.com/r/pe.tedcdn.com/images/ted/04916ee6e81065c8333e6546184af512eee37bbe_2880x1620.jpg',
+  },
+  {
+    type: 'book',
+    title: 'Sapiens',
+    by: 'Yuval Noah Harari',
+    cover: 'https://covers.openlibrary.org/b/id/8634250-L.jpg',
+  },
+  {
+    type: 'article',
+    title: 'The Myth of the Pivot',
+    by: 'Sarah Chen',
+    source: 'Harvard Business Review',
+    cover:
+      'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1200&q=80',
+  },
+  {
+    type: 'book',
+    title: 'The Psychology of Money',
+    by: 'Morgan Housel',
+    cover: 'https://covers.openlibrary.org/b/id/10389354-L.jpg',
+  },
+  {
+    type: 'video',
+    title: 'A Guide to Self-Love for Skeptics',
+    by: 'Dan Harris',
+    source: 'TED',
+    cover:
+      'https://talkstar-assets.s3.amazonaws.com/production/talks/talk_147528/638645c8-7137-40c5-9284-249071157dc3/DanHarris_2025V-embed.jpg',
+  },
+  {
+    type: 'book',
+    title: 'Deep Work',
+    by: 'Cal Newport',
+    cover: 'https://covers.openlibrary.org/b/id/7988607-L.jpg',
+  },
+  {
+    type: 'article',
+    title: 'Index Funds Won Because Competitors Helped Them',
+    by: 'Jason Park',
+    source: 'Bloomberg Markets',
+    cover:
+      'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1200&q=80',
+  },
 ];
+
+const TYPE_ICON_MAP = { book: BookOpen, video: Film, article: FileText };
+const TYPE_LABEL = { book: 'Book', video: 'Video', article: 'Article' };
 
 const STEP_LABELS = [
   'Welcome',
   'About you',
   'Interests',
-  'Books',
+  'Picks',
   'Personalization',
   'Rhythm',
 ];
 
-const STEP_ICONS = [
-  Sparkles,
-  UserRound,
-  CircleHelp,
-  BookOpen,
-  Brain,
-  Goal,
-];
+const STEP_ICONS = [Sparkles, UserRound, CircleHelp, Heart, Brain, Goal];
 
-/* ────────────────────────── Wide pill (gender / skill / goal) ── */
+/* ────────────────────────── Wide pill ── */
 function WidePill({ label, selected, onPress, colors, icon: Icon }) {
   return (
     <TouchableOpacity
@@ -111,7 +166,7 @@ function WidePill({ label, selected, onPress, colors, icon: Icon }) {
   );
 }
 
-/* ────────────────────────── Chip pill (interests grid) ── */
+/* ────────────────────────── Chip pill ── */
 function ChipPill({ label, selected, onPress, colors }) {
   return (
     <TouchableOpacity
@@ -148,13 +203,99 @@ export default function OnboardingScreen({ onComplete }) {
   const [step, setStep] = useState(0);
   const [gender, setGender] = useState(null);
   const [interests, setInterests] = useState([]);
-  const [selectedBooks, setSelectedBooks] = useState([]);
+  const [likedItems, setLikedItems] = useState([]);
+  const [cardIndex, setCardIndex] = useState(0);
   const [goal, setGoal] = useState(null);
+
+  /* ── Prefetch all swipe card images on mount ── */
+  useEffect(() => {
+    SWIPE_PICKS.forEach((pick) => {
+      if (pick.cover) {
+        Image.prefetch(pick.cover).catch(() => {});
+      }
+    });
+  }, []);
 
   const totalSteps = 6;
   const progress = ((step + 1) / totalSteps) * 100;
   const StepIcon = STEP_ICONS[step] || Sparkles;
 
+  /* ── Swipe animation ── */
+  const pan = useRef(new Animated.ValueXY()).current;
+  const cardIndexRef = useRef(0);
+
+  const swipeCard = useCallback(
+    (direction) => {
+      const idx = cardIndexRef.current;
+      if (idx >= SWIPE_PICKS.length) return;
+
+      if (direction === 'right') {
+        setLikedItems((prev) => [...prev, SWIPE_PICKS[idx].title]);
+      }
+
+      const toX =
+        direction === 'right' ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5;
+      Animated.timing(pan, {
+        toValue: { x: toX, y: -40 },
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start(() => {
+        pan.setValue({ x: 0, y: 0 });
+        cardIndexRef.current += 1;
+        setCardIndex(cardIndexRef.current);
+      });
+    },
+    [pan],
+  );
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+        Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 5,
+      onPanResponderMove: Animated.event([null, { dx: pan.x }], {
+        useNativeDriver: false,
+      }),
+      onPanResponderRelease: (_, { dx }) => {
+        if (dx > SWIPE_THRESHOLD) {
+          swipeCard('right');
+        } else if (dx < -SWIPE_THRESHOLD) {
+          swipeCard('left');
+        } else {
+          Animated.spring(pan, {
+            toValue: { x: 0, y: 0 },
+            useNativeDriver: false,
+            friction: 7,
+            tension: 40,
+          }).start();
+        }
+      },
+    }),
+  ).current;
+
+  /* ── Swipe interpolations ── */
+  const rotate = pan.x.interpolate({
+    inputRange: [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
+    outputRange: ['-12deg', '0deg', '12deg'],
+  });
+  const likeOpacity = pan.x.interpolate({
+    inputRange: [0, SCREEN_WIDTH * 0.15],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+  const nopeOpacity = pan.x.interpolate({
+    inputRange: [-SCREEN_WIDTH * 0.15, 0],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+  const nextScale = pan.x.interpolate({
+    inputRange: [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
+    outputRange: [1, 0.92, 1],
+    extrapolate: 'clamp',
+  });
+
+  /* ── Helpers ── */
   const interestSummary = useMemo(() => {
     if (!interests.length) return 'a mix of timeless and trending topics';
     if (interests.length === 1) return interests[0];
@@ -170,26 +311,184 @@ export default function OnboardingScreen({ onComplete }) {
     );
   };
 
-  const toggleBook = (title) => {
-    setSelectedBooks((prev) =>
-      prev.includes(title)
-        ? prev.filter((x) => x !== title)
-        : [...prev, title],
-    );
-  };
-
   const next = () => setStep((s) => Math.min(s + 1, totalSteps - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
   const canContinue = useMemo(() => {
     if (step === 1) return Boolean(gender);
     if (step === 2) return interests.length > 0;
-    if (step === 3) return selectedBooks.length > 0;
+    if (step === 3) return cardIndex >= SWIPE_PICKS.length;
     if (step === 5) return Boolean(goal);
     return true;
-  }, [step, gender, interests.length, selectedBooks.length, goal]);
+  }, [step, gender, interests.length, cardIndex, goal]);
 
-  /* ── Step renderers ── */
+  /* ── Render swipe step (step 3) ── */
+  const renderSwipeStep = () => {
+    const allDone = cardIndex >= SWIPE_PICKS.length;
+
+    if (allDone) {
+      return (
+        <View style={styles.swipeDone}>
+          <Sparkles size={36} color={colors.accent} strokeWidth={1.6} />
+          <Text
+            style={[
+              styles.heroTitle,
+              { color: colors.textPrimary, fontSize: 28, marginTop: 16 },
+            ]}
+          >
+            Great taste!
+          </Text>
+          <Text style={[styles.heroSub, { color: colors.textSecondary }]}>
+            You liked {likedItems.length} out of {SWIPE_PICKS.length}.{'\n'}
+            We'll use this to shape your feed.
+          </Text>
+        </View>
+      );
+    }
+
+    const currentPick = SWIPE_PICKS[cardIndex];
+    const nextPick = SWIPE_PICKS[cardIndex + 1];
+    const CurrentTypeIcon = TYPE_ICON_MAP[currentPick.type];
+    const NextTypeIcon = nextPick ? TYPE_ICON_MAP[nextPick.type] : null;
+
+    return (
+      <View style={{ flex: 1 }}>
+        {/* Card stack area */}
+        <View style={styles.cardStack}>
+          {/* Next card (behind, scales up as top card is dragged) */}
+          {nextPick && (
+            <Animated.View
+              style={[
+                styles.swipeCard,
+                {
+                  backgroundColor: nextPick.cover
+                    ? colors.surface
+                    : nextPick.color,
+                  transform: [{ scale: nextScale }],
+                },
+              ]}
+            >
+              {nextPick.cover ? (
+                <Image
+                  source={{ uri: nextPick.cover }}
+                  style={StyleSheet.absoluteFill}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.placeholderBg}>
+                  {NextTypeIcon && (
+                    <NextTypeIcon
+                      size={80}
+                      color="rgba(255,255,255,0.1)"
+                      strokeWidth={1.2}
+                    />
+                  )}
+                </View>
+              )}
+            </Animated.View>
+          )}
+
+          {/* Top card (draggable) */}
+          <Animated.View
+            {...panResponder.panHandlers}
+            style={[
+              styles.swipeCard,
+              {
+                backgroundColor: currentPick.cover
+                  ? colors.surface
+                  : currentPick.color,
+                transform: [{ translateX: pan.x }, { rotate }],
+                zIndex: 2,
+              },
+            ]}
+          >
+            {/* Background image or colored placeholder */}
+            {currentPick.cover ? (
+              <Image
+                source={{ uri: currentPick.cover }}
+                style={StyleSheet.absoluteFill}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.placeholderBg}>
+                <CurrentTypeIcon
+                  size={80}
+                  color="rgba(255,255,255,0.1)"
+                  strokeWidth={1.2}
+                />
+              </View>
+            )}
+
+            {/* LIKE stamp */}
+            <Animated.View
+              style={[styles.stamp, styles.likeStamp, { opacity: likeOpacity }]}
+            >
+              <View style={[styles.stampBorder, { borderColor: '#4ADE80' }]}>
+                <Text style={[styles.stampText, { color: '#4ADE80' }]}>
+                  LIKE
+                </Text>
+              </View>
+            </Animated.View>
+
+            {/* NOPE stamp */}
+            <Animated.View
+              style={[
+                styles.stamp,
+                styles.nopeStamp,
+                { opacity: nopeOpacity },
+              ]}
+            >
+              <View style={[styles.stampBorder, { borderColor: '#F87171' }]}>
+                <Text style={[styles.stampText, { color: '#F87171' }]}>
+                  NOPE
+                </Text>
+              </View>
+            </Animated.View>
+
+            {/* Bottom info overlay */}
+            <View style={styles.cardOverlay}>
+              <View style={styles.typeBadge}>
+                <CurrentTypeIcon size={11} color="#fff" strokeWidth={2.2} />
+                <Text style={styles.typeBadgeText}>
+                  {TYPE_LABEL[currentPick.type]}
+                  {currentPick.source ? ` · ${currentPick.source}` : ''}
+                </Text>
+              </View>
+              <Text style={styles.cardTitle} numberOfLines={2}>
+                {currentPick.title}
+              </Text>
+              <Text style={styles.cardAuthor}>{currentPick.by}</Text>
+            </View>
+          </Animated.View>
+        </View>
+
+        {/* Action buttons */}
+        <View style={styles.swipeActions}>
+          <TouchableOpacity
+            onPress={() => swipeCard('left')}
+            activeOpacity={0.7}
+            style={[styles.actionBtn, { borderColor: '#F87171' + '40' }]}
+          >
+            <X size={26} color="#F87171" strokeWidth={2.5} />
+          </TouchableOpacity>
+
+          <Text style={[styles.swipeCounter, { color: colors.textTertiary }]}>
+            {cardIndex + 1} / {SWIPE_PICKS.length}
+          </Text>
+
+          <TouchableOpacity
+            onPress={() => swipeCard('right')}
+            activeOpacity={0.7}
+            style={[styles.actionBtn, { borderColor: colors.accent + '40' }]}
+          >
+            <Heart size={26} color={colors.accent} strokeWidth={2.5} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  /* ── Step renderers (non-swipe steps) ── */
   const renderStep = () => {
     switch (step) {
       /* ── 0  Welcome ── */
@@ -259,83 +558,7 @@ export default function OnboardingScreen({ onComplete }) {
           </View>
         );
 
-      /* ── 3  Book picks ── */
-      case 3:
-        return (
-          <View>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>
-              Any of these catch{'\n'}your eye?
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Tap the ones you'd want to learn from.
-            </Text>
-            <View style={styles.bookGrid}>
-              {BOOK_PICKS.map((book) => {
-                const selected = selectedBooks.includes(book.title);
-                return (
-                  <TouchableOpacity
-                    key={book.title}
-                    onPress={() => toggleBook(book.title)}
-                    activeOpacity={0.8}
-                    style={[
-                      styles.bookCard,
-                      {
-                        backgroundColor: colors.surface,
-                        borderColor: selected
-                          ? colors.accent
-                          : colors.surfaceBorder,
-                      },
-                    ]}
-                  >
-                    <View style={styles.bookCoverWrap}>
-                      <Image
-                        source={{ uri: book.cover }}
-                        style={styles.bookCover}
-                        resizeMode="cover"
-                      />
-                      {selected && (
-                        <View
-                          style={[
-                            styles.bookCheck,
-                            { backgroundColor: colors.accent },
-                          ]}
-                        >
-                          <Check
-                            size={10}
-                            color={colors.background}
-                            strokeWidth={3}
-                          />
-                        </View>
-                      )}
-                    </View>
-                    <Text
-                      style={[
-                        styles.bookTitle,
-                        {
-                          color: selected
-                            ? colors.textPrimary
-                            : colors.textSecondary,
-                        },
-                      ]}
-                      numberOfLines={2}
-                    >
-                      {book.title}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.bookAuthor,
-                        { color: colors.textTertiary },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {book.author}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        );
+      /* step 3 is handled by renderSwipeStep */
 
       /* ── 4  Personalization ── */
       case 4:
@@ -406,7 +629,9 @@ export default function OnboardingScreen({ onComplete }) {
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       {/* ── Header ── */}
       <View style={[styles.header, { paddingTop: STATUS_BAR_HEIGHT + 14 }]}>
-        <View style={[styles.progressTrack, { backgroundColor: colors.surface }]}>
+        <View
+          style={[styles.progressTrack, { backgroundColor: colors.surface }]}
+        >
           <View
             style={[
               styles.progressFill,
@@ -425,7 +650,9 @@ export default function OnboardingScreen({ onComplete }) {
             ]}
           >
             <StepIcon size={12} color={colors.accent} strokeWidth={2.2} />
-            <Text style={[styles.stepChipText, { color: colors.textSecondary }]}>
+            <Text
+              style={[styles.stepChipText, { color: colors.textSecondary }]}
+            >
               {STEP_LABELS[step]}
             </Text>
           </View>
@@ -436,18 +663,21 @@ export default function OnboardingScreen({ onComplete }) {
       </View>
 
       {/* ── Content ── */}
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[
-          styles.scrollContent,
-          // Only center the welcome hero — all form steps start from top
-          step === 0 && styles.scrollContentCentered,
-        ]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {renderStep()}
-      </ScrollView>
+      {step === 3 ? (
+        <View style={styles.swipeWrapper}>{renderSwipeStep()}</View>
+      ) : (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[
+            styles.scrollContent,
+            step === 0 && styles.scrollContentCentered,
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {renderStep()}
+        </ScrollView>
+      )}
 
       {/* ── Footer ── */}
       <View style={[styles.footer, { paddingBottom: BOTTOM_INSET + 10 }]}>
@@ -479,11 +709,21 @@ export default function OnboardingScreen({ onComplete }) {
             },
           ]}
         >
-          <Text style={[styles.continueBtnText, { color: colors.background }]}>
-            {step === totalSteps - 1 ? 'Start exploring' : step === 0 ? 'Get started' : 'Continue'}
+          <Text
+            style={[styles.continueBtnText, { color: colors.background }]}
+          >
+            {step === totalSteps - 1
+              ? 'Start exploring'
+              : step === 0
+                ? 'Get started'
+                : 'Continue'}
           </Text>
           {step < totalSteps - 1 && (
-            <ArrowRight size={18} color={colors.background} strokeWidth={2.4} />
+            <ArrowRight
+              size={18}
+              color={colors.background}
+              strokeWidth={2.4}
+            />
           )}
         </TouchableOpacity>
       </View>
@@ -493,24 +733,12 @@ export default function OnboardingScreen({ onComplete }) {
 
 /* ────────────────────────── Styles ── */
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
+  screen: { flex: 1 },
 
   /* ── Header ── */
-  header: {
-    paddingHorizontal: 24,
-    paddingBottom: 4,
-  },
-  progressTrack: {
-    height: 4,
-    borderRadius: 99,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 99,
-  },
+  header: { paddingHorizontal: 24, paddingBottom: 4 },
+  progressTrack: { height: 4, borderRadius: 99, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 99 },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -526,34 +754,16 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     paddingHorizontal: 10,
   },
-  stepChipText: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-  },
-  stepCounter: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
+  stepChipText: { fontSize: 11, fontWeight: '600', letterSpacing: 0.3 },
+  stepCounter: { fontSize: 12, fontWeight: '500' },
 
-  /* ── Scroll ── */
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 16,
-  },
-  scrollContentCentered: {
-    flexGrow: 1,
-    justifyContent: 'center',
-  },
+  /* ── Scroll (non-swipe steps) ── */
+  scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 16 },
+  scrollContentCentered: { flexGrow: 1, justifyContent: 'center' },
 
-  /* ── Welcome hero (step 0) ── */
-  centerWrap: {
-    alignItems: 'center',
-  },
+  /* ── Welcome hero ── */
+  centerWrap: { alignItems: 'center' },
   heroTitle: {
     fontSize: 38,
     fontWeight: '900',
@@ -570,11 +780,7 @@ const styles = StyleSheet.create({
     maxWidth: 300,
     marginBottom: 10,
   },
-  heroMuted: {
-    fontSize: 13,
-    lineHeight: 20,
-    textAlign: 'center',
-  },
+  heroMuted: { fontSize: 13, lineHeight: 20, textAlign: 'center' },
 
   /* ── Standard title / subtitle ── */
   title: {
@@ -584,16 +790,10 @@ const styles = StyleSheet.create({
     lineHeight: 38,
     marginBottom: 10,
   },
-  subtitle: {
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 20,
-  },
+  subtitle: { fontSize: 16, lineHeight: 24, marginBottom: 20 },
 
-  /* ── Wide pills (gender, skill, goal) ── */
-  stack: {
-    gap: 10,
-  },
+  /* ── Wide pills ── */
+  stack: { gap: 10 },
   widePill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -603,18 +803,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     gap: 12,
   },
-  widePillText: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  widePillText: { flex: 1, fontSize: 16, fontWeight: '600' },
 
-  /* ── Chip pills (interests) ── */
-  chipGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
+  /* ── Chip pills ── */
+  chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   chipPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -624,12 +816,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     gap: 7,
   },
-  chipPillText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  chipPillText: { fontSize: 14, fontWeight: '600' },
 
-  /* ── Shared check dot ── */
+  /* ── Check dots ── */
   checkDot: {
     width: 20,
     height: 20,
@@ -645,63 +834,101 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  /* ── Book picks grid ── */
-  bookGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  bookCard: {
-    width: (SCREEN_WIDTH - 48 - 12) / 2,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 10,
-    alignItems: 'center',
-  },
-  bookCoverWrap: {
-    position: 'relative',
-    width: '100%',
-    aspectRatio: 0.65,
-    borderRadius: 8,
-    overflow: 'hidden',
-    marginBottom: 10,
-  },
-  bookCover: {
-    width: '100%',
-    height: '100%',
-  },
-  bookCheck: {
+  /* ── Swipe step ── */
+  swipeWrapper: { flex: 1, paddingHorizontal: 24, paddingTop: 12 },
+  cardStack: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  swipeCard: {
     position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 22,
-    height: 22,
-    borderRadius: 99,
+    width: CARD_WIDTH,
+    height: '80%',
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  placeholderBg: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bookTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'center',
-    lineHeight: 17,
-    marginBottom: 2,
+
+  /* Stamps */
+  stamp: { position: 'absolute', top: 30, zIndex: 10 },
+  likeStamp: { left: 16, transform: [{ rotate: '-15deg' }] },
+  nopeStamp: { right: 16, transform: [{ rotate: '15deg' }] },
+  stampBorder: {
+    borderWidth: 3,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
-  bookAuthor: {
-    fontSize: 11,
-    textAlign: 'center',
+  stampText: {
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: 3,
   },
 
-  /* ── Info card (personalization) ── */
-  infoCard: {
-    borderWidth: 1,
-    borderRadius: 18,
-    padding: 20,
+  /* Card bottom overlay */
+  cardOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
+    paddingTop: 64,
+    backgroundColor: 'rgba(0,0,0,0.6)',
   },
-  infoText: {
-    fontSize: 14,
-    lineHeight: 23,
+  typeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 99,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    marginBottom: 10,
   },
+  typeBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  cardTitle: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: '800',
+    lineHeight: 30,
+    letterSpacing: -0.4,
+    marginBottom: 4,
+  },
+  cardAuthor: { color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: '500' },
+
+  /* Action buttons */
+  swipeActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 32,
+    paddingVertical: 16,
+  },
+  actionBtn: {
+    width: 58,
+    height: 58,
+    borderRadius: 99,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  swipeCounter: { fontSize: 14, fontWeight: '600', minWidth: 40, textAlign: 'center' },
+
+  /* Swipe done */
+  swipeDone: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+  /* ── Info card ── */
+  infoCard: { borderWidth: 1, borderRadius: 18, padding: 20 },
+  infoText: { fontSize: 14, lineHeight: 23 },
 
   /* ── Section label ── */
   sectionLabel: {
@@ -737,9 +964,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  continueBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  continueBtnText: { fontSize: 16, fontWeight: '700' },
 });
-

@@ -213,6 +213,7 @@ export default function FeedScreen() {
   // Whether we're showing fallback content while a personalised feed is being generated
   const [isFeedGenerating, setIsFeedGenerating] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasTriggeredSubscribedRefresh = useRef(false);
   // Snapshot of the feed date when we started generating — so we can detect a NEW feed
   const feedDateOnGenStart = useRef<string | null>(null);
 
@@ -282,25 +283,48 @@ export default function FeedScreen() {
     initFeed();
   }, [loadFeed, isOnboarded]);
 
-  // ─── When subscription status changes to subscribed, re-trigger feed generation ───
-  const prevSubscribed = useRef(isSubscribed);
+  // ─── Keep subscribed users in "generating" state until feed has summaries/new data ───
   useEffect(() => {
-    if (isSubscribed && !prevSubscribed.current && isOnboarded && user) {
-      console.log('[Feed] User just subscribed! Waiting for Firestore sync then triggering feed regen...');
-      feedDateOnGenStart.current = feedDate || null;
-      setIsFeedGenerating(true);
+    if (!isOnboarded || !user || isLoading) return;
 
-      // Wait a few seconds for the appSubscriptionStatus write to land in Firestore
-      // before dispatching the GitHub Action (which reads from Firestore).
+    if (!isSubscribed) {
+      hasTriggeredSubscribedRefresh.current = false;
+      return;
+    }
+
+    const hasSummaries = feed.some((item) => !!item.summary?.short_article?.body);
+    const needsGeneration = feedDate === '' || !hasSummaries;
+    if (!needsGeneration) {
+      hasTriggeredSubscribedRefresh.current = false;
+      setIsFeedGenerating(false);
+      return;
+    }
+
+    setIsFeedGenerating(true);
+
+    if (!hasTriggeredSubscribedRefresh.current) {
+      hasTriggeredSubscribedRefresh.current = true;
+      feedDateOnGenStart.current = feedDate || null;
+      console.log('[Feed] Subscribed user needs upgraded feed, triggering generation...');
+
+      // Small delay so Firestore subscription updates settle before backend reads profile.
       const timer = setTimeout(() => {
-        console.log('[Feed] Triggering feed regeneration now...');
         triggerFeedGeneration(user.uid);
-      }, 4000);
+      }, 2500);
 
       return () => clearTimeout(timer);
     }
-    prevSubscribed.current = isSubscribed;
-  }, [isSubscribed, isOnboarded, user, feedDate]);
+  }, [isOnboarded, isSubscribed, user, isLoading, feed, feedDate]);
+
+  useEffect(() => {
+    if (!isSubscribed) {
+      if (!isOnboarded) {
+        feedDateOnGenStart.current = null;
+      } else if (feedDate === '') {
+        feedDateOnGenStart.current = '';
+      }
+    }
+  }, [isSubscribed, isOnboarded, feedDate]);
 
   // ─── Poll for personalised feed every 15s while generating ───
   useEffect(() => {
