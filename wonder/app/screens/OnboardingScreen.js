@@ -3,7 +3,7 @@ import {
   Animated,
   Dimensions,
   Easing,
-  Image,
+  Image as RNImage,
   PanResponder,
   Platform,
   ScrollView,
@@ -12,10 +12,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import Constants from 'expo-constants';
 import {
   BookOpen,
-  Brain,
   Check,
   ChevronLeft,
   ArrowRight,
@@ -29,6 +29,10 @@ import {
   X,
 } from 'lucide-react-native';
 import { useTheme } from '../ThemeContext';
+import businessVideos from '../../data/videos/business.json';
+import moneyVideos from '../../data/videos/money.json';
+import businessArticle from '../../data/articles/business.json';
+import moneyArticle from '../../data/articles/money.json';
 
 const STATUS_BAR_HEIGHT = Constants.statusBarHeight || 0;
 const BOTTOM_INSET = Platform.OS === 'ios' ? 34 : 24;
@@ -55,6 +59,22 @@ const INTEREST_OPTIONS = [
 
 const GOAL_OPTIONS = ['10 min/day', '20 min/day', '30+ min/day'];
 
+function normalizeImageUrl(url) {
+  if (!url) return null;
+  if (url.includes('images.unsplash.com') && !url.includes('auto=format')) {
+    return `${url}&auto=format`;
+  }
+  return url;
+}
+
+function getFallbackImageUrl(url) {
+  if (!url) return null;
+  if (url.includes('maxresdefault.jpg')) {
+    return url.replace('maxresdefault.jpg', 'hqdefault.jpg');
+  }
+  return null;
+}
+
 const SWIPE_PICKS = [
   {
     type: 'book',
@@ -64,11 +84,13 @@ const SWIPE_PICKS = [
   },
   {
     type: 'video',
-    title: 'How Great Leaders Inspire Action',
-    by: 'Simon Sinek',
-    source: 'TED',
-    cover:
-      'https://pi.tedcdn.com/r/pe.tedcdn.com/images/ted/04916ee6e81065c8333e6546184af512eee37bbe_2880x1620.jpg',
+    title: businessVideos.videos?.[1]?.title || 'How Amazon Makes Money',
+    by: businessVideos.videos?.[1]?.creator || 'Polymatter',
+    source: businessVideos.videos?.[1]?.platform || 'YouTube',
+    cover: normalizeImageUrl(
+      businessVideos.videos?.[1]?.thumbnail_url ||
+        businessVideos.videos?.[0]?.thumbnail_url,
+    ),
   },
   {
     type: 'book',
@@ -78,11 +100,10 @@ const SWIPE_PICKS = [
   },
   {
     type: 'article',
-    title: 'The Myth of the Pivot',
-    by: 'Sarah Chen',
-    source: 'Harvard Business Review',
-    cover:
-      'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1200&q=80',
+    title: businessArticle.article?.title || 'The Myth of the Pivot',
+    by: businessArticle.article?.author || 'Sarah Chen',
+    source: businessArticle.article?.publication || 'Harvard Business Review',
+    cover: normalizeImageUrl(businessArticle.article?.image_url),
   },
   {
     type: 'book',
@@ -92,11 +113,12 @@ const SWIPE_PICKS = [
   },
   {
     type: 'video',
-    title: 'A Guide to Self-Love for Skeptics',
-    by: 'Dan Harris',
-    source: 'TED',
-    cover:
-      'https://talkstar-assets.s3.amazonaws.com/production/talks/talk_147528/638645c8-7137-40c5-9284-249071157dc3/DanHarris_2025V-embed.jpg',
+    title: moneyVideos.videos?.[1]?.title || 'The Psychology of Money',
+    by: moneyVideos.videos?.[1]?.creator || 'The Plain Bagel',
+    source: moneyVideos.videos?.[1]?.platform || 'YouTube',
+    cover: normalizeImageUrl(
+      moneyVideos.videos?.[1]?.thumbnail_url || moneyVideos.videos?.[0]?.thumbnail_url,
+    ),
   },
   {
     type: 'book',
@@ -106,11 +128,12 @@ const SWIPE_PICKS = [
   },
   {
     type: 'article',
-    title: 'Index Funds Won Because Competitors Helped Them',
-    by: 'Jason Park',
-    source: 'Bloomberg Markets',
-    cover:
-      'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1200&q=80',
+    title:
+      moneyArticle.article?.title ||
+      'Index Funds Won Because Competitors Helped Them',
+    by: moneyArticle.article?.author || 'Jason Park',
+    source: moneyArticle.article?.publication || 'Bloomberg Markets',
+    cover: normalizeImageUrl(moneyArticle.article?.image_url),
   },
 ];
 
@@ -122,11 +145,10 @@ const STEP_LABELS = [
   'About you',
   'Interests',
   'Picks',
-  'Personalization',
   'Rhythm',
 ];
 
-const STEP_ICONS = [Sparkles, UserRound, CircleHelp, Heart, Brain, Goal];
+const STEP_ICONS = [Sparkles, UserRound, CircleHelp, Heart, Goal];
 
 /* ────────────────────────── Wide pill ── */
 function WidePill({ label, selected, onPress, colors, icon: Icon }) {
@@ -206,17 +228,24 @@ export default function OnboardingScreen({ onComplete }) {
   const [likedItems, setLikedItems] = useState([]);
   const [cardIndex, setCardIndex] = useState(0);
   const [goal, setGoal] = useState(null);
+  const [imageUriMap, setImageUriMap] = useState(() =>
+    Object.fromEntries(SWIPE_PICKS.map((pick) => [pick.title, pick.cover || null])),
+  );
 
   /* ── Prefetch all swipe card images on mount ── */
   useEffect(() => {
     SWIPE_PICKS.forEach((pick) => {
       if (pick.cover) {
-        Image.prefetch(pick.cover).catch(() => {});
+        RNImage.prefetch(pick.cover).catch(() => {});
+        const fallback = getFallbackImageUrl(pick.cover);
+        if (fallback) {
+          RNImage.prefetch(fallback).catch(() => {});
+        }
       }
     });
   }, []);
 
-  const totalSteps = 6;
+  const totalSteps = 5;
   const progress = ((step + 1) / totalSteps) * 100;
   const StepIcon = STEP_ICONS[step] || Sparkles;
 
@@ -296,13 +325,6 @@ export default function OnboardingScreen({ onComplete }) {
   });
 
   /* ── Helpers ── */
-  const interestSummary = useMemo(() => {
-    if (!interests.length) return 'a mix of timeless and trending topics';
-    if (interests.length === 1) return interests[0];
-    if (interests.length === 2) return `${interests[0]} and ${interests[1]}`;
-    return `${interests[0]}, ${interests[1]}, and more`;
-  }, [interests]);
-
   const toggleInterest = (value) => {
     setInterests((prev) =>
       prev.includes(value)
@@ -318,9 +340,21 @@ export default function OnboardingScreen({ onComplete }) {
     if (step === 1) return Boolean(gender);
     if (step === 2) return interests.length > 0;
     if (step === 3) return cardIndex >= SWIPE_PICKS.length;
-    if (step === 5) return Boolean(goal);
+    if (step === 4) return Boolean(goal);
     return true;
   }, [step, gender, interests.length, cardIndex, goal]);
+
+  const handleCardImageError = useCallback((title) => {
+    setImageUriMap((prev) => {
+      const currentUrl = prev[title];
+      if (!currentUrl) return prev;
+      const fallback = getFallbackImageUrl(currentUrl);
+      if (fallback && fallback !== currentUrl) {
+        return { ...prev, [title]: fallback };
+      }
+      return { ...prev, [title]: null };
+    });
+  }, []);
 
   /* ── Render swipe step (step 3) ── */
   const renderSwipeStep = () => {
@@ -358,6 +392,7 @@ export default function OnboardingScreen({ onComplete }) {
           {/* Next card (behind, scales up as top card is dragged) */}
           {nextPick && (
             <Animated.View
+              key={`next-${nextPick.title}`}
               style={[
                 styles.swipeCard,
                 {
@@ -368,11 +403,15 @@ export default function OnboardingScreen({ onComplete }) {
                 },
               ]}
             >
-              {nextPick.cover ? (
+              {imageUriMap[nextPick.title] ? (
                 <Image
-                  source={{ uri: nextPick.cover }}
+                  source={imageUriMap[nextPick.title]}
+                  recyclingKey={`next-${nextPick.title}`}
                   style={StyleSheet.absoluteFill}
-                  resizeMode="cover"
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  transition={120}
+                  onError={() => handleCardImageError(nextPick.title)}
                 />
               ) : (
                 <View style={styles.placeholderBg}>
@@ -390,6 +429,7 @@ export default function OnboardingScreen({ onComplete }) {
 
           {/* Top card (draggable) */}
           <Animated.View
+            key={`current-${currentPick.title}`}
             {...panResponder.panHandlers}
             style={[
               styles.swipeCard,
@@ -403,11 +443,15 @@ export default function OnboardingScreen({ onComplete }) {
             ]}
           >
             {/* Background image or colored placeholder */}
-            {currentPick.cover ? (
+            {imageUriMap[currentPick.title] ? (
               <Image
-                source={{ uri: currentPick.cover }}
+                source={imageUriMap[currentPick.title]}
+                recyclingKey={`current-${currentPick.title}`}
                 style={StyleSheet.absoluteFill}
-                resizeMode="cover"
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={120}
+                onError={() => handleCardImageError(currentPick.title)}
               />
             ) : (
               <View style={styles.placeholderBg}>
@@ -560,42 +604,8 @@ export default function OnboardingScreen({ onComplete }) {
 
       /* step 3 is handled by renderSwipeStep */
 
-      /* ── 4  Personalization ── */
+      /* ── 4  Daily target ── */
       case 4:
-        return (
-          <View>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>
-              Great taste.{'\n'}Here's what happens next
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              We'll prioritize content around {interestSummary}.
-            </Text>
-            <View
-              style={[
-                styles.infoCard,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.surfaceBorder,
-                },
-              ]}
-            >
-              <Brain
-                size={20}
-                color={colors.accent}
-                strokeWidth={2}
-                style={{ marginBottom: 10 }}
-              />
-              <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                Your Explore feed will blend books, articles, and videos — then
-                break them into swipeable idea cards so you learn quickly and go
-                deep when you want.
-              </Text>
-            </View>
-          </View>
-        );
-
-      /* ── 5  Daily target ── */
-      case 5:
         return (
           <View>
             <Text style={[styles.title, { color: colors.textPrimary }]}>
@@ -925,19 +935,6 @@ const styles = StyleSheet.create({
 
   /* Swipe done */
   swipeDone: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-
-  /* ── Info card ── */
-  infoCard: { borderWidth: 1, borderRadius: 18, padding: 20 },
-  infoText: { fontSize: 14, lineHeight: 23 },
-
-  /* ── Section label ── */
-  sectionLabel: {
-    fontSize: 11,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    fontWeight: '700',
-    marginBottom: 10,
-  },
 
   /* ── Footer ── */
   footer: {

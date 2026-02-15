@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -136,12 +136,13 @@ function FeedCard({ item, onPress, colors, itemHeight }) {
         >
           {item.cover ? (
             <Image
-              source={{ uri: item.cover }}
+              source={{ uri: item.cover, cache: 'force-cache' }}
               style={[
                 styles.coverImage,
                 { backgroundColor: colors.coverPlaceholder },
               ]}
               resizeMode="cover"
+              fadeDuration={0}
             />
           ) : (
             <View
@@ -216,6 +217,7 @@ function LoadMoreCard({ onLoadMore, colors, remaining, itemHeight }) {
 export default function BookFeed() {
   const navigation = useNavigation();
   const listRef = useRef(null);
+  const prefetchedUrisRef = useRef(new Set());
   const [page, setPage] = useState(1);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
@@ -233,6 +235,28 @@ export default function BookFeed() {
     }
     return items;
   }, [items, hasMore]);
+
+  const prefetchCovers = useCallback((list) => {
+    list.forEach((entry) => {
+      if (!entry?.cover) return;
+      if (prefetchedUrisRef.current.has(entry.cover)) return;
+      prefetchedUrisRef.current.add(entry.cover);
+      Image.prefetch(entry.cover).catch(() => {});
+    });
+  }, []);
+
+  // Warm cache for current + next page whenever feed updates.
+  useEffect(() => {
+    const nextPageItems = getPage(page + 1, filter);
+    prefetchCovers([...items, ...nextPageItems]);
+  }, [items, page, filter, prefetchCovers]);
+
+  // Keep a small look-ahead cache around current position.
+  useEffect(() => {
+    const windowStart = Math.max(0, currentIndex - 1);
+    const windowEnd = Math.min(items.length, currentIndex + 5);
+    prefetchCovers(items.slice(windowStart, windowEnd));
+  }, [currentIndex, items, prefetchCovers]);
 
   const handleFilterChange = useCallback((key) => {
     setFilter(key);

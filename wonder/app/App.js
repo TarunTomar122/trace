@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, AppState, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 
@@ -14,6 +14,17 @@ function Main() {
   const { colors } = useTheme();
   const { session, loading } = useAuth();
   const [onboardingDone, setOnboardingDone] = React.useState(false);
+
+  // Dev/testing helper: always reset onboarding when app becomes active.
+  React.useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        setOnboardingDone(false);
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   // For now, always run onboarding at app start.
   if (!onboardingDone) {

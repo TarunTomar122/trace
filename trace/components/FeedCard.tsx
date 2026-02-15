@@ -9,7 +9,7 @@ import {
   Sparkles,
   Newspaper,
   Flame,
-  FileText,
+  ExternalLink,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -29,35 +29,13 @@ const SOURCE_LABEL: Record<string, { icon: typeof Youtube; label: string; color:
   news: { icon: Newspaper, label: 'News', color: '#f97316' },
 };
 
-// ─── Pastel fallback colors (matching web frontend) ───
-const PASTEL_COLORS: { bg: string; darkBg: string; text: string }[] = [
-  { bg: '#FFE4E6', darkBg: '#3B1A1E', text: '#FB7185' },
-  { bg: '#E0F2FE', darkBg: '#0C2A3E', text: '#38BDF8' },
-  { bg: '#FEF3C7', darkBg: '#2E2410', text: '#FBBF24' },
-  { bg: '#D1FAE5', darkBg: '#0A2E1A', text: '#34D399' },
-  { bg: '#EDE9FE', darkBg: '#1E1530', text: '#A78BFA' },
-  { bg: '#CCFBF1', darkBg: '#0A2925', text: '#2DD4BF' },
-  { bg: '#FFEDD5', darkBg: '#2E1A08', text: '#FB923C' },
-  { bg: '#E0E7FF', darkBg: '#151A30', text: '#818CF8' },
-  { bg: '#FCE7F3', darkBg: '#30152A', text: '#F472B6' },
-  { bg: '#CFFAFE', darkBg: '#0A2530', text: '#22D3EE' },
-];
-
-function hashString(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash);
-}
-
-function getDomainLetter(url: string): string {
-  try {
-    const hostname = new URL(url).hostname.replace('www.', '');
-    return hostname.charAt(0).toUpperCase();
-  } catch {
-    return '?';
-  }
+function isLikelyRealImageUrl(url?: string | null): boolean {
+  if (!url) return false;
+  const value = url.trim().toLowerCase();
+  if (!value.startsWith('http://') && !value.startsWith('https://')) return false;
+  if (value.endsWith('.svg')) return false;
+  if (value.includes('placeholder') || value.includes('ui-avatars.com')) return false;
+  return true;
 }
 
 // ─── Category badge config (matching web frontend) ───
@@ -97,12 +75,7 @@ export function FeedCard({ item, colorScheme, onPress }: FeedCardProps) {
 
   const thumbnail = item.thumbnail;
   const [imgError, setImgError] = useState(false);
-  const showRealImage = !!thumbnail && !imgError;
-
-  // Pastel fallback
-  const pastelIndex = hashString(item.url || item.id) % PASTEL_COLORS.length;
-  const pastel = PASTEL_COLORS[pastelIndex];
-  const letter = getDomainLetter(item.url);
+  const showRealImage = isLikelyRealImageUrl(thumbnail) && !imgError;
 
   const handlePress = () => {
     if (onPress) {
@@ -137,6 +110,12 @@ export function FeedCard({ item, colorScheme, onPress }: FeedCardProps) {
                 </ThemedText>
               </>
             )}
+            {!hasSummary && (
+              <>
+                <ThemedText style={[styles.dot, { color: Colors[colorScheme].border }]}>·</ThemedText>
+                <ExternalLink size={11} color={Colors[colorScheme].muted} strokeWidth={1.8} />
+              </>
+            )}
           </View>
 
           {/* Title */}
@@ -154,41 +133,19 @@ export function FeedCard({ item, colorScheme, onPress }: FeedCardProps) {
             </ThemedText>
           ) : null}
 
-          {/* Bottom: summary badge */}
-          {hasSummary && (
-            <View style={styles.summaryBadge}>
-              <FileText size={11} color="#22c55e" strokeWidth={2} />
-              <ThemedText style={styles.summaryBadgeText}>Summary</ThemedText>
-            </View>
-          )}
         </View>
 
-        {/* Right: thumbnail or pastel fallback */}
-        <View
-          style={[
-            styles.thumbnailWrap,
-            {
-              backgroundColor: showRealImage
-                ? Colors[colorScheme].card
-                : colorScheme === 'dark'
-                  ? pastel.darkBg
-                  : pastel.bg,
-            },
-          ]}
-        >
-          {showRealImage ? (
+        {/* Right: show only real source image */}
+        {showRealImage && (
+          <View style={[styles.thumbnailWrap, { backgroundColor: Colors[colorScheme].card }]}>
             <Image
               source={{ uri: thumbnail }}
               style={styles.thumbnail}
               resizeMode="cover"
               onError={() => setImgError(true)}
             />
-          ) : (
-            <ThemedText style={[styles.pastelLetter, { color: pastel.text }]}>
-              {letter}
-            </ThemedText>
-          )}
-        </View>
+          </View>
+        )}
       </View>
     </Pressable>
   );
@@ -233,24 +190,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-  summaryBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 4,
-    backgroundColor: '#22c55e12',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    marginTop: 2,
-  },
-  summaryBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#22c55e',
-  },
-
-  // ─── Thumbnail / fallback ───
+  // ─── Thumbnail ───
   thumbnailWrap: {
     width: 80,
     height: 80,
@@ -263,9 +203,5 @@ const styles = StyleSheet.create({
   thumbnail: {
     width: '100%',
     height: '100%',
-  },
-  pastelLetter: {
-    fontSize: 24,
-    fontWeight: '600',
   },
 });

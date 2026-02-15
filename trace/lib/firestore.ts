@@ -538,16 +538,37 @@ export async function deleteUserData(uid: string): Promise<void> {
 
 // ─── Web app base URL (same host the Dodo webhook & onboard API live on) ───
 const WEB_APP_URL = 'https://www.yourtrace.online';
+const FEED_GEN_DEFAULT_COOLDOWN_MS = 45_000;
+const lastFeedGenTriggerAt = new Map<string, number>();
 
 /**
  * Trigger the backend feed-generation pipeline for a user.
  * Calls the Next.js /api/onboard endpoint which dispatches a GitHub Action.
- * Fire-and-forget — failures are logged but never thrown.
+ * Fire-and-forget - failures are logged but never thrown.
  */
-export async function triggerFeedGeneration(uid: string): Promise<boolean> {
+export async function triggerFeedGeneration(
+  uid: string,
+  options?: {
+    reason?: 'onboarding' | 'purchase' | 'restore' | 'subscribed_fallback' | 'manual';
+    force?: boolean;
+    cooldownMs?: number;
+  }
+): Promise<boolean> {
+  const reason = options?.reason || 'manual';
+  const force = options?.force || false;
+  const cooldownMs = options?.cooldownMs ?? FEED_GEN_DEFAULT_COOLDOWN_MS;
+  const now = Date.now();
+  const last = lastFeedGenTriggerAt.get(uid);
+  if (!force && typeof last === 'number' && now - last < cooldownMs) {
+    const waitMs = cooldownMs - (now - last);
+    console.log(`[FeedGen] Skipping duplicate trigger for uid=${uid} reason=${reason}; cooldown ${waitMs}ms remaining`);
+    return true;
+  }
+
   const url = `${WEB_APP_URL}/api/onboard`;
   try {
-    console.log(`[FeedGen] POST ${url} for uid=${uid}`);
+    console.log(`[FeedGen] POST ${url} for uid=${uid} reason=${reason}`);
+    lastFeedGenTriggerAt.set(uid, now);
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -558,13 +579,20 @@ export async function triggerFeedGeneration(uid: string): Promise<boolean> {
     if (res.ok) {
       try {
         const data = JSON.parse(text);
-        return !!data.triggered;
+        const accepted = !!data.triggered || !!data.deduped;
+        if (!accepted) {
+          lastFeedGenTriggerAt.delete(uid);
+        }
+        return accepted;
       } catch {
+        lastFeedGenTriggerAt.delete(uid);
         return false;
       }
     }
+    lastFeedGenTriggerAt.delete(uid);
     return false;
   } catch (error) {
+    lastFeedGenTriggerAt.delete(uid);
     console.error(`[FeedGen] Network error calling ${url}:`, error);
     return false;
   }

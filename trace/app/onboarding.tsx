@@ -7,6 +7,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -24,6 +25,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import {
   INTERESTS,
   INTEREST_SUBTOPICS,
@@ -33,26 +35,26 @@ import {
 } from '@/lib/firestore';
 import { ILLUS_PALETTE } from '@/app/(auth)/welcome';
 
-// ─── Design tokens ───
+// - Design tokens -
 const ACCENT = '#22c55e';
 const TOTAL_STEPS = 3;
 
-// Personalised outcome copy per interest
+// Personalised feature-forward copy per interest
 const INTEREST_OUTCOMES: Record<string, string> = {
-  technology: 'Stay ahead on AI, tools, and the tech that actually matters',
-  science: 'Never miss a discovery that changes how you think',
-  psychology: 'Understand yourself and the people around you better',
-  ideas: 'Start your day with essays and ideas that stick with you',
-  business: 'Get the strategy and startup insights others miss',
-  money: 'Make smarter money moves — investing, saving, earning',
-  design: 'Sharpen your creative eye with work worth studying',
-  career: 'Level up with career insights you can use this week',
-  'self-development': 'Build habits that actually stick this time',
-  health: 'Feel better every day with science-backed wellness',
-  cooking: 'Discover recipes and techniques worth your time',
-  culture: "Stay plugged into what's shaping movies, music, and more",
-  relationships: 'Strengthen the connections that matter most',
-  society: "Cut through the noise on what's shaping the world",
+  technology: 'Get top tech links with AI summaries and key takeaways',
+  science: 'See science updates with quick summaries and context',
+  psychology: 'Read psychology ideas with practical takeaways you can apply',
+  ideas: 'Turn long-form ideas into short, structured notes',
+  business: 'Track business stories with clear summaries and action points',
+  money: 'Follow finance and investing links with easy AI breakdowns',
+  design: 'Save design references and review key insights faster',
+  career: 'Surface career links with concrete tips and next steps',
+  'self-development': 'Convert growth content into daily actionable notes',
+  health: 'Read health updates with practical guidance upfront',
+  cooking: 'Discover recipes and food ideas with quick context',
+  culture: 'Keep up with culture stories using fast summaries',
+  relationships: 'Get relationship insights with practical examples',
+  society: 'Follow major topics with quick context and core points',
 };
 
 // ─── Pill types ───
@@ -126,6 +128,7 @@ function Pill({
 export default function OnboardingScreen() {
   const router = useRouter();
   const { user, profile, refreshProfile } = useAuth();
+  const { showToast } = useToast();
   const colorScheme = useColorScheme() ?? 'light';
 
   const isEditMode = profile?.onboarded ?? false;
@@ -181,7 +184,7 @@ export default function OnboardingScreen() {
   const toggleInterest = useCallback(
     (id: string) => {
       if (selectedInterests.includes(id)) {
-        // Deselect interest — but keep sub-topics visible & their selections intact
+        // Deselect interest - keep sub-topics visible and selections intact
         setSelectedInterests(selectedInterests.filter((i) => i !== id));
       } else {
         setSelectedInterests([...selectedInterests, id]);
@@ -287,13 +290,20 @@ export default function OnboardingScreen() {
         contentDepth: 'surprise',
       });
 
-      // Trigger feed generation in the background (fire-and-forget)
-      triggerFeedGeneration(user.uid);
+      // Trigger feed generation in the background
+      const queued = await triggerFeedGeneration(user.uid, { reason: 'onboarding' });
+      showToast(
+        queued
+          ? 'Setup complete. Building your personalised feed.'
+          : 'Setup saved. Feed will appear shortly.',
+        queued ? 'success' : 'info'
+      );
 
       await refreshProfile();
       router.replace('/(tabs)');
     } catch (error) {
       console.error('Error completing onboarding:', error);
+      showToast('Could not finish setup. Please try again.', 'error');
       setIsSubmitting(false);
     }
   };
@@ -375,7 +385,7 @@ export default function OnboardingScreen() {
                   resizeMode="contain"
                 />
                 <ThemedText style={styles.title}>
-                  Choose areas you'd{'\n'}like to explore
+                  Choose areas you would{'\n'}like to explore
                 </ThemedText>
               </View>
 
@@ -383,9 +393,9 @@ export default function OnboardingScreen() {
                 Tap what catches your eye
               </ThemedText>
 
-              {/* Single unified pill grid — interests + sub-interests interleaved */}
+              {/* Single unified pill grid - interests + sub-interests interleaved */}
               <View style={styles.pillsGrid}>
-                {pillItems.map((item) => {
+                {pillItems.map((item, index) => {
                   const pillEl = (
                     <Pill
                       label={item.label}
@@ -403,14 +413,21 @@ export default function OnboardingScreen() {
                     />
                   );
 
-                  // Sub-interest pills get a smooth fade + slide entrance
+                  // Sub-interest pills get a smooth fade + slide entrance with staggered delay
                   if (item.kind === 'subtopic') {
+                    // Count how many subtopics came before this one to calculate stagger delay
+                    const subtopicIndex = pillItems
+                      .slice(0, index)
+                      .filter((p) => p.kind === 'subtopic' && p.interestId === item.interestId)
+                      .length;
+                    
                     return (
                       <Animated.View
                         key={item.key}
-                        entering={FadeInDown.duration(500)
-                          .easing(Easing.out(Easing.cubic))
-                          .delay(80)}
+                        entering={FadeInDown.duration(400)
+                          .easing(Easing.out(Easing.ease))
+                          .delay(subtopicIndex * 60)}
+                        exiting={FadeOut.duration(200)}
                       >
                         {pillEl}
                       </Animated.View>
@@ -430,7 +447,7 @@ export default function OnboardingScreen() {
               exiting={FadeOut.duration(200)}
               style={styles.valueScreen}
             >
-              {/* Illustration container — gold tint */}
+              {/* Illustration container - gold tint */}
               <View
                 style={[
                   styles.valueIllusContainer,
@@ -441,15 +458,15 @@ export default function OnboardingScreen() {
               </View>
 
               <ThemedText style={styles.valueTitle}>
-                You're going to{'\n'}love your mornings
+                Here is what Trace{'\n'}will do for you
               </ThemedText>
 
               <ThemedText style={[styles.valueBody, { color: Colors[colorScheme].muted }]}>
-                Every day, you'll wake up to a feed full of{' '}
+                Every day you get a feed for{' '}
                 <ThemedText style={[styles.valueBodyBold, { color: Colors[colorScheme].text }]}>
                   {interestLabels}
                 </ThemedText>
-                {' '}handpicked, zero noise.
+                {' '}plus AI notes, key takeaways, and quick read time.
               </ThemedText>
 
               <View style={styles.outcomeList}>
@@ -529,6 +546,13 @@ export default function OnboardingScreen() {
               },
             ]}
           >
+            {isSubmitting && (
+              <ActivityIndicator
+                size="small"
+                color="#fff"
+                style={{ marginRight: 8 }}
+              />
+            )}
             <ThemedText
               style={[
                 styles.continueBtnText,
@@ -622,7 +646,7 @@ const styles = StyleSheet.create({
     paddingLeft: 44,
   },
 
-  // ─── Pill grid (interests, sub-interests, skills — all same style) ───
+  // - Pill grid (interests, sub-interests, skills - all same style) -
   pillsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -732,6 +756,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   continueBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 18,

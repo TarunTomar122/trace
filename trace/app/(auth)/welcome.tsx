@@ -25,13 +25,12 @@ import BrainIllus from '@/assets/images/brain-brainstorm-brainstorming-svgrepo-c
 import NewspaperIllus from '@/assets/images/newspaper-svgrepo-com.svg';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 
-// ─── Subtle illustration tints ───
-// Very light washes — just enough warmth to feel intentional
+// - Subtle illustration tints -
+// Very light washes - just enough warmth to feel intentional
 export const ILLUS_PALETTE = {
   coral:    { light: '#F5F0EE', dark: '#1C1917' },
   olive:    { light: '#F0F4F0', dark: '#161A16' },
@@ -39,7 +38,7 @@ export const ILLUS_PALETTE = {
   gold:     { light: '#F5F3EE', dark: '#1C1A16' },
 };
 
-// ─── Intro pages (outcome-focused) ───
+// - Intro pages (feature-focused) -
 const INTRO_PAGES: {
   Illustration: React.FC<SvgProps>;
   title: string;
@@ -49,18 +48,18 @@ const INTRO_PAGES: {
   {
     Illustration: BrainIllus,
     title: 'Wake up smarter\nevery morning',
-    body: 'A daily feed of articles, videos, and ideas \u2014 handpicked for what you actually care about.',
+    body: 'Get a personalized feed of articles, videos, and news based on your selected interests.',
     tint: ILLUS_PALETTE.coral,
   },
   {
     Illustration: NewspaperIllus,
     title: '10 minutes that\nactually count',
-    body: 'Replace doomscrolling with curated insights that stick. Your mind will thank you.',
+    body: 'Open any item to get AI notes, key takeaways, and a quick read time in one tap.',
     tint: ILLUS_PALETTE.olive,
   },
 ];
 
-// ─── Topic pills for landing page ───
+// - Topic pills for landing page -
 const TOPIC_PILLS: {
   icon: LucideIcon;
   label: string;
@@ -70,8 +69,8 @@ const TOPIC_PILLS: {
   {
     icon: Play,
     label: 'YouTube',
-    pos: { top: '16%', left: '25%' },
-    rotate: '-8deg',
+    pos: { top: '16%', left: '32%' },
+    rotate: '8deg',
   },
   {
     icon: Heart,
@@ -82,19 +81,19 @@ const TOPIC_PILLS: {
   {
     icon: BookOpen,
     label: 'Medium',
-    pos: { top: '18%', right: '16%' },
+    pos: { top: '18%', right: '8%' },
     rotate: '4deg',
   },
   {
     icon: Smartphone,
     label: 'Tech',
-    pos: { top: '34%', right: '4%' },
+    pos: { top: '24%', left: '4%' },
     rotate: '-3deg',
   },
   {
     icon: DollarSign,
     label: 'Finances',
-    pos: { top: '30%', left: '4%' },
+    pos: { top: '84%', left: '34%' },
     rotate: '3deg',
   },
   {
@@ -108,7 +107,7 @@ const TOPIC_PILLS: {
 const TERMS_URL = 'https://www.yourtrace.online/terms';
 const PRIVACY_URL = 'https://www.yourtrace.online/privacy-policy';
 
-// ─── Dots indicator ───
+// - Dots indicator -
 function PageDots({
   total,
   current,
@@ -139,7 +138,7 @@ function PageDots({
   );
 }
 
-// ─── Main Welcome Screen ───
+// - Main Welcome Screen -
 export default function WelcomeScreen() {
   const { signInWithGoogle } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
@@ -173,7 +172,7 @@ export default function WelcomeScreen() {
       ]}
       edges={['top', 'bottom']}
     >
-      {/* ═══════ Intro screens ═══════ */}
+      {/* Intro screens */}
       {!isLanding && (
         <Animated.View
           key={`intro-${page}`}
@@ -197,7 +196,7 @@ export default function WelcomeScreen() {
 
           {/* Centered content */}
           <View style={styles.introCenter}>
-            {/* Illustration container — colored rounded rect */}
+            {/* Illustration container - colored rounded rect */}
             <View
               style={[
                 styles.illusContainer,
@@ -254,7 +253,7 @@ export default function WelcomeScreen() {
         </Animated.View>
       )}
 
-      {/* ═══════ Landing page (Get Started) ═══════ */}
+      {/* Landing page (Get Started) */}
       {isLanding && (
         <Animated.View
           entering={FadeIn.duration(450)}
@@ -318,7 +317,7 @@ export default function WelcomeScreen() {
                 ]}
               >
                 Every morning, the best articles, videos,{'\n'}and ideas
-                {' \u2014 '}curated around what you care about.
+                {' '}with AI summaries and takeaways tailored to what you care about.
               </ThemedText>
             </View>
           </View>
@@ -389,13 +388,13 @@ export default function WelcomeScreen() {
   );
 }
 
-// ─── Styles ───
+// - Styles -
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
 
-  // ─── Intro screens ───
+  // - Intro screens -
   introPage: {
     flex: 1,
   },
@@ -458,7 +457,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // ─── Dots ───
+  // - Dots -
   dotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -470,7 +469,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
 
-  // ─── Landing page ───
+  // - Landing page -
   landingContainer: {
     flex: 1,
   },

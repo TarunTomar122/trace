@@ -1,13 +1,16 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { Image } from 'expo-image';
 import {
+  AuthCredential,
   GoogleAuthProvider,
   signInWithCredential,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   User,
 } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { app, auth } from '@/lib/firebase';
 import { getOrCreateUserProfile, getUserProfile, deleteUserData, UserProfile } from '@/lib/firestore';
 
 interface AuthContextType {
@@ -36,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const signInInFlightRef = useRef(false);
 
   const loadProfile = async (firebaseUser: User) => {
     try {
@@ -46,6 +50,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         firebaseUser.photoURL
       );
       setProfile(userProfile);
+      
+      // Prefetch profile photo for instant loading
+      if (firebaseUser.photoURL) {
+        Image.prefetch(firebaseUser.photoURL).catch(() => {
+          // Silent fail - not critical
+        });
+      }
+      
       return userProfile;
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -81,7 +93,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, []);
 
+  const signInWithCredentialWithRetry = async (
+    credential: AuthCredential
+  ): Promise<Awaited<ReturnType<typeof signInWithCredential>>> => {
+    try {
+      return await signInWithCredential(auth, credential);
+    } catch (error: any) {
+      const code = error?.code as string | undefined;
+      if (code === 'auth/network-request-failed') {
+        console.warn('[Auth] signInWithCredential network failure, retrying once...');
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        return signInWithCredential(auth, credential);
+      }
+      throw error;
+    }
+  };
+
+  const preflightFirebaseAuth = async () => {
+    const apiKey = app.options.apiKey;
+    if (!apiKey) {
+      throw new Error('Missing Firebase API key in app config');
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+      const res = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:createAuthUri?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            continueUri: 'http://localhost',
+            identifier: 'preflight@trace.local',
+          }),
+          signal: controller.signal,
+        }
+      );
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Firebase auth preflight failed (${res.status}): ${text}`);
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  const withTimeout = async <T,>(promise: Promise<T>, ms: number, message: string): Promise<T> => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error(message)), ms);
+    });
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  };
+
   const signInWithGoogle = async () => {
+    if (signInInFlightRef.current) {
+      console.log('[Auth] Google sign-in already in flight, ignoring duplicate call');
+      return;
+    }
+    signInInFlightRef.current = true;
     try {
       // Check if device supports Google Play (no-op on iOS)
       console.log('[Auth] Checking Play Services...');
@@ -101,33 +176,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Create Firebase credential from Google ID token
       const credential = GoogleAuthProvider.credential(idToken);
 
-      console.log('[Auth] Calling signInWithCredential...');
-      const signInPromise = signInWithCredential(auth, credential);
-
-      // Add timeout so the UI can recover, but keep observing the original promise
-      // so we can print the real Firebase failure when it eventually arrives.
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('signInWithCredential timed out after 15s')), 15000)
-      );
-
-      let result;
-      try {
-        result = await Promise.race([signInPromise, timeoutPromise]);
-      } catch (error) {
-        if (error instanceof Error && error.message.includes('timed out')) {
-          signInPromise
-            .then((lateResult) => {
-              console.log('[Auth] signInWithCredential completed after timeout for user:', lateResult.user.uid);
-            })
-            .catch((lateError: any) => {
-              console.error('[Auth] signInWithCredential eventual failure:', {
-                code: lateError?.code,
-                message: lateError?.message,
-              });
-            });
+      // Helpful early signal for Android networking / API-key restrictions.
+      if (Platform.OS === 'android') {
+        console.log('[Auth] Running Firebase auth preflight...');
+        try {
+          await preflightFirebaseAuth();
+          console.log('[Auth] Firebase auth preflight OK');
+        } catch (preflightError) {
+          // Do not block real sign-in based on preflight; it is diagnostic only.
+          console.warn('[Auth] Firebase auth preflight failed, continuing anyway:', preflightError);
         }
-        throw error;
       }
+
+      console.log('[Auth] Calling signInWithCredential...');
+      const result = await withTimeout(
+        signInWithCredentialWithRetry(credential),
+        30000,
+        'Firebase sign-in timed out. Check Android network/Play Services and try again.'
+      );
       console.log('[Auth] Firebase sign-in complete. Loading profile...');
       
       // Load or create profile
@@ -137,7 +203,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('[Auth] Sign-in flow complete.');
     } catch (error) {
       console.error('Google Sign-In Error:', error);
+      const code = (error as any)?.code as string | undefined;
+      const message = error instanceof Error ? error.message : String(error);
+      if (
+        code === 'auth/network-request-failed' ||
+        message.includes('Firebase sign-in timed out') ||
+        message.includes('AbortError')
+      ) {
+        throw new Error(
+          'Could not reach Firebase Auth on this network. Please try mobile data or another Wi-Fi.'
+        );
+      }
       throw error;
+    } finally {
+      signInInFlightRef.current = false;
     }
   };
 

@@ -9,6 +9,7 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { RevenueCatProvider } from '@/contexts/RevenueCatContext';
+import { ToastProvider } from '@/contexts/ToastContext';
 import { Colors } from '@/constants/theme';
 
 export const unstable_settings = {
@@ -41,7 +42,7 @@ function AuthGate({ children }: { children: ReactNode }) {
       return;
     }
 
-    // User is logged in — wait for profile before deciding where to route.
+    // User is logged in - wait for profile before deciding where to route.
     // Without this, a user with onboarded=true gets sent to /onboarding
     // prematurely because profile hasn't loaded yet.
     if (profile === null) return;
@@ -53,7 +54,7 @@ function AuthGate({ children }: { children: ReactNode }) {
       } else {
         router.replace('/onboarding');
       }
-      // Don't set ready yet — wait for segments to change after redirect
+      // Don't set ready yet - wait for segments to change after redirect
       return;
     }
 
@@ -103,11 +104,13 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <RevenueCatProvider>
-        <AuthGate>
-          <RootLayoutNav />
-        </AuthGate>
-      </RevenueCatProvider>
+      <ToastProvider>
+        <RevenueCatProvider>
+          <AuthGate>
+            <RootLayoutNav />
+          </AuthGate>
+        </RevenueCatProvider>
+      </ToastProvider>
     </AuthProvider>
   );
 }

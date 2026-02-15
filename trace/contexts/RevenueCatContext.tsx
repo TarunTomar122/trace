@@ -8,6 +8,7 @@ import Purchases, {
 import RevenueCatUI from 'react-native-purchases-ui';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { triggerFeedGeneration, updateUserProfile } from '@/lib/firestore';
 
 // ─── Config ───
@@ -68,6 +69,7 @@ function deriveAppSubStatus(
 // ─── Provider ───
 export function RevenueCatProvider({ children }: { children: React.ReactNode }) {
   const { user, profile, refreshProfile } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
   const routerRef = useRef(router);
   routerRef.current = router;
@@ -93,7 +95,7 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
   // ─── Combined: user has access if EITHER source grants it ───
   const isProUser = hasRCEntitlement || hasWebSubscription;
 
-  // ─── Sync appSubscriptionStatus to Firestore (stable — uses refs) ───
+  // - Sync appSubscriptionStatus to Firestore (stable - uses refs) -
   const syncAppSubStatus = useCallback(async (info: CustomerInfo) => {
     const uid = userRef.current?.uid;
     if (!uid) return;
@@ -105,7 +107,7 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
     } catch (error) {
       console.error('[RevenueCat] Error syncing appSubscriptionStatus:', error);
     }
-  }, []); // stable — no deps, uses refs
+  }, []); // stable - no deps, uses refs
 
   // ─── Initialize SDK (once) ───
   useEffect(() => {
@@ -215,8 +217,11 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
           await syncAppSubStatus(info);
           const uid = userRef.current?.uid;
           if (uid) {
-            await triggerFeedGeneration(uid);
+            await triggerFeedGeneration(uid, { reason: 'purchase' });
           }
+          
+          // Navigate to welcome screen
+          routerRef.current?.replace('/welcome-pro');
         }
 
         return success;
@@ -226,10 +231,11 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
           return false;
         }
         console.error('[RevenueCat] Purchase error:', error);
+        showToast('Purchase failed. Please try again.', 'error');
         return false;
       }
     },
-    [syncAppSubStatus]
+    [showToast, syncAppSubStatus]
   );
 
   // ─── Restore purchases ───
@@ -242,15 +248,19 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
       if (success) {
         const uid = userRef.current?.uid;
         if (uid) {
-          await triggerFeedGeneration(uid);
+          await triggerFeedGeneration(uid, { reason: 'restore' });
         }
+        showToast('Purchase restored!', 'success');
+      } else {
+        showToast('No active purchases found to restore.', 'info');
       }
       return success;
     } catch (error) {
       console.error('[RevenueCat] Restore error:', error);
+      showToast('Restore failed. Please try again.', 'error');
       return false;
     }
-  }, [syncAppSubStatus]);
+  }, [showToast, syncAppSubStatus]);
 
   // ─── Refresh customer info ───
   const refreshCustomerInfo = useCallback(async () => {

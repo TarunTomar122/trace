@@ -5,6 +5,7 @@ import {
   StyleSheet,
   View,
   Text,
+  Image,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,17 +24,18 @@ import {
   ExternalLink,
   Flame,
   Clock,
+  Crown,
+  Lock,
 } from 'lucide-react-native';
 
-import { Crown, Lock } from 'lucide-react-native';
-
 import { ThemedText } from '@/components/themed-text';
-import { Colors, Fonts } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useAuth } from '@/contexts/AuthContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
+import { useToast } from '@/contexts/ToastContext';
 import { isBookmarked as checkBookmarked, toggleBookmark } from '@/lib/bookmarks';
 import { FeedItem } from '@/lib/firestore';
+import { logReadingEvent } from '@/lib/reading-analytics';
 
 const SOURCE_CONFIG: Record<
   string,
@@ -49,6 +51,15 @@ const SOURCE_CONFIG: Record<
   model: { icon: Sparkles, color: '#6366f1', bgColor: '#eef2ff', label: 'Model' },
   news: { icon: Newspaper, color: '#f97316', bgColor: '#fff7ed', label: 'News' },
 };
+
+function isLikelyRealImageUrl(url?: string | null): boolean {
+  if (!url) return false;
+  const value = url.trim().toLowerCase();
+  if (!value.startsWith('http://') && !value.startsWith('https://')) return false;
+  if (value.endsWith('.svg')) return false;
+  if (value.includes('placeholder') || value.includes('ui-avatars.com')) return false;
+  return true;
+}
 
 /** Renders inline markdown: **bold** → <Text style={{fontWeight:'700'}}>bold</Text> */
 function RichText({ children, style }: { children: string; style?: any }) {
@@ -71,32 +82,38 @@ function RichText({ children, style }: { children: string; style?: any }) {
 
 export default function ArticleScreen() {
   const router = useRouter();
+  const { showToast } = useToast();
   const params = useLocalSearchParams<{
     id: string;
     title: string;
     url: string;
+    thumbnail: string;
     type: string;
     subtitle: string;
     body: string;
     reading_time: string;
     why_relevant: string;
     is_hot: string;
+    feed_category: string;
   }>();
   const colorScheme = useColorScheme() ?? 'light';
-  const { profile } = useAuth();
   const { isProUser, presentPaywall } = useRevenueCat();
 
-  const hasAccess = isProUser;
+  // Allow access if user is pro OR if this is a free sample summary
+  const isSampleSummary = params.feed_category === 'sample_summary';
+  const hasAccess = isProUser || isSampleSummary;
 
   const [upvoted, setUpvoted] = useState(false);
   const [downvoted, setDownvoted] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   // Build a FeedItem from route params for bookmarking
   const feedItem: FeedItem = {
     id: params.id || params.url || params.title || '',
     title: params.title || '',
     url: params.url || '',
+    thumbnail: params.thumbnail || undefined,
     type: params.type || 'blog',
     summary: {
       short_article: {
@@ -117,8 +134,13 @@ export default function ArticleScreen() {
   }, [feedItem.id]);
 
   const handleToggleBookmark = async () => {
+    if (!isProUser) {
+      presentPaywall();
+      return;
+    }
     const nowBookmarked = await toggleBookmark(feedItem);
     setBookmarked(nowBookmarked);
+    showToast(nowBookmarked ? 'Saved to bookmarks.' : 'Removed from bookmarks.', 'success');
   };
 
   const itemType = params.type || 'blog';
@@ -126,6 +148,7 @@ export default function ArticleScreen() {
   const Icon = config.icon;
   const isHot = params.is_hot === 'true';
   const readingTime = params.reading_time ? parseInt(params.reading_time) : null;
+  const showHeroImage = isLikelyRealImageUrl(params.thumbnail) && !imgError;
 
   // Parse markdown body into simple paragraphs
   const bodyParagraphs = (params.body || '')
@@ -182,6 +205,17 @@ export default function ArticleScreen() {
     if (newDownvoted) setUpvoted(false);
   };
 
+  useEffect(() => {
+    if (!params.id && !params.url && !params.title) return;
+    logReadingEvent({
+      eventType: 'summary_open',
+      itemId: params.id || params.url || params.title,
+      title: params.title || '',
+      url: params.url || '',
+      itemType: params.type || 'blog',
+    });
+  }, [params.id, params.url, params.title, params.type]);
+
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
@@ -203,7 +237,17 @@ export default function ArticleScreen() {
           />
         </Pressable>
         <Pressable
-          onPress={() => params.url && WebBrowser.openBrowserAsync(params.url)}
+          onPress={() => {
+            if (!params.url) return;
+            logReadingEvent({
+              eventType: 'external_open',
+              itemId: params.id || params.url || params.title || '',
+              title: params.title || '',
+              url: params.url,
+              itemType: params.type || 'blog',
+            });
+            WebBrowser.openBrowserAsync(params.url);
+          }}
           hitSlop={12}
           style={styles.topAction}>
           <ExternalLink size={20} color={Colors[colorScheme].muted} strokeWidth={1.5} />
@@ -213,6 +257,7 @@ export default function ArticleScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
+
         {/* Article header */}
         <View style={styles.articleHeader}>
           <View style={styles.metaRow}>
@@ -246,14 +291,15 @@ export default function ArticleScreen() {
             </ThemedText>
           )}
 
-          {params.why_relevant && (
-            <View style={[styles.relevanceBadge, { backgroundColor: Colors[colorScheme].foreground + '08' }]}>
-              <Sparkles size={13} color="#22c55e" strokeWidth={2} />
-              <ThemedText style={[styles.relevanceText, { color: Colors[colorScheme].secondary }]}>
-                {params.why_relevant}
-              </ThemedText>
-            </View>
+          {showHeroImage && (
+            <Image
+              source={{ uri: params.thumbnail }}
+              style={styles.heroImage}
+              resizeMode="cover"
+              onError={() => setImgError(true)}
+            />
           )}
+
         </View>
 
         {/* Divider */}
@@ -382,7 +428,17 @@ export default function ArticleScreen() {
 
                 <Pressable
                   style={styles.openOriginalLink}
-                  onPress={() => params.url && WebBrowser.openBrowserAsync(params.url)}>
+                  onPress={() => {
+                    if (!params.url) return;
+                    logReadingEvent({
+                      eventType: 'external_open',
+                      itemId: params.id || params.url || params.title || '',
+                      title: params.title || '',
+                      url: params.url,
+                      itemType: params.type || 'blog',
+                    });
+                    WebBrowser.openBrowserAsync(params.url);
+                  }}>
                   <ExternalLink size={14} color={Colors[colorScheme].muted} strokeWidth={1.5} />
                   <ThemedText style={[styles.openOriginalLinkText, { color: Colors[colorScheme].muted }]}>
                     Read original article instead
@@ -424,6 +480,12 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingBottom: 40,
+  },
+  heroImage: {
+    width: '100%',
+    height: 220,
+    borderRadius: 16,
+    marginBottom: 18,
   },
   articleHeader: {
     gap: 12,

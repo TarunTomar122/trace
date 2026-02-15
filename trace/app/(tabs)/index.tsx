@@ -18,7 +18,7 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { Bookmark, ArrowRight, Sparkles, X } from 'lucide-react-native';
+import { ArrowRight, Sparkles, X } from 'lucide-react-native';
 
 import NewspaperIllus from '@/assets/images/newspaper-svgrepo-com.svg';
 
@@ -27,7 +27,9 @@ import { FeedCard } from '@/components/FeedCard';
 import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { FeedItem, SAMPLE_FEED_ITEMS, getLatestUserFeed, triggerFeedGeneration } from '@/lib/firestore';
+import { logReadingEvent } from '@/lib/reading-analytics';
 import { ILLUS_PALETTE } from '@/app/(auth)/welcome';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 
@@ -63,7 +65,7 @@ export default function FeedScreen() {
     },
   });
 
-  // Animated style for the greeting row — fades & shrinks away
+  // Animated style for the greeting row - fades and shrinks away
   const greetingStyle = useAnimatedStyle(() => {
     const opacity = interpolate(
       scrollY.value,
@@ -80,7 +82,7 @@ export default function FeedScreen() {
     return { opacity, height, overflow: 'hidden' as const };
   });
 
-  // Animated style for the big heading — shrinks to compact
+  // Animated style for the big heading - shrinks to compact
   const headingStyle = useAnimatedStyle(() => {
     const fontSize = interpolate(
       scrollY.value,
@@ -134,6 +136,7 @@ export default function FeedScreen() {
   const { isProUser: isSubscribed, presentPaywall } = useRevenueCat();
   const firstName = user?.displayName?.split(' ')[0] || 'there';
   const isOnboarded = profile?.onboarded ?? false;
+  const { showToast } = useToast();
 
   const normalizeInterest = useCallback((interest: string) => {
     return interest
@@ -204,7 +207,22 @@ export default function FeedScreen() {
           i--;
         }
       }
-      return [...promoted, ...copy];
+      
+      // For free users: randomly select 5 items (including the promoted one)
+      const fullList = [...promoted, ...copy];
+      const randomItems: FeedItem[] = [];
+      const shuffled = [...fullList].sort(() => Math.random() - 0.5);
+      
+      // Keep the promoted item first if we have one, then add 4 more random items
+      if (promoted.length > 0) {
+        randomItems.push(promoted[0]);
+        const remaining = shuffled.filter(item => item.id !== promoted[0].id);
+        randomItems.push(...remaining.slice(0, 4));
+      } else {
+        randomItems.push(...shuffled.slice(0, 5));
+      }
+      
+      return randomItems;
     }
 
     return items;
@@ -214,7 +232,8 @@ export default function FeedScreen() {
   const [isFeedGenerating, setIsFeedGenerating] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasTriggeredSubscribedRefresh = useRef(false);
-  // Snapshot of the feed date when we started generating — so we can detect a NEW feed
+  const hasShownUpgradeToast = useRef(false); // Don't show upgrade toast on initial load
+  // Snapshot of the feed date when we started generating - so we can detect a NEW feed
   const feedDateOnGenStart = useRef<string | null>(null);
 
   const loadFeed = useCallback(async (): Promise<boolean> => {
@@ -256,7 +275,7 @@ export default function FeedScreen() {
         setFeedDate(userFeed.date);
         // If we recorded a snapshot date, only succeed if the feed date changed
         if (feedDateOnGenStart.current && userFeed.date === feedDateOnGenStart.current) {
-          // Same feed as before — check if summaries appeared (upgraded tier)
+          // Same feed as before - check if summaries appeared (upgraded tier)
           const hasSummaries = userFeed.items.some((i: FeedItem) => !!i.summary?.short_article?.body);
           if (!hasSummaries) return false; // still the old unsummarised feed
         }
@@ -289,6 +308,7 @@ export default function FeedScreen() {
 
     if (!isSubscribed) {
       hasTriggeredSubscribedRefresh.current = false;
+      hasShownUpgradeToast.current = false;
       return;
     }
 
@@ -296,10 +316,17 @@ export default function FeedScreen() {
     const needsGeneration = feedDate === '' || !hasSummaries;
     if (!needsGeneration) {
       hasTriggeredSubscribedRefresh.current = false;
+      hasShownUpgradeToast.current = false;
       setIsFeedGenerating(false);
       return;
     }
 
+    // Only show upgrade toast if: (1) not shown yet this session AND (2) not initial load
+    if (!hasTriggeredSubscribedRefresh.current && !hasShownUpgradeToast.current && feed.length > 0) {
+      showToast('🎉 Upgrading your feed with AI summaries...', 'success');
+      hasShownUpgradeToast.current = true;
+    }
+    
     setIsFeedGenerating(true);
 
     if (!hasTriggeredSubscribedRefresh.current) {
@@ -309,12 +336,12 @@ export default function FeedScreen() {
 
       // Small delay so Firestore subscription updates settle before backend reads profile.
       const timer = setTimeout(() => {
-        triggerFeedGeneration(user.uid);
+        triggerFeedGeneration(user.uid, { reason: 'subscribed_fallback' });
       }, 2500);
 
       return () => clearTimeout(timer);
     }
-  }, [isOnboarded, isSubscribed, user, isLoading, feed, feedDate]);
+  }, [isOnboarded, isSubscribed, user, isLoading, feed, feedDate, showToast]);
 
   useEffect(() => {
     if (!isSubscribed) {
@@ -337,23 +364,51 @@ export default function FeedScreen() {
         console.log('[Feed] New personalised feed arrived!');
         feedDateOnGenStart.current = null;
         setIsFeedGenerating(false);
+        
+        // Show success message for subscribed users getting their AI summaries
+        if (isSubscribed && hasTriggeredSubscribedRefresh.current) {
+          showToast('✨ Your feed is now enhanced with AI summaries!', 'success');
+          hasTriggeredSubscribedRefresh.current = false;
+        }
       }
     }, 15_000);
 
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [isFeedGenerating, checkForNewFeed]);
+  }, [isFeedGenerating, checkForNewFeed, isSubscribed, showToast]);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
+    const hadGenerating = isFeedGenerating;
     const hasReal = await loadFeed();
-    if (hasReal) setIsFeedGenerating(false);
+    if (hasReal) {
+      setIsFeedGenerating(false);
+      
+      // If they were waiting for summaries and now have them, show success
+      if (isSubscribed && hadGenerating && hasTriggeredSubscribedRefresh.current) {
+        const hasSummaries = feed.some((item) => !!item.summary?.short_article?.body);
+        if (hasSummaries) {
+          showToast('✨ Your feed is now enhanced with AI summaries!', 'success');
+          hasTriggeredSubscribedRefresh.current = false;
+        }
+      }
+    }
     setIsRefreshing(false);
-  };
+  }, [isFeedGenerating, loadFeed, isSubscribed, feed, showToast]);
 
   const handleFeedItemPress = (item: FeedItem) => {
     const hasSummary = !!item.summary?.short_article?.body;
+
+    logReadingEvent({
+      eventType: 'feed_open',
+      itemId: item.id,
+      title: item.title,
+      url: item.url,
+      tags: item.tags,
+      itemType: item.type || item.source,
+      feedCategory: item.metadata?.feed_category,
+    });
 
     // Subscribed users: open article if summary exists, else open URL
     // Unsubscribed users: always open article screen (they'll see the paywall)
@@ -364,15 +419,26 @@ export default function FeedScreen() {
           id: item.id,
           title: item.title,
           url: item.url,
+          thumbnail: item.thumbnail || '',
           type: item.type || item.source || 'blog',
           subtitle: item.summary?.short_article?.subtitle || '',
           body: item.summary?.short_article?.body || '',
           reading_time: item.summary?.reading_time_minutes?.toString() || '',
           why_relevant: item.metadata?.why_relevant || '',
           is_hot: item.metadata?.is_hot ? 'true' : 'false',
+          feed_category: item.metadata?.feed_category || '',
         },
       });
     } else if (item.url) {
+      logReadingEvent({
+        eventType: 'external_open',
+        itemId: item.id,
+        title: item.title,
+        url: item.url,
+        tags: item.tags,
+        itemType: item.type || item.source,
+        feedCategory: item.metadata?.feed_category,
+      });
       WebBrowser.openBrowserAsync(item.url);
     }
   };
@@ -421,7 +487,7 @@ export default function FeedScreen() {
           stickyHeaderStyle,
         ]}
         pointerEvents="box-none">
-        <View style={styles.stickyHeaderRow}>
+        {/* <View style={styles.stickyHeaderRow}>
           <ThemedText style={styles.stickyTitle}>Your feed</ThemedText>
           <Pressable
             onPress={() => router.push('/bookmarks')}
@@ -429,7 +495,7 @@ export default function FeedScreen() {
             hitSlop={8}>
             <Bookmark size={18} color={Colors[colorScheme].muted} strokeWidth={1.8} />
           </Pressable>
-        </View>
+        </View> */}
         {topicFilters.length > 0 && (
           <ScrollView
             horizontal
@@ -455,16 +521,12 @@ export default function FeedScreen() {
         contentContainerStyle={styles.scrollContent}>
 
         {/* Greeting row (collapses) */}
-        <Animated.View style={[styles.topBar, greetingStyle]}>
+        <Animated.View 
+          style={[styles.topBar, greetingStyle]}
+          pointerEvents="box-none">
           <ThemedText style={[styles.greeting, { color: Colors[colorScheme].muted }]}>
             {getGreeting()}, {firstName}
           </ThemedText>
-          <Pressable
-            onPress={() => router.push('/bookmarks')}
-            style={[styles.bookmarkButton, { backgroundColor: Colors[colorScheme].card }]}
-            hitSlop={8}>
-            <Bookmark size={20} color={Colors[colorScheme].muted} strokeWidth={1.8} />
-          </Pressable>
         </Animated.View>
 
         {/* Heading + filters (scroll with content, hidden by sticky bar) */}
@@ -503,20 +565,25 @@ export default function FeedScreen() {
           </Pressable>
         )}
 
-        {/* Feed generating — poll in progress */}
+        {/* Feed generating - poll in progress */}
         {isFeedGenerating && !isLoading && (
           <View
             style={[
               styles.nudge,
               {
                 borderColor: Colors[colorScheme].border,
-                backgroundColor: ILLUS_PALETTE.gold[colorScheme],
+                backgroundColor: isSubscribed 
+                  ? (colorScheme === 'dark' ? '#052e16' : '#f0fdf4')
+                  : ILLUS_PALETTE.gold[colorScheme],
               },
             ]}>
-            <ActivityIndicator size="small" color={Colors[colorScheme].muted} />
+            <ActivityIndicator size="small" color={isSubscribed ? '#22c55e' : Colors[colorScheme].muted} />
             <ThemedText
               style={[styles.nudgeSubtitle, { color: Colors[colorScheme].muted, flex: 1 }]}>
-              Building your personalised feed — this can take a minute or two. Here{"'"}s what{"'"}s trending meanwhile.
+              {isSubscribed 
+                ? 'Adding AI summaries to your feed - this takes a minute or two. Your current feed is below.'
+                : "Building your personalised feed - this can take a minute or two. Here's what's trending meanwhile."
+              }
             </ThemedText>
           </View>
         )}
@@ -589,7 +656,7 @@ export default function FeedScreen() {
           /* Feed items */
           <View style={styles.feedList}>
             {filteredFeed.map((item, index) => (
-              <View key={item.id}>
+              <View key={`${item.id}-${item.url || 'no-url'}-${index}`}>
                 {index > 0 && (
                   <View
                     style={[styles.separator, { backgroundColor: Colors[colorScheme].border }]}
@@ -602,6 +669,24 @@ export default function FeedScreen() {
                 />
               </View>
             ))}
+            
+            {/* Free user callout: Limited feed preview */}
+            {!isSubscribed && filteredFeed.length > 0 && (
+              <View style={styles.limitedFeedCallout}>
+                <ThemedText style={[styles.limitedFeedText, { color: Colors[colorScheme].muted }]}>
+                  Upgrade to Pro for your full personalized feed
+                </ThemedText>
+                <Pressable
+                  onPress={() => presentPaywall()}
+                  style={[styles.limitedFeedButton, { backgroundColor: '#22c55e' }]}
+                >
+                  <ThemedText style={styles.limitedFeedButtonText}>
+                    See plans
+                  </ThemedText>
+                </Pressable>
+              </View>
+            )}
+            
             {filteredFeed.length === 0 && !isLoading && (
               <View style={styles.emptyFilterState}>
                 <View
@@ -621,7 +706,7 @@ export default function FeedScreen() {
         )}
 
         {/* End */}
-        {!isLoading && filteredFeed.length > 0 && (
+        {!isLoading && filteredFeed.length > 0 && isSubscribed && (
           <ThemedText style={[styles.endText, { color: Colors[colorScheme].muted }]}>
             You{"'"}re all caught up
           </ThemedText>
@@ -644,7 +729,7 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 100,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingTop: 54, // safe area offset — adjust if needed
+    paddingTop: 68, // safe area offset - adjust if needed
   },
   stickyHeaderRow: {
     flexDirection: 'row',
@@ -816,6 +901,31 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 15,
   },
+  
+  // ─── Limited feed callout (free users) ───
+  limitedFeedCallout: {
+    alignItems: 'center',
+    paddingTop: 32,
+    paddingBottom: 16,
+    gap: 16,
+  },
+  limitedFeedText: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 40,
+  },
+  limitedFeedButton: {
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  limitedFeedButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  
   endText: {
     textAlign: 'center',
     fontSize: 13,

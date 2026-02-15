@@ -17,6 +17,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
+import { useToast } from '@/contexts/ToastContext';
 
 // ─── Benefit list (3 clear outcomes) ───
 const BENEFITS = [
@@ -62,6 +63,7 @@ function formatPeriod(planId: PlanId): string {
 export default function PaywallScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
+  const { showToast } = useToast();
   const { offerings, purchasePackage, restorePurchases, isProUser } = useRevenueCat();
 
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('yearly');
@@ -95,6 +97,8 @@ export default function PaywallScreen() {
       const success = await purchasePackage(selectedPackage);
       if (success) {
         router.back();
+      } else {
+        showToast('Purchase not completed.', 'info');
       }
     } finally {
       setIsPurchasing(false);
@@ -108,6 +112,8 @@ export default function PaywallScreen() {
       const success = await restorePurchases();
       if (success) {
         router.back();
+      } else {
+        showToast('No purchases to restore.', 'info');
       }
     } finally {
       setIsRestoring(false);

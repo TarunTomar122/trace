@@ -1,4 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebase-admin';
+
+const ONBOARD_DISPATCH_COOLDOWN_MS = 45_000;
+
+function toMillis(value: unknown): number | null {
+  if (!value) return null;
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  if (typeof value === 'object' && value !== null) {
+    const maybe = value as { toMillis?: () => number };
+    if (typeof maybe.toMillis === 'function') {
+      return maybe.toMillis();
+    }
+  }
+  return null;
+}
 
 /**
  * Triggers the GitHub Action to run Python onboarding hook for a user.
@@ -27,6 +46,32 @@ export async function POST(request: NextRequest) {
         message: 'Onboarding saved. Feed will be ready by tomorrow morning.',
         triggered: false 
       });
+    }
+
+    // Server-side dedupe: prevent duplicate dispatches for the same user in
+    // a short window when multiple clients/screens trigger simultaneously.
+    if (adminDb) {
+      try {
+        const userRef = adminDb.collection('user_profiles').doc(uid);
+        const userSnap = await userRef.get();
+        const lastTriggeredMs = userSnap.exists
+          ? toMillis(userSnap.get('lastOnboardDispatchAt'))
+          : null;
+        const nowMs = Date.now();
+
+        if (lastTriggeredMs && nowMs - lastTriggeredMs < ONBOARD_DISPATCH_COOLDOWN_MS) {
+          const waitMs = ONBOARD_DISPATCH_COOLDOWN_MS - (nowMs - lastTriggeredMs);
+          return NextResponse.json({
+            ok: true,
+            message: 'Feed generation already queued.',
+            triggered: false,
+            deduped: true,
+            waitMs,
+          });
+        }
+      } catch (error) {
+        console.warn('Onboard dedupe check failed, proceeding with dispatch:', error);
+      }
     }
 
     // Trigger GitHub Action via repository_dispatch
@@ -62,6 +107,19 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`Triggered feed generation workflow for user: ${uid}`);
+
+    if (adminDb) {
+      try {
+        await adminDb.collection('user_profiles').doc(uid).set(
+          {
+            lastOnboardDispatchAt: new Date(),
+          },
+          { merge: true }
+        );
+      } catch (error) {
+        console.warn('Failed to persist lastOnboardDispatchAt:', error);
+      }
+    }
     
     return NextResponse.json({ 
       ok: true, 

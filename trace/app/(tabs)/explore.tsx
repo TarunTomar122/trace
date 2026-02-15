@@ -1,4 +1,6 @@
-import { StyleSheet, View, Pressable, Image, ScrollView, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { StyleSheet, View, Pressable, ScrollView, Alert, Switch } from 'react-native';
+import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -14,6 +16,7 @@ import {
   Trash2,
   Crown,
   Zap,
+  Mail,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -21,6 +24,7 @@ import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
+import { updateUserProfile } from '@/lib/firestore';
 import { ILLUS_PALETTE } from '@/app/(auth)/welcome';
 
 const PRIVACY_URL = 'https://www.yourtrace.online/privacy-policy';
@@ -29,11 +33,29 @@ const TERMS_URL = 'https://www.yourtrace.online/terms';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, profile, signOut, deleteAccount } = useAuth();
+  const { user, profile, signOut, deleteAccount, refreshProfile } = useAuth();
   const { isProUser, presentPaywall, presentCustomerCenter } = useRevenueCat();
   const colorScheme = useColorScheme() ?? 'light';
 
   const isOnboarded = profile?.onboarded ?? false;
+  const [newsletterOptIn, setNewsletterOptIn] = useState(profile?.newsletterOptIn !== false);
+
+  useEffect(() => {
+    setNewsletterOptIn(profile?.newsletterOptIn !== false);
+  }, [profile?.newsletterOptIn]);
+
+  const handleNewsletterToggle = async (value: boolean) => {
+    setNewsletterOptIn(value);
+    if (user) {
+      try {
+        await updateUserProfile(user.uid, { newsletterOptIn: value } as any);
+        await refreshProfile();
+      } catch (error) {
+        console.error('Error updating newsletter preference:', error);
+        setNewsletterOptIn(!value); // Revert on error
+      }
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -71,7 +93,12 @@ export default function ProfileScreen() {
         {/* ─── Profile header ─── */}
         <View style={styles.profileHeader}>
           {user?.photoURL ? (
-            <Image source={{ uri: user.photoURL }} style={styles.avatar} />
+            <Image 
+              source={{ uri: user.photoURL }} 
+              style={styles.avatar}
+              cachePolicy="memory-disk"
+              priority="high"
+            />
           ) : (
             <View
               style={[
@@ -163,7 +190,7 @@ export default function ProfileScreen() {
         {/* ─── Subscription ─── */}
         {(() => {
           if (isProUser) {
-            // Subscribed — show manage card with Customer Center
+            // Subscribed - show manage card with Customer Center
             return (
               <Pressable
                 onPress={() => presentCustomerCenter()}
@@ -178,7 +205,7 @@ export default function ProfileScreen() {
                   <ChevronRight size={18} color="#22c55e" strokeWidth={1.5} />
                 </View>
                 <ThemedText style={[styles.subscriptionDesc, { color: Colors[colorScheme].secondary }]}>
-                  Full access — enjoy smarter mornings!
+                  Full access - enjoy smarter mornings!
                 </ThemedText>
                 <ThemedText style={[styles.manageText, { color: '#22c55e' }]}>
                   Manage subscription →
@@ -187,7 +214,7 @@ export default function ProfileScreen() {
             );
           }
 
-          // Not subscribed — show upgrade card
+          // Not subscribed - show upgrade card
           return (
             <Pressable
               onPress={() => presentPaywall()}
@@ -248,6 +275,37 @@ export default function ProfileScreen() {
             <ExternalLink size={16} color={Colors[colorScheme].border} strokeWidth={1.5} />
           </Pressable>
         </View>
+
+        {/* ─── Newsletter Toggle ─── */}
+        {isOnboarded && (
+          <View style={styles.newsletterSection}>
+            <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
+              Daily newsletter
+            </ThemedText>
+            <View style={styles.newsletterRow}>
+              <View style={styles.newsletterLeft}>
+                <Mail size={20} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+                <View style={{ flex: 1 }}>
+                  <ThemedText style={[styles.newsletterTitle, { color: Colors[colorScheme].text }]}>
+                    Receive daily newsletter
+                  </ThemedText>
+                  <ThemedText style={[styles.newsletterDesc, { color: Colors[colorScheme].muted }]}>
+                    {isProUser 
+                      ? 'Your personalized summary lands at 10:00 AM IST.'
+                      : 'A curated digest lands in your inbox every morning.'}
+                  </ThemedText>
+                </View>
+              </View>
+              <Switch
+                value={newsletterOptIn}
+                onValueChange={handleNewsletterToggle}
+                trackColor={{ false: Colors[colorScheme].border, true: '#22c55e' }}
+                thumbColor="#fff"
+                ios_backgroundColor={Colors[colorScheme].border}
+              />
+            </View>
+          </View>
+        )}
 
         {/* ─── Sign out ─── */}
         <Pressable style={styles.actionRow} onPress={handleSignOut}>
@@ -440,6 +498,33 @@ const styles = StyleSheet.create({
   menuText: {
     flex: 1,
     fontSize: 16,
+  },
+
+  // ─── Newsletter ───
+  newsletterSection: {
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  newsletterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  newsletterLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+  },
+  newsletterTitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  newsletterDesc: {
+    fontSize: 13,
+    lineHeight: 18,
   },
 
   // ─── Action rows ───
