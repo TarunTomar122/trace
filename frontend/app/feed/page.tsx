@@ -215,37 +215,39 @@ function FeedListItem({ item, onClick, showSubscribeCta }: {
 
   return (
     <article
-      className="group py-4 md:py-5 transition-colors cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 px-3 md:px-4"
+      className="group py-4 md:py-5 transition-colors cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 px-0 md:px-4"
       onClick={onClick}
     >
-      {/* Mobile: image on top (only if real thumbnail), content below */}
-      <div className="flex flex-col gap-3 md:hidden">
-        {item.thumbnail && <ArticleThumbnail url={item.url} thumbnail={item.thumbnail} size="lg" />}
-        <div className="min-w-0">
-          {categoryBadge && (
-            <span className={`inline-flex items-center gap-1 mb-1.5 px-2 py-0.5 rounded-full border ${categoryBadge.color} w-fit`}>
+      {/* Mobile: image left (20%), content right */}
+      <div className="flex flex-row gap-3 md:hidden">
+        <div className="w-[20%] shrink-0 [&>div]:!w-full [&>div]:!h-auto [&>div]:aspect-square">
+          <ArticleThumbnail url={item.url} thumbnail={item.thumbnail} size="sm" />
+        </div>
+        <div className="flex-1 min-w-0">
+          {/* {categoryBadge && (
+            <span className={`inline-flex items-center gap-1 mb-1 px-2 py-0.5 rounded-full border ${categoryBadge.color} w-fit`}>
               <span className="text-[9px] font-medium uppercase tracking-wider">{categoryBadge.label}</span>
             </span>
-          )}
-          <h3 className="text-base font-semibold leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
+          )} */}
+          <h3 className="text-[15px] font-semibold leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
             {item.title}
             {hasSummary ? (
-              <ChevronRight size={14} className="inline ml-1 opacity-40 group-hover:opacity-70 transition-opacity" />
+              <ChevronRight size={13} className="inline ml-1 opacity-40 group-hover:opacity-70 transition-opacity" />
             ) : (
-              <ArrowUpRight size={14} className="inline ml-1 opacity-40 group-hover:opacity-70 transition-opacity" />
+              <ArrowUpRight size={13} className="inline ml-1 opacity-40 group-hover:opacity-70 transition-opacity" />
             )}
           </h3>
           {snippet ? (
-            <p className="text-sm text-secondary/70 leading-relaxed line-clamp-2 mt-1.5">
+            <p className="text-[13px] text-secondary/70 leading-relaxed line-clamp-2 mt-1">
               {snippet}
             </p>
           ) : showSubscribeCta ? (
-            <p className="text-xs text-secondary/50 mt-1.5 italic">
+            <p className="text-xs text-secondary/50 mt-1 italic">
               Subscribe to unlock all summaries
             </p>
           ) : null}
           {isSample && (
-            <span className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 w-fit">
+            <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 w-fit">
               <Sparkles size={10} strokeWidth={2} />
               <span className="text-[9px] font-medium uppercase tracking-wider">Free summary</span>
             </span>
@@ -744,10 +746,7 @@ function FeedPageContent() {
   // For subscribed users: only show items with summaries
   // For unsubscribed users: keep only a single free summary sample at the top.
   const filteredFeed = hasAccess
-    ? filteredByTopic.filter((item) =>
-        item.summary?.short_article?.body ||
-        item.metadata?.feed_category === 'trending_news'
-      )
+    ? filteredByTopic
     : (() => {
       const items = [...filteredByTopic];
       const promoted: FeedItem[] = [];
@@ -802,7 +801,8 @@ function FeedPageContent() {
   useEffect(() => {
     if (profile) {
       const subscriptionStatus = profile.subscriptionStatus || 'none';
-      let hasValidAccess = ['trial', 'active'].includes(subscriptionStatus);
+      const appSubscriptionStatus = profile.appSubscriptionStatus || 'none';
+      let hasValidAccess = ['trial', 'active'].includes(subscriptionStatus) || ['trial', 'active'].includes(appSubscriptionStatus);
 
       if (hasValidAccess && profile.cancelledAt) {
         const now = new Date();

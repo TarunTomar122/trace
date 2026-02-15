@@ -297,8 +297,10 @@ export interface UserProfile {
   // Chat history with profile agent
   chatHistory?: ChatMessage[];
   
-  // Subscription fields (managed by Dodo Payments)
+  // Subscription fields (managed by Dodo Payments — web)
   subscriptionStatus: 'none' | 'trial' | 'active' | 'on_hold' | 'cancelled' | 'expired';
+  // Subscription field (managed by RevenueCat — mobile app)
+  appSubscriptionStatus?: 'none' | 'trial' | 'active' | 'expired';
   subscriptionId: string | null; // Dodo subscription ID
   dodoCustomerId: string | null; // Dodo customer ID
   planId: string | null; // Product ID from Dodo

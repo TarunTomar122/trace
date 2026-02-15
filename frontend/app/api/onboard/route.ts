@@ -61,11 +61,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log(`Triggered onboarding workflow for user: ${uid}`);
+    console.log(`Triggered feed generation workflow for user: ${uid}`);
     
     return NextResponse.json({ 
       ok: true, 
-      message: 'Onboarding complete! Your personalized feed is being generated.',
+      message: 'Your personalized feed is being generated.',
       triggered: true 
     });
     

@@ -928,7 +928,7 @@ function ProfileContent() {
                     <div>
                       <p className="text-sm font-medium text-secondary">Receive daily newsletter</p>
                       <p className="text-xs text-secondary/70 mt-1">
-                        {['trial', 'active'].includes(profile?.subscriptionStatus || '')
+                        {(['trial', 'active'].includes(profile?.subscriptionStatus || '') || ['trial', 'active'].includes(profile?.appSubscriptionStatus || ''))
                           ? 'Your personalized summary lands at 10:00 AM IST.'
                           : 'A curated digest lands in your inbox every morning.'}
                       </p>

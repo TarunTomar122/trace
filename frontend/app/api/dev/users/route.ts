@@ -41,9 +41,10 @@ export async function GET(request: NextRequest) {
           email: data.email || '',
           interests: data.interests || [],
           subscriptionStatus: data.subscriptionStatus || 'none',
+          appSubscriptionStatus: data.appSubscriptionStatus || 'none',
         };
       })
-      .filter(u => ['trial', 'active'].includes(u.subscriptionStatus))
+      .filter(u => ['trial', 'active'].includes(u.subscriptionStatus) || ['trial', 'active'].includes(u.appSubscriptionStatus))
       .sort((a, b) => (a.name || a.displayName).localeCompare(b.name || b.displayName));
 
     return NextResponse.json({ users });

@@ -100,6 +100,7 @@ export async function GET(request: NextRequest) {
         email: data.email || '',
         onboarded: data.onboarded || false,
         subscriptionStatus: data.subscriptionStatus || 'none',
+        appSubscriptionStatus: data.appSubscriptionStatus || 'none',
         willCancelAt: data.willCancelAt || null,
         subscriptionId: data.subscriptionId || null,
         trialEndDate: data.trialEndDate || null,
@@ -116,7 +117,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate summary stats
     const onboardedUsers = users.filter(u => u.onboarded);
-    const subscribedUsers = users.filter(u => ['trial', 'active'].includes(u.subscriptionStatus));
+    const subscribedUsers = users.filter(u => ['trial', 'active'].includes(u.subscriptionStatus) || ['trial', 'active'].includes(u.appSubscriptionStatus));
     const onboardedWithNoFeed = onboardedUsers.filter(u => u.feedItemCount === 0);
     const subscribedWithNoFeed = subscribedUsers.filter(u => u.feedItemCount === 0);
     const subscribedWithInteractions = subscribedUsers.filter(u => u.interactionCount > 0);

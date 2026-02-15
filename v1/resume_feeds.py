@@ -48,7 +48,8 @@ def get_users_without_feed(store: FirestoreStore, date: str) -> list[dict]:
                 "id": user_id,
                 "name": user_name,
                 "email": user_data.get("email", ""),
-                "status": user_data.get("subscriptionStatus", "none")
+                "status": user_data.get("subscriptionStatus", "none"),
+                "appStatus": user_data.get("appSubscriptionStatus", "none")
             })
         else:
             feed_data = feed_doc.to_dict()

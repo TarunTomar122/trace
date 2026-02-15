@@ -136,7 +136,7 @@ export default function AnalyticsPage() {
 
   // Filter users based on selected filter
   const filteredUsers = users.filter(u => {
-    if (filter === 'subscribed') return ['trial', 'active'].includes(u.subscriptionStatus);
+    if (filter === 'subscribed') return ['trial', 'active'].includes(u.subscriptionStatus) || ['trial', 'active'].includes((u as any).appSubscriptionStatus || 'none');
     if (filter === 'onboarded') return u.onboarded;
     if (filter === 'no-feed') return u.onboarded && u.feedItemCount === 0;
     return true;

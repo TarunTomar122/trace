@@ -41,7 +41,7 @@ REQUEST_TIMEOUT = 30
 
 SUMMARY_MODEL = "gpt-4o-mini"
 SUMMARY_TEMPERATURE = 0.3
-MIN_CONTENT_LENGTH = 300
+MIN_CONTENT_LENGTH = 80
 MAX_CONCURRENT_SUMMARIES = 10  # Parallel GPT calls per user
 
 OG_IMAGE_CACHE_COLLECTION = "og_image_cache"
@@ -221,16 +221,9 @@ def _summarize_with_openai(
 
     prompt = f"""You are writing a personalized mini-article for a reader.
 
-FIRST: Decide whether this is a real standalone article. Only return
-{{"is_not_article": true, "reason": "brief reason"}} if the page is CLEARLY
-not an article, such as:
-- tag/category listing pages
-- homepages or newsletters with link roundups
-- product/marketing landing pages
-- signup or promotional pages with no real article text
-
-IMPORTANT: News articles, opinion pieces, and announcements ARE valid articles.
-If you are unsure, treat it as an article and write the mini-article.
+Summarize the source content below into a mini-article. Even if the source is
+a Reddit thread, discussion, short post, or announcement — summarize it anyway.
+Only skip if the content is truly empty or just navigation/menu text.
 
 USER CONTEXT:
 {json.dumps(user_context, indent=2)}
@@ -241,7 +234,7 @@ URL: {url}
 Content:
 {content}
 
-If this IS a real article, return JSON with EXACT structure:
+Return JSON with EXACT structure:
 {{
   "short_article": {{
     "subtitle": "One compelling lede sentence that feels human",
@@ -332,11 +325,6 @@ is important for proper rendering.
             result = json.loads(match.group())
         if not isinstance(result, dict):
             return None, "non_dict_response"
-
-        # Check if model detected this is not an article
-        if result.get("is_not_article"):
-            reason = result.get("reason", "not_an_article")
-            return None, f"not_article:{reason}"
 
         # Validate we got the short_article
         if "short_article" not in result:

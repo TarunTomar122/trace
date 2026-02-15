@@ -43,9 +43,9 @@ from v1.algorithm.interest_schema import (  # noqa: E402
 MAX_NEWS_PER_TOPIC = 12
 OPENAI_TRENDING_MODEL = os.getenv("OPENAI_TRENDING_MODEL", "gpt-4.1-mini")
 MAX_DAILY_INTERESTS = 4
-TRENDING_MAX_AGE_HOURS = 24
+TRENDING_MAX_AGE_HOURS = 48
 IST_TZ = timezone(timedelta(hours=5, minutes=30))
-MAX_PROMPT_PASSES_PER_TOPIC = 6
+MAX_PROMPT_PASSES_PER_TOPIC = 2
 OPENAI_TIMEOUT_SECONDS = 90.0
 OPENAI_FETCH_RETRIES = 2
 
@@ -178,57 +178,8 @@ def _select_daily_news_interests(
 
 
 def _interest_specific_rules(interest_id: str) -> str:
-    """Extra retrieval guidance per interest for higher-quality results."""
-    rules = {
-        "technology": (
-            "- Prioritize release artifacts: launch posts, release notes, "
-            "API/docs updates, major feature rollouts.\n"
-            "- De-prioritize stock/market commentary unless tied to concrete "
-            "product release.\n"
-            "- Ensure breadth across tech practice areas when possible: "
-            "software engineering, developer tools, infrastructure/cloud, "
-            "AI/agents, and design/productivity tooling."
-        ),
-        "business": (
-            "- Prioritize concrete business moves: funding, M&A, major "
-            "product/strategy launches, leadership changes with impact.\n"
-            "- Avoid generic opinion pieces on startup culture."
-        ),
-        "money": (
-            "- Prioritize direct-impact updates: policy/rate/tax "
-            "changes, market events, consumer finance rule updates.\n"
-            "- Avoid evergreen personal finance explainers."
-        ),
-        "science": (
-            "- Prioritize new findings, mission milestones, and credible "
-            "institutional announcements.\n"
-            "- Avoid low-evidence pop-science summaries."
-        ),
-        "health": (
-            "- Prioritize medically relevant updates: guidelines, health "
-            "advisories, approvals, and large-study findings.\n"
-            "- Avoid wellness clickbait and anecdotal hacks."
-        ),
-        "society": (
-            "- Prioritize policy, regulation, governance, and civic "
-            "developments.\n"
-            "- Avoid hot-take opinion content without factual reporting."
-        ),
-        "psychology": (
-            "- Prioritize evidence-based psychology updates from credible "
-            "institutions or major publications.\n"
-            "- Avoid low-rigor self-help listicles."
-        ),
-        "ideas": (
-            "- Prioritize high-signal essays or analysis tied to real-world "
-            "developments in the last 24h.\n"
-            "- Avoid generic inspirational content."
-        ),
-    }
-    return rules.get(
-        interest_id,
-        "- Prioritize concrete, factual updates with clear source backing.",
-    )
+    """Minimal extra guidance per interest."""
+    return ""
 
 
 # URL patterns that indicate non-article pages
@@ -352,180 +303,64 @@ def _search_openai_for_interest(
     date: str,
     max_results: int,
 ) -> list[dict[str, Any]]:
-    """Run multi-pass OpenAI web search and parse structured output."""
-    interest_id = topic.get("id", "")
-    subtopics = topic.get("subtopics", []) or []
-    subtopic_text = ", ".join(subtopics) if subtopics else "None"
-    base_focus_lines = "\n".join(
-        [f"- {topic['name']} + {subtopic}" for subtopic in subtopics]
-    ) if subtopics else f"- {topic['name']}"
-    extra_rules = _interest_specific_rules(interest_id)
+    """Single simple web search per topic. No passes, no complexity."""
+    topic_name = topic.get("name", "")
 
-    def _build_prompt(
-        focus_lines: str,
-        subtopic_scope: str,
-        target_count: int,
-        pass_name: str,
-    ) -> str:
-        return f"""
-Find the most credible and important updates from the last 24 hours for:
-Interest: {topic['name']}
-Subtopics: {subtopic_scope}
-Pass objective: {pass_name}
-Search focuses (each item should clearly map to one focus):
-{focus_lines}
+    prompt = f"What are today's biggest {topic_name} news stories? Date: {date}. Return up to {max_results} articles as JSON: {{\"articles\": [{{\"title\": \"...\", \"subtitle\": \"...\", \"details\": \"2-3 sentence summary\", \"url\": \"https://...\", \"published_date\": \"{date}\", \"source_domain\": \"example.com\"}}]}}"
 
-Rules:
-- Treat {date} (IST) as the reference date for recency.
-- Only include items published in the last {TRENDING_MAX_AGE_HOURS} hours
-  (published at or after {(_reference_cutoff_utc(date).isoformat())} UTC).
-- Return only genuinely important updates, not generic explainers.
-- Prefer official announcements, primary reporting, or well-sourced analysis.
-- Exclude listicles, SEO content, and opinion fluff.
-- Prefer reputable/official sources; avoid press-release wire syndication.
-- Only include links to specific articles/posts (not homepages).
-- Prefer mapping each result to one listed subtopic where possible.
-- If no subtopics exist or mapping is unclear, use the broad interest.
-- Target up to {target_count} high-quality updates in this pass.
-- If fewer than {target_count} high-quality updates exist, return fewer.
-{extra_rules}
-
-Return STRICT JSON only in this exact shape:
-{{
-  "articles": [
-    {{
-      "title": "string",
-      "subtitle": "string",
-      "details": "2-4 sentence factual summary",
-      "url": "https://...",
-      "published_date": "YYYY-MM-DD or ISO datetime if available",
-      "source_domain": "example.com",
-      "subtopic": "one of the listed subtopics, else empty string",
-      "importance": "number 1-5 (5 = highest importance)"
-    }}
-  ]
-}}
-""".strip()
-
-    def _fetch_raw_articles(prompt_text: str) -> list[dict[str, Any]]:
-        for attempt in range(OPENAI_FETCH_RETRIES + 1):
-            try:
-                response = client.responses.create(
-                    model=OPENAI_TRENDING_MODEL,
-                    tools=[{"type": "web_search_preview"}],
-                    temperature=0.2,
-                    max_output_tokens=2200,
-                    input=prompt_text,
-                    timeout=OPENAI_TIMEOUT_SECONDS,
-                )
-                text = (response.output_text or "").strip()
-                data = _extract_json_object(text)
-                raw = data.get("articles", []) if isinstance(data, dict) else []
-                return raw if isinstance(raw, list) else []
-            except Exception as exc:
-                if attempt >= OPENAI_FETCH_RETRIES:
-                    print(f"    pass request failed after retries: {exc}")
-                    return []
-                backoff = (attempt + 1) * 1.5
-                print(
-                    f"    pass request failed (attempt {attempt + 1}), "
-                    f"retrying in {backoff:.1f}s..."
-                )
-                time.sleep(backoff)
-
-    prompts: list[tuple[str, int]] = [
-        (
-            _build_prompt(
-                base_focus_lines,
-                subtopic_text,
-                max(max_results, 10),
-                "broad coverage across the full interest",
-            ),
-            max(max_results, 10),
-        )
-    ]
-    for subtopic in subtopics:
-        if len(prompts) >= MAX_PROMPT_PASSES_PER_TOPIC:
+    for attempt in range(OPENAI_FETCH_RETRIES + 1):
+        try:
+            response = client.responses.create(
+                model=OPENAI_TRENDING_MODEL,
+                tools=[{"type": "web_search_preview"}],
+                temperature=0.4,
+                max_output_tokens=4000,
+                input=prompt,
+                timeout=OPENAI_TIMEOUT_SECONDS,
+            )
+            text = (response.output_text or "").strip()
+            data = _extract_json_object(text)
+            raw = data.get("articles", []) if isinstance(data, dict) else []
+            if not isinstance(raw, list):
+                raw = []
             break
-        focus = f"- {topic['name']} + {subtopic}"
-        prompts.append(
-            (
-                _build_prompt(
-                    focus,
-                    subtopic,
-                    min(6, max_results),
-                    f"deep dive for subtopic: {subtopic}",
-                ),
-                min(6, max_results),
-            )
-        )
-    if len(prompts) < MAX_PROMPT_PASSES_PER_TOPIC:
-        prompts.append(
-            (
-                _build_prompt(
-                    f"- {topic['name']} major global developments",
-                    subtopic_text,
-                    min(8, max_results),
-                    "catch-all for missed but high-impact updates",
-                ),
-                min(8, max_results),
-            )
-        )
+        except Exception as exc:
+            if attempt >= OPENAI_FETCH_RETRIES:
+                print(f"    search failed after retries: {exc}")
+                return []
+            backoff = (attempt + 1) * 1.5
+            print(f"    search failed (attempt {attempt + 1}), retrying in {backoff:.1f}s...")
+            time.sleep(backoff)
 
-    fresh_articles: list[dict[str, Any]] = []
+    # Parse results — accept everything that has a url and title.
+    # We trust OpenAI web search to return recent content since we asked for "today's news".
+    articles: list[dict[str, Any]] = []
     seen_urls: set[str] = set()
-    for pass_idx, (prompt, _) in enumerate(prompts, start=1):
-        raw_articles = _fetch_raw_articles(prompt)
-        pass_added = 0
-        for r in raw_articles:
-            if not isinstance(r, dict):
-                continue
-            url = _normalize_url(str(r.get("url", "")))
-            title = str(r.get("title", "")).strip()
-            details = str(r.get("details", "")).strip()
-            subtitle = str(r.get("subtitle", "")).strip()
-            if not url or not title or _is_junk_url(url) or url in seen_urls:
-                continue
-            published_date = str(r.get("published_date", "")).strip()
-            desc = details or subtitle
-            importance = r.get("importance")
-            try:
-                score = float(importance) if importance is not None else None
-            except Exception:
-                score = None
-            payload = {
-                "title": title,
-                "url": url,
-                "content": desc,
-                "published_date": published_date,
-                "score": score,
-                "source": "openai_web_search",
-                "subtopic": str(r.get("subtopic", "")).strip(),
-            }
-            if _is_recent_enough(published_date, reference_date=date):
-                seen_urls.add(url)
-                fresh_articles.append(payload)
-                pass_added += 1
-            if len(fresh_articles) >= max_results:
-                break
-        print(
-            f"    pass {pass_idx}/{len(prompts)}: "
-            f"added {pass_added}, total {len(fresh_articles)}"
-        )
-        if len(fresh_articles) >= max_results:
+    for r in raw:
+        if not isinstance(r, dict):
+            continue
+        url = _normalize_url(str(r.get("url", "")))
+        title = str(r.get("title", "")).strip()
+        if not url or not title or _is_junk_url(url) or url in seen_urls:
+            continue
+        details = str(r.get("details", "")).strip()
+        subtitle = str(r.get("subtitle", "")).strip()
+        published_date = str(r.get("published_date", "")).strip() or date
+        seen_urls.add(url)
+        articles.append({
+            "title": title,
+            "url": url,
+            "content": details or subtitle,
+            "published_date": published_date,
+            "score": 3.0,
+            "source": "openai_web_search",
+            "subtopic": str(r.get("subtopic", "")).strip(),
+        })
+        if len(articles) >= max_results:
             break
-        if pass_idx < len(prompts):
-            time.sleep(DELAY_BETWEEN_SEARCHES)
 
-    # Hard cutoff: keep only strict last-24-hours items.
-    fresh_articles.sort(
-        key=lambda article: article.get("score")
-        if article.get("score") is not None
-        else 0.0,
-        reverse=True,
-    )
-    fresh_articles = _dedupe_articles_by_url(fresh_articles)
-    return fresh_articles[:max_results]
+    print(f"    found {len(articles)} articles")
+    return _dedupe_articles_by_url(articles)[:max_results]
 
 
 def fetch_news_for_topics(
@@ -627,25 +462,9 @@ def save_trending_news(
     """
     generated_at = datetime.now(timezone.utc).isoformat()
 
-    # Safety gate: re-filter before save to hard-enforce 24h freshness.
-    filtered_news_by_topic: dict[str, dict[str, Any]] = {}
-    for topic_id, data in news_by_topic.items():
-        filtered_articles = [
-            a
-            for a in data.get("articles", [])
-            if _is_recent_enough(
-                str(a.get("published_date", "")).strip(),
-                reference_date=date,
-            )
-        ]
-        filtered_news_by_topic[topic_id] = {
-            **data,
-            "articles": filtered_articles,
-        }
-
     # Save metadata doc
     total_articles = sum(
-        len(t["articles"]) for t in filtered_news_by_topic.values()
+        len(t["articles"]) for t in news_by_topic.values()
     )
     metadata = {
         "date": date,
@@ -656,7 +475,7 @@ def save_trending_news(
     store.db.collection("trending_news").document(date).set(metadata)
 
     # Save each topic's news
-    for topic_id, data in filtered_news_by_topic.items():
+    for topic_id, data in news_by_topic.items():
         (
             store.db.collection("trending_news")
             .document(date)

@@ -59,8 +59,9 @@ def run_user_feeds(date: str | None = None, limit: int | None = None) -> dict:
     # Stats only
     print("Loading onboarded users...")
     all_users = list(store.db.collection("user_profiles").where("onboarded", "==", True).stream())
-    subscribed_users = [u for u in all_users if u.to_dict().get("subscriptionStatus") in ["trial", "active"]]
-    unsubscribed_users = [u for u in all_users if u.to_dict().get("subscriptionStatus") not in ["trial", "active"]]
+    from v1.storage import is_user_subscribed
+    subscribed_users = [u for u in all_users if is_user_subscribed(u.to_dict())]
+    unsubscribed_users = [u for u in all_users if not is_user_subscribed(u.to_dict())]
 
     print(f"Found {len(all_users)} onboarded users:")
     print(f"  - {len(subscribed_users)} subscribed (trial + active)")

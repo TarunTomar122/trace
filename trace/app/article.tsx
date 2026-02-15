@@ -31,10 +31,9 @@ import { ThemedText } from '@/components/themed-text';
 import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { isBookmarked as checkBookmarked, toggleBookmark } from '@/lib/bookmarks';
 import { FeedItem } from '@/lib/firestore';
-
-const MANAGE_SUBSCRIPTION_URL = 'https://www.yourtrace.online/profile';
 
 const SOURCE_CONFIG: Record<
   string,
@@ -85,9 +84,9 @@ export default function ArticleScreen() {
   }>();
   const colorScheme = useColorScheme() ?? 'light';
   const { profile } = useAuth();
+  const { isProUser, presentPaywall } = useRevenueCat();
 
-  const subStatus = profile?.subscriptionStatus || 'none';
-  const hasAccess = subStatus === 'active' || subStatus === 'trial';
+  const hasAccess = isProUser;
 
   const [upvoted, setUpvoted] = useState(false);
   const [downvoted, setDownvoted] = useState(false);
@@ -333,7 +332,7 @@ export default function ArticleScreen() {
               ) : (
                 <>
                   <ThemedText style={[styles.bodyText, { color: Colors[colorScheme].muted }]}>
-                    A detailed summary of this article is available for subscribers.
+                    The full breakdown is just a tap away for subscribers.
                   </ThemedText>
                 </>
               )}
@@ -368,17 +367,17 @@ export default function ArticleScreen() {
                   <Lock size={22} color="#22c55e" strokeWidth={2} />
                 </View>
                 <ThemedText style={styles.paywallTitle}>
-                  Subscribe to read summaries
+                  Read the key takeaways in 2 minutes
                 </ThemedText>
                 <ThemedText style={[styles.paywallDesc, { color: Colors[colorScheme].muted }]}>
-                  Get AI-powered summaries for every article in your feed, tailored to your interests.
+                  Every article, distilled to what matters most {'\u2014'} so you learn more, faster.
                 </ThemedText>
 
                 <Pressable
                   style={styles.subscribeButton}
-                  onPress={() => WebBrowser.openBrowserAsync(MANAGE_SUBSCRIPTION_URL)}>
+                  onPress={() => presentPaywall()}>
                   <Crown size={16} color="#fff" strokeWidth={2} />
-                  <Text style={styles.subscribeButtonText}>Manage subscription</Text>
+                  <Text style={styles.subscribeButtonText}>Unlock full access</Text>
                 </Pressable>
 
                 <Pressable

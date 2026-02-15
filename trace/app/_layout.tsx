@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { RevenueCatProvider } from '@/contexts/RevenueCatContext';
 import { Colors } from '@/constants/theme';
 
 export const unstable_settings = {
@@ -91,6 +92,7 @@ function RootLayoutNav() {
         <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal' }} />
         <Stack.Screen name="article" options={{ presentation: 'card' }} />
         <Stack.Screen name="bookmarks" options={{ presentation: 'card' }} />
+        <Stack.Screen name="paywall" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
@@ -101,9 +103,11 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <AuthGate>
-        <RootLayoutNav />
-      </AuthGate>
+      <RevenueCatProvider>
+        <AuthGate>
+          <RootLayoutNav />
+        </AuthGate>
+      </RevenueCatProvider>
     </AuthProvider>
   );
 }

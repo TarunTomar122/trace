@@ -24,6 +24,19 @@ def _serialize_firestore(obj: Any) -> Any:
     return obj
 
 
+def is_user_subscribed(profile: dict[str, Any]) -> bool:
+    """Check if a user has an active subscription from EITHER payment source.
+    
+    - subscriptionStatus: managed by Dodo Payments (web)
+    - appSubscriptionStatus: managed by RevenueCat (mobile app)
+    
+    Returns True if either source indicates trial or active.
+    """
+    web_status = profile.get("subscriptionStatus", "none")
+    app_status = profile.get("appSubscriptionStatus", "none")
+    return web_status in ("trial", "active") or app_status in ("trial", "active")
+
+
 class FirestoreStore:
     """Firestore store for v1 topics-based system."""
     
@@ -67,16 +80,26 @@ class FirestoreStore:
         return None
     
     def get_onboarded_users(self) -> list[dict[str, Any]]:
-        """Get all users with active subscriptions (trial or paid)."""
-        # Get users with trial or active subscription status
-        trial_docs = self.db.collection("user_profiles").where("subscriptionStatus", "==", "trial").stream()
-        active_docs = self.db.collection("user_profiles").where("subscriptionStatus", "==", "active").stream()
+        """Get all users with active subscriptions (trial or paid) from either
+        Dodo (web) or RevenueCat (mobile app)."""
+        seen_uids: set[str] = set()
+        users: list[dict[str, Any]] = []
 
-        users = []
-        for doc in trial_docs:
-            users.append({"uid": doc.id, **_serialize_firestore(doc.to_dict())})
-        for doc in active_docs:
-            users.append({"uid": doc.id, **_serialize_firestore(doc.to_dict())})
+        def _add(doc):
+            if doc.id not in seen_uids:
+                seen_uids.add(doc.id)
+                users.append({"uid": doc.id, **_serialize_firestore(doc.to_dict())})
+
+        # Web subscriptions (Dodo)
+        for doc in self.db.collection("user_profiles").where("subscriptionStatus", "==", "trial").stream():
+            _add(doc)
+        for doc in self.db.collection("user_profiles").where("subscriptionStatus", "==", "active").stream():
+            _add(doc)
+        # App subscriptions (RevenueCat)
+        for doc in self.db.collection("user_profiles").where("appSubscriptionStatus", "==", "trial").stream():
+            _add(doc)
+        for doc in self.db.collection("user_profiles").where("appSubscriptionStatus", "==", "active").stream():
+            _add(doc)
 
         return users
 
@@ -306,34 +329,32 @@ class FirestoreStore:
 
     def get_newsletter_opted_in_users(self) -> list[dict[str, Any]]:
         """Get all subscribed users who have opted in to newsletters.
+        Considers both web (Dodo) and app (RevenueCat) subscriptions.
 
         Returns:
             List of user profiles with newsletter opt-in enabled
         """
-        users = []
+        seen_uids: set[str] = set()
+        users: list[dict[str, Any]] = []
 
-        # Get trial users
-        trial_docs = (
-            self.db.collection("user_profiles")
-            .where("subscriptionStatus", "==", "trial")
-            .stream()
-        )
-        for doc in trial_docs:
-            data = doc.to_dict()
-            # Default to opted in if field doesn't exist
-            if data.get("newsletterOptIn", True):
-                users.append({"uid": doc.id, **_serialize_firestore(data)})
-
-        # Get active users
-        active_docs = (
-            self.db.collection("user_profiles")
-            .where("subscriptionStatus", "==", "active")
-            .stream()
-        )
-        for doc in active_docs:
+        def _add(doc):
+            if doc.id in seen_uids:
+                return
             data = doc.to_dict()
             if data.get("newsletterOptIn", True):
+                seen_uids.add(doc.id)
                 users.append({"uid": doc.id, **_serialize_firestore(data)})
+
+        # Web subscriptions (Dodo)
+        for doc in self.db.collection("user_profiles").where("subscriptionStatus", "==", "trial").stream():
+            _add(doc)
+        for doc in self.db.collection("user_profiles").where("subscriptionStatus", "==", "active").stream():
+            _add(doc)
+        # App subscriptions (RevenueCat)
+        for doc in self.db.collection("user_profiles").where("appSubscriptionStatus", "==", "trial").stream():
+            _add(doc)
+        for doc in self.db.collection("user_profiles").where("appSubscriptionStatus", "==", "active").stream():
+            _add(doc)
 
         return users
 
@@ -394,12 +415,11 @@ class FirestoreStore:
         )
         for doc in all_docs:
             data = doc.to_dict()
-            status = data.get("subscriptionStatus", "")
             email = (data.get("email") or "").lower()
             opted_out = data.get("newsletterOptIn") is False
             if (
                 email
-                and status not in ("trial", "active")
+                and not is_user_subscribed(data)
                 and not opted_out
             ):
                 free_emails.add(email)

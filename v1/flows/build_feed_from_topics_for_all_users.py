@@ -25,21 +25,13 @@ from v1.flows.build_feed_from_topics import build_feed_from_topics
 def _get_users(store: FirestoreStore, mode: str) -> list[dict]:
     if mode == "subscribed":
         return store.get_onboarded_users()
+    from v1.storage import is_user_subscribed
     profiles = store.get_all_user_profiles()
     onboarded = [p for p in profiles if p.get("onboarded") is True]
     if mode == "unsubscribed":
-        return [
-            p for p in onboarded
-            if p.get("subscriptionStatus") not in ["trial", "active"]
-        ]
-    subscribed = [
-        p for p in onboarded
-        if p.get("subscriptionStatus") in ["trial", "active"]
-    ]
-    unsubscribed = [
-        p for p in onboarded
-        if p.get("subscriptionStatus") not in ["trial", "active"]
-    ]
+        return [p for p in onboarded if not is_user_subscribed(p)]
+    subscribed = [p for p in onboarded if is_user_subscribed(p)]
+    unsubscribed = [p for p in onboarded if not is_user_subscribed(p)]
     return subscribed + unsubscribed
 
 

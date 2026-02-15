@@ -12,33 +12,25 @@ import {
   Sparkles,
   ArrowRight,
   Trash2,
-  CreditCard,
   Crown,
   Zap,
-  AlertTriangle,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRevenueCat } from '@/contexts/RevenueCatContext';
+import { ILLUS_PALETTE } from '@/app/(auth)/welcome';
 
 const PRIVACY_URL = 'https://www.yourtrace.online/privacy-policy';
 const TERMS_URL = 'https://www.yourtrace.online/terms';
-const MANAGE_SUBSCRIPTION_URL = 'https://www.yourtrace.online/profile';
 
-const SUBSCRIPTION_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: typeof Crown; description: string }> = {
-  none: { label: 'Free', color: '#6b7280', bgColor: '#f3f4f6', icon: Zap, description: 'Upgrade to unlock your personalized daily feed.' },
-  trial: { label: 'Trial', color: '#8b5cf6', bgColor: '#f5f3ff', icon: Sparkles, description: 'You\'re on a free trial. Enjoy full access!' },
-  active: { label: 'Pro', color: '#22c55e', bgColor: '#f0fdf4', icon: Crown, description: 'You have full access to your personalized feed.' },
-  on_hold: { label: 'On Hold', color: '#f59e0b', bgColor: '#fffbeb', icon: AlertTriangle, description: 'Payment issue. Update your billing to continue.' },
-  cancelled: { label: 'Cancelled', color: '#ef4444', bgColor: '#fef2f2', icon: AlertTriangle, description: 'Your subscription has been cancelled.' },
-  expired: { label: 'Expired', color: '#6b7280', bgColor: '#f3f4f6', icon: AlertTriangle, description: 'Your subscription has expired. Resubscribe to continue.' },
-};
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, profile, signOut, deleteAccount } = useAuth();
+  const { isProUser, presentPaywall, presentCustomerCenter } = useRevenueCat();
   const colorScheme = useColorScheme() ?? 'light';
 
   const isOnboarded = profile?.onboarded ?? false;
@@ -110,12 +102,18 @@ export default function ProfileScreen() {
         {!isOnboarded && (
           <Pressable
             onPress={() => router.push('/onboarding')}
-            style={[styles.nudge, { borderColor: Colors[colorScheme].border }]}>
+            style={[
+              styles.nudge,
+              {
+                borderColor: Colors[colorScheme].border,
+                backgroundColor: ILLUS_PALETTE.olive[colorScheme],
+              },
+            ]}>
             <Sparkles size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
             <View style={{ flex: 1 }}>
-              <ThemedText style={styles.nudgeTitle}>Personalize your feed</ThemedText>
+              <ThemedText style={styles.nudgeTitle}>Make every morning count</ThemedText>
               <ThemedText style={[styles.nudgeSub, { color: Colors[colorScheme].muted }]}>
-                Tell us your interests to get started.
+                2 minutes to set up, smarter mornings forever.
               </ThemedText>
             </View>
             <ArrowRight size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
@@ -164,37 +162,53 @@ export default function ProfileScreen() {
 
         {/* ─── Subscription ─── */}
         {(() => {
-          const status = profile?.subscriptionStatus || 'none';
-          const config = SUBSCRIPTION_CONFIG[status] || SUBSCRIPTION_CONFIG.none;
-          const StatusIcon = config.icon;
-          return (
-            <Pressable
-              onPress={() => WebBrowser.openBrowserAsync(MANAGE_SUBSCRIPTION_URL)}
-              style={[styles.subscriptionCard, { backgroundColor: config.bgColor }]}>
-              <View style={styles.subscriptionTop}>
-                <View style={styles.subscriptionBadge}>
-                  <StatusIcon size={16} color={config.color} strokeWidth={2} />
-                  <ThemedText style={[styles.subscriptionLabel, { color: config.color }]}>
-                    {config.label}
-                  </ThemedText>
+          if (isProUser) {
+            // Subscribed — show manage card with Customer Center
+            return (
+              <Pressable
+                onPress={() => presentCustomerCenter()}
+                style={[styles.subscriptionCard, { backgroundColor: '#f0fdf4' }]}>
+                <View style={styles.subscriptionTop}>
+                  <View style={styles.subscriptionBadge}>
+                    <Crown size={16} color="#22c55e" strokeWidth={2} />
+                    <ThemedText style={[styles.subscriptionLabel, { color: '#22c55e' }]}>
+                      Pro
+                    </ThemedText>
+                  </View>
+                  <ChevronRight size={18} color="#22c55e" strokeWidth={1.5} />
                 </View>
-                <ChevronRight size={18} color={config.color} strokeWidth={1.5} />
-              </View>
-              <ThemedText style={[styles.subscriptionDesc, { color: Colors[colorScheme].secondary }]}>
-                {config.description}
-              </ThemedText>
-              {(status === 'none' || status === 'cancelled' || status === 'expired') && (
-                <View style={[styles.upgradeButton, { backgroundColor: '#22c55e18', borderColor: '#22c55e30' }]}>
-                  <ThemedText style={[styles.upgradeButtonText, { color: '#22c55e' }]}>
-                    {status === 'none' ? 'Upgrade to Pro' : 'Resubscribe'}
-                  </ThemedText>
-                </View>
-              )}
-              {(status === 'active' || status === 'trial' || status === 'on_hold') && (
-                <ThemedText style={[styles.manageText, { color: config.color }]}>
+                <ThemedText style={[styles.subscriptionDesc, { color: Colors[colorScheme].secondary }]}>
+                  Full access — enjoy smarter mornings!
+                </ThemedText>
+                <ThemedText style={[styles.manageText, { color: '#22c55e' }]}>
                   Manage subscription →
                 </ThemedText>
-              )}
+              </Pressable>
+            );
+          }
+
+          // Not subscribed — show upgrade card
+          return (
+            <Pressable
+              onPress={() => presentPaywall()}
+              style={[styles.subscriptionCard, { backgroundColor: '#f3f4f6' }]}>
+              <View style={styles.subscriptionTop}>
+                <View style={styles.subscriptionBadge}>
+                  <Zap size={16} color="#6b7280" strokeWidth={2} />
+                  <ThemedText style={[styles.subscriptionLabel, { color: '#6b7280' }]}>
+                    Free
+                  </ThemedText>
+                </View>
+                <ChevronRight size={18} color="#6b7280" strokeWidth={1.5} />
+              </View>
+              <ThemedText style={[styles.subscriptionDesc, { color: Colors[colorScheme].secondary }]}>
+                Upgrade to wake up smarter every morning.
+              </ThemedText>
+              <View style={[styles.upgradeButton, { backgroundColor: '#22c55e18', borderColor: '#22c55e30' }]}>
+                <ThemedText style={[styles.upgradeButtonText, { color: '#22c55e' }]}>
+                  Upgrade to Pro
+                </ThemedText>
+              </View>
             </Pressable>
           );
         })()}

@@ -5,12 +5,15 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { ChevronLeft, BookmarkX } from 'lucide-react-native';
 
+import BrainIllus from '@/assets/images/brain-brainstorm-brainstorming-svgrepo-com.svg';
+
 import { ThemedText } from '@/components/themed-text';
 import { FeedCard } from '@/components/FeedCard';
 import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { FeedItem } from '@/lib/firestore';
 import { getBookmarks, removeBookmark, BookmarkedItem } from '@/lib/bookmarks';
+import { ILLUS_PALETTE } from '@/app/(auth)/welcome';
 
 export default function BookmarksScreen() {
   const router = useRouter();
@@ -72,12 +75,19 @@ export default function BookmarksScreen() {
         showsVerticalScrollIndicator={false}>
         {bookmarks.length === 0 ? (
           <View style={styles.emptyState}>
-            <BookmarkX size={40} color={Colors[colorScheme].border} strokeWidth={1.2} />
+            <View
+              style={[
+                styles.emptyIllusContainer,
+                { backgroundColor: ILLUS_PALETTE.lavender[colorScheme] },
+              ]}
+            >
+              <BrainIllus width={80} height={80} />
+            </View>
             <ThemedText style={[styles.emptyTitle, { color: Colors[colorScheme].text }]}>
               No saved items yet
             </ThemedText>
             <ThemedText style={[styles.emptySub, { color: Colors[colorScheme].muted }]}>
-              Bookmark articles from your feed and they{"'"}ll show up here.
+              Save anything worth revisiting {"—"} it{"'"}ll be here when you need it.
             </ThemedText>
           </View>
         ) : (
@@ -164,8 +174,16 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 120,
+    paddingTop: 80,
     gap: 12,
+  },
+  emptyIllusContainer: {
+    width: 140,
+    height: 120,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   emptyTitle: {
     fontSize: 18,

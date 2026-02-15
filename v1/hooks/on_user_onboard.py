@@ -41,8 +41,9 @@ def main():
         print({"error": "User not found", "user_id": args.user_id})
         sys.exit(1)
 
-    status = profile.get("subscriptionStatus", "none")
-    is_subscribed = status in ["trial", "active"]
+    from v1.storage import is_user_subscribed
+    is_subscribed = is_user_subscribed(profile)
+    status = "subscribed" if is_subscribed else "free"
 
     print(f"Onboarding user {args.user_id} (status: {status})")
 

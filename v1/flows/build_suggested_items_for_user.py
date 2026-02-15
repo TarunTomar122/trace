@@ -245,9 +245,9 @@ def build_suggested_items_for_user(
     if not profile:
         raise ValueError(f"User {user_id} not found")
 
-    status = profile.get("subscriptionStatus", "none")
-    if status not in ["trial", "active"]:
-        raise ValueError(f"User {user_id} is not subscribed (status: {status})")
+    from v1.storage import is_user_subscribed
+    if not is_user_subscribed(profile):
+        raise ValueError(f"User {user_id} is not subscribed (web: {profile.get('subscriptionStatus', 'none')}, app: {profile.get('appSubscriptionStatus', 'none')})")
 
     if not date:
         date = _get_today_ist_date()

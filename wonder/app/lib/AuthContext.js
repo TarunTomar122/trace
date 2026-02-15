@@ -8,18 +8,30 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    // Get initial session — catch stale/invalid refresh tokens gracefully
+    supabase.auth
+      .getSession()
+      .then(({ data: { session }, error }) => {
+        if (error) {
+          console.warn('Session restore failed, signing out:', error.message);
+          supabase.auth.signOut().catch(() => {});
+          setSession(null);
+        } else {
+          setSession(session);
+        }
+      })
+      .catch((err) => {
+        console.warn('getSession threw:', err.message);
+        setSession(null);
+      })
+      .finally(() => setLoading(false));
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-      }
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
 
     return () => subscription.unsubscribe();
   }, []);

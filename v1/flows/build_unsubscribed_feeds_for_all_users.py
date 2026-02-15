@@ -34,11 +34,12 @@ def build_unsubscribed_feeds(
     if user_id:
         users = [{"uid": user_id}]
     else:
+        from v1.storage import is_user_subscribed
         profiles = store.get_all_user_profiles()
         users = [
             p for p in profiles
             if p.get("onboarded") is True
-            and p.get("subscriptionStatus") not in ["trial", "active"]
+            and not is_user_subscribed(p)
         ]
     users = sorted(users, key=lambda u: u.get("uid", ""))
 

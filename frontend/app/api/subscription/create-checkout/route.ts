@@ -51,7 +51,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already has active subscription FIRST (before rate limit check)
-    if (userData?.subscriptionStatus === 'active' || userData?.subscriptionStatus === 'trial') {
+    const webSub = userData?.subscriptionStatus || 'none';
+    const appSub = userData?.appSubscriptionStatus || 'none';
+    if (['active', 'trial'].includes(webSub) || ['active', 'trial'].includes(appSub)) {
       return NextResponse.json({ 
         error: 'User already has an active subscription',
         subscriptionStatus: userData.subscriptionStatus 

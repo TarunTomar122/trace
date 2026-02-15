@@ -80,7 +80,7 @@ export default function SubscriptionManager() {
         lastPaymentDate: profile.lastPaymentDate ? new Date((profile.lastPaymentDate as any).seconds * 1000) : null,
         cancelledAt: profile.cancelledAt ? new Date((profile.cancelledAt as any).seconds * 1000) : null,
         willCancelAt: profile.willCancelAt ? new Date((profile.willCancelAt as any).seconds * 1000) : null,
-        hasAccess: ['trial', 'active'].includes(status),
+        hasAccess: ['trial', 'active'].includes(status) || ['trial', 'active'].includes(profile.appSubscriptionStatus || 'none'),
       });
       setIsLoading(false);
     }

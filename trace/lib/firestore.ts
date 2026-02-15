@@ -51,8 +51,10 @@ export interface UserProfile {
     longTerm?: string;
   };
   
-  // Subscription
+  // Subscription (web / Dodo)
   subscriptionStatus: 'none' | 'trial' | 'active' | 'on_hold' | 'cancelled' | 'expired';
+  // Subscription (app / RevenueCat)
+  appSubscriptionStatus?: 'none' | 'trial' | 'active' | 'expired';
   
   // Timestamps
   createdAt: Timestamp | null;
@@ -235,33 +237,59 @@ export const SAMPLE_FEED_ITEMS: FeedItem[] = [
     id: '1',
     type: 'blog',
     title: 'A Simple Morning Routine That Actually Sticks',
-    url: 'https://example.com',
-    metadata: { why_relevant: 'Popular in Productivity' },
+    description: 'Why the first 30 minutes of your day determine the rest \u2014 and how to design them.',
+    url: 'https://zenhabits.net/morning',
+    thumbnail: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=400&q=80',
+    metadata: { why_relevant: 'Popular in Productivity', feed_category: 'trending_news', is_hot: true },
     tags: ['productivity'],
   },
   {
     id: '2',
     type: 'blog',
     title: 'How to Build a Budget You Will Keep Using',
-    url: 'https://example.com',
+    description: 'A no-guilt framework for tracking money that actually fits your life.',
+    url: 'https://nerdwallet.com/budgeting',
+    thumbnail: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&q=80',
     metadata: { why_relevant: 'Popular in Money' },
     tags: ['money'],
   },
   {
     id: '3',
-    type: 'blog',
+    type: 'news',
     title: 'Small Habits That Reduce Daily Stress',
-    url: 'https://example.com',
-    metadata: { why_relevant: 'Trending in Mental Wellness' },
+    description: 'Psychologists share the micro-habits that compound into calmer days.',
+    url: 'https://psychologytoday.com/stress',
+    thumbnail: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=400&q=80',
+    metadata: { why_relevant: 'Trending in Mental Wellness', is_hot: true },
     tags: ['mental-wellness'],
   },
   {
     id: '4',
     type: 'blog',
     title: 'How to Learn a New Skill Without Burning Out',
-    url: 'https://example.com',
+    description: 'The science of deliberate practice \u2014 minus the exhaustion.',
+    url: 'https://medium.com/learning',
     metadata: { why_relevant: 'Popular in Learning' },
     tags: ['learning'],
+  },
+  {
+    id: '5',
+    type: 'video',
+    title: 'The Hidden Power of Reading 20 Pages a Day',
+    description: 'How a tiny reading habit can change your thinking in 6 months.',
+    url: 'https://youtube.com/watch',
+    thumbnail: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&q=80',
+    metadata: { why_relevant: 'Popular in Self-improvement' },
+    tags: ['learning'],
+  },
+  {
+    id: '6',
+    type: 'blog',
+    title: 'Why Walking Meetings Beat Sitting in a Room',
+    description: 'Research shows walking boosts creative output by up to 60%.',
+    url: 'https://hbr.org/walking-meetings',
+    metadata: { why_relevant: 'Trending in Productivity', feed_category: 'suggested' },
+    tags: ['productivity'],
   },
 ];
 
@@ -505,6 +533,40 @@ export async function deleteUserData(uid: string): Promise<void> {
   } catch (error) {
     console.error('Error soft-deleting user data:', error);
     throw error;
+  }
+}
+
+// ─── Web app base URL (same host the Dodo webhook & onboard API live on) ───
+const WEB_APP_URL = 'https://www.yourtrace.online';
+
+/**
+ * Trigger the backend feed-generation pipeline for a user.
+ * Calls the Next.js /api/onboard endpoint which dispatches a GitHub Action.
+ * Fire-and-forget — failures are logged but never thrown.
+ */
+export async function triggerFeedGeneration(uid: string): Promise<boolean> {
+  const url = `${WEB_APP_URL}/api/onboard`;
+  try {
+    console.log(`[FeedGen] POST ${url} for uid=${uid}`);
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid }),
+    });
+    const text = await res.text();
+    console.log(`[FeedGen] Status: ${res.status}, Body: ${text}`);
+    if (res.ok) {
+      try {
+        const data = JSON.parse(text);
+        return !!data.triggered;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  } catch (error) {
+    console.error(`[FeedGen] Network error calling ${url}:`, error);
+    return false;
   }
 }
 

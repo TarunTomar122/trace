@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   Dimensions,
+  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -16,13 +17,8 @@ import {
   ChevronLeft,
   ArrowRight,
   CircleHelp,
-  FileText,
-  Film,
-  Gauge,
   Goal,
-  Lightbulb,
   Sparkles,
-  Target,
   UserRound,
 } from 'lucide-react-native';
 import { useTheme } from '../ThemeContext';
@@ -46,31 +42,38 @@ const INTEREST_OPTIONS = [
   'Cooking',
 ];
 
-const SKILL_OPTIONS = ['Beginner', 'Intermediate', 'Advanced'];
-const FORMAT_OPTIONS = ['Quick cards', 'Mixed format', 'Deep dives'];
 const GOAL_OPTIONS = ['10 min/day', '20 min/day', '30+ min/day'];
+
+const BOOK_PICKS = [
+  { title: 'Atomic Habits', author: 'James Clear', cover: 'https://covers.openlibrary.org/b/id/12539702-L.jpg' },
+  { title: 'Sapiens', author: 'Yuval Noah Harari', cover: 'https://covers.openlibrary.org/b/id/8634250-L.jpg' },
+  { title: 'Thinking, Fast and Slow', author: 'Daniel Kahneman', cover: 'https://covers.openlibrary.org/b/id/13290711-L.jpg' },
+  { title: 'The Psychology of Money', author: 'Morgan Housel', cover: 'https://covers.openlibrary.org/b/id/10389354-L.jpg' },
+  { title: 'Zero to One', author: 'Peter Thiel', cover: 'https://covers.openlibrary.org/b/id/9002334-L.jpg' },
+  { title: 'Deep Work', author: 'Cal Newport', cover: 'https://covers.openlibrary.org/b/id/7988607-L.jpg' },
+  { title: 'A Brief History of Time', author: 'Stephen Hawking', cover: 'https://covers.openlibrary.org/b/id/10432365-L.jpg' },
+  { title: 'The Lean Startup', author: 'Eric Ries', cover: 'https://covers.openlibrary.org/b/id/7104760-L.jpg' },
+];
 
 const STEP_LABELS = [
   'Welcome',
   'About you',
-  'What you get',
   'Interests',
+  'Books',
   'Personalization',
-  'Level',
   'Rhythm',
 ];
 
 const STEP_ICONS = [
   Sparkles,
   UserRound,
-  Target,
   CircleHelp,
+  BookOpen,
   Brain,
-  Gauge,
   Goal,
 ];
 
-/* ────────────────────────── Wide pill (gender / skill / format / goal) ── */
+/* ────────────────────────── Wide pill (gender / skill / goal) ── */
 function WidePill({ label, selected, onPress, colors, icon: Icon }) {
   return (
     <TouchableOpacity
@@ -145,11 +148,10 @@ export default function OnboardingScreen({ onComplete }) {
   const [step, setStep] = useState(0);
   const [gender, setGender] = useState(null);
   const [interests, setInterests] = useState([]);
-  const [skillLevel, setSkillLevel] = useState(null);
-  const [format, setFormat] = useState(null);
+  const [selectedBooks, setSelectedBooks] = useState([]);
   const [goal, setGoal] = useState(null);
 
-  const totalSteps = 7;
+  const totalSteps = 6;
   const progress = ((step + 1) / totalSteps) * 100;
   const StepIcon = STEP_ICONS[step] || Sparkles;
 
@@ -168,16 +170,24 @@ export default function OnboardingScreen({ onComplete }) {
     );
   };
 
+  const toggleBook = (title) => {
+    setSelectedBooks((prev) =>
+      prev.includes(title)
+        ? prev.filter((x) => x !== title)
+        : [...prev, title],
+    );
+  };
+
   const next = () => setStep((s) => Math.min(s + 1, totalSteps - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
   const canContinue = useMemo(() => {
     if (step === 1) return Boolean(gender);
-    if (step === 3) return interests.length > 0;
-    if (step === 5) return Boolean(skillLevel);
-    if (step === 6) return Boolean(format) && Boolean(goal);
+    if (step === 2) return interests.length > 0;
+    if (step === 3) return selectedBooks.length > 0;
+    if (step === 5) return Boolean(goal);
     return true;
-  }, [step, gender, interests.length, skillLevel, format, goal]);
+  }, [step, gender, interests.length, selectedBooks.length, goal]);
 
   /* ── Step renderers ── */
   const renderStep = () => {
@@ -225,70 +235,8 @@ export default function OnboardingScreen({ onComplete }) {
           </View>
         );
 
-      /* ── 2  Value prop ── */
+      /* ── 2  Interests ── */
       case 2:
-        return (
-          <View>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>
-              What you'll get
-            </Text>
-            <View style={styles.benefitWrap}>
-              {[
-                {
-                  icon: BookOpen,
-                  text: 'Actionable lessons from books, articles, and videos',
-                },
-                {
-                  icon: Film,
-                  text: 'Short reels for quick learning, deeper cards when you want',
-                },
-                {
-                  icon: Lightbulb,
-                  text: 'Personalized feed based on your interests',
-                },
-                {
-                  icon: Target,
-                  text: 'Daily momentum — no doomscrolling',
-                },
-              ].map((item) => (
-                <View
-                  key={item.text}
-                  style={[
-                    styles.benefitRow,
-                    {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.surfaceBorder,
-                    },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.benefitIcon,
-                      { backgroundColor: colors.accent + '18' },
-                    ]}
-                  >
-                    <item.icon
-                      size={16}
-                      color={colors.accent}
-                      strokeWidth={2.2}
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.benefitText,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {item.text}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        );
-
-      /* ── 3  Interests ── */
-      case 3:
         return (
           <View>
             <Text style={[styles.title, { color: colors.textPrimary }]}>
@@ -307,6 +255,84 @@ export default function OnboardingScreen({ onComplete }) {
                   colors={colors}
                 />
               ))}
+            </View>
+          </View>
+        );
+
+      /* ── 3  Book picks ── */
+      case 3:
+        return (
+          <View>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>
+              Any of these catch{'\n'}your eye?
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              Tap the ones you'd want to learn from.
+            </Text>
+            <View style={styles.bookGrid}>
+              {BOOK_PICKS.map((book) => {
+                const selected = selectedBooks.includes(book.title);
+                return (
+                  <TouchableOpacity
+                    key={book.title}
+                    onPress={() => toggleBook(book.title)}
+                    activeOpacity={0.8}
+                    style={[
+                      styles.bookCard,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: selected
+                          ? colors.accent
+                          : colors.surfaceBorder,
+                      },
+                    ]}
+                  >
+                    <View style={styles.bookCoverWrap}>
+                      <Image
+                        source={{ uri: book.cover }}
+                        style={styles.bookCover}
+                        resizeMode="cover"
+                      />
+                      {selected && (
+                        <View
+                          style={[
+                            styles.bookCheck,
+                            { backgroundColor: colors.accent },
+                          ]}
+                        >
+                          <Check
+                            size={10}
+                            color={colors.background}
+                            strokeWidth={3}
+                          />
+                        </View>
+                      )}
+                    </View>
+                    <Text
+                      style={[
+                        styles.bookTitle,
+                        {
+                          color: selected
+                            ? colors.textPrimary
+                            : colors.textSecondary,
+                        },
+                      ]}
+                      numberOfLines={2}
+                    >
+                      {book.title}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.bookAuthor,
+                        { color: colors.textTertiary },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {book.author}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         );
@@ -345,71 +371,15 @@ export default function OnboardingScreen({ onComplete }) {
           </View>
         );
 
-      /* ── 5  Skill level ── */
+      /* ── 5  Daily target ── */
       case 5:
-        return (
-          <View>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>
-              Your current level
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              We'll tune complexity for you.
-            </Text>
-            <View style={styles.stack}>
-              {SKILL_OPTIONS.map((v) => (
-                <WidePill
-                  key={v}
-                  label={v}
-                  icon={Gauge}
-                  selected={skillLevel === v}
-                  onPress={() => setSkillLevel(v)}
-                  colors={colors}
-                />
-              ))}
-            </View>
-          </View>
-        );
-
-      /* ── 6  Format + goal ── */
-      case 6:
         return (
           <View>
             <Text style={[styles.title, { color: colors.textPrimary }]}>
               Almost done — your rhythm
             </Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Choose how you like to learn.
-            </Text>
-
-            <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>
-              Preferred format
-            </Text>
-            <View style={styles.stack}>
-              {FORMAT_OPTIONS.map((v) => (
-                <WidePill
-                  key={v}
-                  label={v}
-                  icon={
-                    v === 'Quick cards'
-                      ? FileText
-                      : v === 'Mixed format'
-                        ? BookOpen
-                        : Film
-                  }
-                  selected={format === v}
-                  onPress={() => setFormat(v)}
-                  colors={colors}
-                />
-              ))}
-            </View>
-
-            <Text
-              style={[
-                styles.sectionLabel,
-                { color: colors.textTertiary, marginTop: 20 },
-              ]}
-            >
-              Daily target
+              How much time do you want to spend learning?
             </Text>
             <View style={styles.stack}>
               {GOAL_OPTIONS.map((v) => (
@@ -470,8 +440,8 @@ export default function OnboardingScreen({ onComplete }) {
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
-          // Center content for short steps (welcome, gender, skill, personalization)
-          [0, 1, 4, 5].includes(step) && styles.scrollContentCentered,
+          // Only center the welcome hero — all form steps start from top
+          step === 0 && styles.scrollContentCentered,
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -480,8 +450,8 @@ export default function OnboardingScreen({ onComplete }) {
       </ScrollView>
 
       {/* ── Footer ── */}
-      <View style={[styles.footer, { paddingBottom: BOTTOM_INSET }]}>
-        {step > 0 ? (
+      <View style={[styles.footer, { paddingBottom: BOTTOM_INSET + 10 }]}>
+        {step > 0 && (
           <TouchableOpacity
             onPress={back}
             activeOpacity={0.8}
@@ -495,8 +465,6 @@ export default function OnboardingScreen({ onComplete }) {
           >
             <ChevronLeft size={20} color={colors.accent} strokeWidth={2.2} />
           </TouchableOpacity>
-        ) : (
-          <View style={{ width: 52 }} />
         )}
 
         <TouchableOpacity
@@ -512,7 +480,7 @@ export default function OnboardingScreen({ onComplete }) {
           ]}
         >
           <Text style={[styles.continueBtnText, { color: colors.background }]}>
-            {step === totalSteps - 1 ? 'Start exploring' : 'Continue'}
+            {step === totalSteps - 1 ? 'Start exploring' : step === 0 ? 'Get started' : 'Continue'}
           </Text>
           {step < totalSteps - 1 && (
             <ArrowRight size={18} color={colors.background} strokeWidth={2.4} />
@@ -622,7 +590,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
-  /* ── Wide pills (gender, skill, format, goal) ── */
+  /* ── Wide pills (gender, skill, goal) ── */
   stack: {
     gap: 10,
   },
@@ -677,33 +645,54 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  /* ── Benefits (step 2) ── */
-  benefitWrap: {
-    gap: 10,
-  },
-  benefitRow: {
+  /* ── Book picks grid ── */
+  bookGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    flexWrap: 'wrap',
+    gap: 12,
   },
-  benefitIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+  bookCard: {
+    width: (SCREEN_WIDTH - 48 - 12) / 2,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 10,
+    alignItems: 'center',
+  },
+  bookCoverWrap: {
+    position: 'relative',
+    width: '100%',
+    aspectRatio: 0.65,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+  bookCover: {
+    width: '100%',
+    height: '100%',
+  },
+  bookCheck: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 22,
+    height: 22,
+    borderRadius: 99,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  benefitText: {
-    flex: 1,
-    fontSize: 14,
-    lineHeight: 22,
+  bookTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 17,
+    marginBottom: 2,
+  },
+  bookAuthor: {
+    fontSize: 11,
+    textAlign: 'center',
   },
 
-  /* ── Info card (step 4) ── */
+  /* ── Info card (personalization) ── */
   infoCard: {
     borderWidth: 1,
     borderRadius: 18,

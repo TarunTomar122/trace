@@ -26,9 +26,10 @@ export async function GET(request: NextRequest) {
 
     const userData = userDoc.data();
     const subscriptionStatus = userData?.subscriptionStatus || 'none';
+    const appSubscriptionStatus = userData?.appSubscriptionStatus || 'none';
     
-    // Check if they have active/trial status
-    let hasAccess = ['trial', 'active'].includes(subscriptionStatus);
+    // Check if they have active/trial status from EITHER payment source (Dodo web / RevenueCat app)
+    let hasAccess = ['trial', 'active'].includes(subscriptionStatus) || ['trial', 'active'].includes(appSubscriptionStatus);
     
     // If cancelled but still active, check if cancellation date has passed
     if (hasAccess && userData?.cancelledAt) {

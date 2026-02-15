@@ -30,7 +30,8 @@ def main():
     else:
         result = {
             "user_id": args.user_id,
-            "status": profile.get("subscriptionStatus", "none"),
+            "webStatus": profile.get("subscriptionStatus", "none"),
+            "appStatus": profile.get("appSubscriptionStatus", "none"),
             "message": "Topics-based system: no legacy unmap required.",
         }
     print(result)

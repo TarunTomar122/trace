@@ -98,25 +98,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       console.log('[Auth] Got ID token. Signing into Firebase...');
 
-      // Quick network check
-      try {
-        const testResp = await fetch('https://identitytoolkit.googleapis.com/v1/projects', { method: 'HEAD' });
-        console.log('[Auth] Network to Firebase: reachable, status', testResp.status);
-      } catch (netErr) {
-        console.error('[Auth] Network to Firebase FAILED:', netErr);
-      }
-
       // Create Firebase credential from Google ID token
       const credential = GoogleAuthProvider.credential(idToken);
 
       console.log('[Auth] Calling signInWithCredential...');
-      // Add timeout so it doesn't hang forever
-      const result = await Promise.race([
-        signInWithCredential(auth, credential),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('signInWithCredential timed out after 15s')), 15000)
-        ),
-      ]);
+      const signInPromise = signInWithCredential(auth, credential);
+
+      // Add timeout so the UI can recover, but keep observing the original promise
+      // so we can print the real Firebase failure when it eventually arrives.
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('signInWithCredential timed out after 15s')), 15000)
+      );
+
+      let result;
+      try {
+        result = await Promise.race([signInPromise, timeoutPromise]);
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('timed out')) {
+          signInPromise
+            .then((lateResult) => {
+              console.log('[Auth] signInWithCredential completed after timeout for user:', lateResult.user.uid);
+            })
+            .catch((lateError: any) => {
+              console.error('[Auth] signInWithCredential eventual failure:', {
+                code: lateError?.code,
+                message: lateError?.message,
+              });
+            });
+        }
+        throw error;
+      }
       console.log('[Auth] Firebase sign-in complete. Loading profile...');
       
       // Load or create profile

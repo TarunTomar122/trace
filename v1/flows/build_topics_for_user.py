@@ -46,12 +46,12 @@ except Exception as exc:  # pragma: no cover - runtime import guard
 
 MAX_INTERESTS_DEFAULT = 8
 MAX_HOBBIES_DEFAULT = 3
-RESULTS_PER_SEARCH = 10
+RESULTS_PER_SEARCH = 15
 # Fetch extra to compensate for filtered junk URLs (tag pages, homepages, etc.)
 EXA_OVERFETCH_BUFFER = 5
 LOOKBACK_DAYS_DEFAULT = 28  # 4 weeks for fresher feed content
 VIDEO_LOOKBACK_DAYS = 365  # 1 year for videos
-MIN_REFRESH_DAYS_DEFAULT = 6
+MIN_REFRESH_DAYS_DEFAULT = 4
 MIN_QUERY_POOL_ITEMS = 4
 # Parallel processing for topic generation
 MAX_CONCURRENT_TOPICS = 5
@@ -564,13 +564,13 @@ def _build_umbrella_queries(interest_id: str, skills: list[str] | None) -> list[
 
 
 def _get_subscribed_user_profile(store: FirestoreStore, user_id: str) -> dict:
+    from v1.storage import is_user_subscribed
     profile = store.get_user_profile(user_id)
     if not profile:
         raise ValueError(f"User {user_id} not found")
-    status = profile.get("subscriptionStatus", "none")
-    if status not in ["trial", "active"]:
+    if not is_user_subscribed(profile):
         raise ValueError(
-            f"User {user_id} is not subscribed (status: {status})"
+            f"User {user_id} is not subscribed (web: {profile.get('subscriptionStatus', 'none')}, app: {profile.get('appSubscriptionStatus', 'none')})"
         )
     return profile
 
