@@ -390,9 +390,16 @@ function ProfileContent() {
 
       await updateUserProfile(user.uid, profileUpdate);
 
-      // Trigger feed refresh if onboarded
+      // Trigger feed refresh only for subscribed users.
       const isOnboarded = Boolean(profile.onboarded);
-      if (isOnboarded && ['interests', 'skills', 'goals', 'contentPreferences'].includes(section)) {
+      const hasSubscriptionAccess =
+        ['trial', 'active'].includes(profile.subscriptionStatus || 'none') ||
+        ['trial', 'active'].includes(profile.appSubscriptionStatus || 'none');
+      if (
+        isOnboarded &&
+        hasSubscriptionAccess &&
+        ['interests', 'skills', 'goals', 'contentPreferences'].includes(section)
+      ) {
         try {
           await fetch('/api/onboard', {
             method: 'POST',
@@ -670,24 +677,6 @@ function ProfileContent() {
               exit={{ opacity: 0, x: 20 }}
               className="space-y-8"
             >
-              {/* Trace Snapshot */}
-              {profile?.onboarded && (
-                <section className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 md:p-8">
-                  <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6 flex items-center gap-2">
-                    <Sparkles size={14} className="text-foreground" />
-                    Your focus snapshot
-                  </h2>
-                  {traceInsightsLoading ? (
-                    <div className="text-sm text-secondary/70">Loading insights...</div>
-                  ) : traceInsights ? (
-                    <TraceInsightCard insights={traceInsights} />
-                  ) : (
-                    <div className="text-sm text-secondary/70">
-                      Interact with your feed to help Trace learn what matters most to you.
-                    </div>
-                  )}
-                </section>
-              )}
 
 
               {/* Basic Info */}

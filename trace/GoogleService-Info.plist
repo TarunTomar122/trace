@@ -3,9 +3,11 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>94335303623-i6nipgeaj97qtqohv5sbgmd3epvvscq7.apps.googleusercontent.com</string>
+	<string>94335303623-qfbbst9lelneavquen6tilor11rjgt94.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.94335303623-i6nipgeaj97qtqohv5sbgmd3epvvscq7</string>
+	<string>com.googleusercontent.apps.94335303623-qfbbst9lelneavquen6tilor11rjgt94</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>94335303623-fsineukjm6tubn9jn6i0fdqktctv0dgo.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
 	<string>AIzaSyBWBbecbnbWzXlEhzj--YRss__bvku0MSE</string>
 	<key>GCM_SENDER_ID</key>
@@ -13,7 +15,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.trace.app</string>
+	<string>online.yourtrace.app</string>
 	<key>PROJECT_ID</key>
 	<string>anybrew-7c6c1</string>
 	<key>STORAGE_BUCKET</key>
@@ -29,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:94335303623:ios:d3f3f077b8436c2235a3e2</string>
+	<string>1:94335303623:ios:4719681cfcad638735a3e2</string>
 </dict>
 </plist>

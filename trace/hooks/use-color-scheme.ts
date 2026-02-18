@@ -1,11 +1,6 @@
-import { useColorScheme as useRNColorScheme } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 
-// Force light mode as default for Trace
 export function useColorScheme(): 'light' | 'dark' {
-  // Always return 'light' for now - Trace uses light mode
-  return 'light';
-  
-  // If you want to support dark mode later, uncomment:
-  // const scheme = useRNColorScheme();
-  // return scheme ?? 'light';
+  const { colorScheme } = useTheme();
+  return colorScheme;
 }

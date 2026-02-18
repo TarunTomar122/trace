@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     if (['active', 'trial'].includes(webSub) || ['active', 'trial'].includes(appSub)) {
       return NextResponse.json({ 
         error: 'User already has an active subscription',
-        subscriptionStatus: userData.subscriptionStatus 
+        subscriptionStatus: userData?.subscriptionStatus 
       }, { status: 400 });
     }
     

@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
+import Svg, { Path, Line as SvgLine } from 'react-native-svg';
 import Constants from 'expo-constants';
 import {
   BookOpen,
@@ -33,6 +34,9 @@ import businessVideos from '../../data/videos/business.json';
 import moneyVideos from '../../data/videos/money.json';
 import businessArticle from '../../data/articles/business.json';
 import moneyArticle from '../../data/articles/money.json';
+import topBooks from '../../data/top_books_by_interest_enriched.json';
+import topArticles from '../../data/top_articles_by_interest.json';
+import topVideos from '../../data/top_videos_by_interest.json';
 
 const STATUS_BAR_HEIGHT = Constants.statusBarHeight || 0;
 const BOTTOM_INSET = Platform.OS === 'ios' ? 34 : 24;
@@ -42,19 +46,60 @@ const CARD_WIDTH = SCREEN_WIDTH - 90;
 
 /* ────────────────────────── Data ── */
 
-const INTEREST_OPTIONS = [
-  'Technology',
-  'Business',
-  'Money',
-  'Psychology',
-  'Health',
-  'Career',
-  'Design',
-  'Science',
-  'Relationships',
-  'Culture',
-  'Self-development',
-  'Cooking',
+const ALL_TOPICS = [
+  'Technology', 'Science', 'Psychology', 'Ideas', 'Business', 'Money',
+  'Design', 'Career', 'Self-development', 'Health', 'Cooking', 'Culture',
+  'Relationships', 'Society',
+];
+
+const TOPIC_EMOJIS = {
+  Technology:        '🚀',
+  Science:           '🔬',
+  Psychology:        '🧠',
+  Ideas:             '💡',
+  Business:          '💼',
+  Money:             '💰',
+  Design:            '🎨',
+  Career:            '🎓',
+  'Self-development':'🌱',
+  Health:            '🏃',
+  Cooking:           '🍳',
+  Culture:           '🎭',
+  Relationships:     '❤️',
+  Society:           '🌍',
+};
+
+const TOPIC_SECTIONS = [
+  { label: 'MIND & GROWTH',    topics: ['Psychology', 'Self-development', 'Ideas'] },
+  { label: 'BUSINESS & CAREER',topics: ['Business', 'Career', 'Money'] },
+  { label: 'SCIENCE & TECH',   topics: ['Technology', 'Science', 'Design'] },
+  { label: 'LIFESTYLE',        topics: ['Health', 'Relationships', 'Culture', 'Cooking', 'Society'] },
+];
+
+const INTEREST_KEY_TO_TOPIC = {
+  technology: 'Technology', science: 'Science', psychology: 'Psychology',
+  ideas: 'Ideas', business: 'Business', money: 'Money', design: 'Design',
+  career: 'Career', 'self-development': 'Self-development', health: 'Health',
+  cooking: 'Cooking', culture: 'Culture', relationships: 'Relationships',
+};
+
+function getRecommendedTopicNames(focus, goals) {
+  const seen = new Set();
+  const result = [];
+  const tryAdd = (key) => {
+    const name = INTEREST_KEY_TO_TOPIC[key];
+    if (name && !seen.has(name)) { seen.add(name); result.push(name); }
+  };
+  if (focus && FOCUS_INTERESTS[focus]) FOCUS_INTERESTS[focus].forEach(tryAdd);
+  (goals || []).forEach((g) => (GOAL_INTERESTS[g] || []).forEach(tryAdd));
+  return result.slice(0, 6);
+}
+
+const FOCUS_OPTIONS = [
+  { id: 'social',  emoji: '📵', label: 'Replace social media' },
+  { id: 'reading', emoji: '📖', label: 'Develop a reading habit' },
+  { id: 'ideas',   emoji: '💡', label: 'Discover new ideas' },
+  { id: 'growth',  emoji: '🌱', label: 'Work on personal growth' },
 ];
 
 const GOAL_OPTIONS = ['10 min/day', '20 min/day', '30+ min/day'];
@@ -138,17 +183,170 @@ const SWIPE_PICKS = [
 ];
 
 const TYPE_ICON_MAP = { book: BookOpen, video: Film, article: FileText };
+
+/* ────────────────────────── Personalized picks ── */
+const FOCUS_INTERESTS = {
+  social:  ['relationships', 'culture', 'psychology'],
+  reading: ['self-development', 'psychology'],
+  ideas:   ['ideas', 'technology', 'science'],
+  growth:  ['self-development', 'psychology', 'health'],
+};
+const GOAL_INTERESTS = {
+  productivity: ['self-development', 'technology'],
+  career:       ['career', 'business'],
+  habits:       ['self-development', 'health'],
+  money:        ['money', 'business'],
+  smarter:      ['science', 'psychology', 'ideas'],
+  social:       ['relationships', 'culture'],
+};
+
+function getPersonalizedPicks(focus, goals) {
+  const seen = new Set();
+  const interests = [];
+  const add = (i) => { if (!seen.has(i)) { seen.add(i); interests.push(i); } };
+
+  if (focus && FOCUS_INTERESTS[focus]) FOCUS_INTERESTS[focus].forEach(add);
+  (goals || []).forEach((g) => (GOAL_INTERESTS[g] || []).forEach(add));
+  if (!interests.length) add('self-development');
+
+  const picks = [];
+  const titles = new Set();
+
+  const tryAdd = (item) => {
+    if (!item?.title || titles.has(item.title) || picks.length >= 5) return false;
+    titles.add(item.title);
+    picks.push(item);
+    return true;
+  };
+
+  // ~3 books from top interests
+  for (const interest of interests) {
+    for (const b of (topBooks[interest] || []).slice(0, 3)) {
+      if (picks.length >= 3) break;
+      tryAdd({ type: 'book', title: b.title, by: b.author, cover: b.cover });
+    }
+    if (picks.length >= 3) break;
+  }
+
+  // 1 article
+  for (const interest of interests) {
+    const a = (topArticles[interest] || [])[0];
+    if (a && tryAdd({ type: 'article', title: a.title, by: a.author, source: a.source, cover: null })) break;
+  }
+
+  // 1 video
+  for (const interest of interests) {
+    const v = (topVideos[interest] || [])[0];
+    if (v && tryAdd({ type: 'video', title: v.title, by: v.creator, source: v.source, cover: null })) break;
+  }
+
+  // Pad to 5 with more books if needed
+  for (const interest of interests) {
+    for (const b of (topBooks[interest] || [])) {
+      if (picks.length >= 5) break;
+      tryAdd({ type: 'book', title: b.title, by: b.author, cover: b.cover });
+    }
+    if (picks.length >= 5) break;
+  }
+
+  return picks;
+}
 const TYPE_LABEL = { book: 'Book', video: 'Video', article: 'Article' };
 
+const LIFE_GOALS = [
+  { id: 'productivity', label: 'Increase Productivity', emoji: '🔥' },
+  { id: 'career',       label: 'Develop Your Career',   emoji: '🥇' },
+  { id: 'habits',       label: 'Build Better Habits',   emoji: '🚀' },
+  { id: 'money',        label: 'Earn More Money',        emoji: '💰' },
+  { id: 'smarter',      label: 'Become Smarter',         emoji: '🧠' },
+  { id: 'social',       label: 'Improve Social Life',    emoji: '🎉' },
+];
+
 const STEP_LABELS = [
-  'Welcome',
+  'Focus',
+  'Why it works',
+  'Goals',
+  'For you',
   'About you',
   'Interests',
   'Picks',
   'Rhythm',
 ];
 
-const STEP_ICONS = [Sparkles, UserRound, CircleHelp, Heart, Goal];
+const STEP_ICONS = [Sparkles, BookOpen, Goal, Sparkles, UserRound, CircleHelp, Heart, Goal];
+
+/* ────────────────────────── Goal pill (emoji right) ── */
+function GoalPill({ label, emoji, selected, onPress, colors }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      style={[
+        styles.goalPill,
+        {
+          backgroundColor: selected ? colors.accent + '18' : colors.surface,
+          borderColor: selected ? colors.accent : colors.surfaceBorder,
+        },
+      ]}
+    >
+      <Text
+        style={[
+          styles.goalPillText,
+          { color: selected ? colors.textPrimary : colors.textSecondary },
+        ]}
+      >
+        {label}
+      </Text>
+      <Text style={styles.goalPillEmoji}>{emoji}</Text>
+    </TouchableOpacity>
+  );
+}
+
+/* ────────────────────────── Topic chip (emoji + label) ── */
+function TopicChip({ label, selected, onPress, colors }) {
+  const emoji = TOPIC_EMOJIS[label] || '📌';
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      style={[
+        styles.topicChip,
+        {
+          backgroundColor: selected ? colors.accent + '18' : colors.surface,
+          borderColor: selected ? colors.accent : colors.surfaceBorder,
+        },
+      ]}
+    >
+      <Text style={styles.topicChipEmoji}>{emoji}</Text>
+      <Text
+        style={[
+          styles.topicChipLabel,
+          { color: selected ? colors.textPrimary : colors.textSecondary },
+        ]}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+/* ────────────────────────── Trend line chart (SVG) ── */
+function TrendLine({ color }) {
+  return (
+    <Svg width="100%" height="52" viewBox="0 0 240 52" preserveAspectRatio="none">
+      <SvgLine x1="0" y1="18" x2="240" y2="18" stroke="rgba(0,0,0,0.07)" strokeWidth="1" />
+      <SvgLine x1="0" y1="34" x2="240" y2="34" stroke="rgba(0,0,0,0.07)" strokeWidth="1" />
+      <Path
+        d="M 0 48 C 50 48 70 38 100 30 S 165 12 240 4"
+        stroke={color}
+        strokeWidth="2.5"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
 
 /* ────────────────────────── Wide pill ── */
 function WidePill({ label, selected, onPress, colors, icon: Icon }) {
@@ -223,6 +421,10 @@ function ChipPill({ label, selected, onPress, colors }) {
 export default function OnboardingScreen({ onComplete }) {
   const { colors } = useTheme();
   const [step, setStep] = useState(0);
+  const [focus, setFocus] = useState(null);
+  const [lifeGoals, setLifeGoals] = useState([]);
+  const [recIndex, setRecIndex] = useState(0);
+  const [addedRecs, setAddedRecs] = useState([]);
   const [gender, setGender] = useState(null);
   const [interests, setInterests] = useState([]);
   const [likedItems, setLikedItems] = useState([]);
@@ -245,7 +447,7 @@ export default function OnboardingScreen({ onComplete }) {
     });
   }, []);
 
-  const totalSteps = 5;
+  const totalSteps = 8;
   const progress = ((step + 1) / totalSteps) * 100;
   const StepIcon = STEP_ICONS[step] || Sparkles;
 
@@ -325,11 +527,34 @@ export default function OnboardingScreen({ onComplete }) {
   });
 
   /* ── Helpers ── */
+  const toggleLifeGoal = (id) => {
+    setLifeGoals((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const [personalizedPicks, setPersonalizedPicks] = useState([]);
+  const picksComputedRef = useRef(false);
+
+  // Compute picks exactly once when step 3 is reached, after focus + lifeGoals are set
+  useEffect(() => {
+    if (step === 3 && !picksComputedRef.current) {
+      picksComputedRef.current = true;
+      setPersonalizedPicks(getPersonalizedPicks(focus, lifeGoals));
+    }
+  }, [step, focus, lifeGoals]);
+
+  const handleRecSkip = useCallback(() => setRecIndex((i) => i + 1), []);
+
+  const handleRecAdd = useCallback((picks) => {
+    const pick = picks[recIndex];
+    if (pick) setAddedRecs((prev) => [...prev, pick.title]);
+    setRecIndex((i) => i + 1);
+  }, [recIndex]);
+
   const toggleInterest = (value) => {
     setInterests((prev) =>
-      prev.includes(value)
-        ? prev.filter((x) => x !== value)
-        : [...prev, value].slice(0, 6),
+      prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
     );
   };
 
@@ -337,12 +562,16 @@ export default function OnboardingScreen({ onComplete }) {
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
   const canContinue = useMemo(() => {
-    if (step === 1) return Boolean(gender);
-    if (step === 2) return interests.length > 0;
-    if (step === 3) return cardIndex >= SWIPE_PICKS.length;
-    if (step === 4) return Boolean(goal);
+    if (step === 0) return Boolean(focus);
+    if (step === 1) return true;
+    if (step === 2) return lifeGoals.length > 0;
+    if (step === 3) return recIndex >= personalizedPicks.length && personalizedPicks.length > 0;
+    if (step === 4) return Boolean(gender);
+    if (step === 5) return interests.length >= 3;
+    if (step === 6) return cardIndex >= SWIPE_PICKS.length;
+    if (step === 7) return Boolean(goal);
     return true;
-  }, [step, gender, interests.length, cardIndex, goal]);
+  }, [step, focus, lifeGoals.length, recIndex, personalizedPicks.length, gender, interests.length, cardIndex, goal]);
 
   const handleCardImageError = useCallback((title) => {
     setImageUriMap((prev) => {
@@ -532,29 +761,298 @@ export default function OnboardingScreen({ onComplete }) {
     );
   };
 
+  /* ── Render personalized recs step (step 3) ── */
+  const renderRecsStep = () => {
+    const allDone = recIndex >= personalizedPicks.length;
+
+    if (allDone && personalizedPicks.length > 0) {
+      return (
+        <View style={{ flex: 1, paddingHorizontal: 24 }}>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>
+            Ok, here are some{'\n'}recommendations
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            Pick what you'd like to explore first.
+          </Text>
+
+          <View style={{ flex: 1, position: 'relative' }}>
+            {/* Stack shadow card behind */}
+            <View
+              style={[
+                styles.recDoneBgCard,
+                { backgroundColor: colors.surface },
+              ]}
+            />
+            {/* Main done card */}
+            <View
+              style={[
+                styles.recCard,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: 'transparent',
+                  flex: 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                },
+              ]}
+            >
+              <View style={styles.recDoneCheckCircle}>
+                <Check size={26} color="#fff" strokeWidth={2.5} />
+              </View>
+              <Text style={[styles.recDoneLabel, { color: colors.textPrimary }]}>
+                We saved your picks.{'\n'}You'll see them soon.
+              </Text>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    // Loading state while picks are being computed
+    if (personalizedPicks.length === 0) {
+      return (
+        <View style={{ flex: 1, paddingHorizontal: 24 }}>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>
+            Ok, here are some{'\n'}recommendations
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            Pick what you'd like to explore first.
+          </Text>
+          <View style={{ flex: 1 }} />
+        </View>
+      );
+    }
+
+    const pick = personalizedPicks[recIndex];
+    const TypeIcon = TYPE_ICON_MAP[pick.type] || BookOpen;
+    const typeLabel = TYPE_LABEL[pick.type] || 'Book';
+    const byPrefix = pick.type === 'video' ? 'By ' : 'Written by ';
+
+    return (
+      <View style={{ flex: 1, paddingHorizontal: 24 }}>
+        {/* Title */}
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          Ok, here are some{'\n'}recommendations
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          Pick what you'd like to explore first.
+        </Text>
+
+        {/* Progress dots */}
+        <View style={styles.recDots}>
+          {personalizedPicks.map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.recDot,
+                {
+                  backgroundColor:
+                    i < recIndex
+                      ? colors.accent
+                      : i === recIndex
+                        ? colors.textPrimary
+                        : colors.surface,
+                  width: i === recIndex ? 20 : 8,
+                },
+              ]}
+            />
+          ))}
+        </View>
+
+        {/* Card */}
+        <View
+          style={[
+            styles.recCard,
+            {
+              backgroundColor: colors.background,
+              borderColor: colors.surfaceBorder,
+              shadowColor: colors.shadowColor,
+            },
+          ]}
+        >
+          {/* Cover area */}
+          <View style={styles.recImageArea}>
+            <View style={[styles.recGlow, { backgroundColor: colors.accent + '25' }]} />
+            {pick.cover ? (
+              <Image
+                source={pick.cover}
+                style={styles.recCoverImage}
+                contentFit="contain"
+                cachePolicy="memory-disk"
+              />
+            ) : (
+              <View style={[styles.recCoverPlaceholder, { backgroundColor: colors.surface }]}>
+                <TypeIcon size={52} color={colors.textMuted} strokeWidth={1.5} />
+              </View>
+            )}
+          </View>
+
+          {/* Meta */}
+          <View style={[styles.recTypeBadge, { backgroundColor: colors.surface }]}>
+            <TypeIcon size={11} color={colors.textSecondary} strokeWidth={2} />
+            <Text style={[styles.recTypeBadgeText, { color: colors.textSecondary }]}>
+              {typeLabel}
+              {pick.source ? ` · ${pick.source}` : ''}
+            </Text>
+          </View>
+          <Text style={[styles.recCardTitle, { color: colors.textPrimary }]} numberOfLines={2}>
+            {pick.title}
+          </Text>
+          <Text style={[styles.recCardAuthor, { color: colors.textTertiary }]}>
+            {byPrefix}{pick.by}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
   /* ── Step renderers (non-swipe steps) ── */
   const renderStep = () => {
     switch (step) {
-      /* ── 0  Welcome ── */
+      /* ── 0  Focus / Goal ── */
       case 0:
         return (
-          <View style={styles.centerWrap}>
-            <Sparkles size={40} color={colors.accent} strokeWidth={1.6} />
-            <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>
-              Welcome to{'\n'}wonder
+          <View>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>
+              What's your main{'\n'}focus here?
             </Text>
-            <Text style={[styles.heroSub, { color: colors.textSecondary }]}>
-              Learn faster with ideas from books, articles, and videos — all in
-              one place.
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              Choose the goal that matters most to you.
             </Text>
-            <Text style={[styles.heroMuted, { color: colors.textTertiary }]}>
-              Bite-sized insights. Real-world lessons. Zero fluff.
-            </Text>
+
+            <View style={styles.focusGrid}>
+              {FOCUS_OPTIONS.map((opt) => {
+                const selected = focus === opt.id;
+                return (
+                  <TouchableOpacity
+                    key={opt.id}
+                    onPress={() => setFocus(opt.id)}
+                    activeOpacity={0.8}
+                    style={[
+                      styles.focusCard,
+                      {
+                        backgroundColor: selected
+                          ? colors.accent + '1A'
+                          : colors.surface,
+                        borderColor: selected
+                          ? colors.accent
+                          : colors.surfaceBorder,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.focusEmoji}>{opt.emoji}</Text>
+                    <Text
+                      style={[
+                        styles.focusLabel,
+                        {
+                          color: selected
+                            ? colors.textPrimary
+                            : colors.textSecondary,
+                        },
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity
+              onPress={next}
+              activeOpacity={0.6}
+              style={styles.skipLink}
+            >
+              <Text style={[styles.skipLinkText, { color: colors.textTertiary }]}>
+                I'm not sure, skip
+              </Text>
+            </TouchableOpacity>
           </View>
         );
 
-      /* ── 1  Gender ── */
-      case 1:
+      /* ── 1  Why it works (informational) ── */
+      case 1: {
+        const headlineMap = {
+          social:  ['Stop the mindless scroll. Short ideas are ',   'actually worth your time.'],
+          reading: ['Short, clear & concise ideas are ',             'the best way to grow a reading habit.'],
+          ideas:   ['The world\'s best ideas, ',                      'distilled into bite-sized reads.'],
+          growth:  ['Small daily insights are ',                     'the best way to work on yourself.'],
+        };
+        const [hlStart, hlEnd] = headlineMap[focus] ?? ['Short, focused ideas are ', 'the fastest way to learn something new.'];
+        return (
+          <View style={styles.insightWrap}>
+            <Text style={[styles.insightHeadline, { color: colors.textPrimary }]}>
+              {hlStart}
+              <Text style={{ color: colors.accent }}>{hlEnd}</Text>
+            </Text>
+
+            <View style={styles.insightCardOuter}>
+              {/* Calendar badge */}
+              <View style={[styles.calBadge, { shadowColor: colors.shadowColor }]}>
+                <View style={[styles.calTop, { backgroundColor: '#EF4444' }]}>
+                  <View style={styles.calPin} />
+                  <View style={styles.calPin} />
+                </View>
+                <View style={[styles.calBottom, { backgroundColor: colors.background }]}>
+                  <Text style={[styles.calNum, { color: colors.textPrimary }]}>30</Text>
+                </View>
+              </View>
+
+              {/* Insight card */}
+              <View
+                style={[
+                  styles.insightCard,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.surfaceBorder,
+                    shadowColor: colors.shadowColor,
+                  },
+                ]}
+              >
+                <Text style={[styles.insightCardCat, { color: colors.textTertiary }]}>
+                  Skills & Personal Growth
+                </Text>
+                <TrendLine color={colors.accent} />
+                <Text style={[styles.insightCardTitle, { color: colors.textPrimary }]}>
+                  The Compound Effect
+                </Text>
+                <Text style={[styles.insightCardBody, { color: colors.textSecondary }]}>
+                  The small, seemingly insignificant action of reading ideas every day
+                  will provide huge benefits for learning and skill development.
+                </Text>
+              </View>
+            </View>
+          </View>
+        );
+      }
+
+      /* ── 2  Life goals ── */
+      case 2:
+        return (
+          <View>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>
+              What are some of{'\n'}your goals?
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              Let's recommend the best content to get you started.
+            </Text>
+            <View style={styles.stack}>
+              {LIFE_GOALS.map((g) => (
+                <GoalPill
+                  key={g.id}
+                  label={g.label}
+                  emoji={g.emoji}
+                  selected={lifeGoals.includes(g.id)}
+                  onPress={() => toggleLifeGoal(g.id)}
+                  colors={colors}
+                />
+              ))}
+            </View>
+          </View>
+        );
+
+      /* ── 4  Gender ── */
+      case 4:
         return (
           <View>
             <Text style={[styles.title, { color: colors.textPrimary }]}>
@@ -578,34 +1076,74 @@ export default function OnboardingScreen({ onComplete }) {
           </View>
         );
 
-      /* ── 2  Interests ── */
-      case 2:
+      /* ── 5  Interests ── */
+      case 5: {
+        const recommended = getRecommendedTopicNames(focus, lifeGoals);
         return (
-          <View>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>
-              What interests you?
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Pick up to 6 topics.
-            </Text>
-            <View style={styles.chipGrid}>
-              {INTEREST_OPTIONS.map((interest) => (
-                <ChipPill
-                  key={interest}
-                  label={interest}
-                  selected={interests.includes(interest)}
-                  onPress={() => toggleInterest(interest)}
-                  colors={colors}
-                />
-              ))}
+          <View style={{ gap: 24 }}>
+            <View>
+              <Text style={[styles.title, { color: colors.textPrimary }]}>
+                What topics are you{'\n'}interested in?
+              </Text>
+              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                Pick at least 3 and we'll kickstart your journey in brainwave.
+              </Text>
             </View>
+
+            {/* Recommended section */}
+            {recommended.length > 0 && (
+              <View>
+                <Text style={[styles.topicSectionLabel, { color: colors.textTertiary }]}>
+                  RECOMMENDED FOR YOU
+                </Text>
+                <View style={styles.topicChipRow}>
+                  {recommended.map((topic) => (
+                    <TopicChip
+                      key={topic}
+                      label={topic}
+                      selected={interests.includes(topic)}
+                      onPress={() => toggleInterest(topic)}
+                      colors={colors}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* All sections */}
+            {TOPIC_SECTIONS.map((section) => (
+              <View key={section.label}>
+                <Text style={[styles.topicSectionLabel, { color: colors.textTertiary }]}>
+                  {section.label}
+                </Text>
+                <View style={styles.topicChipRow}>
+                  {section.topics.map((topic) => (
+                    <TopicChip
+                      key={topic}
+                      label={topic}
+                      selected={interests.includes(topic)}
+                      onPress={() => toggleInterest(topic)}
+                      colors={colors}
+                    />
+                  ))}
+                </View>
+              </View>
+            ))}
+
+            {/* Min selection hint */}
+            {interests.length > 0 && interests.length < 3 && (
+              <Text style={[styles.topicHint, { color: colors.textTertiary }]}>
+                Select {3 - interests.length} more to continue
+              </Text>
+            )}
           </View>
         );
+      }
 
-      /* step 3 is handled by renderSwipeStep */
+      /* step 6 is handled by renderSwipeStep */
 
-      /* ── 4  Daily target ── */
-      case 4:
+      /* ── 7  Daily target ── */
+      case 7:
         return (
           <View>
             <Text style={[styles.title, { color: colors.textPrimary }]}>
@@ -673,15 +1211,14 @@ export default function OnboardingScreen({ onComplete }) {
       </View>
 
       {/* ── Content ── */}
-      {step === 3 ? (
+      {step === 6 ? (
         <View style={styles.swipeWrapper}>{renderSwipeStep()}</View>
+      ) : step === 3 ? (
+        <View style={styles.recsWrapper}>{renderRecsStep()}</View>
       ) : (
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={[
-            styles.scrollContent,
-            step === 0 && styles.scrollContentCentered,
-          ]}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -690,53 +1227,70 @@ export default function OnboardingScreen({ onComplete }) {
       )}
 
       {/* ── Footer ── */}
-      <View style={[styles.footer, { paddingBottom: BOTTOM_INSET + 10 }]}>
-        {step > 0 && (
+      {step === 3 && recIndex < personalizedPicks.length ? (
+        <View style={[styles.footer, { paddingBottom: BOTTOM_INSET + 10 }]}>
           <TouchableOpacity
-            onPress={back}
+            onPress={handleRecSkip}
+            activeOpacity={0.8}
+            style={styles.skipRecBtn}
+          >
+            <X size={18} color="#fff" strokeWidth={2.5} />
+            <Text style={styles.skipRecText}>Skip</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => handleRecAdd(personalizedPicks)}
+            activeOpacity={0.8}
+            style={styles.addRecBtn}
+          >
+            <Check size={18} color="#fff" strokeWidth={2.5} />
+            <Text style={styles.addRecText}>Add</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={[styles.footer, { paddingBottom: BOTTOM_INSET + 10 }]}>
+          {step > 0 && (
+            <TouchableOpacity
+              onPress={back}
+              activeOpacity={0.8}
+              style={[
+                styles.backBtn,
+                {
+                  backgroundColor: colors.accent + '12',
+                  borderColor: colors.accent + '30',
+                },
+              ]}
+            >
+              <ChevronLeft size={20} color={colors.accent} strokeWidth={2.2} />
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            onPress={step === totalSteps - 1 ? onComplete : next}
+            disabled={!canContinue}
             activeOpacity={0.8}
             style={[
-              styles.backBtn,
+              styles.continueBtn,
               {
-                backgroundColor: colors.accent + '12',
-                borderColor: colors.accent + '30',
+                backgroundColor: colors.accent,
+                opacity: canContinue ? 1 : 0.3,
               },
             ]}
           >
-            <ChevronLeft size={20} color={colors.accent} strokeWidth={2.2} />
+            <Text
+              style={[styles.continueBtnText, { color: colors.background }]}
+            >
+              {step === totalSteps - 1 ? 'Start exploring' : 'Continue'}
+            </Text>
+            {step < totalSteps - 1 && (
+              <ArrowRight
+                size={18}
+                color={colors.background}
+                strokeWidth={2.4}
+              />
+            )}
           </TouchableOpacity>
-        )}
-
-        <TouchableOpacity
-          onPress={step === totalSteps - 1 ? onComplete : next}
-          disabled={!canContinue}
-          activeOpacity={0.8}
-          style={[
-            styles.continueBtn,
-            {
-              backgroundColor: colors.accent,
-              opacity: canContinue ? 1 : 0.3,
-            },
-          ]}
-        >
-          <Text
-            style={[styles.continueBtnText, { color: colors.background }]}
-          >
-            {step === totalSteps - 1
-              ? 'Start exploring'
-              : step === 0
-                ? 'Get started'
-                : 'Continue'}
-          </Text>
-          {step < totalSteps - 1 && (
-            <ArrowRight
-              size={18}
-              color={colors.background}
-              strokeWidth={2.4}
-            />
-          )}
-        </TouchableOpacity>
-      </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -770,10 +1324,7 @@ const styles = StyleSheet.create({
   /* ── Scroll (non-swipe steps) ── */
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 16 },
-  scrollContentCentered: { flexGrow: 1, justifyContent: 'center' },
-
-  /* ── Welcome hero ── */
-  centerWrap: { alignItems: 'center' },
+  /* ── Welcome hero (swipe done state) ── */
   heroTitle: {
     fontSize: 38,
     fontWeight: '900',
@@ -790,7 +1341,6 @@ const styles = StyleSheet.create({
     maxWidth: 300,
     marginBottom: 10,
   },
-  heroMuted: { fontSize: 13, lineHeight: 20, textAlign: 'center' },
 
   /* ── Standard title / subtitle ── */
   title: {
@@ -801,6 +1351,136 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   subtitle: { fontSize: 16, lineHeight: 24, marginBottom: 20 },
+
+  /* ── Insight screen (step 1) ── */
+  insightWrap: { paddingBottom: 8 },
+  insightHeadline: {
+    fontSize: 28,
+    fontWeight: '800',
+    lineHeight: 38,
+    letterSpacing: -0.5,
+    marginBottom: 36,
+  },
+  insightCardOuter: {
+    position: 'relative',
+    marginTop: 16,
+  },
+  calBadge: {
+    position: 'absolute',
+    top: -36,
+    left: 12,
+    zIndex: 10,
+    width: 70,
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    shadowOpacity: 0.16,
+    elevation: 8,
+  },
+  calTop: {
+    height: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  calPin: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+  },
+  calBottom: {
+    height: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calNum: {
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -1,
+  },
+  insightCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 16,
+    paddingTop: 48,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    shadowOpacity: 0.08,
+    elevation: 4,
+  },
+  insightCardCat: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  insightCardTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  insightCardBody: {
+    fontSize: 13,
+    lineHeight: 20,
+  },
+
+  /* ── Focus goal grid (step 0) ── */
+  focusGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 24,
+  },
+  focusCard: {
+    width: (SCREEN_WIDTH - 48 - 12) / 2,
+    aspectRatio: 1,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    gap: 10,
+  },
+  focusEmoji: { fontSize: 42 },
+  focusLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  skipLink: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    marginBottom: 4,
+  },
+  skipLinkText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
+  /* ── Goal pills (emoji right, multi-select) ── */
+  goalPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+  },
+  goalPillText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  goalPillEmoji: {
+    fontSize: 28,
+  },
 
   /* ── Wide pills ── */
   stack: { gap: 10 },
@@ -815,7 +1495,7 @@ const styles = StyleSheet.create({
   },
   widePillText: { flex: 1, fontSize: 16, fontWeight: '600' },
 
-  /* ── Chip pills ── */
+  /* ── Chip pills (legacy, kept for safety) ── */
   chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   chipPill: {
     flexDirection: 'row',
@@ -827,6 +1507,32 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   chipPillText: { fontSize: 14, fontWeight: '600' },
+
+  /* ── Topic chips with emoji (step 5) ── */
+  topicSectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    marginBottom: 10,
+  },
+  topicChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  topicChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: 99,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 6,
+  },
+  topicChipEmoji: { fontSize: 15 },
+  topicChipLabel: { fontSize: 14, fontWeight: '600' },
+  topicHint: {
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+    paddingBottom: 8,
+  },
 
   /* ── Check dots ── */
   checkDot: {
@@ -843,6 +1549,121 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  /* ── Personalized recs step (step 3) ── */
+  recsWrapper: { flex: 1 },
+  recDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 20,
+  },
+  recDot: { height: 8, borderRadius: 4 },
+  recCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 20,
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 24,
+    shadowOpacity: 0.08,
+    elevation: 8,
+  },
+  recImageArea: {
+    width: 200,
+    height: 220,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    position: 'relative',
+  },
+  recGlow: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+  },
+  recCoverImage: {
+    width: 140,
+    height: 200,
+    borderRadius: 10,
+  },
+  recCoverPlaceholder: {
+    width: 140,
+    height: 200,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 99,
+    marginBottom: 10,
+    alignSelf: 'center',
+  },
+  recTypeBadgeText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
+  recDoneBgCard: {
+    position: 'absolute',
+    top: -10,
+    left: 12,
+    right: 12,
+    bottom: 0,
+    borderRadius: 24,
+    opacity: 0.45,
+  },
+  recDoneCheckCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#22C55E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  recDoneLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+
+  recCardTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    textAlign: 'center',
+    marginBottom: 6,
+    lineHeight: 26,
+  },
+  recCardAuthor: { fontSize: 13, fontWeight: '500', textAlign: 'center' },
+
+  /* Skip / Add rec buttons */
+  skipRecBtn: {
+    flex: 1,
+    height: 52,
+    borderRadius: 99,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#EF4444',
+  },
+  skipRecText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  addRecBtn: {
+    flex: 1,
+    height: 52,
+    borderRadius: 99,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#22C55E',
+  },
+  addRecText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 
   /* ── Swipe step ── */
   swipeWrapper: { flex: 1, paddingHorizontal: 24, paddingTop: 12 },

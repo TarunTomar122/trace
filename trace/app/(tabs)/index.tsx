@@ -6,8 +6,9 @@ import {
   RefreshControl,
   ActivityIndicator,
   ScrollView,
-  Platform,
+  Text,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import Animated, {
   useSharedValue,
   useAnimatedScrollHandler,
@@ -18,7 +19,7 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { ArrowRight, Sparkles, X } from 'lucide-react-native';
+import { Moon, Sun, Lock, Zap, CheckCircle2, Bell } from 'lucide-react-native';
 
 import NewspaperIllus from '@/assets/images/newspaper-svgrepo-com.svg';
 
@@ -26,11 +27,11 @@ import { ThemedText } from '@/components/themed-text';
 import { FeedCard } from '@/components/FeedCard';
 import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { FeedItem, SAMPLE_FEED_ITEMS, getLatestUserFeed, triggerFeedGeneration } from '@/lib/firestore';
+import { FeedItem, UserFeed, getLatestUserFeed, triggerFeedGeneration } from '@/lib/firestore';
 import { logReadingEvent } from '@/lib/reading-analytics';
-import { ILLUS_PALETTE } from '@/app/(auth)/welcome';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
@@ -48,14 +49,15 @@ function getGreeting(): string {
 export default function FeedScreen() {
   const router = useRouter();
   const { user, profile } = useAuth();
+  const { toggleTheme } = useTheme();
   const colorScheme = useColorScheme() ?? 'light';
 
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [feedDate, setFeedDate] = useState<string>('');
+  const [feedVersion, setFeedVersion] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<string>('all');
-  const [proBannerDismissed, setProBannerDismissed] = useState(false);
 
   const scrollY = useSharedValue(0);
 
@@ -133,10 +135,18 @@ export default function FeedScreen() {
     return { opacity };
   });
 
-  const { isProUser: isSubscribed, presentPaywall } = useRevenueCat();
+  const { isProUser: isSubscribed, loading: rcLoading } = useRevenueCat();
   const firstName = user?.displayName?.split(' ')[0] || 'there';
   const isOnboarded = profile?.onboarded ?? false;
   const { showToast } = useToast();
+
+  // Redirect to onboarding if not onboarded
+  useEffect(() => {
+    if (rcLoading) return;
+    if (!isOnboarded) {
+      router.replace('/onboarding');
+    }
+  }, [isOnboarded, rcLoading, router]);
 
   const normalizeInterest = useCallback((interest: string) => {
     return interest
@@ -192,41 +202,8 @@ export default function FeedScreen() {
       });
     }
 
-    // For unsubscribed users: promote the first item with a summary to the
-    // top and tag it as sample_summary (free preview), matching the web app.
-    if (!isSubscribed) {
-      const copy = [...items];
-      const promoted: FeedItem[] = [];
-      for (let i = 0; i < copy.length && promoted.length < 1; i++) {
-        if (copy[i].summary?.short_article?.body) {
-          promoted.push({
-            ...copy[i],
-            metadata: { ...(copy[i].metadata || {}), feed_category: 'sample_summary' },
-          });
-          copy.splice(i, 1);
-          i--;
-        }
-      }
-      
-      // For free users: randomly select 5 items (including the promoted one)
-      const fullList = [...promoted, ...copy];
-      const randomItems: FeedItem[] = [];
-      const shuffled = [...fullList].sort(() => Math.random() - 0.5);
-      
-      // Keep the promoted item first if we have one, then add 4 more random items
-      if (promoted.length > 0) {
-        randomItems.push(promoted[0]);
-        const remaining = shuffled.filter(item => item.id !== promoted[0].id);
-        randomItems.push(...remaining.slice(0, 4));
-      } else {
-        randomItems.push(...shuffled.slice(0, 5));
-      }
-      
-      return randomItems;
-    }
-
     return items;
-  }, [feed, activeFilter, isSubscribed]);
+  }, [feed, activeFilter]);
 
   // Whether we're showing fallback content while a personalised feed is being generated
   const [isFeedGenerating, setIsFeedGenerating] = useState(false);
@@ -235,32 +212,39 @@ export default function FeedScreen() {
   const hasShownUpgradeToast = useRef(false); // Don't show upgrade toast on initial load
   // Snapshot of the feed date when we started generating - so we can detect a NEW feed
   const feedDateOnGenStart = useRef<string | null>(null);
+  // Snapshot of feed payload version when generation starts, to detect true updates.
+  const feedVersionOnGenStart = useRef<string | null>(null);
+
+  const getFeedVersion = useCallback((userFeed: (UserFeed & { generated_at?: string }) | null | undefined): string => {
+    if (!userFeed) return '';
+    const date = userFeed.date || '';
+    const generatedAt = userFeed.generated_at || userFeed.metadata?.generated_at || '';
+    const count = Array.isArray(userFeed.items) ? userFeed.items.length : 0;
+    return `${date}|${generatedAt}|${count}`;
+  }, []);
 
   const loadFeed = useCallback(async (): Promise<boolean> => {
-    if (!user) return false;
+    if (!user || !isOnboarded || !isSubscribed) return false;
     try {
-      if (isOnboarded) {
-        const userFeed = await getLatestUserFeed(user.uid);
-        if (userFeed && userFeed.items?.length > 0) {
-          setFeed(userFeed.items);
-          setFeedDate(userFeed.date);
-          return true; // real feed loaded
-        } else {
-          setFeed(SAMPLE_FEED_ITEMS);
-          setFeedDate('');
-          return false; // still fallback
-        }
+      const userFeed = await getLatestUserFeed(user.uid);
+      if (userFeed && userFeed.items?.length > 0) {
+        setFeed(userFeed.items);
+        setFeedDate(userFeed.date);
+        setFeedVersion(getFeedVersion(userFeed));
+        return true;
       } else {
-        setFeed(SAMPLE_FEED_ITEMS);
+        setFeed([]);
         setFeedDate('');
+        setFeedVersion(getFeedVersion({ date: '', items: [] }));
         return false;
       }
     } catch (error) {
       console.error('Error loading feed:', error);
-      setFeed(SAMPLE_FEED_ITEMS);
+      setFeed([]);
+      setFeedVersion(getFeedVersion({ date: '', items: [] }));
       return false;
     }
-  }, [user, isOnboarded]);
+  }, [user, isOnboarded, isSubscribed, getFeedVersion]);
 
   /**
    * Like loadFeed but only reports success if the feed is NEWER than when we
@@ -273,11 +257,18 @@ export default function FeedScreen() {
       if (userFeed && userFeed.items?.length > 0) {
         setFeed(userFeed.items);
         setFeedDate(userFeed.date);
+        const nextVersion = getFeedVersion(userFeed);
+        setFeedVersion(nextVersion);
+        if (feedVersionOnGenStart.current && nextVersion === feedVersionOnGenStart.current) {
+          return false;
+        }
         // If we recorded a snapshot date, only succeed if the feed date changed
         if (feedDateOnGenStart.current && userFeed.date === feedDateOnGenStart.current) {
-          // Same feed as before - check if summaries appeared (upgraded tier)
-          const hasSummaries = userFeed.items.some((i: FeedItem) => !!i.summary?.short_article?.body);
-          if (!hasSummaries) return false; // still the old unsummarised feed
+          // For subscribed users, keep waiting until summaries are ready.
+          if (isSubscribed) {
+            const hasSummaries = userFeed.items.some((i: FeedItem) => !!i.summary?.short_article?.body);
+            if (!hasSummaries) return false;
+          }
         }
         return true;
       }
@@ -285,9 +276,14 @@ export default function FeedScreen() {
     } catch {
       return false;
     }
-  }, [user]);
+  }, [user, isSubscribed, getFeedVersion]);
 
   useEffect(() => {
+    if (!isOnboarded || !isSubscribed) {
+      setIsLoading(false);
+      return;
+    }
+
     const initFeed = async () => {
       setIsLoading(true);
       const hasReal = await loadFeed();
@@ -296,11 +292,12 @@ export default function FeedScreen() {
       // If onboarded but no personalised feed yet, start polling
       if (isOnboarded && !hasReal) {
         feedDateOnGenStart.current = '';
+        feedVersionOnGenStart.current = null;
         setIsFeedGenerating(true);
       }
     };
     initFeed();
-  }, [loadFeed, isOnboarded]);
+  }, [loadFeed, isOnboarded, isSubscribed]);
 
   // ─── Keep subscribed users in "generating" state until feed has summaries/new data ───
   useEffect(() => {
@@ -318,6 +315,7 @@ export default function FeedScreen() {
       hasTriggeredSubscribedRefresh.current = false;
       hasShownUpgradeToast.current = false;
       setIsFeedGenerating(false);
+      feedVersionOnGenStart.current = null;
       return;
     }
 
@@ -332,6 +330,7 @@ export default function FeedScreen() {
     if (!hasTriggeredSubscribedRefresh.current) {
       hasTriggeredSubscribedRefresh.current = true;
       feedDateOnGenStart.current = feedDate || null;
+      feedVersionOnGenStart.current = feedVersion || null;
       console.log('[Feed] Subscribed user needs upgraded feed, triggering generation...');
 
       // Small delay so Firestore subscription updates settle before backend reads profile.
@@ -341,17 +340,7 @@ export default function FeedScreen() {
 
       return () => clearTimeout(timer);
     }
-  }, [isOnboarded, isSubscribed, user, isLoading, feed, feedDate, showToast]);
-
-  useEffect(() => {
-    if (!isSubscribed) {
-      if (!isOnboarded) {
-        feedDateOnGenStart.current = null;
-      } else if (feedDate === '') {
-        feedDateOnGenStart.current = '';
-      }
-    }
-  }, [isSubscribed, isOnboarded, feedDate]);
+  }, [isOnboarded, isSubscribed, user, isLoading, feed, feedDate, feedVersion, showToast]);
 
   // ─── Poll for personalised feed every 15s while generating ───
   useEffect(() => {
@@ -363,6 +352,7 @@ export default function FeedScreen() {
       if (hasNew) {
         console.log('[Feed] New personalised feed arrived!');
         feedDateOnGenStart.current = null;
+        feedVersionOnGenStart.current = null;
         setIsFeedGenerating(false);
         
         // Show success message for subscribed users getting their AI summaries
@@ -411,8 +401,7 @@ export default function FeedScreen() {
     });
 
     // Subscribed users: open article if summary exists, else open URL
-    // Unsubscribed users: always open article screen (they'll see the paywall)
-    if (hasSummary || !isSubscribed) {
+    if (hasSummary) {
       router.push({
         pathname: '/article',
         params: {
@@ -474,6 +463,10 @@ export default function FeedScreen() {
     </>
   );
 
+  if (!isOnboarded) {
+    return null;
+  }
+
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
@@ -521,12 +514,22 @@ export default function FeedScreen() {
         contentContainerStyle={styles.scrollContent}>
 
         {/* Greeting row (collapses) */}
-        <Animated.View 
+        <Animated.View
           style={[styles.topBar, greetingStyle]}
           pointerEvents="box-none">
           <ThemedText style={[styles.greeting, { color: Colors[colorScheme].muted }]}>
             {getGreeting()}, {firstName}
           </ThemedText>
+          <Pressable
+            onPress={toggleTheme}
+            style={[styles.themeToggle, { backgroundColor: Colors[colorScheme].card }]}
+            hitSlop={8}>
+            {colorScheme === 'dark' ? (
+              <Sun size={18} color={Colors[colorScheme].muted} strokeWidth={1.8} />
+            ) : (
+              <Moon size={18} color={Colors[colorScheme].muted} strokeWidth={1.8} />
+            )}
+          </Pressable>
         </Animated.View>
 
         {/* Heading + filters (scroll with content, hidden by sticky bar) */}
@@ -544,29 +547,102 @@ export default function FeedScreen() {
           )}
         </Animated.View>
 
-        {/* ─── Onboarding nudge ─── */}
-        {!isOnboarded && (
-          <Pressable
-            onPress={() => router.push('/onboarding')}
-            style={[
-              styles.nudge,
-              {
-                borderColor: Colors[colorScheme].border,
-                backgroundColor: ILLUS_PALETTE.coral[colorScheme],
-              },
-            ]}>
-            <View style={{ flex: 1, gap: 2 }}>
-              <ThemedText style={styles.nudgeTitle}>Make every morning count</ThemedText>
-              <ThemedText style={[styles.nudgeSubtitle, { color: Colors[colorScheme].muted }]}>
-                2 minutes to set up, smarter mornings forever.
-              </ThemedText>
+
+        {/* Inline paywall for unsubscribed users */}
+        {!isSubscribed && !rcLoading && (
+          <View style={paywallStyles.container}>
+            {/* Blurred fake feed items */}
+            <View style={paywallStyles.blurredFeed}>
+              {[
+                'How AI Is Reshaping Development',
+                'The State of Cloud in 2026',
+                'Building Reliable Systems at Scale',
+                'Why Engineers Are Betting on Rust',
+                'Modern Authentication Patterns',
+              ].map((title, i) => (
+                <View key={i} style={[paywallStyles.fakeCard, { borderBottomColor: Colors[colorScheme].border }]}>
+                  <View style={paywallStyles.fakeCardRow}>
+                    <View style={paywallStyles.fakeTextCol}>
+                      <View style={[paywallStyles.fakeBadge, { backgroundColor: Colors[colorScheme].border }]} />
+                      <Text style={[paywallStyles.fakeTitle, { color: Colors[colorScheme].text }]} numberOfLines={2}>
+                        {title}
+                      </Text>
+                      <View style={[paywallStyles.fakeMeta, { backgroundColor: Colors[colorScheme].border }]} />
+                    </View>
+                    <View style={[paywallStyles.fakeThumb, { backgroundColor: Colors[colorScheme].border }]} />
+                  </View>
+                </View>
+              ))}
             </View>
-            <ArrowRight size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-          </Pressable>
+
+            {/* Blur overlay */}
+            <BlurView
+              intensity={25}
+              tint={colorScheme === 'dark' ? 'dark' : 'light'}
+              style={StyleSheet.absoluteFill}
+            />
+
+            {/* Paywall content */}
+            <View style={[StyleSheet.absoluteFill, paywallStyles.overlay]}>
+              <View style={[paywallStyles.card, { backgroundColor: colorScheme === 'dark' ? '#1a1a24' : '#ffffff' }]}>
+                <View style={[paywallStyles.iconCircle, { backgroundColor: colorScheme === 'dark' ? '#052e16' : '#ecfdf5' }]}>
+                  <Lock size={24} color={colorScheme === 'dark' ? '#6ee7b7' : '#059669'} />
+                </View>
+
+                <Text style={[paywallStyles.cardTitle, { color: Colors[colorScheme].text }]}>
+                  Your feed is ready
+                </Text>
+                <Text style={[paywallStyles.cardSubtitle, { color: Colors[colorScheme].muted }]}>
+                  Start a free trial to unlock your personalized feed and AI summaries.
+                </Text>
+
+                {/* Timeline */}
+                <View style={paywallStyles.timeline}>
+                  <View style={paywallStyles.timelineStep}>
+                    <View style={[paywallStyles.stepDot, { backgroundColor: colorScheme === 'dark' ? '#6ee7b7' : '#059669' }]}>
+                      <Lock size={12} color="#fff" />
+                    </View>
+                    <View style={paywallStyles.stepText}>
+                      <Text style={[paywallStyles.stepTitle, { color: Colors[colorScheme].text }]}>Today</Text>
+                      <Text style={[paywallStyles.stepDesc, { color: Colors[colorScheme].muted }]}>Full access to your feed & AI summaries.</Text>
+                    </View>
+                  </View>
+                  <View style={paywallStyles.timelineStep}>
+                    <View style={[paywallStyles.stepDot, { backgroundColor: colorScheme === 'dark' ? 'rgba(110,231,183,0.6)' : 'rgba(5,150,105,0.6)' }]}>
+                      <Bell size={12} color="#fff" />
+                    </View>
+                    <View style={paywallStyles.stepText}>
+                      <Text style={[paywallStyles.stepTitle, { color: Colors[colorScheme].text }]}>Before trial ends</Text>
+                      <Text style={[paywallStyles.stepDesc, { color: Colors[colorScheme].muted }]}>We{"'"}ll remind you.</Text>
+                    </View>
+                  </View>
+                  <View style={paywallStyles.timelineStep}>
+                    <View style={[paywallStyles.stepDot, { backgroundColor: colorScheme === 'dark' ? 'rgba(110,231,183,0.3)' : 'rgba(5,150,105,0.3)' }]}>
+                      <CheckCircle2 size={12} color="#fff" />
+                    </View>
+                    <View style={paywallStyles.stepText}>
+                      <Text style={[paywallStyles.stepTitle, { color: Colors[colorScheme].text }]}>After trial</Text>
+                      <Text style={[paywallStyles.stepDesc, { color: Colors[colorScheme].muted }]}>Cancel anytime before — no charge.</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <Pressable
+                  onPress={() => router.push('/paywall')}
+                  style={[paywallStyles.ctaButton, { backgroundColor: colorScheme === 'dark' ? '#6ee7b7' : '#059669' }]}
+                >
+                  <Zap size={16} color={colorScheme === 'dark' ? '#052e20' : '#ffffff'} />
+                  <Text style={[paywallStyles.ctaText, { color: colorScheme === 'dark' ? '#052e20' : '#ffffff' }]}>
+                    Start Free Trial
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
         )}
 
         {/* Feed generating - poll in progress */}
-        {isFeedGenerating && !isLoading && (
+        {isSubscribed && isFeedGenerating && !isLoading && (
           <View
             style={[
               styles.nudge,
@@ -588,128 +664,74 @@ export default function FeedScreen() {
           </View>
         )}
 
-        {/* ─── Pro upgrade banner for free users ─── */}
-        {isOnboarded && !isSubscribed && !proBannerDismissed && !isLoading && (
-          <View
-            style={[
-              styles.proBanner,
-              {
-                backgroundColor: colorScheme === 'dark' ? '#1a1625' : '#F5F3FF',
-                borderColor: colorScheme === 'dark' ? '#2d2640' : '#E9E5F5',
-              },
-            ]}>
-            <Pressable
-              onPress={() => setProBannerDismissed(true)}
-              hitSlop={10}
-              style={styles.proBannerClose}>
-              <X size={14} color={Colors[colorScheme].muted} strokeWidth={2} />
-            </Pressable>
-            <View style={styles.proBannerContent}>
-              <View style={[styles.proBannerIconWrap, { backgroundColor: colorScheme === 'dark' ? '#2d2640' : '#EDE9FE' }]}>
-                <Sparkles size={18} color="#7c3aed" strokeWidth={2} />
-              </View>
-              <View style={{ flex: 1, gap: 3 }}>
-                <ThemedText style={styles.proBannerTitle}>
-                  Unlock notes & lessons from your feed
-                </ThemedText>
-                <ThemedText style={[styles.proBannerSub, { color: Colors[colorScheme].muted }]}>
-                  Get AI summaries, key takeaways, and actionable notes for every article.
-                </ThemedText>
-              </View>
-            </View>
-            <Pressable
-              onPress={() => presentPaywall()}
-              style={[styles.proBannerButton, { backgroundColor: '#7c3aed' }]}>
-              <ThemedText style={styles.proBannerButtonText}>
-                See plans
-              </ThemedText>
-              <ArrowRight size={14} color="#fff" strokeWidth={2} />
-            </Pressable>
-          </View>
-        )}
 
-        {/* Loading */}
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            {[1, 2, 3, 4].map((i) => (
-              <View key={i} style={styles.skeletonItem}>
-                <View style={styles.skeletonRow}>
-                  <View style={styles.skeletonTextCol}>
-                    <View
-                      style={[styles.skeletonMeta, { backgroundColor: Colors[colorScheme].border }]}
-                    />
-                    <View
-                      style={[styles.skeletonTitle, { backgroundColor: Colors[colorScheme].border }]}
-                    />
-                    <View
-                      style={[styles.skeletonSub, { backgroundColor: Colors[colorScheme].border }]}
+        {/* Loading / Feed items — only for subscribed users */}
+        {isSubscribed && (
+          <>
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                {[1, 2, 3, 4].map((i) => (
+                  <View key={i} style={styles.skeletonItem}>
+                    <View style={styles.skeletonRow}>
+                      <View style={styles.skeletonTextCol}>
+                        <View
+                          style={[styles.skeletonMeta, { backgroundColor: Colors[colorScheme].border }]}
+                        />
+                        <View
+                          style={[styles.skeletonTitle, { backgroundColor: Colors[colorScheme].border }]}
+                        />
+                        <View
+                          style={[styles.skeletonSub, { backgroundColor: Colors[colorScheme].border }]}
+                        />
+                      </View>
+                      <View
+                        style={[styles.skeletonThumb, { backgroundColor: Colors[colorScheme].border }]}
+                      />
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.feedList}>
+                {filteredFeed.map((item, index) => (
+                  <View key={`${item.id}-${item.url || 'no-url'}-${index}`}>
+                    {index > 0 && (
+                      <View
+                        style={[styles.separator, { backgroundColor: Colors[colorScheme].border }]}
+                      />
+                    )}
+                    <FeedCard
+                      item={item}
+                      colorScheme={colorScheme}
+                      onPress={() => handleFeedItemPress(item)}
                     />
                   </View>
-                  <View
-                    style={[styles.skeletonThumb, { backgroundColor: Colors[colorScheme].border }]}
-                  />
-                </View>
-              </View>
-            ))}
-          </View>
-        ) : (
-          /* Feed items */
-          <View style={styles.feedList}>
-            {filteredFeed.map((item, index) => (
-              <View key={`${item.id}-${item.url || 'no-url'}-${index}`}>
-                {index > 0 && (
-                  <View
-                    style={[styles.separator, { backgroundColor: Colors[colorScheme].border }]}
-                  />
+                ))}
+                
+                {filteredFeed.length === 0 && !isLoading && (
+                  <View style={styles.emptyFilterState}>
+                    <View
+                      style={[
+                        styles.emptyFilterIllus,
+                        { backgroundColor: ILLUS_PALETTE.lavender[colorScheme] },
+                      ]}
+                    >
+                      <NewspaperIllus width={44} height={44} />
+                    </View>
+                    <ThemedText style={[styles.emptyText, { color: Colors[colorScheme].muted }]}>
+                      No items match this filter.
+                    </ThemedText>
+                  </View>
                 )}
-                <FeedCard
-                  item={item}
-                  colorScheme={colorScheme}
-                  onPress={() => handleFeedItemPress(item)}
-                />
-              </View>
-            ))}
-            
-            {/* Free user callout: Limited feed preview */}
-            {!isSubscribed && filteredFeed.length > 0 && (
-              <View style={styles.limitedFeedCallout}>
-                <ThemedText style={[styles.limitedFeedText, { color: Colors[colorScheme].muted }]}>
-                  Upgrade to Pro for your full personalized feed
-                </ThemedText>
-                <Pressable
-                  onPress={() => presentPaywall()}
-                  style={[styles.limitedFeedButton, { backgroundColor: '#22c55e' }]}
-                >
-                  <ThemedText style={styles.limitedFeedButtonText}>
-                    See plans
-                  </ThemedText>
-                </Pressable>
               </View>
             )}
-            
-            {filteredFeed.length === 0 && !isLoading && (
-              <View style={styles.emptyFilterState}>
-                <View
-                  style={[
-                    styles.emptyFilterIllus,
-                    { backgroundColor: ILLUS_PALETTE.lavender[colorScheme] },
-                  ]}
-                >
-                  <NewspaperIllus width={44} height={44} />
-                </View>
-                <ThemedText style={[styles.emptyText, { color: Colors[colorScheme].muted }]}>
-                  No items match this filter.
-                </ThemedText>
-              </View>
-            )}
-          </View>
-        )}
 
-        {/* End */}
-        {!isLoading && filteredFeed.length > 0 && isSubscribed && (
-          <ThemedText style={[styles.endText, { color: Colors[colorScheme].muted }]}>
-            You{"'"}re all caught up
-          </ThemedText>
+            {!isLoading && filteredFeed.length > 0 && (
+              <ThemedText style={[styles.endText, { color: Colors[colorScheme].muted }]}>
+                You{"'"}re all caught up
+              </ThemedText>
+            )}
+          </>
         )}
       </AnimatedScrollView>
     </SafeAreaView>
@@ -764,12 +786,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-
     paddingTop: 8,
   },
   greeting: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  themeToggle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   bookmarkButton: {
     width: 40,
@@ -901,31 +929,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 15,
   },
-  
-  // ─── Limited feed callout (free users) ───
-  limitedFeedCallout: {
-    alignItems: 'center',
-    paddingTop: 32,
-    paddingBottom: 16,
-    gap: 16,
-  },
-  limitedFeedText: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 40,
-  },
-  limitedFeedButton: {
-    paddingHorizontal: 28,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  limitedFeedButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  
   endText: {
     textAlign: 'center',
     fontSize: 13,
@@ -934,55 +937,131 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     paddingVertical: 32,
   },
+});
 
-  // ─── Pro upgrade banner ───
-  proBanner: {
-    borderWidth: 1,
+const paywallStyles = StyleSheet.create({
+  container: {
+    position: 'relative',
+    minHeight: 520,
+    overflow: 'hidden',
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+    marginTop: 4,
+  },
+  blurredFeed: {
+    opacity: 0.6,
+  },
+  fakeCard: {
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  fakeCardRow: {
+    flexDirection: 'row',
     gap: 14,
   },
-  proBannerClose: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    zIndex: 1,
-    padding: 4,
+  fakeTextCol: {
+    flex: 1,
+    gap: 8,
   },
-  proBannerContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    paddingRight: 20,
+  fakeBadge: {
+    width: 50,
+    height: 10,
+    borderRadius: 4,
+    opacity: 0.5,
   },
-  proBannerIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+  fakeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 22,
+  },
+  fakeMeta: {
+    width: 80,
+    height: 10,
+    borderRadius: 4,
+    opacity: 0.3,
+  },
+  fakeThumb: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    opacity: 0.4,
+  },
+  overlay: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  card: {
+    width: '100%',
+    borderRadius: 20,
+    padding: 28,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  iconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 16,
   },
-  proBannerTitle: {
-    fontSize: 15,
+  cardTitle: {
+    fontSize: 22,
     fontWeight: '700',
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
+    marginBottom: 6,
+    textAlign: 'center',
   },
-  proBannerSub: {
-    fontSize: 13,
-    lineHeight: 18,
+  cardSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginBottom: 20,
   },
-  proBannerButton: {
+  timeline: {
+    width: '100%',
+    gap: 14,
+    marginBottom: 24,
+  },
+  timelineStep: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 11,
-    borderRadius: 10,
+    gap: 12,
   },
-  proBannerButtonText: {
+  stepDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepText: {
+    flex: 1,
+  },
+  stepTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+  },
+  stepDesc: {
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 1,
+  },
+  ctaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 14,
+  },
+  ctaText: {
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

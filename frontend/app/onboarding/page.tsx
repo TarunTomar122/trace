@@ -332,20 +332,10 @@ export default function OnboardingPage() {
         hobbies_count: selectedSkills.length,
       });
 
-      try {
-        await fetch('/api/onboard', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ uid: user.uid }),
-        });
-      } catch (e) {
-        console.warn('Onboard trigger failed:', e);
-      }
-
       await refreshProfile();
 
       if (isAlphaMode()) {
-        router.push('/feed?from=onboarding');
+        router.push('/profile?tab=subscription&subscription=required');
       } else {
         router.push('/waitlist');
       }

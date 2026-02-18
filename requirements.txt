@@ -1,6 +1,7 @@
 openai-agents
 arxiv
 yt-dlp
+youtube-transcript-api
 requests
 flask
 flask-cors

@@ -3,25 +3,23 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { ChevronLeft, BookmarkX, Lock } from 'lucide-react-native';
+import { ChevronLeft, Lock } from 'lucide-react-native';
 
 import BrainIllus from '@/assets/images/brain-brainstorm-brainstorming-svgrepo-com.svg';
 
 import { ThemedText } from '@/components/themed-text';
 import { FeedCard } from '@/components/FeedCard';
-import { Colors, Fonts } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useToast } from '@/contexts/ToastContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { FeedItem } from '@/lib/firestore';
 import { logReadingEvent } from '@/lib/reading-analytics';
-import { getBookmarks, removeBookmark, BookmarkedItem } from '@/lib/bookmarks';
+import { getBookmarks, BookmarkedItem } from '@/lib/bookmarks';
 import { ILLUS_PALETTE } from '@/app/(auth)/welcome';
 
 export default function BookmarksScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
-  const { showToast } = useToast();
   const { isProUser, presentPaywall } = useRevenueCat();
   const [bookmarks, setBookmarks] = useState<BookmarkedItem[]>([]);
 
@@ -35,12 +33,6 @@ export default function BookmarksScreen() {
       load();
     }, [])
   );
-
-  const handleRemove = async (id: string) => {
-    await removeBookmark(id);
-    setBookmarks((prev) => prev.filter((b) => b.id !== id));
-    showToast('Removed from bookmarks.', 'success');
-  };
 
   const handlePress = (item: FeedItem) => {
     const hasSummary = !!item.summary?.short_article?.body;
@@ -57,6 +49,7 @@ export default function BookmarksScreen() {
       router.push({
         pathname: '/article',
         params: {
+          id: item.id,
           title: item.title,
           url: item.url,
           thumbnail: item.thumbnail || '',
@@ -150,21 +143,11 @@ export default function BookmarksScreen() {
                     style={[styles.separator, { backgroundColor: Colors[colorScheme].border }]}
                   />
                 )}
-                <View style={styles.itemRow}>
-                  <View style={{ flex: 1 }}>
-                    <FeedCard
-                      item={item}
-                      colorScheme={colorScheme}
-                      onPress={() => handlePress(item)}
-                    />
-                  </View>
-                  <Pressable
-                    onPress={() => handleRemove(item.id)}
-                    hitSlop={8}
-                    style={styles.removeButton}>
-                    <BookmarkX size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-                  </Pressable>
-                </View>
+                <FeedCard
+                  item={item}
+                  colorScheme={colorScheme}
+                  onPress={() => handlePress(item)}
+                />
               </View>
             ))}
           </View>
@@ -199,14 +182,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingBottom: 40,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  removeButton: {
-    padding: 8,
-    marginLeft: 4,
   },
   separator: {
     height: StyleSheet.hairlineWidth,

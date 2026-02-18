@@ -39,17 +39,17 @@ import { logReadingEvent } from '@/lib/reading-analytics';
 
 const SOURCE_CONFIG: Record<
   string,
-  { icon: typeof Youtube; color: string; bgColor: string; label: string }
+  { icon: typeof Youtube; color: string; bgColor: { light: string; dark: string }; label: string }
 > = {
-  video: { icon: Youtube, color: '#ef4444', bgColor: '#fef2f2', label: 'Video' },
-  repo: { icon: Github, color: '#8b5cf6', bgColor: '#f5f3ff', label: 'Repo' },
-  paper: { icon: BookOpen, color: '#3b82f6', bgColor: '#eff6ff', label: 'Paper' },
-  blog: { icon: BookOpen, color: '#10b981', bgColor: '#ecfdf5', label: 'Article' },
-  discussion: { icon: MessageCircle, color: '#f59e0b', bgColor: '#fffbeb', label: 'Discussion' },
-  tweet: { icon: MessageCircle, color: '#0ea5e9', bgColor: '#f0f9ff', label: 'Thread' },
-  launch: { icon: Sparkles, color: '#d946ef', bgColor: '#fdf4ff', label: 'Launch' },
-  model: { icon: Sparkles, color: '#6366f1', bgColor: '#eef2ff', label: 'Model' },
-  news: { icon: Newspaper, color: '#f97316', bgColor: '#fff7ed', label: 'News' },
+  video: { icon: Youtube, color: '#ef4444', bgColor: { light: '#fef2f2', dark: '#2a1515' }, label: 'Video' },
+  repo: { icon: Github, color: '#8b5cf6', bgColor: { light: '#f5f3ff', dark: '#1f1a2e' }, label: 'Repo' },
+  paper: { icon: BookOpen, color: '#3b82f6', bgColor: { light: '#eff6ff', dark: '#1a2332' }, label: 'Paper' },
+  blog: { icon: BookOpen, color: '#10b981', bgColor: { light: '#ecfdf5', dark: '#1a2e23' }, label: 'Article' },
+  discussion: { icon: MessageCircle, color: '#f59e0b', bgColor: { light: '#fffbeb', dark: '#2e2416' }, label: 'Discussion' },
+  tweet: { icon: MessageCircle, color: '#0ea5e9', bgColor: { light: '#f0f9ff', dark: '#1a272e' }, label: 'Thread' },
+  launch: { icon: Sparkles, color: '#d946ef', bgColor: { light: '#fdf4ff', dark: '#2a1a2e' }, label: 'Launch' },
+  model: { icon: Sparkles, color: '#6366f1', bgColor: { light: '#eef2ff', dark: '#1f1f2e' }, label: 'Model' },
+  news: { icon: Newspaper, color: '#f97316', bgColor: { light: '#fff7ed', dark: '#2e2216' }, label: 'News' },
 };
 
 function isLikelyRealImageUrl(url?: string | null): boolean {
@@ -99,9 +99,8 @@ export default function ArticleScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const { isProUser, presentPaywall } = useRevenueCat();
 
-  // Allow access if user is pro OR if this is a free sample summary
-  const isSampleSummary = params.feed_category === 'sample_summary';
-  const hasAccess = isProUser || isSampleSummary;
+  // Only pro users have access to article summaries
+  const hasAccess = isProUser;
 
   const [upvoted, setUpvoted] = useState(false);
   const [downvoted, setDownvoted] = useState(false);
@@ -261,14 +260,14 @@ export default function ArticleScreen() {
         {/* Article header */}
         <View style={styles.articleHeader}>
           <View style={styles.metaRow}>
-            <View style={[styles.typeBadge, { backgroundColor: config.bgColor }]}>
+            <View style={[styles.typeBadge, { backgroundColor: config.bgColor[colorScheme] }]}>
               <Icon size={14} color={config.color} strokeWidth={2} />
               <ThemedText style={[styles.typeLabel, { color: config.color }]}>
                 {config.label}
               </ThemedText>
             </View>
             {isHot && itemType !== 'news' && (
-              <View style={styles.hotBadge}>
+              <View style={[styles.hotBadge, { backgroundColor: colorScheme === 'dark' ? '#2e2216' : '#fff7ed' }]}>
                 <Flame size={11} color="#ea580c" strokeWidth={2.5} />
                 <ThemedText style={styles.hotText}>Hot</ThemedText>
               </View>
@@ -316,7 +315,7 @@ export default function ArticleScreen() {
             <View style={[styles.actionsRow, { borderTopColor: Colors[colorScheme].border }]}>
               <Pressable
                 onPress={handleUpvote}
-                style={[styles.bottomAction, upvoted && { backgroundColor: '#dcfce7' }]}>
+                style={[styles.bottomAction, upvoted && { backgroundColor: colorScheme === 'dark' ? '#0d1f12' : '#dcfce7' }]}>
                 <ThumbsUp
                   size={18}
                   color={upvoted ? '#22c55e' : Colors[colorScheme].muted}
@@ -333,7 +332,7 @@ export default function ArticleScreen() {
 
               <Pressable
                 onPress={handleDownvote}
-                style={[styles.bottomAction, downvoted && { backgroundColor: '#fee2e2' }]}>
+                style={[styles.bottomAction, downvoted && { backgroundColor: colorScheme === 'dark' ? '#2a1515' : '#fee2e2' }]}>
                 <ThumbsDown
                   size={18}
                   color={downvoted ? '#ef4444' : Colors[colorScheme].muted}
@@ -409,7 +408,7 @@ export default function ArticleScreen() {
             {/* Paywall CTA */}
             <View style={styles.paywallContainer}>
               <View style={[styles.paywallCard, { backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#f8f9fa' }]}>
-                <View style={[styles.paywallIconCircle, { backgroundColor: '#f0fdf4' }]}>
+                <View style={[styles.paywallIconCircle, { backgroundColor: colorScheme === 'dark' ? '#0d1f12' : '#f0fdf4' }]}>
                   <Lock size={22} color="#22c55e" strokeWidth={2} />
                 </View>
                 <ThemedText style={styles.paywallTitle}>
@@ -516,7 +515,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: '#fff7ed',
   },
   hotText: {
     fontSize: 11,

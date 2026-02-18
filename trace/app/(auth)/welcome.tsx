@@ -32,10 +32,10 @@ import { useAuth } from '@/contexts/AuthContext';
 // - Subtle illustration tints -
 // Very light washes - just enough warmth to feel intentional
 export const ILLUS_PALETTE = {
-  coral:    { light: '#F5F0EE', dark: '#1C1917' },
-  olive:    { light: '#F0F4F0', dark: '#161A16' },
-  lavender: { light: '#F1F0F5', dark: '#1A191E' },
-  gold:     { light: '#F5F3EE', dark: '#1C1A16' },
+  coral:    { light: '#F5F0EE', dark: '#F5F0EE' },
+  olive:    { light: '#F0F4F0', dark: '#F0F4F0' },
+  lavender: { light: '#F1F0F5', dark: '#F1F0F5' },
+  gold:     { light: '#F5F3EE', dark: '#F5F3EE' },
 };
 
 // - Intro pages (feature-focused) -
@@ -208,7 +208,7 @@ export default function WelcomeScreen() {
             >
               {(() => {
                 const Illus = INTRO_PAGES[page].Illustration;
-                return <Illus width={140} height={140} />;
+                return <Illus width={140} height={140} color={Colors[colorScheme].text} fill={Colors[colorScheme].text} />;
               })()}
             </View>
 
@@ -354,7 +354,7 @@ export default function WelcomeScreen() {
             </Pressable>
 
             {error && (
-              <ThemedText style={styles.errorText}>{error}</ThemedText>
+              <ThemedText style={[styles.errorText, { color: colorScheme === 'dark' ? '#ef4444' : '#b91c1c' }]}>{error}</ThemedText>
             )}
 
             <ThemedText
@@ -558,7 +558,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   errorText: {
-    color: '#b91c1c',
     fontSize: 13,
     textAlign: 'center',
   },

@@ -15,8 +15,8 @@ import {
   ArrowRight,
   Trash2,
   Crown,
-  Zap,
   Mail,
+  Circle,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -37,7 +37,7 @@ export default function ProfileScreen() {
   const { isProUser, presentPaywall, presentCustomerCenter } = useRevenueCat();
   const colorScheme = useColorScheme() ?? 'light';
 
-  const isOnboarded = profile?.onboarded ?? false;
+  const isOnboarded = profile?.onboarded === true;
   const [newsletterOptIn, setNewsletterOptIn] = useState(profile?.newsletterOptIn !== false);
 
   useEffect(() => {
@@ -73,7 +73,7 @@ export default function ProfileScreen() {
           onPress: async () => {
             try {
               await deleteAccount();
-            } catch (e) {
+            } catch {
               Alert.alert('Error', 'Could not delete your account. Please try again or contact support.');
             }
           },
@@ -194,7 +194,7 @@ export default function ProfileScreen() {
             return (
               <Pressable
                 onPress={() => presentCustomerCenter()}
-                style={[styles.subscriptionCard, { backgroundColor: '#f0fdf4' }]}>
+                style={[styles.subscriptionCard, { backgroundColor: colorScheme === 'dark' ? '#0d1f12' : '#f0fdf4' }]}>
                 <View style={styles.subscriptionTop}>
                   <View style={styles.subscriptionBadge}>
                     <Crown size={16} color="#22c55e" strokeWidth={2} />
@@ -216,27 +216,44 @@ export default function ProfileScreen() {
 
           // Not subscribed - show upgrade card
           return (
-            <Pressable
-              onPress={() => presentPaywall()}
-              style={[styles.subscriptionCard, { backgroundColor: '#f3f4f6' }]}>
+            <View
+              style={[styles.subscriptionCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
               <View style={styles.subscriptionTop}>
-                <View style={styles.subscriptionBadge}>
-                  <Zap size={16} color="#6b7280" strokeWidth={2} />
-                  <ThemedText style={[styles.subscriptionLabel, { color: '#6b7280' }]}>
-                    Free
-                  </ThemedText>
-                </View>
-                <ChevronRight size={18} color="#6b7280" strokeWidth={1.5} />
-              </View>
-              <ThemedText style={[styles.subscriptionDesc, { color: Colors[colorScheme].secondary }]}>
-                Upgrade to wake up smarter every morning.
-              </ThemedText>
-              <View style={[styles.upgradeButton, { backgroundColor: '#22c55e18', borderColor: '#22c55e30' }]}>
-                <ThemedText style={[styles.upgradeButtonText, { color: '#22c55e' }]}>
-                  Upgrade to Pro
+                <ThemedText style={styles.subscriptionTitle}>
+                  Your feed is random right now
                 </ThemedText>
               </View>
-            </Pressable>
+              
+              <View style={styles.bulletList}>
+                <View style={styles.bulletItem}>
+                  <Circle size={6} color={Colors[colorScheme].muted} fill={Colors[colorScheme].muted} style={styles.bulletDot} />
+                  <ThemedText style={[styles.bulletText, { color: Colors[colorScheme].secondary }]}>
+                    Get content curated to your interests
+                  </ThemedText>
+                </View>
+                <View style={styles.bulletItem}>
+                  <Circle size={6} color={Colors[colorScheme].muted} fill={Colors[colorScheme].muted} style={styles.bulletDot} />
+                  <ThemedText style={[styles.bulletText, { color: Colors[colorScheme].secondary }]}>
+                    AI summaries for every article
+                  </ThemedText>
+                </View>
+                <View style={styles.bulletItem}>
+                  <Circle size={6} color={Colors[colorScheme].muted} fill={Colors[colorScheme].muted} style={styles.bulletDot} />
+                  <ThemedText style={[styles.bulletText, { color: Colors[colorScheme].secondary }]}>
+                    Save and organize your reads
+                  </ThemedText>
+                </View>
+              </View>
+
+              <Pressable
+                onPress={() => presentPaywall()}
+                style={[styles.upgradeButton, { backgroundColor: '#22c55e' }]}>
+                <ThemedText style={[styles.upgradeButtonText, { color: 'white' }]}>
+                  Upgrade to Pro
+                </ThemedText>
+                <ArrowRight size={16} color="white" strokeWidth={2.5} />
+              </Pressable>
+            </View>
           );
         })()}
 
@@ -438,9 +455,10 @@ const styles = StyleSheet.create({
   // ─── Subscription ───
   subscriptionCard: {
     borderRadius: 16,
-    padding: 18,
+    padding: 20,
     marginBottom: 24,
-    gap: 10,
+    gap: 16,
+    borderWidth: 1,
   },
   subscriptionTop: {
     flexDirection: 'row',
@@ -461,17 +479,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  subscriptionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  bulletList: {
+    gap: 12,
+  },
+  bulletItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  bulletDot: {
+    marginTop: 7,
+  },
+  bulletText: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 21,
+  },
   upgradeButton: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 999,
-    borderWidth: 1,
-    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
   },
   upgradeButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
   manageText: {
     fontSize: 13,

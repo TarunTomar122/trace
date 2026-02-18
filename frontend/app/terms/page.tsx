@@ -50,7 +50,7 @@ export default function TermsOfServicePage() {
                             </div>
                         </div>
                         <p className="text-sm text-secondary mt-2">
-                            Last Updated: January 18, 2026
+                            Last Updated: February 17, 2026
                         </p>
                     </motion.div>
 
@@ -149,6 +149,34 @@ export default function TermsOfServicePage() {
                             </section>
 
                             <section>
+                                <h2 className="text-2xl font-serif font-light text-foreground uppercase mb-4">Subscriptions and Payments</h2>
+                                <h3 className="text-lg font-serif font-light text-foreground uppercase mb-3">Subscription Plans</h3>
+                                <p className="mb-4">
+                                    Trace offers the following paid subscription plans to access personalized feed and AI summaries:
+                                </p>
+                                <ul className="list-disc pl-6 space-y-2 mb-4">
+                                    <li>Weekly plan at $1.99/week</li>
+                                    <li>Monthly plan at $6.99/month</li>
+                                    <li>Yearly plan at $59.99/year</li>
+                                </ul>
+                                <h3 className="text-lg font-serif font-light text-foreground uppercase mb-3">Free Trial</h3>
+                                <p className="mb-4">
+                                    New subscribers may be eligible for a free trial. If you do not cancel before the trial period ends, you will be charged the applicable subscription fee. Trial eligibility is determined at the time of sign-up.
+                                </p>
+                                <h3 className="text-lg font-serif font-light text-foreground uppercase mb-3">Billing</h3>
+                                <p className="mb-4">
+                                    Subscriptions are billed in advance on a recurring basis (weekly, monthly, or yearly). All payments are processed through Google Play Billing (Android) or our web payment processor. By subscribing, you authorize us to charge your payment method on a recurring basis.
+                                </p>
+                                <h3 className="text-lg font-serif font-light text-foreground uppercase mb-3">Cancellation and Refunds</h3>
+                                <p className="mb-4">
+                                    You may cancel your subscription at any time. Cancellation takes effect at the end of the current billing period — you will retain access until then. We do not provide refunds for unused portions of a subscription period except where required by law.
+                                </p>
+                                <p>
+                                    To cancel an Android subscription, visit your Google Play account &gt; Subscriptions. To cancel a web subscription, visit your Trace profile &gt; Subscription settings.
+                                </p>
+                            </section>
+
+                            <section>
                                 <h2 className="text-2xl font-serif font-light text-foreground uppercase mb-4">Service Availability</h2>
                                 <p>
                                     We strive to provide continuous service but do not guarantee that the Service will be uninterrupted,
@@ -235,10 +263,11 @@ export default function TermsOfServicePage() {
                             <section className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 md:p-8">
                                 <h2 className="text-xl font-semibold text-foreground mb-4">Contact Information</h2>
                                 <p className="mb-4">
-                                    If you have questions about these Terms of Service, please contact us:
+                                    If you have questions about these Terms of Service, billing, or cancellations, please contact us:
                                 </p>
                                 <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-5">
-                                    <p className="mb-2"><strong>Email:</strong> yourtrace.online@gmail.com</p>
+                                    <p className="mb-2"><strong>Email:</strong> <a href="mailto:yourtrace.online@gmail.com" className="text-primary hover:underline">yourtrace.online@gmail.com</a></p>
+                                    <p className="mb-2"><strong>Contact page:</strong> <a href="https://www.yourtrace.online/contact" className="text-primary hover:underline">yourtrace.online/contact</a></p>
                                     <p className="mb-2"><strong>Twitter:</strong> <a href="https://x.com/tarat_211" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@tarat_211</a></p>
                                     <p><strong>GitHub:</strong> <a href="https://github.com/TarunTomar122" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">TarunTomar122</a></p>
                                 </div>

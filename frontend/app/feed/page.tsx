@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, Suspense } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -22,10 +22,15 @@ import {
   Newspaper,
   Flame,
   Loader2,
-  ChevronRight
+  ChevronRight,
+  Lock,
+  Bell,
+  CheckCircle2,
+  Shield,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { auth } from '@/lib/firebase';
 import { isAlphaMode } from '@/lib/alpha';
 import Header from '@/components/Header';
 import { getUserPatterns } from '@/lib/firestore';
@@ -74,15 +79,6 @@ type FeedItem = {
 type FeedMetadata = {
   is_preview?: boolean;
 } & Record<string, unknown>;
-
-const shuffleItems = <T,>(items: T[]): T[] => {
-  const shuffled = items.slice();
-  for (let i = shuffled.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-};
 
 type InteractionItem = {
   item_id?: string;
@@ -184,6 +180,151 @@ const formatSummaryBody = (body: string): string => {
   }
   return formatted.replace(/\n{3,}/g, '\n\n').trim();
 };
+
+// Fake feed items for the blurred preview behind the paywall
+const PREVIEW_FEED_ITEMS = [
+  { title: 'How AI Is Reshaping Software Development in 2026', source: 'TechCrunch', category: 'Trending' },
+  { title: 'The State of Cloud Infrastructure: What Changed This Year', source: 'The Verge', category: 'For You' },
+  { title: 'Building Reliable Distributed Systems at Scale', source: 'Engineering Blog', category: 'For You' },
+  { title: 'Why Senior Engineers Are Betting on Rust for Backend', source: 'Hacker News', category: 'Trending' },
+  { title: 'A Deep Dive Into Modern Authentication Patterns', source: 'Dev.to', category: 'Suggested' },
+  { title: 'The Future of Mobile: Cross-Platform vs Native in 2026', source: 'Medium', category: 'For You' },
+  { title: 'Understanding Vector Databases and Their Real-World Uses', source: 'Towards Data Science', category: 'Suggested' },
+];
+
+function FeedPaywall() {
+  const { user } = useAuth();
+  const [isCreatingCheckout, setIsCreatingCheckout] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleStartTrial = async () => {
+    if (!user) return;
+    setIsCreatingCheckout(true);
+    setError(null);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Not authenticated');
+      const response = await fetch('/api/subscription/create-checkout', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create checkout session');
+      }
+      const data = await response.json();
+      trackCheckoutClicked('feed_paywall', { source: 'hard_paywall' });
+      window.location.href = data.checkoutUrl;
+    } catch (err) {
+      console.error('Error creating checkout:', err);
+      setError(err instanceof Error ? err.message : 'Failed to start trial');
+      setIsCreatingCheckout(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <Header backHref="/" backLabel="Back" />
+
+      <main className="max-w-xl mx-auto px-6 pt-16 md:pt-24 pb-20">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+        >
+          {/* Header */}
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-accent/10 mb-6">
+              <Lock size={28} className="text-accent" />
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold mb-3">
+              How your free trial works
+            </h1>
+            <p className="text-base text-secondary max-w-sm mx-auto">
+              Try Trace free for 3 days. Cancel anytime.
+            </p>
+          </div>
+
+          {/* Timeline */}
+          <div className="space-y-8 mb-14">
+            {/* Today */}
+            <div className="flex items-start gap-4">
+              <div className="w-11 h-11 rounded-full bg-accent flex items-center justify-center shrink-0 shadow-md shadow-accent/20">
+                <Lock size={18} className="text-accent-foreground" />
+              </div>
+              <div className="pt-1">
+                <p className="text-lg font-bold text-foreground">Today</p>
+                <p className="text-sm text-secondary mt-1">
+                  Full access to your personalized feed and AI summaries.
+                </p>
+              </div>
+            </div>
+
+            {/* In 2 days */}
+            <div className="flex items-start gap-4">
+              <div className="w-11 h-11 rounded-full bg-accent/60 flex items-center justify-center shrink-0 shadow-md shadow-accent/10">
+                <Bell size={18} className="text-accent-foreground" />
+              </div>
+              <div className="pt-1">
+                <p className="text-lg font-bold text-foreground">In 2 days</p>
+                <p className="text-sm text-secondary mt-1">
+                  We&apos;ll remind you your trial is ending.
+                </p>
+              </div>
+            </div>
+
+            {/* In 3 days */}
+            <div className="flex items-start gap-4">
+              <div className="w-11 h-11 rounded-full bg-accent/30 flex items-center justify-center shrink-0 shadow-md shadow-accent/5">
+                <CheckCircle2 size={18} className="text-accent-foreground" />
+              </div>
+              <div className="pt-1">
+                <p className="text-lg font-bold text-foreground">In 3 days</p>
+                <p className="text-sm text-secondary mt-1">
+                  Subscription starts at $2.99/mo. Cancel before &mdash; no charge.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div className="max-w-sm mx-auto">
+            {error && (
+              <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm text-center">
+                {error}
+              </div>
+            )}
+
+            <button
+              onClick={handleStartTrial}
+              disabled={isCreatingCheckout}
+              className="w-full bg-accent text-accent-foreground py-4 rounded-xl text-base font-semibold hover:bg-accent/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2.5 disabled:opacity-50 shadow-lg shadow-accent/25"
+            >
+              {isCreatingCheckout ? (
+                <>
+                  <Loader2 className="animate-spin" size={20} />
+                  Setting up your trial...
+                </>
+              ) : (
+                <>
+                  <Zap size={18} />
+                  Start Free Trial
+                </>
+              )}
+            </button>
+
+            <p className="text-xs text-secondary/50 text-center mt-4">
+              3-day free trial, then $2.99/month. Cancel anytime.
+            </p>
+          </div>
+        </motion.div>
+      </main>
+    </div>
+  );
+}
 
 // Simple feed item card for the list view
 function FeedListItem({ item, onClick, showSubscribeCta }: {
@@ -593,10 +734,29 @@ function FeedPageContent() {
   const [isFeedLoading, setIsFeedLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [interactions, setInteractions] = useState<Record<string, 'upvote' | 'downvote'>>({});
-  const [hasAccess, setHasAccess] = useState(false);
+  const hasAccess = useMemo(() => {
+    if (!profile) return false;
+    const subscriptionStatus = profile.subscriptionStatus || 'none';
+    const appSubscriptionStatus = profile.appSubscriptionStatus || 'none';
+    let valid = ['trial', 'active'].includes(subscriptionStatus) || ['trial', 'active'].includes(appSubscriptionStatus);
+
+    if (valid && profile.cancelledAt) {
+      const now = new Date();
+      const toDate = (ts: Date | { seconds: number } | null | undefined): Date | null => {
+        if (!ts) return null;
+        if (ts instanceof Date) return ts;
+        if (typeof ts === 'object' && 'seconds' in ts) return new Date(ts.seconds * 1000);
+        return null;
+      };
+      const willCancelAt = toDate(profile.willCancelAt);
+      const nextBilling = toDate(profile.nextBillingDate);
+      const cancelDate = willCancelAt || nextBilling;
+      if (cancelDate && now >= cancelDate) valid = false;
+    }
+
+    return valid;
+  }, [profile]);
   const [showHint, setShowHint] = useState(false);
-  const [generalFeed, setGeneralFeed] = useState<FeedItem[]>([]);
-  const [isLoadingGeneral, setIsLoadingGeneral] = useState(false);
   const [showSubscribePrompt, setShowSubscribePrompt] = useState(false);
   const [subscribePromptSource, setSubscribePromptSource] = useState<'summary_gate' | 'engagement_gate' | 'post_onboarding_gate' | 'manual'>('manual');
   const [summaryOpenCount, setSummaryOpenCount] = useState(0);
@@ -634,9 +794,9 @@ function FeedPageContent() {
   }, []);
 
   const isOnboarded = profile?.onboarded ?? false;
-  const showPersonalizedFeed = isOnboarded;
+  const showPersonalizedFeed = isOnboarded && hasAccess;
   const isFallbackFeed = showPersonalizedFeed && !isFeedLoading && feed.length === 0;
-  const currentFeed = isFallbackFeed ? generalFeed : (!showPersonalizedFeed ? generalFeed : feed);
+  const currentFeed = showPersonalizedFeed ? feed : [];
 
   const openSubscribePrompt = useCallback(
     (
@@ -798,35 +958,7 @@ function FeedPageContent() {
     }
   }, [activeFilter, topicFilters, categoryFilters]);
 
-  useEffect(() => {
-    if (profile) {
-      const subscriptionStatus = profile.subscriptionStatus || 'none';
-      const appSubscriptionStatus = profile.appSubscriptionStatus || 'none';
-      let hasValidAccess = ['trial', 'active'].includes(subscriptionStatus) || ['trial', 'active'].includes(appSubscriptionStatus);
-
-      if (hasValidAccess && profile.cancelledAt) {
-        const now = new Date();
-        const toDate = (ts: Date | { seconds: number } | null | undefined): Date | null => {
-          if (!ts) return null;
-          if (ts instanceof Date) return ts;
-          if (typeof ts === 'object' && 'seconds' in ts) {
-            return new Date(ts.seconds * 1000);
-          }
-          return null;
-        };
-
-        const willCancelAt = toDate(profile.willCancelAt);
-        const nextBilling = toDate(profile.nextBillingDate);
-        const cancelDate = willCancelAt || nextBilling;
-
-        if (cancelDate && now >= cancelDate) {
-          hasValidAccess = false;
-        }
-      }
-
-      setHasAccess(hasValidAccess);
-    }
-  }, [profile]);
+  // hasAccess is now computed via useMemo above (synchronous with profile changes)
 
   useEffect(() => {
     if (!user || !profile?.onboarded || hasAccess || postOnboardingGateHandled.current) return;
@@ -860,6 +992,13 @@ function FeedPageContent() {
       return;
     }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    if (loading || !user || !profile) return;
+    if (!profile.onboarded) {
+      router.replace('/onboarding');
+    }
+  }, [loading, user, profile, router]);
 
   const loadInteractions = useCallback(async (uid: string, feedGenDate: string) => {
     if (!feedGenDate) return;
@@ -901,7 +1040,6 @@ function FeedPageContent() {
     isLoadingRef.current = true;
 
     setIsFeedLoading(true);
-    setFeed([]);
 
     try {
       const token = await user?.getIdToken();
@@ -948,28 +1086,6 @@ function FeedPageContent() {
     }
   }, [user]);
 
-  const loadGeneralFeed = useCallback(async () => {
-    if (!user) return;
-    setIsLoadingGeneral(true);
-    try {
-      const token = await user.getIdToken();
-      const limit = 10;
-      const response = await fetch(`/api/feed/sample?limit=${limit}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const items = Array.isArray(data.items) ? data.items : [];
-        setGeneralFeed(shuffleItems(items));
-      }
-    } catch (error) {
-      console.error('Error loading general feed:', error);
-    }
-    setIsLoadingGeneral(false);
-  }, [user]);
-
   const loadBookmarks = useCallback(async () => {
     if (!user || bookmarksLoaded) return;
 
@@ -1001,9 +1117,34 @@ function FeedPageContent() {
 
     if (showPersonalizedFeed) {
       loadFeed(user.uid);
+    } else {
+      setIsFeedLoading(false);
+      setFeed([]);
     }
-    loadGeneralFeed();
-  }, [user, loading, showPersonalizedFeed, loadFeed, loadGeneralFeed]);
+  }, [user, loading, showPersonalizedFeed, loadFeed]);
+
+  // Safety net: trigger feed generation if subscribed user has empty feed
+  const hasTriggeredFeedGen = useRef(false);
+  useEffect(() => {
+    if (!isFallbackFeed || !user || hasTriggeredFeedGen.current) return;
+    hasTriggeredFeedGen.current = true;
+
+    (async () => {
+      try {
+        const token = await user.getIdToken();
+        await fetch('/api/onboard', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ uid: user.uid }),
+        });
+      } catch (err) {
+        console.error('Error triggering feed generation:', err);
+      }
+    })();
+  }, [isFallbackFeed, user]);
 
   useEffect(() => {
     if (!showPersonalizedFeed || !isFallbackFeed) {
@@ -1116,7 +1257,7 @@ function FeedPageContent() {
   const handleStar = async (itemId: string) => {
     if (!user) return;
 
-    const item = feed.find(i => i.id === itemId) || generalFeed.find(i => i.id === itemId);
+    const item = feed.find(i => i.id === itemId);
     if (!item) return;
 
     setLoadingBookmarks(prev => new Set(prev).add(itemId));
@@ -1240,6 +1381,10 @@ function FeedPageContent() {
         <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
+  }
+
+  if (profile?.onboarded && !hasAccess) {
+    return <FeedPaywall />;
   }
 
   // Article detail view
@@ -1642,7 +1787,7 @@ function FeedPageContent() {
               )}
             </AnimatePresence>
 
-            {((showPersonalizedFeed && isFeedLoading) || (!showPersonalizedFeed && isLoadingGeneral) || (isFallbackFeed && isLoadingGeneral)) ? (
+            {isFeedLoading ? (
               <div className="space-y-3">
                 {[...Array(5)].map((_, i) => (
                   <div key={i} className="p-4 md:p-5 rounded-xl bg-gray-50 dark:bg-gray-800/50 animate-pulse">
@@ -1681,7 +1826,7 @@ function FeedPageContent() {
                   ))}
                 </div>
 
-                {filteredFeed.length === 0 && (
+                {filteredFeed.length === 0 && !feedGenActive && (
                   <div className="py-10 md:py-12 px-4">
                     <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#16161e] p-5 md:p-6">
                       <p className="text-sm font-medium text-foreground">

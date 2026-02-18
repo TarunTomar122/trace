@@ -469,7 +469,7 @@ def save_trending_news(
     metadata = {
         "date": date,
         "generated_at": generated_at,
-        "topic_count": len(filtered_news_by_topic),
+        "topic_count": len(news_by_topic),
         "total_articles": total_articles,
     }
     store.db.collection("trending_news").document(date).set(metadata)

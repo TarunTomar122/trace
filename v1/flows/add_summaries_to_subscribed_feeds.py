@@ -14,7 +14,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 import re
 
 from dotenv import load_dotenv  # noqa: E402
@@ -32,6 +32,7 @@ from v1.algorithm.interest_schema import (  # noqa: E402
     get_interest_ids,
     get_interest_label,
 )
+from v1.tools.youtube_transcript import fetch_youtube_transcript  # noqa: E402
 
 
 EXA_API_URL = "https://api.exa.ai/contents"
@@ -83,6 +84,21 @@ def _estimate_reading_time_minutes(text: str) -> int:
     if word_count <= 0:
         return 0
     return max(1, int(round(word_count / 220)))
+
+
+def _fetch_youtube_transcript(url: str) -> Optional[str]:
+    """
+    Fetch YouTube transcript for a video URL.
+    
+    Returns:
+        Transcript text or None if not available
+    """
+    try:
+        transcript = fetch_youtube_transcript(url)
+        return transcript
+    except Exception as e:
+        print(f"  Error fetching YouTube transcript: {e}")
+        return None
 
 
 def _fetch_exa_contents(
@@ -215,20 +231,28 @@ def _summarize_with_openai(
     content: str,
     user_context: dict[str, Any],
     url: str,
+    is_video: bool = False,
 ) -> tuple[dict[str, Any] | None, str | None]:
     if not content or len(content) < MIN_CONTENT_LENGTH:
         return None, "content_too_short"
 
+    source_type = "video transcript" if is_video else "article"
+    source_desc = (
+        "This is a transcript from a YouTube video. Summarize the key points discussed in the video."
+        if is_video
+        else "Summarize the source content below into a mini-article. Even if the source is "
+             "a Reddit thread, discussion, short post, or announcement — summarize it anyway. "
+             "Only skip if the content is truly empty or just navigation/menu text."
+    )
+
     prompt = f"""You are writing a personalized mini-article for a reader.
 
-Summarize the source content below into a mini-article. Even if the source is
-a Reddit thread, discussion, short post, or announcement — summarize it anyway.
-Only skip if the content is truly empty or just navigation/menu text.
+{source_desc}
 
 USER CONTEXT:
 {json.dumps(user_context, indent=2)}
 
-SOURCE CONTENT:
+SOURCE CONTENT ({source_type}):
 Title: {title}
 URL: {url}
 Content:
@@ -398,16 +422,16 @@ def add_summaries_to_subscribed_feeds(
         user_profile = store.get_user_profile(user_id) or {}
         user_context = _build_user_context(user_profile)
 
-        eligible = []
-        skipped_video = 0
+        # Separate videos and articles
+        eligible_articles = []
+        eligible_videos = []
         skipped_has_summary = 0
         skipped_no_url = 0
+        
         for item in items:
             if not isinstance(item, dict):
                 continue
-            if item.get("type") == "video" or item.get("source") == "youtube":
-                skipped_video += 1
-                continue
+            
             # Skip items with existing summary unless force=True
             if not force:
                 if item.get("summary"):
@@ -416,21 +440,39 @@ def add_summaries_to_subscribed_feeds(
                 if item.get("metadata", {}).get("summary"):
                     skipped_has_summary += 1
                     continue
+            
             url = item.get("url")
-            if url:
-                eligible.append(url)
-            else:
+            if not url:
                 skipped_no_url += 1
+                continue
+            
+            # Categorize as video or article
+            if item.get("type") == "video" or item.get("source") == "youtube":
+                eligible_videos.append(url)
+            else:
+                eligible_articles.append(url)
 
-        if not eligible:
-            print(f"  No eligible items (total={len(items)}, videos={skipped_video}, "
+        if not eligible_articles and not eligible_videos:
+            print(f"  No eligible items (total={len(items)}, "
                   f"has_summary={skipped_has_summary}, no_url={skipped_no_url}), skipping.")
             users_processed += 1
             continue
 
-        print(f"  Eligible items: {len(eligible)}")
-        content_map, image_map = _fetch_exa_contents(store, eligible)
-        print(f"  Content fetched: {len(content_map)} | Images from Exa: {len(image_map)}")
+        print(f"  Eligible items: {len(eligible_articles)} articles, {len(eligible_videos)} videos")
+        
+        # Fetch article content from Exa
+        content_map, image_map = _fetch_exa_contents(store, eligible_articles)
+        print(f"  Article content fetched: {len(content_map)} | Images from Exa: {len(image_map)}")
+        
+        # Fetch video transcripts
+        video_transcript_count = 0
+        for video_url in eligible_videos:
+            transcript = _fetch_youtube_transcript(video_url)
+            if transcript:
+                content_map[video_url] = transcript
+                video_transcript_count += 1
+        
+        print(f"  Video transcripts fetched: {video_transcript_count}/{len(eligible_videos)}")
 
         # Build list of items to summarize
         items_to_summarize = []
@@ -462,12 +504,14 @@ def add_summaries_to_subscribed_feeds(
         def summarize_item(item: dict) -> tuple[str, dict | None, str | None]:
             url = item.get("url", "")
             content = content_map.get(url, "")
+            is_video = item.get("type") == "video" or item.get("source") == "youtube"
             summary, error = _summarize_with_openai(
                 client=client,
                 title=item.get("title", ""),
                 content=content[:EXA_TEXT_MAX_CHARS],
                 user_context=user_context,
                 url=url,
+                is_video=is_video,
             )
             return url, summary, error
 

@@ -50,7 +50,7 @@ export default function PrivacyPolicyPage() {
                             </div>
                         </div>
                         <p className="text-sm text-secondary mt-2">
-                            Last Updated: January 18, 2026
+                            Last Updated: February 17, 2026
                         </p>
                     </motion.div>
 
@@ -152,6 +152,26 @@ export default function PrivacyPolicyPage() {
                             </section>
 
                             <section>
+                                <h2 className="text-2xl font-serif font-light text-foreground uppercase mb-4">Subscriptions and Billing</h2>
+                                <p className="mb-4">
+                                    Trace offers paid subscription plans (weekly, monthly, and yearly) that unlock personalized feed access and AI summaries.
+                                    All billing is handled securely through the respective platform (Google Play or Stripe/Dodo Payments for web).
+                                </p>
+                                <h3 className="text-lg font-serif font-light text-foreground uppercase mb-3">Free Trial</h3>
+                                <p className="mb-4">
+                                    We offer a free trial period for new subscribers. No charge is made during the trial. If you do not cancel before the trial ends, your subscription will automatically begin and payment will be charged.
+                                </p>
+                                <h3 className="text-lg font-serif font-light text-foreground uppercase mb-3">Cancellation</h3>
+                                <p className="mb-4">
+                                    You may cancel your subscription at any time through your Google Play account settings or the web account portal. Cancellation takes effect at the end of the current billing period. We do not offer refunds for partial subscription periods.
+                                </p>
+                                <h3 className="text-lg font-serif font-light text-foreground uppercase mb-3">Billing Data</h3>
+                                <p>
+                                    We do not store your payment card details. All payment processing is handled by Google Play Billing or our web payment processor. We receive only confirmation of your subscription status.
+                                </p>
+                            </section>
+
+                            <section>
                                 <h2 className="text-2xl font-serif font-light text-foreground uppercase mb-4">Cookies and Tracking</h2>
                                 <p>
                                     We use cookies and similar tracking technologies to maintain your session, remember your preferences,
@@ -188,10 +208,11 @@ export default function PrivacyPolicyPage() {
                             <section className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 md:p-8">
                                 <h2 className="text-xl font-semibold text-foreground mb-4">Contact Us</h2>
                                 <p className="mb-4">
-                                    If you have questions or concerns about this privacy policy, please contact us:
+                                    If you have questions or concerns about this privacy policy, data deletion requests, or subscription issues, please contact us:
                                 </p>
                                 <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-5">
-                                    <p className="mb-2"><strong>Email:</strong> yourtrace.online@gmail.com</p>
+                                    <p className="mb-2"><strong>Email:</strong> <a href="mailto:yourtrace.online@gmail.com" className="text-primary hover:underline">yourtrace.online@gmail.com</a></p>
+                                    <p className="mb-2"><strong>Contact page:</strong> <a href="https://www.yourtrace.online/contact" className="text-primary hover:underline">yourtrace.online/contact</a></p>
                                     <p className="mb-2"><strong>Twitter:</strong> <a href="https://x.com/tarat_211" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@tarat_211</a></p>
                                     <p><strong>GitHub:</strong> <a href="https://github.com/TarunTomar122" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">TarunTomar122</a></p>
                                 </div>

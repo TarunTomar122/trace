@@ -31,7 +31,6 @@ import {
   INTEREST_SUBTOPICS,
   SKILL_SUGGESTIONS,
   completeOnboarding,
-  triggerFeedGeneration,
 } from '@/lib/firestore';
 import { ILLUS_PALETTE } from '@/app/(auth)/welcome';
 
@@ -88,9 +87,9 @@ function Pill({
 }) {
   const isSub = variant === 'sub';
   const selectedBg = colorScheme === 'dark' ? '#052e16' : '#f0fdf4';
-  const unselectedBg = colorScheme === 'dark' ? Colors[colorScheme].card : '#fff';
+  const unselectedBg = Colors[colorScheme].card;
   const selectedBorder = ACCENT;
-  const unselectedBorder = colorScheme === 'dark' ? '#333' : '#e0e0e0';
+  const unselectedBorder = Colors[colorScheme].border;
 
   return (
     <Pressable
@@ -117,7 +116,7 @@ function Pill({
 
       {selected && !isSub && (
         <View style={styles.checkBadge}>
-          <Check size={10} color="#fff" strokeWidth={3} />
+          <Check size={10} color="white" strokeWidth={3} />
         </View>
       )}
     </Pressable>
@@ -290,17 +289,10 @@ export default function OnboardingScreen() {
         contentDepth: 'surprise',
       });
 
-      // Trigger feed generation in the background
-      const queued = await triggerFeedGeneration(user.uid, { reason: 'onboarding' });
-      showToast(
-        queued
-          ? 'Setup complete. Building your personalised feed.'
-          : 'Setup saved. Feed will appear shortly.',
-        queued ? 'success' : 'info'
-      );
-
       await refreshProfile();
-      router.replace('/(tabs)');
+      
+      // Take user to paywall after onboarding
+      router.replace('/paywall?fromOnboarding=true');
     } catch (error) {
       console.error('Error completing onboarding:', error);
       showToast('Could not finish setup. Please try again.', 'error');
@@ -358,7 +350,7 @@ export default function OnboardingScreen() {
             <View
               style={[
                 styles.progressBar,
-                { backgroundColor: colorScheme === 'dark' ? '#1c1c1c' : '#e5e7eb' },
+                { backgroundColor: Colors[colorScheme].muted + '30' },
               ]}
             >
               <Animated.View
@@ -454,7 +446,7 @@ export default function OnboardingScreen() {
                   { backgroundColor: ILLUS_PALETTE.gold[colorScheme] },
                 ]}
               >
-                <CalendarIllus width={120} height={120} />
+                <CalendarIllus width={120} height={120} color={Colors[colorScheme].text} fill={Colors[colorScheme].text} />
               </View>
 
               <ThemedText style={styles.valueTitle}>
@@ -480,7 +472,7 @@ export default function OnboardingScreen() {
                       styles.outcomeRow,
                       {
                         backgroundColor: colorScheme === 'dark' ? '#0d1f12' : '#f0fdf4',
-                        borderColor: colorScheme === 'dark' ? '#1a3a1f' : '#dcfce7',
+                        borderColor: Colors[colorScheme].border,
                       },
                     ]}
                   >
@@ -528,7 +520,7 @@ export default function OnboardingScreen() {
         <View
           style={[
             styles.footer,
-            { borderTopColor: colorScheme === 'dark' ? '#1c1c1c' : '#f0f0f0' },
+            { borderTopColor: Colors[colorScheme].border },
           ]}
         >
           <Pressable
@@ -540,16 +532,14 @@ export default function OnboardingScreen() {
                 backgroundColor:
                   canGoNext() && !isSubmitting
                     ? ACCENT
-                    : colorScheme === 'dark'
-                      ? '#1c1c1c'
-                      : '#e5e7eb',
+                    : Colors[colorScheme].card,
               },
             ]}
           >
             {isSubmitting && (
               <ActivityIndicator
                 size="small"
-                color="#fff"
+                color="white"
                 style={{ marginRight: 8 }}
               />
             )}
@@ -558,7 +548,7 @@ export default function OnboardingScreen() {
                 styles.continueBtnText,
                 {
                   color:
-                    canGoNext() && !isSubmitting ? '#fff' : Colors[colorScheme].muted,
+                    canGoNext() && !isSubmitting ? 'white' : Colors[colorScheme].muted,
                 },
               ]}
             >

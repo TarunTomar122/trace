@@ -12,7 +12,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { triggerFeedGeneration, updateUserProfile } from '@/lib/firestore';
 
 // ─── Config ───
-const RC_API_KEY = 'test_rGtevQBTqwxbZejMjqgNPEWTzlJ';
+const RC_API_KEY = 'goog_KNVMTAxIZiOOVXIEZhptsqjFMEU';
 const ENTITLEMENT_ID = 'trace Premium';
 
 // ─── Types ───

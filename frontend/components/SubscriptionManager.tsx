@@ -9,7 +9,9 @@ import {
   AlertCircle,
   XCircle,
   Loader2,
-  Zap
+  Zap,
+  Lock,
+  Bell,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth } from '@/lib/firebase';
@@ -256,9 +258,102 @@ export default function SubscriptionManager() {
   const status = subscriptionStatus?.subscriptionStatus || 'none';
   const hasAccess = subscriptionStatus?.hasAccess || false;
 
+  // Unsubscribed state — matches profile tab section style
+  if (status === 'none') {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+        className="space-y-8"
+      >
+        {/* How it works section */}
+        <section className="pb-8 border-b border-gray-200 dark:border-gray-800">
+          <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6 flex items-center gap-2">
+            <Lock size={14} className="text-foreground" />
+            How your free trial works
+          </h2>
+
+          <div className="space-y-5">
+            <div className="flex items-start gap-3.5">
+              <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0 mt-0.5">
+                <Lock size={14} className="text-accent-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Today</p>
+                <p className="text-sm text-secondary mt-0.5">
+                  Full access to your personalized feed and AI summaries.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3.5">
+              <div className="w-9 h-9 rounded-full bg-accent/60 flex items-center justify-center shrink-0 mt-0.5">
+                <Bell size={14} className="text-accent-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">In 2 days</p>
+                <p className="text-sm text-secondary mt-0.5">
+                  We&apos;ll remind you your trial is ending.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3.5">
+              <div className="w-9 h-9 rounded-full bg-accent/30 flex items-center justify-center shrink-0 mt-0.5">
+                <CheckCircle2 size={14} className="text-accent-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">In 3 days</p>
+                <p className="text-sm text-secondary mt-0.5">
+                  Subscription starts at $2.99/mo. Cancel before &mdash; no charge.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA section */}
+        <section>
+          {error && (
+            <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
+          <button
+            onClick={handleSubscribe}
+            disabled={isCreatingCheckout}
+            className="w-full bg-accent text-accent-foreground py-3.5 rounded-xl text-sm font-semibold hover:bg-accent/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {isCreatingCheckout ? (
+              <>
+                <Loader2 className="animate-spin" size={18} />
+                Setting up your trial...
+              </>
+            ) : (
+              <>
+                <Zap size={16} />
+                Start Free Trial
+              </>
+            )}
+          </button>
+
+          <p className="text-xs text-secondary/50 mt-3">
+            3-day free trial, then $2.99/month. Cancel anytime.
+          </p>
+        </section>
+
+        <p className="text-xs text-secondary/40">
+          Questions? yourtrace.online@gmail.com
+        </p>
+      </motion.div>
+    );
+  }
+
+  // Subscribed / active / cancelled / expired states
   return (
     <div className="space-y-6">
-      {/* Subscription Status Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -274,7 +369,7 @@ export default function SubscriptionManager() {
                 Premium Feed Access
               </h3>
               <p className={`text-sm font-medium mt-0.5 ${getStatusColor(status)}`}>
-                {status === 'none' ? 'No Subscription' : status.replace('_', ' ')}
+                {status.replace('_', ' ')}
               </p>
             </div>
           </div>
@@ -286,36 +381,41 @@ export default function SubscriptionManager() {
         </div>
 
         {/* Subscription Details */}
-        {status !== 'none' && (
-          <div className="space-y-3 mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
-            {status === 'trial' && subscriptionStatus?.trialEndDate && (
-              <div className="flex items-center gap-3 text-sm">
-                <Calendar size={16} className="text-secondary" />
-                <span className="text-secondary">
-                  Trial ends: <span className="text-foreground font-medium">{formatDate(subscriptionStatus.trialEndDate)}</span>
-                </span>
-              </div>
-            )}
+        <div className="space-y-3 mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+          {status === 'trial' && subscriptionStatus?.trialEndDate && (
+            <div className="flex items-center gap-3 text-sm">
+              <Calendar size={16} className="text-secondary" />
+              <span className="text-secondary">
+                Trial ends: <span className="text-foreground font-medium">{formatDate(subscriptionStatus.trialEndDate)}</span>
+              </span>
+            </div>
+          )}
 
-            {status === 'active' && subscriptionStatus?.nextBillingDate && (
-              <div className="flex items-center gap-3 text-sm">
-                <Calendar size={16} className="text-secondary" />
-                <span className="text-secondary">
-                  Next billing: <span className="text-foreground font-medium">{formatDate(subscriptionStatus.nextBillingDate)}</span>
-                </span>
-              </div>
-            )}
+          {status === 'active' && subscriptionStatus?.nextBillingDate && (
+            <div className="flex items-center gap-3 text-sm">
+              <Calendar size={16} className="text-secondary" />
+              <span className="text-secondary">
+                Next billing: <span className="text-foreground font-medium">{formatDate(subscriptionStatus.nextBillingDate)}</span>
+              </span>
+            </div>
+          )}
 
-            {subscriptionStatus?.lastPaymentDate && (
-              <div className="flex items-center gap-3 text-sm">
-                <CheckCircle2 size={16} className="text-secondary" />
-                <span className="text-secondary">
-                  Last payment: <span className="text-foreground font-medium">{formatDate(subscriptionStatus.lastPaymentDate)}</span>
-                </span>
-              </div>
-            )}
+          {subscriptionStatus?.lastPaymentDate && (
+            <div className="flex items-center gap-3 text-sm">
+              <CheckCircle2 size={16} className="text-secondary" />
+              <span className="text-secondary">
+                Last payment: <span className="text-foreground font-medium">{formatDate(subscriptionStatus.lastPaymentDate)}</span>
+              </span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 text-sm">
+            <CreditCard size={16} className="text-secondary" />
+            <span className="text-secondary">
+              Plan: <span className="text-foreground font-medium">$2.99/month</span>
+            </span>
           </div>
-        )}
+        </div>
 
         {/* Error Message */}
         {error && (
@@ -324,64 +424,8 @@ export default function SubscriptionManager() {
           </div>
         )}
 
-        {/* Benefits Section - only show when not subscribed */}
-        {status === 'none' && (
-          <div className="mb-6 space-y-4">
-            <div className="p-5 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
-              <h4 className="text-sm font-medium text-foreground mb-4">
-                What you get:
-              </h4>
-              <ul className="space-y-3 text-sm text-secondary">
-                <li className="flex items-start gap-3">
-                  <span className="w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 flex items-center justify-center text-xs shrink-0">✓</span>
-                  <span>A calm, focused daily feed tailored to your interests</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 flex items-center justify-center text-xs shrink-0">✓</span>
-                  <span>A daily briefing delivered to your inbox</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 flex items-center justify-center text-xs shrink-0">✓</span>
-                  <span>High-signal picks from trusted sources across the web</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 flex items-center justify-center text-xs shrink-0">✓</span>
-                  <span>Content from 1,000+ sources, curated around your interests + AI Generated Summaries</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        )}
-
         {/* Action Buttons */}
         <div className="space-y-3">
-          {status === 'none' && (
-            <>
-              <span className="text-[10px] md:text-[11px] text-secondary leading-tight max-w-64">
-                Cancel anytime before your trial ends and you won&apos;t be charged.
-              </span>
-            <button
-              onClick={handleSubscribe}
-              disabled={isCreatingCheckout}
-                className="w-full bg-accent text-accent-foreground py-3.5 rounded-xl text-sm font-medium hover:bg-accent/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {isCreatingCheckout ? (
-                <>
-                  <Loader2 className="animate-spin" size={18} />
-                  Creating Checkout...
-                </>
-              ) : (
-                <span className="flex flex-col items-center text-center gap-1">
-                    <span className="flex items-center gap-2 text-accent-foreground text-sm">
-                    <Zap size={16} />
-                    Start 3-Day Free Trial
-                  </span>
-                </span>
-              )}
-            </button>
-            </>
-          )}
-
           {(status === 'trial' || status === 'active') && (
             <>
               {subscriptionStatus?.cancelledAt ? (
@@ -464,39 +508,9 @@ export default function SubscriptionManager() {
         </div>
       </motion.div>
 
-      {/* Pricing Info */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="bg-white dark:bg-[#16161e] border border-gray-200 dark:border-gray-800 rounded-2xl p-6"
-      >
-        <h4 className="text-sm font-medium text-foreground mb-4">
-          Plan Details
-        </h4>
-        <div className="space-y-3 text-sm">
-          <div className="flex justify-between">
-            <span className="text-secondary">Price:</span>
-            <span className="text-foreground font-medium">$2.99/month</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-secondary"></span>
-            <span className="text-primary text-xs">☕ Less than a coffee</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-secondary">Trial Period:</span>
-            <span className="text-foreground font-medium">3 days free</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-secondary">Billing:</span>
-            <span className="text-foreground font-medium">Monthly</span>
-          </div>
-        </div>
-      </motion.div>
-
       {/* Help Text */}
-      <p className="text-sm text-secondary/60 text-center">
-        Questions? Contact us at yourtrace.online@gmail.com
+      <p className="text-xs text-secondary/40 text-center">
+        Questions? yourtrace.online@gmail.com
       </p>
     </div>
   );

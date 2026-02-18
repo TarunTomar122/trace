@@ -121,7 +121,10 @@ export default function WelcomeScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Top section — brand */}
       <View style={styles.brandSection}>
-        <Text style={[styles.logo, { color: colors.accent }]}>wonder</Text>
+        <View style={styles.wordmark}>
+          <Text style={[styles.logoLight, { color: colors.textPrimary }]}>brain</Text>
+          <Text style={[styles.logoBold, { color: colors.textPrimary }]}>wave</Text>
+        </View>
         <Text style={[styles.tagline, { color: colors.textSecondary }]}>
           big ideas from books, articles, and videos,{'\n'}one card at a time
         </Text>
@@ -170,11 +173,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  logo: {
-    fontSize: 52,
-    fontWeight: '900',
-    letterSpacing: -2,
+  wordmark: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
     marginBottom: 16,
+  },
+  logoLight: {
+    fontSize: 48,
+    fontWeight: '300',
+    letterSpacing: -2,
+  },
+  logoBold: {
+    fontSize: 48,
+    fontWeight: '800',
+    letterSpacing: -2,
   },
   tagline: {
     fontSize: 17,

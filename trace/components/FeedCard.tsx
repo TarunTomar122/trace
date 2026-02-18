@@ -39,21 +39,21 @@ function isLikelyRealImageUrl(url?: string | null): boolean {
 }
 
 // ─── Category badge config (matching web frontend) ───
-function getCategoryBadge(item: FeedItem): { label: string; color: string; bg: string } | null {
+function getCategoryBadge(item: FeedItem, colorScheme: 'light' | 'dark'): { label: string; color: string; bg: string } | null {
   const feedCategory = item.metadata?.feed_category;
   const isHot = item.metadata?.is_hot;
 
   if (feedCategory === 'trending_news' || isHot) {
-    return { label: 'Trending', color: '#ea580c', bg: '#FFF7ED' };
+    return { label: 'Trending', color: '#ea580c', bg: colorScheme === 'dark' ? '#2e2216' : '#FFF7ED' };
   }
   if (feedCategory === 'suggested') {
-    return { label: 'Suggested', color: '#9333ea', bg: '#FAF5FF' };
+    return { label: 'Suggested', color: '#9333ea', bg: colorScheme === 'dark' ? '#2a1a2e' : '#FAF5FF' };
   }
   if (feedCategory === 'topics') {
-    return { label: 'For You', color: '#2563eb', bg: '#EFF6FF' };
+    return { label: 'For You', color: '#2563eb', bg: colorScheme === 'dark' ? '#1a2332' : '#EFF6FF' };
   }
   if (feedCategory === 'sample_summary') {
-    return { label: 'Free summary', color: '#16a34a', bg: '#F0FDF4' };
+    return { label: 'Free summary', color: '#16a34a', bg: colorScheme === 'dark' ? '#1a2e23' : '#F0FDF4' };
   }
   return null;
 }
@@ -71,7 +71,7 @@ export function FeedCard({ item, colorScheme, onPress }: FeedCardProps) {
   const Icon = config.icon;
   const hasSummary = !!item.summary?.short_article?.body;
   const snippet = item.summary?.short_article?.subtitle || item.description || '';
-  const categoryBadge = getCategoryBadge(item);
+  const categoryBadge = getCategoryBadge(item, colorScheme);
 
   const thumbnail = item.thumbnail;
   const [imgError, setImgError] = useState(false);

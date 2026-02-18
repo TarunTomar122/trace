@@ -56,6 +56,9 @@ export interface UserProfile {
   // Subscription (app / RevenueCat)
   appSubscriptionStatus?: 'none' | 'trial' | 'active' | 'expired';
   
+  // Newsletter preferences
+  newsletterOptIn?: boolean;
+  
   // Timestamps
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;
@@ -549,7 +552,7 @@ const lastFeedGenTriggerAt = new Map<string, number>();
 export async function triggerFeedGeneration(
   uid: string,
   options?: {
-    reason?: 'onboarding' | 'purchase' | 'restore' | 'subscribed_fallback' | 'manual';
+    reason?: 'onboarding' | 'preferences_edit' | 'purchase' | 'restore' | 'subscribed_fallback' | 'manual';
     force?: boolean;
     cooldownMs?: number;
   }
@@ -608,6 +611,46 @@ export async function getLatestUserFeed(uid: string): Promise<UserFeed | null> {
     return sortedDocs[0].data() as UserFeed;
   } catch (error) {
     console.error('Error getting latest feed:', error);
+    return null;
+  }
+}
+
+/**
+ * Get a general/trending feed for users who haven't onboarded yet
+ * This fetches from a generic feed collection
+ */
+export async function getGeneralFeed(): Promise<UserFeed | null> {
+  try {
+    // Try to get from general_feeds collection
+    const generalFeedRef = collection(firestore, 'general_feeds');
+    const snapshot = await getDocs(generalFeedRef);
+    
+    if (!snapshot.empty) {
+      const sortedDocs = snapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
+      return sortedDocs[0].data() as UserFeed;
+    }
+    
+    // Fallback: get sample items from various topics
+    const articlesRef = collection(firestore, 'articles');
+    const q = query(articlesRef, limit(10));
+    const articlesSnapshot = await getDocs(q);
+    
+    if (articlesSnapshot.empty) return null;
+    
+    const items: FeedItem[] = articlesSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as FeedItem));
+    
+    return {
+      date: new Date().toISOString().split('T')[0],
+      items,
+      metadata: {
+        is_preview: true,
+      }
+    };
+  } catch (error) {
+    console.error('Error getting general feed:', error);
     return null;
   }
 }

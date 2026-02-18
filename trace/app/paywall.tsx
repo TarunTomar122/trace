@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { X, Check, Zap, Sparkles } from 'lucide-react-native';
 import { PurchasesPackage } from 'react-native-purchases';
 
@@ -24,6 +24,12 @@ const BENEFITS = [
   'Every article distilled into 2-min notes & lessons',
   'A daily feed built around what you actually care about',
   'The more you read, the smarter your recommendations get',
+];
+
+const ONBOARDING_BENEFITS = [
+  'Get a daily feed curated to your interests',
+  'Every article with 2-min AI summaries & key takeaways',
+  'Cancel anytime in the first 4 days - no charge',
 ];
 
 // ─── Package display config ───
@@ -62,10 +68,12 @@ function formatPeriod(planId: PlanId): string {
 
 export default function PaywallScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const colorScheme = useColorScheme() ?? 'light';
   const { showToast } = useToast();
   const { offerings, purchasePackage, restorePurchases, isProUser } = useRevenueCat();
 
+  const fromOnboarding = params.fromOnboarding === 'true';
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('yearly');
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -96,13 +104,25 @@ export default function PaywallScreen() {
     try {
       const success = await purchasePackage(selectedPackage);
       if (success) {
-        router.back();
+        if (fromOnboarding) {
+          router.replace('/(tabs)');
+        } else {
+          router.back();
+        }
       } else {
         showToast('Purchase not completed.', 'info');
       }
     } finally {
       setIsPurchasing(false);
     }
+  };
+
+  const handleClose = () => {
+    // Don't allow closing if from onboarding without subscribing
+    if (fromOnboarding) {
+      return;
+    }
+    router.back();
   };
 
   const handleRestore = async () => {
@@ -133,13 +153,15 @@ export default function PaywallScreen() {
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
       edges={['top', 'bottom']}>
-      {/* Close button */}
-      <Pressable
-        onPress={() => router.back()}
-        hitSlop={12}
-        style={styles.closeButton}>
-        <X size={24} color={Colors[colorScheme].muted} strokeWidth={1.8} />
-      </Pressable>
+      {/* Close button - only show X if not from onboarding */}
+      {!fromOnboarding && (
+        <Pressable
+          onPress={handleClose}
+          hitSlop={12}
+          style={styles.closeButton}>
+          <X size={24} color={Colors[colorScheme].muted} strokeWidth={1.8} />
+        </Pressable>
+      )}
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -152,13 +174,13 @@ export default function PaywallScreen() {
             resizeMode="contain"
           />
           <ThemedText style={styles.heroTitle}>
-            Unlock smarter{'\n'}mornings
+            {fromOnboarding ? 'Get a personalized\nfeed' : 'Unlock smarter\nmornings'}
           </ThemedText>
         </View>
 
         {/* ─── Benefits ─── */}
         <View style={styles.benefitsList}>
-          {BENEFITS.map((benefit, i) => (
+          {(fromOnboarding ? ONBOARDING_BENEFITS : BENEFITS).map((benefit, i) => (
             <View key={i} style={styles.benefitRow}>
               <View style={[styles.checkCircle, { backgroundColor: '#22c55e18' }]}>
                 <Check size={14} color="#22c55e" strokeWidth={3} />
@@ -262,7 +284,10 @@ export default function PaywallScreen() {
 
         {/* ─── Legal ─── */}
         <ThemedText style={[styles.legal, { color: Colors[colorScheme].muted }]}>
-          Payment will be charged to your App Store account. Subscription auto-renews unless cancelled at least 24 hours before the end of the current period.
+          {fromOnboarding 
+            ? 'Start your free trial. Cancel anytime in the first 4 days to avoid being charged. After that, your subscription auto-renews unless cancelled at least 24 hours before the end of the current period.'
+            : 'Payment will be charged to your App Store account. Subscription auto-renews unless cancelled at least 24 hours before the end of the current period.'
+          }
         </ThemedText>
       </ScrollView>
     </SafeAreaView>
@@ -421,7 +446,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#22c55e',
     paddingVertical: 16,
     borderRadius: 999,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   ctaText: {
     color: '#fff',

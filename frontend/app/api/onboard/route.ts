@@ -35,6 +35,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'uid is required' }, { status: 400 });
     }
 
+    // Hard rule: never generate feeds for unsubscribed users.
+    if (adminDb) {
+      try {
+        const userSnap = await adminDb.collection('user_profiles').doc(uid).get();
+        if (userSnap.exists) {
+          const userData = userSnap.data() || {};
+          const webSub = String(userData.subscriptionStatus || 'none');
+          const appSub = String(userData.appSubscriptionStatus || 'none');
+          const hasSubscriptionAccess =
+            ['trial', 'active'].includes(webSub) || ['trial', 'active'].includes(appSub);
+
+          if (!hasSubscriptionAccess) {
+            return NextResponse.json({
+              ok: true,
+              message: 'Skipping feed generation for unsubscribed user.',
+              triggered: false,
+              blocked: 'unsubscribed',
+            });
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to verify subscription before onboarding dispatch:', error);
+      }
+    }
+
     const githubToken = process.env.GITHUB_TOKEN;
     const githubRepo = process.env.GITHUB_REPO || 'ttomar/claudia'; // owner/repo format
     
