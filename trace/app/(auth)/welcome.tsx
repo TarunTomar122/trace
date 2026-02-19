@@ -3,7 +3,6 @@ import {
   Pressable,
   StyleSheet,
   View,
-  Image,
   ActivityIndicator,
   type ViewStyle,
 } from 'react-native';
@@ -25,6 +24,7 @@ import BrainIllus from '@/assets/images/brain-brainstorm-brainstorming-svgrepo-c
 import NewspaperIllus from '@/assets/images/newspaper-svgrepo-com.svg';
 
 import { ThemedText } from '@/components/themed-text';
+import { AppLogo } from '@/components/app-logo';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -262,11 +262,7 @@ export default function WelcomeScreen() {
           {/* Logo */}
           <View style={styles.logoSection}>
             <View style={styles.logoRow}>
-              <Image
-                source={require('@/assets/images/trace-logo.png')}
-                style={styles.logo}
-                resizeMode="contain"
-              />
+              <AppLogo style={styles.logo} />
               <ThemedText style={styles.logoText}>TRACE</ThemedText>
             </View>
           </View>

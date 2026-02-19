@@ -31,149 +31,105 @@ const TOTAL_STEPS = 3;
 
 const FEED_PREVIEWS: Record<string, { title: string; summary: string }> = {
   technology: {
-    title: "OpenAI's GPT-5 leak reveals multimodal breakthroughs",
-    summary: "Internal documents suggest real-time video understanding and 10x context windows coming Q2.",
+    title: "AI copilots are becoming the default in every workflow",
+    summary: "From coding to docs, teams are shipping faster with practical AI + automation stacks.",
   },
-  science: {
-    title: "CRISPR trial reverses blindness in 12 patients",
-    summary: "Gene therapy restored partial vision within weeks—first successful in-vivo human editing.",
+  'business-market': {
+    title: "Why product strategy is replacing growth hacks",
+    summary: "Operators are shifting from short-term spikes to durable market positioning and retention.",
   },
-  psychology: {
-    title: "Why your brain resists change (and how to hack it)",
-    summary: "Neuroscience research shows the amygdala treats new habits as threats. Here's the workaround.",
+  experience: {
+    title: "Great UX now starts before the first screen",
+    summary: "Top product teams are combining storytelling, trust signals, and clear user psychology.",
   },
-  ideas: {
-    title: "The case against infinite growth",
-    summary: "Economist Kate Raworth's doughnut model is reshaping how cities think about prosperity.",
-  },
-  business: {
-    title: "How Notion hit $10B without a sales team",
-    summary: "Product-led growth playbook: community loops, templates, and strategic patience.",
-  },
-  money: {
-    title: "The 4% rule is dead—here's what replaced it",
-    summary: "New withdrawal strategies adapt to sequence-of-returns risk and longer retirements.",
-  },
-  design: {
-    title: "Apple's design language is shifting again",
-    summary: "iOS 19 leaks show bolder typography, reduced glass effects, and spatial UI cues.",
-  },
-  career: {
-    title: "Senior engineers who mass-applied got 0 offers",
-    summary: "Hiring managers reveal why targeted applications beat volume—and what actually works.",
-  },
-  'self-development': {
-    title: "James Clear on the 2-minute rule's hidden power",
-    summary: "Atomic Habits author explains why starting small compounds into identity change.",
-  },
-  health: {
-    title: "Zone 2 cardio is overhyped (for most people)",
-    summary: "New meta-analysis suggests high-intensity intervals deliver better longevity markers.",
-  },
-  cooking: {
-    title: "The science of perfect crispy rice",
-    summary: "Why the Maillard reaction needs 15 minutes undisturbed—and the ideal pan for it.",
-  },
-  culture: {
-    title: "Why Gen Z is abandoning Instagram for group chats",
-    summary: "The shift from performance to intimacy is reshaping how online identity works.",
-  },
-  relationships: {
-    title: "Gottman's new research on conflict repair",
-    summary: "40 years of data shows the 5:1 ratio matters less than how you reconnect after fights.",
-  },
-  society: {
-    title: "Remote work reshaped American geography",
-    summary: "Census data reveals which cities gained, which lost, and why the trend is accelerating.",
+  productivity: {
+    title: "The best teams are optimizing energy, not just time",
+    summary: "Career growth, wellbeing, and execution systems are converging into one operating model.",
   },
 };
 
 // Subtopic-specific previews that override base interest previews
 const SUBTOPIC_PREVIEWS: Record<string, { title: string; summary: string }> = {
-  // Technology subtopics
-  'ai': { title: "Claude 4 benchmarks leak—and it's not what anyone expected", summary: "Anthropic's new model shows reasoning gains but trades off speed. Here's what it means for devs." },
-  'automation': { title: "Zapier vs Make vs n8n: the 2026 automation stack wars", summary: "Which no-code platform actually scales? We tested all three with real workflows." },
-  'software': { title: "Why senior devs are mass-quitting FAANG for climate startups", summary: "The great talent migration: compensation down, meaning up. The math might actually work." },
-  'productivity-tools': { title: "Notion AI just killed 5 apps in my stack", summary: "The new features that made Todoist, Calendly, and others redundant overnight." },
-  'future-tech': { title: "Neuralink's first non-medical implant approved for trials", summary: "Cognitive enhancement for healthy adults is no longer sci-fi. Here's the timeline." },
-  // Science subtopics
-  'space': { title: "SpaceX Starship reaches Mars orbit—now what?", summary: "The 7-month journey succeeded. The real challenges start when humans follow." },
-  'biology': { title: "Lab-grown organs hit 90% transplant success rate", summary: "Synthetic kidneys from your own cells are now outperforming donor matches." },
-  'physics': { title: "Quantum computers just factored a 2048-bit number", summary: "RSA encryption's days are numbered. Cryptographers are scrambling." },
-  'climate': { title: "Ocean iron seeding worked—but created a new problem", summary: "Carbon capture success triggered unexpected algae blooms. Scientists debate next steps." },
-  'explained': { title: "Why time moves slower for your face than your feet", summary: "Gravitational time dilation explained with zero equations. Yes, it's been measured." },
-  // Psychology subtopics
-  'mental-health': { title: "Psilocybin therapy FDA-approved for treatment-resistant depression", summary: "After decades of stigma, psychedelics enter mainstream psychiatry. What to expect." },
-  'habits': { title: "The 'habit stacking' backlash: why it fails for most people", summary: "New research suggests context beats routine. Here's the better framework." },
-  'learning': { title: "Spaced repetition apps are using the wrong algorithm", summary: "A PhD student's side project outperforms Anki. The learning science is clear." },
-  'relationships': { title: "Attachment theory is getting a major update", summary: "The original categories were too rigid. Here's the nuanced model therapists now use." },
-  'emotions': { title: "Why naming your emotions makes them less intense", summary: "The neuroscience of affect labeling—and why 'I'm fine' backfires." },
-  // Ideas subtopics
-  'philosophy': { title: "Effective altruism after the FTX collapse: what remains", summary: "The movement's core ideas survive, but trust takes decades to rebuild." },
-  'essays': { title: "Paul Graham on the death of credentialism", summary: "Why degrees matter less each year—and what's replacing them." },
-  'creativity': { title: "Why constraints breed better creative work", summary: "The research on 'freedom paradox' and how limitations unlock original thinking." },
-  'meaning': { title: "The meaning crisis has a surprising solution", summary: "John Vervaeke's decade of research points to embodied practices, not beliefs." },
-  'big-ideas': { title: "What if consciousness is a spectrum, not a switch?", summary: "The panpsychism debate is going mainstream. Here's why serious scientists care." },
-  // Business subtopics
-  'startups': { title: "YC's latest batch has 40% solo founders—here's why", summary: "Co-founder matching is broken. The new playbook is build first, partner later." },
-  'product': { title: "The 'jobs to be done' framework has a fatal flaw", summary: "Why JTBD fails for novel products—and the alternative top PMs now use." },
-  'marketing': { title: "SEO is dead. Long live... whatever this is", summary: "AI search is reshaping discovery. The new playbook for getting found." },
-  'operations': { title: "How Stripe runs 10,000 A/B tests per year", summary: "Inside their experimentation culture: tooling, velocity, and learning loops." },
-  'leadership': { title: "Why 'radical candor' created toxic cultures at scale", summary: "The framework worked for small teams. Here's what breaks at 500+ people." },
-  // Money subtopics
-  'personal-finance': { title: "The 50/30/20 budget rule needs an update for 2026", summary: "Housing costs broke the formula. Financial planners share the new ratios." },
-  'investing': { title: "Index funds are distorting markets—and your returns", summary: "Passive investing's success created a paradox. Active managers see opportunity." },
-  'income': { title: "The creator middle class is finally emerging", summary: "Not everyone needs millions of followers. The $50K-$150K tier is thriving." },
-  'markets': { title: "Why the yield curve inversion didn't predict recession this time", summary: "The indicator that's been reliable for 50 years just failed. What changed." },
-  'crypto': { title: "Bitcoin ETF inflows just passed gold", summary: "Institutional adoption hit an inflection point. What the flows tell us." },
-  // Design subtopics
-  'visual-design': { title: "The anti-minimalism movement is picking up steam", summary: "Maximalism, texture, and chaos are back. See the portfolios leading the shift." },
-  'ux': { title: "Dark patterns are getting regulated—finally", summary: "EU's new enforcement actions and what designers need to change now." },
-  'branding': { title: "Why every brand looks the same (and how to break out)", summary: "The 'blanding' phenomenon explained—and the rebellious counter-trend." },
-  'creative-process': { title: "Designers who sketch first produce better work", summary: "The research is in: hand-drawing before digital leads to more original solutions." },
-  'tools': { title: "Figma's AI features are changing how designers think", summary: "Auto-layout suggestions and component generation: helpful or homogenizing?" },
-  // Career subtopics
-  'job-search': { title: "The hidden job market is 70% of all roles now", summary: "Referrals dominate. Here's how to get them without being awkward." },
-  'skills': { title: "The skills that actually compound over a career", summary: "Writing, selling, and learning how to learn. Everything else is temporary." },
-  'portfolio': { title: "Case studies that actually get you hired", summary: "Recruiters reveal what they skim, what they read, and what makes them reach out." },
-  'career-growth': { title: "Staff engineer vs. manager: the decision framework", summary: "Both paths have hidden costs. How to choose based on your actual priorities." },
-  'workplace': { title: "Remote work policies are quietly reversing", summary: "The 'return to office' wave and how to negotiate if you want to stay remote." },
-  // Self-development subtopics
-  'focus': { title: "Deep work is harder than ever—here's the new research", summary: "Attention spans aren't shrinking; demands are increasing. The updated strategies." },
-  'routines': { title: "Morning routines are overrated (evening routines aren't)", summary: "What you do before bed predicts tomorrow's performance better than sunrise rituals." },
-  'mindset': { title: "Growth mindset has been oversimplified", summary: "Dweck's original research is more nuanced. Here's what actually changes outcomes." },
-  'confidence': { title: "Confidence comes from evidence, not affirmations", summary: "The 'confidence-competence loop' and why small wins beat positive self-talk." },
-  'life-design': { title: "The 'Odyssey Plan' exercise that changed how I see my future", summary: "Stanford's life design approach: three versions of your next five years." },
-  // Health subtopics
-  'workouts': { title: "The minimum effective dose for strength is lower than you think", summary: "New meta-analysis: 2 sets to failure beats 4+ sets for naturals. Here's why." },
-  'nutrition': { title: "Protein timing matters less than total intake", summary: "The 'anabolic window' myth is dead. What the research actually supports." },
-  'sleep': { title: "The 8-hour sleep myth and what to aim for instead", summary: "Sleep need varies wildly. Here's how to find your actual number." },
-  'recovery': { title: "Cold plunges might be hurting your gains", summary: "The inflammation you're suppressing is part of the adaptation signal." },
-  'fitness': { title: "VO2 max is the best predictor of longevity we have", summary: "Better than cholesterol, blood pressure, or BMI. Here's how to improve it." },
-  // Cooking subtopics
-  'recipes': { title: "The one-pan dinner formula that actually works", summary: "Protein + veg + starch + fat + acid. Master the ratios, skip the recipes." },
-  'healthy-meals': { title: "Meal prep is dead. 'Ingredient prep' is the move", summary: "Prepping components instead of full meals keeps things flexible and fresh." },
-  'baking': { title: "Why your bread isn't rising (it's probably the water)", summary: "Chlorine kills yeast. The filtered water fix bakers wish they knew sooner." },
-  'drinks': { title: "The science of clear ice (and why it matters)", summary: "Directional freezing explained. Your cocktails will never be cloudy again." },
-  'food-culture': { title: "Why Korean food is having its global moment", summary: "Beyond K-pop: the culinary infrastructure that made Korean cuisine exportable." },
-  // Culture subtopics
-  'movies': { title: "Why every movie looks orange and teal", summary: "The color grading trend that took over Hollywood—and the directors fighting back." },
-  'music': { title: "Spotify's algorithm is homogenizing pop music", summary: "Data shows songs are getting more similar. The economics driving convergence." },
-  'games': { title: "Why shorter games are winning", summary: "The 100-hour RPG is dying. Players want complete experiences in 10 hours." },
-  'books': { title: "The BookTok effect on publishing is permanent", summary: "How TikTok remade bestseller lists and what gets published next." },
-  'internet': { title: "The 'dead internet' theory has some truth to it", summary: "Bot traffic is 50%+ now. The implications for online discourse are real." },
-  // Relationships subtopics
-  'dating': { title: "Dating app fatigue is reshaping how people meet", summary: "IRL is back: run clubs, pottery classes, and 'third places' are the new Hinge." },
-  'family': { title: "The 'invisible load' in parenting finally has solutions", summary: "Fair Play and other systems for splitting cognitive labor. They actually work." },
-  'friendships': { title: "Adult friendships require 200 hours—here's how to get there", summary: "The research on friendship formation and why most adults don't invest enough." },
-  'communication': { title: "Why 'I feel' statements backfire in some situations", summary: "The popular technique has limits. When to use it and when it escalates." },
-  'conflict': { title: "The '5:1 ratio' for relationships needs context", summary: "Gottman's famous rule applies differently across cultures and conflict styles." },
-  // Society subtopics
-  'politics': { title: "Political polarization is worse online than in person", summary: "New study shows neighbors across party lines get along fine. Algorithms don't help." },
-  'economics': { title: "UBI pilots are producing unexpected results", summary: "Recipients don't quit working—but they do change what work means to them." },
-  'history': { title: "What the 1918 pandemic teaches us about 'normalcy'", summary: "The 'roaring 20s' didn't happen immediately. Recovery took longer than memory suggests." },
-  'media': { title: "Local news collapse is creating 'news deserts'", summary: "1,800 papers closed since 2004. The civic consequences are measurable." },
-  'technology-impact': { title: "Screen time research is more nuanced than headlines suggest", summary: "The moral panic vs. the data. What parents and policymakers should actually worry about." },
+  ai: {
+    title: "The new AI moat is workflow integration, not model quality",
+    summary: "Winners are embedding AI where work already happens instead of shipping standalone chat.",
+  },
+  automation: {
+    title: "Automation is moving from no-code experiments to core operations",
+    summary: "Teams now treat automations like product features with owners, monitoring, and iteration.",
+  },
+  'software-tech': {
+    title: "Dev teams are standardizing on leaner, faster software stacks",
+    summary: "Fewer tools, better observability, and AI-assisted debugging are driving throughput.",
+  },
+  'productivity-tools': {
+    title: "Tool fatigue is real: bundles are replacing bloated app stacks",
+    summary: "Operators want fewer tabs and tighter workflows across docs, tasks, and communication.",
+  },
+  'future-tech': {
+    title: "Ambient AI and interfaces beyond screens are getting real",
+    summary: "Voice, agents, and contextual computing are moving from demos into daily use.",
+  },
+  'product-strategy': {
+    title: "Product strategy now starts with sharper wedge positioning",
+    summary: "Teams are winning by solving one painful workflow deeply before expanding.",
+  },
+  'market-trends': {
+    title: "AI-native products are reshaping software buying behavior",
+    summary: "Budgets are moving to tools that show measurable speed and decision quality gains.",
+  },
+  'economy-impact': {
+    title: "Economic pressure is forcing faster, evidence-based product bets",
+    summary: "Leaders are cutting low-signal initiatives and doubling down on defensible execution.",
+  },
+  startups: {
+    title: "Startups are scaling with smaller teams than ever before",
+    summary: "AI leverage + tighter focus is changing the old headcount-to-growth playbook.",
+  },
+  marketing: {
+    title: "Distribution is becoming the main product moat",
+    summary: "The strongest companies are pairing clear positioning with repeatable audience loops.",
+  },
+  'creative-process': {
+    title: "Creative process is becoming a system, not a mystery",
+    summary: "Top teams structure ideation, critique, and iteration like any other core workflow.",
+  },
+  'design-tools': {
+    title: "Design tools are getting smarter and more collaborative",
+    summary: "AI-assisted exploration helps teams test more directions without sacrificing craft.",
+  },
+  'ux-design': {
+    title: "UX design is shifting toward measurable behavioral outcomes",
+    summary: "Teams are evaluating UX by completion quality, confidence, and long-term retention.",
+  },
+  'brand-storytelling': {
+    title: "Brand storytelling is now product storytelling",
+    summary: "The best brands communicate value directly through onboarding and in-product language.",
+  },
+  'user-psychology': {
+    title: "User psychology is the missing layer in most product decisions",
+    summary: "Behavioral patterns now inform copy, flows, and feature prioritization.",
+  },
+  'career-growth': {
+    title: "Career growth now rewards leverage over hours worked",
+    summary: "People who ship systems and compound impact are advancing fastest.",
+  },
+  'personal-finance': {
+    title: "Personal finance habits are becoming a productivity advantage",
+    summary: "Better cash-flow clarity reduces stress and improves long-term decision making.",
+  },
+  'soft-skills': {
+    title: "Soft skills are becoming hard requirements in AI-native teams",
+    summary: "Communication, prioritization, and judgment are differentiating top performers.",
+  },
+  investments: {
+    title: "Investments are shifting toward conviction-based portfolios",
+    summary: "People are trading impulse bets for frameworks tied to goals and risk tolerance.",
+  },
+  wellbeing: {
+    title: "Wellbeing is now treated as an execution metric",
+    summary: "Sustainable output depends on recovery, sleep quality, and attention protection.",
+  },
 };
 
 // How skills modify the angle of content

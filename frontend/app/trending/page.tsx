@@ -87,42 +87,98 @@ function getTodayIstDate(): string {
 }
 
 
+async function getLatestTrendingDate(): Promise<string | null> {
+  if (!adminFirestore) return null;
+  const snapshot = await adminFirestore
+    .collection('trending_news')
+    .orderBy('date', 'desc')
+    .limit(1)
+    .get();
+  if (snapshot.empty) return null;
+  return snapshot.docs[0].id || snapshot.docs[0].data().date || null;
+}
+
+
+function shortHash(value: string): string {
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) {
+    hash = (Math.imul(31, hash) + value.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash).toString(36).slice(0, 8);
+}
+
+
 async function getTodaysItems(): Promise<{ items: TrendingItem[]; date: string }> {
   if (!adminFirestore) {
     return { items: [], date: getTodayIstDate() };
   }
 
-  // Try today first, then fall back to latest available
+  // Use latest trending_news date (same source as mobile app)
   const today = getTodayIstDate();
-  let doc = await adminFirestore.collection('free_newsletters').doc(today).get();
+  const latestDate = await getLatestTrendingDate();
+  const dateToUse = latestDate || today;
 
-  if (!doc.exists) {
-    // Fall back to latest
-    const snapshot = await adminFirestore
-      .collection('free_newsletters')
-      .orderBy('date', 'desc')
-      .limit(1)
-      .get();
-    if (snapshot.empty) {
-      return { items: [], date: today };
-    }
-    doc = snapshot.docs[0];
+  const topicsSnapshot = await adminFirestore
+    .collection('trending_news')
+    .doc(dateToUse)
+    .collection('topics')
+    .get();
+
+  if (topicsSnapshot.empty) {
+    return { items: [], date: dateToUse };
   }
 
-  const data = doc.data();
-  const items: TrendingItem[] = (data?.items || []).map((item: Record<string, unknown>) => ({
-    id: (item.id as string) || '',
-    title: (item.title as string) || '',
-    url: (item.url as string) || '',
-    summary: (item.summary as string) || '',
-    type: (item.type as string) || 'blog',
-    source: (item.source as string) || '',
-    tags: (item.tags as string[]) || [],
-    thumbnail: (item.thumbnail as string) || undefined,
-    fullSummary: (item.full_summary as TrendingItem['fullSummary']) || undefined,
+  type RawArticle = {
+    title?: string;
+    subtitle?: string;
+    details?: string;
+    url?: string;
+    source_domain?: string;
+    thumbnail?: string;
+    published_date?: string;
+  };
+
+  const allArticles: RawArticle[] = [];
+  topicsSnapshot.docs.forEach((doc) => {
+    const data = doc.data();
+    const articles = (data?.articles || []) as RawArticle[];
+    allArticles.push(...articles);
+  });
+
+  // Dedupe + latest-first, then cap at 6 to match mobile
+  const seen = new Set<string>();
+  const deduped = allArticles.filter((a) => {
+    const url = (a.url || '').trim();
+    if (!url || seen.has(url)) return false;
+    seen.add(url);
+    return true;
+  });
+
+  deduped.sort((a, b) =>
+    String(b.published_date || '').localeCompare(String(a.published_date || ''))
+  );
+
+  const items: TrendingItem[] = deduped.slice(0, 6).map((item, idx) => ({
+    id: item.url ? `trending-${idx}-${shortHash(item.url)}` : `trending-${idx}`,
+    title: item.title || '',
+    url: item.url || '',
+    summary: item.details || '',
+    type: 'news',
+    source: item.source_domain || '',
+    tags: [],
+    thumbnail: item.thumbnail || undefined,
+    fullSummary: (item.subtitle || item.details)
+      ? {
+          short_article: {
+            subtitle: item.subtitle || '',
+            body: item.details || '',
+            outline: [],
+          },
+        }
+      : undefined,
   }));
 
-  return { items, date: data?.date || today };
+  return { items, date: dateToUse };
 }
 
 

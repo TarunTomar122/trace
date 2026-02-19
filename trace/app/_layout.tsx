@@ -26,10 +26,13 @@ function AuthGate({ children }: { children: ReactNode }) {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
+    // Wait for router to hydrate — segments is [] briefly on cold start
+    if (segments.length === 0) return;
     // Wait for auth to finish loading
     if (loading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const inOnboarding = segments[0] === 'onboarding';
 
     // Not logged in → make sure we're on the welcome screen
     if (!user) {
@@ -42,19 +45,22 @@ function AuthGate({ children }: { children: ReactNode }) {
     }
 
     // User is logged in - wait for profile before deciding where to route.
-    // Without this, a user with onboarded=true gets sent to /onboarding
-    // prematurely because profile hasn't loaded yet.
     if (profile === null) return;
     if (profile.onboarded && revenueCatLoading) return;
 
-    // User is logged in and still on an auth screen → redirect out
-    if (inAuthGroup) {
+    // Redirect from auth screens or onboarding based on onboarded status
+    if (inAuthGroup || inOnboarding) {
       if (!profile.onboarded) {
-        router.replace('/onboarding');
-      } else {
+        // New user: send to onboarding (only if not already there)
+        if (!inOnboarding) router.replace('/onboarding');
+        else setIsReady(true); // already on onboarding, show it
+      } else if (inAuthGroup) {
+        // Already onboarded: skip auth screens to the app
         router.replace('/(tabs)');
+      } else {
+        // Already onboarded but navigating to onboarding (edit preferences)
+        setIsReady(true);
       }
-      // Don't set ready yet - wait for segments to change after redirect
       return;
     }
 

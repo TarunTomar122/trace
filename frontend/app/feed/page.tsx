@@ -42,7 +42,6 @@ import {
   trackFeedItemDownvoted,
   trackFeedItemBookmarked,
   trackFeedItemClicked,
-  trackSummaryOpened,
   trackPaywallShown,
   trackCheckoutClicked,
 } from '@/lib/posthog';
@@ -720,7 +719,6 @@ function ArticleView({
 }
 
 type FilterType = 'all' | 'category:for-you' | 'category:trending' | 'category:suggested' | string;
-const FREE_SUMMARY_UNLOCK_COUNT = 1;
 
 function FeedPageContent() {
   const router = useRouter();
@@ -759,7 +757,6 @@ function FeedPageContent() {
   const [showHint, setShowHint] = useState(false);
   const [showSubscribePrompt, setShowSubscribePrompt] = useState(false);
   const [subscribePromptSource, setSubscribePromptSource] = useState<'summary_gate' | 'engagement_gate' | 'post_onboarding_gate' | 'manual'>('manual');
-  const [summaryOpenCount, setSummaryOpenCount] = useState(0);
   const [showPostOnboardingGate, setShowPostOnboardingGate] = useState(false);
   const [bookmarkedItems, setBookmarkedItems] = useState<Set<string>>(new Set());
   const [loadingBookmarks, setLoadingBookmarks] = useState<Set<string>>(new Set());
@@ -796,7 +793,8 @@ function FeedPageContent() {
   const isOnboarded = profile?.onboarded ?? false;
   const showPersonalizedFeed = isOnboarded && hasAccess;
   const isFallbackFeed = showPersonalizedFeed && !isFeedLoading && feed.length === 0;
-  const currentFeed = showPersonalizedFeed ? feed : [];
+  // Free users now see trending feed in the same list UI.
+  const currentFeed = feed;
 
   const openSubscribePrompt = useCallback(
     (
@@ -903,30 +901,7 @@ function FeedPageContent() {
         return tags.includes(activeFilter);
       });
 
-  // For subscribed users: only show items with summaries
-  // For unsubscribed users: keep only a single free summary sample at the top.
-  const filteredFeed = hasAccess
-    ? filteredByTopic
-    : (() => {
-      const items = [...filteredByTopic];
-      const promoted: FeedItem[] = [];
-      for (let i = 0; i < items.length && promoted.length < FREE_SUMMARY_UNLOCK_COUNT; i++) {
-        if (items[i].summary?.short_article?.body) {
-          const sampleItem = {
-            ...items[i],
-            metadata: {
-              ...(items[i].metadata || {}),
-              feed_category: 'sample_summary',
-            },
-          };
-          promoted.push(sampleItem);
-          items.splice(i, 1);
-          i--;
-        }
-      }
-
-      return [...promoted, ...items];
-    })();
+  const filteredFeed = filteredByTopic;
 
   // Find selected item
   const selectedItem = selectedItemId
@@ -1086,6 +1061,49 @@ function FeedPageContent() {
     }
   }, [user]);
 
+  const loadTrendingFeed = useCallback(async () => {
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
+
+    setIsFeedLoading(true);
+    try {
+      const token = await user?.getIdToken();
+      if (!token) {
+        isLoadingRef.current = false;
+        return;
+      }
+
+      const response = await fetch('/api/feed/trending?limit=6', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const items = Array.isArray(data.items) ? data.items : [];
+        const sortedItems = items.map((item: FeedItem, index: number) => ({
+          ...item,
+          _originalIndex: index,
+        }));
+        setFeed(sortedItems);
+        setFeedMetadata(data.metadata || { is_preview: true });
+        setFeedDate(data.feedDate || '');
+        setUnseenCount(0);
+      } else {
+        setFeed([]);
+        setFeedMetadata({ is_preview: true });
+      }
+    } catch (error) {
+      console.error('Error loading trending feed:', error);
+      setFeed([]);
+      setFeedMetadata({ is_preview: true });
+    } finally {
+      setIsFeedLoading(false);
+      isLoadingRef.current = false;
+    }
+  }, [user]);
+
   const loadBookmarks = useCallback(async () => {
     if (!user || bookmarksLoaded) return;
 
@@ -1118,10 +1136,9 @@ function FeedPageContent() {
     if (showPersonalizedFeed) {
       loadFeed(user.uid);
     } else {
-      setIsFeedLoading(false);
-      setFeed([]);
+      loadTrendingFeed();
     }
-  }, [user, loading, showPersonalizedFeed, loadFeed]);
+  }, [user, loading, showPersonalizedFeed, loadFeed, loadTrendingFeed]);
 
   // Safety net: trigger feed generation if subscribed user has empty feed
   const hasTriggeredFeedGen = useRef(false);
@@ -1322,21 +1339,20 @@ function FeedPageContent() {
     if (item) {
       trackFeedItemClicked(itemId, item.type || item.source || 'blog', item.source || 'unknown');
 
-      // If item has summary, go to article view; otherwise open original link
+      // Unsubscribed users always open original source links (no free summaries).
+      if (!hasAccess) {
+        if (item.url) {
+          window.open(item.url, '_blank', 'noopener,noreferrer');
+        } else {
+          openSubscribePrompt('summary_gate', { item_id: itemId });
+        }
+        return;
+      }
+
+      // Subscribed users: if item has summary, go to article view; otherwise open original link
       const hasSummary = Boolean(item.summary?.short_article?.body);
       if (hasSummary) {
-        const isSample = item.metadata?.feed_category === 'sample_summary';
-        if (!hasAccess && !isSample) {
-          openSubscribePrompt('summary_gate', {
-            item_id: itemId,
-            summary_open_count: summaryOpenCount,
-          });
-          return;
-        }
-        trackSummaryOpened(itemId, hasAccess);
-        if (!hasAccess) {
-          setSummaryOpenCount((prev) => prev + 1);
-        }
+        
         router.push(`/feed?item=${itemId}`);
         window.scrollTo(0, 0);
       } else {
@@ -1381,10 +1397,6 @@ function FeedPageContent() {
         <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
-  }
-
-  if (profile?.onboarded && !hasAccess) {
-    return <FeedPaywall />;
   }
 
   // Article detail view
@@ -1507,7 +1519,7 @@ function FeedPageContent() {
           </div>
         </div>
       ) : !hasAccess && profile ? (
-        <div className="hidden md:block sticky top-14 md:top-16 z-40 bg-amber-100 dark:bg-[#1a1a10] border-b border-amber-200 dark:border-amber-900/60">
+        <div className="sticky top-14 md:top-16 z-40 bg-amber-100 dark:bg-[#1a1a10] border-b border-amber-200 dark:border-amber-900/60">
           <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-3 md:py-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -1516,10 +1528,10 @@ function FeedPageContent() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    You&apos;re seeing a starter feed
+                    You&apos;re seeing today&apos;s trending feed
                   </p>
                   <p className="text-xs text-secondary/70 mt-0.5">
-                    Unlock the full feed + AI-generated lessons from every article.
+                    Start a 3-day free trial to unlock your personalized feed + AI summaries.
                   </p>
                 </div>
               </div>
@@ -1528,7 +1540,7 @@ function FeedPageContent() {
                 className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent text-accent-foreground text-xs font-medium hover:bg-accent/90 transition-colors shrink-0"
               >
                 <Zap size={14} />
-                Unlock full feed
+                Start 3-day trial
               </Link>
             </div>
           </div>
@@ -1846,10 +1858,10 @@ function FeedPageContent() {
                       <div className="flex items-center gap-4">
                         <div>
                           <p className="text-base font-semibold text-foreground">
-                            Want more?
+                            Want a feed built around you?
                           </p>
                           <p className="text-sm text-secondary/70 mt-0.5">
-                            Unlock the full feed + AI-generated lessons from every article.
+                            Start a 3-day free trial to unlock your personalized feed and full AI summaries.
                           </p>
                         </div>
                       </div>
@@ -1858,7 +1870,7 @@ function FeedPageContent() {
                         className="flex items-center gap-2 px-6 py-3 rounded-full bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors shrink-0"
                       >
                         <Zap size={16} />
-                        Unlock full feed
+                        Start 3-day trial
                       </Link>
                     </div>
                   </div>

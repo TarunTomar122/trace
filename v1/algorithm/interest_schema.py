@@ -5,19 +5,9 @@ from typing import Any
 
 CANONICAL_INTERESTS = [
     {"id": "technology", "label": "Technology"},
-    {"id": "science", "label": "Science"},
-    {"id": "psychology", "label": "Psychology"},
-    {"id": "ideas", "label": "Ideas"},
-    {"id": "business", "label": "Business"},
-    {"id": "money", "label": "Money"},
-    {"id": "design", "label": "Design"},
-    {"id": "career", "label": "Career"},
-    {"id": "self-development", "label": "Self development"},
-    {"id": "health", "label": "Health"},
-    {"id": "cooking", "label": "Cooking"},
-    {"id": "culture", "label": "Culture"},
-    {"id": "relationships", "label": "Relationships"},
-    {"id": "society", "label": "Society"},
+    {"id": "business-market", "label": "Business & Market"},
+    {"id": "experience", "label": "Experience"},
+    {"id": "productivity", "label": "Productivity"},
 ]
 
 CANONICAL_INTEREST_IDS = {item["id"] for item in CANONICAL_INTERESTS}
@@ -27,100 +17,30 @@ SUBTOPIC_LABELS: dict[str, dict[str, str]] = {
     "technology": {
         "ai": "AI",
         "automation": "Automation",
-        "software": "Software",
+        "software-tech": "Software & Tech",
         "productivity-tools": "Productivity Tools",
         "future-tech": "Future Tech",
     },
-    "science": {
-        "space": "Space",
-        "biology": "Biology",
-        "physics": "Physics",
-        "climate": "Climate",
-        "explained": "Explained",
-    },
-    "psychology": {
-        "mental-health": "Mental Health",
-        "habits": "Habits",
-        "learning": "Learning",
-        "relationships": "Relationships",
-        "emotions": "Emotions",
-    },
-    "ideas": {
-        "philosophy": "Philosophy",
-        "essays": "Essays",
-        "creativity": "Creativity",
-        "meaning": "Meaning",
-        "big-ideas": "Big Ideas",
-    },
-    "business": {
+    "business-market": {
+        "product-strategy": "Product Strategy",
+        "market-trends": "Market Trends",
+        "economy-impact": "Economy & Impact",
         "startups": "Startups",
-        "product": "Product",
         "marketing": "Marketing",
-        "operations": "Operations",
-        "leadership": "Leadership",
     },
-    "money": {
-        "personal-finance": "Personal Finance",
-        "investing": "Investing",
-        "income": "Income",
-        "markets": "Markets",
-        "crypto": "Crypto",
-    },
-    "design": {
-        "visual-design": "Visual Design",
-        "ux": "UX",
-        "branding": "Branding",
+    "experience": {
         "creative-process": "Creative Process",
-        "tools": "Tools",
+        "design-tools": "Design Tools",
+        "ux-design": "UX Design",
+        "brand-storytelling": "Brand & Storytelling",
+        "user-psychology": "User Psychology",
     },
-    "career": {
-        "job-search": "Job Search",
-        "skills": "Skills",
-        "portfolio": "Portfolio",
+    "productivity": {
         "career-growth": "Career Growth",
-        "workplace": "Workplace",
-    },
-    "self-development": {
-        "focus": "Focus",
-        "routines": "Routines",
-        "mindset": "Mindset",
-        "confidence": "Confidence",
-        "life-design": "Life Design",
-    },
-    "health": {
-        "workouts": "Workouts",
-        "nutrition": "Nutrition",
-        "sleep": "Sleep",
-        "recovery": "Recovery",
-        "fitness": "Fitness",
-    },
-    "cooking": {
-        "recipes": "Recipes",
-        "healthy-meals": "Healthy Meals",
-        "baking": "Baking",
-        "drinks": "Drinks",
-        "food-culture": "Food Culture",
-    },
-    "culture": {
-        "movies": "Movies",
-        "music": "Music",
-        "games": "Games",
-        "books": "Books",
-        "internet": "Internet",
-    },
-    "relationships": {
-        "dating": "Dating",
-        "family": "Family",
-        "friendships": "Friendships",
-        "communication": "Communication",
-        "conflict": "Conflict",
-    },
-    "society": {
-        "politics": "Politics",
-        "economics": "Economics",
-        "history": "History",
-        "media": "Media",
-        "technology-impact": "Technology Impact",
+        "personal-finance": "Personal Finance",
+        "soft-skills": "Soft Skills",
+        "investments": "Investments",
+        "wellbeing": "Wellbeing",
     },
 }
 
@@ -134,27 +54,54 @@ INTEREST_KEYWORDS: dict[str, list[str]] = {
         "productivity tools",
         "future tech",
     ],
-    "science": ["science", "space", "biology", "physics", "climate", "explained"],
-    "psychology": ["psychology", "mental health", "habits", "learning", "emotions"],
-    "ideas": ["ideas", "philosophy", "essays", "creativity", "meaning", "big ideas"],
-    "business": ["business", "startups", "product", "marketing", "operations", "leadership"],
-    "money": ["money", "finance", "investing", "markets", "crypto", "personal finance"],
-    "design": ["design", "visual design", "ux", "branding", "creative process", "tools"],
-    "career": ["career", "job search", "skills", "portfolio", "career growth", "workplace"],
-    "self-development": [
-        "self development",
-        "personal growth",
-        "mindset",
-        "confidence",
-        "routines",
-        "focus",
-        "life design",
+    "business-market": [
+        "business",
+        "market",
+        "startup",
+        "startups",
+        "product strategy",
+        "market trends",
+        "economy",
+        "economic impact",
+        "marketing",
     ],
-    "health": ["health", "fitness", "nutrition", "sleep", "workouts", "recovery"],
-    "cooking": ["cooking", "recipes", "baking", "food culture", "drinks", "healthy meals"],
-    "culture": ["culture", "movies", "music", "games", "books", "internet"],
-    "relationships": ["relationships", "dating", "family", "friendships", "communication", "conflict"],
-    "society": ["society", "politics", "economics", "history", "media", "technology impact"],
+    "experience": [
+        "experience",
+        "ux",
+        "ux design",
+        "design",
+        "design tools",
+        "creative process",
+        "brand",
+        "storytelling",
+        "user psychology",
+    ],
+    "productivity": [
+        "productivity",
+        "career growth",
+        "personal finance",
+        "soft skills",
+        "investments",
+        "wellbeing",
+        "well-being",
+    ],
+}
+
+# Backward compatibility map for legacy interests already stored in user profiles.
+LEGACY_INTEREST_ALIASES: dict[str, str] = {
+    "science": "technology",
+    "psychology": "experience",
+    "ideas": "experience",
+    "business": "business-market",
+    "money": "productivity",
+    "design": "experience",
+    "career": "productivity",
+    "self-development": "productivity",
+    "health": "productivity",
+    "cooking": "productivity",
+    "culture": "experience",
+    "relationships": "experience",
+    "society": "business-market",
 }
 
 
@@ -201,6 +148,8 @@ def map_to_canonical_interest_id(value: str | None) -> str | None:
         return None
     if normalized in CANONICAL_INTEREST_IDS:
         return normalized
+    if normalized in LEGACY_INTEREST_ALIASES:
+        return LEGACY_INTEREST_ALIASES[normalized]
     for interest_id, label in CANONICAL_INTEREST_LABELS.items():
         if _normalize_text(label) == normalized:
             return interest_id

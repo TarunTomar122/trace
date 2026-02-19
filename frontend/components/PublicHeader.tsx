@@ -1,9 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { ArrowLeft, Sun, Moon, Lightbulb } from 'lucide-react';
-import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
+import { ArrowLeft, Lightbulb } from 'lucide-react';
 
 interface PublicHeaderProps {
   backHref?: string;
@@ -16,11 +14,6 @@ export default function PublicHeader({
   backLabel = "Back",
   showHome = true,
 }: PublicHeaderProps) {
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
-
   return (
     <header className="border-b border-gray-100 dark:border-gray-800 sticky top-0 bg-white/95 dark:bg-[#101014]/95 backdrop-blur-md z-50">
       <div className="container mx-auto px-4 md:px-6 lg:px-8 max-w-6xl">
@@ -49,16 +42,6 @@ export default function PublicHeader({
 
           {/* Right side */}
           <div className="flex items-center gap-2 md:gap-4 flex-1 justify-end">
-            {/* Theme toggle */}
-            {mounted && (
-              <button
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-secondary hover:text-foreground"
-                title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              >
-                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
-            )}
             {showHome && (
               <Link 
                 href="/" 

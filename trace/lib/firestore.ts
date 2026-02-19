@@ -105,119 +105,39 @@ export interface UserFeed {
 // ============ Constants ============
 export const INTERESTS = [
   { id: 'technology', label: 'Technology' },
-  { id: 'science', label: 'Science' },
-  { id: 'psychology', label: 'Psychology' },
-  { id: 'ideas', label: 'Ideas' },
-  { id: 'business', label: 'Business' },
-  { id: 'money', label: 'Money' },
-  { id: 'design', label: 'Design' },
-  { id: 'career', label: 'Career' },
-  { id: 'self-development', label: 'Self development' },
-  { id: 'health', label: 'Health' },
-  { id: 'cooking', label: 'Cooking' },
-  { id: 'culture', label: 'Culture' },
-  { id: 'relationships', label: 'Relationships' },
-  { id: 'society', label: 'Society' },
+  { id: 'business-market', label: 'Business & Market' },
+  { id: 'experience', label: 'Experience' },
+  { id: 'productivity', label: 'Productivity' },
 ];
 
 export const INTEREST_SUBTOPICS: Record<string, { id: string; label: string }[]> = {
   technology: [
     { id: 'ai', label: 'AI' },
     { id: 'automation', label: 'Automation' },
-    { id: 'software', label: 'Software' },
+    { id: 'software-tech', label: 'Software & Tech' },
     { id: 'productivity-tools', label: 'Productivity Tools' },
     { id: 'future-tech', label: 'Future Tech' },
   ],
-  science: [
-    { id: 'space', label: 'Space' },
-    { id: 'biology', label: 'Biology' },
-    { id: 'physics', label: 'Physics' },
-    { id: 'climate', label: 'Climate' },
-    { id: 'explained', label: 'Explained' },
-  ],
-  psychology: [
-    { id: 'mental-health', label: 'Mental Health' },
-    { id: 'habits', label: 'Habits' },
-    { id: 'learning', label: 'Learning' },
-    { id: 'relationships', label: 'Relationships' },
-    { id: 'emotions', label: 'Emotions' },
-  ],
-  ideas: [
-    { id: 'philosophy', label: 'Philosophy' },
-    { id: 'essays', label: 'Essays' },
-    { id: 'creativity', label: 'Creativity' },
-    { id: 'meaning', label: 'Meaning' },
-    { id: 'big-ideas', label: 'Big Ideas' },
-  ],
-  business: [
+  'business-market': [
+    { id: 'product-strategy', label: 'Product Strategy' },
+    { id: 'market-trends', label: 'Market Trends' },
+    { id: 'economy-impact', label: 'Economy & Impact' },
     { id: 'startups', label: 'Startups' },
-    { id: 'product', label: 'Product' },
     { id: 'marketing', label: 'Marketing' },
-    { id: 'operations', label: 'Operations' },
-    { id: 'leadership', label: 'Leadership' },
   ],
-  money: [
-    { id: 'personal-finance', label: 'Personal Finance' },
-    { id: 'investing', label: 'Investing' },
-    { id: 'income', label: 'Income' },
-    { id: 'markets', label: 'Markets' },
-    { id: 'crypto', label: 'Crypto' },
-  ],
-  design: [
-    { id: 'visual-design', label: 'Visual Design' },
-    { id: 'ux', label: 'UX' },
-    { id: 'branding', label: 'Branding' },
+  experience: [
     { id: 'creative-process', label: 'Creative Process' },
-    { id: 'tools', label: 'Tools' },
+    { id: 'design-tools', label: 'Design Tools' },
+    { id: 'ux-design', label: 'UX Design' },
+    { id: 'brand-storytelling', label: 'Brand & Storytelling' },
+    { id: 'user-psychology', label: 'User Psychology' },
   ],
-  career: [
-    { id: 'job-search', label: 'Job Search' },
-    { id: 'skills', label: 'Skills' },
-    { id: 'portfolio', label: 'Portfolio' },
+  productivity: [
     { id: 'career-growth', label: 'Career Growth' },
-    { id: 'workplace', label: 'Workplace' },
-  ],
-  'self-development': [
-    { id: 'focus', label: 'Focus' },
-    { id: 'routines', label: 'Routines' },
-    { id: 'mindset', label: 'Mindset' },
-    { id: 'confidence', label: 'Confidence' },
-    { id: 'life-design', label: 'Life Design' },
-  ],
-  health: [
-    { id: 'workouts', label: 'Workouts' },
-    { id: 'nutrition', label: 'Nutrition' },
-    { id: 'sleep', label: 'Sleep' },
-    { id: 'recovery', label: 'Recovery' },
-    { id: 'fitness', label: 'Fitness' },
-  ],
-  cooking: [
-    { id: 'recipes', label: 'Recipes' },
-    { id: 'healthy-meals', label: 'Healthy Meals' },
-    { id: 'baking', label: 'Baking' },
-    { id: 'drinks', label: 'Drinks' },
-    { id: 'food-culture', label: 'Food Culture' },
-  ],
-  culture: [
-    { id: 'movies', label: 'Movies' },
-    { id: 'music', label: 'Music' },
-    { id: 'games', label: 'Games' },
-    { id: 'books', label: 'Books' },
-    { id: 'internet', label: 'Internet' },
-  ],
-  relationships: [
-    { id: 'dating', label: 'Dating' },
-    { id: 'family', label: 'Family' },
-    { id: 'friendships', label: 'Friendships' },
-    { id: 'communication', label: 'Communication' },
-    { id: 'conflict', label: 'Conflict' },
-  ],
-  society: [
-    { id: 'politics', label: 'Politics' },
-    { id: 'economics', label: 'Economics' },
-    { id: 'history', label: 'History' },
-    { id: 'media', label: 'Media' },
-    { id: 'technology-impact', label: 'Technology Impact' },
+    { id: 'personal-finance', label: 'Personal Finance' },
+    { id: 'soft-skills', label: 'Soft Skills' },
+    { id: 'investments', label: 'Investments' },
+    { id: 'wellbeing', label: 'Wellbeing' },
   ],
 };
 
@@ -615,42 +535,107 @@ export async function getLatestUserFeed(uid: string): Promise<UserFeed | null> {
   }
 }
 
+/** Simple hash for generating stable IDs without Buffer/Node APIs. */
+function _shortHash(str: string): string {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h).toString(36).slice(0, 8);
+}
+
 /**
- * Get a general/trending feed for users who haven't onboarded yet
- * This fetches from a generic feed collection
+ * Get trending news items (shown to unsubscribed users).
+ * Reads from trending_news/{date}/topics subcollection and returns
+ * up to `maxItems` FeedItem-shaped objects (no summaries).
+ * Scans back up to 5 days to handle pipeline delays.
+ */
+export async function getTrendingFeed(maxItems = 6): Promise<FeedItem[]> {
+  try {
+    // Use IST date
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istNow = new Date(Date.now() + istOffset);
+
+    // Try today + last 4 days in case today's pipeline hasn't run yet
+    const datesToTry: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(istNow.getTime() - i * 86400000);
+      datesToTry.push(d.toISOString().split('T')[0]);
+    }
+
+    for (const date of datesToTry) {
+      const topicsRef = collection(firestore, 'trending_news', date, 'topics');
+      const snapshot = await getDocs(topicsRef);
+      if (snapshot.empty) continue;
+
+      const items: FeedItem[] = [];
+      const perTopic = Math.max(2, Math.ceil(maxItems / snapshot.docs.length));
+
+      for (const topicDoc of snapshot.docs) {
+        const data = topicDoc.data();
+        const articles: any[] = data.articles || [];
+        const topicName: string = data.name || topicDoc.id;
+
+        for (const article of articles.slice(0, perTopic)) {
+          if (!article.url || !article.title) continue;
+          const subtitle: string = article.subtitle || '';
+          const details: string = article.details || '';
+          items.push({
+            id: `trending-${topicDoc.id}-${_shortHash(article.url)}`,
+            title: article.title,
+            url: article.url,
+            type: 'news',
+            source: article.source_domain || '',
+            tags: [topicDoc.id],
+            thumbnail: article.thumbnail || '',
+            // Map backend subtitle/details → summary shape so FeedCard shows
+            // the snippet and tapping opens the in-app detail view
+            summary: (subtitle || details) ? {
+              short_article: {
+                subtitle,
+                body: details || subtitle,
+                outline: [],
+              },
+              reading_time_minutes: 2,
+            } : undefined,
+            metadata: {
+              feed_category: 'trending_news',
+              why_relevant: `Trending in ${topicName}`,
+              is_hot: false,
+            },
+          });
+          if (items.length >= maxItems) break;
+        }
+        if (items.length >= maxItems) break;
+      }
+
+      if (items.length > 0) {
+        // Shuffle so same topics don't always appear first
+        for (let i = items.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [items[i], items[j]] = [items[j], items[i]];
+        }
+        return items.slice(0, maxItems);
+      }
+    }
+
+    console.log('[TrendingFeed] No trending news found in Firestore for last 5 days');
+    return [];
+  } catch (error) {
+    console.error('Error getting trending feed:', error);
+    return [];
+  }
+}
+
+/**
+ * @deprecated Use getTrendingFeed instead
  */
 export async function getGeneralFeed(): Promise<UserFeed | null> {
-  try {
-    // Try to get from general_feeds collection
-    const generalFeedRef = collection(firestore, 'general_feeds');
-    const snapshot = await getDocs(generalFeedRef);
-    
-    if (!snapshot.empty) {
-      const sortedDocs = snapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
-      return sortedDocs[0].data() as UserFeed;
-    }
-    
-    // Fallback: get sample items from various topics
-    const articlesRef = collection(firestore, 'articles');
-    const q = query(articlesRef, limit(10));
-    const articlesSnapshot = await getDocs(q);
-    
-    if (articlesSnapshot.empty) return null;
-    
-    const items: FeedItem[] = articlesSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as FeedItem));
-    
-    return {
-      date: new Date().toISOString().split('T')[0],
-      items,
-      metadata: {
-        is_preview: true,
-      }
-    };
-  } catch (error) {
-    console.error('Error getting general feed:', error);
-    return null;
-  }
+  const items = await getTrendingFeed();
+  if (!items.length) return null;
+  return {
+    date: new Date().toISOString().split('T')[0],
+    items,
+    metadata: { is_preview: true },
+  };
 }

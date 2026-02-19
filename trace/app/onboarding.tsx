@@ -3,7 +3,6 @@ import {
   Pressable,
   StyleSheet,
   View,
-  Image,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -22,6 +21,7 @@ import { Check, ChevronLeft } from 'lucide-react-native';
 import CalendarIllus from '@/assets/images/calendar-svgrepo-com.svg';
 
 import { ThemedText } from '@/components/themed-text';
+import { AppLogo } from '@/components/app-logo';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,19 +41,9 @@ const TOTAL_STEPS = 3;
 // Personalised feature-forward copy per interest
 const INTEREST_OUTCOMES: Record<string, string> = {
   technology: 'Get top tech links with AI summaries and key takeaways',
-  science: 'See science updates with quick summaries and context',
-  psychology: 'Read psychology ideas with practical takeaways you can apply',
-  ideas: 'Turn long-form ideas into short, structured notes',
-  business: 'Track business stories with clear summaries and action points',
-  money: 'Follow finance and investing links with easy AI breakdowns',
-  design: 'Save design references and review key insights faster',
-  career: 'Surface career links with concrete tips and next steps',
-  'self-development': 'Convert growth content into daily actionable notes',
-  health: 'Read health updates with practical guidance upfront',
-  cooking: 'Discover recipes and food ideas with quick context',
-  culture: 'Keep up with culture stories using fast summaries',
-  relationships: 'Get relationship insights with practical examples',
-  society: 'Follow major topics with quick context and core points',
+  'business-market': 'Track markets, startups, and strategy with clear takeaways',
+  experience: 'Follow UX and design insights with practical frameworks',
+  productivity: 'Get actionable ideas for growth, focus, and better work',
 };
 
 // ─── Pill types ───
@@ -290,9 +280,14 @@ export default function OnboardingScreen() {
       });
 
       await refreshProfile();
-      
-      // Take user to paywall after onboarding
-      router.replace('/paywall?fromOnboarding=true');
+
+      if (isEditMode) {
+        // Editing preferences: return to the app
+        router.replace('/(tabs)/explore');
+      } else {
+        // New user: take to paywall after onboarding
+        router.replace('/paywall?fromOnboarding=true');
+      }
     } catch (error) {
       console.error('Error completing onboarding:', error);
       showToast('Could not finish setup. Please try again.', 'error');
@@ -371,11 +366,7 @@ export default function OnboardingScreen() {
           {step === 1 && (
             <Animated.View entering={FadeIn.duration(450)} exiting={FadeOut.duration(200)}>
               <View style={styles.titleRow}>
-                <Image
-                  source={require('@/assets/images/trace-logo.png')}
-                  style={styles.titleLogo}
-                  resizeMode="contain"
-                />
+                <AppLogo style={styles.titleLogo} />
                 <ThemedText style={styles.title}>
                   Choose areas you would{'\n'}like to explore
                 </ThemedText>
@@ -487,11 +478,7 @@ export default function OnboardingScreen() {
           {step === 3 && (
             <Animated.View entering={FadeIn.duration(450)} exiting={FadeOut.duration(200)}>
               <View style={styles.titleRow}>
-                <Image
-                  source={require('@/assets/images/trace-logo.png')}
-                  style={styles.titleLogo}
-                  resizeMode="contain"
-                />
+                <AppLogo style={styles.titleLogo} />
                 <ThemedText style={styles.title}>
                   What are your skills?
                 </ThemedText>

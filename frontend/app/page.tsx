@@ -26,11 +26,8 @@ import {
   ArrowUpRight,
   Lightbulb,
   Search,
-  TrendingUp,
-  Sun,
-  Moon
+  TrendingUp
 } from 'lucide-react';
-import { useTheme } from 'next-themes';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useAuth } from '@/contexts/AuthContext';
@@ -235,17 +232,13 @@ const WaitlistBanner = () => {
 const Nav = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const { user, profile, signInWithGoogle, signOut } = useAuth();
-  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  useEffect(() => setMounted(true), []);
 
   const showBanner = !isAlphaMode();
 
@@ -306,16 +299,6 @@ const Nav = () => {
 
             {/* Desktop Right Nav */}
             <div className="hidden md:flex items-center gap-3 flex-1 justify-end">
-              {/* Theme toggle */}
-              {mounted && (
-                <button
-                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-secondary hover:text-foreground"
-                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                >
-                  {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-                </button>
-              )}
               {user ? (
                 <div className="flex items-center gap-3">
                   <Link href="/profile" className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
@@ -339,16 +322,6 @@ const Nav = () => {
 
             {/* Mobile CTA */}
             <div className="md:hidden flex items-center gap-2">
-              {/* Mobile Theme toggle */}
-              {mounted && (
-                <button
-                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-secondary hover:text-foreground"
-                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                >
-                  {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-                </button>
-              )}
               {user ? (
                 <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                   {user.photoURL && (

@@ -8,7 +8,6 @@ import {
   ScrollView,
   Text,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
 import Animated, {
   useSharedValue,
   useAnimatedScrollHandler,
@@ -18,8 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
-import { Moon, Sun, Lock, Zap, CheckCircle2, Bell } from 'lucide-react-native';
+import { Moon, Sun, Zap } from 'lucide-react-native';
 
 import NewspaperIllus from '@/assets/images/newspaper-svgrepo-com.svg';
 
@@ -30,7 +28,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { FeedItem, UserFeed, getLatestUserFeed, triggerFeedGeneration } from '@/lib/firestore';
+import { FeedItem, UserFeed, getLatestUserFeed, getTrendingFeed, triggerFeedGeneration, updateUserProfile } from '@/lib/firestore';
 import { logReadingEvent } from '@/lib/reading-analytics';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 
@@ -38,6 +36,10 @@ const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 
 // Threshold where the sticky header kicks in
 const COLLAPSE_THRESHOLD = 70;
+const ILLUS_PALETTE = {
+  gold: { light: '#fff7ed', dark: '#2a1f10' },
+  lavender: { light: '#f5f3ff', dark: '#22183a' },
+} as const;
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -48,7 +50,7 @@ function getGreeting(): string {
 
 export default function FeedScreen() {
   const router = useRouter();
-  const { user, profile } = useAuth();
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth();
   const { toggleTheme } = useTheme();
   const colorScheme = useColorScheme() ?? 'light';
 
@@ -140,13 +142,38 @@ export default function FeedScreen() {
   const isOnboarded = profile?.onboarded ?? false;
   const { showToast } = useToast();
 
-  // Redirect to onboarding if not onboarded
+  const [trendingFeed, setTrendingFeed] = useState<FeedItem[]>([]);
+  const [isTrendingLoading, setIsTrendingLoading] = useState(false);
+  const [isGrantingPremium, setIsGrantingPremium] = useState(false);
+
+  const handleGrantGiftPremium = useCallback(async () => {
+    if (!user || isGrantingPremium) return;
+    setIsGrantingPremium(true);
+    try {
+      await updateUserProfile(user.uid, {
+        subscriptionStatus: 'active',
+        appSubscriptionStatus: 'active',
+      });
+      await refreshProfile();
+      showToast('Gift premium access activated. Building your personalized feed...', 'success');
+      await triggerFeedGeneration(user.uid, { reason: 'manual', force: true });
+    } catch (error) {
+      console.error('Error granting gift premium access:', error);
+      showToast('Could not activate gift premium access. Please try again.', 'error');
+    } finally {
+      setIsGrantingPremium(false);
+    }
+  }, [user, isGrantingPremium, refreshProfile, showToast]);
+
+  // Redirect to onboarding if not onboarded — wait for BOTH auth and RC to load
+  // before checking, otherwise a fast RC load races against a slow Firestore
+  // profile read and redirects an already-onboarded user back to onboarding.
   useEffect(() => {
-    if (rcLoading) return;
+    if (authLoading || rcLoading) return;
     if (!isOnboarded) {
       router.replace('/onboarding');
     }
-  }, [isOnboarded, rcLoading, router]);
+  }, [isOnboarded, authLoading, rcLoading, router]);
 
   const normalizeInterest = useCallback((interest: string) => {
     return interest
@@ -278,6 +305,18 @@ export default function FeedScreen() {
     }
   }, [user, isSubscribed, getFeedVersion]);
 
+  // Load trending news for unsubscribed users
+  useEffect(() => {
+    if (rcLoading) return;
+    if (!isSubscribed && isOnboarded) {
+      setIsTrendingLoading(true);
+      getTrendingFeed(6).then((items) => {
+        setTrendingFeed(items);
+        setIsTrendingLoading(false);
+      });
+    }
+  }, [isSubscribed, isOnboarded, rcLoading]);
+
   useEffect(() => {
     if (!isOnboarded || !isSubscribed) {
       setIsLoading(false);
@@ -388,8 +427,6 @@ export default function FeedScreen() {
   }, [isFeedGenerating, loadFeed, isSubscribed, feed, showToast]);
 
   const handleFeedItemPress = (item: FeedItem) => {
-    const hasSummary = !!item.summary?.short_article?.body;
-
     logReadingEvent({
       eventType: 'feed_open',
       itemId: item.id,
@@ -400,36 +437,26 @@ export default function FeedScreen() {
       feedCategory: item.metadata?.feed_category,
     });
 
-    // Subscribed users: open article if summary exists, else open URL
-    if (hasSummary) {
-      router.push({
-        pathname: '/article',
-        params: {
-          id: item.id,
-          title: item.title,
-          url: item.url,
-          thumbnail: item.thumbnail || '',
-          type: item.type || item.source || 'blog',
-          subtitle: item.summary?.short_article?.subtitle || '',
-          body: item.summary?.short_article?.body || '',
-          reading_time: item.summary?.reading_time_minutes?.toString() || '',
-          why_relevant: item.metadata?.why_relevant || '',
-          is_hot: item.metadata?.is_hot ? 'true' : 'false',
-          feed_category: item.metadata?.feed_category || '',
-        },
-      });
-    } else if (item.url) {
-      logReadingEvent({
-        eventType: 'external_open',
-        itemId: item.id,
+    const fallbackBody =
+      item.summary?.short_article?.body ||
+      item.description ||
+      'Open the original article to read the full story.';
+    router.push({
+      pathname: '/article',
+      params: {
+        id: item.id,
         title: item.title,
         url: item.url,
-        tags: item.tags,
-        itemType: item.type || item.source,
-        feedCategory: item.metadata?.feed_category,
-      });
-      WebBrowser.openBrowserAsync(item.url);
-    }
+        thumbnail: item.thumbnail || '',
+        type: item.type || item.source || 'blog',
+        subtitle: item.summary?.short_article?.subtitle || '',
+        body: fallbackBody,
+        reading_time: item.summary?.reading_time_minutes?.toString() || '',
+        why_relevant: item.metadata?.why_relevant || '',
+        is_hot: item.metadata?.is_hot ? 'true' : 'false',
+        feed_category: item.metadata?.feed_category || '',
+      },
+    });
   };
 
   const renderFilterPill = (id: string, label: string) => {
@@ -548,97 +575,89 @@ export default function FeedScreen() {
         </Animated.View>
 
 
-        {/* Inline paywall for unsubscribed users */}
+        {/* Trending feed for unsubscribed users */}
         {!isSubscribed && !rcLoading && (
-          <View style={paywallStyles.container}>
-            {/* Blurred fake feed items */}
-            <View style={paywallStyles.blurredFeed}>
-              {[
-                'How AI Is Reshaping Development',
-                'The State of Cloud in 2026',
-                'Building Reliable Systems at Scale',
-                'Why Engineers Are Betting on Rust',
-                'Modern Authentication Patterns',
-              ].map((title, i) => (
-                <View key={i} style={[paywallStyles.fakeCard, { borderBottomColor: Colors[colorScheme].border }]}>
-                  <View style={paywallStyles.fakeCardRow}>
-                    <View style={paywallStyles.fakeTextCol}>
-                      <View style={[paywallStyles.fakeBadge, { backgroundColor: Colors[colorScheme].border }]} />
-                      <Text style={[paywallStyles.fakeTitle, { color: Colors[colorScheme].text }]} numberOfLines={2}>
-                        {title}
-                      </Text>
-                      <View style={[paywallStyles.fakeMeta, { backgroundColor: Colors[colorScheme].border }]} />
+          <>
+            {isTrendingLoading ? (
+              <View style={styles.loadingContainer}>
+                {[1, 2, 3, 4].map((i) => (
+                  <View key={i} style={styles.skeletonItem}>
+                    <View style={styles.skeletonRow}>
+                      <View style={styles.skeletonTextCol}>
+                        <View style={[styles.skeletonMeta, { backgroundColor: Colors[colorScheme].border }]} />
+                        <View style={[styles.skeletonTitle, { backgroundColor: Colors[colorScheme].border }]} />
+                        <View style={[styles.skeletonSub, { backgroundColor: Colors[colorScheme].border }]} />
+                      </View>
+                      <View style={[styles.skeletonThumb, { backgroundColor: Colors[colorScheme].border }]} />
                     </View>
-                    <View style={[paywallStyles.fakeThumb, { backgroundColor: Colors[colorScheme].border }]} />
                   </View>
-                </View>
-              ))}
-            </View>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.feedList}>
+                {trendingFeed.map((item, index) => (
+                  <View key={`trending-${item.id}-${index}`}>
+                    {index > 0 && (
+                      <View style={[styles.separator, { backgroundColor: Colors[colorScheme].border }]} />
+                    )}
+                    <FeedCard
+                      item={item}
+                      colorScheme={colorScheme}
+                      onPress={() => handleFeedItemPress(item)}
+                    />
+                  </View>
+                ))}
+              </View>
+            )}
 
-            {/* Blur overlay */}
-            <BlurView
-              intensity={25}
-              tint={colorScheme === 'dark' ? 'dark' : 'light'}
-              style={StyleSheet.absoluteFill}
-            />
-
-            {/* Paywall content */}
-            <View style={[StyleSheet.absoluteFill, paywallStyles.overlay]}>
-              <View style={[paywallStyles.card, { backgroundColor: colorScheme === 'dark' ? '#1a1a24' : '#ffffff' }]}>
-                <View style={[paywallStyles.iconCircle, { backgroundColor: colorScheme === 'dark' ? '#052e16' : '#ecfdf5' }]}>
-                  <Lock size={24} color={colorScheme === 'dark' ? '#6ee7b7' : '#059669'} />
-                </View>
-
-                <Text style={[paywallStyles.cardTitle, { color: Colors[colorScheme].text }]}>
-                  Your feed is ready
+            {/* Subscribe CTA banner */}
+            {!isTrendingLoading && (
+              <View style={[
+                ctaStyles.banner,
+                {
+                  backgroundColor: colorScheme === 'dark' ? '#0d1f12' : '#f0fdf4',
+                  borderColor: colorScheme === 'dark' ? '#166534' : '#bbf7d0',
+                },
+              ]}>
+                <Text style={[ctaStyles.bannerEyebrow, { color: colorScheme === 'dark' ? '#6ee7b7' : '#059669' }]}>
+                  YOU{"'"}RE READING TRENDING NEWS
                 </Text>
-                <Text style={[paywallStyles.cardSubtitle, { color: Colors[colorScheme].muted }]}>
-                  Start a free trial to unlock your personalized feed and AI summaries.
+                <Text style={[ctaStyles.bannerTitle, { color: Colors[colorScheme].text }]}>
+                  Want stories picked just for you?
                 </Text>
-
-                {/* Timeline */}
-                <View style={paywallStyles.timeline}>
-                  <View style={paywallStyles.timelineStep}>
-                    <View style={[paywallStyles.stepDot, { backgroundColor: colorScheme === 'dark' ? '#6ee7b7' : '#059669' }]}>
-                      <Lock size={12} color="#fff" />
-                    </View>
-                    <View style={paywallStyles.stepText}>
-                      <Text style={[paywallStyles.stepTitle, { color: Colors[colorScheme].text }]}>Today</Text>
-                      <Text style={[paywallStyles.stepDesc, { color: Colors[colorScheme].muted }]}>Full access to your feed & AI summaries.</Text>
-                    </View>
-                  </View>
-                  <View style={paywallStyles.timelineStep}>
-                    <View style={[paywallStyles.stepDot, { backgroundColor: colorScheme === 'dark' ? 'rgba(110,231,183,0.6)' : 'rgba(5,150,105,0.6)' }]}>
-                      <Bell size={12} color="#fff" />
-                    </View>
-                    <View style={paywallStyles.stepText}>
-                      <Text style={[paywallStyles.stepTitle, { color: Colors[colorScheme].text }]}>Before trial ends</Text>
-                      <Text style={[paywallStyles.stepDesc, { color: Colors[colorScheme].muted }]}>We{"'"}ll remind you.</Text>
-                    </View>
-                  </View>
-                  <View style={paywallStyles.timelineStep}>
-                    <View style={[paywallStyles.stepDot, { backgroundColor: colorScheme === 'dark' ? 'rgba(110,231,183,0.3)' : 'rgba(5,150,105,0.3)' }]}>
-                      <CheckCircle2 size={12} color="#fff" />
-                    </View>
-                    <View style={paywallStyles.stepText}>
-                      <Text style={[paywallStyles.stepTitle, { color: Colors[colorScheme].text }]}>After trial</Text>
-                      <Text style={[paywallStyles.stepDesc, { color: Colors[colorScheme].muted }]}>Cancel anytime before — no charge.</Text>
-                    </View>
-                  </View>
-                </View>
-
+                <Text style={[ctaStyles.bannerBody, { color: Colors[colorScheme].muted }]}>
+                  Start a free trial to unlock your personalized feed with AI summaries — built around your interests, not the crowd.
+                </Text>
+                <Pressable
+                  onPress={handleGrantGiftPremium}
+                  disabled={isGrantingPremium}
+                  style={[
+                    ctaStyles.giftButton,
+                    {
+                      borderColor: colorScheme === 'dark' ? '#6ee7b7' : '#059669',
+                      opacity: isGrantingPremium ? 0.6 : 1,
+                    },
+                  ]}
+                >
+                  <Text style={[ctaStyles.giftButtonText, { color: colorScheme === 'dark' ? '#6ee7b7' : '#059669' }]}>
+                    {isGrantingPremium ? 'Activating free premium...' : 'Get Free Premium Access'}
+                  </Text>
+                </Pressable>
                 <Pressable
                   onPress={() => router.push('/paywall')}
-                  style={[paywallStyles.ctaButton, { backgroundColor: colorScheme === 'dark' ? '#6ee7b7' : '#059669' }]}
+                  style={[ctaStyles.ctaButton, { backgroundColor: colorScheme === 'dark' ? '#6ee7b7' : '#059669' }]}
                 >
                   <Zap size={16} color={colorScheme === 'dark' ? '#052e20' : '#ffffff'} />
-                  <Text style={[paywallStyles.ctaText, { color: colorScheme === 'dark' ? '#052e20' : '#ffffff' }]}>
+                  <Text style={[ctaStyles.ctaText, { color: colorScheme === 'dark' ? '#052e20' : '#ffffff' }]}>
                     Start Free Trial
                   </Text>
                 </Pressable>
+                <Text style={[ctaStyles.bannerLegal, { color: Colors[colorScheme].muted }]}>
+                  4-day free trial · Cancel anytime
+                </Text>
               </View>
-            </View>
-          </View>
+            )}
+          </>
         )}
 
         {/* Feed generating - poll in progress */}
@@ -939,117 +958,47 @@ const styles = StyleSheet.create({
   },
 });
 
-const paywallStyles = StyleSheet.create({
-  container: {
-    position: 'relative',
-    minHeight: 520,
-    overflow: 'hidden',
+const ctaStyles = StyleSheet.create({
+  banner: {
     borderRadius: 16,
-    marginTop: 4,
-  },
-  blurredFeed: {
-    opacity: 0.6,
-  },
-  fakeCard: {
-    paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  fakeCardRow: {
-    flexDirection: 'row',
-    gap: 14,
-  },
-  fakeTextCol: {
-    flex: 1,
-    gap: 8,
-  },
-  fakeBadge: {
-    width: 50,
-    height: 10,
-    borderRadius: 4,
-    opacity: 0.5,
-  },
-  fakeTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    lineHeight: 22,
-  },
-  fakeMeta: {
-    width: 80,
-    height: 10,
-    borderRadius: 4,
-    opacity: 0.3,
-  },
-  fakeThumb: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    opacity: 0.4,
-  },
-  overlay: {
-    justifyContent: 'center',
+    borderWidth: 1,
+    padding: 24,
+    marginTop: 24,
+    marginBottom: 8,
     alignItems: 'center',
-    paddingHorizontal: 24,
   },
-  card: {
-    width: '100%',
-    borderRadius: 20,
-    padding: 28,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 12,
+  bannerEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 8,
   },
-  iconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  cardTitle: {
-    fontSize: 22,
+  bannerTitle: {
+    fontSize: 20,
     fontWeight: '700',
     letterSpacing: -0.3,
-    marginBottom: 6,
     textAlign: 'center',
+    marginBottom: 10,
   },
-  cardSubtitle: {
+  bannerBody: {
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 21,
     textAlign: 'center',
     marginBottom: 20,
   },
-  timeline: {
+  giftButton: {
     width: '100%',
-    gap: 14,
-    marginBottom: 24,
-  },
-  timelineStep: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  stepDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 10,
   },
-  stepText: {
-    flex: 1,
-  },
-  stepTitle: {
+  giftButtonText: {
     fontSize: 14,
-    fontWeight: '600',
-  },
-  stepDesc: {
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 1,
+    fontWeight: '700',
   },
   ctaButton: {
     flexDirection: 'row',
@@ -1057,11 +1006,16 @@ const paywallStyles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     width: '100%',
-    paddingVertical: 16,
-    borderRadius: 14,
+    paddingVertical: 15,
+    borderRadius: 999,
+    marginBottom: 10,
   },
   ctaText: {
     fontSize: 16,
     fontWeight: '700',
+  },
+  bannerLegal: {
+    fontSize: 12,
+    textAlign: 'center',
   },
 });

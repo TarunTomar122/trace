@@ -11,29 +11,17 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 14400; // Revalidate every 4 hours
 
 const ALLOWED_TOPICS = [
-  'mental-wellness',
-  'health-fitness',
-  'relationships',
-  'money',
-  'career',
-  'learning',
+  'technology',
+  'business-market',
+  'experience',
   'productivity',
-  'creativity',
-  'travel',
-  'culture',
 ] as const;
 
 const TOPIC_DISPLAY_NAMES: Record<string, string> = {
-  'mental-wellness': 'Mental Wellness',
-  'health-fitness': 'Health & Fitness',
-  'relationships': 'Relationships',
-  'money': 'Money & Personal Finance',
-  'career': 'Career & Work',
-  'learning': 'Learning & Skills',
+  'technology': 'Technology',
+  'business-market': 'Business & Market',
+  'experience': 'Experience',
   'productivity': 'Productivity',
-  'creativity': 'Creativity',
-  'travel': 'Travel & Adventure',
-  'culture': 'Culture & Entertainment',
 };
 
 type FeedItem = {

@@ -1,8 +1,8 @@
 """
-Send Free Newsletter - sends the generic daily newsletter to all
+Send Free Newsletter - sends the curated AI/tech daily newsletter to all
 free subscribers (landing page signups + unsubscribed users).
 
-Uses the same templates as the paid newsletter.
+Uses free_newsletter.html template with LLM-generated subject + intro.
 
 Usage:
     python v1/flows/send_free_newsletter.py --date 2026-02-05
@@ -55,9 +55,10 @@ def _load_template(name: str) -> str:
 def _generate_html(
     items: list[dict],
     date: str,
+    intro_html: str = "",
 ) -> str:
     """Generate HTML for the free newsletter."""
-    main_tpl = _load_template("newsletter.html")
+    main_tpl = _load_template("free_newsletter.html")
     item_tpl = _load_template("newsletter_item.html")
 
     items_html = ""
@@ -80,16 +81,10 @@ def _generate_html(
         html = item_tpl
         html = html.replace("{{ITEM_TYPE_COLOR}}", color)
         html = html.replace("{{ITEM_TYPE_LABEL}}", label)
-        html = html.replace(
-            "{{ITEM_URL}}", item.get("url", "#")
-        )
-        html = html.replace(
-            "{{ITEM_TITLE}}", item.get("title", "Untitled")
-        )
+        html = html.replace("{{ITEM_URL}}", item.get("url", "#"))
+        html = html.replace("{{ITEM_TITLE}}", item.get("title", "Untitled"))
         html = html.replace("{{ITEM_IMAGE_HTML}}", image_html)
-        html = html.replace(
-            "{{ITEM_SUMMARY}}", item.get("summary", "")
-        )
+        html = html.replace("{{ITEM_SUMMARY}}", item.get("summary", ""))
         items_html += html
 
     # Format date nicely
@@ -100,11 +95,17 @@ def _generate_html(
     except Exception:
         display_date = date
 
+    if not intro_html:
+        intro_html = (
+            '<p style="margin: 0; font-size: 15px; color: #52525b; line-height: 1.7;">'
+            "Here are today's top stories from across AI, tech, and beyond."
+            "</p>"
+        )
+
     out = main_tpl
     out = out.replace("{{DATE}}", display_date)
-    # No personalized greeting for free newsletter
     out = out.replace("{{USER_NAME_GREETING}}", "")
-    out = out.replace("{{ITEM_COUNT}}", str(len(items)))
+    out = out.replace("{{INTRO_HTML}}", intro_html)
     out = out.replace("{{ITEMS_HTML}}", items_html)
 
     return out
@@ -113,13 +114,16 @@ def _generate_html(
 def _generate_text(
     items: list[dict],
     date: str,
+    intro: str = "",
 ) -> str:
     """Generate plain text for the free newsletter."""
+    import re as _re
+    intro_plain = _re.sub(r"<[^>]+>", "", intro).strip() if intro else "Here are today's top reads from AI, tech, and beyond."
     lines = [
         "TRACE",
         f"Daily Newsletter - {date}",
         "",
-        "Hey! Here are today's top reads.",
+        f"Hey! {intro_plain}",
         "",
         "=" * 40,
         "",
@@ -193,8 +197,9 @@ def send_free_newsletter(
         }
 
     # Generate HTML and text
-    html = _generate_html(items, date)
-    text = _generate_text(items, date)
+    intro_html = newsletter.get("intro_html", "")
+    html = _generate_html(items, date, intro_html=intro_html)
+    text = _generate_text(items, date, intro=intro_html)
     subject = newsletter.get(
         "email_subject",
         f"Trace Daily — {len(items)} must-reads for {date}",

@@ -1,9 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { RefreshCw, User, LogOut, ArrowLeft, Bookmark, Sun, Moon, Lightbulb } from 'lucide-react';
-import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
+import { RefreshCw, User, LogOut, ArrowLeft, Bookmark, Lightbulb } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface HeaderProps {
@@ -26,10 +24,6 @@ export default function Header({
   showBookmarks = true,
 }: HeaderProps) {
   const { user, signOut } = useAuth();
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
 
   const handleSignOut = async () => {
     if (onSignOut) {
@@ -83,17 +77,6 @@ export default function Header({
 
           {/* Right side */}
           <div className="flex items-center gap-1 md:gap-2 justify-end min-w-0">
-            {/* Theme toggle */}
-            {mounted && (
-              <button
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="p-1.5 md:p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-secondary hover:text-foreground"
-                title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              >
-                {theme === 'dark' ? <Sun size={16} className="md:w-[18px] md:h-[18px]" /> : <Moon size={16} className="md:w-[18px] md:h-[18px]" />}
-              </button>
-            )}
-
             {showBackToFeed ? (
               <button
                 onClick={handleSignOut}

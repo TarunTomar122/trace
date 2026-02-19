@@ -3,7 +3,6 @@ import {
   Animated,
   Dimensions,
   Easing,
-  Image as RNImage,
   PanResponder,
   Platform,
   ScrollView,
@@ -16,6 +15,7 @@ import { Image } from 'expo-image';
 import Svg, { Path, Line as SvgLine } from 'react-native-svg';
 import Constants from 'expo-constants';
 import {
+  Bell,
   BookOpen,
   Check,
   ChevronLeft,
@@ -26,6 +26,7 @@ import {
   Goal,
   Heart,
   Sparkles,
+  Star,
   UserRound,
   X,
 } from 'lucide-react-native';
@@ -34,9 +35,6 @@ import businessVideos from '../../data/videos/business.json';
 import moneyVideos from '../../data/videos/money.json';
 import businessArticle from '../../data/articles/business.json';
 import moneyArticle from '../../data/articles/money.json';
-import topBooks from '../../data/top_books_by_interest_enriched.json';
-import topArticles from '../../data/top_articles_by_interest.json';
-import topVideos from '../../data/top_videos_by_interest.json';
 
 const STATUS_BAR_HEIGHT = Constants.statusBarHeight || 0;
 const BOTTOM_INSET = Platform.OS === 'ios' ? 34 : 24;
@@ -125,6 +123,7 @@ const SWIPE_PICKS = [
     type: 'book',
     title: 'Atomic Habits',
     by: 'James Clear',
+    color: '#F5E6CC',
     cover: 'https://covers.openlibrary.org/b/id/12539702-L.jpg',
   },
   {
@@ -132,6 +131,7 @@ const SWIPE_PICKS = [
     title: businessVideos.videos?.[1]?.title || 'How Amazon Makes Money',
     by: businessVideos.videos?.[1]?.creator || 'Polymatter',
     source: businessVideos.videos?.[1]?.platform || 'YouTube',
+    color: '#1A1A2E',
     cover: normalizeImageUrl(
       businessVideos.videos?.[1]?.thumbnail_url ||
         businessVideos.videos?.[0]?.thumbnail_url,
@@ -141,6 +141,7 @@ const SWIPE_PICKS = [
     type: 'book',
     title: 'Sapiens',
     by: 'Yuval Noah Harari',
+    color: '#E8DDD0',
     cover: 'https://covers.openlibrary.org/b/id/8634250-L.jpg',
   },
   {
@@ -148,12 +149,14 @@ const SWIPE_PICKS = [
     title: businessArticle.article?.title || 'The Myth of the Pivot',
     by: businessArticle.article?.author || 'Sarah Chen',
     source: businessArticle.article?.publication || 'Harvard Business Review',
+    color: '#2C3E50',
     cover: normalizeImageUrl(businessArticle.article?.image_url),
   },
   {
     type: 'book',
     title: 'The Psychology of Money',
     by: 'Morgan Housel',
+    color: '#FFF3E0',
     cover: 'https://covers.openlibrary.org/b/id/10389354-L.jpg',
   },
   {
@@ -161,6 +164,7 @@ const SWIPE_PICKS = [
     title: moneyVideos.videos?.[1]?.title || 'The Psychology of Money',
     by: moneyVideos.videos?.[1]?.creator || 'The Plain Bagel',
     source: moneyVideos.videos?.[1]?.platform || 'YouTube',
+    color: '#1B2838',
     cover: normalizeImageUrl(
       moneyVideos.videos?.[1]?.thumbnail_url || moneyVideos.videos?.[0]?.thumbnail_url,
     ),
@@ -169,6 +173,7 @@ const SWIPE_PICKS = [
     type: 'book',
     title: 'Deep Work',
     by: 'Cal Newport',
+    color: '#1C1C1C',
     cover: 'https://covers.openlibrary.org/b/id/7988607-L.jpg',
   },
   {
@@ -178,6 +183,7 @@ const SWIPE_PICKS = [
       'Index Funds Won Because Competitors Helped Them',
     by: moneyArticle.article?.author || 'Jason Park',
     source: moneyArticle.article?.publication || 'Bloomberg Markets',
+    color: '#1A3C5E',
     cover: normalizeImageUrl(moneyArticle.article?.image_url),
   },
 ];
@@ -200,57 +206,6 @@ const GOAL_INTERESTS = {
   social:       ['relationships', 'culture'],
 };
 
-function getPersonalizedPicks(focus, goals) {
-  const seen = new Set();
-  const interests = [];
-  const add = (i) => { if (!seen.has(i)) { seen.add(i); interests.push(i); } };
-
-  if (focus && FOCUS_INTERESTS[focus]) FOCUS_INTERESTS[focus].forEach(add);
-  (goals || []).forEach((g) => (GOAL_INTERESTS[g] || []).forEach(add));
-  if (!interests.length) add('self-development');
-
-  const picks = [];
-  const titles = new Set();
-
-  const tryAdd = (item) => {
-    if (!item?.title || titles.has(item.title) || picks.length >= 5) return false;
-    titles.add(item.title);
-    picks.push(item);
-    return true;
-  };
-
-  // ~3 books from top interests
-  for (const interest of interests) {
-    for (const b of (topBooks[interest] || []).slice(0, 3)) {
-      if (picks.length >= 3) break;
-      tryAdd({ type: 'book', title: b.title, by: b.author, cover: b.cover });
-    }
-    if (picks.length >= 3) break;
-  }
-
-  // 1 article
-  for (const interest of interests) {
-    const a = (topArticles[interest] || [])[0];
-    if (a && tryAdd({ type: 'article', title: a.title, by: a.author, source: a.source, cover: null })) break;
-  }
-
-  // 1 video
-  for (const interest of interests) {
-    const v = (topVideos[interest] || [])[0];
-    if (v && tryAdd({ type: 'video', title: v.title, by: v.creator, source: v.source, cover: null })) break;
-  }
-
-  // Pad to 5 with more books if needed
-  for (const interest of interests) {
-    for (const b of (topBooks[interest] || [])) {
-      if (picks.length >= 5) break;
-      tryAdd({ type: 'book', title: b.title, by: b.author, cover: b.cover });
-    }
-    if (picks.length >= 5) break;
-  }
-
-  return picks;
-}
 const TYPE_LABEL = { book: 'Book', video: 'Video', article: 'Article' };
 
 const LIFE_GOALS = [
@@ -266,14 +221,27 @@ const STEP_LABELS = [
   'Focus',
   'Why it works',
   'Goals',
-  'For you',
-  'About you',
   'Interests',
   'Picks',
   'Rhythm',
+  'Get started',
+  'Source',
+  'Plans',
 ];
 
-const STEP_ICONS = [Sparkles, BookOpen, Goal, Sparkles, UserRound, CircleHelp, Heart, Goal];
+const STEP_ICONS = [Sparkles, BookOpen, Goal, CircleHelp, Heart, Goal, Star, CircleHelp, Sparkles];
+
+const HEAR_ABOUT_OPTIONS = [
+  'Google Search',
+  'From a friend',
+  'App Store',
+  'YouTube',
+  'TikTok',
+  'Instagram',
+  'Facebook',
+  'Twitter / X',
+  'Other',
+];
 
 /* ────────────────────────── Goal pill (emoji right) ── */
 function GoalPill({ label, emoji, selected, onPress, colors }) {
@@ -423,31 +391,30 @@ export default function OnboardingScreen({ onComplete }) {
   const [step, setStep] = useState(0);
   const [focus, setFocus] = useState(null);
   const [lifeGoals, setLifeGoals] = useState([]);
-  const [recIndex, setRecIndex] = useState(0);
-  const [addedRecs, setAddedRecs] = useState([]);
-  const [gender, setGender] = useState(null);
   const [interests, setInterests] = useState([]);
   const [likedItems, setLikedItems] = useState([]);
   const [cardIndex, setCardIndex] = useState(0);
   const [goal, setGoal] = useState(null);
+  const [selectedPlan, setSelectedPlan] = useState('yearly');
+  const [hearAboutUs, setHearAboutUs] = useState(null);
   const [imageUriMap, setImageUriMap] = useState(() =>
     Object.fromEntries(SWIPE_PICKS.map((pick) => [pick.title, pick.cover || null])),
   );
 
-  /* ── Prefetch all swipe card images on mount ── */
+  /* ── Prefetch all swipe card images on mount via expo-image ── */
   useEffect(() => {
+    const urls = [];
     SWIPE_PICKS.forEach((pick) => {
       if (pick.cover) {
-        RNImage.prefetch(pick.cover).catch(() => {});
+        urls.push(pick.cover);
         const fallback = getFallbackImageUrl(pick.cover);
-        if (fallback) {
-          RNImage.prefetch(fallback).catch(() => {});
-        }
+        if (fallback) urls.push(fallback);
       }
     });
+    if (urls.length) Image.prefetch(urls);
   }, []);
 
-  const totalSteps = 8;
+  const totalSteps = 9;
   const progress = ((step + 1) / totalSteps) * 100;
   const StepIcon = STEP_ICONS[step] || Sparkles;
 
@@ -533,25 +500,6 @@ export default function OnboardingScreen({ onComplete }) {
     );
   };
 
-  const [personalizedPicks, setPersonalizedPicks] = useState([]);
-  const picksComputedRef = useRef(false);
-
-  // Compute picks exactly once when step 3 is reached, after focus + lifeGoals are set
-  useEffect(() => {
-    if (step === 3 && !picksComputedRef.current) {
-      picksComputedRef.current = true;
-      setPersonalizedPicks(getPersonalizedPicks(focus, lifeGoals));
-    }
-  }, [step, focus, lifeGoals]);
-
-  const handleRecSkip = useCallback(() => setRecIndex((i) => i + 1), []);
-
-  const handleRecAdd = useCallback((picks) => {
-    const pick = picks[recIndex];
-    if (pick) setAddedRecs((prev) => [...prev, pick.title]);
-    setRecIndex((i) => i + 1);
-  }, [recIndex]);
-
   const toggleInterest = (value) => {
     setInterests((prev) =>
       prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
@@ -565,13 +513,14 @@ export default function OnboardingScreen({ onComplete }) {
     if (step === 0) return Boolean(focus);
     if (step === 1) return true;
     if (step === 2) return lifeGoals.length > 0;
-    if (step === 3) return recIndex >= personalizedPicks.length && personalizedPicks.length > 0;
-    if (step === 4) return Boolean(gender);
-    if (step === 5) return interests.length >= 3;
-    if (step === 6) return cardIndex >= SWIPE_PICKS.length;
-    if (step === 7) return Boolean(goal);
+    if (step === 3) return interests.length >= 3;
+    if (step === 4) return cardIndex >= SWIPE_PICKS.length;
+    if (step === 5) return Boolean(goal);
+    if (step === 6) return true;
+    if (step === 7) return Boolean(hearAboutUs);
+    if (step === 8) return true;
     return true;
-  }, [step, focus, lifeGoals.length, recIndex, personalizedPicks.length, gender, interests.length, cardIndex, goal]);
+  }, [step, focus, lifeGoals.length, interests.length, cardIndex, goal, hearAboutUs]);
 
   const handleCardImageError = useCallback((title) => {
     setImageUriMap((prev) => {
@@ -592,7 +541,11 @@ export default function OnboardingScreen({ onComplete }) {
     if (allDone) {
       return (
         <View style={styles.swipeDone}>
-          <Sparkles size={36} color={colors.accent} strokeWidth={1.6} />
+          <Image
+            source={require('../assets/images/happy.png')}
+            style={styles.swipeDoneMascot}
+            contentFit="contain"
+          />
           <Text
             style={[
               styles.heroTitle,
@@ -625,33 +578,22 @@ export default function OnboardingScreen({ onComplete }) {
               style={[
                 styles.swipeCard,
                 {
-                  backgroundColor: nextPick.cover
-                    ? colors.surface
-                    : nextPick.color,
+                  backgroundColor: nextPick.color || colors.surface,
                   transform: [{ scale: nextScale }],
                 },
               ]}
             >
-              {imageUriMap[nextPick.title] ? (
+              {imageUriMap[nextPick.title] && (
                 <Image
                   source={imageUriMap[nextPick.title]}
                   recyclingKey={`next-${nextPick.title}`}
                   style={StyleSheet.absoluteFill}
                   contentFit="cover"
                   cachePolicy="memory-disk"
-                  transition={120}
+                  priority="high"
+                  transition={200}
                   onError={() => handleCardImageError(nextPick.title)}
                 />
-              ) : (
-                <View style={styles.placeholderBg}>
-                  {NextTypeIcon && (
-                    <NextTypeIcon
-                      size={80}
-                      color="rgba(255,255,255,0.1)"
-                      strokeWidth={1.2}
-                    />
-                  )}
-                </View>
               )}
             </Animated.View>
           )}
@@ -663,33 +605,23 @@ export default function OnboardingScreen({ onComplete }) {
             style={[
               styles.swipeCard,
               {
-                backgroundColor: currentPick.cover
-                  ? colors.surface
-                  : currentPick.color,
+                backgroundColor: currentPick.color || colors.surface,
                 transform: [{ translateX: pan.x }, { rotate }],
                 zIndex: 2,
               },
             ]}
           >
-            {/* Background image or colored placeholder */}
-            {imageUriMap[currentPick.title] ? (
+            {imageUriMap[currentPick.title] && (
               <Image
                 source={imageUriMap[currentPick.title]}
                 recyclingKey={`current-${currentPick.title}`}
                 style={StyleSheet.absoluteFill}
                 contentFit="cover"
                 cachePolicy="memory-disk"
-                transition={120}
+                priority="high"
+                transition={200}
                 onError={() => handleCardImageError(currentPick.title)}
               />
-            ) : (
-              <View style={styles.placeholderBg}>
-                <CurrentTypeIcon
-                  size={80}
-                  color="rgba(255,255,255,0.1)"
-                  strokeWidth={1.2}
-                />
-              </View>
             )}
 
             {/* LIKE stamp */}
@@ -756,151 +688,6 @@ export default function OnboardingScreen({ onComplete }) {
           >
             <Heart size={26} color={colors.accent} strokeWidth={2.5} />
           </TouchableOpacity>
-        </View>
-      </View>
-    );
-  };
-
-  /* ── Render personalized recs step (step 3) ── */
-  const renderRecsStep = () => {
-    const allDone = recIndex >= personalizedPicks.length;
-
-    if (allDone && personalizedPicks.length > 0) {
-      return (
-        <View style={{ flex: 1, paddingHorizontal: 24 }}>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            Ok, here are some{'\n'}recommendations
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Pick what you'd like to explore first.
-          </Text>
-
-          <View style={{ flex: 1, position: 'relative' }}>
-            {/* Stack shadow card behind */}
-            <View
-              style={[
-                styles.recDoneBgCard,
-                { backgroundColor: colors.surface },
-              ]}
-            />
-            {/* Main done card */}
-            <View
-              style={[
-                styles.recCard,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: 'transparent',
-                  flex: 1,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                },
-              ]}
-            >
-              <View style={styles.recDoneCheckCircle}>
-                <Check size={26} color="#fff" strokeWidth={2.5} />
-              </View>
-              <Text style={[styles.recDoneLabel, { color: colors.textPrimary }]}>
-                We saved your picks.{'\n'}You'll see them soon.
-              </Text>
-            </View>
-          </View>
-        </View>
-      );
-    }
-
-    // Loading state while picks are being computed
-    if (personalizedPicks.length === 0) {
-      return (
-        <View style={{ flex: 1, paddingHorizontal: 24 }}>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            Ok, here are some{'\n'}recommendations
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Pick what you'd like to explore first.
-          </Text>
-          <View style={{ flex: 1 }} />
-        </View>
-      );
-    }
-
-    const pick = personalizedPicks[recIndex];
-    const TypeIcon = TYPE_ICON_MAP[pick.type] || BookOpen;
-    const typeLabel = TYPE_LABEL[pick.type] || 'Book';
-    const byPrefix = pick.type === 'video' ? 'By ' : 'Written by ';
-
-    return (
-      <View style={{ flex: 1, paddingHorizontal: 24 }}>
-        {/* Title */}
-        <Text style={[styles.title, { color: colors.textPrimary }]}>
-          Ok, here are some{'\n'}recommendations
-        </Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Pick what you'd like to explore first.
-        </Text>
-
-        {/* Progress dots */}
-        <View style={styles.recDots}>
-          {personalizedPicks.map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.recDot,
-                {
-                  backgroundColor:
-                    i < recIndex
-                      ? colors.accent
-                      : i === recIndex
-                        ? colors.textPrimary
-                        : colors.surface,
-                  width: i === recIndex ? 20 : 8,
-                },
-              ]}
-            />
-          ))}
-        </View>
-
-        {/* Card */}
-        <View
-          style={[
-            styles.recCard,
-            {
-              backgroundColor: colors.background,
-              borderColor: colors.surfaceBorder,
-              shadowColor: colors.shadowColor,
-            },
-          ]}
-        >
-          {/* Cover area */}
-          <View style={styles.recImageArea}>
-            <View style={[styles.recGlow, { backgroundColor: colors.accent + '25' }]} />
-            {pick.cover ? (
-              <Image
-                source={pick.cover}
-                style={styles.recCoverImage}
-                contentFit="contain"
-                cachePolicy="memory-disk"
-              />
-            ) : (
-              <View style={[styles.recCoverPlaceholder, { backgroundColor: colors.surface }]}>
-                <TypeIcon size={52} color={colors.textMuted} strokeWidth={1.5} />
-              </View>
-            )}
-          </View>
-
-          {/* Meta */}
-          <View style={[styles.recTypeBadge, { backgroundColor: colors.surface }]}>
-            <TypeIcon size={11} color={colors.textSecondary} strokeWidth={2} />
-            <Text style={[styles.recTypeBadgeText, { color: colors.textSecondary }]}>
-              {typeLabel}
-              {pick.source ? ` · ${pick.source}` : ''}
-            </Text>
-          </View>
-          <Text style={[styles.recCardTitle, { color: colors.textPrimary }]} numberOfLines={2}>
-            {pick.title}
-          </Text>
-          <Text style={[styles.recCardAuthor, { color: colors.textTertiary }]}>
-            {byPrefix}{pick.by}
-          </Text>
         </View>
       </View>
     );
@@ -1052,32 +839,8 @@ export default function OnboardingScreen({ onComplete }) {
         );
 
       /* ── 4  Gender ── */
-      case 4:
-        return (
-          <View>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>
-              Tell us about you
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Pick what fits best.
-            </Text>
-            <View style={styles.stack}>
-              {['Male', 'Female'].map((v) => (
-                <WidePill
-                  key={v}
-                  label={v}
-                  icon={UserRound}
-                  selected={gender === v}
-                  onPress={() => setGender(v)}
-                  colors={colors}
-                />
-              ))}
-            </View>
-          </View>
-        );
-
-      /* ── 5  Interests ── */
-      case 5: {
+      /* ── 3  Interests ── */
+      case 3: {
         const recommended = getRecommendedTopicNames(focus, lifeGoals);
         return (
           <View style={{ gap: 24 }}>
@@ -1140,10 +903,10 @@ export default function OnboardingScreen({ onComplete }) {
         );
       }
 
-      /* step 6 is handled by renderSwipeStep */
+      /* step 4 is handled by renderSwipeStep */
 
-      /* ── 7  Daily target ── */
-      case 7:
+      /* ── 5  Daily target ── */
+      case 5:
         return (
           <View>
             <Text style={[styles.title, { color: colors.textPrimary }]}>
@@ -1167,14 +930,331 @@ export default function OnboardingScreen({ onComplete }) {
           </View>
         );
 
+      /* ── 7  How did you hear about us ── */
+      case 7:
+        return (
+          <View>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>
+              How did you hear about us?
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              This will help us to better understand you.
+            </Text>
+            <View style={styles.hearStack}>
+              {HEAR_ABOUT_OPTIONS.map((option) => {
+                const active = hearAboutUs === option;
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    onPress={() => setHearAboutUs(option)}
+                    activeOpacity={0.8}
+                    style={[
+                      styles.hearPill,
+                      {
+                        backgroundColor: active ? colors.accent + '18' : colors.surface,
+                        borderColor: active ? colors.accent : colors.surfaceBorder,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.hearPillText,
+                        { color: active ? colors.accent : colors.textPrimary, fontWeight: active ? '700' : '500' },
+                      ]}
+                    >
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        );
+
+      /* ── 6  Trial / Get started ── */
+      case 6: {
+        const TRIAL_TIMELINE = [
+          {
+            Icon: Check,
+            accent: true,
+            done: true,
+            title: 'Set up brainwave',
+            strikethrough: true,
+            desc: "You've personalized your experience.",
+          },
+          {
+            Icon: BookOpen,
+            accent: true,
+            done: false,
+            title: 'Today: Dive in for free',
+            desc: 'Your personalized feed is ready. Big ideas in 5 minutes a day.',
+          },
+          {
+            Icon: Bell,
+            accent: false,
+            done: false,
+            title: 'Day 5: Learning reminder',
+            desc: "We'll nudge you if you miss a day. Habits take time.",
+          },
+          {
+            Icon: Star,
+            accent: false,
+            done: false,
+            title: 'Day 7: Trial ends',
+            desc: 'Your brainwave Pro subscription begins. Cancel anytime before then.',
+          },
+        ];
+        return (
+          <View>
+            <Text style={[styles.title, { color: colors.textPrimary, fontSize: 32 }]}>
+              How your free trial works
+            </Text>
+
+            <View style={styles.trialTimeline}>
+              {TRIAL_TIMELINE.map((item, i) => (
+                <View key={i} style={styles.trialStep}>
+                  {/* Circle + connector line */}
+                  <View style={styles.trialLeft}>
+                    <View
+                      style={[
+                        styles.trialCircle,
+                        {
+                          backgroundColor: item.accent ? colors.accent : colors.surface,
+                          borderColor: item.accent ? colors.accent : colors.surfaceBorder,
+                        },
+                      ]}
+                    >
+                      <item.Icon
+                        size={16}
+                        color={item.accent ? colors.textPrimary : colors.textTertiary}
+                        strokeWidth={2.2}
+                      />
+                    </View>
+                    {i < TRIAL_TIMELINE.length - 1 && (
+                      <View style={[styles.trialLine, { backgroundColor: colors.surfaceBorder }]} />
+                    )}
+                  </View>
+
+                  {/* Text */}
+                  <View style={styles.trialRight}>
+                    <Text
+                      style={[
+                        styles.trialStepTitle,
+                        {
+                          color: item.accent ? colors.accent : colors.textPrimary,
+                          textDecorationLine: item.strikethrough ? 'line-through' : 'none',
+                        },
+                      ]}
+                    >
+                      {item.title}
+                    </Text>
+                    <Text style={[styles.trialStepDesc, { color: colors.textSecondary }]}>
+                      {item.desc}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        );
+      }
+
       default:
         return null;
     }
   };
 
+  /* ── Paywall step (step 9) ── */
+  const renderPaywallStep = () => {
+    const PLANS = [
+      {
+        id: 'yearly',
+        badge: '7-DAY FREE TRIAL  ⭐  BEST VALUE',
+        badgeAccent: true,
+        label: 'Yearly Plan',
+        sublabel: '1 yr',
+        priceCross: '$7.99 / mo',
+        price: '$3.99 / mo',
+        savings: '-50%',
+        perks: ['Best price — save 50% vs monthly', 'Cancel anytime in seconds'],
+      },
+      {
+        id: 'monthly',
+        badge: '7-DAY FREE TRIAL',
+        badgeAccent: false,
+        label: 'Monthly Plan',
+        sublabel: 'Billed monthly',
+        priceCross: null,
+        price: '$7.99 / mo',
+        savings: null,
+        perks: ['Flexible — cancel anytime'],
+      },
+    ];
+
+    return (
+      <View style={[styles.paywallScreen, { backgroundColor: colors.background }]}>
+        {/* Top skip */}
+        <View style={[styles.paywallTopBar, { paddingTop: STATUS_BAR_HEIGHT + 12 }]}>
+          <TouchableOpacity onPress={onComplete} activeOpacity={0.7} style={styles.paywallSkipBtn}>
+            <X size={20} color={colors.textTertiary} strokeWidth={2} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          style={styles.paywallScroll}
+          contentContainerStyle={styles.paywallScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Hero text */}
+          <Text style={[styles.paywallHero, { color: colors.textPrimary }]}>
+            <Text style={{ color: colors.accent }}>Try 7 days for free,{'\n'}</Text>
+            then $3.99 / month{'\n'}
+            <Text style={[styles.paywallHeroSub, { color: colors.textSecondary }]}>
+              billed yearly at $47.99
+            </Text>
+          </Text>
+
+          <TouchableOpacity activeOpacity={0.6} style={styles.viewAllPlans}>
+            <Text style={[styles.viewAllPlansText, { color: colors.textSecondary }]}>
+              View all plans
+            </Text>
+          </TouchableOpacity>
+
+          {/* Plan cards */}
+          {PLANS.map((plan) => {
+            const active = selectedPlan === plan.id;
+            return (
+              <TouchableOpacity
+                key={plan.id}
+                onPress={() => setSelectedPlan(plan.id)}
+                activeOpacity={0.85}
+                style={[
+                  styles.planCard,
+                  {
+                    borderColor: active ? colors.accent : colors.surfaceBorder,
+                    backgroundColor: active ? colors.accent + '0D' : colors.surface,
+                  },
+                ]}
+              >
+                {/* Badge */}
+                <View
+                  style={[
+                    styles.planBadge,
+                    { backgroundColor: active ? colors.accent : colors.surfaceBorder },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.planBadgeText,
+                      { color: active ? colors.textPrimary : colors.textSecondary },
+                    ]}
+                  >
+                    {plan.badge}
+                  </Text>
+                </View>
+
+                <View style={styles.planCardBody}>
+                  {/* Left: radio + label */}
+                  <View style={styles.planCardLeft}>
+                    <View
+                      style={[
+                        styles.planRadio,
+                        {
+                          borderColor: active ? colors.accent : colors.surfaceBorder,
+                          backgroundColor: active ? colors.accent : 'transparent',
+                        },
+                      ]}
+                    >
+                      {active && <View style={styles.planRadioInner} />}
+                    </View>
+                    <View style={{ gap: 2 }}>
+                      <View style={styles.planLabelRow}>
+                        <Text style={[styles.planLabel, { color: colors.textPrimary }]}>
+                          {plan.label}
+                        </Text>
+                        {plan.savings && (
+                          <View style={[styles.savingsBadge, { backgroundColor: colors.accent + '22' }]}>
+                            <Text style={[styles.savingsBadgeText, { color: colors.accent }]}>
+                              {plan.savings}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.planSublabel, { color: colors.textSecondary }]}>
+                        {plan.id === 'yearly' ? (
+                          <>
+                            <Text>1 yr  •  </Text>
+                            <Text style={{ textDecorationLine: 'line-through', color: colors.textTertiary }}>$59.99</Text>
+                            <Text>  $47.99</Text>
+                          </>
+                        ) : plan.sublabel}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Right: price */}
+                  <View style={styles.planPriceCol}>
+                    {plan.priceCross && (
+                      <Text style={[styles.planPriceCross, { color: colors.textTertiary }]}>
+                        {plan.priceCross}
+                      </Text>
+                    )}
+                    <Text style={[styles.planPrice, { color: active ? colors.accent : colors.textPrimary }]}>
+                      {plan.price}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Perks */}
+                <View style={styles.planPerks}>
+                  {plan.perks.map((p, i) => (
+                    <View key={i} style={styles.planPerkRow}>
+                      <Check size={13} color={active ? colors.accent : colors.textTertiary} strokeWidth={2.5} />
+                      <Text style={[styles.planPerkText, { color: colors.textSecondary }]}>{p}</Text>
+                    </View>
+                  ))}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Footer CTA */}
+        <View style={[styles.paywallFooter, { paddingBottom: BOTTOM_INSET + 16 }]}>
+          <Text style={[styles.paywallTagline, { color: colors.textTertiary }]}>
+            Two taps to start, super easy to cancel.
+          </Text>
+          <TouchableOpacity
+            onPress={onComplete}
+            activeOpacity={0.85}
+            style={[styles.paywallCTA, { backgroundColor: colors.textPrimary }]}
+          >
+            <Text style={[styles.paywallCTAText, { color: colors.background }]}>
+              Start Your 7-Day Free Trial
+            </Text>
+          </TouchableOpacity>
+          <View style={styles.paywallLinks}>
+            <TouchableOpacity activeOpacity={0.6}>
+              <Text style={[styles.paywallLinkText, { color: colors.textTertiary }]}>Terms of Service</Text>
+            </TouchableOpacity>
+            <Text style={[styles.paywallLinkSep, { color: colors.textTertiary }]}>|</Text>
+            <TouchableOpacity activeOpacity={0.6}>
+              <Text style={[styles.paywallLinkText, { color: colors.textTertiary }]}>Privacy Policy</Text>
+            </TouchableOpacity>
+            <Text style={[styles.paywallLinkSep, { color: colors.textTertiary }]}>|</Text>
+            <TouchableOpacity activeOpacity={0.6}>
+              <Text style={[styles.paywallLinkText, { color: colors.textTertiary }]}>Restore Purchase</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   /* ── Layout ── */
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
+      {step === 8 ? renderPaywallStep() : (<>
       {/* ── Header ── */}
       <View style={[styles.header, { paddingTop: STATUS_BAR_HEIGHT + 14 }]}>
         <View
@@ -1211,10 +1291,8 @@ export default function OnboardingScreen({ onComplete }) {
       </View>
 
       {/* ── Content ── */}
-      {step === 6 ? (
+      {step === 4 ? (
         <View style={styles.swipeWrapper}>{renderSwipeStep()}</View>
-      ) : step === 3 ? (
-        <View style={styles.recsWrapper}>{renderRecsStep()}</View>
       ) : (
         <ScrollView
           style={styles.scroll}
@@ -1227,43 +1305,7 @@ export default function OnboardingScreen({ onComplete }) {
       )}
 
       {/* ── Footer ── */}
-      {step === 3 && recIndex < personalizedPicks.length ? (
-        <View style={[styles.footer, { paddingBottom: BOTTOM_INSET + 10 }]}>
-          <TouchableOpacity
-            onPress={handleRecSkip}
-            activeOpacity={0.8}
-            style={styles.skipRecBtn}
-          >
-            <X size={18} color="#fff" strokeWidth={2.5} />
-            <Text style={styles.skipRecText}>Skip</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => handleRecAdd(personalizedPicks)}
-            activeOpacity={0.8}
-            style={styles.addRecBtn}
-          >
-            <Check size={18} color="#fff" strokeWidth={2.5} />
-            <Text style={styles.addRecText}>Add</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={[styles.footer, { paddingBottom: BOTTOM_INSET + 10 }]}>
-          {step > 0 && (
-            <TouchableOpacity
-              onPress={back}
-              activeOpacity={0.8}
-              style={[
-                styles.backBtn,
-                {
-                  backgroundColor: colors.accent + '12',
-                  borderColor: colors.accent + '30',
-                },
-              ]}
-            >
-              <ChevronLeft size={20} color={colors.accent} strokeWidth={2.2} />
-            </TouchableOpacity>
-          )}
-
+      <View style={[styles.footer, { paddingBottom: BOTTOM_INSET + 10 }]}>
           <TouchableOpacity
             onPress={step === totalSteps - 1 ? onComplete : next}
             disabled={!canContinue}
@@ -1279,7 +1321,7 @@ export default function OnboardingScreen({ onComplete }) {
             <Text
               style={[styles.continueBtnText, { color: colors.background }]}
             >
-              {step === totalSteps - 1 ? 'Start exploring' : 'Continue'}
+              {step === totalSteps - 1 ? 'Start Your 7-Day Free Trial' : step === 6 ? "I'm ready" : 'Continue'}
             </Text>
             {step < totalSteps - 1 && (
               <ArrowRight
@@ -1290,7 +1332,7 @@ export default function OnboardingScreen({ onComplete }) {
             )}
           </TouchableOpacity>
         </View>
-      )}
+      </>)}
     </View>
   );
 }
@@ -1363,7 +1405,7 @@ const styles = StyleSheet.create({
   },
   insightCardOuter: {
     position: 'relative',
-    marginTop: 16,
+    marginTop: 52,
   },
   calBadge: {
     position: 'absolute',
@@ -1550,121 +1592,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  /* ── Personalized recs step (step 3) ── */
-  recsWrapper: { flex: 1 },
-  recDots: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 20,
-  },
-  recDot: { height: 8, borderRadius: 4 },
-  recCard: {
-    borderRadius: 24,
-    borderWidth: 1,
-    padding: 20,
-    alignItems: 'center',
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 24,
-    shadowOpacity: 0.08,
-    elevation: 8,
-  },
-  recImageArea: {
-    width: 200,
-    height: 220,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-    position: 'relative',
-  },
-  recGlow: {
-    position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-  },
-  recCoverImage: {
-    width: 140,
-    height: 200,
-    borderRadius: 10,
-  },
-  recCoverPlaceholder: {
-    width: 140,
-    height: 200,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recTypeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 99,
-    marginBottom: 10,
-    alignSelf: 'center',
-  },
-  recTypeBadgeText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
-  recDoneBgCard: {
-    position: 'absolute',
-    top: -10,
-    left: 12,
-    right: 12,
-    bottom: 0,
-    borderRadius: 24,
-    opacity: 0.45,
-  },
-  recDoneCheckCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#22C55E',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  recDoneLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-
-  recCardTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: -0.4,
-    textAlign: 'center',
-    marginBottom: 6,
-    lineHeight: 26,
-  },
-  recCardAuthor: { fontSize: 13, fontWeight: '500', textAlign: 'center' },
-
-  /* Skip / Add rec buttons */
-  skipRecBtn: {
-    flex: 1,
-    height: 52,
-    borderRadius: 99,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#EF4444',
-  },
-  skipRecText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  addRecBtn: {
-    flex: 1,
-    height: 52,
-    borderRadius: 99,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#22C55E',
-  },
-  addRecText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-
   /* ── Swipe step ── */
   swipeWrapper: { flex: 1, paddingHorizontal: 24, paddingTop: 12 },
   cardStack: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -1675,12 +1602,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
   },
-  placeholderBg: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
   /* Stamps */
   stamp: { position: 'absolute', top: 30, zIndex: 10 },
   likeStamp: { left: 16, transform: [{ rotate: '-15deg' }] },
@@ -1756,6 +1677,7 @@ const styles = StyleSheet.create({
 
   /* Swipe done */
   swipeDone: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  swipeDoneMascot: { width: 160, height: 160 },
 
   /* ── Footer ── */
   footer: {
@@ -1783,4 +1705,231 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   continueBtnText: { fontSize: 16, fontWeight: '700' },
+
+  /* ── Hear about us ── */
+  hearStack: {
+    gap: 10,
+    marginTop: 8,
+  },
+  hearPill: {
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  hearPillText: {
+    fontSize: 15,
+  },
+
+  /* ── Paywall screen ── */
+  paywallScreen: {
+    flex: 1,
+  },
+  paywallTopBar: {
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+  paywallSkipBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  paywallScroll: {
+    flex: 1,
+  },
+  paywallScrollContent: {
+    paddingHorizontal: 22,
+    paddingBottom: 16,
+  },
+  paywallHero: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    lineHeight: 38,
+    marginBottom: 10,
+  },
+  paywallHeroSub: {
+    fontSize: 18,
+    fontWeight: '400',
+  },
+  viewAllPlans: {
+    marginBottom: 22,
+  },
+  viewAllPlansText: {
+    fontSize: 14,
+  },
+  planCard: {
+    borderWidth: 1.5,
+    borderRadius: 16,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  planBadge: {
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+  },
+  planBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+  },
+  planCardBody: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 4,
+    gap: 12,
+  },
+  planCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    flex: 1,
+  },
+  planRadio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  planRadioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#fff',
+  },
+  planLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  planLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  savingsBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  savingsBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  planSublabel: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  planPriceCol: {
+    alignItems: 'flex-end',
+  },
+  planPriceCross: {
+    fontSize: 12,
+    textDecorationLine: 'line-through',
+    marginBottom: 2,
+  },
+  planPrice: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  planPerks: {
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    paddingTop: 8,
+    gap: 5,
+  },
+  planPerkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  planPerkText: {
+    fontSize: 13,
+  },
+  paywallFooter: {
+    paddingHorizontal: 22,
+    paddingTop: 12,
+    gap: 12,
+    alignItems: 'center',
+  },
+  paywallTagline: {
+    fontSize: 13,
+  },
+  paywallCTA: {
+    width: '100%',
+    height: 54,
+    borderRadius: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  paywallCTAText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  paywallLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  paywallLinkText: {
+    fontSize: 11,
+  },
+  paywallLinkSep: {
+    fontSize: 11,
+  },
+
+  /* Trial screen */
+  trialTimeline: {
+    marginTop: 36,
+    gap: 0,
+  },
+  trialStep: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  trialLeft: {
+    alignItems: 'center',
+    width: 40,
+  },
+  trialCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trialLine: {
+    width: 2,
+    flex: 1,
+    minHeight: 20,
+    marginVertical: 6,
+  },
+  trialRight: {
+    flex: 1,
+    paddingBottom: 28,
+    justifyContent: 'center',
+  },
+  trialStepTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    marginBottom: 4,
+  },
+  trialStepDesc: {
+    fontSize: 14,
+    lineHeight: 21,
+  },
 });

@@ -24,6 +24,7 @@ from v1.storage import FirestoreStore  # noqa: E402
 from v1.algorithm.interest_schema import (  # noqa: E402
     get_interest_ids,
     get_interest_queries,
+    SUBTOPIC_LABELS,
 )
 
 
@@ -38,12 +39,20 @@ def _clean_interest_queries(
     for key, values in interest_queries.items():
         if key not in allowed:
             continue
+        subtopic_map = SUBTOPIC_LABELS.get(key, {})
+        valid_ids = set(subtopic_map.keys())
+        label_to_id = {label.lower(): sid for sid, label in subtopic_map.items()}
         deduped = []
         seen = set()
         for value in values[:2]:
             if not isinstance(value, str) or not value.strip():
                 continue
             value = value.strip()
+            normalized = value.lower()
+            if normalized in label_to_id:
+                value = label_to_id[normalized]
+            if value not in valid_ids:
+                continue
             if value in seen:
                 continue
             seen.add(value)

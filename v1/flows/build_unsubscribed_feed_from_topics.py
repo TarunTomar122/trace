@@ -68,15 +68,9 @@ def _tokenize(value: str) -> set[str]:
 # Extended keyword map for interests whose names are too short/generic
 _INTEREST_KEYWORDS: dict[str, list[str]] = {
     "technology": ["tech", "software", "hardware", "digital", "computing", "internet", "app", "startup", "code", "programming", "developer", "engineering", "algorithm", "blockchain", "cloud", "cyber"],
-    "money": ["finance", "investing", "investment", "wealth", "budget", "savings", "stock", "crypto", "economic", "financial", "dollar", "income", "debt", "retire"],
-    "health": ["medical", "wellness", "fitness", "nutrition", "mental health", "exercise", "diet", "sleep", "disease", "therapy", "doctor", "hospital", "vaccine"],
-    "design": ["ux", "ui", "graphic", "visual", "typography", "layout", "interface", "prototype", "figma", "creative", "aesthetic", "branding"],
-    "business": ["startup", "entrepreneur", "company", "founder", "revenue", "market", "customer", "product", "leadership", "management", "ceo", "growth", "strategy"],
-    "career": ["job", "hire", "hiring", "interview", "resume", "promotion", "workplace", "salary", "profession", "skill", "mentor", "career change"],
-    "psychology": ["mental", "cognitive", "behavior", "emotion", "therapy", "mindset", "habit", "bias", "brain", "consciousness", "motivation", "anxiety"],
-    "culture": ["society", "cultural", "tradition", "art", "music", "film", "literature", "history", "identity", "diversity", "social", "community"],
-    "ideas": ["concept", "innovation", "creativity", "philosophy", "thought", "theory", "insight", "perspective", "paradigm", "framework"],
-    "science": ["research", "experiment", "discovery", "physics", "biology", "chemistry", "space", "climate", "evolution", "scientific"],
+    "business-market": ["business", "market", "startup", "entrepreneur", "company", "founder", "revenue", "customer", "strategy", "product strategy", "market trends", "economy", "economic", "marketing"],
+    "experience": ["ux", "ui", "design", "visual", "branding", "creative process", "storytelling", "user psychology", "research", "interface", "prototype", "figma"],
+    "productivity": ["productivity", "career growth", "personal finance", "investments", "wellbeing", "wellness", "soft skills", "focus", "execution", "habits", "planning"],
 }
 
 
