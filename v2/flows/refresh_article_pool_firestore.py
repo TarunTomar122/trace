@@ -592,11 +592,16 @@ def refresh_article_pool_firestore(args: argparse.Namespace) -> dict[str, Any]:
             if use_cached_content:
                 content_info = {
                     "content": existing_content,
-                    "content_length": existing_data.get("content_length", 0) or 0,
+                    "content_length": (
+                        existing_data.get("content_length", 0) or 0
+                    ),
                     "is_paywalled": existing_data.get("is_paywalled", False),
                     "fetch_error": existing_data.get("fetch_error", "") or "",
-                    "http_status": existing_data.get("http_status", 200) or 200,
+                    "http_status": (
+                        existing_data.get("http_status", 200) or 200
+                    ),
                 }
+                content_source = "cached"
                 content_fetch_skipped_cached += 1
                 source_content_fetch_skipped += 1
                 _log(
@@ -630,14 +635,17 @@ def refresh_article_pool_firestore(args: argparse.Namespace) -> dict[str, Any]:
                             f"source={source_name} | url={url}"
                         )
 
-                if content_info["fetch_error"] and not content_info.get("content"):
+                if (
+                    content_info["fetch_error"]
+                    and not content_info.get("content")
+                ):
                     content_failures += 1
                     _log(
-                        f"Article content fetch failed | source={source_name} | "
-                        f"url={url} | error={content_info['fetch_error'][:120]}"
+                        "Article content fetch failed | "
+                        f"source={source_name} | "
+                        f"url={url} | "
+                        f"error={content_info['fetch_error'][:120]}"
                     )
-            else:
-                content_source = "cached"
 
             if not og_image and content_info.get("image"):
                 og_image = content_info.get("image", "")
@@ -704,11 +712,13 @@ def refresh_article_pool_firestore(args: argparse.Namespace) -> dict[str, Any]:
                         if existing_summary and not args.force_refresh:
                             summary_payload = existing_summary
                             summary_error = ""
-                            summary_generated_at = existing_summary_generated_at
+                            summary_generated_at = (
+                                existing_summary_generated_at
+                            )
                     else:
                         _log(
-                            f"Article summary success | source={source_name} | "
-                            f"url={url}"
+                            "Article summary success | "
+                            f"source={source_name} | url={url}"
                         )
 
             payload = {
@@ -735,7 +745,9 @@ def refresh_article_pool_firestore(args: argparse.Namespace) -> dict[str, Any]:
                 "summary_model": args.summary_model,
                 "summary_skill_level": args.summary_skill_level,
                 "summary_generated_at": summary_generated_at,
-                "summary_content_hash": content_hash if summary_payload else "",
+                "summary_content_hash": (
+                    content_hash if summary_payload else ""
+                ),
                 "created_at": created_at,
                 "last_seen_at": now_iso,
                 "updated_at": now_iso,
