@@ -1,10 +1,10 @@
 """
-Build trending news for a day using OpenAI web search.
+Build trending news for a day using curated non-pool sources.
 
 This flow:
-1. Uses canonical interests + subtopics from interest schema
-2. Runs multi-pass web search per interest (broad + subtopic-focused)
-3. Keeps only strict last-24-hours results
+1. Loads validated sources from v2/config/trending_source_links.json
+2. Excludes domains that overlap with v2/config/interest_source_links.json
+3. Keeps only strict last-2-days results
 4. Saves results to trending_news Firestore collection
 
 Usage:
@@ -43,49 +43,27 @@ from v1.algorithm.interest_schema import (  # noqa: E402
     SUBTOPIC_LABELS,
     get_interest_ids,
 )
+from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
 
 
 MAX_NEWS_PER_TOPIC = 6
 OPENAI_TRENDING_MODEL = os.getenv("OPENAI_TRENDING_MODEL", "gpt-4.1-mini")
 MAX_DAILY_INTERESTS = 4
-TRENDING_MAX_AGE_HOURS = 24 * 7
+TRENDING_MAX_AGE_HOURS = 24 * 2
 IST_TZ = timezone(timedelta(hours=5, minutes=30))
 MAX_PROMPT_PASSES_PER_TOPIC = 2
 OPENAI_TIMEOUT_SECONDS = 90.0
 OPENAI_FETCH_RETRIES = 2
 MAX_TOTAL_TRENDING_ITEMS = 6
-TRENDING_LOOKBACK_DAYS = 7
+TRENDING_LOOKBACK_DAYS = 2
 EXA_API_URL = "https://api.exa.ai/contents"
 EXA_TEXT_MAX_CHARS = 4000
-
-TRUSTED_SOURCES: list[dict[str, Any]] = [
-    {
-        "topic_id": "technology",
-        "name": "AI (The Verge)",
-        "kind": "exa",
-        "query": "latest AI news and product launches",
-        "domains": ["theverge.com"],
-        "seed_url": "https://www.theverge.com/ai-artificial-intelligence",
-        "keywords": ["ai", "artificial-intelligence", "technology", "openai", "anthropic"],
-    },
-    {
-        "topic_id": "experience",
-        "name": "UX Design",
-        "kind": "exa",
-        "query": "latest UX design case studies and product design articles",
-        "domains": ["uxdesign.cc"],
-        "seed_url": "https://uxdesign.cc/all?topic=editor-picks",
-        "keywords": ["ux", "design", "product-design", "ui", "research"],
-    },
-    {
-        "topic_id": "productivity",
-        "name": "Productivity",
-        "kind": "rss",
-        "rss_url": "https://www.fastcompany.com/latest/rss",
-        "category_allow": ["work life", "leadership", "productivity", "tech"],
-        "keywords": ["productivity", "work", "career", "habits"],
-    },
-]
+TRENDING_CONFIG_PATH = (
+    Path(project_root) / "v2" / "config" / "trending_source_links.json"
+)
+POOL_CONFIG_PATH = (
+    Path(project_root) / "v2" / "config" / "interest_source_links.json"
+)
 
 try:
     DELAY_BETWEEN_SEARCHES = float(
@@ -283,6 +261,76 @@ def _normalize_url(url: str) -> str:
     return cleaned
 
 
+def _domain_from_url(url: str) -> str:
+    try:
+        return (urlparse(url).hostname or "").lower().replace("www.", "")
+    except Exception:
+        return ""
+
+
+def _load_json_file(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _domains_overlap(candidate: str, existing_domains: set[str]) -> bool:
+    if not candidate:
+        return False
+    for domain in existing_domains:
+        if (
+            candidate == domain
+            or candidate.endswith(f".{domain}")
+            or domain.endswith(f".{candidate}")
+        ):
+            return True
+    return False
+
+
+def _get_pool_source_domains() -> set[str]:
+    data = _load_json_file(POOL_CONFIG_PATH)
+    domains: set[str] = set()
+    for source in data.get("validated_sources", []):
+        url = source.get("source_url", "")
+        domain = _domain_from_url(url)
+        if domain:
+            domains.add(domain)
+    return domains
+
+
+def _load_trending_sources() -> list[dict[str, Any]]:
+    data = _load_json_file(TRENDING_CONFIG_PATH)
+    validated = data.get("validated_sources", [])
+    pool_domains = _get_pool_source_domains()
+    selected: list[dict[str, Any]] = []
+    skipped_overlap = 0
+
+    for source in validated:
+        source_url = str(source.get("source_url", "")).strip()
+        source_domain = _domain_from_url(source_url)
+        if _domains_overlap(source_domain, pool_domains):
+            skipped_overlap += 1
+            continue
+        selected.append(
+            {
+                "topic_id": str(source.get("topic_id", "misc")).strip(),
+                "name": str(source.get("source_name", source_domain)).strip(),
+                "source_url": source_url,
+                "keywords": [],
+                "source_type": str(source.get("source_type", "")).strip(),
+            }
+        )
+
+    print(
+        f"Loaded {len(selected)} trending sources from config "
+        f"(skipped overlaps with pool: {skipped_overlap})"
+    )
+    return selected
+
+
 def _parse_any_date(value: str, fallback_date: str) -> str:
     """Best-effort date parsing; returns YYYY-MM-DD."""
     raw = (value or "").strip()
@@ -367,12 +415,67 @@ def _extract_exa_items(results: Any) -> list[dict[str, str]]:
             extracted.append(
                 {
                     "url": str(url).strip(),
-                    
                     "title": str(title).strip(),
                     "published_date": str(published).strip(),
                 }
             )
     return extracted
+
+
+def _fetch_source_candidates(
+    source: dict[str, Any],
+    reference_date: str,
+    max_results: int = 12,
+) -> list[dict[str, Any]]:
+    source_url = source.get("source_url", "")
+    if not source_url:
+        return []
+    try:
+        result = fetch_article_links(
+            source_url,
+            limit=max_results,
+            include_external=False,
+            enrich_metadata=False,
+        )
+    except Exception as exc:
+        print(f"    Source fetch failed for {source['name']}: {exc}")
+        return []
+
+    items: list[dict[str, Any]] = []
+    seen = set()
+    for article in result.articles:
+        url = _normalize_url(str(article.get("url", "")).strip())
+        title = str(article.get("title", "")).strip()
+        published_raw = str(article.get("published_date", "")).strip()
+        og_image = str(article.get("og_image", "")).strip()
+        if not url or not title or url in seen:
+            continue
+        if not _is_probable_article_url(url) or _is_junk_url(url):
+            continue
+        if not published_raw:
+            # Trending requires strict freshness; skip undated articles.
+            continue
+        published_date = _parse_any_date(published_raw, reference_date)
+        if not _is_recent_enough(
+            published_date,
+            reference_date=reference_date,
+            max_age_hours=TRENDING_MAX_AGE_HOURS,
+        ):
+            continue
+        seen.add(url)
+        items.append(
+            {
+                "title": title,
+                "url": url,
+                "published_date": published_date,
+                "source_domain": _domain_from_url(url),
+                "source_label": source["name"],
+                "topic_id": source["topic_id"],
+                "keywords": source.get("keywords", []),
+                "thumbnail": og_image if og_image.startswith("http") else "",
+            }
+        )
+    return items
 
 
 def _search_exa_trusted_source(
@@ -392,9 +495,14 @@ def _search_exa_trusted_source(
         return []
 
     exa = Exa(api_key=api_key)
-    ref_dt = datetime.strptime(reference_date, "%Y-%m-%d").replace(tzinfo=IST_TZ)
+    ref_dt = datetime.strptime(reference_date, "%Y-%m-%d").replace(
+        tzinfo=IST_TZ
+    )
     start_dt = ref_dt - timedelta(days=TRENDING_LOOKBACK_DAYS)
-    start_iso = start_dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    start_iso = start_dt.astimezone(timezone.utc).isoformat().replace(
+        "+00:00",
+        "Z",
+    )
     end_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
     query = source.get("query", source["name"])
@@ -437,7 +545,10 @@ def _search_exa_trusted_source(
             {
                 "title": item["title"],
                 "url": url,
-                "published_date": _parse_any_date(item.get("published_date", ""), reference_date),
+                "published_date": _parse_any_date(
+                    item.get("published_date", ""),
+                    reference_date,
+                ),
                 "source_domain": (urlparse(url).hostname or "").replace("www.", ""),
                 "source_label": source["name"],
                 "topic_id": source["topic_id"],
@@ -467,7 +578,10 @@ def _fetch_rss_source(
         print(f"    RSS fetch failed for {source['name']}: {exc}")
         return []
 
-    ref_cutoff = datetime.strptime(reference_date, "%Y-%m-%d").replace(tzinfo=IST_TZ) - timedelta(days=TRENDING_LOOKBACK_DAYS)
+    ref_cutoff = datetime.strptime(
+        reference_date,
+        "%Y-%m-%d",
+    ).replace(tzinfo=IST_TZ) - timedelta(days=TRENDING_LOOKBACK_DAYS)
     items: list[dict[str, Any]] = []
     seen = set()
     category_allow = [c.lower() for c in source.get("category_allow", [])]
@@ -517,7 +631,9 @@ def _fetch_rss_source(
     return items
 
 
-def _fetch_exa_contents_for_urls(urls: list[str]) -> tuple[dict[str, str], dict[str, str]]:
+def _fetch_exa_contents_for_urls(
+    urls: list[str],
+) -> tuple[dict[str, str], dict[str, str]]:
     """Fetch cleaned text + image from Exa contents for URL set."""
     api_key = os.getenv("EXA_API_KEY", "").strip()
     if not api_key or not urls:
@@ -526,7 +642,12 @@ def _fetch_exa_contents_for_urls(urls: list[str]) -> tuple[dict[str, str], dict[
     payload = {"urls": urls, "text": {"maxCharacters": EXA_TEXT_MAX_CHARS}}
     headers = {"Content-Type": "application/json", "x-api-key": api_key}
     try:
-        res = requests.post(EXA_API_URL, json=payload, headers=headers, timeout=30)
+        res = requests.post(
+            EXA_API_URL,
+            json=payload,
+            headers=headers,
+            timeout=30,
+        )
         if res.status_code >= 400:
             return {}, {}
         data = res.json() or {}
@@ -546,7 +667,11 @@ def _fetch_exa_contents_for_urls(urls: list[str]) -> tuple[dict[str, str], dict[
     return text_map, image_map
 
 
-def _summarize_from_content(client: OpenAI, title: str, content: str) -> tuple[str, str]:
+def _summarize_from_content(
+    client: OpenAI,
+    title: str,
+    content: str,
+) -> tuple[str, str]:
     """Return (subtitle, details) for one article using a small LLM call."""
     if not content:
         return "", ""
@@ -628,7 +753,14 @@ def _search_openai_for_interest(
     """Single simple web search per topic. No passes, no complexity."""
     topic_name = topic.get("name", "")
 
-    prompt = f"What are today's biggest {topic_name} news stories? Date: {date}. Return up to {max_results} articles as JSON: {{\"articles\": [{{\"title\": \"...\", \"subtitle\": \"...\", \"details\": \"2-3 sentence summary\", \"url\": \"https://...\", \"published_date\": \"{date}\", \"source_domain\": \"example.com\"}}]}}"
+    prompt = (
+        f"What are today's biggest {topic_name} news stories? Date: {date}. "
+        f"Return up to {max_results} articles as JSON: "
+        "{\"articles\": [{\"title\": \"...\", \"subtitle\": \"...\", "
+        f"\"details\": \"2-3 sentence summary\", \"url\": \"https://...\", "
+        f"\"published_date\": \"{date}\", \"source_domain\": "
+        "\"example.com\"}]}"
+    )
 
     for attempt in range(OPENAI_FETCH_RETRIES + 1):
         try:
@@ -651,11 +783,15 @@ def _search_openai_for_interest(
                 print(f"    search failed after retries: {exc}")
                 return []
             backoff = (attempt + 1) * 1.5
-            print(f"    search failed (attempt {attempt + 1}), retrying in {backoff:.1f}s...")
+            print(
+                f"    search failed (attempt {attempt + 1}), "
+                f"retrying in {backoff:.1f}s..."
+            )
             time.sleep(backoff)
 
     # Parse results — accept everything that has a url and title.
-    # We trust OpenAI web search to return recent content since we asked for "today's news".
+    # We trust OpenAI web search to return recent content because
+    # we explicitly request today's news.
     articles: list[dict[str, Any]] = []
     seen_urls: set[str] = set()
     for r in raw:
@@ -689,6 +825,7 @@ def fetch_news_for_topics(
     topics: list[dict[str, Any]],
     date: str,
     max_results: int = MAX_NEWS_PER_TOPIC,
+    sources: list[dict[str, Any]] | None = None,
 ) -> dict[str, dict[str, Any]]:
     """
     Source-first trending fetch:
@@ -698,33 +835,41 @@ def fetch_news_for_topics(
     - latest-first ranking
     - capped to MAX_TOTAL_TRENDING_ITEMS globally
     """
-    del topics  # We now use TRUSTED_SOURCES for quality control.
+    del topics
     start_time = time.time()
+    selected_sources = sources or []
 
     # Initialize output buckets for all trusted sources.
     news_by_topic: dict[str, dict[str, Any]] = {
         s["topic_id"]: {
             "name": s["name"],
-            "search_query": s.get("query", s.get("rss_url", "")),
+            "search_query": s.get("source_url", ""),
             "keywords": s.get("keywords", []),
             "articles": [],
         }
-        for s in TRUSTED_SOURCES
+        for s in selected_sources
     }
 
-    print(f"Fetching news from {len(TRUSTED_SOURCES)} trusted sources...")
+    print(f"Fetching news from {len(selected_sources)} trusted sources...")
     candidates: list[dict[str, Any]] = []
 
-    for idx, source in enumerate(TRUSTED_SOURCES):
+    for idx, source in enumerate(selected_sources):
         try:
-            if source.get("kind") == "exa":
-                found = _search_exa_trusted_source(source, reference_date=date, max_results=12)
-            else:
-                found = _fetch_rss_source(source, reference_date=date, max_results=12)
+            found = _fetch_source_candidates(
+                source,
+                reference_date=date,
+                max_results=12,
+            )
             candidates.extend(found)
-            print(f"  [{idx + 1}/{len(TRUSTED_SOURCES)}] {source['name']}: {len(found)} candidates")
+            print(
+                f"  [{idx + 1}/{len(selected_sources)}] "
+                f"{source['name']}: {len(found)} candidates"
+            )
         except Exception as exc:
-            print(f"  [{idx + 1}/{len(TRUSTED_SOURCES)}] {source['name']}: error - {exc}")
+            print(
+                f"  [{idx + 1}/{len(selected_sources)}] "
+                f"{source['name']}: error - {exc}"
+            )
 
     # Global dedupe by URL, prefer newest.
     dedup: dict[str, dict[str, Any]] = {}
@@ -742,14 +887,14 @@ def fetch_news_for_topics(
     unique_items = list(dedup.values())
     unique_items.sort(key=lambda x: x.get("published_date", ""), reverse=True)
 
-    # Keep only latest max items globally, with source diversity via round-robin.
+    # Keep latest items globally with source diversity via round-robin.
     buckets: dict[str, list[dict[str, Any]]] = {}
     for item in unique_items:
         tid = item.get("topic_id", "misc")
         buckets.setdefault(tid, []).append(item)
 
     selected: list[dict[str, Any]] = []
-    topic_ids = [s["topic_id"] for s in TRUSTED_SOURCES]
+    topic_ids = [s["topic_id"] for s in selected_sources]
     while len(selected) < MAX_TOTAL_TRENDING_ITEMS:
         added = False
         for tid in topic_ids:
@@ -763,11 +908,19 @@ def fetch_news_for_topics(
         if not added:
             break
 
-    print(f"Selected {len(selected)} unique latest articles (cap={MAX_TOTAL_TRENDING_ITEMS})")
+    print(
+        "Selected "
+        f"{len(selected)} unique latest articles "
+        f"(cap={MAX_TOTAL_TRENDING_ITEMS})"
+    )
 
     # Hydrate with Exa content + image and summarize.
     openai_key = os.getenv("OPENAI_API_KEY", "").strip()
-    client = OpenAI(api_key=openai_key, timeout=OPENAI_TIMEOUT_SECONDS) if openai_key else None
+    client = (
+        OpenAI(api_key=openai_key, timeout=OPENAI_TIMEOUT_SECONDS)
+        if openai_key
+        else None
+    )
     url_list = [i["url"] for i in selected]
     content_map, image_map = _fetch_exa_contents_for_urls(url_list)
 
@@ -777,7 +930,11 @@ def fetch_news_for_topics(
         subtitle = ""
         details = ""
         if client and content:
-            subtitle, details = _summarize_from_content(client, item.get("title", ""), content)
+            subtitle, details = _summarize_from_content(
+                client,
+                item.get("title", ""),
+                content,
+            )
 
         item["subtitle"] = subtitle or item.get("title", "")
         item["details"] = details or (content[:240] + "..." if content else "")
@@ -800,7 +957,10 @@ def fetch_news_for_topics(
     elapsed = time.time() - start_time
     total_articles = sum(len(t["articles"]) for t in news_by_topic.values())
     topics_with_news = sum(1 for t in news_by_topic.values() if t["articles"])
-    print(f"News fetch complete: {total_articles} articles from {topics_with_news} topics in {elapsed:.1f}s")
+    print(
+        f"News fetch complete: {total_articles} articles "
+        f"from {topics_with_news} topics in {elapsed:.1f}s"
+    )
     return news_by_topic
 
 
@@ -817,10 +977,10 @@ def _fetch_og_image(url: str, timeout: int = 5) -> str:
             return ""
         html = resp.text[:30_000]  # only need the <head>
         for pattern in [
-            r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']',
-            r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']',
-            r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)["\']',
-            r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']twitter:image["\']',
+            r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']',  # noqa: E501
+            r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']',  # noqa: E501
+            r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)["\']',  # noqa: E501
+            r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']twitter:image["\']',  # noqa: E501
         ]:
             m = re.search(pattern, html, re.IGNORECASE)
             if m:
@@ -863,7 +1023,9 @@ def _enrich_articles_with_thumbnails(
         for future in as_completed(futures):
             topic_id, idx, thumbnail = future.result()
             if thumbnail:
-                news_by_topic[topic_id]["articles"][idx]["thumbnail"] = thumbnail
+                news_by_topic[topic_id]["articles"][idx][
+                    "thumbnail"
+                ] = thumbnail
             completed += 1
 
     found = sum(
@@ -899,7 +1061,7 @@ def save_trending_news(
     }
     store.db.collection("trending_news").document(date).set(metadata)
 
-    # Clear existing topic docs for this date to avoid stale/incorrect leftovers
+    # Clear existing topic docs for this date to avoid stale leftovers.
     existing_topics = (
         store.db.collection("trending_news")
         .document(date)
@@ -961,14 +1123,15 @@ def build_trending_news_for_day(date: str | None = None) -> dict[str, Any]:
     start_time = time.time()
     store = FirestoreStore()
 
-    # Step 1: Use trusted source buckets (quality-first)
+    # Step 1: Load non-pool trending sources from config.
+    configured_sources = _load_trending_sources()
     topics = [
         {
             "id": s["topic_id"],
             "name": s["name"],
             "keywords": s.get("keywords", []),
         }
-        for s in TRUSTED_SOURCES
+        for s in configured_sources
     ]
     print(f"\n[1/2] Using {len(topics)} trusted sources")
     for t in topics:
@@ -980,6 +1143,7 @@ def build_trending_news_for_day(date: str | None = None) -> dict[str, Any]:
         topics=topics,
         date=date,
         max_results=MAX_NEWS_PER_TOPIC,
+        sources=configured_sources,
     )
 
     # Step 3: Enrich articles with thumbnails

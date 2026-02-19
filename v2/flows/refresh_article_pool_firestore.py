@@ -40,6 +40,8 @@ from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
 POOL_COLLECTION = "article_pool_v2"
 RUNS_COLLECTION = "pipeline_runs_v2"
 DEFAULT_SOURCES_CONFIG = "v2/config/interest_source_links.json"
+EXA_API_URL = "https://api.exa.ai/contents"
+EXA_TIMEOUT_SECONDS = 30
 
 PAYWALL_INDICATORS = (
     "subscribe to continue reading",
@@ -305,6 +307,60 @@ def _fetch_article_content(url: str, timeout: int) -> dict[str, Any]:
     return result
 
 
+def _fetch_article_content_with_exa_fallback(
+    url: str,
+    timeout: int,
+    exa_api_key: str,
+    exa_max_chars: int = 20000,
+) -> tuple[dict[str, Any], str]:
+    """
+    Fetch content with direct HTTP first, then Exa fallback on failure.
+
+    Returns:
+      (content_info, source_label) where source_label is direct|exa_fallback
+    """
+    direct = _fetch_article_content(url=url, timeout=timeout)
+    if direct.get("content"):
+        return direct, "direct"
+
+    if not exa_api_key:
+        return direct, "direct"
+
+    try:
+        response = requests.post(
+            EXA_API_URL,
+            json={
+                "urls": [url],
+                "text": {"maxCharacters": exa_max_chars},
+            },
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": exa_api_key,
+            },
+            timeout=EXA_TIMEOUT_SECONDS,
+        )
+        response.raise_for_status()
+        payload = response.json() or {}
+        results = payload.get("results", []) or []
+        if not results:
+            return direct, "direct"
+        item = results[0] or {}
+        text = (item.get("text") or "").strip()
+        if not text:
+            return direct, "direct"
+        fallback = {
+            "content": _clean_text(text),
+            "content_length": len(_clean_text(text)),
+            "is_paywalled": False,
+            "fetch_error": "",
+            "http_status": 200,
+            "image": (item.get("image") or "").strip(),
+        }
+        return fallback, "exa_fallback"
+    except Exception:
+        return direct, "direct"
+
+
 def _parse_json_object(raw_text: str) -> tuple[dict[str, Any] | None, str]:
     cleaned = (raw_text or "").strip()
     if not cleaned:
@@ -433,6 +489,9 @@ def refresh_article_pool_firestore(args: argparse.Namespace) -> dict[str, Any]:
     content_fetch_skipped_cached = 0
     summary_attempted = 0
     summary_skipped_cached = 0
+    content_exa_fallback_used = 0
+
+    exa_api_key = os.getenv("EXA_API_KEY", "").strip()
 
     for src in validated_sources:
         if not _passes_filters(src, allow_interest_ids, allow_subinterest_ids):
@@ -555,12 +614,33 @@ def refresh_article_pool_firestore(args: argparse.Namespace) -> dict[str, Any]:
                     url,
                     timeout=args.http_timeout,
                 )
-                if content_info["fetch_error"]:
+                content_source = "direct"
+                if not content_info.get("content"):
+                    content_info, content_source = (
+                        _fetch_article_content_with_exa_fallback(
+                            url=url,
+                            timeout=args.http_timeout,
+                            exa_api_key=exa_api_key,
+                        )
+                    )
+                    if content_source == "exa_fallback":
+                        content_exa_fallback_used += 1
+                        _log(
+                            f"Article content fetched via Exa fallback | "
+                            f"source={source_name} | url={url}"
+                        )
+
+                if content_info["fetch_error"] and not content_info.get("content"):
                     content_failures += 1
                     _log(
                         f"Article content fetch failed | source={source_name} | "
                         f"url={url} | error={content_info['fetch_error'][:120]}"
                     )
+            else:
+                content_source = "cached"
+
+            if not og_image and content_info.get("image"):
+                og_image = content_info.get("image", "")
 
             summary_payload: dict[str, Any] = {}
             summary_error = ""
@@ -649,6 +729,7 @@ def refresh_article_pool_firestore(args: argparse.Namespace) -> dict[str, Any]:
                 "http_status": content_info["http_status"],
                 "content_fetched_at": content_fetched_at,
                 "content_hash": content_hash,
+                "content_source": content_source,
                 "summary": summary_payload,
                 "summary_error": summary_error,
                 "summary_model": args.summary_model,
@@ -711,6 +792,7 @@ def refresh_article_pool_firestore(args: argparse.Namespace) -> dict[str, Any]:
             "summary_failures": summary_failures,
             "content_fetch_attempted": content_fetch_attempted,
             "content_fetch_cache_hits": content_fetch_skipped_cached,
+            "content_exa_fallback_used": content_exa_fallback_used,
             "summary_attempted": summary_attempted,
             "summary_cache_hits": summary_skipped_cached,
             "retention_days": args.retention_days,
@@ -729,6 +811,7 @@ def refresh_article_pool_firestore(args: argparse.Namespace) -> dict[str, Any]:
         f"summary_failures={summary_failures}, "
         f"content_fetch_attempted={content_fetch_attempted}, "
         f"content_fetch_cache_hits={content_fetch_skipped_cached}, "
+        f"content_exa_fallback_used={content_exa_fallback_used}, "
         f"summary_attempted={summary_attempted}, "
         f"summary_cache_hits={summary_skipped_cached}, "
         f"stale_deactivated={stale_updates}"
@@ -742,6 +825,7 @@ def refresh_article_pool_firestore(args: argparse.Namespace) -> dict[str, Any]:
         "summary_failures": summary_failures,
         "content_fetch_attempted": content_fetch_attempted,
         "content_fetch_cache_hits": content_fetch_skipped_cached,
+        "content_exa_fallback_used": content_exa_fallback_used,
         "summary_attempted": summary_attempted,
         "summary_cache_hits": summary_skipped_cached,
         "deactivated_stale_items": stale_updates,

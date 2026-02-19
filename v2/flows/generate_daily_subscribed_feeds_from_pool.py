@@ -31,7 +31,7 @@ if str(REPO_ROOT) not in sys.path:
 load_dotenv(REPO_ROOT / ".env")
 
 from v1.algorithm.interest_schema import get_interest_ids  # noqa: E402
-from v1.flows.add_trending_news_to_feed import (  # noqa: E402
+from v2.flows.add_trending_news_to_feed import (  # noqa: E402
     add_trending_news_to_feed,
 )
 from v1.flows.build_suggested_items_for_user import (  # noqa: E402
@@ -116,6 +116,18 @@ def _parse_args() -> argparse.Namespace:
         type=int,
         default=1,
         help="Suggested items per topic.",
+    )
+    parser.add_argument(
+        "--min-suggested-items",
+        type=int,
+        default=1,
+        help="Minimum suggested items in each final feed.",
+    )
+    parser.add_argument(
+        "--min-trending-items",
+        type=int,
+        default=1,
+        help="Minimum trending items in each final feed.",
     )
     return parser.parse_args()
 
@@ -354,6 +366,100 @@ def _item_category(item: dict[str, Any]) -> str:
     if feed_category == "pool_v2":
         return "pool_v2"
     return "other"
+
+
+def _count_items_by_category(
+    items: list[dict[str, Any]],
+    category: str,
+) -> int:
+    return sum(1 for item in items if _item_category(item) == category)
+
+
+def _build_trending_fallback_item(
+    article: dict[str, Any],
+    topic_id: str,
+    topic_name: str,
+    idx: int,
+    date: str,
+) -> dict[str, Any]:
+    return {
+        "id": f"trending_fallback_{topic_id}_{idx}_{date}",
+        "type": "news",
+        "title": article.get("title", ""),
+        "description": (
+            article.get("details", "")
+            or article.get("subtitle", "")
+        ),
+        "url": article.get("url", ""),
+        "tags": [topic_id],
+        "source": "trending_news",
+        "metadata": {
+            "why_relevant": f"Trending in {topic_name}",
+            "feed_category": "trending_news",
+            "is_hot": True,
+            "published_date": article.get("published_date", ""),
+        },
+    }
+
+
+def _get_trending_fallback_items(
+    store: FirestoreStore,
+    date: str,
+    existing_urls: set[str],
+    limit: int,
+) -> list[dict[str, Any]]:
+    if limit <= 0:
+        return []
+    root = store.db.collection("trending_news").document(date).get()
+    if not root.exists:
+        return []
+
+    rows: list[tuple[datetime, str, str, dict[str, Any]]] = []
+    docs = (
+        store.db.collection("trending_news")
+        .document(date)
+        .collection("topics")
+        .stream()
+    )
+    for doc in docs:
+        data = doc.to_dict() or {}
+        topic_id = data.get("topic_id", doc.id)
+        topic_name = data.get("name", topic_id)
+        for article in data.get("articles", []) or []:
+            if not isinstance(article, dict):
+                continue
+            url = article.get("url", "")
+            if not url or url in existing_urls:
+                continue
+            published = _parse_iso(article.get("published_date", ""))
+            rows.append(
+                (
+                    published or datetime.min.replace(tzinfo=timezone.utc),
+                    topic_id,
+                    topic_name,
+                    article,
+                )
+            )
+    rows.sort(key=lambda x: x[0], reverse=True)
+
+    items: list[dict[str, Any]] = []
+    for idx, (_, topic_id, topic_name, article) in enumerate(rows, start=1):
+        url = article.get("url", "")
+        if not url or url in existing_urls:
+            continue
+        items.append(
+            _build_trending_fallback_item(
+                article=article,
+                topic_id=topic_id,
+                topic_name=topic_name,
+                idx=idx,
+                date=date,
+            )
+        )
+        existing_urls.add(url)
+        if len(items) >= limit:
+            break
+    return items
 
 
 def _cap_and_balance_items(
@@ -595,7 +701,9 @@ def generate_daily_subscribed_feeds_from_pool(
                 continue
             deduped[url] = item
 
-        picked_items = list(deduped.values())[: args.items_per_user]
+        ordered_pool_items = list(deduped.values())
+        picked_items = ordered_pool_items[: args.items_per_user]
+        spare_pool_items = ordered_pool_items[args.items_per_user:]
         picked_items, backfill_summaries, backfill_images = (
             _backfill_pool_items_for_feed(store, picked_items)
         )
@@ -670,6 +778,66 @@ def generate_daily_subscribed_feeds_from_pool(
             user_id,
             target_date,
         )
+
+        existing_urls = {
+            i.get("url", "")
+            for i in final_items
+            if isinstance(i, dict) and i.get("url", "")
+        }
+
+        missing_suggested = max(
+            0,
+            args.min_suggested_items
+            - _count_items_by_category(final_items, "suggested"),
+        )
+        if missing_suggested > 0 and spare_pool_items:
+            added_suggested_fallback = 0
+            for spare in spare_pool_items:
+                if added_suggested_fallback >= missing_suggested:
+                    break
+                spare_url = spare.get("url", "")
+                if not spare_url or spare_url in existing_urls:
+                    continue
+                spare_items, ssum, simg = _backfill_pool_items_for_feed(
+                    store,
+                    [spare],
+                )
+                pool_backfill_summaries_total += ssum
+                pool_backfill_images_total += simg
+                suggested_item = _build_feed_item(spare_items[0])
+                suggested_item.setdefault("metadata", {})
+                suggested_item["metadata"]["feed_category"] = "suggested"
+                suggested_item["metadata"]["why_relevant"] = (
+                    "Suggested for you"
+                )
+                final_items.append(suggested_item)
+                existing_urls.add(spare_url)
+                added_suggested_fallback += 1
+            if added_suggested_fallback:
+                _log(
+                    f"user={user_id} suggested fallback added="
+                    f"{added_suggested_fallback}"
+                )
+
+        missing_trending = max(
+            0,
+            args.min_trending_items
+            - _count_items_by_category(final_items, "trending_news"),
+        )
+        if missing_trending > 0:
+            fallback_trending = _get_trending_fallback_items(
+                store=store,
+                date=target_date,
+                existing_urls=existing_urls,
+                limit=missing_trending,
+            )
+            if fallback_trending:
+                final_items.extend(fallback_trending)
+                _log(
+                    f"user={user_id} trending fallback added="
+                    f"{len(fallback_trending)}"
+                )
+
         final_items = _cap_and_balance_items(final_items, args.items_per_user)
         full_feed["items"] = final_items
         full_feed["generated_at"] = datetime.now(timezone.utc).isoformat()

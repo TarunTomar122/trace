@@ -7,9 +7,8 @@ Current pipeline:
 Usage:
     python v1/run_daily_batch.py
 """
-import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 # Add project root to path for imports (at end to not shadow external packages)
@@ -17,11 +16,15 @@ project_root = str(Path(__file__).parent.parent)
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # noqa: E402
 load_dotenv(Path(__file__).parent.parent / ".env")
 
-from v1.flows.build_topics_for_all_users import build_topics_for_all_users
-from v1.flows.build_trending_news_for_day import build_trending_news_for_day
+from v1.flows.build_topics_for_all_users import (  # noqa: E402
+    build_topics_for_all_users,
+)
+from v2.flows.build_trending_news_for_day import (  # noqa: E402
+    build_trending_news_for_day,
+)
 
 
 def log(message: str):
@@ -33,14 +36,14 @@ def log(message: str):
 def run_daily_batch() -> int:
     """
     Run the daily batch job.
-    
+
     Returns:
         Exit code: 0 on success, 1 on critical failure
     """
     log("=" * 60)
     log("DAILY BATCH JOB STARTED")
     log("=" * 60)
-    
+
     # =========================================================================
     # Phase 0: Topics build (every 4 days)
     # =========================================================================
@@ -61,7 +64,11 @@ def run_daily_batch() -> int:
     log("-" * 40)
     try:
         trending_result = build_trending_news_for_day()
-        log(f"Trending news: {trending_result.get('total_articles', 0)} articles from {trending_result.get('topics_with_news', 0)} topics")
+        log(
+            "Trending news: "
+            f"{trending_result.get('total_articles', 0)} articles from "
+            f"{trending_result.get('topics_with_news', 0)} topics"
+        )
     except Exception as e:
         log(f"✗ Trending news fetch failed (non-critical): {e}")
 
@@ -79,4 +86,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

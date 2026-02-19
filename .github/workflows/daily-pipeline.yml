@@ -24,6 +24,7 @@ on:
           - all
           - v2_all
           - v2_pool
+          - v2_trending
           - v2_feeds
           - morning
           - evening
@@ -47,7 +48,7 @@ env:
 
 jobs:
   morning-pipeline:
-    if: github.event.schedule == '30 2 * * *' || (github.event_name == 'workflow_dispatch' && (inputs.jobs == 'all' || inputs.jobs == 'v2_all' || inputs.jobs == 'v2_pool' || inputs.jobs == 'v2_feeds' || inputs.jobs == 'morning' || inputs.jobs == 'batch' || inputs.jobs == 'feeds' || inputs.jobs == 'newsletters' || inputs.jobs == 'build_newsletters' || inputs.jobs == 'build_free_newsletter' || inputs.jobs == 'send_newsletters' || inputs.jobs == 'send_free_newsletter'))
+    if: github.event.schedule == '30 2 * * *' || (github.event_name == 'workflow_dispatch' && (inputs.jobs == 'all' || inputs.jobs == 'v2_all' || inputs.jobs == 'v2_pool' || inputs.jobs == 'v2_trending' || inputs.jobs == 'v2_feeds' || inputs.jobs == 'morning' || inputs.jobs == 'batch' || inputs.jobs == 'feeds' || inputs.jobs == 'newsletters' || inputs.jobs == 'build_newsletters' || inputs.jobs == 'build_free_newsletter' || inputs.jobs == 'send_newsletters' || inputs.jobs == 'send_free_newsletter'))
     runs-on: ubuntu-latest
     
     steps:
@@ -71,6 +72,8 @@ jobs:
               python -u v2/scheduler_firestore.py --jobs all --items-per-user 8
             elif [ "${{ inputs.jobs }}" == "v2_pool" ]; then
               python -u v2/scheduler_firestore.py --jobs pool
+            elif [ "${{ inputs.jobs }}" == "v2_trending" ]; then
+              python -u v2/scheduler_firestore.py --jobs trending
             elif [ "${{ inputs.jobs }}" == "v2_feeds" ]; then
               python -u v2/scheduler_firestore.py --jobs feeds --items-per-user 8
             else

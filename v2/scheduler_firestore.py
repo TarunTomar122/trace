@@ -26,6 +26,9 @@ from v1.storage import FirestoreStore  # noqa: E402
 from v2.flows.generate_daily_subscribed_feeds_from_pool import (  # noqa: E402
     generate_daily_subscribed_feeds_from_pool,
 )
+from v2.flows.build_trending_news_for_day import (  # noqa: E402
+    build_trending_news_for_day,
+)
 from v2.flows.refresh_article_pool_firestore import (  # noqa: E402
     refresh_article_pool_firestore,
 )
@@ -45,7 +48,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--jobs",
         required=True,
-        choices=["all", "pool", "feeds"],
+        choices=["all", "pool", "trending", "feeds"],
         help="Jobs to run.",
     )
     parser.add_argument(
@@ -139,7 +142,7 @@ def run_scheduler(args: argparse.Namespace) -> dict:
     )
     job_names: list[str]
     if args.jobs == "all":
-        job_names = ["pool", "feeds"]
+        job_names = ["pool", "trending", "feeds"]
     else:
         job_names = [args.jobs]
 
@@ -187,6 +190,16 @@ def run_scheduler(args: argparse.Namespace) -> dict:
                 }
             )
 
+    if "trending" in job_names:
+        results.append(
+            _run_job(
+                "trending_news",
+                lambda: build_trending_news_for_day(
+                    date=(args.date.strip() or None)
+                ),
+            )
+        )
+
     if "feeds" in job_names:
         results.append(
             _run_job(
@@ -203,6 +216,8 @@ def run_scheduler(args: argparse.Namespace) -> dict:
                         add_trending=True,
                         suggested_max_topics=2,
                         suggested_items_per_topic=1,
+                        min_suggested_items=1,
+                        min_trending_items=1,
                     )
                 ),
             )
