@@ -26,6 +26,9 @@ on:
           - v2_pool
           - v2_trending
           - v2_feeds
+          - v2_newsletters
+          - v2_newsletter_build
+          - v2_newsletter_send
           - morning
           - evening
           - batch
@@ -48,7 +51,7 @@ env:
 
 jobs:
   morning-pipeline:
-    if: github.event.schedule == '30 2 * * *' || (github.event_name == 'workflow_dispatch' && (inputs.jobs == 'all' || inputs.jobs == 'v2_all' || inputs.jobs == 'v2_pool' || inputs.jobs == 'v2_trending' || inputs.jobs == 'v2_feeds' || inputs.jobs == 'morning' || inputs.jobs == 'batch' || inputs.jobs == 'feeds' || inputs.jobs == 'newsletters' || inputs.jobs == 'build_newsletters' || inputs.jobs == 'build_free_newsletter' || inputs.jobs == 'send_newsletters' || inputs.jobs == 'send_free_newsletter'))
+    if: github.event.schedule == '30 2 * * *' || (github.event_name == 'workflow_dispatch' && (inputs.jobs == 'all' || inputs.jobs == 'v2_all' || inputs.jobs == 'v2_pool' || inputs.jobs == 'v2_trending' || inputs.jobs == 'v2_feeds' || inputs.jobs == 'v2_newsletters' || inputs.jobs == 'v2_newsletter_build' || inputs.jobs == 'v2_newsletter_send' || inputs.jobs == 'morning' || inputs.jobs == 'batch' || inputs.jobs == 'feeds' || inputs.jobs == 'newsletters' || inputs.jobs == 'build_newsletters' || inputs.jobs == 'build_free_newsletter' || inputs.jobs == 'send_newsletters' || inputs.jobs == 'send_free_newsletter'))
     runs-on: ubuntu-latest
     
     steps:
@@ -76,6 +79,12 @@ jobs:
               python -u v2/scheduler_firestore.py --jobs trending
             elif [ "${{ inputs.jobs }}" == "v2_feeds" ]; then
               python -u v2/scheduler_firestore.py --jobs feeds --items-per-user 8
+            elif [ "${{ inputs.jobs }}" == "v2_newsletters" ]; then
+              python -u v2/scheduler_firestore.py --jobs newsletters
+            elif [ "${{ inputs.jobs }}" == "v2_newsletter_build" ]; then
+              python -u v2/scheduler_firestore.py --jobs newsletter_build
+            elif [ "${{ inputs.jobs }}" == "v2_newsletter_send" ]; then
+              python -u v2/scheduler_firestore.py --jobs newsletter_send
             else
               python v1/scheduler.py --jobs ${{ inputs.jobs }}
             fi

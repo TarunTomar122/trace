@@ -81,7 +81,10 @@ def _parse_args() -> argparse.Namespace:
         "--items-per-user",
         type=int,
         default=DEFAULT_ITEMS_PER_USER,
-        help="Feed items per user.",
+        help=(
+            "Base pool items per user. Suggested and trending are "
+            "appended on top."
+        ),
     )
     parser.add_argument(
         "--max-age-days",
@@ -488,6 +491,25 @@ def _cap_and_balance_items(
     return final[:max_items]
 
 
+def _dedupe_feed_items_keep_order(
+    items: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    seen_urls: set[str] = set()
+    deduped: list[dict[str, Any]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        url = item.get("url", "")
+        if not url:
+            deduped.append(item)
+            continue
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
+        deduped.append(item)
+    return deduped
+
+
 def _load_user_feed(
     store: FirestoreStore,
     user_id: str,
@@ -838,12 +860,13 @@ def generate_daily_subscribed_feeds_from_pool(
                     f"{len(fallback_trending)}"
                 )
 
-        final_items = _cap_and_balance_items(final_items, args.items_per_user)
+        final_items = _dedupe_feed_items_keep_order(final_items)
         full_feed["items"] = final_items
         full_feed["generated_at"] = datetime.now(timezone.utc).isoformat()
         full_feed.setdefault("metadata", {})
         full_feed["metadata"]["item_count"] = len(final_items)
         full_feed["metadata"]["source_pipeline"] = "v2_pool_firestore"
+        full_feed["metadata"]["base_pool_items_target"] = args.items_per_user
         full_feed["metadata"]["suggested_items_added"] = suggested_added
         full_feed["metadata"]["trending_items_added"] = trending_added
         ref.set(full_feed, merge=True)

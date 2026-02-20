@@ -54,7 +54,7 @@ IST_TZ = timezone(timedelta(hours=5, minutes=30))
 MAX_PROMPT_PASSES_PER_TOPIC = 2
 OPENAI_TIMEOUT_SECONDS = 90.0
 OPENAI_FETCH_RETRIES = 2
-MAX_TOTAL_TRENDING_ITEMS = 6
+MAX_TOTAL_TRENDING_ITEMS = 15
 TRENDING_LOOKBACK_DAYS = 2
 EXA_API_URL = "https://api.exa.ai/contents"
 EXA_TEXT_MAX_CHARS = 4000
@@ -319,7 +319,13 @@ def _load_trending_sources() -> list[dict[str, Any]]:
                 "topic_id": str(source.get("topic_id", "misc")).strip(),
                 "name": str(source.get("source_name", source_domain)).strip(),
                 "source_url": source_url,
-                "keywords": [],
+                "keywords": list(source.get("keywords", [])),
+                "include_title_keywords": list(
+                    source.get("include_title_keywords", [])
+                ),
+                "include_url_keywords": list(
+                    source.get("include_url_keywords", [])
+                ),
                 "source_type": str(source.get("source_type", "")).strip(),
             }
         )
@@ -443,6 +449,16 @@ def _fetch_source_candidates(
 
     items: list[dict[str, Any]] = []
     seen = set()
+    include_title_keywords = [
+        str(k).lower().strip()
+        for k in (source.get("include_title_keywords", []) or [])
+        if str(k).strip()
+    ]
+    include_url_keywords = [
+        str(k).lower().strip()
+        for k in (source.get("include_url_keywords", []) or [])
+        if str(k).strip()
+    ]
     for article in result.articles:
         url = _normalize_url(str(article.get("url", "")).strip())
         title = str(article.get("title", "")).strip()
@@ -452,6 +468,14 @@ def _fetch_source_candidates(
             continue
         if not _is_probable_article_url(url) or _is_junk_url(url):
             continue
+        if include_title_keywords:
+            title_lc = title.lower()
+            if not any(k in title_lc for k in include_title_keywords):
+                continue
+        if include_url_keywords:
+            url_lc = url.lower()
+            if not any(k in url_lc for k in include_url_keywords):
+                continue
         if not published_raw:
             # Trending requires strict freshness; skip undated articles.
             continue
@@ -549,7 +573,9 @@ def _search_exa_trusted_source(
                     item.get("published_date", ""),
                     reference_date,
                 ),
-                "source_domain": (urlparse(url).hostname or "").replace("www.", ""),
+                "source_domain": (
+                    (urlparse(url).hostname or "").replace("www.", "")
+                ),
                 "source_label": source["name"],
                 "topic_id": source["topic_id"],
                 "keywords": source.get("keywords", []),
@@ -619,7 +645,9 @@ def _fetch_rss_source(
                 "title": title,
                 "url": url,
                 "published_date": published_date,
-                "source_domain": (urlparse(url).hostname or "").replace("www.", ""),
+                "source_domain": (
+                    (urlparse(url).hostname or "").replace("www.", "")
+                ),
                 "source_label": source["name"],
                 "topic_id": source["topic_id"],
                 "keywords": source.get("keywords", []),
@@ -662,7 +690,10 @@ def _fetch_exa_contents_for_urls(
         image = (item.get("image") or "").strip()
         if url and text:
             text_map[url] = text
-        if url and image and image.startswith("http") and not image.endswith(".svg"):
+        if (
+            url and image and image.startswith("http")
+            and not image.endswith(".svg")
+        ):
             image_map[url] = image
     return text_map, image_map
 
@@ -671,15 +702,16 @@ def _summarize_from_content(
     client: OpenAI,
     title: str,
     content: str,
-) -> tuple[str, str]:
-    """Return (subtitle, details) for one article using a small LLM call."""
+) -> dict[str, Any]:
+    """Return short_article summary payload from content."""
     if not content:
-        return "", ""
+        return {}
     prompt = (
-        "Summarize this article into JSON with keys subtitle and details.\n"
+        "Summarize this article into JSON with keys subtitle, body, outline.\n"
         "Rules:\n"
         "- subtitle: one sentence (max 20 words)\n"
-        "- details: 2-3 sentences, concrete and factual\n"
+        "- body: 3-5 factual sentences, easy to read\n"
+        "- outline: 3-5 short bullet points\n"
         "- no hype, no markdown\n\n"
         f"Title: {title}\n\n"
         f"Content:\n{content[:2500]}"
@@ -690,14 +722,33 @@ def _summarize_from_content(
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0.2,
-            max_tokens=220,
+            max_tokens=380,
         )
         parsed = json.loads(resp.choices[0].message.content or "{}")
         subtitle = str(parsed.get("subtitle", "")).strip()
-        details = str(parsed.get("details", "")).strip()
-        return subtitle, details
+        body = str(parsed.get("body", "")).strip()
+        outline_raw = parsed.get("outline", [])
+        outline: list[str] = []
+        if isinstance(outline_raw, list):
+            outline = [
+                str(x).strip()
+                for x in outline_raw
+                if str(x).strip()
+            ][:5]
+        if not subtitle and not body:
+            return {}
+        if not body:
+            body = subtitle
+        return {
+            "short_article": {
+                "subtitle": subtitle,
+                "body": body,
+                "outline": outline,
+            },
+            "reading_time_minutes": 2,
+        }
     except Exception:
-        return "", ""
+        return {}
 
 
 def _is_recent_enough(
@@ -927,18 +978,25 @@ def fetch_news_for_topics(
     for item in selected:
         url = item["url"]
         content = content_map.get(url, "")
-        subtitle = ""
-        details = ""
+        summary_payload: dict[str, Any] = {}
         if client and content:
-            subtitle, details = _summarize_from_content(
+            summary_payload = _summarize_from_content(
                 client,
                 item.get("title", ""),
                 content,
             )
 
+        short = (
+            summary_payload.get("short_article", {})
+            if isinstance(summary_payload, dict)
+            else {}
+        )
+        subtitle = str(short.get("subtitle", "")).strip()
+        body = str(short.get("body", "")).strip()
         item["subtitle"] = subtitle or item.get("title", "")
-        item["details"] = details or (content[:240] + "..." if content else "")
+        item["details"] = body or (content[:240] + "..." if content else "")
         item["content"] = content
+        item["summary"] = summary_payload
         if image_map.get(url):
             item["thumbnail"] = image_map[url]
 
@@ -951,6 +1009,7 @@ def fetch_news_for_topics(
             "published_date": item.get("published_date", date),
             "source_domain": item.get("source_domain", ""),
             "thumbnail": item.get("thumbnail", ""),
+            "summary": item.get("summary", {}),
         }
         news_by_topic[topic_id]["articles"].append(article)
 

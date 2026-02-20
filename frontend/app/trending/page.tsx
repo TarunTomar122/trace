@@ -98,6 +98,17 @@ async function getLatestTrendingDate(): Promise<string | null> {
   return snapshot.docs[0].id || snapshot.docs[0].data().date || null;
 }
 
+async function getLatestUnifiedDate(): Promise<string | null> {
+  if (!adminFirestore) return null;
+  const snapshot = await adminFirestore
+    .collection('unified_newsletters')
+    .orderBy('date', 'desc')
+    .limit(1)
+    .get();
+  if (snapshot.empty) return null;
+  return snapshot.docs[0].id || snapshot.docs[0].data().date || null;
+}
+
 
 function shortHash(value: string): string {
   let hash = 0;
@@ -113,10 +124,42 @@ async function getTodaysItems(): Promise<{ items: TrendingItem[]; date: string }
     return { items: [], date: getTodayIstDate() };
   }
 
-  // Use latest trending_news date (same source as mobile app)
+  // Prefer unified newsletter so web /trending matches newsletter content.
   const today = getTodayIstDate();
+  const latestUnifiedDate = await getLatestUnifiedDate();
   const latestDate = await getLatestTrendingDate();
-  const dateToUse = latestDate || today;
+  const dateToUse = latestUnifiedDate || latestDate || today;
+
+  const unifiedDoc = await adminFirestore
+    .collection('unified_newsletters')
+    .doc(dateToUse)
+    .get();
+  if (unifiedDoc.exists) {
+    const data = unifiedDoc.data() || {};
+    const rows = Array.isArray(data.items) ? data.items : [];
+    const items: TrendingItem[] = rows.slice(0, 8).map((item: any, idx: number) => ({
+      id: item.id || `trending-${idx}-${shortHash(item.url || String(idx))}`,
+      title: item.title || '',
+      url: item.url || '',
+      summary: item.summary || '',
+      type: item.type || 'news',
+      source: item.source || '',
+      tags: item.tags || [],
+      thumbnail: item.thumbnail || undefined,
+      fullSummary: item.summary
+        ? {
+            short_article: {
+              subtitle: item.summary,
+              body: item.summary,
+              outline: [],
+            },
+          }
+        : undefined,
+    }));
+    if (items.length > 0) {
+      return { items, date: dateToUse };
+    }
+  }
 
   const topicsSnapshot = await adminFirestore
     .collection('trending_news')
@@ -145,7 +188,7 @@ async function getTodaysItems(): Promise<{ items: TrendingItem[]; date: string }
     allArticles.push(...articles);
   });
 
-  // Dedupe + latest-first, then cap at 6 to match mobile
+  // Dedupe + latest-first, then cap at 8.
   const seen = new Set<string>();
   const deduped = allArticles.filter((a) => {
     const url = (a.url || '').trim();
@@ -158,7 +201,7 @@ async function getTodaysItems(): Promise<{ items: TrendingItem[]; date: string }
     String(b.published_date || '').localeCompare(String(a.published_date || ''))
   );
 
-  const items: TrendingItem[] = deduped.slice(0, 6).map((item, idx) => ({
+  const items: TrendingItem[] = deduped.slice(0, 8).map((item, idx) => ({
     id: item.url ? `trending-${idx}-${shortHash(item.url)}` : `trending-${idx}`,
     title: item.title || '',
     url: item.url || '',

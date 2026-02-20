@@ -545,12 +545,15 @@ function _shortHash(str: string): string {
 }
 
 /**
- * Get trending news items (shown to unsubscribed users).
- * Reads from trending_news/{date}/topics subcollection and returns
- * up to `maxItems` FeedItem-shaped objects (no summaries).
+ * Get trending feed for unsubscribed users.
+ *
+ * Priority:
+ * 1) unified_newsletters/{date} so app trending = newsletter content
+ * 2) fallback to trending_news/{date}/topics if unified draft is missing
+ *
  * Scans back up to 5 days to handle pipeline delays.
  */
-export async function getTrendingFeed(maxItems = 6): Promise<FeedItem[]> {
+export async function getTrendingFeed(maxItems = 8): Promise<FeedItem[]> {
   try {
     // Use IST date
     const istOffset = 5.5 * 60 * 60 * 1000;
@@ -564,6 +567,50 @@ export async function getTrendingFeed(maxItems = 6): Promise<FeedItem[]> {
     }
 
     for (const date of datesToTry) {
+      // Prefer unified newsletter items so app + email stay in sync.
+      const unifiedRef = doc(firestore, 'unified_newsletters', date);
+      const unifiedSnap = await getDoc(unifiedRef);
+      if (unifiedSnap.exists()) {
+        const unifiedData = unifiedSnap.data() as any;
+        const unifiedItems: any[] = unifiedData?.items || [];
+        const mapped = unifiedItems
+          .filter((item) => item?.url && item?.title)
+          .slice(0, maxItems)
+          .map((item) => {
+            const summaryText: string = item.summary || '';
+            const topicName: string = item.topic_name || item.topic_id || 'Trending';
+            return {
+              id: `trending-unified-${_shortHash(item.url)}`,
+              title: item.title,
+              url: item.url,
+              type: item.type || 'news',
+              source: item.source || 'trending_news',
+              tags: item.tags || (item.topic_id ? [item.topic_id] : []),
+              thumbnail: item.thumbnail || '',
+              summary: summaryText
+                ? {
+                    short_article: {
+                      subtitle: summaryText,
+                      body: summaryText,
+                      outline: [],
+                    },
+                    reading_time_minutes: 2,
+                  }
+                : undefined,
+              metadata: {
+                feed_category: 'trending_news',
+                why_relevant: `Trending in ${topicName}`,
+                is_hot: true,
+              },
+            } as FeedItem;
+          });
+
+        if (mapped.length > 0) {
+          return mapped;
+        }
+      }
+
+      // Fallback path: raw trending topics.
       const topicsRef = collection(firestore, 'trending_news', date, 'topics');
       const snapshot = await getDocs(topicsRef);
       if (snapshot.empty) continue;
@@ -609,17 +656,10 @@ export async function getTrendingFeed(maxItems = 6): Promise<FeedItem[]> {
         if (items.length >= maxItems) break;
       }
 
-      if (items.length > 0) {
-        // Shuffle so same topics don't always appear first
-        for (let i = items.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [items[i], items[j]] = [items[j], items[i]];
-        }
-        return items.slice(0, maxItems);
-      }
+      if (items.length > 0) return items.slice(0, maxItems);
     }
 
-    console.log('[TrendingFeed] No trending news found in Firestore for last 5 days');
+    console.log('[TrendingFeed] No trending/unified content found for last 5 days');
     return [];
   } catch (error) {
     console.error('Error getting trending feed:', error);

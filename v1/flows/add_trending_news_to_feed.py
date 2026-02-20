@@ -194,7 +194,40 @@ def _get_trending_news_for_user(
                 })
 
     if not matching_topics:
-        return []
+        # Fallback: if keyword matching yields nothing, use global top
+        # trending for the date (still excluding seen/existing URLs).
+        fallback_rows: list[dict[str, Any]] = []
+        topic_docs_fallback = (
+            store.db.collection("trending_news")
+            .document(date)
+            .collection("topics")
+            .stream()
+        )
+        for doc in topic_docs_fallback:
+            data = doc.to_dict() or {}
+            topic_id = data.get("topic_id", doc.id)
+            topic_name = data.get("name", doc.id)
+            for article in data.get("articles", []) or []:
+                if not isinstance(article, dict):
+                    continue
+                url = article.get("url", "")
+                if (
+                    not url
+                    or url in seen_urls
+                    or url in existing_urls
+                ):
+                    continue
+                row = article.copy()
+                row["_topic_id"] = topic_id
+                row["_topic_name"] = topic_name
+                fallback_rows.append(row)
+
+        # Keep most recent first if dates are present.
+        fallback_rows.sort(
+            key=lambda a: str(a.get("published_date", "")),
+            reverse=True,
+        )
+        return fallback_rows[:MAX_NEWS_PER_FEED]
 
     # Select articles with diversity (max 2 per topic, up to 5 total)
     selected: list[dict] = []
@@ -321,15 +354,47 @@ def add_trending_news_to_feed(
         topic_name = article.get("_topic_name", "Trending")
         topic_id = article.get("_topic_id", "trending")
         url = article.get("url", "")
+        raw_summary = article.get("summary", {})
+        short_article = (
+            raw_summary.get("short_article", {})
+            if isinstance(raw_summary, dict)
+            else {}
+        )
+        subtitle = (
+            short_article.get("subtitle", "")
+            or article.get("subtitle", "")
+            or article.get("content", "")
+            or ""
+        )
+        details = (
+            short_article.get("body", "")
+            or article.get("details", "")
+            or article.get("content", "")
+            or subtitle
+        )
+        outline = short_article.get("outline", [])
+        if not isinstance(outline, list):
+            outline = []
 
         items_to_add.append({
             "id": f"trending_{topic_id}_{idx}_{date}",
             "type": "news",
             "title": article.get("title", ""),
-            "description": article.get("content", ""),
+            "description": details,
             "url": url,
             "tags": [topic_id],
             "source": "tavily",
+            "summary": {
+                "short_article": {
+                    "subtitle": subtitle,
+                    "body": details,
+                    "outline": [
+                        str(x).strip() for x in outline
+                        if str(x).strip()
+                    ][:5],
+                },
+                "reading_time_minutes": 2,
+            },
             "metadata": {
                 "why_relevant": f"Trending in {topic_name}",
                 "feed_category": "trending_news",

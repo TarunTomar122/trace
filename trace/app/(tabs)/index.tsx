@@ -310,7 +310,7 @@ export default function FeedScreen() {
     if (rcLoading) return;
     if (!isSubscribed && isOnboarded) {
       setIsTrendingLoading(true);
-      getTrendingFeed(6).then((items) => {
+      getTrendingFeed(8).then((items) => {
         setTrendingFeed(items);
         setIsTrendingLoading(false);
       });

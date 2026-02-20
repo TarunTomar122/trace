@@ -44,6 +44,19 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '6', 10), 20);
 
     const today = getTodayIstDate();
+    const latestUnifiedSnapshot = await adminFirestore
+      .collection('unified_newsletters')
+      .orderBy('date', 'desc')
+      .limit(1)
+      .get();
+    const latestUnifiedDate = latestUnifiedSnapshot.empty
+      ? null
+      : (
+          latestUnifiedSnapshot.docs[0].id
+          || latestUnifiedSnapshot.docs[0].data().date
+          || null
+        );
+
     const latestDateSnapshot = await adminFirestore
       .collection('trending_news')
       .orderBy('date', 'desc')
@@ -53,7 +66,51 @@ export async function GET(request: NextRequest) {
     const latestDate = latestDateSnapshot.empty
       ? null
       : (latestDateSnapshot.docs[0].id || latestDateSnapshot.docs[0].data().date || null);
-    const dateToUse = latestDate || today;
+    const dateToUse = latestUnifiedDate || latestDate || today;
+
+    const unifiedDoc = await adminFirestore
+      .collection('unified_newsletters')
+      .doc(dateToUse)
+      .get();
+    if (unifiedDoc.exists) {
+      const unified = unifiedDoc.data() || {};
+      const unifiedItems = Array.isArray(unified.items) ? unified.items : [];
+      const mapped = unifiedItems.slice(0, limit).map((item: any, idx: number) => {
+        const summaryText = String(item.summary || '').trim();
+        return {
+          id: item.id || `trending-${idx}-${shortHash(String(item.url || idx))}`,
+          type: item.type || 'news',
+          title: String(item.title || ''),
+          description: summaryText,
+          url: String(item.url || ''),
+          thumbnail: item.thumbnail || null,
+          tags: Array.isArray(item.tags) ? item.tags : [],
+          summary: summaryText
+            ? {
+                short_article: {
+                  subtitle: summaryText,
+                  body: summaryText,
+                  outline: [],
+                },
+                reading_time_minutes: 2,
+              }
+            : undefined,
+          metadata: {
+            why_relevant: 'Trending now',
+            feed_category: 'trending_news',
+            is_hot: true,
+          },
+        };
+      }).filter((item: any) => item.url && item.title);
+
+      if (mapped.length > 0) {
+        return NextResponse.json({
+          items: mapped,
+          feedDate: dateToUse,
+          metadata: { is_preview: true, source: 'unified_newsletters' },
+        });
+      }
+    }
 
     const topicsSnapshot = await adminFirestore
       .collection('trending_news')

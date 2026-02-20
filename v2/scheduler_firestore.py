@@ -29,6 +29,12 @@ from v2.flows.generate_daily_subscribed_feeds_from_pool import (  # noqa: E402
 from v2.flows.build_trending_news_for_day import (  # noqa: E402
     build_trending_news_for_day,
 )
+from v2.flows.build_unified_newsletter import (  # noqa: E402
+    build_unified_newsletter,
+)
+from v2.flows.send_unified_newsletter import (  # noqa: E402
+    send_unified_newsletter,
+)
 from v2.flows.refresh_article_pool_firestore import (  # noqa: E402
     refresh_article_pool_firestore,
 )
@@ -48,7 +54,15 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--jobs",
         required=True,
-        choices=["all", "pool", "trending", "feeds"],
+        choices=[
+            "all",
+            "pool",
+            "trending",
+            "feeds",
+            "newsletter_build",
+            "newsletter_send",
+            "newsletters",
+        ],
         help="Jobs to run.",
     )
     parser.add_argument(
@@ -142,7 +156,9 @@ def run_scheduler(args: argparse.Namespace) -> dict:
     )
     job_names: list[str]
     if args.jobs == "all":
-        job_names = ["pool", "trending", "feeds"]
+        job_names = ["pool", "trending", "feeds", "newsletters"]
+    elif args.jobs == "newsletters":
+        job_names = ["newsletter_build", "newsletter_send"]
     else:
         job_names = [args.jobs]
 
@@ -219,6 +235,30 @@ def run_scheduler(args: argparse.Namespace) -> dict:
                         min_suggested_items=1,
                         min_trending_items=1,
                     )
+                ),
+            )
+        )
+
+    if "newsletter_build" in job_names:
+        results.append(
+            _run_job(
+                "newsletter_build",
+                lambda: build_unified_newsletter(
+                    date=(args.date.strip() or None),
+                    max_items=8,
+                    force=False,
+                ),
+            )
+        )
+
+    if "newsletter_send" in job_names:
+        results.append(
+            _run_job(
+                "newsletter_send",
+                lambda: send_unified_newsletter(
+                    date=(args.date.strip() or None),
+                    dry_run=False,
+                    force=False,
                 ),
             )
         )
