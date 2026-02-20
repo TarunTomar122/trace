@@ -120,8 +120,6 @@ export default function OnboardingScreen() {
   const { showToast } = useToast();
   const colorScheme = useColorScheme() ?? 'light';
 
-  const isEditMode = profile?.onboarded ?? false;
-
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -281,13 +279,8 @@ export default function OnboardingScreen() {
 
       await refreshProfile();
 
-      if (isEditMode) {
-        // Editing preferences: return to the app
-        router.replace('/(tabs)/explore');
-      } else {
-        // New user: take to paywall after onboarding
-        router.replace('/paywall?fromOnboarding=true');
-      }
+      // New user: take to paywall after onboarding
+      router.replace('/paywall?fromOnboarding=true');
     } catch (error) {
       console.error('Error completing onboarding:', error);
       showToast('Could not finish setup. Please try again.', 'error');
@@ -319,7 +312,7 @@ export default function OnboardingScreen() {
   }, [allChosenInterests]);
 
   // ─── Render ───
-  const showBackInHeader = step > 1 || isEditMode;
+  const showBackInHeader = step > 1;
 
   return (
     <SafeAreaView
@@ -542,9 +535,7 @@ export default function OnboardingScreen() {
               {isSubmitting
                 ? 'Building your feed...'
                 : step === TOTAL_STEPS
-                  ? isEditMode
-                    ? 'Save Changes'
-                    : 'Build my feed'
+                  ? 'Build my feed'
                   : 'Continue'}
             </ThemedText>
           </Pressable>

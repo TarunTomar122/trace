@@ -16,7 +16,7 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Moon, Sun, Zap } from 'lucide-react-native';
 
 import NewspaperIllus from '@/assets/images/newspaper-svgrepo-com.svg';
@@ -50,6 +50,7 @@ function getGreeting(): string {
 
 export default function FeedScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ feedUpdating?: string }>();
   const { user, profile, loading: authLoading, refreshProfile } = useAuth();
   const { toggleTheme } = useTheme();
   const colorScheme = useColorScheme() ?? 'light';
@@ -237,6 +238,7 @@ export default function FeedScreen() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasTriggeredSubscribedRefresh = useRef(false);
   const hasShownUpgradeToast = useRef(false); // Don't show upgrade toast on initial load
+  const hasHandledFeedUpdatingParam = useRef(false);
   // Snapshot of the feed date when we started generating - so we can detect a NEW feed
   const feedDateOnGenStart = useRef<string | null>(null);
   // Snapshot of feed payload version when generation starts, to detect true updates.
@@ -272,6 +274,32 @@ export default function FeedScreen() {
       return false;
     }
   }, [user, isOnboarded, isSubscribed, getFeedVersion]);
+
+  useEffect(() => {
+    const feedUpdating = Array.isArray(params.feedUpdating)
+      ? params.feedUpdating[0]
+      : params.feedUpdating;
+    if (feedUpdating !== '1' || hasHandledFeedUpdatingParam.current) return;
+
+    hasHandledFeedUpdatingParam.current = true;
+    showToast('Feed updating in background. Pull to refresh in a bit.', 'success');
+    router.replace('/(tabs)');
+
+    if (!user || !isOnboarded || !isSubscribed) return;
+    feedDateOnGenStart.current = feedDate || null;
+    feedVersionOnGenStart.current = feedVersion || null;
+    hasTriggeredSubscribedRefresh.current = true;
+    setIsFeedGenerating(true);
+  }, [
+    params.feedUpdating,
+    router,
+    showToast,
+    user,
+    isOnboarded,
+    isSubscribed,
+    feedDate,
+    feedVersion,
+  ]);
 
   /**
    * Like loadFeed but only reports success if the feed is NEWER than when we

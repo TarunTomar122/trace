@@ -38,6 +38,9 @@ from v2.flows.send_unified_newsletter import (  # noqa: E402
 from v2.flows.refresh_article_pool_firestore import (  # noqa: E402
     refresh_article_pool_firestore,
 )
+from v2.flows.build_learning_pool import (  # noqa: E402
+    build_learning_pool,
+)
 
 RUNS_COLLECTION = "pipeline_runs_v2"
 
@@ -57,6 +60,7 @@ def _parse_args() -> argparse.Namespace:
         choices=[
             "all",
             "pool",
+            "learning",
             "trending",
             "feeds",
             "newsletter_build",
@@ -68,13 +72,24 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--pool-cadence-days",
         type=int,
-        default=3,
+        default=1,
         help="Pool refresh cadence in days.",
     )
     parser.add_argument(
         "--force-pool",
         action="store_true",
         help="Run pool refresh even if cadence says not due.",
+    )
+    parser.add_argument(
+        "--learning-cadence-days",
+        type=int,
+        default=7,
+        help="Learning pool refresh cadence in days.",
+    )
+    parser.add_argument(
+        "--force-learning",
+        action="store_true",
+        help="Run learning pool refresh even if cadence says not due.",
     )
     parser.add_argument(
         "--date",
@@ -125,8 +140,10 @@ def _run_job(name: str, job_fn: Callable[[], dict]) -> dict:
         }
 
 
-def _is_pool_due(store: FirestoreStore, cadence_days: int) -> bool:
-    doc = store.db.collection(RUNS_COLLECTION).document("pool_refresh").get()
+def _is_job_due(
+    store: FirestoreStore, doc_id: str, cadence_days: int,
+) -> bool:
+    doc = store.db.collection(RUNS_COLLECTION).document(doc_id).get()
     if not doc.exists:
         return True
     data = doc.to_dict() or {}
@@ -145,18 +162,25 @@ def _is_pool_due(store: FirestoreStore, cadence_days: int) -> bool:
     )
 
 
+def _is_pool_due(store: FirestoreStore, cadence_days: int) -> bool:
+    return _is_job_due(store, "pool_refresh", cadence_days)
+
+
 def run_scheduler(args: argparse.Namespace) -> dict:
     store = FirestoreStore()
     _log(
         "Scheduler config: "
-        f"jobs={args.jobs}, cadence_days={args.pool_cadence_days}, "
-        f"force_pool={args.force_pool}, date={args.date or 'today_ist'}, "
+        f"jobs={args.jobs}, pool_cadence={args.pool_cadence_days}d, "
+        f"learning_cadence={args.learning_cadence_days}d, "
+        f"force_pool={args.force_pool}, "
+        f"force_learning={args.force_learning}, "
+        f"date={args.date or 'today_ist'}, "
         f"user_id={args.user_id or '-'}, limit_users={args.limit_users}, "
         f"items_per_user={args.items_per_user}"
     )
     job_names: list[str]
     if args.jobs == "all":
-        job_names = ["pool", "trending", "feeds", "newsletters"]
+        job_names = ["pool", "learning", "trending", "feeds", "newsletters"]
     elif args.jobs == "newsletters":
         job_names = ["newsletter_build", "newsletter_send"]
     else:
@@ -206,6 +230,45 @@ def run_scheduler(args: argparse.Namespace) -> dict:
                 }
             )
 
+    if "learning" in job_names:
+        learning_due = (
+            args.force_learning
+            or _is_job_due(store, "learning_pool", args.learning_cadence_days)
+        )
+        if learning_due:
+            results.append(
+                _run_job(
+                    "learning_pool",
+                    lambda: build_learning_pool(
+                        argparse.Namespace(
+                            config="v2/config/learning_source_links.json",
+                            limit_per_source=5,
+                            max_age_days=60,
+                            retention_days=90,
+                            content_ttl_days=7,
+                            summary_ttl_days=30,
+                            summary_model="gpt-4o-mini",
+                            summary_skill_level="intermediate",
+                            summary_temperature=0.3,
+                            summary_timeout=60,
+                            http_timeout=25,
+                            force=False,
+                        )
+                    ),
+                )
+            )
+        else:
+            _log(
+                "Skipping learning_pool "
+                f"(not due, cadence={args.learning_cadence_days}d)."
+            )
+            results.append({
+                "name": "learning_pool",
+                "success": True,
+                "duration": 0,
+                "result": {"skipped": True, "reason": "not_due"},
+            })
+
     if "trending" in job_names:
         results.append(
             _run_job(
@@ -230,6 +293,8 @@ def run_scheduler(args: argparse.Namespace) -> dict:
                         interest_id=[],
                         add_suggested=True,
                         add_trending=True,
+                        add_learning=True,
+                        learning_items=3,
                         suggested_max_topics=2,
                         suggested_items_per_topic=1,
                         min_suggested_items=1,

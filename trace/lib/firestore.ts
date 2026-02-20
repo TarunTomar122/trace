@@ -31,6 +31,7 @@ export interface UserProfile {
   role: string;
   company?: string;
   interests: string[];
+  interestQueries?: Record<string, string[]>;
   hobbies: string[];
   skills: string[];
   dislikedTopics: string[];

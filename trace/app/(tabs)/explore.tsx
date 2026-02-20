@@ -265,7 +265,7 @@ export default function ProfileScreen() {
           {isOnboarded && (
             <Pressable
               style={styles.menuRow}
-              onPress={() => router.push('/onboarding')}>
+              onPress={() => router.push('/preferences')}>
               <Settings size={20} color={Colors[colorScheme].muted} strokeWidth={1.5} />
               <ThemedText style={[styles.menuText, { color: Colors[colorScheme].text }]}>
                 Edit preferences

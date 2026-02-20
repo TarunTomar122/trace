@@ -132,6 +132,17 @@ def _parse_args() -> argparse.Namespace:
         default=1,
         help="Minimum trending items in each final feed.",
     )
+    parser.add_argument(
+        "--add-learning",
+        action="store_true",
+        help="Append learning items from learning_pool.",
+    )
+    parser.add_argument(
+        "--learning-items",
+        type=int,
+        default=3,
+        help="Number of learning items per user.",
+    )
     return parser.parse_args()
 
 
@@ -365,9 +376,13 @@ def _item_category(item: dict[str, Any]) -> str:
             return "suggested"
         if meta.get("feed_category") == "trending_news":
             return "trending_news"
+        if meta.get("feed_category") == "learn":
+            return "learn"
     feed_category = item.get("feed_category", "")
     if feed_category == "pool_v2":
         return "pool_v2"
+    if feed_category == "learn":
+        return "learn"
     return "other"
 
 
@@ -640,6 +655,102 @@ def _load_recent_pool_for_interest(
     return items
 
 
+LEARNING_COLLECTION = "learning_pool"
+
+
+def _load_learning_items_for_user(
+    store: FirestoreStore,
+    interest_ids: set[str],
+    seen_urls: set[str],
+    existing_urls: set[str],
+    limit: int,
+) -> list[dict[str, Any]]:
+    """Pick learning items from learning_pool matched to user interests."""
+    if limit <= 0:
+        return []
+
+    all_items: list[dict[str, Any]] = []
+    for interest_id in sorted(interest_ids):
+        docs = (
+            store.db.collection(LEARNING_COLLECTION)
+            .where("interest_id", "==", interest_id)
+            .stream()
+        )
+        for doc in docs:
+            data = doc.to_dict() or {}
+            url = data.get("url", "")
+            if not url or url in seen_urls or url in existing_urls:
+                continue
+            summary = data.get("summary", {})
+            if not isinstance(summary, dict) or not summary.get("short_article"):
+                continue
+            data["_doc_id"] = doc.id
+            all_items.append(data)
+
+    import random
+    random.shuffle(all_items)
+
+    per_interest: dict[str, list[dict[str, Any]]] = {}
+    for item in all_items:
+        iid = item.get("interest_id", "")
+        per_interest.setdefault(iid, []).append(item)
+
+    picked: list[dict[str, Any]] = []
+    picked_urls: set[str] = set()
+    round_robin_keys = sorted(per_interest.keys())
+    while len(picked) < limit and round_robin_keys:
+        exhausted = []
+        for key in round_robin_keys:
+            if len(picked) >= limit:
+                break
+            bucket = per_interest[key]
+            found = False
+            while bucket:
+                candidate = bucket.pop(0)
+                curl = candidate.get("url", "")
+                if curl in picked_urls:
+                    continue
+                picked.append(candidate)
+                picked_urls.add(curl)
+                found = True
+                break
+            if not found:
+                exhausted.append(key)
+        for k in exhausted:
+            round_robin_keys.remove(k)
+
+    return picked
+
+
+def _build_learning_feed_item(
+    pool_item: dict[str, Any],
+) -> dict[str, Any]:
+    url = pool_item.get("url", "")
+    title = pool_item.get("title", "")
+    domain = urlparse(url).netloc.lower() if url else ""
+    item_id = hashlib.sha256(url.encode("utf-8")).hexdigest()[:32]
+    source_name = pool_item.get("source_name", domain)
+    return {
+        "id": f"learn_{item_id}",
+        "url": url,
+        "title": title,
+        "type": "blog",
+        "source": domain,
+        "interest_id": pool_item.get("interest_id", ""),
+        "subinterest_id": pool_item.get("subinterest_id", ""),
+        "feed_category": "learn",
+        "published_date": pool_item.get("published_date", ""),
+        "thumbnail": pool_item.get("og_image", ""),
+        "summary": pool_item.get("summary", {}),
+        "metadata": {
+            "feed_category": "learn",
+            "why_relevant": f"Learn something new \u2022 {source_name}",
+            "is_hot": False,
+            "source_name": source_name,
+        },
+    }
+
+
 def generate_daily_subscribed_feeds_from_pool(
     args: argparse.Namespace,
 ) -> dict[str, Any]:
@@ -669,6 +780,7 @@ def generate_daily_subscribed_feeds_from_pool(
     items_written = 0
     suggested_added_total = 0
     trending_added_total = 0
+    learning_added_total = 0
     promoted_seen_total = 0
     promoted_already_done_users = 0
     pool_backfill_summaries_total = 0
@@ -795,6 +907,51 @@ def generate_daily_subscribed_feeds_from_pool(
         suggested_added_total += suggested_added
         trending_added_total += trending_added
 
+        learning_added = 0
+        if args.add_learning and args.learning_items > 0:
+            try:
+                _log(f"user={user_id} adding learning items...")
+                existing_feed_urls = {
+                    i.get("url", "")
+                    for i in feed_items
+                    if isinstance(i, dict) and i.get("url")
+                }
+                learning_pool_items = _load_learning_items_for_user(
+                    store=store,
+                    interest_ids=interest_ids,
+                    seen_urls=seen_urls,
+                    existing_urls=existing_feed_urls,
+                    limit=args.learning_items,
+                )
+                if learning_pool_items:
+                    learning_feed_items = [
+                        _build_learning_feed_item(li)
+                        for li in learning_pool_items
+                    ]
+                    _, learn_data, learn_existing = _load_user_feed(
+                        store, user_id, target_date,
+                    )
+                    learn_existing.extend(learning_feed_items)
+                    learn_data["items"] = learn_existing
+                    learn_data["generated_at"] = (
+                        datetime.now(timezone.utc).isoformat()
+                    )
+                    (
+                        store.db.collection("user_feeds")
+                        .document(user_id)
+                        .collection("daily")
+                        .document(target_date)
+                        .set(learn_data, merge=True)
+                    )
+                    learning_added = len(learning_feed_items)
+                    _log(
+                        f"user={user_id} learning added={learning_added}"
+                    )
+            except Exception:
+                _log(f"user={user_id} learning step failed")
+
+        learning_added_total += learning_added
+
         ref, full_feed, final_items = _load_user_feed(
             store,
             user_id,
@@ -869,10 +1026,12 @@ def generate_daily_subscribed_feeds_from_pool(
         full_feed["metadata"]["base_pool_items_target"] = args.items_per_user
         full_feed["metadata"]["suggested_items_added"] = suggested_added
         full_feed["metadata"]["trending_items_added"] = trending_added
+        full_feed["metadata"]["learning_items_added"] = learning_added
         ref.set(full_feed, merge=True)
         _log(
             f"user={user_id} final curated items={len(final_items)} "
-            f"(suggested={suggested_added}, trending={trending_added})"
+            f"(suggested={suggested_added}, trending={trending_added}, "
+            f"learning={learning_added})"
         )
 
         users_processed += 1
@@ -893,6 +1052,7 @@ def generate_daily_subscribed_feeds_from_pool(
                 "items_written": items_written,
                 "suggested_items_added": suggested_added_total,
                 "trending_items_added": trending_added_total,
+                "learning_items_added": learning_added_total,
                 "items_per_user_cap": args.items_per_user,
                 "promoted_prev_day_urls_to_seen": promoted_seen_total,
                 "promote_prev_day_already_done_users": (
@@ -913,6 +1073,7 @@ def generate_daily_subscribed_feeds_from_pool(
         f"items_written={items_written}, "
         f"suggested_added={suggested_added_total}, "
         f"trending_added={trending_added_total}, "
+        f"learning_added={learning_added_total}, "
         f"pool_backfill_summaries={pool_backfill_summaries_total}, "
         f"pool_backfill_images={pool_backfill_images_total}"
     )
@@ -924,6 +1085,7 @@ def generate_daily_subscribed_feeds_from_pool(
         "items_written": items_written,
         "suggested_items_added": suggested_added_total,
         "trending_items_added": trending_added_total,
+        "learning_items_added": learning_added_total,
         "items_per_user_cap": args.items_per_user,
         "promoted_prev_day_urls_to_seen": promoted_seen_total,
         "promote_prev_day_already_done_users": promoted_already_done_users,

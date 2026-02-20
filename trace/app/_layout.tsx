@@ -26,8 +26,6 @@ function AuthGate({ children }: { children: ReactNode }) {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Wait for router to hydrate — segments is [] briefly on cold start
-    if (segments.length === 0) return;
     // Wait for auth to finish loading
     if (loading) return;
 
@@ -58,8 +56,8 @@ function AuthGate({ children }: { children: ReactNode }) {
         // Already onboarded: skip auth screens to the app
         router.replace('/(tabs)');
       } else {
-        // Already onboarded but navigating to onboarding (edit preferences)
-        setIsReady(true);
+        // Already onboarded should never land in onboarding on app start.
+        router.replace('/(tabs)');
       }
       return;
     }
@@ -102,6 +100,7 @@ function RootLayoutNav() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal' }} />
+        <Stack.Screen name="preferences" options={{ presentation: 'card' }} />
         <Stack.Screen name="article" options={{ presentation: 'card' }} />
         <Stack.Screen name="bookmarks" options={{ presentation: 'card' }} />
         <Stack.Screen name="paywall" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
