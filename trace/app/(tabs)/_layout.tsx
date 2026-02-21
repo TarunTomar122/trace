@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
-import { Home, User, BookMarked, Activity } from 'lucide-react-native';
+import { Newspaper, BookMarked, Flame, User } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HapticTab } from '@/components/haptic-tab';
@@ -45,18 +45,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'Feed',
           tabBarIcon: ({ color, focused }) => (
-            <Home size={24} color={color} strokeWidth={focused ? 2.2 : 1.5} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="analytics"
-        options={{
-          title: 'Activity',
-          tabBarIcon: ({ color, focused }) => (
-            <Activity size={24} color={color} strokeWidth={focused ? 2.2 : 1.5} />
+            <Newspaper size={24} color={color} strokeWidth={focused ? 2.2 : 1.5} />
           ),
         }}
       />
@@ -75,6 +66,15 @@ export default function TabLayout() {
               presentPaywall();
             }
           },
+        }}
+      />
+      <Tabs.Screen
+        name="analytics"
+        options={{
+          title: 'Streak',
+          tabBarIcon: ({ color, focused }) => (
+            <Flame size={24} color={color} strokeWidth={focused ? 2.2 : 1.5} />
+          ),
         }}
       />
       <Tabs.Screen

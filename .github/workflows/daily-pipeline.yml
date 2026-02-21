@@ -1,18 +1,14 @@
 name: Daily Pipeline
-# IST = UTC + 5:30 | Target: Complete before 10 AM IST
+# IST = UTC + 5:30
 
 on:
   schedule:
-    # Reflection at 5:00 AM IST (11:30 PM UTC previous day)
-    # Runs: Daily Reflection → Cleanup expired signals
-    # Processes previous day's interactions
-    - cron: '30 23 * * *'
-
-    # Content pipeline at 8:00 AM IST (2:30 AM UTC)
-    # Runs: Topics → Feeds → Newsletters (build + send)
+    # Morning pipeline at 8:00 AM IST (2:30 AM UTC)
     - cron: '30 2 * * *'
+
+    # Afternoon trending refresh at 2:30 PM IST (9:00 AM UTC)
+    - cron: '0 9 * * *'
   
-  # Allow manual trigger
   workflow_dispatch:
     inputs:
       jobs:
@@ -22,25 +18,15 @@ on:
         type: choice
         options:
           - all
-          - v2_all
-          - v2_pool
-          - v2_learning
-          - v2_trending
-          - v2_feeds
-          - v2_newsletters
-          - v2_newsletter_build
-          - v2_newsletter_send
-          - morning
-          - evening
-          - batch
+          - pool
+          - learning
+          - trending
           - feeds
+          - insights
+          - weekly_wrap
           - newsletters
-          - build_newsletters
-          - build_free_newsletter
-          - send_newsletters
-          - send_free_newsletter
-          - reflection
-          - cleanup
+          - newsletter_build
+          - newsletter_send
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -52,7 +38,7 @@ env:
 
 jobs:
   morning-pipeline:
-    if: github.event.schedule == '30 2 * * *' || (github.event_name == 'workflow_dispatch' && (inputs.jobs == 'all' || inputs.jobs == 'v2_all' || inputs.jobs == 'v2_pool' || inputs.jobs == 'v2_learning' || inputs.jobs == 'v2_trending' || inputs.jobs == 'v2_feeds' || inputs.jobs == 'v2_newsletters' || inputs.jobs == 'v2_newsletter_build' || inputs.jobs == 'v2_newsletter_send' || inputs.jobs == 'morning' || inputs.jobs == 'batch' || inputs.jobs == 'feeds' || inputs.jobs == 'newsletters' || inputs.jobs == 'build_newsletters' || inputs.jobs == 'build_free_newsletter' || inputs.jobs == 'send_newsletters' || inputs.jobs == 'send_free_newsletter'))
+    if: github.event.schedule == '30 2 * * *' || (github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     
     steps:
@@ -72,31 +58,13 @@ jobs:
       - name: Run morning jobs
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            if [ "${{ inputs.jobs }}" == "v2_all" ]; then
-              python -u v2/scheduler_firestore.py --jobs all --items-per-user 8
-            elif [ "${{ inputs.jobs }}" == "v2_pool" ]; then
-              python -u v2/scheduler_firestore.py --jobs pool
-            elif [ "${{ inputs.jobs }}" == "v2_learning" ]; then
-              python -u v2/scheduler_firestore.py --jobs learning
-            elif [ "${{ inputs.jobs }}" == "v2_trending" ]; then
-              python -u v2/scheduler_firestore.py --jobs trending
-            elif [ "${{ inputs.jobs }}" == "v2_feeds" ]; then
-              python -u v2/scheduler_firestore.py --jobs feeds --items-per-user 8
-            elif [ "${{ inputs.jobs }}" == "v2_newsletters" ]; then
-              python -u v2/scheduler_firestore.py --jobs newsletters
-            elif [ "${{ inputs.jobs }}" == "v2_newsletter_build" ]; then
-              python -u v2/scheduler_firestore.py --jobs newsletter_build
-            elif [ "${{ inputs.jobs }}" == "v2_newsletter_send" ]; then
-              python -u v2/scheduler_firestore.py --jobs newsletter_send
-            else
-              python v1/scheduler.py --jobs ${{ inputs.jobs }}
-            fi
+            python -u v2/scheduler_firestore.py --jobs ${{ inputs.jobs }} --items-per-user 8
           else
             python -u v2/scheduler_firestore.py --jobs all --items-per-user 8
           fi
 
-  evening-pipeline:
-    if: github.event.schedule == '30 23 * * *' || (github.event_name == 'workflow_dispatch' && (inputs.jobs == 'all' || inputs.jobs == 'evening' || inputs.jobs == 'reflection' || inputs.jobs == 'cleanup'))
+  afternoon-trending:
+    if: github.event.schedule == '0 9 * * *'
     runs-on: ubuntu-latest
     
     steps:
@@ -113,11 +81,7 @@ jobs:
         run: |
           pip install -r requirements.txt
       
-      - name: Run evening jobs
+      - name: Refresh trending and rebuild feeds
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            python v1/scheduler.py --jobs ${{ inputs.jobs }}
-          else
-            python v1/scheduler.py --jobs evening
-          fi
-
+          python -u v2/scheduler_firestore.py --jobs trending --items-per-user 8
+          python -u v2/scheduler_firestore.py --jobs feeds --items-per-user 8

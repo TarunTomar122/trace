@@ -91,7 +91,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--learning-cadence-days",
         type=int,
-        default=7,
+        default=3,
         help="Learning pool refresh cadence in days.",
     )
     parser.add_argument(
@@ -190,7 +190,7 @@ def run_scheduler(args: argparse.Namespace) -> dict:
     if args.jobs == "all":
         job_names = [
             "pool", "learning", "trending", "feeds",
-            "insights", "newsletters",
+            "insights", "weekly_wrap", "newsletters",
         ]
     elif args.jobs == "newsletters":
         job_names = ["newsletter_build", "newsletter_send"]

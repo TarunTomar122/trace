@@ -291,7 +291,7 @@ export default function ActivityScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 48, gap: 14 },
-  pageTitle: { fontSize: 32, fontWeight: '800', letterSpacing: -0.5, marginBottom: 2 },
+  pageTitle: { fontSize: 32, fontWeight: '800', letterSpacing: -0.5, lineHeight: 40, marginBottom: 2 },
 
   // ━━━ Streak Hero ━━━
   streakHero: {

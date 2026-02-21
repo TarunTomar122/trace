@@ -29,14 +29,18 @@ export interface UserProfile {
   onboarded: boolean;
   name: string;
   role: string;
-  company?: string;
+  seniority?: string;
   interests: string[];
+  selectedLearningSources?: string[];
+  careerGoals?: string[];
+  summaryStyle?: string;
+
+  // Legacy fields (kept for backward compat with existing profiles)
+  company?: string;
   interestQueries?: Record<string, string[]>;
   hobbies: string[];
   skills: string[];
   dislikedTopics: string[];
-  
-  // Content source preferences (0-10 scale)
   sourcePreferences: {
     youtube: number;
     articles: number;
@@ -45,7 +49,6 @@ export interface UserProfile {
     tweets: number;
     discussions: number;
   };
-  
   contentDepth: 'quick' | 'deep' | 'surprise' | null;
   goals?: {
     shortTerm?: string;
@@ -70,6 +73,7 @@ export interface FeedItem {
   id: string;
   type?: string;
   source?: string;
+  source_name?: string;
   title: string;
   description?: string;
   url: string;
@@ -77,6 +81,9 @@ export interface FeedItem {
   view_count?: number | null;
   stars?: number | null;
   tags?: string[];
+  interest_id?: string;
+  feed_type?: 'for_you' | 'deep_dives' | 'trending';
+  published_date?: string;
   summary?: {
     short_article?: {
       subtitle?: string;
@@ -89,6 +96,8 @@ export interface FeedItem {
     why_relevant?: string;
     is_hot?: boolean;
     feed_category?: string;
+    feed_type?: string;
+    source_description?: string;
   };
   _seen?: boolean;
 }
@@ -109,7 +118,156 @@ export interface UserFeed {
   };
 }
 
-// ============ Constants ============
+export interface V3UserFeed {
+  date: string;
+  for_you: FeedItem[];
+  deep_dives: FeedItem[];
+  trending: FeedItem[];
+  assembled_at?: string;
+  metadata?: {
+    for_you_count?: number;
+    deep_dives_count?: number;
+    trending_count?: number;
+    total_items?: number;
+    pipeline?: string;
+  };
+}
+
+// ============ Onboarding Constants ============
+
+export const ROLES = [
+  { id: 'designer', label: 'Designer', subtitle: 'UI/UX, Product, Visual', icon: 'palette' },
+  { id: 'developer', label: 'Developer', subtitle: 'Frontend, Backend, Full-stack', icon: 'code' },
+  { id: 'pm', label: 'Product Manager', subtitle: 'Strategy & Roadmaps', icon: 'clipboard-list' },
+  { id: 'marketer', label: 'Marketer', subtitle: 'Growth, Content, Brand', icon: 'bar-chart-3' },
+  { id: 'founder', label: 'Founder / CEO', subtitle: 'Building & Leading', icon: 'rocket' },
+  { id: 'other', label: 'Other', subtitle: 'Tell us your path', icon: 'globe' },
+] as const;
+
+export const SENIORITY_LEVELS = [
+  { id: 'early', label: 'Early Career', subtitle: '0-3 years', icon: 'leaf' },
+  { id: 'mid', label: 'Mid-Level', subtitle: '3-7 years', icon: 'zap' },
+  { id: 'senior', label: 'Senior', subtitle: '7-12 years', icon: 'award' },
+  { id: 'executive', label: 'Executive / Lead', subtitle: '12+ years', icon: 'crown' },
+] as const;
+
+export const ONBOARDING_INTERESTS = [
+  { id: 'technology', label: 'AI & Machine Learning', icon: 'cpu' },
+  { id: 'experience', label: 'Design & UX', icon: 'palette' },
+  { id: 'business-market', label: 'Product Strategy', icon: 'target' },
+  { id: 'startups', label: 'Startups & VC', icon: 'rocket' },
+  { id: 'leadership', label: 'Leadership', icon: 'users' },
+  { id: 'engineering', label: 'Engineering', icon: 'settings' },
+  { id: 'marketing', label: 'Growth & Marketing', icon: 'bar-chart-3' },
+  { id: 'fintech', label: 'Fintech', icon: 'dollar-sign' },
+  { id: 'health', label: 'Health & Wellness', icon: 'heart' },
+  { id: 'web3', label: 'Web3 & Crypto', icon: 'link' },
+  { id: 'climate', label: 'Climate & Sustainability', icon: 'globe' },
+  { id: 'productivity', label: 'Productivity', icon: 'zap' },
+] as const;
+
+export const LEARNING_SOURCE_CATEGORIES = [
+  {
+    id: 'design-ux',
+    label: 'Design & UX',
+    icon: 'palette',
+    sources: [
+      { name: 'Nielsen Norman Group', description: 'Evidence-based UX research and guidelines' },
+      { name: 'The Pudding', description: 'Visual essays explaining ideas in culture and society' },
+      { name: 'UX Movement', description: 'Practical UI/UX patterns and usability' },
+      { name: 'Baymard Institute Blog', description: 'E-commerce UX research, checkout usability' },
+      { name: 'Aeon Essays', description: 'Philosophy, science, society — deep thoughtful essays' },
+    ],
+  },
+  {
+    id: 'tech-engineering',
+    label: 'Tech & Engineering',
+    icon: 'settings',
+    sources: [
+      { name: 'Chip Huyen Blog', description: 'ML engineering, AI systems design' },
+      { name: 'Simon Willison Blog', description: 'Python, LLMs, data, developer tools' },
+      { name: 'Julia Evans Blog', description: 'Systems, networking, debugging explained simply' },
+      { name: 'Martin Fowler', description: 'Software architecture, design patterns, refactoring' },
+      { name: "Lil'Log (Lilian Weng)", description: 'In-depth AI/ML explainers from OpenAI researcher' },
+      { name: 'Quanta Magazine', description: 'Math, physics, CS, biology — deep explainers' },
+    ],
+  },
+  {
+    id: 'business-strategy',
+    label: 'Business & Strategy',
+    icon: 'bar-chart-3',
+    sources: [
+      { name: 'Stratechery', description: 'Tech strategy, business models, platform dynamics' },
+      { name: 'Benedict Evans', description: 'Tech/market macro analysis, annual trend decks' },
+      { name: 'Andrew Chen Blog', description: 'Growth, marketplaces, network effects' },
+      { name: "Lenny's Newsletter", description: 'Product management, growth, career' },
+      { name: 'Noahpinion', description: 'Economics, policy, technology and society' },
+    ],
+  },
+  {
+    id: 'startups-product',
+    label: 'Startups & Product',
+    icon: 'rocket',
+    sources: [
+      { name: 'Paul Graham Essays', description: 'Startups, ideas, working on hard things' },
+      { name: 'Elad Gil Blog', description: 'High-growth startups, scaling, executive advice' },
+    ],
+  },
+  {
+    id: 'productivity-growth',
+    label: 'Productivity & Growth',
+    icon: 'trending-up',
+    sources: [
+      { name: 'Farnam Street Blog', description: 'Mental models, decision-making, learning' },
+      { name: 'James Clear Articles', description: 'Habits, continuous improvement, behavioral psychology' },
+      { name: 'Cal Newport Blog', description: 'Deep work, focus, digital minimalism' },
+    ],
+  },
+  {
+    id: 'finance-markets',
+    label: 'Finance & Markets',
+    icon: 'dollar-sign',
+    sources: [
+      { name: 'Of Dollars and Data', description: 'Data-driven personal finance and investing' },
+      { name: 'A Wealth of Common Sense', description: 'Investing, markets, financial planning — plain language' },
+    ],
+  },
+] as const;
+
+export const CAREER_GOALS = [
+  { id: 'get-promoted', label: 'Get promoted', subtitle: 'Level up in my current role', icon: 'trending-up' },
+  { id: 'switch-careers', label: 'Switch careers', subtitle: 'Pivot to a new field', icon: 'refresh-cw' },
+  { id: 'build-something', label: 'Build something', subtitle: 'Launch a product or startup', icon: 'wrench' },
+  { id: 'lead-team', label: 'Lead a team', subtitle: 'Move into management', icon: 'users' },
+  { id: 'stay-sharp', label: 'Stay sharp', subtitle: 'Keep up with industry trends', icon: 'brain' },
+  { id: 'grow-network', label: 'Grow my network', subtitle: 'Connect with the right people', icon: 'globe' },
+] as const;
+
+export const SUMMARY_STYLES = [
+  {
+    id: 'executive',
+    label: 'Executive Brief',
+    subtitle: 'Key takeaways + business impact. No jargon, just what matters.',
+    icon: 'file-text',
+    preview: '"OpenAI\'s new model means your design workflows could automate 40% of asset production..."',
+  },
+  {
+    id: 'practitioner',
+    label: 'Practitioner Deep-Dive',
+    subtitle: 'How-to details, frameworks, and actionable steps.',
+    icon: 'microscope',
+    preview: '"Here\'s how to implement this in your sprint: Step 1..."',
+  },
+  {
+    id: 'casual',
+    label: 'Water Cooler Ready',
+    subtitle: 'Talking points to sound smart in meetings. Casual but informed.',
+    icon: 'message-circle',
+    preview: '"Next time someone mentions GPT-5, here\'s what you should know..."',
+  },
+] as const;
+
+// Legacy constants (kept for backward compat with old onboarding code paths)
 export const INTERESTS = [
   { id: 'technology', label: 'Technology' },
   { id: 'business-market', label: 'Business & Market' },
@@ -306,22 +464,12 @@ export async function completeOnboarding(
   uid: string,
   data: {
     name: string;
-    role?: string;
+    role: string;
+    seniority: string;
     interests: string[];
-    interestQueries?: Record<string, string[]>;
-    interestWeights?: Record<string, number>;
-    hobbies: string[];
-    skills: string[];
-    goalsShortTerm?: string;
-    sourcePreferences: {
-      youtube: number;
-      articles: number;
-      papers: number;
-      repos: number;
-      tweets: number;
-      discussions: number;
-    };
-    contentDepth?: 'quick' | 'deep' | 'surprise' | null;
+    selectedLearningSources: string[];
+    careerGoals: string[];
+    summaryStyle: string;
   }
 ): Promise<void> {
   try {
@@ -329,41 +477,32 @@ export async function completeOnboarding(
     
     const updateData: Record<string, unknown> = {
       name: data.name,
+      role: data.role,
+      seniority: data.seniority,
       interests: data.interests,
-      hobbies: data.hobbies,
-      skills: data.skills,
-      sourcePreferences: data.sourcePreferences,
-      contentDepth: data.contentDepth ?? null,
-      dislikedTopics: [],
+      selectedLearningSources: data.selectedLearningSources,
+      careerGoals: data.careerGoals,
+      summaryStyle: data.summaryStyle,
       onboarded: true,
       updatedAt: serverTimestamp(),
       onboardedAt: serverTimestamp(),
     };
-
-    if (data.role) {
-      updateData.role = data.role;
-    }
     
-    if (data.interestQueries && Object.keys(data.interestQueries).length > 0) {
-      updateData.interestQueries = data.interestQueries;
-    }
-    
-    if (data.interestWeights && Object.keys(data.interestWeights).length > 0) {
-      updateData.interestWeights = data.interestWeights;
-    }
-    
-    // Only set goals if provided (Firebase doesn't accept undefined)
-    if (data.goalsShortTerm) {
-      updateData.goals = { shortTerm: data.goalsShortTerm };
-    }
+    updateData.feedBuildStatus = 'building';
+    updateData.feedBuildRequestedAt = serverTimestamp();
     
     await setDoc(docRef, updateData, { merge: true });
     
-    // Initialize user patterns
-    await initializeUserPatterns(uid, data.interests, data.hobbies);
+    // Initialize user patterns with interests
+    await initializeUserPatterns(uid, data.interests, []);
     
-    // Initialize user preferences
-    await initializeUserPreferences(uid, data.sourcePreferences);
+    // Initialize default preferences
+    await initializeUserPreferences(uid, {
+      youtube: 5, articles: 7, papers: 2,
+      repos: 3, tweets: 3, discussions: 4,
+    });
+
+    triggerFeedGeneration(uid, { reason: 'onboarding', force: true });
     
   } catch (error) {
     console.error('Error completing onboarding:', error);
@@ -538,6 +677,36 @@ export async function getLatestUserFeed(uid: string): Promise<UserFeed | null> {
     return sortedDocs[0].data() as UserFeed;
   } catch (error) {
     console.error('Error getting latest feed:', error);
+    return null;
+  }
+}
+
+export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
+  try {
+    const feedRef = collection(firestore, 'v3_user_feeds', uid, 'daily');
+    const snapshot = await getDocs(feedRef);
+    if (snapshot.empty) return null;
+
+    const sortedDocs = snapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
+    const data = sortedDocs[0].data();
+    const forYou = Array.isArray(data.for_you) ? data.for_you : [];
+    const deepDives = Array.isArray(data.deep_dives) ? data.deep_dives : [];
+    const trending = Array.isArray(data.trending) ? data.trending : [];
+
+    if (forYou.length === 0 && deepDives.length === 0 && trending.length === 0) {
+      return null;
+    }
+
+    return {
+      date: data.date || sortedDocs[0].id,
+      for_you: forYou as FeedItem[],
+      deep_dives: deepDives as FeedItem[],
+      trending: trending as FeedItem[],
+      assembled_at: data.assembled_at,
+      metadata: data.metadata,
+    };
+  } catch (error) {
+    console.error('Error getting v3 feed:', error);
     return null;
   }
 }

@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -16,99 +17,159 @@ import Animated, {
   FadeInDown,
   Easing,
 } from 'react-native-reanimated';
-import { Check, ChevronLeft } from 'lucide-react-native';
-
-import CalendarIllus from '@/assets/images/calendar-svgrepo-com.svg';
+import {
+  Check, ChevronRight, ArrowLeft, ArrowRight,
+  Palette, Code, ClipboardList, BarChart3, Rocket, Globe,
+  Leaf, Zap, Award, Crown,
+  Cpu, Target, Users, Settings, DollarSign, Heart, Link, Brain,
+  TrendingUp, RefreshCw, Wrench,
+  FileText, Microscope, MessageCircle,
+} from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { AppLogo } from '@/components/app-logo';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import {
-  INTERESTS,
-  INTEREST_SUBTOPICS,
-  SKILL_SUGGESTIONS,
+  ROLES,
+  SENIORITY_LEVELS,
+  ONBOARDING_INTERESTS,
+  LEARNING_SOURCE_CATEGORIES,
+  CAREER_GOALS,
+  SUMMARY_STYLES,
   completeOnboarding,
 } from '@/lib/firestore';
-import { ILLUS_PALETTE } from '@/app/(auth)/welcome';
 
-// - Design tokens -
-const ACCENT = '#22c55e';
-const TOTAL_STEPS = 3;
+const ACCENT = '#F59E0B';
+const ACCENT_BG_DARK = '#1a1408';
+const ACCENT_BG_LIGHT = '#fffbeb';
+const TOTAL_STEPS = 5;
 
-// Personalised feature-forward copy per interest
-const INTEREST_OUTCOMES: Record<string, string> = {
-  technology: 'Get top tech links with AI summaries and key takeaways',
-  'business-market': 'Track markets, startups, and strategy with clear takeaways',
-  experience: 'Follow UX and design insights with practical frameworks',
-  productivity: 'Get actionable ideas for growth, focus, and better work',
+const ICON_MAP: Record<string, LucideIcon> = {
+  'palette': Palette, 'code': Code, 'clipboard-list': ClipboardList,
+  'bar-chart-3': BarChart3, 'rocket': Rocket, 'globe': Globe,
+  'leaf': Leaf, 'zap': Zap, 'award': Award, 'crown': Crown,
+  'cpu': Cpu, 'target': Target, 'users': Users, 'settings': Settings,
+  'dollar-sign': DollarSign, 'heart': Heart, 'link': Link, 'brain': Brain,
+  'trending-up': TrendingUp, 'refresh-cw': RefreshCw, 'wrench': Wrench,
+  'file-text': FileText, 'microscope': Microscope, 'message-circle': MessageCircle,
 };
 
-// ─── Pill types ───
-type PillItem = {
-  key: string;
-  label: string;
-  kind: 'interest' | 'subtopic';
-  interestId: string;
-  subtopicId?: string;
-  selected: boolean;
-  disabled: boolean;
-};
+function IconRenderer({ name, size, color }: { name: string; size: number; color: string }) {
+  const Icon = ICON_MAP[name];
+  if (!Icon) return null;
+  return <Icon size={size} color={color} strokeWidth={1.8} />;
+}
 
-// ─── Pill Component ───
-// variant: 'primary' = main interest/skill pills (bolder, badge)
-//          'sub'     = sub-interest pills (smaller, no badge)
-function Pill({
+// ─── Selection Card ───
+function SelectionCard({
   label,
+  subtitle,
+  icon,
   selected,
-  disabled,
   onPress,
   colorScheme,
-  variant = 'primary',
+  compact = false,
 }: {
   label: string;
+  subtitle?: string;
+  icon?: string;
   selected: boolean;
-  disabled?: boolean;
   onPress: () => void;
   colorScheme: 'light' | 'dark';
-  variant?: 'primary' | 'sub';
+  compact?: boolean;
 }) {
-  const isSub = variant === 'sub';
-  const selectedBg = colorScheme === 'dark' ? '#052e16' : '#f0fdf4';
-  const unselectedBg = Colors[colorScheme].card;
-  const selectedBorder = ACCENT;
-  const unselectedBorder = Colors[colorScheme].border;
-
+  const iconColor = selected ? ACCENT : Colors[colorScheme].muted;
   return (
     <Pressable
       onPress={onPress}
-      disabled={disabled}
       style={[
-        isSub ? styles.pillSub : styles.pill,
+        compact ? styles.cardCompact : styles.card,
         {
-          backgroundColor: selected ? selectedBg : unselectedBg,
-          borderColor: selected ? selectedBorder : unselectedBorder,
+          backgroundColor: selected
+            ? (colorScheme === 'dark' ? ACCENT_BG_DARK : ACCENT_BG_LIGHT)
+            : Colors[colorScheme].card,
+          borderColor: selected ? ACCENT : Colors[colorScheme].border,
           borderWidth: selected ? 2 : 1,
         },
-        disabled && !selected && { opacity: 0.35 },
       ]}
     >
+      {icon ? (
+        <View style={compact ? styles.iconBoxCompact : styles.iconBox}>
+          <IconRenderer name={icon} size={compact ? 20 : 24} color={iconColor} />
+        </View>
+      ) : null}
+      <View style={{ flex: 1 }}>
+        <ThemedText
+          style={[
+            compact ? styles.cardLabelCompact : styles.cardLabel,
+            selected && { color: ACCENT },
+          ]}
+          numberOfLines={compact ? 2 : 1}
+        >
+          {label}
+        </ThemedText>
+        {subtitle ? (
+          <ThemedText
+            style={[styles.cardSubtitle, { color: Colors[colorScheme].muted }]}
+            numberOfLines={1}
+          >
+            {subtitle}
+          </ThemedText>
+        ) : null}
+      </View>
+      {selected && (
+        <View style={styles.checkBadgeOverlay}>
+          <Check size={9} color="white" strokeWidth={3} />
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+// ─── Interest Chip ───
+function InterestChip({
+  label,
+  icon,
+  selected,
+  onPress,
+  colorScheme,
+}: {
+  label: string;
+  icon: string;
+  selected: boolean;
+  onPress: () => void;
+  colorScheme: 'light' | 'dark';
+}) {
+  const iconColor = selected ? ACCENT : Colors[colorScheme].muted;
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.chip,
+        {
+          backgroundColor: selected
+            ? (colorScheme === 'dark' ? ACCENT_BG_DARK : ACCENT_BG_LIGHT)
+            : Colors[colorScheme].card,
+          borderColor: selected ? ACCENT : Colors[colorScheme].border,
+          borderWidth: selected ? 2 : 1,
+        },
+      ]}
+    >
+      <View style={styles.chipIconBox}>
+        <IconRenderer name={icon} size={18} color={iconColor} />
+      </View>
       <ThemedText
         style={[
-          isSub ? styles.pillTextSub : styles.pillText,
-          { color: selected ? ACCENT : Colors[colorScheme].text },
+          styles.chipLabel,
+          selected && { color: ACCENT },
         ]}
+        numberOfLines={1}
       >
         {label}
       </ThemedText>
-
-      {selected && !isSub && (
-        <View style={styles.checkBadge}>
-          <Check size={10} color="white" strokeWidth={3} />
-        </View>
-      )}
     </Pressable>
   );
 }
@@ -116,7 +177,7 @@ function Pill({
 // ─── Main Onboarding Screen ───
 export default function OnboardingScreen() {
   const router = useRouter();
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const { showToast } = useToast();
   const colorScheme = useColorScheme() ?? 'light';
 
@@ -124,113 +185,61 @@ export default function OnboardingScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Step 1
+  const [selectedRole, setSelectedRole] = useState<string>('');
+  const [selectedSeniority, setSelectedSeniority] = useState<string>('');
+
+  // Step 2
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
-  const [selectedFocus, setSelectedFocus] = useState<Record<string, string[]>>({});
-  // Track which interests have had their sub-topics revealed (never shrinks)
-  const [revealedSubs, setRevealedSubs] = useState<Set<string>>(new Set());
 
   // Step 3
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [selectedSources, setSelectedSources] = useState<string[]>([]);
 
-  // ─── Build the flat pill list (interests + inline sub-interests) ───
-  const pillItems: PillItem[] = useMemo(() => {
-    const items: PillItem[] = [];
-    for (const interest of INTERESTS) {
-      const isSelected = selectedInterests.includes(interest.id);
+  // Step 4
+  const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
 
-      items.push({
-        key: interest.id,
-        label: interest.label,
-        kind: 'interest',
-        interestId: interest.id,
-        selected: isSelected,
-        disabled: false,
-      });
+  // Step 5
+  const [selectedSummaryStyle, setSelectedSummaryStyle] = useState<string>('');
 
-      // Show sub-topics if this interest was ever selected (stays revealed)
-      if (revealedSubs.has(interest.id)) {
-        const subtopics = INTEREST_SUBTOPICS[interest.id] || [];
-        const selectedSubList = selectedFocus[interest.id] || [];
-        for (const sub of subtopics) {
-          items.push({
-            key: `${interest.id}--${sub.id}`,
-            label: sub.label,
-            kind: 'subtopic',
-            interestId: interest.id,
-            subtopicId: sub.id,
-            selected: selectedSubList.includes(sub.id),
-            disabled: false,
-          });
-        }
-      }
+  // ─── Toggles ───
+  const toggleInterest = useCallback((id: string) => {
+    setSelectedInterests(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  }, []);
+
+  const toggleSource = useCallback((name: string) => {
+    setSelectedSources(prev =>
+      prev.includes(name) ? prev.filter(s => s !== name) : [...prev, name]
+    );
+  }, []);
+
+  const toggleGoal = useCallback((id: string) => {
+    setSelectedGoals(prev => {
+      if (prev.includes(id)) return prev.filter(g => g !== id);
+      if (prev.length >= 2) return [prev[1], id];
+      return [...prev, id];
+    });
+  }, []);
+
+  // ─── Source counts per category ───
+  const sourceCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const cat of LEARNING_SOURCE_CATEGORIES) {
+      counts[cat.id] = cat.sources.filter(s => selectedSources.includes(s.name)).length;
     }
-    return items;
-  }, [selectedInterests, selectedFocus, revealedSubs]);
-
-  // ─── Interest toggle ───
-  const toggleInterest = useCallback(
-    (id: string) => {
-      if (selectedInterests.includes(id)) {
-        // Deselect interest - keep sub-topics visible and selections intact
-        setSelectedInterests(selectedInterests.filter((i) => i !== id));
-      } else {
-        setSelectedInterests([...selectedInterests, id]);
-        // Reveal sub-topics (permanently for this session)
-        setRevealedSubs((prev) => {
-          if (prev.has(id)) return prev;
-          const next = new Set(prev);
-          next.add(id);
-          return next;
-        });
-      }
-    },
-    [selectedInterests],
-  );
-
-  // ─── Subtopic toggle ───
-  const toggleSubtopic = useCallback(
-    (interestId: string, subtopicId: string) => {
-      const current = selectedFocus[interestId] || [];
-      if (current.includes(subtopicId)) {
-        const nextList = current.filter((s) => s !== subtopicId);
-        if (nextList.length === 0) {
-          const next = { ...selectedFocus };
-          delete next[interestId];
-          setSelectedFocus(next);
-        } else {
-          setSelectedFocus({ ...selectedFocus, [interestId]: nextList });
-        }
-      } else {
-        setSelectedFocus({
-          ...selectedFocus,
-          [interestId]: [...current, subtopicId],
-        });
-      }
-    },
-    [selectedFocus],
-  );
-
-  // ─── Skill toggle ───
-  const toggleSkill = useCallback(
-    (id: string) => {
-      if (selectedSkills.includes(id)) {
-        setSelectedSkills(selectedSkills.filter((s) => s !== id));
-      } else {
-        setSelectedSkills([...selectedSkills, id]);
-      }
-    },
-    [selectedSkills],
-  );
+    return counts;
+  }, [selectedSources]);
 
   // ─── Navigation ───
   const progressWidth = `${(step / TOTAL_STEPS) * 100}%`;
 
-  const canGoNext = () => {
-    if (step === 1) {
-      // Need at least one interest or sub-interest selected
-      const hasSubs = Object.values(selectedFocus).some((subs) => subs.length > 0);
-      return selectedInterests.length > 0 || hasSubs;
-    }
+  const canGoNext = (): boolean => {
+    if (step === 1) return !!selectedRole && !!selectedSeniority;
+    if (step === 2) return selectedInterests.length >= 3;
+    if (step === 3) return selectedSources.length >= 1;
+    if (step === 4) return selectedGoals.length >= 1;
+    if (step === 5) return !!selectedSummaryStyle;
     return true;
   };
 
@@ -252,34 +261,17 @@ export default function OnboardingScreen() {
     if (!user) return;
     setIsSubmitting(true);
     try {
-      // Merge: if sub-interests are selected for an interest the user untapped,
-      // still include that interest (they clearly care about those sub-topics)
-      const finalInterests = [...new Set([
-        ...selectedInterests,
-        ...Object.keys(selectedFocus).filter((id) => (selectedFocus[id] || []).length > 0),
-      ])];
-
       await completeOnboarding(user.uid, {
         name: user.displayName || '',
-        interests: finalInterests,
-        interestQueries:
-          Object.keys(selectedFocus).length > 0 ? selectedFocus : undefined,
-        hobbies: profile?.hobbies || [],
-        skills: selectedSkills,
-        sourcePreferences: {
-          youtube: 5,
-          articles: 7,
-          papers: 2,
-          repos: 3,
-          tweets: 3,
-          discussions: 4,
-        },
-        contentDepth: 'surprise',
+        role: selectedRole,
+        seniority: selectedSeniority,
+        interests: selectedInterests,
+        selectedLearningSources: selectedSources,
+        careerGoals: selectedGoals,
+        summaryStyle: selectedSummaryStyle,
       });
 
       await refreshProfile();
-
-      // New user: take to paywall after onboarding
       router.replace('/paywall?fromOnboarding=true');
     } catch (error) {
       console.error('Error completing onboarding:', error);
@@ -288,31 +280,7 @@ export default function OnboardingScreen() {
     }
   };
 
-  // ─── Personalised outcome lines for Step 2 ───
-  const allChosenInterests = useMemo(() => {
-    return [...new Set([
-      ...selectedInterests,
-      ...Object.keys(selectedFocus).filter((id) => (selectedFocus[id] || []).length > 0),
-    ])];
-  }, [selectedInterests, selectedFocus]);
-
-  const outcomeLines = useMemo(() => {
-    return allChosenInterests
-      .slice(0, 3)
-      .map((id) => INTEREST_OUTCOMES[id])
-      .filter(Boolean);
-  }, [allChosenInterests]);
-
-  const interestLabels = useMemo(() => {
-    const labels = allChosenInterests
-      .map((id) => INTERESTS.find((i) => i.id === id)?.label)
-      .filter(Boolean) as string[];
-    if (labels.length <= 2) return labels.join(' & ');
-    return labels.slice(0, -1).join(', ') + ' & ' + labels[labels.length - 1];
-  }, [allChosenInterests]);
-
-  // ─── Render ───
-  const showBackInHeader = step > 1;
+  const stepLabel = `${step} of ${TOTAL_STEPS}`;
 
   return (
     <SafeAreaView
@@ -325,27 +293,19 @@ export default function OnboardingScreen() {
       >
         {/* ═══════ Header ═══════ */}
         <View style={styles.header}>
-          <View style={styles.headerRow}>
-            {showBackInHeader && (
-              <Pressable
-                onPress={step > 1 ? handleBack : () => router.replace('/(tabs)/explore')}
-                style={styles.backChevron}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              >
-                <ChevronLeft size={26} color={Colors[colorScheme].text} strokeWidth={2} />
-              </Pressable>
-            )}
-            <View
-              style={[
-                styles.progressBar,
-                { backgroundColor: Colors[colorScheme].muted + '30' },
-              ]}
-            >
-              <Animated.View
-                style={[styles.progressFill, { backgroundColor: ACCENT, width: progressWidth as any }]}
-              />
-            </View>
+          <View
+            style={[
+              styles.progressBar,
+              { backgroundColor: Colors[colorScheme].muted + '30' },
+            ]}
+          >
+            <Animated.View
+              style={[styles.progressFill, { backgroundColor: ACCENT, width: progressWidth as any }]}
+            />
           </View>
+          <ThemedText style={[styles.stepLabel, { color: Colors[colorScheme].muted }]}>
+            {stepLabel}
+          </ThemedText>
         </View>
 
         {/* ═══════ Scrollable Content ═══════ */}
@@ -355,141 +315,279 @@ export default function OnboardingScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* ═══════ STEP 1: Interests + Inline Sub-interests ═══════ */}
+          {/* ═══════ STEP 1: Role + Experience ═══════ */}
           {step === 1 && (
-            <Animated.View entering={FadeIn.duration(450)} exiting={FadeOut.duration(200)}>
-              <View style={styles.titleRow}>
-                <AppLogo style={styles.titleLogo} />
-                <ThemedText style={styles.title}>
-                  Choose areas you would{'\n'}like to explore
-                </ThemedText>
-              </View>
-
+            <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)}>
+              <ThemedText style={styles.title}>What's your role?</ThemedText>
               <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
-                Tap what catches your eye
+                This shapes how we frame your summaries.
               </ThemedText>
 
-              {/* Single unified pill grid - interests + sub-interests interleaved */}
-              <View style={styles.pillsGrid}>
-                {pillItems.map((item, index) => {
-                  const pillEl = (
-                    <Pill
-                      label={item.label}
-                      selected={item.selected}
-                      disabled={item.disabled}
-                      variant={item.kind === 'subtopic' ? 'sub' : 'primary'}
-                      onPress={() => {
-                        if (item.kind === 'interest') {
-                          toggleInterest(item.interestId);
-                        } else {
-                          toggleSubtopic(item.interestId, item.subtopicId!);
-                        }
-                      }}
-                      colorScheme={colorScheme}
-                    />
-                  );
+              <View style={styles.gridTwo}>
+                {ROLES.map(role => (
+                  <SelectionCard
+                    key={role.id}
+                    label={role.label}
+                    subtitle={role.subtitle}
+                    icon={role.icon}
+                    selected={selectedRole === role.id}
+                    onPress={() => setSelectedRole(role.id)}
+                    colorScheme={colorScheme}
+                    compact
+                  />
+                ))}
+              </View>
 
-                  // Sub-interest pills get a smooth fade + slide entrance with staggered delay
-                  if (item.kind === 'subtopic') {
-                    // Count how many subtopics came before this one to calculate stagger delay
-                    const subtopicIndex = pillItems
-                      .slice(0, index)
-                      .filter((p) => p.kind === 'subtopic' && p.interestId === item.interestId)
-                      .length;
-                    
-                    return (
-                      <Animated.View
-                        key={item.key}
-                        entering={FadeInDown.duration(400)
-                          .easing(Easing.out(Easing.ease))
-                          .delay(subtopicIndex * 60)}
-                        exiting={FadeOut.duration(200)}
-                      >
-                        {pillEl}
-                      </Animated.View>
-                    );
-                  }
+              <ThemedText style={[styles.title, { marginTop: 32 }]}>Experience level</ThemedText>
+              <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
+                Helps calibrate depth and jargon.
+              </ThemedText>
 
-                  return <View key={item.key}>{pillEl}</View>;
-                })}
+              <View style={styles.gridTwo}>
+                {SENIORITY_LEVELS.map(level => (
+                  <SelectionCard
+                    key={level.id}
+                    label={level.label}
+                    subtitle={level.subtitle}
+                    icon={level.icon}
+                    selected={selectedSeniority === level.id}
+                    onPress={() => setSelectedSeniority(level.id)}
+                    colorScheme={colorScheme}
+                    compact
+                  />
+                ))}
               </View>
             </Animated.View>
           )}
 
-          {/* ═══════ STEP 2: Outcomes Screen ═══════ */}
+          {/* ═══════ STEP 2: Interests ═══════ */}
           {step === 2 && (
-            <Animated.View
-              entering={FadeIn.duration(500)}
-              exiting={FadeOut.duration(200)}
-              style={styles.valueScreen}
-            >
-              {/* Illustration container - gold tint */}
-              <View
-                style={[
-                  styles.valueIllusContainer,
-                  { backgroundColor: ILLUS_PALETTE.gold[colorScheme] },
-                ]}
-              >
-                <CalendarIllus width={120} height={120} color={Colors[colorScheme].text} fill={Colors[colorScheme].text} />
+            <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)}>
+              <ThemedText style={styles.title}>What fires you up?</ThemedText>
+              <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
+                Pick 3+ topics. This powers your <ThemedText style={{ fontWeight: '700', color: ACCENT }}>For You</ThemedText> feed.
+              </ThemedText>
+
+              <View style={styles.gridTwo}>
+                {ONBOARDING_INTERESTS.map((interest, index) => (
+                  <Animated.View
+                    key={interest.id}
+                    entering={FadeInDown.duration(350).delay(index * 40).easing(Easing.out(Easing.ease))}
+                  >
+                    <InterestChip
+                      label={interest.label}
+                      icon={interest.icon}
+                      selected={selectedInterests.includes(interest.id)}
+                      onPress={() => toggleInterest(interest.id)}
+                      colorScheme={colorScheme}
+                    />
+                  </Animated.View>
+                ))}
               </View>
 
-              <ThemedText style={styles.valueTitle}>
-                Here is what Trace{'\n'}will do for you
-              </ThemedText>
-
-              <ThemedText style={[styles.valueBody, { color: Colors[colorScheme].muted }]}>
-                Every day you get a feed for{' '}
-                <ThemedText style={[styles.valueBodyBold, { color: Colors[colorScheme].text }]}>
-                  {interestLabels}
+              {selectedInterests.length > 0 && (
+                <ThemedText style={[styles.selectionCount, { color: Colors[colorScheme].muted }]}>
+                  {selectedInterests.length} selected{selectedInterests.length < 3 ? ` — pick ${3 - selectedInterests.length} more` : ''}
                 </ThemedText>
-                {' '}plus AI notes, key takeaways, and quick read time.
+              )}
+            </Animated.View>
+          )}
+
+          {/* ═══════ STEP 3: Deep Dive Sources ═══════ */}
+          {step === 3 && (
+            <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)}>
+              <ThemedText style={styles.title}>Your Deep Dive sources</ThemedText>
+              <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
+                Pick the voices you trust. We'll show you a taste of each.
               </ThemedText>
 
-              <View style={styles.outcomeList}>
-                {outcomeLines.map((line, i) => (
+              <View style={styles.sourceList}>
+                {LEARNING_SOURCE_CATEGORIES.map(category => {
+                  const isExpanded = expandedCategory === category.id;
+                  const count = sourceCounts[category.id] || 0;
+
+                  return (
+                    <View key={category.id}>
+                      <Pressable
+                        onPress={() => setExpandedCategory(isExpanded ? null : category.id)}
+                        style={[
+                          styles.categoryRow,
+                          {
+                            backgroundColor: Colors[colorScheme].card,
+                            borderColor: count > 0 ? ACCENT : Colors[colorScheme].border,
+                            borderWidth: count > 0 ? 2 : 1,
+                          },
+                        ]}
+                      >
+                        <View style={styles.iconBox}>
+                          <IconRenderer name={category.icon} size={22} color={count > 0 ? ACCENT : Colors[colorScheme].muted} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <ThemedText style={styles.categoryLabel}>{category.label}</ThemedText>
+                          <ThemedText style={[styles.categoryCount, { color: Colors[colorScheme].muted }]}>
+                            {count > 0 ? `${count} selected` : `${category.sources.length} sources`}
+                          </ThemedText>
+                        </View>
+                        <ChevronRight
+                          size={18}
+                          color={Colors[colorScheme].muted}
+                          strokeWidth={1.5}
+                          style={isExpanded ? { transform: [{ rotate: '90deg' }] } : undefined}
+                        />
+                      </Pressable>
+
+                      {isExpanded && (
+                        <Animated.View
+                          entering={FadeInDown.duration(300).easing(Easing.out(Easing.ease))}
+                          style={styles.sourceExpanded}
+                        >
+                          {category.sources.map(source => {
+                            const isSelected = selectedSources.includes(source.name);
+                            return (
+                              <Pressable
+                                key={source.name}
+                                onPress={() => toggleSource(source.name)}
+                                style={[
+                                  styles.sourceRow,
+                                  {
+                                    backgroundColor: isSelected
+                                      ? (colorScheme === 'dark' ? ACCENT_BG_DARK : ACCENT_BG_LIGHT)
+                                      : 'transparent',
+                                    borderColor: isSelected ? ACCENT : Colors[colorScheme].border,
+                                  },
+                                ]}
+                              >
+                                <View style={[
+                                  styles.sourceAvatar,
+                                  { backgroundColor: isSelected ? ACCENT + '30' : Colors[colorScheme].border + '50' },
+                                ]}>
+                                  <ThemedText style={[styles.sourceAvatarText, isSelected && { color: ACCENT }]}>
+                                    {source.name.charAt(0)}
+                                  </ThemedText>
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                  <ThemedText style={[styles.sourceName, isSelected && { color: ACCENT }]}>
+                                    {source.name}
+                                  </ThemedText>
+                                  <ThemedText
+                                    style={[styles.sourceDesc, { color: Colors[colorScheme].muted }]}
+                                    numberOfLines={1}
+                                  >
+                                    {source.description}
+                                  </ThemedText>
+                                </View>
+                                {isSelected && (
+                                  <View style={styles.checkSmall}>
+                                    <Check size={12} color={ACCENT} strokeWidth={3} />
+                                  </View>
+                                )}
+                              </Pressable>
+                            );
+                          })}
+                        </Animated.View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+
+              {selectedSources.length > 0 && (
+                <ThemedText style={[styles.selectionCount, { color: Colors[colorScheme].muted }]}>
+                  {selectedSources.length} source{selectedSources.length !== 1 ? 's' : ''} selected
+                </ThemedText>
+              )}
+            </Animated.View>
+          )}
+
+          {/* ═══════ STEP 4: Goals ═══════ */}
+          {step === 4 && (
+            <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)}>
+              <ThemedText style={styles.title}>What's your next move?</ThemedText>
+              <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
+                Pick 1-2 goals. We'll prioritize content that gets you there faster.
+              </ThemedText>
+
+              <View style={styles.goalList}>
+                {CAREER_GOALS.map((goal, index) => (
                   <Animated.View
-                    key={i}
-                    entering={FadeInDown.duration(500)
-                      .easing(Easing.out(Easing.cubic))
-                      .delay(300 + i * 180)}
-                    style={[
-                      styles.outcomeRow,
-                      {
-                        backgroundColor: colorScheme === 'dark' ? '#0d1f12' : '#f0fdf4',
-                        borderColor: Colors[colorScheme].border,
-                      },
-                    ]}
+                    key={goal.id}
+                    entering={FadeInDown.duration(350).delay(index * 60).easing(Easing.out(Easing.ease))}
                   >
-                    <ThemedText style={styles.outcomeText}>{line}</ThemedText>
+                    <SelectionCard
+                      label={goal.label}
+                      subtitle={goal.subtitle}
+                      icon={goal.icon}
+                      selected={selectedGoals.includes(goal.id)}
+                      onPress={() => toggleGoal(goal.id)}
+                      colorScheme={colorScheme}
+                    />
                   </Animated.View>
                 ))}
               </View>
             </Animated.View>
           )}
 
-          {/* ═══════ STEP 3: Skills ═══════ */}
-          {step === 3 && (
-            <Animated.View entering={FadeIn.duration(450)} exiting={FadeOut.duration(200)}>
-              <View style={styles.titleRow}>
-                <AppLogo style={styles.titleLogo} />
-                <ThemedText style={styles.title}>
-                  What are your skills?
-                </ThemedText>
-              </View>
-
+          {/* ═══════ STEP 5: Summary Style ═══════ */}
+          {step === 5 && (
+            <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)}>
+              <ThemedText style={styles.title}>How should we brief you?</ThemedText>
               <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
-                Helps us tune the depth of content we surface · {selectedSkills.length} selected
+                This shapes how every summary reads. You can change it anytime.
               </ThemedText>
 
-              <View style={styles.pillsGrid}>
-                {SKILL_SUGGESTIONS.map((skill) => (
-                  <Pill
-                    key={skill.id}
-                    label={skill.label}
-                    selected={selectedSkills.includes(skill.id)}
-                    onPress={() => toggleSkill(skill.id)}
-                    colorScheme={colorScheme}
-                  />
+              <View style={styles.goalList}>
+                {SUMMARY_STYLES.map((style, index) => (
+                  <Animated.View
+                    key={style.id}
+                    entering={FadeInDown.duration(400).delay(index * 80).easing(Easing.out(Easing.ease))}
+                  >
+                    <Pressable
+                      onPress={() => setSelectedSummaryStyle(style.id)}
+                      style={[
+                        styles.summaryCard,
+                        {
+                          backgroundColor: selectedSummaryStyle === style.id
+                            ? (colorScheme === 'dark' ? ACCENT_BG_DARK : ACCENT_BG_LIGHT)
+                            : Colors[colorScheme].card,
+                          borderColor: selectedSummaryStyle === style.id ? ACCENT : Colors[colorScheme].border,
+                          borderWidth: selectedSummaryStyle === style.id ? 2 : 1,
+                        },
+                      ]}
+                    >
+                      <View style={styles.summaryHeader}>
+                        <View style={[
+                          styles.summaryIconBox,
+                          {
+                            backgroundColor: selectedSummaryStyle === style.id
+                              ? ACCENT + '20'
+                              : Colors[colorScheme].border + '40',
+                          },
+                        ]}>
+                          <IconRenderer
+                            name={style.icon}
+                            size={24}
+                            color={selectedSummaryStyle === style.id ? ACCENT : Colors[colorScheme].muted}
+                          />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <ThemedText style={[
+                            styles.summaryLabel,
+                            selectedSummaryStyle === style.id && { color: ACCENT },
+                          ]}>
+                            {style.label}
+                          </ThemedText>
+                          <ThemedText style={[styles.summarySubtitle, { color: Colors[colorScheme].muted }]}>
+                            {style.subtitle}
+                          </ThemedText>
+                        </View>
+                      </View>
+                      <View style={[styles.previewBox, { backgroundColor: Colors[colorScheme].background }]}>
+                        <ThemedText style={[styles.previewText, { color: Colors[colorScheme].muted }]}>
+                          {style.preview}
+                        </ThemedText>
+                      </View>
+                    </Pressable>
+                  </Animated.View>
                 ))}
               </View>
             </Animated.View>
@@ -497,47 +595,45 @@ export default function OnboardingScreen() {
         </ScrollView>
 
         {/* ═══════ Footer ═══════ */}
-        <View
-          style={[
-            styles.footer,
-            { borderTopColor: Colors[colorScheme].border },
-          ]}
-        >
+        <View style={[styles.footer]}>
+          {step > 1 ? (
+            <Pressable
+              onPress={handleBack}
+              style={styles.backBtn}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <ArrowLeft size={16} color={Colors[colorScheme].muted} strokeWidth={2} />
+              <ThemedText style={[styles.backBtnText, { color: Colors[colorScheme].muted }]}>
+                Back
+              </ThemedText>
+            </Pressable>
+          ) : (
+            <View />
+          )}
           <Pressable
             onPress={handleNext}
             disabled={!canGoNext() || isSubmitting}
             style={[
               styles.continueBtn,
               {
-                backgroundColor:
-                  canGoNext() && !isSubmitting
-                    ? ACCENT
-                    : Colors[colorScheme].card,
+                backgroundColor: ACCENT,
+                opacity: canGoNext() && !isSubmitting ? 1 : 0.35,
               },
             ]}
           >
             {isSubmitting && (
-              <ActivityIndicator
-                size="small"
-                color="white"
-                style={{ marginRight: 8 }}
-              />
+              <ActivityIndicator size="small" color="#000" style={{ marginRight: 8 }} />
             )}
-            <ThemedText
-              style={[
-                styles.continueBtnText,
-                {
-                  color:
-                    canGoNext() && !isSubmitting ? 'white' : Colors[colorScheme].muted,
-                },
-              ]}
-            >
+            <ThemedText style={styles.continueBtnText}>
               {isSubmitting
                 ? 'Building your feed...'
                 : step === TOTAL_STEPS
                   ? 'Build my feed'
                   : 'Continue'}
             </ThemedText>
+            {!isSubmitting && (
+              <ArrowRight size={16} color="#000" strokeWidth={2.5} style={{ marginLeft: 6 }} />
+            )}
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -546,111 +642,58 @@ export default function OnboardingScreen() {
 }
 
 // ─── Styles ───
+const SCREEN_W = Dimensions.get('window').width;
+const GRID_PAD = 24;
+const GRID_GAP = 12;
+const HALF_W = (SCREEN_W - GRID_PAD * 2 - GRID_GAP) / 2;
+
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  flex: {
-    flex: 1,
-  },
+  safeArea: { flex: 1 },
+  flex: { flex: 1 },
 
-  // ─── Header ───
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 20,
-  },
-  headerRow: {
+  header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12 },
+  progressBar: { height: 5, borderRadius: 3, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 3 },
+  stepLabel: { fontSize: 12, fontWeight: '500', marginTop: 8, paddingLeft: 2 },
+
+  scrollContent: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 80 },
+
+  title: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5, lineHeight: 34, marginBottom: 8 },
+  subtitle: { fontSize: 15, lineHeight: 22, marginBottom: 28 },
+
+  // 2-column grid
+  gridTwo: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+
+  // Cards
+  card: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-  },
-  backChevron: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  progressBar: {
-    flex: 1,
-    height: 5,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-
-  // ─── Scroll content ───
-  scrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 80,
-  },
-
-  // ─── Title row ───
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 14,
-  },
-  titleLogo: {
-    width: 32,
-    height: 32,
-    marginTop: 4,
-  },
-  title: {
-    flex: 1,
-    fontSize: 24,
-    fontWeight: '700',
-    lineHeight: 32,
-  },
-  subtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 32,
-    paddingLeft: 44,
-  },
-
-  // - Pill grid (interests, sub-interests, skills - all same style) -
-  pillsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 14,
-  },
-  pill: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingVertical: 18,
+    paddingHorizontal: 18,
     borderRadius: 16,
+    marginBottom: 2,
+    overflow: 'visible',
   },
-  pillSub: {
-    position: 'relative',
+  cardCompact: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 11,
+    gap: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     borderRadius: 14,
+    width: HALF_W,
+    overflow: 'visible',
   },
-  pillText: {
-    fontSize: 15,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  pillTextSub: {
-    fontSize: 13,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  checkBadge: {
+  iconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  iconBoxCompact: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  cardLabel: { fontSize: 16, fontWeight: '600' },
+  cardLabelCompact: { fontSize: 13, fontWeight: '600' },
+  cardSubtitle: { fontSize: 11, lineHeight: 14, marginTop: 2 },
+  checkBadgeOverlay: {
     position: 'absolute',
-    top: -5,
-    right: -5,
+    top: -6,
+    right: -6,
     width: 20,
     height: 20,
     borderRadius: 10,
@@ -659,79 +702,92 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // ─── Step 2: Outcomes / Value screen ───
-  valueScreen: {
+  // Chips
+  chip: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 40,
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    width: HALF_W,
   },
-  valueIllusContainer: {
-    width: 200,
-    height: 160,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 36,
-    overflow: 'hidden',
-  },
-  valueTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    textAlign: 'center',
-    lineHeight: 36,
-    marginBottom: 16,
-  },
-  valueBody: {
-    fontSize: 17,
-    lineHeight: 26,
-    textAlign: 'center',
-    marginBottom: 40,
-    paddingHorizontal: 4,
-  },
-  valueBodyBold: {
-    fontWeight: '600',
-  },
-  outcomeList: {
-    width: '100%',
-    gap: 12,
-  },
-  outcomeRow: {
+  chipIconBox: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
+  chipLabel: { fontSize: 14, fontWeight: '600', flex: 1 },
+
+  selectionCount: { fontSize: 13, textAlign: 'center', marginTop: 16 },
+
+  // Source categories
+  sourceList: { gap: 10 },
+  categoryRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    paddingVertical: 18,
-    paddingHorizontal: 18,
-    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+  },
+  categoryIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  categoryLabel: { fontSize: 15, fontWeight: '600' },
+  categoryCount: { fontSize: 12, marginTop: 2 },
+  sourceExpanded: { paddingLeft: 8, paddingRight: 4, paddingTop: 4, paddingBottom: 8, gap: 4 },
+  sourceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
     borderWidth: 1,
   },
-  outcomeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: ACCENT,
+  sourceAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  outcomeText: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '500',
-    lineHeight: 22,
-  },
+  sourceAvatarText: { fontSize: 15, fontWeight: '700' },
+  sourceName: { fontSize: 14, fontWeight: '600' },
+  sourceDesc: { fontSize: 12, lineHeight: 16, marginTop: 1 },
+  checkSmall: { marginLeft: 4 },
 
-  // ─── Footer ───
+  // Goals
+  goalList: { gap: 10 },
+
+  // Summary style cards
+  summaryCard: { borderRadius: 16, padding: 18, marginBottom: 2 },
+  summaryHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 14 },
+  summaryIconBox: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  summaryLabel: { fontSize: 17, fontWeight: '700' },
+  summarySubtitle: { fontSize: 13, lineHeight: 18, marginTop: 4 },
+  previewBox: { borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14 },
+  previewText: { fontSize: 13, lineHeight: 20, fontStyle: 'italic' },
+
+  // Footer
   footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 28,
-    borderTopWidth: 1,
   },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+  },
+  backBtnText: { fontSize: 15, fontWeight: '500' },
   continueBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
-    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 28,
+    borderRadius: 14,
   },
-  continueBtnText: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
+  continueBtnText: { fontSize: 16, fontWeight: '700', color: '#000' },
 });

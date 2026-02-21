@@ -1,15 +1,13 @@
-name: User Onboard
+name: User Onboard (v3)
 
 on:
-  # Triggered via GitHub API from frontend
   repository_dispatch:
     types: [user-onboard]
   
-  # Manual trigger for testing
   workflow_dispatch:
     inputs:
       user_id:
-        description: 'User ID to onboard'
+        description: 'Firebase UID of the user'
         required: true
         type: string
 
@@ -21,9 +19,9 @@ env:
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
 jobs:
-  onboard-user:
+  build-user-feed:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     
     steps:
       - name: Checkout code
@@ -38,15 +36,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       
-      - name: Run onboarding hook
+      - name: Build v3 feed for user
         run: |
-          # Get user_id from either dispatch type
           if [ "${{ github.event_name }}" == "repository_dispatch" ]; then
             USER_ID="${{ github.event.client_payload.user_id }}"
           else
             USER_ID="${{ inputs.user_id }}"
           fi
           
-          echo "Running onboarding for user: $USER_ID"
-          python v1/hooks/on_user_onboard.py --user_id "$USER_ID"
+          echo "Building v3 feed for user: $USER_ID"
+          python -u -m v3.scheduler --jobs all --user-id "$USER_ID"
 

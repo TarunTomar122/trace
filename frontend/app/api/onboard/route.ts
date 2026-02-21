@@ -131,18 +131,20 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log(`Triggered feed generation workflow for user: ${uid}`);
+    console.log(`Triggered v3 feed generation workflow for user: ${uid}`);
 
     if (adminDb) {
       try {
         await adminDb.collection('user_profiles').doc(uid).set(
           {
             lastOnboardDispatchAt: new Date(),
+            feedBuildStatus: 'building',
+            feedBuildRequestedAt: new Date(),
           },
           { merge: true }
         );
       } catch (error) {
-        console.warn('Failed to persist lastOnboardDispatchAt:', error);
+        console.warn('Failed to persist onboard dispatch metadata:', error);
       }
     }
     

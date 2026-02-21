@@ -31,27 +31,18 @@ from v1.storage import FirestoreStore  # noqa: E402
 
 MAX_ITEMS_DEFAULT = 8
 TOPIC_PRIORITY = [
-    "ai-updates",
-    "product-releases",
-    "startup-ecosystem",
-    "ux-design",
-    "markets",
+    "technology",
+    "business-market",
+    "experience",
+    "productivity",
 ]
 TOPIC_TARGET_COUNTS = {
-    "ai-updates": 3,
-    "product-releases": 2,
-    "startup-ecosystem": 1,
-    "ux-design": 1,
-    "markets": 1,
+    "technology": 3,
+    "business-market": 3,
+    "experience": 1,
+    "productivity": 1,
 }
 MAX_PER_DOMAIN = 2
-NOISE_TITLE_PATTERNS = [
-    "who's to blame",
-    "should they be cut out",
-    "my son",
-    "my siblings",
-    "this is stressful for my parents",
-]
 
 
 def _today_ist() -> str:
@@ -129,17 +120,11 @@ def _select_diverse(
     articles: list[dict[str, Any]],
     max_items: int,
 ) -> list[dict[str, Any]]:
-    def _is_noise_title(title: str) -> bool:
-        t = (title or "").strip().lower()
-        return any(pattern in t for pattern in NOISE_TITLE_PATTERNS)
-
     def _domain(url: str) -> str:
         return (urlparse(url).hostname or "").lower().replace("www.", "")
 
     by_topic: dict[str, list[dict[str, Any]]] = {}
     for item in articles:
-        if _is_noise_title(item.get("title", "")):
-            continue
         by_topic.setdefault(item["topic_id"], []).append(item)
 
     topic_ids = sorted(

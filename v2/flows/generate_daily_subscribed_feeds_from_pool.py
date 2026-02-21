@@ -581,6 +581,11 @@ def _promote_previous_feed_urls_to_seen(
     promoted_map = seen_data.get("promoted_from_feed_dates", {})
     if not isinstance(promoted_map, dict):
         promoted_map = {}
+    # Keep only the last 30 days of promotion markers
+    date_cutoff = _previous_date_str(target_date)  # rough 30-day cutoff via string comparison
+    if len(promoted_map) > 35:
+        cutoff_date = (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d")
+        promoted_map = {d: v for d, v in promoted_map.items() if d >= cutoff_date}
     if promoted_map.get(yesterday) is True:
         return 0, True
 
@@ -600,6 +605,19 @@ def _promote_previous_feed_urls_to_seen(
     if not isinstance(seen_urls_map, dict):
         seen_urls_map = {}
     now_iso = datetime.now(timezone.utc).isoformat()
+
+    # Prune seen URLs older than 30 days to prevent pool depletion
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    before_prune = len(seen_urls_map)
+    seen_urls_map = {
+        url: ts for url, ts in seen_urls_map.items()
+        if isinstance(ts, str) and ts >= cutoff
+    }
+    pruned = before_prune - len(seen_urls_map)
+    if pruned > 0:
+        _log(f"user={user_id} pruned {pruned} seen URLs older than 30 days "
+             f"({before_prune} -> {len(seen_urls_map)})")
+
     added = 0
     for item in y_items:
         if not isinstance(item, dict):

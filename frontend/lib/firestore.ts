@@ -236,6 +236,13 @@ export interface UserProfile {
   onboarded: boolean;
   name: string;
   role: string;
+  seniority?: string;
+  interests: string[];
+  selectedLearningSources?: string[];
+  careerGoals?: string[];
+  summaryStyle?: string;
+
+  // Legacy fields (kept for backward compat with existing profiles)
   company?: string;
   location?: string;
   experienceYears?: number | null;
@@ -252,23 +259,18 @@ export interface UserProfile {
   learningStyle?: string;
   attentionConstraints?: string;
   motivationTriggers?: string[];
-  interests: string[]; // Free-form interest tags
-  interestQueries?: Record<string, string[]>; // Optional focus subtopics per interest
-  hobbies: string[]; // Free-form hobby tags
-  skills: string[]; // Free-form skill tags
-  dislikedTopics: string[]; // Topics to avoid
-  
-  // Content source preferences (preference level 0-10, higher = more preferred)
+  interestQueries?: Record<string, string[]>;
+  hobbies: string[];
+  skills: string[];
+  dislikedTopics: string[];
   sourcePreferences: {
-    youtube: number; // 0-10
-    articles: number; // 0-10
-    papers: number; // 0-10
-    repos: number; // 0-10
-    tweets: number; // 0-10
-    discussions: number; // 0-10
+    youtube: number;
+    articles: number;
+    papers: number;
+    repos: number;
+    tweets: number;
+    discussions: number;
   };
-  
-  // Content preferences
   contentDepth: 'quick' | 'deep' | 'surprise' | null;
   contentPreferences?: {
     likes?: string[];

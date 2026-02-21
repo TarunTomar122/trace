@@ -10,13 +10,13 @@ import {
   Newspaper,
   Flame,
   ExternalLink,
+  Clock,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { FeedItem } from '@/lib/firestore';
 
-// ─── Source config (matching web frontend) ───
 const SOURCE_LABEL: Record<string, { icon: typeof Youtube; label: string; color: string }> = {
   video: { icon: Youtube, label: 'Video', color: '#ef4444' },
   repo: { icon: Github, label: 'Repo', color: '#8b5cf6' },
@@ -38,30 +38,26 @@ function isLikelyRealImageUrl(url?: string | null): boolean {
   return true;
 }
 
-// ─── Category badge config (matching web frontend) ───
-function getCategoryBadge(item: FeedItem, colorScheme: 'light' | 'dark'): { label: string; color: string; bg: string } | null {
+function getFeedTypeBadge(item: FeedItem, colorScheme: 'light' | 'dark'): { label: string; color: string; bg: string } | null {
+  const feedType = item.feed_type || item.metadata?.feed_type;
   const feedCategory = item.metadata?.feed_category;
   const isHot = item.metadata?.is_hot;
 
-  if (feedCategory === 'trending_news' || isHot) {
+  if (feedType === 'trending' || feedCategory === 'trending_news' || isHot) {
     return { label: 'Trending', color: '#ea580c', bg: colorScheme === 'dark' ? '#2e2216' : '#FFF7ED' };
   }
-  if (feedCategory === 'suggested') {
-    return { label: 'Suggested', color: '#9333ea', bg: colorScheme === 'dark' ? '#2a1a2e' : '#FAF5FF' };
+  if (feedType === 'deep_dives' || feedCategory === 'learn' || item.id?.startsWith('learn_') || item.id?.startsWith('dd_')) {
+    return { label: 'Deep Dive', color: '#0ea5e9', bg: colorScheme === 'dark' ? '#0c1929' : '#f0f9ff' };
   }
-  if (feedCategory === 'topics') {
-    return { label: 'For You', color: '#2563eb', bg: colorScheme === 'dark' ? '#1a2332' : '#EFF6FF' };
+  if (feedType === 'for_you' || feedCategory === 'suggested' || feedCategory === 'topics') {
+    return { label: 'For You', color: '#8b5cf6', bg: colorScheme === 'dark' ? '#1a1a2e' : '#f5f3ff' };
   }
   if (feedCategory === 'sample_summary') {
     return { label: 'Free summary', color: '#16a34a', bg: colorScheme === 'dark' ? '#1a2e23' : '#F0FDF4' };
   }
-  if (feedCategory === 'learn' || item.id?.startsWith('learn_')) {
-    return { label: 'Learn', color: '#0ea5e9', bg: colorScheme === 'dark' ? '#0c1929' : '#f0f9ff' };
-  }
   return null;
 }
 
-// ─── Props ───
 type FeedCardProps = {
   item: FeedItem;
   colorScheme: 'light' | 'dark';
@@ -74,7 +70,10 @@ export function FeedCard({ item, colorScheme, onPress }: FeedCardProps) {
   const Icon = config.icon;
   const hasSummary = !!item.summary?.short_article?.body;
   const snippet = item.summary?.short_article?.subtitle || item.description || '';
-  const categoryBadge = getCategoryBadge(item, colorScheme);
+  const badge = getFeedTypeBadge(item, colorScheme);
+  const readTime = item.summary?.reading_time_minutes;
+
+  const sourceName = item.source_name || item.source || '';
 
   const thumbnail = item.thumbnail;
   const [imgError, setImgError] = useState(false);
@@ -91,26 +90,24 @@ export function FeedCard({ item, colorScheme, onPress }: FeedCardProps) {
   return (
     <Pressable style={styles.container} onPress={handlePress}>
       <View style={styles.row}>
-        {/* Left: text content */}
         <View style={styles.textContent}>
-          {/* Source label */}
+          {/* Source + badge row */}
           <View style={styles.metaRow}>
             <Icon size={13} color={config.color} strokeWidth={1.8} />
-            <ThemedText style={[styles.sourceLabel, { color: Colors[colorScheme].muted }]}>
-              {config.label}
+            <ThemedText style={[styles.sourceLabel, { color: Colors[colorScheme].muted }]} numberOfLines={1}>
+              {sourceName || config.label}
             </ThemedText>
-            {categoryBadge && (
+            {badge && (
               <>
                 <ThemedText style={[styles.dot, { color: Colors[colorScheme].border }]}>·</ThemedText>
-                {categoryBadge.label === 'Trending' && (
-                  <Flame size={11} color={categoryBadge.color} strokeWidth={2} />
-                )}
-                {categoryBadge.label === 'Free summary' && (
-                  <Sparkles size={11} color={categoryBadge.color} strokeWidth={2} />
-                )}
-                <ThemedText style={[styles.categoryLabel, { color: categoryBadge.color }]}>
-                  {categoryBadge.label}
-                </ThemedText>
+                <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+                  {badge.label === 'Trending' && (
+                    <Flame size={10} color={badge.color} strokeWidth={2.5} />
+                  )}
+                  <ThemedText style={[styles.badgeLabel, { color: badge.color }]}>
+                    {badge.label}
+                  </ThemedText>
+                </View>
               </>
             )}
             {!hasSummary && (
@@ -136,19 +133,26 @@ export function FeedCard({ item, colorScheme, onPress }: FeedCardProps) {
             </ThemedText>
           ) : null}
 
-          {/* Why relevant */}
-          {item.metadata?.why_relevant ? (
-            <ThemedText
-              style={[styles.whyRelevant, { color: Colors[colorScheme].muted }]}
-              numberOfLines={1}
-            >
-              {item.metadata.why_relevant}
-            </ThemedText>
-          ) : null}
-
+          {/* Footer: read time + topic */}
+          <View style={styles.footer}>
+            {readTime ? (
+              <View style={styles.readTimeRow}>
+                <Clock size={11} color={Colors[colorScheme].muted} strokeWidth={1.8} />
+                <ThemedText style={[styles.readTime, { color: Colors[colorScheme].muted }]}>
+                  {readTime} min read
+                </ThemedText>
+              </View>
+            ) : null}
+            {item.interest_id ? (
+              <View style={[styles.topicPill, { backgroundColor: Colors[colorScheme].foreground + '08' }]}>
+                <ThemedText style={[styles.topicText, { color: Colors[colorScheme].muted }]}>
+                  {item.interest_id.replace(/-/g, ' ')}
+                </ThemedText>
+              </View>
+            ) : null}
+          </View>
         </View>
 
-        {/* Right: show only real source image */}
         {showRealImage && (
           <View style={[styles.thumbnailWrap, { backgroundColor: Colors[colorScheme].card }]}>
             <Image
@@ -181,17 +185,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+    flexShrink: 1,
   },
   sourceLabel: {
     fontSize: 12,
     fontWeight: '500',
+    flexShrink: 1,
   },
   dot: {
     fontSize: 12,
   },
-  categoryLabel: {
-    fontSize: 11,
-    fontWeight: '600',
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  badgeLabel: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   title: {
     fontSize: 16,
@@ -203,13 +217,31 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-  whyRelevant: {
-    fontSize: 11,
-    fontWeight: '500',
-    fontStyle: 'italic',
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     marginTop: 2,
   },
-  // ─── Thumbnail ───
+  readTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  readTime: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  topicPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  topicText: {
+    fontSize: 10,
+    fontWeight: '500',
+    textTransform: 'capitalize',
+  },
   thumbnailWrap: {
     width: 80,
     height: 80,
