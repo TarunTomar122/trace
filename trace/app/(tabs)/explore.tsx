@@ -17,6 +17,9 @@ import {
   Crown,
   Mail,
   Circle,
+  Flame,
+  Calendar,
+  Trophy,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -24,7 +27,7 @@ import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
-import { updateUserProfile } from '@/lib/firestore';
+import { updateUserProfile, getReadingStreak, ReadingStreak } from '@/lib/firestore';
 import { ILLUS_PALETTE } from '@/app/(auth)/welcome';
 
 const PRIVACY_URL = 'https://www.yourtrace.online/privacy-policy';
@@ -39,10 +42,15 @@ export default function ProfileScreen() {
 
   const isOnboarded = profile?.onboarded === true;
   const [newsletterOptIn, setNewsletterOptIn] = useState(profile?.newsletterOptIn !== false);
+  const [streak, setStreak] = useState<ReadingStreak | null>(null);
 
   useEffect(() => {
     setNewsletterOptIn(profile?.newsletterOptIn !== false);
   }, [profile?.newsletterOptIn]);
+
+  useEffect(() => {
+    if (user) getReadingStreak(user.uid).then(setStreak);
+  }, [user]);
 
   const handleNewsletterToggle = async (value: boolean) => {
     setNewsletterOptIn(value);
@@ -124,6 +132,52 @@ export default function ProfileScreen() {
             </View>
           )}
         </View>
+
+        {/* ─── Activity / Streak ─── */}
+        {streak && isOnboarded && (
+          <View style={[
+            activityStyles.card,
+            {
+              backgroundColor: colorScheme === 'dark' ? '#1a1408' : '#fffbeb',
+              borderColor: colorScheme === 'dark' ? '#2d2010' : '#fef3c7',
+            },
+          ]}>
+            <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted, marginBottom: 16 }]}>
+              Activity
+            </ThemedText>
+            <View style={activityStyles.statsRow}>
+              <View style={activityStyles.stat}>
+                <Flame size={18} color="#f97316" strokeWidth={2} />
+                <ThemedText style={activityStyles.statValue}>
+                  {streak.current_streak}
+                </ThemedText>
+                <ThemedText style={[activityStyles.statLabel, { color: Colors[colorScheme].muted }]}>
+                  Current streak
+                </ThemedText>
+              </View>
+              <View style={[activityStyles.statDivider, { backgroundColor: Colors[colorScheme].border }]} />
+              <View style={activityStyles.stat}>
+                <Trophy size={18} color="#eab308" strokeWidth={2} />
+                <ThemedText style={activityStyles.statValue}>
+                  {streak.longest_streak}
+                </ThemedText>
+                <ThemedText style={[activityStyles.statLabel, { color: Colors[colorScheme].muted }]}>
+                  Best streak
+                </ThemedText>
+              </View>
+              <View style={[activityStyles.statDivider, { backgroundColor: Colors[colorScheme].border }]} />
+              <View style={activityStyles.stat}>
+                <Calendar size={18} color="#f97316" strokeWidth={2} />
+                <ThemedText style={activityStyles.statValue}>
+                  {streak.total_days_read}
+                </ThemedText>
+                <ThemedText style={[activityStyles.statLabel, { color: Colors[colorScheme].muted }]}>
+                  Days active
+                </ThemedText>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* ─── Onboarding nudge ─── */}
         {!isOnboarded && (
@@ -583,5 +637,36 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     marginTop: 32,
+  },
+});
+
+const activityStyles = StyleSheet.create({
+  card: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 20,
+    marginBottom: 28,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  stat: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  statDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 48,
   },
 });

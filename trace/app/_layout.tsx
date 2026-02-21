@@ -1,10 +1,20 @@
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect, useState, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  Image,
+  Text,
+  Linking,
+  Pressable,
+  Platform,
+} from 'react-native';
 import 'react-native-reanimated';
+import Constants from 'expo-constants';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
@@ -12,10 +22,63 @@ import { RevenueCatProvider, useRevenueCat } from '@/contexts/RevenueCatContext'
 import { ToastProvider } from '@/contexts/ToastContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { Colors } from '@/constants/theme';
+import { checkMinAppVersion } from '@/lib/firestore';
+
+SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
   initialRouteName: '(auth)',
 };
+
+const LIGHT_LOGO = require('@/assets/images/trace-logo.png');
+const DARK_LOGO = require('@/assets/images/dark-icon.png');
+
+const STORE_URL = Platform.select({
+  android: 'https://play.google.com/store/apps/details?id=online.yourtrace.app',
+  ios: 'https://apps.apple.com/app/id123456789',
+  default: 'https://www.yourtrace.online',
+});
+
+function ForceUpdateGate({ children }: { children: ReactNode }) {
+  const colorScheme = useColorScheme();
+  const [needsUpdate, setNeedsUpdate] = useState(false);
+
+  useEffect(() => {
+    const appVersion = Constants.expoConfig?.version || '1.0.0';
+    checkMinAppVersion(appVersion).then((ok) => {
+      if (!ok) setNeedsUpdate(true);
+    });
+  }, []);
+
+  if (needsUpdate) {
+    return (
+      <View style={[styles.splashContainer, { backgroundColor: Colors[colorScheme].background }]}>
+        <Image
+          source={colorScheme === 'dark' ? DARK_LOGO : LIGHT_LOGO}
+          style={styles.splashLogo}
+          resizeMode="contain"
+        />
+        <Text style={[styles.updateTitle, { color: Colors[colorScheme].foreground }]}>
+          Update Available
+        </Text>
+        <Text style={[styles.updateBody, { color: Colors[colorScheme].muted }]}>
+          A new version of Trace is available with important improvements.
+          Please update to continue.
+        </Text>
+        <Pressable
+          style={[styles.updateButton, { backgroundColor: Colors[colorScheme].foreground }]}
+          onPress={() => Linking.openURL(STORE_URL)}
+        >
+          <Text style={[styles.updateButtonText, { color: Colors[colorScheme].background }]}>
+            Update Now
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return <>{children}</>;
+}
 
 function AuthGate({ children }: { children: ReactNode }) {
   const { user, profile, loading } = useAuth();
@@ -23,63 +86,79 @@ function AuthGate({ children }: { children: ReactNode }) {
   const segments = useSegments();
   const router = useRouter();
   const colorScheme = useColorScheme();
-  const [isReady, setIsReady] = useState(false);
+
+  const [appReady, setAppReady] = useState(false);
+  const hasNavigated = useRef(false);
 
   useEffect(() => {
-    // Wait for auth to finish loading
     if (loading) return;
+    if (user && profile === null) return;
+    if (user && profile?.onboarded && revenueCatLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboarding = segments[0] === 'onboarding';
 
-    // Not logged in → make sure we're on the welcome screen
     if (!user) {
       if (!inAuthGroup) {
+        hasNavigated.current = true;
         router.replace('/(auth)/welcome');
       } else {
-        setIsReady(true);
+        setAppReady(true);
       }
       return;
     }
 
-    // User is logged in - wait for profile before deciding where to route.
-    if (profile === null) return;
-    if (profile.onboarded && revenueCatLoading) return;
-
-    // Redirect from auth screens or onboarding based on onboarded status
-    if (inAuthGroup || inOnboarding) {
-      if (!profile.onboarded) {
-        // New user: send to onboarding (only if not already there)
-        if (!inOnboarding) router.replace('/onboarding');
-        else setIsReady(true); // already on onboarding, show it
-      } else if (inAuthGroup) {
-        // Already onboarded: skip auth screens to the app
-        router.replace('/(tabs)');
+    if (!profile?.onboarded) {
+      if (!inOnboarding) {
+        hasNavigated.current = true;
+        router.replace('/onboarding');
       } else {
-        // Already onboarded should never land in onboarding on app start.
-        router.replace('/(tabs)');
+        setAppReady(true);
       }
       return;
     }
 
-    // User is logged in and on the correct screen
-    setIsReady(true);
+    // User is onboarded + RC done
+    if (inAuthGroup || inOnboarding) {
+      hasNavigated.current = true;
+      router.replace('/(tabs)');
+      return;
+    }
+
+    // On correct screen — wait an extra frame so the screen is painted
+    if (hasNavigated.current) {
+      const timer = setTimeout(() => setAppReady(true), 50);
+      return () => clearTimeout(timer);
+    }
+    setAppReady(true);
   }, [loading, user, profile, isProUser, revenueCatLoading, segments, router]);
 
-  // Always render children so the Stack mounts and segments work.
-  // Show an opaque overlay on top until routing is settled.
+  // Hide native splash + branded overlay together
+  useEffect(() => {
+    if (appReady) {
+      SplashScreen.hideAsync();
+    }
+  }, [appReady]);
+
   return (
     <>
       {children}
-      {(loading || !isReady || (user && profile?.onboarded && revenueCatLoading)) && (
+      {!appReady && (
         <View
           style={[
             StyleSheet.absoluteFill,
-            styles.loadingContainer,
-            { backgroundColor: Colors[colorScheme].background },
+            styles.splashContainer,
+            { backgroundColor: Colors[colorScheme].background, zIndex: 999 },
           ]}
         >
-          <ActivityIndicator size="large" color={Colors[colorScheme].foreground} />
+          <Image
+            source={colorScheme === 'dark' ? DARK_LOGO : LIGHT_LOGO}
+            style={styles.splashLogo}
+            resizeMode="contain"
+          />
+          <Text style={[styles.splashTitle, { color: Colors[colorScheme].foreground }]}>
+            TRACE
+          </Text>
         </View>
       )}
     </>
@@ -95,14 +174,15 @@ function RootLayoutNav() {
         screenOptions={{
           headerShown: false,
           freezeOnBlur: false,
+          animation: 'none',
         }}
       >
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal' }} />
-        <Stack.Screen name="preferences" options={{ presentation: 'card' }} />
-        <Stack.Screen name="article" options={{ presentation: 'card' }} />
-        <Stack.Screen name="bookmarks" options={{ presentation: 'card' }} />
+        <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal', animation: 'none' }} />
+        <Stack.Screen name="preferences" options={{ presentation: 'card', animation: 'default' }} />
+        <Stack.Screen name="article" options={{ presentation: 'card', animation: 'default' }} />
+        <Stack.Screen name="bookmarks" options={{ presentation: 'card', animation: 'default' }} />
         <Stack.Screen name="paywall" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
@@ -117,9 +197,11 @@ export default function RootLayout() {
       <AuthProvider>
         <ToastProvider>
           <RevenueCatProvider>
-            <AuthGate>
-              <RootLayoutNav />
-            </AuthGate>
+            <ForceUpdateGate>
+              <AuthGate>
+                <RootLayoutNav />
+              </AuthGate>
+            </ForceUpdateGate>
           </RevenueCatProvider>
         </ToastProvider>
       </AuthProvider>
@@ -128,9 +210,41 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  loadingContainer: {
+  splashContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  splashLogo: {
+    width: 64,
+    height: 64,
+    marginBottom: 16,
+  },
+  splashTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: 4,
+  },
+  updateTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 12,
+    letterSpacing: -0.3,
+  },
+  updateBody: {
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: 'center',
+    paddingHorizontal: 40,
+    marginBottom: 28,
+  },
+  updateButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 48,
+    borderRadius: 999,
+  },
+  updateButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

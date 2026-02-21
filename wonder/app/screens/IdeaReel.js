@@ -23,6 +23,14 @@ const FOOTER_ZONE = BOTTOM_INSET + 72;
 const CARD_MAX_HEIGHT = SCREEN_HEIGHT - HEADER_ZONE - FOOTER_ZONE;
 
 function IdeaCard({ card, book, colors }) {
+  const subtitle = card.subtitle || card.idea;
+  const bodyParagraphs =
+    Array.isArray(card.body) && card.body.length
+      ? card.body
+      : card.description
+        ? [card.description]
+        : [];
+
   return (
     <View style={[styles.cardContainer, { height: SCREEN_HEIGHT }]}>
       {/* The card */}
@@ -46,10 +54,12 @@ function IdeaCard({ card, book, colors }) {
             {card.title}
           </Text>
 
-          {/* Idea */}
-          <Text style={[styles.ideaText, { color: colors.textPrimary + 'CC' }]}>
-            {card.idea}
-          </Text>
+          {/* Subtitle */}
+          {!!subtitle && (
+            <Text style={[styles.subtitleText, { color: colors.textPrimary + 'CC' }]}>
+              {subtitle}
+            </Text>
+          )}
 
           {/* Divider */}
           <View
@@ -59,10 +69,27 @@ function IdeaCard({ card, book, colors }) {
             ]}
           />
 
-          {/* Description */}
-          <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>
-            {card.description}
-          </Text>
+          {/* Body */}
+          {bodyParagraphs.map((paragraph, index) => (
+            <Text
+              key={`${card.id}-paragraph-${index}`}
+              style={[
+                styles.bodyParagraph,
+                { color: colors.textSecondary },
+                index === bodyParagraphs.length - 1 && !card.takeaway
+                  ? styles.lastBodyParagraph
+                  : null,
+              ]}
+            >
+              {paragraph}
+            </Text>
+          ))}
+
+          {!!card.takeaway && (
+            <Text style={[styles.takeawayText, { color: colors.textPrimary + 'D9' }]}>
+              {card.takeaway}
+            </Text>
+          )}
         </ScrollView>
       </View>
 
@@ -237,8 +264,8 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
 
-  // Idea — the punchy one-liner
-  ideaText: {
+  // Subtitle
+  subtitleText: {
     fontSize: 16,
     fontWeight: '500',
     lineHeight: 26,
@@ -253,10 +280,20 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
 
-  // Description
-  descriptionText: {
+  // Body
+  bodyParagraph: {
     fontSize: 15,
     lineHeight: 25,
+    letterSpacing: 0.1,
+    marginBottom: 14,
+  },
+  lastBodyParagraph: {
+    marginBottom: 0,
+  },
+  takeawayText: {
+    fontSize: 15,
+    lineHeight: 24,
+    fontWeight: '600',
     letterSpacing: 0.1,
   },
 

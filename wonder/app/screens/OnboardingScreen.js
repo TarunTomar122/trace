@@ -224,12 +224,13 @@ const STEP_LABELS = [
   'Interests',
   'Picks',
   'Rhythm',
+  'Loading',
   'Get started',
   'Source',
   'Plans',
 ];
 
-const STEP_ICONS = [Sparkles, BookOpen, Goal, CircleHelp, Heart, Goal, Star, CircleHelp, Sparkles];
+const STEP_ICONS = [Sparkles, BookOpen, Goal, CircleHelp, Heart, Goal, Sparkles, Star, CircleHelp, Sparkles];
 
 const HEAR_ABOUT_OPTIONS = [
   'Google Search',
@@ -414,7 +415,7 @@ export default function OnboardingScreen({ onComplete }) {
     if (urls.length) Image.prefetch(urls);
   }, []);
 
-  const totalSteps = 9;
+  const totalSteps = 10;
   const progress = ((step + 1) / totalSteps) * 100;
   const StepIcon = STEP_ICONS[step] || Sparkles;
 
@@ -422,10 +423,15 @@ export default function OnboardingScreen({ onComplete }) {
   const pan = useRef(new Animated.ValueXY()).current;
   const cardIndexRef = useRef(0);
 
+  const swipingRef = useRef(false);
+
   const swipeCard = useCallback(
     (direction) => {
+      if (swipingRef.current) return;
       const idx = cardIndexRef.current;
       if (idx >= SWIPE_PICKS.length) return;
+
+      swipingRef.current = true;
 
       if (direction === 'right') {
         setLikedItems((prev) => [...prev, SWIPE_PICKS[idx].title]);
@@ -435,13 +441,14 @@ export default function OnboardingScreen({ onComplete }) {
         direction === 'right' ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5;
       Animated.timing(pan, {
         toValue: { x: toX, y: -40 },
-        duration: 300,
+        duration: 280,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
       }).start(() => {
-        pan.setValue({ x: 0, y: 0 });
         cardIndexRef.current += 1;
         setCardIndex(cardIndexRef.current);
+        pan.setValue({ x: 0, y: 0 });
+        swipingRef.current = false;
       });
     },
     [pan],
@@ -506,6 +513,22 @@ export default function OnboardingScreen({ onComplete }) {
     );
   };
 
+  const loaderAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (step === 6) {
+      loaderAnim.setValue(0);
+      Animated.timing(loaderAnim, {
+        toValue: 1,
+        duration: 2000,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start();
+      const timer = setTimeout(() => setStep(7), 2200);
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
+
   const next = () => setStep((s) => Math.min(s + 1, totalSteps - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
@@ -516,9 +539,10 @@ export default function OnboardingScreen({ onComplete }) {
     if (step === 3) return interests.length >= 3;
     if (step === 4) return cardIndex >= SWIPE_PICKS.length;
     if (step === 5) return Boolean(goal);
-    if (step === 6) return true;
-    if (step === 7) return Boolean(hearAboutUs);
-    if (step === 8) return true;
+    if (step === 6) return false;
+    if (step === 7) return true;
+    if (step === 8) return Boolean(hearAboutUs);
+    if (step === 9) return true;
     return true;
   }, [step, focus, lifeGoals.length, interests.length, cardIndex, goal, hearAboutUs]);
 
@@ -567,6 +591,35 @@ export default function OnboardingScreen({ onComplete }) {
     const CurrentTypeIcon = TYPE_ICON_MAP[currentPick.type];
     const NextTypeIcon = nextPick ? TYPE_ICON_MAP[nextPick.type] : null;
 
+    const renderCardContent = (pick, TypeIcon) => (
+      <>
+        {imageUriMap[pick.title] && (
+          <Image
+            source={imageUriMap[pick.title]}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            priority="high"
+            transition={0}
+            onError={() => handleCardImageError(pick.title)}
+          />
+        )}
+        <View style={styles.cardOverlay}>
+          <View style={styles.typeBadge}>
+            {TypeIcon && <TypeIcon size={11} color="#fff" strokeWidth={2.2} />}
+            <Text style={styles.typeBadgeText}>
+              {TYPE_LABEL[pick.type]}
+              {pick.source ? ` · ${pick.source}` : ''}
+            </Text>
+          </View>
+          <Text style={styles.cardTitle} numberOfLines={2}>
+            {pick.title}
+          </Text>
+          <Text style={styles.cardAuthor}>{pick.by}</Text>
+        </View>
+      </>
+    );
+
     return (
       <View style={{ flex: 1 }}>
         {/* Card stack area */}
@@ -574,7 +627,6 @@ export default function OnboardingScreen({ onComplete }) {
           {/* Next card (behind, scales up as top card is dragged) */}
           {nextPick && (
             <Animated.View
-              key={`next-${nextPick.title}`}
               style={[
                 styles.swipeCard,
                 {
@@ -583,24 +635,12 @@ export default function OnboardingScreen({ onComplete }) {
                 },
               ]}
             >
-              {imageUriMap[nextPick.title] && (
-                <Image
-                  source={imageUriMap[nextPick.title]}
-                  recyclingKey={`next-${nextPick.title}`}
-                  style={StyleSheet.absoluteFill}
-                  contentFit="cover"
-                  cachePolicy="memory-disk"
-                  priority="high"
-                  transition={200}
-                  onError={() => handleCardImageError(nextPick.title)}
-                />
-              )}
+              {renderCardContent(nextPick, NextTypeIcon)}
             </Animated.View>
           )}
 
           {/* Top card (draggable) */}
           <Animated.View
-            key={`current-${currentPick.title}`}
             {...panResponder.panHandlers}
             style={[
               styles.swipeCard,
@@ -611,18 +651,7 @@ export default function OnboardingScreen({ onComplete }) {
               },
             ]}
           >
-            {imageUriMap[currentPick.title] && (
-              <Image
-                source={imageUriMap[currentPick.title]}
-                recyclingKey={`current-${currentPick.title}`}
-                style={StyleSheet.absoluteFill}
-                contentFit="cover"
-                cachePolicy="memory-disk"
-                priority="high"
-                transition={200}
-                onError={() => handleCardImageError(currentPick.title)}
-              />
-            )}
+            {renderCardContent(currentPick, CurrentTypeIcon)}
 
             {/* LIKE stamp */}
             <Animated.View
@@ -649,21 +678,6 @@ export default function OnboardingScreen({ onComplete }) {
                 </Text>
               </View>
             </Animated.View>
-
-            {/* Bottom info overlay */}
-            <View style={styles.cardOverlay}>
-              <View style={styles.typeBadge}>
-                <CurrentTypeIcon size={11} color="#fff" strokeWidth={2.2} />
-                <Text style={styles.typeBadgeText}>
-                  {TYPE_LABEL[currentPick.type]}
-                  {currentPick.source ? ` · ${currentPick.source}` : ''}
-                </Text>
-              </View>
-              <Text style={styles.cardTitle} numberOfLines={2}>
-                {currentPick.title}
-              </Text>
-              <Text style={styles.cardAuthor}>{currentPick.by}</Text>
-            </View>
           </Animated.View>
         </View>
 
@@ -930,8 +944,8 @@ export default function OnboardingScreen({ onComplete }) {
           </View>
         );
 
-      /* ── 7  How did you hear about us ── */
-      case 7:
+      /* ── 8  How did you hear about us ── */
+      case 8:
         return (
           <View>
             <Text style={[styles.title, { color: colors.textPrimary }]}>
@@ -971,8 +985,8 @@ export default function OnboardingScreen({ onComplete }) {
           </View>
         );
 
-      /* ── 6  Trial / Get started ── */
-      case 6: {
+      /* ── 7  Trial / Get started ── */
+      case 7: {
         const TRIAL_TIMELINE = [
           {
             Icon: Check,
@@ -1254,7 +1268,49 @@ export default function OnboardingScreen({ onComplete }) {
   /* ── Layout ── */
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      {step === 8 ? renderPaywallStep() : (<>
+      {step === 9 ? renderPaywallStep() : step === 6 ? (
+        <View style={styles.loaderScreen}>
+          <View style={styles.loaderTop}>
+            <View style={styles.loaderCircleWrap}>
+              <Svg width={120} height={120} viewBox="0 0 120 120">
+                <Path
+                  d="M 60 10 A 50 50 0 0 1 110 60"
+                  stroke={colors.surfaceBorder}
+                  strokeWidth={6}
+                  fill="none"
+                  strokeLinecap="round"
+                />
+              </Svg>
+              <Animated.View
+                style={[
+                  StyleSheet.absoluteFill,
+                  {
+                    transform: [{
+                      rotate: loaderAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0deg', '270deg'],
+                      }),
+                    }],
+                  },
+                ]}
+              >
+                <Svg width={120} height={120} viewBox="0 0 120 120">
+                  <Path
+                    d="M 60 10 A 50 50 0 0 1 110 60"
+                    stroke={colors.accent}
+                    strokeWidth={6}
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                </Svg>
+              </Animated.View>
+            </View>
+            <Text style={[styles.loaderText, { color: colors.textPrimary }]}>
+              We're creating a personalized{'\n'}experience for you
+            </Text>
+          </View>
+        </View>
+      ) : (<>
       {/* ── Header ── */}
       <View style={[styles.header, { paddingTop: STATUS_BAR_HEIGHT + 14 }]}>
         <View
@@ -1321,7 +1377,7 @@ export default function OnboardingScreen({ onComplete }) {
             <Text
               style={[styles.continueBtnText, { color: colors.background }]}
             >
-              {step === totalSteps - 1 ? 'Start Your 7-Day Free Trial' : step === 6 ? "I'm ready" : 'Continue'}
+              {step === totalSteps - 1 ? 'Start Your 7-Day Free Trial' : step === 7 ? "I'm ready" : 'Continue'}
             </Text>
             {step < totalSteps - 1 && (
               <ArrowRight
@@ -1677,7 +1733,7 @@ const styles = StyleSheet.create({
 
   /* Swipe done */
   swipeDone: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  swipeDoneMascot: { width: 160, height: 160 },
+  swipeDoneMascot: { width: 240, height: 240 },
 
   /* ── Footer ── */
   footer: {
@@ -1723,6 +1779,28 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 
+  /* ── Loader screen ── */
+  loaderScreen: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loaderTop: {
+    alignItems: 'center',
+    gap: 28,
+  },
+  loaderCircleWrap: {
+    width: 120,
+    height: 120,
+  },
+  loaderText: {
+    fontSize: 22,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: -0.3,
+    lineHeight: 30,
+  },
+
   /* ── Paywall screen ── */
   paywallScreen: {
     flex: 1,
@@ -1730,6 +1808,7 @@ const styles = StyleSheet.create({
   paywallTopBar: {
     paddingHorizontal: 20,
     paddingBottom: 8,
+    alignItems: 'flex-end',
   },
   paywallSkipBtn: {
     width: 36,

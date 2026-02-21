@@ -55,6 +55,9 @@ function getCategoryBadge(item: FeedItem, colorScheme: 'light' | 'dark'): { labe
   if (feedCategory === 'sample_summary') {
     return { label: 'Free summary', color: '#16a34a', bg: colorScheme === 'dark' ? '#1a2e23' : '#F0FDF4' };
   }
+  if (feedCategory === 'learn' || item.id?.startsWith('learn_')) {
+    return { label: 'Learn', color: '#0ea5e9', bg: colorScheme === 'dark' ? '#0c1929' : '#f0f9ff' };
+  }
   return null;
 }
 
@@ -133,6 +136,16 @@ export function FeedCard({ item, colorScheme, onPress }: FeedCardProps) {
             </ThemedText>
           ) : null}
 
+          {/* Why relevant */}
+          {item.metadata?.why_relevant ? (
+            <ThemedText
+              style={[styles.whyRelevant, { color: Colors[colorScheme].muted }]}
+              numberOfLines={1}
+            >
+              {item.metadata.why_relevant}
+            </ThemedText>
+          ) : null}
+
         </View>
 
         {/* Right: show only real source image */}
@@ -189,6 +202,12 @@ const styles = StyleSheet.create({
   snippet: {
     fontSize: 13,
     lineHeight: 18,
+  },
+  whyRelevant: {
+    fontSize: 11,
+    fontWeight: '500',
+    fontStyle: 'italic',
+    marginTop: 2,
   },
   // ─── Thumbnail ───
   thumbnailWrap: {

@@ -1,0 +1,239 @@
+{
+  "validated_sources": [
+    {
+      "interest_id": "technology",
+      "subinterest_id": "ai",
+      "source_name": "VentureBeat RSS",
+      "source_url": "https://venturebeat.com/feed",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": true,
+      "sample_count": 7
+    },
+    {
+      "interest_id": "business-market",
+      "subinterest_id": "startups",
+      "source_name": "TechCrunch RSS",
+      "source_url": "https://techcrunch.com/feed/",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": false,
+      "sample_count": 10
+    },
+    {
+      "interest_id": "technology",
+      "subinterest_id": "software-tech",
+      "source_name": "The Verge RSS",
+      "source_url": "https://www.theverge.com/rss/index.xml",
+      "source_type": "atom",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": false,
+      "sample_count": 10
+    },
+    {
+      "interest_id": "business-market",
+      "subinterest_id": "market-trends",
+      "source_name": "Fast Company Latest RSS",
+      "source_url": "https://www.fastcompany.com/latest/rss",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": true,
+      "sample_count": 10
+    },
+    {
+      "interest_id": "technology",
+      "subinterest_id": "future-tech",
+      "source_name": "MIT Technology Review Feed",
+      "source_url": "https://www.technologyreview.com/feed",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": false,
+      "sample_count": 10
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "ux-design",
+      "source_name": "Smashing Magazine",
+      "source_url": "https://www.smashingmagazine.com/",
+      "source_type": "html",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": true,
+      "sample_count": 11,
+      "notes": "date/image are populated when run with --enrich-metadata"
+    },
+    {
+      "interest_id": "business-market",
+      "subinterest_id": "economy-impact",
+      "source_name": "Yahoo Finance News Feed",
+      "source_url": "https://finance.yahoo.com/news/rssindex",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": true,
+      "sample_count": 10
+    },
+    {
+      "interest_id": "business-market",
+      "subinterest_id": "market-trends",
+      "source_name": "CNBC Markets RSS",
+      "source_url": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": false,
+      "sample_count": 10
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "user-psychology",
+      "source_name": "Psychology Today Front Feed",
+      "source_url": "https://www.psychologytoday.com/front/feed",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": true,
+      "sample_count": 10
+    },
+    {
+      "interest_id": "productivity",
+      "subinterest_id": "career-growth",
+      "source_name": "Lifehacker Feed",
+      "source_url": "https://lifehacker.com/index.xml",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": true,
+      "sample_count": 10
+    },
+    {
+      "interest_id": "productivity",
+      "subinterest_id": "soft-skills",
+      "source_name": "Fast Company Work Life RSS",
+      "source_url": "https://www.fastcompany.com/work-life/rss",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": true,
+      "sample_count": 10
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "design-tools",
+      "source_name": "Creative Bloq Feed",
+      "source_url": "https://www.creativebloq.com/feeds/all",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": true,
+      "sample_count": 5
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "brand-storytelling",
+      "source_name": "Content Marketing Institute Feed",
+      "source_url": "https://contentmarketinginstitute.com/feed/",
+      "source_type": "html",
+      "supports_article_links": true,
+      "supports_published_date": false,
+      "supports_og_image": false,
+      "sample_count": 5
+    },
+    {
+      "interest_id": "productivity",
+      "subinterest_id": "personal-finance",
+      "source_name": "NerdWallet Feed",
+      "source_url": "https://www.nerdwallet.com/blog/feed/",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": true,
+      "sample_count": 5
+    },
+    {
+      "interest_id": "productivity",
+      "subinterest_id": "investments",
+      "source_name": "Motley Fool Feed",
+      "source_url": "https://www.fool.com/feeds/index.aspx",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": true,
+      "sample_count": 5
+    },
+    {
+      "interest_id": "productivity",
+      "subinterest_id": "wellbeing",
+      "source_name": "Well+Good Feed",
+      "source_url": "https://www.wellandgood.com/feed/",
+      "source_type": "html",
+      "supports_article_links": true,
+      "supports_published_date": false,
+      "supports_og_image": false,
+      "sample_count": 5
+    }
+  ],
+  "rejected_sources": [
+    {
+      "interest_id": "technology",
+      "subinterest_id": "software-tech",
+      "source_name": "Bloomberg Technology",
+      "source_url": "https://www.bloomberg.com/technology",
+      "supports_article_links": false,
+      "reason": "403 forbidden"
+    },
+    {
+      "interest_id": "business-market",
+      "subinterest_id": "marketing",
+      "source_name": "Marketing Brew Search",
+      "source_url": "https://www.marketingbrew.com/search",
+      "supports_article_links": false,
+      "reason": "no article links extracted from page"
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "ux-design",
+      "source_name": "UX Collective Editor Picks",
+      "source_url": "https://uxdesign.cc/all?topic=editor-picks",
+      "supports_article_links": false,
+      "reason": "403 forbidden"
+    },
+    {
+      "interest_id": "productivity",
+      "subinterest_id": "investments",
+      "source_name": "MarketWatch Top Stories RSS",
+      "source_url": "https://feeds.content.dowjones.io/public/rss/mw_topstories",
+      "supports_article_links": false,
+      "reason": "no article links extracted by current parser"
+    },
+    {
+      "interest_id": "productivity",
+      "subinterest_id": "soft-skills",
+      "source_name": "Harvard Business Review Feed",
+      "source_url": "http://feeds.harvardbusiness.org/harvardbusiness",
+      "supports_article_links": false,
+      "reason": "no article links extracted by current parser"
+    },
+    {
+      "interest_id": "productivity",
+      "subinterest_id": "soft-skills",
+      "source_name": "Forbes Leadership Feed URL",
+      "source_url": "https://www.forbes.com/leadership/?feed=rss_leadership_governance",
+      "supports_article_links": false,
+      "reason": "extracts many non-article links (author/program/category pages)"
+    },
+    {
+      "interest_id": "business-market",
+      "subinterest_id": "economy-impact",
+      "source_name": "Reuters My News Feed",
+      "source_url": "https://reuters.com/my-news/feed",
+      "supports_article_links": false,
+      "reason": "401/forbidden without authenticated access"
+    }
+  ]
+}

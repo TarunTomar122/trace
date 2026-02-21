@@ -27,13 +27,25 @@ import {
   Bell,
   CheckCircle2,
   Shield,
+  Trophy,
+  Calendar,
+  Share2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth } from '@/lib/firebase';
 import { isAlphaMode } from '@/lib/alpha';
 import Header from '@/components/Header';
-import { getUserPatterns } from '@/lib/firestore';
+import {
+  getUserPatterns,
+  getReadingStreak,
+  recordReadingDay,
+  getDailyInsight,
+  getLatestWeeklyWrap,
+  ReadingStreak,
+  DailyInsight,
+  WeeklyWrap,
+} from '@/lib/firestore';
 import { buildTraceInsights, TraceInsights } from '@/lib/traceInsights';
 import TraceInsightCard from '@/components/TraceInsightCard';
 import {
@@ -769,6 +781,9 @@ function FeedPageContent() {
 
   const [unseenCount, setUnseenCount] = useState(0);
   const [feedMetadata, setFeedMetadata] = useState<FeedMetadata | null>(null);
+  const [streak, setStreak] = useState<ReadingStreak | null>(null);
+  const [dailyInsight, setDailyInsight] = useState<DailyInsight | null>(null);
+  const [weeklyWrap, setWeeklyWrap] = useState<WeeklyWrap | null>(null);
   const isLoadingRef = useRef(false);
   const hasLoadedInitialFeed = useRef(false);
   const postOnboardingGateHandled = useRef(false);
@@ -789,6 +804,13 @@ function FeedPageContent() {
     const dismissed = sessionStorage.getItem('trace-insight-dismissed') === 'true';
     setInsightDismissed(dismissed);
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    recordReadingDay(user.uid).then(setStreak);
+    getDailyInsight(user.uid).then(setDailyInsight);
+    getLatestWeeklyWrap(user.uid).then(setWeeklyWrap);
+  }, [user]);
 
   const isOnboarded = profile?.onboarded ?? false;
   const showPersonalizedFeed = isOnboarded && hasAccess;
@@ -1737,6 +1759,99 @@ function FeedPageContent() {
 
           {/* Feed content */}
           <div className="flex-1 w-full">
+
+            {/* Streak bar */}
+            {streak && (
+              <div className="mb-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30">
+                <div className="flex items-center gap-3">
+                  <Flame size={20} className="text-orange-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">
+                      {streak.current_streak === 0
+                        ? 'Start your streak today'
+                        : streak.current_streak === 1
+                          ? '1 day streak — keep it going!'
+                          : `${streak.current_streak} day streak`}
+                    </p>
+                    <p className="text-xs text-secondary/70 mt-0.5">
+                      {streak.current_streak === 0
+                        ? 'Read something to begin'
+                        : streak.longest_streak > streak.current_streak
+                          ? `Best: ${streak.longest_streak} days · ${streak.total_days_read} total days active`
+                          : `${streak.total_days_read} total days active`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4 shrink-0">
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">{streak.current_streak}</p>
+                      <p className="text-[10px] text-secondary/60 uppercase tracking-wide">Current</p>
+                    </div>
+                    <div className="w-px h-8 bg-amber-200 dark:bg-amber-800" />
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">{streak.longest_streak}</p>
+                      <p className="text-[10px] text-secondary/60 uppercase tracking-wide">Best</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Weekly Wrap */}
+            {weeklyWrap && hasAccess && (
+              <div className="mb-4 p-5 rounded-xl bg-violet-50 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/30">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[10px] font-bold tracking-widest uppercase text-violet-600 dark:text-violet-400">
+                    Week in Review
+                  </span>
+                  <button
+                    onClick={async () => {
+                      const text = `${weeklyWrap.headline}\n\n${weeklyWrap.summary}\n\n${weeklyWrap.fun_stat}\n\n— My week on Trace`;
+                      try {
+                        await navigator.clipboard.writeText(text);
+                      } catch { /* ignore */ }
+                    }}
+                    className="p-1.5 rounded-lg hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors"
+                    title="Copy to clipboard"
+                  >
+                    <Share2 size={14} className="text-violet-500" />
+                  </button>
+                </div>
+                <p className="text-base font-bold text-foreground mb-1">{weeklyWrap.headline}</p>
+                <p className="text-sm text-secondary/80 mb-3">{weeklyWrap.summary}</p>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <span className="px-3 py-1 rounded-full bg-violet-100 dark:bg-violet-900/40 text-xs font-medium text-violet-700 dark:text-violet-300">
+                    {weeklyWrap.total_articles} articles
+                  </span>
+                  <span className="px-3 py-1 rounded-full bg-violet-100 dark:bg-violet-900/40 text-xs font-medium text-violet-700 dark:text-violet-300">
+                    {weeklyWrap.days_with_feed} days
+                  </span>
+                  {weeklyWrap.top_topic && (
+                    <span className="px-3 py-1 rounded-full bg-violet-100 dark:bg-violet-900/40 text-xs font-medium text-violet-700 dark:text-violet-300">
+                      {weeklyWrap.top_topic}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-secondary/60 italic">{weeklyWrap.fun_stat}</p>
+              </div>
+            )}
+
+            {/* Daily Insight */}
+            {dailyInsight && hasAccess && (
+              <div className="mb-4 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30">
+                <span className="text-[10px] font-bold tracking-widest uppercase text-emerald-600 dark:text-emerald-400">
+                  Insight of the Day
+                </span>
+                <p className="text-sm font-medium text-foreground mt-2 leading-relaxed">
+                  {dailyInsight.text}
+                </p>
+                {dailyInsight.source_title && (
+                  <p className="text-xs text-secondary/60 mt-2 italic">
+                    From: {dailyInsight.source_title}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Feed generation progress */}
             {isFallbackFeed && feedGenActive && (
               <div className="mb-4 md:mb-6 p-4 md:p-5 bg-linear-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 rounded-xl border border-violet-100 dark:border-violet-900/40">

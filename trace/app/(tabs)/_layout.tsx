@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
-import { Home, User, BookMarked } from 'lucide-react-native';
+import { Home, User, BookMarked, Activity } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HapticTab } from '@/components/haptic-tab';
@@ -52,6 +52,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="analytics"
+        options={{
+          title: 'Activity',
+          tabBarIcon: ({ color, focused }) => (
+            <Activity size={24} color={color} strokeWidth={focused ? 2.2 : 1.5} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="bookmarks"
         options={{
           title: 'Saved',
@@ -75,12 +84,6 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <User size={24} color={color} strokeWidth={focused ? 2.2 : 1.5} />
           ),
-        }}
-      />
-      <Tabs.Screen
-        name="analytics"
-        options={{
-          href: null, // Hide from tabs
         }}
       />
     </Tabs>

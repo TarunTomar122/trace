@@ -9,4 +9,5 @@ agent/memory/daily/
 *.log
 anybrew-7c6c1-firebase-adminsdk-fbsvc-fe164fd73a.json
 *.json
+!v2/config/*.json
 *-firebase-adminsdk-*.json

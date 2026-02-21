@@ -96,6 +96,12 @@ export interface FeedItem {
 export interface UserFeed {
   date: string;
   items: FeedItem[];
+  daily_insight?: {
+    text: string;
+    source_title: string;
+    source_url: string;
+    generated_at: string;
+  };
   metadata?: {
     is_preview?: boolean;
     source_counts?: Record<string, number>;
@@ -679,4 +685,189 @@ export async function getGeneralFeed(): Promise<UserFeed | null> {
     items,
     metadata: { is_preview: true },
   };
+}
+
+// ============ Daily Insight ============
+
+export interface DailyInsight {
+  text: string;
+  source_title: string;
+  source_url: string;
+  generated_at: string;
+}
+
+export async function getDailyInsight(uid: string): Promise<DailyInsight | null> {
+  try {
+    const feedRef = collection(firestore, COLLECTIONS.userFeeds, uid, 'daily');
+    const snapshot = await getDocs(feedRef);
+    if (snapshot.empty) return null;
+    const sortedDocs = snapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
+    const data = sortedDocs[0].data() as any;
+    return data?.daily_insight || null;
+  } catch {
+    return null;
+  }
+}
+
+// ============ Reading Streak ============
+
+export interface ReadingStreak {
+  current_streak: number;
+  longest_streak: number;
+  last_read_date: string;
+  total_days_read: number;
+}
+
+function _todayDateStr(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function _yesterdayDateStr(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export async function getReadingStreak(uid: string): Promise<ReadingStreak> {
+  const defaults: ReadingStreak = {
+    current_streak: 0,
+    longest_streak: 0,
+    last_read_date: '',
+    total_days_read: 0,
+  };
+  try {
+    const ref = doc(firestore, 'user_streaks', uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return defaults;
+    const data = snap.data() as Partial<ReadingStreak>;
+    return { ...defaults, ...data };
+  } catch {
+    return defaults;
+  }
+}
+
+export async function recordReadingDay(uid: string): Promise<ReadingStreak> {
+  const today = _todayDateStr();
+  const yesterday = _yesterdayDateStr();
+  const ref = doc(firestore, 'user_streaks', uid);
+
+  try {
+    const snap = await getDoc(ref);
+    const existing = snap.exists() ? (snap.data() as ReadingStreak) : {
+      current_streak: 0,
+      longest_streak: 0,
+      last_read_date: '',
+      total_days_read: 0,
+    };
+
+    if (existing.last_read_date === today) return existing;
+
+    let newStreak = 1;
+    if (existing.last_read_date === yesterday) {
+      newStreak = existing.current_streak + 1;
+    }
+
+    const updated: ReadingStreak = {
+      current_streak: newStreak,
+      longest_streak: Math.max(existing.longest_streak, newStreak),
+      last_read_date: today,
+      total_days_read: existing.total_days_read + 1,
+    };
+
+    await setDoc(ref, updated, { merge: true });
+    return updated;
+  } catch {
+    return {
+      current_streak: 0,
+      longest_streak: 0,
+      last_read_date: '',
+      total_days_read: 0,
+    };
+  }
+}
+
+// ============ Weekly Wrap ============
+
+export interface WeeklyWrap {
+  week_id: string;
+  start_date: string;
+  end_date: string;
+  total_articles: number;
+  days_with_feed: number;
+  top_topics: string[];
+  headline: string;
+  summary: string;
+  top_topic: string;
+  fun_stat: string;
+  generated_at: string;
+}
+
+export async function getLatestWeeklyWrap(uid: string): Promise<WeeklyWrap | null> {
+  try {
+    const weeksRef = collection(firestore, 'user_weekly_wraps', uid, 'weeks');
+    const q = query(weeksRef, orderBy('generated_at', 'desc'), limit(1));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+    return snapshot.docs[0].data() as WeeklyWrap;
+  } catch {
+    return null;
+  }
+}
+
+// ============ Free Daily Read Tracking ============
+
+export async function getFreeDailyReadUsed(uid: string): Promise<boolean> {
+  try {
+    const today = _todayDateStr();
+    const ref = doc(firestore, 'user_free_reads', uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return false;
+    const data = snap.data() as any;
+    return data?.last_free_read_date === today;
+  } catch {
+    return false;
+  }
+}
+
+export async function markFreeDailyReadUsed(uid: string): Promise<void> {
+  try {
+    const today = _todayDateStr();
+    const ref = doc(firestore, 'user_free_reads', uid);
+    await setDoc(ref, { last_free_read_date: today }, { merge: true });
+  } catch {
+    // best-effort
+  }
+}
+
+// ============ Force Update Check ============
+
+function _compareVersions(current: string, minimum: string): boolean {
+  const c = current.split('.').map(Number);
+  const m = minimum.split('.').map(Number);
+  for (let i = 0; i < Math.max(c.length, m.length); i++) {
+    const cv = c[i] || 0;
+    const mv = m[i] || 0;
+    if (cv < mv) return false;
+    if (cv > mv) return true;
+  }
+  return true;
+}
+
+/**
+ * Checks Firestore doc `app_config/version` for a `min_version` field.
+ * Returns true if the current app version meets the minimum, false if update needed.
+ * Defaults to true (no blocking) on any error.
+ */
+export async function checkMinAppVersion(currentVersion: string): Promise<boolean> {
+  try {
+    const ref = doc(firestore, 'app_config', 'version');
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return true;
+    const data = snap.data() as { min_version?: string };
+    if (!data.min_version) return true;
+    return _compareVersions(currentVersion, data.min_version);
+  } catch {
+    return true;
+  }
 }

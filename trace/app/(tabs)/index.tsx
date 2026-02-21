@@ -11,13 +11,10 @@ import {
 import Animated, {
   useSharedValue,
   useAnimatedScrollHandler,
-  useAnimatedStyle,
-  interpolate,
-  Extrapolation,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Moon, Sun, Zap } from 'lucide-react-native';
+import { Moon, Sun, Zap, Flame, BookOpen, ChevronRight, Gift } from 'lucide-react-native';
 
 import NewspaperIllus from '@/assets/images/newspaper-svgrepo-com.svg';
 
@@ -28,16 +25,22 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { FeedItem, UserFeed, getLatestUserFeed, getTrendingFeed, triggerFeedGeneration, updateUserProfile } from '@/lib/firestore';
+import {
+  FeedItem,
+  UserFeed,
+  DailyInsight,
+  ReadingStreak,
+  getLatestUserFeed,
+  getTrendingFeed,
+  triggerFeedGeneration,
+  recordReadingDay,
+} from '@/lib/firestore';
 import { logReadingEvent } from '@/lib/reading-analytics';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 
-// Threshold where the sticky header kicks in
-const COLLAPSE_THRESHOLD = 70;
 const ILLUS_PALETTE = {
-  gold: { light: '#fff7ed', dark: '#2a1f10' },
   lavender: { light: '#f5f3ff', dark: '#22183a' },
 } as const;
 
@@ -51,7 +54,7 @@ function getGreeting(): string {
 export default function FeedScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ feedUpdating?: string }>();
-  const { user, profile, loading: authLoading, refreshProfile } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const { toggleTheme } = useTheme();
   const colorScheme = useColorScheme() ?? 'light';
 
@@ -60,7 +63,9 @@ export default function FeedScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [feedDate, setFeedDate] = useState<string>('');
   const [feedVersion, setFeedVersion] = useState<string>('');
-  const [activeFilter, setActiveFilter] = useState<string>('all');
+
+  const [dailyInsight, setDailyInsight] = useState<DailyInsight | null>(null);
+  const [streak, setStreak] = useState<ReadingStreak | null>(null);
 
   const scrollY = useSharedValue(0);
 
@@ -70,74 +75,6 @@ export default function FeedScreen() {
     },
   });
 
-  // Animated style for the greeting row - fades and shrinks away
-  const greetingStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      scrollY.value,
-      [0, COLLAPSE_THRESHOLD * 0.6],
-      [1, 0],
-      Extrapolation.CLAMP
-    );
-    const height = interpolate(
-      scrollY.value,
-      [0, COLLAPSE_THRESHOLD],
-      [44, 0],
-      Extrapolation.CLAMP
-    );
-    return { opacity, height, overflow: 'hidden' as const };
-  });
-
-  // Animated style for the big heading - shrinks to compact
-  const headingStyle = useAnimatedStyle(() => {
-    const fontSize = interpolate(
-      scrollY.value,
-      [0, COLLAPSE_THRESHOLD],
-      [30, 20],
-      Extrapolation.CLAMP
-    );
-    const paddingTop = interpolate(
-      scrollY.value,
-      [0, COLLAPSE_THRESHOLD],
-      [18, 4],
-      Extrapolation.CLAMP
-    );
-    const marginBottom = interpolate(
-      scrollY.value,
-      [0, COLLAPSE_THRESHOLD],
-      [12, 4],
-      Extrapolation.CLAMP
-    );
-    return { fontSize, paddingTop, marginBottom };
-  });
-
-  // Animated style for the sticky header that appears on scroll
-  const stickyHeaderStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      scrollY.value,
-      [COLLAPSE_THRESHOLD * 0.8, COLLAPSE_THRESHOLD],
-      [0, 1],
-      Extrapolation.CLAMP
-    );
-    const translateY = interpolate(
-      scrollY.value,
-      [COLLAPSE_THRESHOLD * 0.8, COLLAPSE_THRESHOLD],
-      [-10, 0],
-      Extrapolation.CLAMP
-    );
-    return { opacity, transform: [{ translateY }] };
-  });
-
-  // Animated style to hide the original header when sticky one is visible
-  const originalHeaderStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      scrollY.value,
-      [COLLAPSE_THRESHOLD * 0.6, COLLAPSE_THRESHOLD],
-      [1, 0],
-      Extrapolation.CLAMP
-    );
-    return { opacity };
-  });
-
   const { isProUser: isSubscribed, loading: rcLoading } = useRevenueCat();
   const firstName = user?.displayName?.split(' ')[0] || 'there';
   const isOnboarded = profile?.onboarded ?? false;
@@ -145,93 +82,57 @@ export default function FeedScreen() {
 
   const [trendingFeed, setTrendingFeed] = useState<FeedItem[]>([]);
   const [isTrendingLoading, setIsTrendingLoading] = useState(false);
-  const [isGrantingPremium, setIsGrantingPremium] = useState(false);
 
-  const handleGrantGiftPremium = useCallback(async () => {
-    if (!user || isGrantingPremium) return;
-    setIsGrantingPremium(true);
-    try {
-      await updateUserProfile(user.uid, {
-        subscriptionStatus: 'active',
-        appSubscriptionStatus: 'active',
-      });
-      await refreshProfile();
-      showToast('Gift premium access activated. Building your personalized feed...', 'success');
-      await triggerFeedGeneration(user.uid, { reason: 'manual', force: true });
-    } catch (error) {
-      console.error('Error granting gift premium access:', error);
-      showToast('Could not activate gift premium access. Please try again.', 'error');
-    } finally {
-      setIsGrantingPremium(false);
-    }
-  }, [user, isGrantingPremium, refreshProfile, showToast]);
-
-  // Redirect to onboarding if not onboarded — wait for BOTH auth and RC to load
-  // before checking, otherwise a fast RC load races against a slow Firestore
-  // profile read and redirects an already-onboarded user back to onboarding.
+  // Record today as a reading day (opening the app counts toward streak)
   useEffect(() => {
-    if (authLoading || rcLoading) return;
-    if (!isOnboarded) {
-      router.replace('/onboarding');
-    }
-  }, [isOnboarded, authLoading, rcLoading, router]);
+    if (!user || !isOnboarded) return;
+    recordReadingDay(user.uid).then(setStreak);
+  }, [user, isOnboarded]);
 
-  const normalizeInterest = useCallback((interest: string) => {
-    return interest
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, '-')
-      .replace(/&/g, 'and')
-      .replace(/[\\/]/g, '-')
-      .replace(/[()]/g, '');
+  // Sectioned layout — no filter pills needed
+
+  const hasSummary = useCallback((item: FeedItem) => {
+    const sa = item.summary?.short_article;
+    return !!(sa?.subtitle || sa?.body);
   }, []);
 
-  const topicFilters = useMemo(() => {
-    const availableTags = new Set(
-      feed.flatMap((item) => [
-        ...(item.tags || []),
-        ...(item.metadata?.feed_category ? [item.metadata.feed_category] : []),
-      ])
+  const isLearnItem = useCallback((item: FeedItem) => {
+    return (
+      (item as any).feed_category === 'learn'
+      || item.metadata?.feed_category === 'learn'
+      || item.id?.startsWith('learn_')
     );
+  }, []);
 
-    const profileTopics = [
-      ...(profile?.interests || []),
-      ...(profile?.hobbies || []),
-    ].filter((i): i is string => typeof i === 'string' && i.trim().length > 0);
+  const isTrendingItem = useCallback((item: FeedItem) => {
+    return (
+      item.metadata?.feed_category === 'trending_news'
+      || item.metadata?.is_hot === true
+    );
+  }, []);
 
-    const profileFilters = profileTopics.map((topic) => ({
-      id: normalizeInterest(topic),
-      label: topic.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-    }));
+  const { learnItems, trendingItems, forYouItems } = useMemo(() => {
+    const withSummary = feed.filter(hasSummary);
+    const learn: FeedItem[] = [];
+    const trending: FeedItem[] = [];
+    const forYou: FeedItem[] = [];
 
-    const matched = profileFilters.filter((f) => availableTags.has(f.id));
-    if (matched.length > 0) return matched;
-
-    return Array.from(availableTags).map((tag) => ({
-      id: tag,
-      label: tag.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-    }));
-  }, [feed, profile, normalizeInterest]);
-
-  const filteredFeed = useMemo(() => {
-    let items: FeedItem[];
-    if (activeFilter === 'all') {
-      items = feed;
-    } else if (activeFilter === 'curated') {
-      items = feed.filter(
-        (item) =>
-          item.metadata?.why_relevant?.toLowerCase().includes('curated') ||
-          item.metadata?.why_relevant?.toLowerCase().includes('for you')
-      );
-    } else {
-      items = feed.filter((item) => {
-        const tags = item.tags || [];
-        return tags.includes(activeFilter) || item.metadata?.feed_category === activeFilter;
-      });
+    for (const item of withSummary) {
+      if (isLearnItem(item)) learn.push(item);
+      else if (isTrendingItem(item)) trending.push(item);
+      else forYou.push(item);
     }
 
-    return items;
-  }, [feed, activeFilter]);
+    return { learnItems: learn, trendingItems: trending, forYouItems: forYou };
+  }, [feed, hasSummary, isLearnItem, isTrendingItem]);
+
+  const feedSummaryLine = useMemo(() => {
+    const parts: string[] = [];
+    if (learnItems.length > 0) parts.push(`${learnItems.length} learning picks`);
+    if (trendingItems.length > 0) parts.push(`${trendingItems.length} trending stories`);
+    if (forYouItems.length > 0) parts.push(`${forYouItems.length} articles for you`);
+    return parts.join(', ');
+  }, [learnItems, trendingItems, forYouItems]);
 
   // Whether we're showing fallback content while a personalised feed is being generated
   const [isFeedGenerating, setIsFeedGenerating] = useState(false);
@@ -260,6 +161,7 @@ export default function FeedScreen() {
         setFeed(userFeed.items);
         setFeedDate(userFeed.date);
         setFeedVersion(getFeedVersion(userFeed));
+        if (userFeed.daily_insight) setDailyInsight(userFeed.daily_insight);
         return true;
       } else {
         setFeed([]);
@@ -465,6 +367,10 @@ export default function FeedScreen() {
       feedCategory: item.metadata?.feed_category,
     });
 
+    if (user) {
+      recordReadingDay(user.uid).then(setStreak);
+    }
+
     const fallbackBody =
       item.summary?.short_article?.body ||
       item.description ||
@@ -487,36 +393,38 @@ export default function FeedScreen() {
     });
   };
 
-  const renderFilterPill = (id: string, label: string) => {
-    const isActive = activeFilter === id;
-    return (
-      <Pressable
-        key={id}
-        onPress={() => setActiveFilter(id === activeFilter && id !== 'all' ? 'all' : id)}
-        style={[
-          styles.filterPill,
-          isActive
-            ? { backgroundColor: Colors[colorScheme].foreground }
-            : { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border, borderWidth: 1 },
-        ]}>
-        <ThemedText
-          style={[
-            styles.filterPillText,
-            { color: isActive ? Colors[colorScheme].background : Colors[colorScheme].text },
-          ]}>
-          {label}
-        </ThemedText>
-      </Pressable>
-    );
-  };
-
-  const filterPillsContent = (
-    <>
-      {renderFilterPill('all', 'All')}
-      {isOnboarded && renderFilterPill('curated', 'For you')}
-      {topicFilters.map((filter) => renderFilterPill(filter.id, filter.label))}
-    </>
-  );
+  const handleFreeReadPress = useCallback((item: FeedItem) => {
+    logReadingEvent({
+      eventType: 'feed_open',
+      itemId: item.id,
+      title: item.title,
+      url: item.url,
+      tags: item.tags,
+      itemType: item.type || item.source,
+      feedCategory: 'free_daily_read',
+    });
+    if (user) recordReadingDay(user.uid).then(setStreak);
+    const fallbackBody =
+      item.summary?.short_article?.body ||
+      item.description ||
+      'Open the original article to read the full story.';
+    router.push({
+      pathname: '/article',
+      params: {
+        id: item.id,
+        title: item.title,
+        url: item.url,
+        thumbnail: item.thumbnail || '',
+        type: item.type || item.source || 'blog',
+        subtitle: item.summary?.short_article?.subtitle || '',
+        body: fallbackBody,
+        reading_time: item.summary?.reading_time_minutes?.toString() || '',
+        why_relevant: item.metadata?.why_relevant || '',
+        is_hot: item.metadata?.is_hot ? 'true' : 'false',
+        feed_category: 'free_daily_read',
+      },
+    });
+  }, [user, router]);
 
   if (!isOnboarded) {
     return null;
@@ -526,33 +434,6 @@ export default function FeedScreen() {
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
       edges={['top']}>
-
-      {/* ─── Sticky compact header (appears on scroll) ─── */}
-      <Animated.View
-        style={[
-          styles.stickyHeader,
-          { backgroundColor: Colors[colorScheme].background, borderBottomColor: Colors[colorScheme].border },
-          stickyHeaderStyle,
-        ]}
-        pointerEvents="box-none">
-        {/* <View style={styles.stickyHeaderRow}>
-          <ThemedText style={styles.stickyTitle}>Your feed</ThemedText>
-          <Pressable
-            onPress={() => router.push('/bookmarks')}
-            style={[styles.stickyBookmark, { backgroundColor: Colors[colorScheme].card }]}
-            hitSlop={8}>
-            <Bookmark size={18} color={Colors[colorScheme].muted} strokeWidth={1.8} />
-          </Pressable>
-        </View> */}
-        {topicFilters.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.stickyFiltersRow}>
-            {filterPillsContent}
-          </ScrollView>
-        )}
-      </Animated.View>
 
       {/* ─── Main scrollable content ─── */}
       <AnimatedScrollView
@@ -568,13 +449,18 @@ export default function FeedScreen() {
         }
         contentContainerStyle={styles.scrollContent}>
 
-        {/* Greeting row (collapses) */}
-        <Animated.View
-          style={[styles.topBar, greetingStyle]}
-          pointerEvents="box-none">
-          <ThemedText style={[styles.greeting, { color: Colors[colorScheme].muted }]}>
-            {getGreeting()}, {firstName}
-          </ThemedText>
+        {/* Greeting row */}
+        <View style={styles.topBar}>
+          <View style={{ flex: 1 }}>
+            <ThemedText style={styles.greeting}>
+              {getGreeting()}, {firstName}
+            </ThemedText>
+            {isSubscribed && !isLoading && feedSummaryLine ? (
+              <ThemedText style={[styles.feedSummaryLine, { color: Colors[colorScheme].muted }]}>
+                {feedSummaryLine}
+              </ThemedText>
+            ) : null}
+          </View>
           <Pressable
             onPress={toggleTheme}
             style={[styles.themeToggle, { backgroundColor: Colors[colorScheme].card }]}
@@ -585,23 +471,67 @@ export default function FeedScreen() {
               <Moon size={18} color={Colors[colorScheme].muted} strokeWidth={1.8} />
             )}
           </Pressable>
-        </Animated.View>
+        </View>
 
-        {/* Heading + filters (scroll with content, hidden by sticky bar) */}
-        <Animated.View style={originalHeaderStyle}>
-          <ThemedText style={styles.heading}>Your feed</ThemedText>
+        {/* Streak bar — tappable, goes to Activity tab */}
+        {streak && (
+          <Pressable
+            onPress={() => router.push('/(tabs)/analytics')}
+            style={[
+              streakStyles.bar,
+              { backgroundColor: colorScheme === 'dark' ? '#1a1408' : '#fffbeb' },
+            ]}>
+            <View style={streakStyles.main}>
+              <Flame size={20} color="#f97316" strokeWidth={2} />
+              <View style={{ flex: 1 }}>
+                <ThemedText style={streakStyles.headline}>
+                  {streak.current_streak === 0
+                    ? 'Start your streak today'
+                    : streak.current_streak === 1
+                      ? '1 day streak — keep it going!'
+                      : `${streak.current_streak} day streak`}
+                </ThemedText>
+                <ThemedText style={[streakStyles.sub, { color: Colors[colorScheme].muted }]}>
+                  {streak.current_streak === 0
+                    ? 'Read something to begin'
+                    : streak.longest_streak > streak.current_streak
+                      ? `Best: ${streak.longest_streak} days · ${streak.total_days_read} total`
+                      : `${streak.total_days_read} total days read`}
+                </ThemedText>
+              </View>
+              <ChevronRight size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+            </View>
+          </Pressable>
+        )}
 
-          {topicFilters.length > 0 && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filtersRow}
-              style={styles.filtersScroll}>
-              {filterPillsContent}
-            </ScrollView>
-          )}
-        </Animated.View>
-
+        {/* Daily Insight Card */}
+        {dailyInsight && isSubscribed && (
+          <Pressable
+            style={[
+              insightStyles.card,
+              {
+                backgroundColor: colorScheme === 'dark' ? '#0f1a0f' : '#f0fdf4',
+                borderColor: colorScheme === 'dark' ? '#1a3a1a' : '#dcfce7',
+              },
+            ]}
+            onPress={() => {
+              if (dailyInsight.source_url) {
+                const matchingItem = feed.find((i) => i.url === dailyInsight.source_url);
+                if (matchingItem) {
+                  handleFeedItemPress(matchingItem);
+                }
+              }
+            }}
+          >
+            <ThemedText style={insightStyles.eyebrow}>INSIGHT OF THE DAY</ThemedText>
+            <ThemedText style={insightStyles.insightText}>{dailyInsight.text}</ThemedText>
+            {dailyInsight.source_title ? (
+              <ThemedText style={[insightStyles.source, { color: Colors[colorScheme].muted }]}>
+                From: {dailyInsight.source_title}
+              </ThemedText>
+            ) : null}
+          </Pressable>
+        )}
 
         {/* Trending feed for unsubscribed users */}
         {!isSubscribed && !rcLoading && (
@@ -623,18 +553,38 @@ export default function FeedScreen() {
               </View>
             ) : (
               <View style={styles.feedList}>
-                {trendingFeed.map((item, index) => (
-                  <View key={`trending-${item.id}-${index}`}>
-                    {index > 0 && (
-                      <View style={[styles.separator, { backgroundColor: Colors[colorScheme].border }]} />
-                    )}
-                    <FeedCard
-                      item={item}
-                      colorScheme={colorScheme}
-                      onPress={() => handleFeedItemPress(item)}
-                    />
-                  </View>
-                ))}
+                {trendingFeed.map((item, index) => {
+                  const isFirstWithSummary = index === trendingFeed.findIndex(
+                    (i) => !!(i.summary?.short_article?.body),
+                  );
+                  return (
+                    <View key={`trending-${item.id}-${index}`}>
+                      {index > 0 && (
+                        <View style={[styles.separator, { backgroundColor: Colors[colorScheme].border }]} />
+                      )}
+                      {isFirstWithSummary && (
+                        <View style={[
+                          insightStyles.freeReadBanner,
+                          { backgroundColor: colorScheme === 'dark' ? '#0f1a0f' : '#f0fdf4' },
+                        ]}>
+                          <Gift size={14} color="#22c55e" strokeWidth={2} />
+                          <ThemedText style={insightStyles.freeReadText}>
+                            Today{"'"}s free read — full summary unlocked
+                          </ThemedText>
+                        </View>
+                      )}
+                      <FeedCard
+                        item={item}
+                        colorScheme={colorScheme}
+                        onPress={() =>
+                          isFirstWithSummary
+                            ? handleFreeReadPress(item)
+                            : handleFeedItemPress(item)
+                        }
+                      />
+                    </View>
+                  );
+                })}
               </View>
             )}
 
@@ -657,21 +607,6 @@ export default function FeedScreen() {
                   Start a free trial to unlock your personalized feed with AI summaries — built around your interests, not the crowd.
                 </Text>
                 <Pressable
-                  onPress={handleGrantGiftPremium}
-                  disabled={isGrantingPremium}
-                  style={[
-                    ctaStyles.giftButton,
-                    {
-                      borderColor: colorScheme === 'dark' ? '#6ee7b7' : '#059669',
-                      opacity: isGrantingPremium ? 0.6 : 1,
-                    },
-                  ]}
-                >
-                  <Text style={[ctaStyles.giftButtonText, { color: colorScheme === 'dark' ? '#6ee7b7' : '#059669' }]}>
-                    {isGrantingPremium ? 'Activating free premium...' : 'Get Free Premium Access'}
-                  </Text>
-                </Pressable>
-                <Pressable
                   onPress={() => router.push('/paywall')}
                   style={[ctaStyles.ctaButton, { backgroundColor: colorScheme === 'dark' ? '#6ee7b7' : '#059669' }]}
                 >
@@ -688,31 +623,25 @@ export default function FeedScreen() {
           </>
         )}
 
-        {/* Feed generating - poll in progress */}
+        {/* Feed generating nudge */}
         {isSubscribed && isFeedGenerating && !isLoading && (
           <View
             style={[
               styles.nudge,
               {
                 borderColor: Colors[colorScheme].border,
-                backgroundColor: isSubscribed 
-                  ? (colorScheme === 'dark' ? '#052e16' : '#f0fdf4')
-                  : ILLUS_PALETTE.gold[colorScheme],
+                backgroundColor: colorScheme === 'dark' ? '#052e16' : '#f0fdf4',
               },
             ]}>
-            <ActivityIndicator size="small" color={isSubscribed ? '#22c55e' : Colors[colorScheme].muted} />
+            <ActivityIndicator size="small" color="#22c55e" />
             <ThemedText
               style={[styles.nudgeSubtitle, { color: Colors[colorScheme].muted, flex: 1 }]}>
-              {isSubscribed 
-                ? 'Adding AI summaries to your feed - this takes a minute or two. Your current feed is below.'
-                : "Building your personalised feed - this can take a minute or two. Here's what's trending meanwhile."
-              }
+              Adding AI summaries to your feed — this takes a minute or two.
             </ThemedText>
           </View>
         )}
 
-
-        {/* Loading / Feed items — only for subscribed users */}
+        {/* ─── Subscribed user: sectioned feed ─── */}
         {isSubscribed && (
           <>
             {isLoading ? (
@@ -721,41 +650,129 @@ export default function FeedScreen() {
                   <View key={i} style={styles.skeletonItem}>
                     <View style={styles.skeletonRow}>
                       <View style={styles.skeletonTextCol}>
-                        <View
-                          style={[styles.skeletonMeta, { backgroundColor: Colors[colorScheme].border }]}
-                        />
-                        <View
-                          style={[styles.skeletonTitle, { backgroundColor: Colors[colorScheme].border }]}
-                        />
-                        <View
-                          style={[styles.skeletonSub, { backgroundColor: Colors[colorScheme].border }]}
-                        />
+                        <View style={[styles.skeletonMeta, { backgroundColor: Colors[colorScheme].border }]} />
+                        <View style={[styles.skeletonTitle, { backgroundColor: Colors[colorScheme].border }]} />
+                        <View style={[styles.skeletonSub, { backgroundColor: Colors[colorScheme].border }]} />
                       </View>
-                      <View
-                        style={[styles.skeletonThumb, { backgroundColor: Colors[colorScheme].border }]}
-                      />
+                      <View style={[styles.skeletonThumb, { backgroundColor: Colors[colorScheme].border }]} />
                     </View>
                   </View>
                 ))}
               </View>
             ) : (
-              <View style={styles.feedList}>
-                {filteredFeed.map((item, index) => (
-                  <View key={`${item.id}-${item.url || 'no-url'}-${index}`}>
-                    {index > 0 && (
-                      <View
-                        style={[styles.separator, { backgroundColor: Colors[colorScheme].border }]}
-                      />
-                    )}
-                    <FeedCard
-                      item={item}
-                      colorScheme={colorScheme}
-                      onPress={() => handleFeedItemPress(item)}
-                    />
+              <>
+                {/* ── Section: Learn something new ── */}
+                {learnItems.length > 0 && (
+                  <View style={secStyles.section}>
+                    <View style={secStyles.sectionHeader}>
+                      <View style={secStyles.sectionIconWrap}>
+                        <BookOpen size={16} color="#0ea5e9" strokeWidth={2} />
+                      </View>
+                      <ThemedText style={secStyles.sectionTitle}>Learn something new</ThemedText>
+                    </View>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={secStyles.learnScroll}
+                      style={secStyles.learnScrollOuter}
+                    >
+                      {learnItems.map((item) => {
+                        const sourceName = item.metadata?.source_name
+                          || (item.metadata?.why_relevant || '').replace('Learn something new • ', '')
+                          || '';
+                        return (
+                          <Pressable
+                            key={item.id}
+                            style={[
+                              secStyles.learnCard,
+                              {
+                                backgroundColor: colorScheme === 'dark' ? '#111827' : '#f8fafc',
+                                borderColor: colorScheme === 'dark' ? '#1f2937' : '#e2e8f0',
+                              },
+                            ]}
+                            onPress={() => handleFeedItemPress(item)}
+                          >
+                            {sourceName ? (
+                              <ThemedText style={[secStyles.learnSource, { color: '#0ea5e9' }]} numberOfLines={1}>
+                                {sourceName}
+                              </ThemedText>
+                            ) : null}
+                            <ThemedText style={secStyles.learnTitle} numberOfLines={3}>
+                              {item.title}
+                            </ThemedText>
+                            <ThemedText
+                              style={[secStyles.learnSnippet, { color: Colors[colorScheme].muted }]}
+                              numberOfLines={2}
+                            >
+                              {item.summary?.short_article?.subtitle || item.description || ''}
+                            </ThemedText>
+                            <View style={secStyles.learnFooter}>
+                              <ThemedText style={[secStyles.learnReadTime, { color: Colors[colorScheme].muted }]}>
+                                {item.summary?.reading_time_minutes || 2} min read
+                              </ThemedText>
+                              <ChevronRight size={14} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+                            </View>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
                   </View>
-                ))}
-                
-                {filteredFeed.length === 0 && !isLoading && (
+                )}
+
+                {/* ── Section: Trending now ── */}
+                {trendingItems.length > 0 && (
+                  <View style={secStyles.section}>
+                    <View style={secStyles.sectionHeader}>
+                      <View style={[secStyles.sectionIconWrap, { backgroundColor: '#fff7ed' }]}>
+                        <Flame size={16} color="#ea580c" strokeWidth={2} />
+                      </View>
+                      <ThemedText style={secStyles.sectionTitle}>Trending now</ThemedText>
+                    </View>
+                    <View style={styles.feedList}>
+                      {trendingItems.map((item, index) => (
+                        <View key={`t-${item.id}-${index}`}>
+                          {index > 0 && (
+                            <View style={[styles.separator, { backgroundColor: Colors[colorScheme].border }]} />
+                          )}
+                          <FeedCard
+                            item={item}
+                            colorScheme={colorScheme}
+                            onPress={() => handleFeedItemPress(item)}
+                          />
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* ── Section: For you ── */}
+                {forYouItems.length > 0 && (
+                  <View style={secStyles.section}>
+                    <View style={secStyles.sectionHeader}>
+                      <View style={[secStyles.sectionIconWrap, { backgroundColor: '#f0fdf4' }]}>
+                        <Zap size={16} color="#22c55e" strokeWidth={2} />
+                      </View>
+                      <ThemedText style={secStyles.sectionTitle}>For you</ThemedText>
+                    </View>
+                    <View style={styles.feedList}>
+                      {forYouItems.map((item, index) => (
+                        <View key={`fy-${item.id}-${index}`}>
+                          {index > 0 && (
+                            <View style={[styles.separator, { backgroundColor: Colors[colorScheme].border }]} />
+                          )}
+                          <FeedCard
+                            item={item}
+                            colorScheme={colorScheme}
+                            onPress={() => handleFeedItemPress(item)}
+                          />
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Empty state */}
+                {learnItems.length === 0 && trendingItems.length === 0 && forYouItems.length === 0 && (
                   <View style={styles.emptyFilterState}>
                     <View
                       style={[
@@ -766,17 +783,17 @@ export default function FeedScreen() {
                       <NewspaperIllus width={44} height={44} />
                     </View>
                     <ThemedText style={[styles.emptyText, { color: Colors[colorScheme].muted }]}>
-                      No items match this filter.
+                      No articles in your feed yet. Pull to refresh.
                     </ThemedText>
                   </View>
                 )}
-              </View>
-            )}
 
-            {!isLoading && filteredFeed.length > 0 && (
-              <ThemedText style={[styles.endText, { color: Colors[colorScheme].muted }]}>
-                You{"'"}re all caught up
-              </ThemedText>
+                {(learnItems.length > 0 || trendingItems.length > 0 || forYouItems.length > 0) && (
+                  <ThemedText style={[styles.endText, { color: Colors[colorScheme].muted }]}>
+                    You{"'"}re all caught up
+                  </ThemedText>
+                )}
+              </>
             )}
           </>
         )}
@@ -790,54 +807,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // ─── Sticky compact header (overlay) ───
-  stickyHeader: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 100,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingTop: 68, // safe area offset - adjust if needed
-  },
-  stickyHeaderRow: {
+  topBar: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 6,
+    paddingTop: 12,
+    marginBottom: 8,
   },
-  stickyTitle: {
-    fontSize: 20,
+  greeting: {
+    fontSize: 22,
     fontWeight: '700',
     letterSpacing: -0.3,
   },
-  stickyBookmark: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stickyFiltersRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 10,
-  },
-
-  // ─── Original top bar (greeting) ───
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-  },
-  greeting: {
-    fontSize: 16,
-    fontWeight: '500',
+  feedSummaryLine: {
+    fontSize: 13,
+    marginTop: 4,
+    lineHeight: 18,
   },
   themeToggle: {
     width: 36,
@@ -845,54 +830,14 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  bookmarkButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginTop: 2,
   },
 
-  // ─── Content ───
   scrollContent: {
     paddingHorizontal: 20,
     paddingBottom: 40,
   },
-  heading: {
-    fontSize: 30,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-    marginBottom: 12,
-    paddingTop: 18,
-  },
 
-  // ─── Filters ───
-  filtersScroll: {
-    flexGrow: 0,
-    flexShrink: 0,
-    marginHorizontal: -20, // bleed to edges
-    marginBottom: 16,
-  },
-  filtersRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 6,
-  },
-  filterPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 999,
-  },
-  filterPillText: {
-    fontSize: 14,
-    fontWeight: '500',
-    letterSpacing: 0.5,
-  },
-
-  // ─── Nudges ───
   nudge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -903,16 +848,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     marginBottom: 12,
   },
-  nudgeTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
   nudgeSubtitle: {
     fontSize: 13,
     lineHeight: 18,
   },
 
-  // ─── Loading ───
   loadingContainer: {
     gap: 24,
     paddingTop: 8,
@@ -953,7 +893,6 @@ const styles = StyleSheet.create({
     opacity: 0.25,
   },
 
-  // ─── Feed list ───
   feedList: {},
   separator: {
     height: StyleSheet.hairlineWidth,
@@ -986,6 +925,74 @@ const styles = StyleSheet.create({
   },
 });
 
+const secStyles = StyleSheet.create({
+  section: {
+    marginTop: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  sectionIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#f0f9ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+
+  learnScrollOuter: {
+    marginHorizontal: -20,
+  },
+  learnScroll: {
+    paddingHorizontal: 20,
+    gap: 14,
+  },
+  learnCard: {
+    width: 260,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 18,
+    justifyContent: 'space-between',
+  },
+  learnSource: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  learnTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 22,
+    letterSpacing: -0.2,
+    marginBottom: 8,
+  },
+  learnSnippet: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  learnFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  learnReadTime: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+});
+
 const ctaStyles = StyleSheet.create({
   banner: {
     borderRadius: 16,
@@ -1015,19 +1022,6 @@ const ctaStyles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
   },
-  giftButton: {
-    width: '100%',
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  giftButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
   ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1045,5 +1039,71 @@ const ctaStyles = StyleSheet.create({
   bannerLegal: {
     fontSize: 12,
     textAlign: 'center',
+  },
+});
+
+const insightStyles = StyleSheet.create({
+  card: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 20,
+    marginTop: 16,
+  },
+  eyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: '#22c55e',
+    marginBottom: 10,
+  },
+  insightText: {
+    fontSize: 15,
+    fontWeight: '500',
+    lineHeight: 22,
+    letterSpacing: -0.1,
+  },
+  source: {
+    fontSize: 12,
+    marginTop: 12,
+    fontStyle: 'italic',
+  },
+
+  freeReadBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  freeReadText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#22c55e',
+  },
+});
+
+const streakStyles = StyleSheet.create({
+  bar: {
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginTop: 12,
+  },
+  main: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headline: {
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  sub: {
+    fontSize: 12,
+    marginTop: 2,
   },
 });

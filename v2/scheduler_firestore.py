@@ -41,6 +41,12 @@ from v2.flows.refresh_article_pool_firestore import (  # noqa: E402
 from v2.flows.build_learning_pool import (  # noqa: E402
     build_learning_pool,
 )
+from v2.flows.generate_daily_insights import (  # noqa: E402
+    generate_daily_insights,
+)
+from v2.flows.generate_weekly_wrap import (  # noqa: E402
+    generate_weekly_wraps,
+)
 
 RUNS_COLLECTION = "pipeline_runs_v2"
 
@@ -63,6 +69,8 @@ def _parse_args() -> argparse.Namespace:
             "learning",
             "trending",
             "feeds",
+            "insights",
+            "weekly_wrap",
             "newsletter_build",
             "newsletter_send",
             "newsletters",
@@ -180,7 +188,10 @@ def run_scheduler(args: argparse.Namespace) -> dict:
     )
     job_names: list[str]
     if args.jobs == "all":
-        job_names = ["pool", "learning", "trending", "feeds", "newsletters"]
+        job_names = [
+            "pool", "learning", "trending", "feeds",
+            "insights", "newsletters",
+        ]
     elif args.jobs == "newsletters":
         job_names = ["newsletter_build", "newsletter_send"]
     else:
@@ -300,6 +311,26 @@ def run_scheduler(args: argparse.Namespace) -> dict:
                         min_suggested_items=1,
                         min_trending_items=1,
                     )
+                ),
+            )
+        )
+
+    if "insights" in job_names:
+        results.append(
+            _run_job(
+                "daily_insights",
+                lambda: generate_daily_insights(
+                    date=(args.date.strip() or None),
+                ),
+            )
+        )
+
+    if "weekly_wrap" in job_names:
+        results.append(
+            _run_job(
+                "weekly_wrap",
+                lambda: generate_weekly_wraps(
+                    date=(args.date.strip() or None),
                 ),
             )
         )

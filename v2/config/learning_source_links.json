@@ -1,0 +1,259 @@
+{
+  "description": "High-quality educational/learning sources for 'learn something new' feed items. Matched to user interests. Longer recency window (60 days) since learning content is evergreen.",
+  "max_age_days": 60,
+  "items_per_user": 3,
+  "validated_sources": [
+    {
+      "interest_id": "technology",
+      "subinterest_id": "ai",
+      "source_name": "Chip Huyen Blog",
+      "source_url": "https://huyenchip.com/feed.xml",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "ML engineering, AI systems design"
+    },
+    {
+      "interest_id": "technology",
+      "subinterest_id": "software-tech",
+      "source_name": "Simon Willison Blog",
+      "source_url": "https://simonwillison.net/atom/everything/",
+      "source_type": "atom",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "Python, LLMs, data, developer tools"
+    },
+    {
+      "interest_id": "technology",
+      "subinterest_id": "software-tech",
+      "source_name": "Julia Evans Blog",
+      "source_url": "https://jvns.ca/atom.xml",
+      "source_type": "atom",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "Systems, networking, debugging explained simply"
+    },
+    {
+      "interest_id": "technology",
+      "subinterest_id": "software-tech",
+      "source_name": "Martin Fowler",
+      "source_url": "https://martinfowler.com/feed.atom",
+      "source_type": "atom",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "Software architecture, design patterns, refactoring"
+    },
+    {
+      "interest_id": "technology",
+      "subinterest_id": "future-tech",
+      "source_name": "Quanta Magazine",
+      "source_url": "https://api.quantamagazine.org/feed/",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "Math, physics, CS, biology — deep explainers"
+    },
+    {
+      "interest_id": "technology",
+      "subinterest_id": "ai",
+      "source_name": "Lil'Log (Lilian Weng)",
+      "source_url": "https://lilianweng.github.io/index.xml",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "In-depth AI/ML explainers from OpenAI researcher"
+    },
+    {
+      "interest_id": "technology",
+      "subinterest_id": "productivity-tools",
+      "source_name": "Stratechery",
+      "source_url": "https://stratechery.com/feed/",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "Tech strategy, business models, platform dynamics"
+    },
+    {
+      "interest_id": "business-market",
+      "subinterest_id": "startups",
+      "source_name": "Paul Graham Essays",
+      "source_url": "http://www.aaronsw.com/2002/feeds/pgessays.rss",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "Startups, ideas, working on hard things"
+    },
+    {
+      "interest_id": "business-market",
+      "subinterest_id": "startups",
+      "source_name": "Elad Gil Blog",
+      "source_url": "https://blog.eladgil.com/feed",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "High-growth startups, scaling, executive advice"
+    },
+    {
+      "interest_id": "business-market",
+      "subinterest_id": "product-strategy",
+      "source_name": "Lenny's Newsletter",
+      "source_url": "https://www.lennysnewsletter.com/feed",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "Product management, growth, career"
+    },
+    {
+      "interest_id": "business-market",
+      "subinterest_id": "market-trends",
+      "source_name": "Benedict Evans",
+      "source_url": "https://www.ben-evans.com/benedictevans?format=rss",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "Tech/market macro analysis, annual trend decks"
+    },
+    {
+      "interest_id": "business-market",
+      "subinterest_id": "marketing",
+      "source_name": "Andrew Chen Blog",
+      "source_url": "https://andrewchen.com/feed/",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "Growth, marketplaces, network effects"
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "ux-design",
+      "source_name": "Nielsen Norman Group",
+      "source_url": "https://www.nngroup.com/feed/rss/",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "Evidence-based UX research and guidelines"
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "creative-process",
+      "source_name": "The Pudding",
+      "source_url": "https://pudding.cool/feed/index.xml",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "Visual essays explaining ideas in culture and society"
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "design-tools",
+      "source_name": "UX Movement",
+      "source_url": "https://uxmovement.com/feed/",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "Practical UI/UX patterns and usability"
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "design-tools",
+      "source_name": "Baymard Institute Blog",
+      "source_url": "https://baymard.com/blog.atom",
+      "source_type": "atom",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "E-commerce UX research, checkout usability"
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "brand-storytelling",
+      "source_name": "Aeon Essays",
+      "source_url": "https://aeon.co/feed.rss",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "Philosophy, science, society — deep thoughtful essays"
+    },
+    {
+      "interest_id": "productivity",
+      "subinterest_id": "career-growth",
+      "source_name": "Farnam Street Blog",
+      "source_url": "https://fs.blog/feed/",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "Mental models, decision-making, learning"
+    },
+    {
+      "interest_id": "productivity",
+      "subinterest_id": "soft-skills",
+      "source_name": "James Clear Articles",
+      "source_url": "https://jamesclear.com/feed",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "Habits, continuous improvement, behavioral psychology"
+    },
+    {
+      "interest_id": "productivity",
+      "subinterest_id": "personal-finance",
+      "source_name": "Of Dollars and Data",
+      "source_url": "https://ofdollarsanddata.com/feed/",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "Data-driven personal finance and investing"
+    },
+    {
+      "interest_id": "productivity",
+      "subinterest_id": "wellbeing",
+      "source_name": "Cal Newport Blog",
+      "source_url": "https://calnewport.com/feed/",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "Deep work, focus, digital minimalism"
+    },
+    {
+      "interest_id": "productivity",
+      "subinterest_id": "investments",
+      "source_name": "A Wealth of Common Sense",
+      "source_url": "https://awealthofcommonsense.com/feed/",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "Investing, markets, financial planning — plain language"
+    },
+    {
+      "interest_id": "business-market",
+      "subinterest_id": "economy-impact",
+      "source_name": "Noahpinion",
+      "source_url": "https://www.noahpinion.blog/feed",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "notes": "Economics, policy, technology and society"
+    }
+  ],
+  "rejected_sources": [
+    {
+      "source_name": "First Round Review",
+      "source_url": "https://review.firstround.com/feed.xml",
+      "reason": "404 Not Found"
+    },
+    {
+      "source_name": "Morgan Housel / Collab Fund Blog",
+      "source_url": "https://collabfund.com/feed/",
+      "reason": "404 Not Found"
+    },
+    {
+      "source_name": "Refactoring UI Tips",
+      "source_url": "https://www.refactoringui.com/rss.xml",
+      "reason": "404 Not Found"
+    },
+    {
+      "source_name": "a16z Blog",
+      "source_url": "https://a16z.com/feed/",
+      "reason": "404 Not Found"
+    }
+  ]
+}

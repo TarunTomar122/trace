@@ -26,15 +26,17 @@ import {
   Clock,
   Crown,
   Lock,
+  Gift,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { isBookmarked as checkBookmarked, toggleBookmark } from '@/lib/bookmarks';
-import { FeedItem } from '@/lib/firestore';
+import { FeedItem, getFreeDailyReadUsed, markFreeDailyReadUsed } from '@/lib/firestore';
 import { logReadingEvent } from '@/lib/reading-analytics';
 
 const SOURCE_CONFIG: Record<
@@ -98,9 +100,24 @@ export default function ArticleScreen() {
   }>();
   const colorScheme = useColorScheme() ?? 'light';
   const { isProUser, presentPaywall } = useRevenueCat();
+  const { user } = useAuth();
 
-  // Only pro users have access to article summaries
-  const hasAccess = isProUser;
+  const [freeDailyUsed, setFreeDailyUsed] = useState<boolean | null>(null);
+  const isFreeRead = params.feed_category === 'free_daily_read';
+
+  useEffect(() => {
+    if (isProUser || !user) return;
+    getFreeDailyReadUsed(user.uid).then(setFreeDailyUsed);
+  }, [isProUser, user]);
+
+  const hasAccess = isProUser || (isFreeRead && freeDailyUsed === false);
+
+  useEffect(() => {
+    if (hasAccess && isFreeRead && user && freeDailyUsed === false) {
+      markFreeDailyReadUsed(user.uid);
+      setFreeDailyUsed(true);
+    }
+  }, [hasAccess, isFreeRead, user, freeDailyUsed]);
 
   const [upvoted, setUpvoted] = useState(false);
   const [downvoted, setDownvoted] = useState(false);

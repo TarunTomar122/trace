@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,19 @@ import {
   Dimensions,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
+import {
+  GoogleSignin,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../ThemeContext';
 
-WebBrowser.maybeCompleteAuthSession();
+GoogleSignin.configure({
+  iosClientId:
+    '77441044401-g6r9gn0degkcp4cfcshc6ji179tdlbue.apps.googleusercontent.com',
+});
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BOTTOM_INSET = Platform.OS === 'ios' ? 34 : 0;
@@ -22,96 +28,37 @@ export default function WelcomeScreen() {
   const { colors } = useTheme();
   const [loading, setLoading] = useState(false);
 
-  const finishAuthFromUrl = async (url) => {
-    if (!url) return false;
-
-    // Handle PKCE callback: wonder://auth/callback?code=...
-    const query = url.includes('?') ? url.split('?')[1].split('#')[0] : '';
-    const queryParams = new URLSearchParams(query);
-    const code = queryParams.get('code');
-    if (code) {
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
-      if (error) {
-        console.error('exchangeCodeForSession error:', error.message);
-        return false;
-      }
-      return true;
-    }
-
-    // Handle implicit callback: wonder://auth/callback#access_token=...&refresh_token=...
-    const fragment = url.includes('#') ? url.split('#')[1] : '';
-    const hashParams = new URLSearchParams(fragment);
-    const accessToken = hashParams.get('access_token');
-    const refreshToken = hashParams.get('refresh_token');
-    if (accessToken && refreshToken) {
-      const { error } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
-      if (error) {
-        console.error('setSession error:', error.message);
-        return false;
-      }
-      return true;
-    }
-
-    return false;
-  };
-
-  // Listen for OAuth redirect
-  useEffect(() => {
-    const handleUrl = async (event) => {
-      const url = event.url;
-      if (url?.includes('auth/callback')) {
-        try {
-          await finishAuthFromUrl(url);
-        } catch (e) {
-          console.error('Error handling redirect:', e);
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-
-    // Listen for URL events
-    const subscription = Linking.addEventListener('url', handleUrl);
-
-    return () => {
-      subscription?.remove();
-    };
-  }, []);
-
   async function handleGoogleSignIn() {
+    if (loading) return;
     setLoading(true);
-    try {
-      const redirectTo = Linking.createURL('auth/callback');
-      console.log('Redirect URL:', redirectTo);
 
-      const { data, error } = await supabase.auth.signInWithOAuth({
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      const idToken = response?.data?.idToken;
+
+      if (!idToken) {
+        throw new Error('No ID token returned from Google');
+      }
+
+      const { error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
-        options: {
-          redirectTo,
-          skipBrowserRedirect: true,
-        },
+        token: idToken,
       });
 
       if (error) {
-        console.error('OAuth error:', error.message);
-        setLoading(false);
-        return;
-      }
-
-      if (data?.url) {
-        // Open Supabase's auth URL and process return URL directly.
-        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-        if (result?.type === 'success' && result.url) {
-          await finishAuthFromUrl(result.url);
-        } else if (result?.type !== 'cancel') {
-          console.log('OAuth result:', result?.type);
-        }
+        console.error('Supabase signInWithIdToken error:', error.message);
+        Alert.alert('Sign-in failed', error.message);
       }
     } catch (e) {
-      console.error('Sign-in failed:', e);
+      if (e.code === statusCodes.SIGN_IN_CANCELLED) {
+        // user cancelled — do nothing
+      } else if (e.code === statusCodes.IN_PROGRESS) {
+        // already in progress
+      } else {
+        console.error('Google sign-in error:', e);
+        Alert.alert('Sign-in error', e.message || 'Something went wrong');
+      }
     } finally {
       setLoading(false);
     }
@@ -167,7 +114,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
 
-  // Brand
   brandSection: {
     flex: 1,
     justifyContent: 'center',
@@ -195,7 +141,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
-  // CTA
   ctaSection: {
     alignItems: 'center',
   },

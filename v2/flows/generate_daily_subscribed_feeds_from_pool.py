@@ -924,6 +924,28 @@ def generate_daily_subscribed_feeds_from_pool(
                     limit=args.learning_items,
                 )
                 if learning_pool_items:
+                    learn_urls_missing_image = [
+                        li.get("url", "")
+                        for li in learning_pool_items
+                        if li.get("url") and not li.get("og_image")
+                    ]
+                    if learn_urls_missing_image:
+                        learn_image_map = fetch_images_for_urls(
+                            store=store,
+                            urls=list(dict.fromkeys(
+                                learn_urls_missing_image,
+                            )),
+                            force=False,
+                        )
+                        for li in learning_pool_items:
+                            lurl = li.get("url", "")
+                            if (
+                                not li.get("og_image")
+                                and lurl in learn_image_map
+                                and learn_image_map[lurl]
+                            ):
+                                li["og_image"] = learn_image_map[lurl]
+
                     learning_feed_items = [
                         _build_learning_feed_item(li)
                         for li in learning_pool_items

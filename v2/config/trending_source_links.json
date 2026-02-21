@@ -1,0 +1,184 @@
+{
+  "validated_sources": [
+    {
+      "topic_id": "ai-updates",
+      "source_name": "AI News Feed",
+      "source_url": "https://www.artificialintelligence-news.com/feed/",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": false,
+      "sample_count": 5
+    },
+    {
+      "topic_id": "ai-updates",
+      "source_name": "Google AI Blog RSS",
+      "source_url": "https://blog.google/technology/ai/rss/",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": true,
+      "sample_count": 5
+    },
+    {
+      "topic_id": "product-releases",
+      "source_name": "Product Hunt Feed",
+      "source_url": "https://www.producthunt.com/feed",
+      "source_type": "atom",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": false,
+      "sample_count": 5
+    },
+    {
+      "topic_id": "markets",
+      "source_name": "MarketWatch Investing Filtered RSS",
+      "source_url": "https://www.marketwatch.com/rss/topstories",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": true,
+      "sample_count": 5,
+      "include_title_keywords": [
+        "invest",
+        "investing",
+        "stock",
+        "stocks",
+        "etf",
+        "bond",
+        "fund",
+        "nasdaq",
+        "dow",
+        "s&p",
+        "market"
+      ],
+      "include_url_keywords": [
+        "/investing/",
+        "/story/",
+        "marketwatch.com"
+      ],
+      "notes": "Direct investing section URL returns 401 in pipeline; this source is keyword-filtered to investing-heavy stories only."
+    },
+    {
+      "topic_id": "markets",
+      "source_name": "Benzinga Markets Feed",
+      "source_url": "https://www.benzinga.com/markets/feed",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": false,
+      "sample_count": 5
+    },
+    {
+      "topic_id": "markets",
+      "source_name": "FXStreet News Feed",
+      "source_url": "https://www.fxstreet.com/rss/news",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": false,
+      "sample_count": 5
+    },
+    {
+      "topic_id": "markets",
+      "source_name": "Investing.com Forex RSS",
+      "source_url": "https://www.investing.com/rss/news_1.rss",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": true,
+      "sample_count": 5
+    },
+    {
+      "topic_id": "ux-design",
+      "source_name": "A List Apart Feed",
+      "source_url": "https://alistapart.com/main/feed/",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": false,
+      "sample_count": 5
+    },
+    {
+      "topic_id": "ux-design",
+      "source_name": "CSS-Tricks Feed",
+      "source_url": "https://css-tricks.com/feed/",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": false,
+      "sample_count": 5
+    },
+    {
+      "topic_id": "startup-ecosystem",
+      "source_name": "SaaStr Feed",
+      "source_url": "https://www.saastr.com/feed/",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": false,
+      "sample_count": 5
+    },
+    {
+      "topic_id": "startup-ecosystem",
+      "source_name": "Feld Thoughts Feed",
+      "source_url": "https://feld.com/feed/",
+      "source_type": "rss",
+      "supports_article_links": true,
+      "supports_published_date": true,
+      "supports_og_image": false,
+      "sample_count": 5
+    }
+  ],
+  "rejected_sources": [
+    {
+      "topic_id": "ai-updates",
+      "source_name": "Ars Technica Feed",
+      "source_url": "https://feeds.arstechnica.com/arstechnica/index",
+      "supports_article_links": false,
+      "reason": "feed reachable but parser extracted no article links"
+    },
+    {
+      "topic_id": "ai-updates",
+      "source_name": "Hacker News Frontpage RSS",
+      "source_url": "https://hnrss.org/frontpage",
+      "supports_article_links": false,
+      "reason": "feed reachable but parser extracted no article links"
+    },
+    {
+      "topic_id": "ai-updates",
+      "source_name": "InfoQ AI/ML Feed",
+      "source_url": "https://www.infoq.com/ai-ml-data-eng/feed/",
+      "supports_article_links": false,
+      "reason": "404 not found"
+    },
+    {
+      "topic_id": "ux-design",
+      "source_name": "UX Booth Feed",
+      "source_url": "https://www.uxbooth.com/articles/feed/",
+      "supports_article_links": false,
+      "reason": "redirect loop"
+    },
+    {
+      "topic_id": "ux-design",
+      "source_name": "Webdesigner Depot Feed",
+      "source_url": "https://www.webdesignerdepot.com/feed/",
+      "supports_article_links": false,
+      "reason": "feed reachable but parser extracted no article links"
+    },
+    {
+      "topic_id": "startup-ecosystem",
+      "source_name": "Both Sides of the Table Feed",
+      "source_url": "https://bothsidesofthetable.com/feed",
+      "supports_article_links": false,
+      "reason": "SSL certificate verification failed"
+    },
+    {
+      "topic_id": "startup-ecosystem",
+      "source_name": "Startups.com Feed",
+      "source_url": "https://www.startups.com/feed",
+      "supports_article_links": false,
+      "reason": "429 rate-limited"
+    }
+  ]
+}

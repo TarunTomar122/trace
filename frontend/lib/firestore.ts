@@ -683,6 +683,103 @@ export async function clearChatHistory(uid: string): Promise<void> {
   }
 }
 
+// ============ Streak + Insight + Weekly Wrap ============
+
+export interface ReadingStreak {
+  current_streak: number;
+  longest_streak: number;
+  last_read_date: string;
+  total_days_read: number;
+}
+
+export interface DailyInsight {
+  text: string;
+  source_title: string;
+  source_url: string;
+  generated_at: string;
+}
+
+export interface WeeklyWrap {
+  week_id: string;
+  start_date: string;
+  end_date: string;
+  total_articles: number;
+  days_with_feed: number;
+  top_topics: string[];
+  headline: string;
+  summary: string;
+  top_topic: string;
+  fun_stat: string;
+  generated_at: string;
+}
+
+function _todayDateStr(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function _yesterdayDateStr(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export async function getReadingStreak(uid: string): Promise<ReadingStreak> {
+  const defaults: ReadingStreak = { current_streak: 0, longest_streak: 0, last_read_date: '', total_days_read: 0 };
+  try {
+    const ref = doc(firestore, 'user_streaks', uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return defaults;
+    return { ...defaults, ...(snap.data() as Partial<ReadingStreak>) };
+  } catch { return defaults; }
+}
+
+export async function recordReadingDay(uid: string): Promise<ReadingStreak> {
+  const today = _todayDateStr();
+  const yesterday = _yesterdayDateStr();
+  const ref = doc(firestore, 'user_streaks', uid);
+  try {
+    const snap = await getDoc(ref);
+    const existing = snap.exists()
+      ? (snap.data() as ReadingStreak)
+      : { current_streak: 0, longest_streak: 0, last_read_date: '', total_days_read: 0 };
+    if (existing.last_read_date === today) return existing;
+    let newStreak = 1;
+    if (existing.last_read_date === yesterday) newStreak = existing.current_streak + 1;
+    const updated: ReadingStreak = {
+      current_streak: newStreak,
+      longest_streak: Math.max(existing.longest_streak, newStreak),
+      last_read_date: today,
+      total_days_read: existing.total_days_read + 1,
+    };
+    await setDoc(ref, updated, { merge: true });
+    return updated;
+  } catch {
+    return { current_streak: 0, longest_streak: 0, last_read_date: '', total_days_read: 0 };
+  }
+}
+
+export async function getDailyInsight(uid: string): Promise<DailyInsight | null> {
+  try {
+    const feedRef = collection(firestore, COLLECTIONS.userFeeds, uid, 'daily');
+    const snapshot = await getDocs(feedRef);
+    if (snapshot.empty) return null;
+    const sortedDocs = snapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
+    const data = sortedDocs[0].data() as Record<string, unknown>;
+    return (data?.daily_insight as DailyInsight) || null;
+  } catch { return null; }
+}
+
+export async function getLatestWeeklyWrap(uid: string): Promise<WeeklyWrap | null> {
+  try {
+    const weeksRef = collection(firestore, 'user_weekly_wraps', uid, 'weeks');
+    const q = query(weeksRef, orderBy('generated_at', 'desc'), limit(1));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+    return snapshot.docs[0].data() as WeeklyWrap;
+  } catch { return null; }
+}
+
 // Update user insights from AI chat
 export async function updateUserInsights(
   uid: string,

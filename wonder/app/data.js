@@ -153,18 +153,24 @@ function buildBooks() {
 }
 
 function buildArticles() {
-  return Object.entries(articleFiles).map(([interestId, data]) => ({
-    id: `article-${interestId}`,
-    type: 'article',
-    interest: interestId,
-    color: INTEREST_COLORS[interestId] || '#7B68EE',
-    title: data.article.title,
-    author: data.article.author,
-    subtitle: `${data.article.author} · ${data.article.publication}`,
-    cover: data.article.image_url || null,
-    cardCount: data.cards.length,
-    cards: data.cards,
-  }));
+  return Object.entries(articleFiles).map(([interestId, data]) => {
+    const articleMeta = data.article || data.videos?.[0] || {};
+    const author = articleMeta.author || articleMeta.creator || 'Unknown';
+    const publication = articleMeta.publication || articleMeta.platform || 'Source';
+
+    return {
+      id: `article-${interestId}`,
+      type: 'article',
+      interest: interestId,
+      color: INTEREST_COLORS[interestId] || '#7B68EE',
+      title: articleMeta.title || 'Untitled',
+      author,
+      subtitle: `${author} · ${publication}`,
+      cover: articleMeta.image_url || articleMeta.thumbnail_url || null,
+      cardCount: data.cards?.length || 0,
+      cards: data.cards || [],
+    };
+  });
 }
 
 function buildVideos() {

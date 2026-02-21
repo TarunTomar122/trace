@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, AppState, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -18,27 +18,6 @@ function Main() {
   const [introDone, setIntroDone] = React.useState(false);
   const [onboardingDone, setOnboardingDone] = React.useState(false);
 
-  // Dev/testing helper: always reset intro + onboarding when app becomes active.
-  React.useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'active') {
-        setIntroDone(false);
-        setOnboardingDone(false);
-      }
-    });
-
-    return () => subscription.remove();
-  }, []);
-
-  if (!introDone) {
-    return <IntroScreen onComplete={() => setIntroDone(true)} />;
-  }
-
-  // For now, always run onboarding at app start.
-  if (!onboardingDone) {
-    return <OnboardingScreen onComplete={() => setOnboardingDone(true)} />;
-  }
-
   if (loading) {
     return (
       <View
@@ -55,6 +34,15 @@ function Main() {
   }
 
   if (!session) {
+    if (!introDone) {
+      return <IntroScreen onComplete={() => setIntroDone(true)} />;
+    }
+
+    // Run onboarding only for logged-out users.
+    if (!onboardingDone) {
+      return <OnboardingScreen onComplete={() => setOnboardingDone(true)} />;
+    }
+
     return <WelcomeScreen />;
   }
 

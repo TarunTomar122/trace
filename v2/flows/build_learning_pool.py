@@ -214,6 +214,7 @@ def build_learning_pool(args: argparse.Namespace | None = None) -> dict[str, Any
                 )
             )
 
+            exa_image = ""
             if use_cached_content:
                 content = existing_data["content"]
                 content_source = "cached"
@@ -225,6 +226,7 @@ def build_learning_pool(args: argparse.Namespace | None = None) -> dict[str, Any
                     exa_api_key=exa_key,
                 )
                 content = info.get("content", "")
+                exa_image = (info.get("image") or "").strip()
                 if not content:
                     stats["content_failures"] += 1
                     continue
@@ -265,6 +267,10 @@ def build_learning_pool(args: argparse.Namespace | None = None) -> dict[str, Any
                     continue
                 stats["summaries_generated"] += 1
 
+            og_image = article.get("og_image", "")
+            if not og_image and exa_image:
+                og_image = exa_image
+
             payload: dict[str, Any] = {
                 "url": art_url,
                 "title": title,
@@ -272,7 +278,7 @@ def build_learning_pool(args: argparse.Namespace | None = None) -> dict[str, Any
                 "subinterest_id": subinterest_id,
                 "source_name": name,
                 "published_date": pub,
-                "og_image": article.get("og_image", ""),
+                "og_image": og_image,
                 "content": content,
                 "content_length": len(content),
                 "content_hash": c_hash,

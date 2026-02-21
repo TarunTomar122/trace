@@ -382,6 +382,7 @@ def add_trending_news_to_feed(
             "title": article.get("title", ""),
             "description": details,
             "url": url,
+            "thumbnail": article.get("thumbnail", ""),
             "tags": [topic_id],
             "source": "tavily",
             "summary": {
