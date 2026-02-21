@@ -1,0 +1,56 @@
+{
+  "description": "Sources for the 'Trending' feed. Latest news across all topics. 48h freshness window, refreshes daily or twice daily.",
+  "max_age_hours": 48,
+  "items_per_user": 5,
+  "sources": [
+    {
+      "interest_id": "technology",
+      "name": "AI News Feed",
+      "url": "https://www.artificialintelligence-news.com/feed/",
+      "type": "rss"
+    },
+    {
+      "interest_id": "technology",
+      "name": "Google AI Blog",
+      "url": "https://blog.google/technology/ai/rss/",
+      "type": "rss"
+    },
+    {
+      "interest_id": "startups",
+      "name": "Product Hunt",
+      "url": "https://www.producthunt.com/feed",
+      "type": "atom"
+    },
+    {
+      "interest_id": "business-market",
+      "name": "MarketWatch Top Stories",
+      "url": "https://www.marketwatch.com/rss/topstories",
+      "type": "rss",
+      "title_keywords": ["invest", "stock", "market", "fund", "nasdaq", "dow", "s&p", "economy"]
+    },
+    {
+      "interest_id": "experience",
+      "name": "A List Apart",
+      "url": "https://alistapart.com/main/feed/",
+      "type": "rss"
+    },
+    {
+      "interest_id": "experience",
+      "name": "CSS-Tricks",
+      "url": "https://css-tricks.com/feed/",
+      "type": "rss"
+    },
+    {
+      "interest_id": "business-market",
+      "name": "SaaStr",
+      "url": "https://www.saastr.com/feed/",
+      "type": "rss"
+    },
+    {
+      "interest_id": "business-market",
+      "name": "Feld Thoughts",
+      "url": "https://feld.com/feed/",
+      "type": "rss"
+    }
+  ]
+}

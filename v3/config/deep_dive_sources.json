@@ -1,0 +1,168 @@
+{
+  "description": "Sources for the 'Deep Dives' feed. Users select these by name during onboarding step 3. Matched via selectedLearningSources field. Evergreen content with 60-day window.",
+  "max_age_days": 60,
+  "items_per_user": 4,
+  "sources": [
+    {
+      "category_id": "design-ux",
+      "name": "Nielsen Norman Group",
+      "url": "https://www.nngroup.com/feed/rss/",
+      "type": "rss",
+      "description": "Evidence-based UX research and guidelines"
+    },
+    {
+      "category_id": "design-ux",
+      "name": "The Pudding",
+      "url": "https://pudding.cool/feed/index.xml",
+      "type": "rss",
+      "description": "Visual essays explaining ideas in culture and society"
+    },
+    {
+      "category_id": "design-ux",
+      "name": "UX Movement",
+      "url": "https://uxmovement.com/feed/",
+      "type": "rss",
+      "description": "Practical UI/UX patterns and usability"
+    },
+    {
+      "category_id": "design-ux",
+      "name": "Baymard Institute Blog",
+      "url": "https://baymard.com/blog.atom",
+      "type": "atom",
+      "description": "E-commerce UX research, checkout usability"
+    },
+    {
+      "category_id": "design-ux",
+      "name": "Aeon Essays",
+      "url": "https://aeon.co/feed.rss",
+      "type": "rss",
+      "description": "Philosophy, science, society deep essays"
+    },
+    {
+      "category_id": "tech-engineering",
+      "name": "Chip Huyen Blog",
+      "url": "https://huyenchip.com/feed.xml",
+      "type": "rss",
+      "description": "ML engineering, AI systems design"
+    },
+    {
+      "category_id": "tech-engineering",
+      "name": "Simon Willison Blog",
+      "url": "https://simonwillison.net/atom/everything/",
+      "type": "atom",
+      "description": "Python, LLMs, data, developer tools"
+    },
+    {
+      "category_id": "tech-engineering",
+      "name": "Julia Evans Blog",
+      "url": "https://jvns.ca/atom.xml",
+      "type": "atom",
+      "description": "Systems, networking, debugging explained simply"
+    },
+    {
+      "category_id": "tech-engineering",
+      "name": "Martin Fowler",
+      "url": "https://martinfowler.com/feed.atom",
+      "type": "atom",
+      "description": "Software architecture, design patterns, refactoring"
+    },
+    {
+      "category_id": "tech-engineering",
+      "name": "Lil'Log",
+      "url": "https://lilianweng.github.io/index.xml",
+      "type": "rss",
+      "description": "In-depth AI/ML explainers from OpenAI researcher"
+    },
+    {
+      "category_id": "tech-engineering",
+      "name": "Quanta Magazine",
+      "url": "https://api.quantamagazine.org/feed/",
+      "type": "rss",
+      "description": "Math, physics, CS, biology deep explainers"
+    },
+    {
+      "category_id": "business-strategy",
+      "name": "Stratechery",
+      "url": "https://stratechery.com/feed/",
+      "type": "rss",
+      "description": "Tech strategy, business models, platform dynamics"
+    },
+    {
+      "category_id": "business-strategy",
+      "name": "Benedict Evans",
+      "url": "https://www.ben-evans.com/benedictevans?format=rss",
+      "type": "rss",
+      "description": "Tech/market macro analysis, annual trend decks"
+    },
+    {
+      "category_id": "business-strategy",
+      "name": "Andrew Chen Blog",
+      "url": "https://andrewchen.com/feed/",
+      "type": "rss",
+      "description": "Growth, marketplaces, network effects"
+    },
+    {
+      "category_id": "business-strategy",
+      "name": "Lenny's Newsletter",
+      "url": "https://www.lennysnewsletter.com/feed",
+      "type": "rss",
+      "description": "Product management, growth, career"
+    },
+    {
+      "category_id": "business-strategy",
+      "name": "Noahpinion",
+      "url": "https://www.noahpinion.blog/feed",
+      "type": "rss",
+      "description": "Economics, policy, technology and society"
+    },
+    {
+      "category_id": "startups-product",
+      "name": "Paul Graham Essays",
+      "url": "http://www.aaronsw.com/2002/feeds/pgessays.rss",
+      "type": "rss",
+      "description": "Startups, ideas, working on hard things"
+    },
+    {
+      "category_id": "startups-product",
+      "name": "Elad Gil Blog",
+      "url": "https://blog.eladgil.com/feed",
+      "type": "rss",
+      "description": "High-growth startups, scaling, executive advice"
+    },
+    {
+      "category_id": "productivity-growth",
+      "name": "Farnam Street Blog",
+      "url": "https://fs.blog/feed/",
+      "type": "rss",
+      "description": "Mental models, decision-making, learning"
+    },
+    {
+      "category_id": "productivity-growth",
+      "name": "James Clear Articles",
+      "url": "https://jamesclear.com/feed",
+      "type": "rss",
+      "description": "Habits, continuous improvement, behavioral psychology"
+    },
+    {
+      "category_id": "productivity-growth",
+      "name": "Cal Newport Blog",
+      "url": "https://calnewport.com/feed/",
+      "type": "rss",
+      "description": "Deep work, focus, digital minimalism"
+    },
+    {
+      "category_id": "finance-markets",
+      "name": "Of Dollars and Data",
+      "url": "https://ofdollarsanddata.com/feed/",
+      "type": "rss",
+      "description": "Data-driven personal finance and investing"
+    },
+    {
+      "category_id": "finance-markets",
+      "name": "A Wealth of Common Sense",
+      "url": "https://awealthofcommonsense.com/feed/",
+      "type": "rss",
+      "description": "Investing, markets, financial planning"
+    }
+  ]
+}

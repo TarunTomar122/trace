@@ -1,0 +1,140 @@
+{
+  "description": "Sources for the 'For You' feed. Mapped to ONBOARDING_INTERESTS ids. Articles matched to user interests with personalized summaries.",
+  "max_age_days": 14,
+  "items_per_user": 6,
+  "sources": [
+    {
+      "interest_id": "technology",
+      "subinterest_id": "ai",
+      "name": "VentureBeat RSS",
+      "url": "https://venturebeat.com/feed",
+      "type": "rss"
+    },
+    {
+      "interest_id": "technology",
+      "subinterest_id": "software-tech",
+      "name": "The Verge RSS",
+      "url": "https://www.theverge.com/rss/index.xml",
+      "type": "atom"
+    },
+    {
+      "interest_id": "technology",
+      "subinterest_id": "future-tech",
+      "name": "MIT Technology Review",
+      "url": "https://www.technologyreview.com/feed",
+      "type": "rss"
+    },
+    {
+      "interest_id": "startups",
+      "subinterest_id": "startups",
+      "name": "TechCrunch RSS",
+      "url": "https://techcrunch.com/feed/",
+      "type": "rss"
+    },
+    {
+      "interest_id": "business-market",
+      "subinterest_id": "market-trends",
+      "name": "Fast Company Latest",
+      "url": "https://www.fastcompany.com/latest/rss",
+      "type": "rss"
+    },
+    {
+      "interest_id": "business-market",
+      "subinterest_id": "economy-impact",
+      "name": "Yahoo Finance News",
+      "url": "https://finance.yahoo.com/news/rssindex",
+      "type": "rss"
+    },
+    {
+      "interest_id": "business-market",
+      "subinterest_id": "market-trends",
+      "name": "CNBC Markets RSS",
+      "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+      "type": "rss"
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "ux-design",
+      "name": "Smashing Magazine",
+      "url": "https://www.smashingmagazine.com/",
+      "type": "html"
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "user-psychology",
+      "name": "Psychology Today",
+      "url": "https://www.psychologytoday.com/front/feed",
+      "type": "rss"
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "design-tools",
+      "name": "Creative Bloq",
+      "url": "https://www.creativebloq.com/feeds/all",
+      "type": "rss"
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "brand-storytelling",
+      "name": "Content Marketing Institute",
+      "url": "https://contentmarketinginstitute.com/feed/",
+      "type": "html"
+    },
+    {
+      "interest_id": "productivity",
+      "subinterest_id": "career-growth",
+      "name": "Lifehacker",
+      "url": "https://lifehacker.com/index.xml",
+      "type": "rss"
+    },
+    {
+      "interest_id": "productivity",
+      "subinterest_id": "soft-skills",
+      "name": "Fast Company Work Life",
+      "url": "https://www.fastcompany.com/work-life/rss",
+      "type": "rss"
+    },
+    {
+      "interest_id": "productivity",
+      "subinterest_id": "personal-finance",
+      "name": "NerdWallet",
+      "url": "https://www.nerdwallet.com/blog/feed/",
+      "type": "rss"
+    },
+    {
+      "interest_id": "productivity",
+      "subinterest_id": "investments",
+      "name": "Motley Fool",
+      "url": "https://www.fool.com/feeds/index.aspx",
+      "type": "rss"
+    },
+    {
+      "interest_id": "productivity",
+      "subinterest_id": "wellbeing",
+      "name": "Well+Good",
+      "url": "https://www.wellandgood.com/feed/",
+      "type": "html"
+    },
+    {
+      "interest_id": "marketing",
+      "subinterest_id": "growth",
+      "name": "Content Marketing Institute",
+      "url": "https://contentmarketinginstitute.com/feed/",
+      "type": "html"
+    },
+    {
+      "interest_id": "engineering",
+      "subinterest_id": "software",
+      "name": "The Verge RSS",
+      "url": "https://www.theverge.com/rss/index.xml",
+      "type": "atom"
+    },
+    {
+      "interest_id": "leadership",
+      "subinterest_id": "management",
+      "name": "Fast Company Work Life",
+      "url": "https://www.fastcompany.com/work-life/rss",
+      "type": "rss"
+    }
+  ]
+}

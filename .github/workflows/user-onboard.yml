@@ -36,14 +36,22 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       
-      - name: Build v3 feed for user
+      - name: Resolve user ID
+        id: uid
         run: |
           if [ "${{ github.event_name }}" == "repository_dispatch" ]; then
-            USER_ID="${{ github.event.client_payload.user_id }}"
+            echo "user_id=${{ github.event.client_payload.user_id }}" >> "$GITHUB_OUTPUT"
           else
-            USER_ID="${{ inputs.user_id }}"
+            echo "user_id=${{ inputs.user_id }}" >> "$GITHUB_OUTPUT"
           fi
-          
-          echo "Building v3 feed for user: $USER_ID"
-          python -u -m v3.scheduler --jobs all --user-id "$USER_ID"
+
+      - name: Build v1/v2 feed (web app)
+        run: |
+          echo "Running v1 onboard hook for user: ${{ steps.uid.outputs.user_id }}"
+          python -u v1/hooks/on_user_onboard.py --user_id "${{ steps.uid.outputs.user_id }}"
+
+      - name: Build v3 feed (mobile app)
+        run: |
+          echo "Building v3 feed for user: ${{ steps.uid.outputs.user_id }}"
+          python -u -m v3.scheduler --jobs all --user-id "${{ steps.uid.outputs.user_id }}"
 
