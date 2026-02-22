@@ -32,7 +32,7 @@ load_dotenv(REPO_ROOT / ".env")
 
 from v1.storage import is_user_subscribed  # noqa: E402
 from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
-from v3.lib.store import V3Store, FOR_YOU_POOL, _today_ist  # noqa: E402
+from v3.lib.store import V3Store, FOR_YOU_POOL, FREE_TIER_LIMITS, _today_ist  # noqa: E402
 from v3.lib.content import fetch_content, fetch_og_image  # noqa: E402
 from v3.lib.summarizer import get_or_generate_summary  # noqa: E402
 from v3.lib.scorer import rank_articles  # noqa: E402
@@ -207,13 +207,7 @@ def build_user_feeds(
         style = profile.get("summaryStyle", "practitioner") or "practitioner"
         seniority = profile.get("seniority", "mid") or "mid"
         is_subscribed = is_user_subscribed(profile)
-
-        # Unsubscribed users do not get For You items in v3 mode.
-        if not is_subscribed:
-            _log(f"  user={uid} unsubscribed, writing empty for_you")
-            store.write_feed_section(uid, target_date, "for_you", [])
-            stats["users"] += 1
-            continue
+        user_items_target = items_per_user if is_subscribed else FREE_TIER_LIMITS.get("for_you", 2)
 
         if not interests:
             _log(f"  user={uid} no interests, skipping")
@@ -243,7 +237,9 @@ def build_user_feeds(
 
         ranked = rank_articles(candidates, goals)
         diverse = dedupe_and_cap(ranked)
-        picked = diverse[: items_per_user]
+        picked = diverse[: user_items_target]
+        if not is_subscribed:
+            _log(f"  user={uid} free tier → capped to {user_items_target} items")
 
         feed_items: list[dict[str, Any]] = []
         for i, item in enumerate(picked, 1):

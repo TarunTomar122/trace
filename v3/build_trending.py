@@ -32,8 +32,9 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 load_dotenv(REPO_ROOT / ".env")
 
+from v1.storage import is_user_subscribed  # noqa: E402
 from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
-from v3.lib.store import V3Store, TRENDING_POOL, _today_ist  # noqa: E402
+from v3.lib.store import V3Store, TRENDING_POOL, FREE_TIER_LIMITS, _today_ist  # noqa: E402
 from v3.lib.content import fetch_content, fetch_og_image  # noqa: E402
 from v3.lib.summarizer import get_or_generate_summary  # noqa: E402
 from v3.lib.diversity import dedupe_and_cap  # noqa: E402
@@ -211,6 +212,8 @@ def build_user_feeds(
 
         style = profile.get("summaryStyle", "practitioner") or "practitioner"
         seniority = profile.get("seniority", "mid") or "mid"
+        is_subscribed = is_user_subscribed(profile)
+        user_items_target = items_per_user if is_subscribed else FREE_TIER_LIMITS.get("trending", 5)
 
         seen_urls = store.get_seen_urls(uid)
         _log(f"  user={uid} seen={len(seen_urls)}")
@@ -238,10 +241,12 @@ def build_user_feeds(
 
         picked: list[dict[str, Any]] = []
         interest_keys = sorted(by_interest.keys())
-        while len(picked) < items_per_user and interest_keys:
+        if not is_subscribed:
+            _log(f"  user={uid} free tier → capped to {user_items_target} items")
+        while len(picked) < user_items_target and interest_keys:
             exhausted = []
             for key in interest_keys:
-                if len(picked) >= items_per_user:
+                if len(picked) >= user_items_target:
                     break
                 bucket = by_interest[key]
                 if bucket:

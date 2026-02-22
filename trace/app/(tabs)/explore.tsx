@@ -284,8 +284,8 @@ export default function ProfileScreen() {
               {profile.careerGoals.map((goal: string, index: number) => (
                 <View
                   key={index}
-                  style={[styles.pill, { backgroundColor: colorScheme === 'dark' ? '#0d1f12' : '#f0fdf4' }]}>
-                  <ThemedText style={[styles.pillText, { color: '#059669' }]}>
+                  style={[styles.pill, { backgroundColor: colorScheme === 'dark' ? '#1a1408' : '#fffbeb' }]}>
+                  <ThemedText style={[styles.pillText, { color: '#d97706' }]}>
                     {lookupLabel(CAREER_GOALS as unknown as { id: string; label: string }[], goal)}
                   </ThemedText>
                 </View>
@@ -321,20 +321,20 @@ export default function ProfileScreen() {
             return (
               <Pressable
                 onPress={() => presentCustomerCenter()}
-                style={[styles.subscriptionCard, { backgroundColor: colorScheme === 'dark' ? '#0d1f12' : '#f0fdf4' }]}>
+                style={[styles.subscriptionCard, { backgroundColor: colorScheme === 'dark' ? '#1a1408' : '#fffbeb' }]}>
                 <View style={styles.subscriptionTop}>
                   <View style={styles.subscriptionBadge}>
-                    <Crown size={16} color="#22c55e" strokeWidth={2} />
-                    <ThemedText style={[styles.subscriptionLabel, { color: '#22c55e' }]}>
+                    <Crown size={16} color="#F59E0B" strokeWidth={2} />
+                    <ThemedText style={[styles.subscriptionLabel, { color: '#F59E0B' }]}>
                       Pro
                     </ThemedText>
                   </View>
-                  <ChevronRight size={18} color="#22c55e" strokeWidth={1.5} />
+                  <ChevronRight size={18} color="#F59E0B" strokeWidth={1.5} />
                 </View>
                 <ThemedText style={[styles.subscriptionDesc, { color: Colors[colorScheme].secondary }]}>
                   Full access - enjoy smarter mornings!
                 </ThemedText>
-                <ThemedText style={[styles.manageText, { color: '#22c55e' }]}>
+                <ThemedText style={[styles.manageText, { color: '#F59E0B' }]}>
                   Manage subscription →
                 </ThemedText>
               </Pressable>
@@ -344,39 +344,39 @@ export default function ProfileScreen() {
           // Not subscribed - show upgrade card
           return (
             <View
-              style={[styles.subscriptionCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
+              style={[styles.subscriptionCard, { backgroundColor: colorScheme === 'dark' ? '#1a1408' : '#fffbeb', borderColor: colorScheme === 'dark' ? '#92400e' : '#fde68a' }]}>
               <View style={styles.subscriptionTop}>
                 <ThemedText style={styles.subscriptionTitle}>
-                  Your feed is random right now
+                  Unlock the full Trace experience
                 </ThemedText>
               </View>
               
               <View style={styles.bulletList}>
                 <View style={styles.bulletItem}>
-                  <Circle size={6} color={Colors[colorScheme].muted} fill={Colors[colorScheme].muted} style={styles.bulletDot} />
+                  <Circle size={6} color="#F59E0B" fill="#F59E0B" style={styles.bulletDot} />
                   <ThemedText style={[styles.bulletText, { color: Colors[colorScheme].secondary }]}>
-                    Get content curated to your interests
+                    Unlimited For You articles & Deep Dives
                   </ThemedText>
                 </View>
                 <View style={styles.bulletItem}>
-                  <Circle size={6} color={Colors[colorScheme].muted} fill={Colors[colorScheme].muted} style={styles.bulletDot} />
+                  <Circle size={6} color="#F59E0B" fill="#F59E0B" style={styles.bulletDot} />
                   <ThemedText style={[styles.bulletText, { color: Colors[colorScheme].secondary }]}>
-                    AI summaries for every article
+                    Summaries tailored to your reading style
                   </ThemedText>
                 </View>
                 <View style={styles.bulletItem}>
-                  <Circle size={6} color={Colors[colorScheme].muted} fill={Colors[colorScheme].muted} style={styles.bulletDot} />
+                  <Circle size={6} color="#F59E0B" fill="#F59E0B" style={styles.bulletDot} />
                   <ThemedText style={[styles.bulletText, { color: Colors[colorScheme].secondary }]}>
-                    Save and organize your reads
+                    Start with a 4-day free trial
                   </ThemedText>
                 </View>
               </View>
 
               <Pressable
                 onPress={() => presentPaywall()}
-                style={[styles.upgradeButton, { backgroundColor: '#22c55e' }]}>
+                style={[styles.upgradeButton, { backgroundColor: '#F59E0B' }]}>
                 <ThemedText style={[styles.upgradeButtonText, { color: 'white' }]}>
-                  Upgrade to Pro
+                  Start Free Trial
                 </ThemedText>
                 <ArrowRight size={16} color="white" strokeWidth={2.5} />
               </Pressable>
@@ -443,7 +443,7 @@ export default function ProfileScreen() {
               <Switch
                 value={newsletterOptIn}
                 onValueChange={handleNewsletterToggle}
-                trackColor={{ false: Colors[colorScheme].border, true: '#22c55e' }}
+                trackColor={{ false: Colors[colorScheme].border, true: '#F59E0B' }}
                 thumbColor="#fff"
                 ios_backgroundColor={Colors[colorScheme].border}
               />

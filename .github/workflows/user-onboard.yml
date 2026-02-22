@@ -53,5 +53,5 @@ jobs:
       - name: Build v3 feed (mobile app)
         run: |
           echo "Building v3 feed for user: ${{ steps.uid.outputs.user_id }}"
-          python -u -m v3.scheduler --jobs all --user-id "${{ steps.uid.outputs.user_id }}"
+          python -u -m v3.scheduler --jobs all --user-id "${{ steps.uid.outputs.user_id }}" --audience all
 

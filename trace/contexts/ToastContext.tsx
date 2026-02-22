@@ -76,8 +76,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     if (kind === 'success') {
       return {
         bg: colorScheme === 'dark' ? '#0f2619' : '#ECFDF3',
-        border: colorScheme === 'dark' ? '#1f5b3a' : '#BBF7D0',
-        text: colorScheme === 'dark' ? '#bbf7d0' : '#166534',
+        border: colorScheme === 'dark' ? '#92400e' : '#fde68a',
+        text: colorScheme === 'dark' ? '#fde68a' : '#92400e',
       };
     }
     if (kind === 'error') {

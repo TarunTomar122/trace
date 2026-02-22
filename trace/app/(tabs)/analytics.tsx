@@ -22,8 +22,8 @@ export default function ActivityScreen() {
             <View style={[s.iconCircle, { backgroundColor: isDark ? '#1a1408' : '#fffbeb' }]}>
               <Flame size={28} color="#f97316" strokeWidth={2} />
             </View>
-            <View style={[s.iconCircle, { backgroundColor: isDark ? '#0d1a12' : '#f0fdf4' }]}>
-              <TrendingUp size={28} color="#22c55e" strokeWidth={2} />
+            <View style={[s.iconCircle, { backgroundColor: isDark ? '#1a1408' : '#fffbeb' }]}>
+              <TrendingUp size={28} color="#F59E0B" strokeWidth={2} />
             </View>
             <View style={[s.iconCircle, { backgroundColor: isDark ? '#14101f' : '#f5f3ff' }]}>
               <BarChart3 size={28} color="#8b5cf6" strokeWidth={2} />

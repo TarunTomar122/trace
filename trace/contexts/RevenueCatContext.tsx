@@ -213,14 +213,12 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
         const success = !!info.entitlements.active[ENTITLEMENT_ID];
 
         if (success) {
-          // Ensure Firestore reflects app subscription before backend hook runs.
           await syncAppSubStatus(info);
           const uid = userRef.current?.uid;
           if (uid) {
-            await triggerFeedGeneration(uid, { reason: 'purchase' });
+            await updateUserProfile(uid, { feedBuildStatus: 'building' } as any);
+            await triggerFeedGeneration(uid, { reason: 'purchase', force: true });
           }
-          
-          // Navigate to welcome screen
           routerRef.current?.replace('/welcome-pro');
         }
 
@@ -248,9 +246,10 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
       if (success) {
         const uid = userRef.current?.uid;
         if (uid) {
-          await triggerFeedGeneration(uid, { reason: 'restore' });
+          await updateUserProfile(uid, { feedBuildStatus: 'building' } as any);
+          await triggerFeedGeneration(uid, { reason: 'restore', force: true });
         }
-        showToast('Purchase restored!', 'success');
+        showToast('Purchase restored — your full feed is building!', 'success');
       } else {
         showToast('No active purchases found to restore.', 'info');
       }

@@ -356,16 +356,16 @@ export default function ArticleScreen() {
             <View style={[styles.actionsRow, { borderTopColor: Colors[colorScheme].border }]}>
               <Pressable
                 onPress={handleUpvote}
-                style={[styles.bottomAction, upvoted && { backgroundColor: colorScheme === 'dark' ? '#0d1f12' : '#dcfce7' }]}>
+                style={[styles.bottomAction, upvoted && { backgroundColor: colorScheme === 'dark' ? '#1a1408' : '#fef3c7' }]}>
                 <ThumbsUp
                   size={18}
-                  color={upvoted ? '#22c55e' : Colors[colorScheme].muted}
+                  color={upvoted ? '#F59E0B' : Colors[colorScheme].muted}
                   strokeWidth={upvoted ? 2.5 : 1.5}
                 />
                 <ThemedText
                   style={[
                     styles.bottomActionLabel,
-                    { color: upvoted ? '#22c55e' : Colors[colorScheme].muted },
+                    { color: upvoted ? '#F59E0B' : Colors[colorScheme].muted },
                   ]}>
                   Like
                 </ThemedText>
@@ -449,8 +449,8 @@ export default function ArticleScreen() {
             {/* Paywall CTA */}
             <View style={styles.paywallContainer}>
               <View style={[styles.paywallCard, { backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#f8f9fa' }]}>
-                <View style={[styles.paywallIconCircle, { backgroundColor: colorScheme === 'dark' ? '#0d1f12' : '#f0fdf4' }]}>
-                  <Lock size={22} color="#22c55e" strokeWidth={2} />
+                <View style={[styles.paywallIconCircle, { backgroundColor: colorScheme === 'dark' ? '#1a1408' : '#fffbeb' }]}>
+                  <Lock size={22} color="#F59E0B" strokeWidth={2} />
                 </View>
                 <ThemedText style={styles.paywallTitle}>
                   Read the key takeaways in 2 minutes
@@ -689,7 +689,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#22c55e',
+    backgroundColor: '#F59E0B',
     paddingHorizontal: 28,
     paddingVertical: 14,
     borderRadius: 999,

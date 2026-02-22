@@ -24,16 +24,22 @@ import { useToast } from '@/contexts/ToastContext';
 const TRIAL_DAYS = 4;
 const REMINDER_DAY = 3;
 
-const PRIMER_BENEFITS = [
-  'A daily feed built around what you actually care about',
-  'Every article distilled into 2-min notes & key takeaways',
-  'The more you read, the smarter your recommendations get',
+const FREE_FEATURES = [
+  'Full Trending feed across all topics',
+  'Preview of For You & Deep Dives',
+  'Bookmark articles to read later',
+];
+
+const PRO_FEATURES = [
+  'Unlimited For You articles matched to your interests',
+  'Full Deep Dives from experts you trust',
+  'Summaries tailored to your preferred reading style',
 ];
 
 const BENEFITS = [
-  'Every article distilled into 2-min notes & lessons',
-  'A daily feed built around what you actually care about',
-  'The more you read, the smarter your recommendations get',
+  'Unlimited For You articles matched to your interests',
+  'Full Deep Dives from the industry sources you trust',
+  'Personalized summaries in your preferred reading style',
 ];
 
 type PlanId = 'weekly' | 'monthly' | 'yearly';
@@ -89,7 +95,7 @@ function TimelineItem({
     <View style={tlStyles.row}>
       {/* Left: icon + line */}
       <View style={tlStyles.leftCol}>
-        <View style={[tlStyles.iconWrap, { backgroundColor: isDark ? '#052e16' : '#f0fdf4' }]}>
+        <View style={[tlStyles.iconWrap, { backgroundColor: isDark ? '#1a1408' : '#fffbeb' }]}>
           {icon}
         </View>
         {!isLast && (
@@ -98,7 +104,7 @@ function TimelineItem({
       </View>
       {/* Right: text */}
       <View style={tlStyles.textCol}>
-        <Text style={[tlStyles.label, { color: '#22c55e' }]}>{label}</Text>
+        <Text style={[tlStyles.label, { color: '#F59E0B' }]}>{label}</Text>
         <ThemedText style={tlStyles.title}>{title}</ThemedText>
         <ThemedText style={[tlStyles.desc, { color: Colors[colorScheme].muted }]}>{desc}</ThemedText>
       </View>
@@ -153,7 +159,7 @@ const tlStyles = StyleSheet.create({
   },
 });
 
-// ─── Step 1: Risk-Free Primer ───
+// ─── Step 1: Welcome + What you get ───
 function StepPrimer({
   colorScheme,
   onNext,
@@ -171,44 +177,68 @@ function StepPrimer({
       <View style={styles.hero}>
         <AppLogo style={styles.heroLogo} />
         <ThemedText style={styles.heroTitle}>
-          {'We want you to try\nTrace for free'}
+          {"You're all set!"}
         </ThemedText>
         <ThemedText style={[styles.heroSub, { color: Colors[colorScheme].muted }]}>
-          No charge today. Just {TRIAL_DAYS} days to see if Trace is right for you.
+          Your feed is being built right now. Here{"'"}s what you get:
         </ThemedText>
       </View>
 
+      <ThemedText style={[primerStyles.sectionLabel, { color: Colors[colorScheme].muted }]}>
+        INCLUDED FREE
+      </ThemedText>
       <View style={styles.benefitsList}>
-        {PRIMER_BENEFITS.map((benefit, i) => (
+        {FREE_FEATURES.map((f, i) => (
           <View key={i} style={styles.benefitRow}>
-            <View style={[styles.checkCircle, { backgroundColor: '#22c55e18' }]}>
-              <Check size={14} color="#22c55e" strokeWidth={3} />
+            <View style={[styles.checkCircle, { backgroundColor: isDark ? '#1a1408' : '#fffbeb' }]}>
+              <Check size={14} color="#F59E0B" strokeWidth={3} />
             </View>
             <ThemedText style={[styles.benefitText, { color: Colors[colorScheme].text }]}>
-              {benefit}
+              {f}
             </ThemedText>
           </View>
         ))}
       </View>
 
-      <Pressable onPress={onNext} style={styles.ctaButton}>
+      <ThemedText style={[primerStyles.sectionLabel, { color: '#F59E0B', marginTop: 20 }]}>
+        WITH PRO (FREE FOR {TRIAL_DAYS} DAYS)
+      </ThemedText>
+      <View style={styles.benefitsList}>
+        {PRO_FEATURES.map((f, i) => (
+          <View key={i} style={styles.benefitRow}>
+            <View style={[styles.checkCircle, { backgroundColor: '#F59E0B18' }]}>
+              <Zap size={14} color="#F59E0B" strokeWidth={2.5} />
+            </View>
+            <ThemedText style={[styles.benefitText, { color: Colors[colorScheme].text }]}>
+              {f}
+            </ThemedText>
+          </View>
+        ))}
+      </View>
+
+      <Pressable onPress={onNext} style={[styles.ctaButton, { marginTop: 28 }]}>
         <Gift size={18} color="#fff" strokeWidth={2} />
-        <Text style={styles.ctaText}>Start my free trial</Text>
+        <Text style={styles.ctaText}>Try Pro free for {TRIAL_DAYS} days</Text>
         <ArrowRight size={18} color="#fff" strokeWidth={2.5} />
       </Pressable>
 
       <Pressable onPress={onClose} style={styles.skipButton}>
         <ThemedText style={[styles.skipText, { color: Colors[colorScheme].muted }]}>
-          No thanks
+          Skip, I{"'"}ll use the free version
         </ThemedText>
       </Pressable>
-
-      <ThemedText style={[styles.legal, { color: Colors[colorScheme].muted }]}>
-        {TRIAL_DAYS}-day free trial. Cancel anytime before Day {TRIAL_DAYS + 1} to avoid being charged.
-      </ThemedText>
     </ScrollView>
   );
 }
+
+const primerStyles = StyleSheet.create({
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginBottom: 14,
+  },
+});
 
 // ─── Step 2: Transparency Promise ───
 function StepReminder({
@@ -226,46 +256,46 @@ function StepReminder({
       showsVerticalScrollIndicator={false}>
       <View style={[styles.hero, { marginBottom: 36 }]}>
         <ThemedText style={styles.heroTitle}>
-          {"We'll remind you\nbefore you're charged"}
+          {"No surprises,\nwe promise"}
         </ThemedText>
         <ThemedText style={[styles.heroSub, { color: Colors[colorScheme].muted }]}>
-          Here's exactly what happens during your free trial:
+          Here{"'"}s exactly how your free trial works:
         </ThemedText>
       </View>
 
       <View style={{ marginBottom: 36 }}>
         <TimelineItem
-          icon={<Gift size={18} color="#22c55e" strokeWidth={2} />}
+          icon={<Gift size={18} color="#F59E0B" strokeWidth={2} />}
           label="Today"
-          title="Free trial begins"
-          desc="Full access to everything. No charge."
+          title="Full Pro access starts"
+          desc="Unlimited articles, deep dives, personalized summaries."
           colorScheme={colorScheme}
         />
         <TimelineItem
-          icon={<Bell size={18} color="#22c55e" strokeWidth={2} />}
+          icon={<Bell size={18} color="#F59E0B" strokeWidth={2} />}
           label={`Day ${REMINDER_DAY}`}
-          title="We'll send you a reminder"
-          desc="A notification so you're never caught off guard."
+          title="We'll remind you"
+          desc="You'll get a heads-up before anything is charged."
           colorScheme={colorScheme}
         />
         <TimelineItem
-          icon={<Calendar size={18} color="#22c55e" strokeWidth={2} />}
+          icon={<Calendar size={18} color="#F59E0B" strokeWidth={2} />}
           label={`Day ${TRIAL_DAYS + 1}`}
-          title="Subscription starts"
-          desc="Only if you decide to keep going."
+          title="Your call"
+          desc="Keep Pro or cancel — no hard feelings either way."
           isLast
           colorScheme={colorScheme}
         />
       </View>
 
       <Pressable onPress={onNext} style={styles.ctaButton}>
-        <Text style={styles.ctaText}>Got it, show me plans</Text>
+        <Text style={styles.ctaText}>Sounds good, show me plans</Text>
         <ArrowRight size={18} color="#fff" strokeWidth={2.5} />
       </Pressable>
 
       <Pressable onPress={onClose} style={styles.skipButton}>
         <ThemedText style={[styles.skipText, { color: Colors[colorScheme].muted }]}>
-          No thanks
+          Skip, I{"'"}ll use the free version
         </ThemedText>
       </Pressable>
     </ScrollView>
@@ -319,8 +349,8 @@ function StepPaywall({
         <View style={styles.benefitsList}>
           {BENEFITS.map((benefit, i) => (
             <View key={i} style={styles.benefitRow}>
-              <View style={[styles.checkCircle, { backgroundColor: '#22c55e18' }]}>
-                <Check size={14} color="#22c55e" strokeWidth={3} />
+              <View style={[styles.checkCircle, { backgroundColor: '#F59E0B18' }]}>
+                <Check size={14} color="#F59E0B" strokeWidth={3} />
               </View>
               <ThemedText style={[styles.benefitText, { color: Colors[colorScheme].text }]}>
                 {benefit}
@@ -343,7 +373,7 @@ function StepPaywall({
                   styles.planCard,
                   {
                     backgroundColor: isDark ? '#151515' : '#fff',
-                    borderColor: isSelected ? '#22c55e' : Colors[colorScheme].border,
+                    borderColor: isSelected ? '#F59E0B' : Colors[colorScheme].border,
                     borderWidth: isSelected ? 2 : 1,
                   },
                 ]}>
@@ -351,7 +381,7 @@ function StepPaywall({
                   <View
                     style={[
                       styles.radio,
-                      { borderColor: isSelected ? '#22c55e' : Colors[colorScheme].border },
+                      { borderColor: isSelected ? '#F59E0B' : Colors[colorScheme].border },
                     ]}>
                     {isSelected && <View style={styles.radioInner} />}
                   </View>
@@ -525,7 +555,7 @@ export default function PaywallScreen() {
               style={[
                 styles.dot,
                 {
-                  backgroundColor: step >= s ? '#22c55e' : Colors[colorScheme].border,
+                  backgroundColor: step >= s ? '#F59E0B' : Colors[colorScheme].border,
                   width: step === s ? 20 : 8,
                 },
               ]}
@@ -678,7 +708,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#22c55e',
+    backgroundColor: '#F59E0B',
   },
   planLabelRow: {
     flexDirection: 'row',
@@ -690,7 +720,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   planBadge: {
-    backgroundColor: '#22c55e',
+    backgroundColor: '#F59E0B',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
@@ -728,7 +758,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#22c55e',
+    backgroundColor: '#F59E0B',
     paddingVertical: 16,
     borderRadius: 999,
     marginBottom: 12,

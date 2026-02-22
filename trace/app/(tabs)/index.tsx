@@ -6,6 +6,7 @@ import {
   RefreshControl,
   ScrollView,
   Text,
+  ActivityIndicator,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -56,7 +57,7 @@ const TAB_CONFIG: { key: FeedTab; label: string; Icon: typeof Flame }[] = [
 
 export default function FeedScreen() {
   const router = useRouter();
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
 
   const [activeTab, setActiveTab] = useState<FeedTab>('trending');
@@ -72,7 +73,7 @@ export default function FeedScreen() {
   const { isProUser: isSubscribed, loading: rcLoading } = useRevenueCat();
   const isOnboarded = profile?.onboarded ?? false;
 
-  const FREE_LIMITS = { trending: Infinity, for_you: 2, deep_dives: 1 };
+  const FREE_LIMITS = { trending: 5, for_you: 2, deep_dives: 1 };
 
   // ─── Feed items for current tab ───
   const currentItems: FeedItem[] = (() => {
@@ -104,7 +105,17 @@ export default function FeedScreen() {
     }
   }, [user, isOnboarded]);
 
-  const isFeedBuilding = profile?.feedBuildStatus === 'building';
+  const isFeedBuilding = (() => {
+    if (profile?.feedBuildStatus !== 'building') return false;
+    const requestedAt = profile?.feedBuildRequestedAt;
+    if (!requestedAt) return false;
+    const ts = typeof requestedAt === 'string' ? new Date(requestedAt).getTime()
+      : requestedAt?.toDate ? requestedAt.toDate().getTime()
+      : requestedAt?.seconds ? requestedAt.seconds * 1000
+      : 0;
+    if (!ts) return false;
+    return Date.now() - ts < 5 * 60 * 1000;
+  })();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Initial feed load
@@ -126,6 +137,7 @@ export default function FeedScreen() {
     if (!isFeedBuilding || !user) return;
 
     pollRef.current = setInterval(async () => {
+      await refreshProfile();
       const found = await loadFeed();
       if (found) {
         if (pollRef.current) clearInterval(pollRef.current);
@@ -135,7 +147,7 @@ export default function FeedScreen() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [isFeedBuilding, user, isSubscribed, loadFeed]);
+  }, [isFeedBuilding, user, isSubscribed, loadFeed, refreshProfile]);
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -257,6 +269,14 @@ export default function FeedScreen() {
           <FeedBuildingLoader colorScheme={colorScheme} />
         ) : currentItems.length > 0 ? (
           <>
+            {isFeedBuilding && (
+              <View style={[styles.upgradingBanner, { backgroundColor: '#F59E0B12' }]}>
+                <ActivityIndicator size="small" color="#F59E0B" />
+                <ThemedText style={[styles.upgradingText, { color: Colors[colorScheme].muted }]}>
+                  Your full feed is building — pull to refresh in a minute
+                </ThemedText>
+              </View>
+            )}
             <ThemedText style={[styles.sectionHeader, { color: Colors[colorScheme].muted }]}>
               {activeTab === 'trending'
                 ? `${currentItems.length} stories buzzing right now`
@@ -311,8 +331,8 @@ export default function FeedScreen() {
               <View style={[
                 ctaStyles.banner,
                 {
-                  backgroundColor: colorScheme === 'dark' ? '#0d1f12' : '#f0fdf4',
-                  borderColor: colorScheme === 'dark' ? '#166534' : '#bbf7d0',
+                  backgroundColor: colorScheme === 'dark' ? '#1a1408' : '#fffbeb',
+                  borderColor: colorScheme === 'dark' ? '#92400e' : '#fde68a',
                 },
               ]}>
                 <Text style={[ctaStyles.bannerTitle, { color: Colors[colorScheme].text }]}>
@@ -327,10 +347,10 @@ export default function FeedScreen() {
                 </Text>
                 <Pressable
                   onPress={() => router.push('/paywall')}
-                  style={[ctaStyles.ctaButton, { backgroundColor: colorScheme === 'dark' ? '#6ee7b7' : '#059669' }]}
+                  style={[ctaStyles.ctaButton, { backgroundColor: '#F59E0B' }]}
                 >
-                  <Zap size={16} color={colorScheme === 'dark' ? '#052e20' : '#ffffff'} />
-                  <Text style={[ctaStyles.ctaText, { color: colorScheme === 'dark' ? '#052e20' : '#ffffff' }]}>
+                  <Zap size={16} color="#fff" />
+                  <Text style={[ctaStyles.ctaText, { color: '#fff' }]}>
                     Start Free Trial
                   </Text>
                 </Pressable>
@@ -529,6 +549,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 12,
     marginBottom: 4,
+  },
+  upgradingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  upgradingText: {
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
   },
 
   // Feed

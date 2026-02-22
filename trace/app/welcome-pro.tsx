@@ -1,11 +1,13 @@
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Check, Sparkles, BookMarked, Mail, FileText } from 'lucide-react-native';
+import { Crown, Sparkles, Infinity as InfinityIcon, Wand2, Loader } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+
+const ACCENT = '#F59E0B';
 
 export default function WelcomeProScreen() {
   const router = useRouter();
@@ -13,24 +15,19 @@ export default function WelcomeProScreen() {
 
   const features = [
     {
-      icon: FileText,
-      title: 'Curated Content',
-      description: 'Articles and videos on your interested topics from around the internet',
+      icon: InfinityIcon,
+      title: 'Unlimited content',
+      description: 'Full access to For You articles and Deep Dives every day',
+    },
+    {
+      icon: Wand2,
+      title: 'Tailored summaries',
+      description: 'Summaries adapted to your role, seniority, and reading style',
     },
     {
       icon: Sparkles,
-      title: 'AI Summaries',
-      description: "Learning notes and summaries so you don't have to read everything",
-    },
-    {
-      icon: BookMarked,
-      title: 'Bookmarks',
-      description: 'Save articles for later and build your personal knowledge base',
-    },
-    {
-      icon: Mail,
-      title: 'Daily Newsletter',
-      description: 'Get the most trending articles delivered to your inbox every day',
+      title: 'Smarter every day',
+      description: 'Your feed keeps improving as you read and interact',
     },
   ];
 
@@ -45,18 +42,16 @@ export default function WelcomeProScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        {/* Header */}
         <View style={styles.header}>
-          <View style={[styles.iconCircle, { backgroundColor: '#22c55e' }]}>
-            <Check size={40} color="#fff" strokeWidth={3} />
+          <View style={[styles.iconCircle, { backgroundColor: ACCENT }]}>
+            <Crown size={40} color="#fff" strokeWidth={2.5} />
           </View>
-          <ThemedText style={styles.title}>Welcome to Pro!</ThemedText>
+          <ThemedText style={styles.title}>You're Pro now!</ThemedText>
           <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
-            You now have full access to all premium features
+            Your full personalized feed is being built right now. This usually takes about a minute.
           </ThemedText>
         </View>
 
-        {/* Features */}
         <View style={styles.featuresContainer}>
           {features.map((feature, index) => {
             const Icon = feature.icon;
@@ -65,9 +60,9 @@ export default function WelcomeProScreen() {
                 <View
                   style={[
                     styles.featureIcon,
-                    { backgroundColor: Colors[colorScheme].foreground + '0D' },
+                    { backgroundColor: ACCENT + '18' },
                   ]}>
-                  <Icon size={20} color={Colors[colorScheme].foreground} strokeWidth={2} />
+                  <Icon size={20} color={ACCENT} strokeWidth={2} />
                 </View>
                 <View style={styles.featureText}>
                   <ThemedText style={styles.featureTitle}>{feature.title}</ThemedText>
@@ -80,11 +75,17 @@ export default function WelcomeProScreen() {
           })}
         </View>
 
-        {/* CTA */}
+        <View style={[styles.buildingBanner, { backgroundColor: ACCENT + '12' }]}>
+          <ActivityIndicator size="small" color={ACCENT} />
+          <ThemedText style={[styles.buildingText, { color: Colors[colorScheme].muted }]}>
+            Building your upgraded feed...
+          </ThemedText>
+        </View>
+
         <Pressable
           onPress={handleContinue}
-          style={[styles.continueButton, { backgroundColor: '#22c55e' }]}>
-          <ThemedText style={styles.continueButtonText}>Start exploring</ThemedText>
+          style={[styles.continueButton, { backgroundColor: ACCENT }]}>
+          <ThemedText style={styles.continueButtonText}>Go to my feed</ThemedText>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -102,7 +103,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 40,
   },
   iconCircle: {
     width: 80,
@@ -122,11 +123,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     lineHeight: 22,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
   },
   featuresContainer: {
     gap: 24,
-    marginBottom: 48,
+    marginBottom: 32,
   },
   featureRow: {
     flexDirection: 'row',
@@ -152,6 +153,19 @@ const styles = StyleSheet.create({
   featureDescription: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  buildingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  buildingText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   continueButton: {
     paddingVertical: 16,
