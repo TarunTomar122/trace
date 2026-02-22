@@ -89,6 +89,8 @@ export interface FeedItem {
       subtitle?: string;
       outline?: string[];
       body?: string;
+      key_takeaways?: string[];
+      why_it_matters?: string;
     };
     reading_time_minutes?: number;
   };
@@ -898,6 +900,14 @@ function _yesterdayDateStr(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function _weekStartDateStr(): string {
+  const d = new Date();
+  const day = d.getDay(); // 0=Sunday, 1=Monday
+  const daysSinceMonday = (day + 6) % 7;
+  d.setDate(d.getDate() - daysSinceMonday);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export async function getReadingStreak(uid: string): Promise<ReadingStreak> {
   const defaults: ReadingStreak = {
     current_streak: 0,
@@ -1004,6 +1014,29 @@ export async function markFreeDailyReadUsed(uid: string): Promise<void> {
     const today = _todayDateStr();
     const ref = doc(firestore, 'user_free_reads', uid);
     await setDoc(ref, { last_free_read_date: today }, { merge: true });
+  } catch {
+    // best-effort
+  }
+}
+
+export async function getFreeWeeklyDeepDiveUsed(uid: string): Promise<boolean> {
+  try {
+    const weekStart = _weekStartDateStr();
+    const ref = doc(firestore, 'user_free_deep_dives', uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return false;
+    const data = snap.data() as any;
+    return data?.last_free_deep_dive_week_start === weekStart;
+  } catch {
+    return false;
+  }
+}
+
+export async function markFreeWeeklyDeepDiveUsed(uid: string): Promise<void> {
+  try {
+    const weekStart = _weekStartDateStr();
+    const ref = doc(firestore, 'user_free_deep_dives', uid);
+    await setDoc(ref, { last_free_deep_dive_week_start: weekStart }, { merge: true });
   } catch {
     // best-effort
   }

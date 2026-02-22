@@ -123,6 +123,115 @@ STYLE_PROMPTS = {
     "casual": WATER_COOLER,
 }
 
+# ---------------------------------------------------------------------------
+# Deep Dive overrides — richer, longer summaries with structured sections
+# ---------------------------------------------------------------------------
+
+DEEP_DIVE_EXECUTIVE = """You are a senior analyst creating a thorough briefing on an important industry piece for a {seniority_label} professional.
+
+This is a deep dive — give them real depth, not a surface skim.
+
+SOURCE:
+Title: {title}
+URL: {url}
+Content:
+{content}
+
+Return JSON with EXACT structure:
+{{
+  "short_article": {{
+    "subtitle": "One powerful sentence — the core thesis of this piece",
+    "outline": ["5-7 key section titles that map the article's structure"],
+    "body": "Thorough analysis in markdown — 6-8 paragraphs with ## section headers",
+    "key_takeaways": ["3-5 specific, actionable takeaways"],
+    "why_it_matters": "2-3 sentences on the bigger-picture significance"
+  }},
+  "reading_time_minutes": <estimated int, likely 8-20>
+}}
+
+RULES:
+- Lead with the thesis, not a summary sentence
+- Use ## headers to break into 3-4 logical sections
+- Include specific data, quotes, or frameworks from the original
+- Each section should teach something — not just describe
+- "key_takeaways" must be concrete and actionable, not vague platitudes
+- "why_it_matters" connects this to broader industry trends
+- Bold the most important insights
+- This should feel like reading a well-structured report, not a blurb
+"""
+
+DEEP_DIVE_PRACTITIONER = """You are a senior technical writer creating an in-depth breakdown for a {seniority_label} practitioner.
+
+This is a deep dive — go deep on the how, not just the what.
+
+SOURCE:
+Title: {title}
+URL: {url}
+Content:
+{content}
+
+Return JSON with EXACT structure:
+{{
+  "short_article": {{
+    "subtitle": "The core technique, framework, or insight",
+    "outline": ["5-7 key section titles covering the full scope"],
+    "body": "Detailed technical walkthrough in markdown — 6-8 paragraphs with ## section headers",
+    "key_takeaways": ["3-5 actionable takeaways with specific tools, methods, or patterns"],
+    "why_it_matters": "2-3 sentences on how this changes their workflow or thinking"
+  }},
+  "reading_time_minutes": <estimated int, likely 8-20>
+}}
+
+RULES:
+- Start with the problem being solved, then the approach
+- Use ## headers for logical sections (e.g., "The Problem", "The Approach", "Implementation", "Results")
+- Include specific tools, code patterns, methods, or design frameworks
+- Give concrete examples, not abstract advice
+- "key_takeaways" should be things they can apply this week
+- "why_it_matters" connects to their career and skill growth
+- Bold key terms, tools, and metric names
+- This should feel like a study guide, not a news summary
+"""
+
+DEEP_DIVE_CASUAL = """You are a smart, curious friend who just spent an hour reading something fascinating and is now telling a {seniority_label} professional all about it.
+
+This is a deep dive — go beyond the surface. Make them feel like they read the whole thing.
+
+SOURCE:
+Title: {title}
+URL: {url}
+Content:
+{content}
+
+Return JSON with EXACT structure:
+{{
+  "short_article": {{
+    "subtitle": "The hook — why this piece is worth 15 minutes of their life",
+    "outline": ["5-7 key sections that tell the story of the article"],
+    "body": "Engaging, in-depth walkthrough in markdown — 6-8 paragraphs with ## section headers",
+    "key_takeaways": ["3-5 things they'll remember and want to share"],
+    "why_it_matters": "2-3 sentences — the 'so what' in plain language"
+  }},
+  "reading_time_minutes": <estimated int, likely 8-20>
+}}
+
+RULES:
+- Open with the most mind-blowing or counterintuitive thing from the piece
+- Use ## headers as story beats — guide them through the narrative
+- Write conversationally but go deep — "here's where it gets interesting"
+- Include the best specific facts, stats, or quotes from the original
+- "key_takeaways" are the dinner-party talking points
+- "why_it_matters" makes them feel smart about the world
+- Short punchy paragraphs but MORE of them — this is a longer read
+- Bold the stats and facts that make people say "wait, really?"
+"""
+
+DEEP_DIVE_PROMPTS = {
+    "executive": DEEP_DIVE_EXECUTIVE,
+    "practitioner": DEEP_DIVE_PRACTITIONER,
+    "casual": DEEP_DIVE_CASUAL,
+}
+
 
 def _parse_summary_json(raw: str) -> dict[str, Any] | None:
     cleaned = (raw or "").strip()
@@ -153,9 +262,13 @@ def generate_summary(
     content: str,
     style: str,
     seniority: str,
+    feed_type: str = "default",
 ) -> tuple[dict[str, Any] | None, str]:
     """
     Generate a summary using the appropriate style prompt.
+
+    For feed_type="deep_dives", uses a richer prompt that produces longer
+    summaries with key_takeaways and why_it_matters fields.
 
     Returns (summary_dict, error_string). summary_dict is None on failure.
     """
@@ -165,7 +278,10 @@ def generate_summary(
     if not content:
         return None, "no_content"
 
-    template = STYLE_PROMPTS.get(style, PRACTITIONER_DEEP_DIVE)
+    if feed_type == "deep_dives":
+        template = DEEP_DIVE_PROMPTS.get(style, DEEP_DIVE_PRACTITIONER)
+    else:
+        template = STYLE_PROMPTS.get(style, PRACTITIONER_DEEP_DIVE)
     seniority_label = SENIORITY_LABELS.get(seniority, seniority)
     prompt = template.format(
         seniority_label=seniority_label,
@@ -210,19 +326,24 @@ def get_or_generate_summary(
     content: str,
     style: str,
     seniority: str,
+    feed_type: str = "default",
 ) -> tuple[dict[str, Any] | None, bool]:
     """
     Check cache first, generate if missing.
+    feed_type="deep_dives" uses a richer prompt and a separate cache bucket.
 
     Returns (summary_dict, was_cached).
     """
-    cached = store.get_cached_summary(url, style, seniority)
+    cache_style = f"{style}__deep" if feed_type == "deep_dives" else style
+    cached = store.get_cached_summary(url, cache_style, seniority)
     if cached:
         return cached.get("summary"), True
 
-    summary, error = generate_summary(title, url, content, style, seniority)
+    summary, error = generate_summary(
+        title, url, content, style, seniority, feed_type=feed_type,
+    )
     if summary:
-        store.save_cached_summary(url, style, seniority, summary, MODEL)
+        store.save_cached_summary(url, cache_style, seniority, summary, MODEL)
         return summary, False
 
     return None, False

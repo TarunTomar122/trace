@@ -1,19 +1,19 @@
 {
   "description": "Sources for the 'For You' feed. Mapped to ONBOARDING_INTERESTS ids. Articles matched to user interests with personalized summaries.",
   "max_age_days": 14,
-  "items_per_user": 6,
+  "items_per_user": 8,
   "sources": [
     {
       "interest_id": "technology",
       "subinterest_id": "ai",
-      "name": "VentureBeat RSS",
+      "name": "VentureBeat",
       "url": "https://venturebeat.com/feed",
       "type": "rss"
     },
     {
       "interest_id": "technology",
       "subinterest_id": "software-tech",
-      "name": "The Verge RSS",
+      "name": "The Verge",
       "url": "https://www.theverge.com/rss/index.xml",
       "type": "atom"
     },
@@ -25,30 +25,65 @@
       "type": "rss"
     },
     {
-      "interest_id": "startups",
-      "subinterest_id": "startups",
-      "name": "TechCrunch RSS",
+      "interest_id": "technology",
+      "subinterest_id": "startups-tech",
+      "name": "TechCrunch",
       "url": "https://techcrunch.com/feed/",
       "type": "rss"
     },
     {
+      "interest_id": "technology",
+      "subinterest_id": "deep-tech",
+      "name": "Ars Technica",
+      "url": "https://feeds.arstechnica.com/arstechnica/index",
+      "type": "rss"
+    },
+    {
+      "interest_id": "technology",
+      "subinterest_id": "wired-tech",
+      "name": "Wired",
+      "url": "https://www.wired.com/feed/rss",
+      "type": "rss"
+    },
+    {
+      "interest_id": "technology",
+      "subinterest_id": "hacker-news",
+      "name": "Hacker News Best",
+      "url": "https://hnrss.org/best",
+      "type": "rss"
+    },
+    {
+      "interest_id": "startups",
+      "subinterest_id": "startups",
+      "name": "TechCrunch Startups",
+      "url": "https://techcrunch.com/category/startups/feed/",
+      "type": "rss"
+    },
+    {
+      "interest_id": "startups",
+      "subinterest_id": "product-launches",
+      "name": "Product Hunt",
+      "url": "https://www.producthunt.com/feed",
+      "type": "atom"
+    },
+    {
       "interest_id": "business-market",
       "subinterest_id": "market-trends",
-      "name": "Fast Company Latest",
+      "name": "Fast Company",
       "url": "https://www.fastcompany.com/latest/rss",
       "type": "rss"
     },
     {
       "interest_id": "business-market",
       "subinterest_id": "economy-impact",
-      "name": "Yahoo Finance News",
+      "name": "Yahoo Finance",
       "url": "https://finance.yahoo.com/news/rssindex",
       "type": "rss"
     },
     {
       "interest_id": "business-market",
       "subinterest_id": "market-trends",
-      "name": "CNBC Markets RSS",
+      "name": "CNBC Markets",
       "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
       "type": "rss"
     },
@@ -56,29 +91,64 @@
       "interest_id": "experience",
       "subinterest_id": "ux-design",
       "name": "Smashing Magazine",
-      "url": "https://www.smashingmagazine.com/",
-      "type": "html"
-    },
-    {
-      "interest_id": "experience",
-      "subinterest_id": "user-psychology",
-      "name": "Psychology Today",
-      "url": "https://www.psychologytoday.com/front/feed",
+      "url": "https://www.smashingmagazine.com/feed/",
       "type": "rss"
     },
     {
       "interest_id": "experience",
-      "subinterest_id": "design-tools",
+      "subinterest_id": "design-news",
       "name": "Creative Bloq",
       "url": "https://www.creativebloq.com/feeds/all",
       "type": "rss"
     },
     {
       "interest_id": "experience",
-      "subinterest_id": "brand-storytelling",
+      "subinterest_id": "design-systems",
+      "name": "A List Apart",
+      "url": "https://alistapart.com/main/feed/",
+      "type": "rss"
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "css-frontend",
+      "name": "CSS-Tricks",
+      "url": "https://css-tricks.com/feed/",
+      "type": "rss"
+    },
+    {
+      "interest_id": "engineering",
+      "subinterest_id": "software",
+      "name": "Ars Technica",
+      "url": "https://feeds.arstechnica.com/arstechnica/index",
+      "type": "rss"
+    },
+    {
+      "interest_id": "engineering",
+      "subinterest_id": "dev-community",
+      "name": "Hacker News Best",
+      "url": "https://hnrss.org/best",
+      "type": "rss"
+    },
+    {
+      "interest_id": "leadership",
+      "subinterest_id": "management",
+      "name": "Fast Company Work Life",
+      "url": "https://www.fastcompany.com/work-life/rss",
+      "type": "rss"
+    },
+    {
+      "interest_id": "leadership",
+      "subinterest_id": "leadership-hbr",
+      "name": "HBR Leadership",
+      "url": "https://hbr.org/topic/leadership/feed",
+      "type": "rss"
+    },
+    {
+      "interest_id": "marketing",
+      "subinterest_id": "growth",
       "name": "Content Marketing Institute",
       "url": "https://contentmarketinginstitute.com/feed/",
-      "type": "html"
+      "type": "rss"
     },
     {
       "interest_id": "productivity",
@@ -95,45 +165,24 @@
       "type": "rss"
     },
     {
-      "interest_id": "productivity",
+      "interest_id": "fintech",
       "subinterest_id": "personal-finance",
       "name": "NerdWallet",
       "url": "https://www.nerdwallet.com/blog/feed/",
       "type": "rss"
     },
     {
-      "interest_id": "productivity",
-      "subinterest_id": "investments",
+      "interest_id": "fintech",
+      "subinterest_id": "markets",
       "name": "Motley Fool",
       "url": "https://www.fool.com/feeds/index.aspx",
       "type": "rss"
     },
     {
-      "interest_id": "productivity",
+      "interest_id": "health",
       "subinterest_id": "wellbeing",
       "name": "Well+Good",
       "url": "https://www.wellandgood.com/feed/",
-      "type": "html"
-    },
-    {
-      "interest_id": "marketing",
-      "subinterest_id": "growth",
-      "name": "Content Marketing Institute",
-      "url": "https://contentmarketinginstitute.com/feed/",
-      "type": "html"
-    },
-    {
-      "interest_id": "engineering",
-      "subinterest_id": "software",
-      "name": "The Verge RSS",
-      "url": "https://www.theverge.com/rss/index.xml",
-      "type": "atom"
-    },
-    {
-      "interest_id": "leadership",
-      "subinterest_id": "management",
-      "name": "Fast Company Work Life",
-      "url": "https://www.fastcompany.com/work-life/rss",
       "type": "rss"
     }
   ]

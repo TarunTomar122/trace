@@ -18,10 +18,9 @@ import {
   Heart,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import type { SvgProps } from 'react-native-svg';
 
-import BrainIllus from '@/assets/images/brain-brainstorm-brainstorming-svgrepo-com.svg';
-import NewspaperIllus from '@/assets/images/newspaper-svgrepo-com.svg';
+import SunriseIllus from '@/components/illustrations/SunriseIllus';
+import DigestIllus from '@/components/illustrations/DigestIllus';
 
 import { ThemedText } from '@/components/themed-text';
 import { AppLogo } from '@/components/app-logo';
@@ -38,21 +37,23 @@ export const ILLUS_PALETTE = {
   gold:     { light: '#F5F3EE', dark: '#F5F3EE' },
 };
 
+type IllusProps = { width?: number; height?: number; color?: string; fill?: string };
+
 // - Intro pages (feature-focused) -
 const INTRO_PAGES: {
-  Illustration: React.FC<SvgProps>;
+  Illustration: React.FC<IllusProps>;
   title: string;
   body: string;
   tint: { light: string; dark: string };
 }[] = [
   {
-    Illustration: BrainIllus,
+    Illustration: SunriseIllus,
     title: 'Wake up smarter\nevery morning',
     body: 'Get a personalized feed of articles, videos, and news based on your selected interests.',
     tint: ILLUS_PALETTE.coral,
   },
   {
-    Illustration: NewspaperIllus,
+    Illustration: DigestIllus,
     title: '10 minutes that\nactually count',
     body: 'Open any item to get AI notes, key takeaways, and a quick read time in one tap.',
     tint: ILLUS_PALETTE.olive,

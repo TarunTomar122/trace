@@ -12,4 +12,7 @@ anybrew-7c6c1-firebase-adminsdk-fbsvc-fe164fd73a.json
 !v2/config/*.json
 !v3/config/*.json
 !wonder/data/*.json
+!wonder/data/articles/*.json
+!wonder/data/videos/*.json
+!wonder/data/interests/*.json
 *-firebase-adminsdk-*.json

@@ -1,8 +1,38 @@
 {
-  "description": "Sources for the 'Trending' feed. Latest news across all topics. 48h freshness window, refreshes daily or twice daily.",
+  "description": "Sources for the 'Trending' feed. An unfiltered explore-style feed showing the latest news across ALL topics. 48h freshness window.",
   "max_age_hours": 48,
-  "items_per_user": 5,
+  "items_per_user": 8,
   "sources": [
+    {
+      "interest_id": "technology",
+      "name": "Hacker News Front Page",
+      "url": "https://hnrss.org/frontpage",
+      "type": "rss"
+    },
+    {
+      "interest_id": "technology",
+      "name": "The Verge",
+      "url": "https://www.theverge.com/rss/index.xml",
+      "type": "atom"
+    },
+    {
+      "interest_id": "technology",
+      "name": "Ars Technica",
+      "url": "https://feeds.arstechnica.com/arstechnica/index",
+      "type": "rss"
+    },
+    {
+      "interest_id": "technology",
+      "name": "Wired",
+      "url": "https://www.wired.com/feed/rss",
+      "type": "rss"
+    },
+    {
+      "interest_id": "technology",
+      "name": "TechCrunch",
+      "url": "https://techcrunch.com/feed/",
+      "type": "rss"
+    },
     {
       "interest_id": "technology",
       "name": "AI News Feed",
@@ -29,15 +59,15 @@
       "title_keywords": ["invest", "stock", "market", "fund", "nasdaq", "dow", "s&p", "economy"]
     },
     {
-      "interest_id": "experience",
-      "name": "A List Apart",
-      "url": "https://alistapart.com/main/feed/",
+      "interest_id": "business-market",
+      "name": "CNBC Top News",
+      "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
       "type": "rss"
     },
     {
-      "interest_id": "experience",
-      "name": "CSS-Tricks",
-      "url": "https://css-tricks.com/feed/",
+      "interest_id": "business-market",
+      "name": "Fast Company",
+      "url": "https://www.fastcompany.com/latest/rss",
       "type": "rss"
     },
     {
@@ -47,9 +77,27 @@
       "type": "rss"
     },
     {
-      "interest_id": "business-market",
-      "name": "Feld Thoughts",
-      "url": "https://feld.com/feed/",
+      "interest_id": "experience",
+      "name": "Smashing Magazine",
+      "url": "https://www.smashingmagazine.com/feed/",
+      "type": "rss"
+    },
+    {
+      "interest_id": "experience",
+      "name": "A List Apart",
+      "url": "https://alistapart.com/main/feed/",
+      "type": "rss"
+    },
+    {
+      "interest_id": "science",
+      "name": "MIT Technology Review",
+      "url": "https://www.technologyreview.com/feed",
+      "type": "rss"
+    },
+    {
+      "interest_id": "productivity",
+      "name": "Lifehacker",
+      "url": "https://lifehacker.com/index.xml",
       "type": "rss"
     }
   ]

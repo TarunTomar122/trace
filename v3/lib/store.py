@@ -5,7 +5,8 @@ Collections:
   v3_for_you_pool       — raw articles for "For You" feed
   v3_deep_dive_pool     — raw articles for "Deep Dives" feed
   v3_trending_pool      — raw articles for "Trending" feed
-  v3_summary_cache      — cached summaries keyed by (url_hash, style, seniority)
+  v3_summary_cache      — cached summaries keyed by
+                          (url_hash, style, seniority)
   v3_user_feeds         — assembled per-user feeds with 3 sections
   v3_seen_urls          — per-user seen URLs with 30-day pruning
   v3_pipeline_runs      — run timestamps for cadence tracking
@@ -23,7 +24,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from v1.storage import FirestoreStore  # noqa: E402
+from v1.storage import FirestoreStore, is_user_subscribed  # noqa: E402
 
 FOR_YOU_POOL = "v3_for_you_pool"
 DEEP_DIVE_POOL = "v3_deep_dive_pool"
@@ -59,8 +60,26 @@ class V3Store:
     # Users
     # ------------------------------------------------------------------
 
-    def get_onboarded_users(self) -> list[dict[str, Any]]:
-        return self._base.get_onboarded_users()
+    def get_onboarded_users(
+        self, audience: str = "subscribed"
+    ) -> list[dict[str, Any]]:
+        """
+        Get onboarded users by audience segment.
+
+        audience:
+          - subscribed: trial/active users only (default; backward compatible)
+          - unsubscribed: onboarded users without active/trial subscription
+          - all: all onboarded users
+        """
+        profiles = self._base.get_all_user_profiles()
+        onboarded = [p for p in profiles if p.get("onboarded") is True]
+
+        if audience == "all":
+            return onboarded
+        if audience == "unsubscribed":
+            return [p for p in onboarded if not is_user_subscribed(p)]
+        # default: subscribed
+        return [p for p in onboarded if is_user_subscribed(p)]
 
     def get_user_profile(self, uid: str) -> dict[str, Any] | None:
         return self._base.get_user_profile(uid)
@@ -141,7 +160,9 @@ class V3Store:
             items.append(data)
 
         items.sort(
-            key=lambda x: x.get("published_date", "") or x.get("fetched_at", ""),
+            key=lambda x: (
+                x.get("published_date", "") or x.get("fetched_at", "")
+            ),
             reverse=True,
         )
         return items
@@ -295,7 +316,9 @@ class V3Store:
     # Pipeline run tracking
     # ------------------------------------------------------------------
 
-    def record_run(self, job_name: str, extra: dict[str, Any] | None = None) -> None:
+    def record_run(
+        self, job_name: str, extra: dict[str, Any] | None = None
+    ) -> None:
         data = {"last_run_at": _now_iso(), "status": "success"}
         if extra:
             data.update(extra)
@@ -315,6 +338,9 @@ class V3Store:
             return True
         try:
             dt = datetime.fromisoformat(last.replace("Z", "+00:00"))
-            return datetime.now(timezone.utc) - dt > timedelta(days=cadence_days)
+            return (
+                datetime.now(timezone.utc) - dt
+                > timedelta(days=cadence_days)
+            )
         except (ValueError, TypeError):
             return True

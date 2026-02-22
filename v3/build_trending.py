@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Build "Trending" feed — latest news across user's subscribed topics.
+Build "Trending" feed — unfiltered explore-style latest news across ALL topics.
 
 Phase 1 (pool): Fetch from trending_sources.json → v3_trending_pool
-Phase 2 (feed): Per-user selection by interests → summarise → write
+Phase 2 (feed): Per-user selection (no interest filter) → dedup → summarise → write
 
 Trending has a shorter freshness window (48h) and refreshes more often.
 
@@ -36,6 +36,7 @@ from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
 from v3.lib.store import V3Store, TRENDING_POOL, _today_ist  # noqa: E402
 from v3.lib.content import fetch_content, fetch_og_image  # noqa: E402
 from v3.lib.summarizer import get_or_generate_summary  # noqa: E402
+from v3.lib.diversity import dedupe_and_cap  # noqa: E402
 
 CONFIG_PATH = "v3/config/trending_sources.json"
 DEFAULT_ITEMS = 5
@@ -58,6 +59,12 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--limit-per-source", type=int, default=DEFAULT_LIMIT_PER_SOURCE)
     p.add_argument("--max-age-hours", type=int, default=DEFAULT_MAX_AGE_HOURS)
     p.add_argument("--date", default="")
+    p.add_argument(
+        "--audience",
+        choices=["subscribed", "unsubscribed", "all"],
+        default="subscribed",
+        help="Which users to build for",
+    )
     return p.parse_args()
 
 
@@ -188,7 +195,7 @@ def build_user_feeds(
     max_age_hours = args.max_age_hours
     max_age_days = max(1, max_age_hours // 24 + 1)
 
-    users = store.get_onboarded_users()
+    users = store.get_onboarded_users(args.audience)
     if args.user_id:
         users = [u for u in users if u.get("uid") == args.user_id]
     if args.limit_users > 0:
@@ -202,37 +209,28 @@ def build_user_feeds(
         if not uid:
             continue
 
-        interests = set(profile.get("interests", []))
         style = profile.get("summaryStyle", "practitioner") or "practitioner"
         seniority = profile.get("seniority", "mid") or "mid"
 
         seen_urls = store.get_seen_urls(uid)
-        _log(f"  user={uid} interests={sorted(interests)} seen={len(seen_urls)}")
+        _log(f"  user={uid} seen={len(seen_urls)}")
 
-        # Trending shows content across ALL user interests
+        # Trending is unfiltered — shows the best content across ALL topics
         candidates = store.load_pool(
             TRENDING_POOL,
-            interest_ids=interests if interests else None,
             max_age_days=max_age_days,
             exclude_urls=seen_urls,
         )
         _log(f"  user={uid} candidates={len(candidates)}")
 
         if not candidates:
-            # Fallback: show all trending regardless of interest matching
-            candidates = store.load_pool(
-                TRENDING_POOL,
-                max_age_days=max_age_days,
-                exclude_urls=seen_urls,
-            )
-            _log(f"  user={uid} fallback candidates={len(candidates)}")
-
-        if not candidates:
             store.write_feed_section(uid, target_date, "trending", [])
             stats["users"] += 1
             continue
 
-        # Diversify across interest_ids
+        # Dedup + source cap, then round-robin across interest_ids for variety
+        candidates = dedupe_and_cap(candidates)
+
         by_interest: dict[str, list[dict[str, Any]]] = {}
         for item in candidates:
             iid = item.get("interest_id", "other")
@@ -291,7 +289,10 @@ def main() -> None:
     args = _parse_args()
     _log("=" * 50)
     _log("TRENDING — Starting")
-    _log(f"  user-id={args.user_id or 'ALL'} skip-pool={args.skip_pool} pool-only={args.pool_only}")
+    _log(
+        f"  user-id={args.user_id or 'ALL'} audience={args.audience} "
+        f"skip-pool={args.skip_pool} pool-only={args.pool_only}"
+    )
     _log("=" * 50)
 
     store = V3Store()

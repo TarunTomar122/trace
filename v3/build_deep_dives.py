@@ -33,10 +33,12 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 load_dotenv(REPO_ROOT / ".env")
 
+from v1.storage import is_user_subscribed  # noqa: E402
 from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
 from v3.lib.store import V3Store, DEEP_DIVE_POOL, _today_ist  # noqa: E402
 from v3.lib.content import fetch_content, fetch_og_image  # noqa: E402
 from v3.lib.summarizer import get_or_generate_summary  # noqa: E402
+from v3.lib.diversity import dedupe_and_cap  # noqa: E402
 
 CONFIG_PATH = "v3/config/deep_dive_sources.json"
 DEFAULT_ITEMS = 4
@@ -59,6 +61,12 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--limit-per-source", type=int, default=DEFAULT_LIMIT_PER_SOURCE)
     p.add_argument("--max-age-days", type=int, default=DEFAULT_MAX_AGE)
     p.add_argument("--date", default="")
+    p.add_argument(
+        "--audience",
+        choices=["subscribed", "unsubscribed", "all"],
+        default="subscribed",
+        help="Which users to build for",
+    )
     return p.parse_args()
 
 
@@ -174,7 +182,7 @@ def build_user_feeds(
     items_per_user = args.items_per_user or config.get("items_per_user", DEFAULT_ITEMS)
     max_age = args.max_age_days
 
-    users = store.get_onboarded_users()
+    users = store.get_onboarded_users(args.audience)
     if args.user_id:
         users = [u for u in users if u.get("uid") == args.user_id]
     if args.limit_users > 0:
@@ -191,6 +199,8 @@ def build_user_feeds(
         selected_sources = set(profile.get("selectedLearningSources", []) or [])
         style = profile.get("summaryStyle", "practitioner") or "practitioner"
         seniority = profile.get("seniority", "mid") or "mid"
+        is_subscribed = is_user_subscribed(profile)
+        user_items_target = items_per_user if is_subscribed else 1
 
         if not selected_sources:
             _log(f"  user={uid} no selected sources, skipping")
@@ -215,7 +225,8 @@ def build_user_feeds(
             stats["users"] += 1
             continue
 
-        # Round-robin across sources for variety
+        candidates = dedupe_and_cap(candidates, max_per_source=3)
+
         by_source: dict[str, list[dict[str, Any]]] = {}
         for item in candidates:
             sn = item.get("source_name", "")
@@ -223,10 +234,10 @@ def build_user_feeds(
 
         picked: list[dict[str, Any]] = []
         source_keys = sorted(by_source.keys())
-        while len(picked) < items_per_user and source_keys:
+        while len(picked) < user_items_target and source_keys:
             exhausted = []
             for key in source_keys:
-                if len(picked) >= items_per_user:
+                if len(picked) >= user_items_target:
                     break
                 bucket = by_source[key]
                 if bucket:
@@ -246,6 +257,7 @@ def build_user_feeds(
                 content=item.get("content", ""),
                 style=style,
                 seniority=seniority,
+                feed_type="deep_dives",
             )
             cache_tag = "cached" if was_cached else ("new" if summary else "failed")
             _log(f"    [{i}/{len(picked)}] summary={cache_tag}")
@@ -274,7 +286,10 @@ def main() -> None:
     args = _parse_args()
     _log("=" * 50)
     _log("DEEP DIVES — Starting")
-    _log(f"  user-id={args.user_id or 'ALL'} skip-pool={args.skip_pool} pool-only={args.pool_only}")
+    _log(
+        f"  user-id={args.user_id or 'ALL'} audience={args.audience} "
+        f"skip-pool={args.skip_pool} pool-only={args.pool_only}"
+    )
     _log("=" * 50)
 
     store = V3Store()

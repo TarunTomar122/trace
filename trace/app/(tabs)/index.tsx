@@ -20,22 +20,19 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Flame, Zap, Sparkles, BookOpen, Cpu, User } from 'lucide-react-native';
+import { Flame, Zap, Sparkles, BookOpen, Cpu, User, Crosshair, GraduationCap } from 'lucide-react-native';
 
-import NewspaperIllus from '@/assets/images/newspaper-svgrepo-com.svg';
+import DigestIllus from '@/components/illustrations/DigestIllus';
 
 import { ThemedText } from '@/components/themed-text';
-import { FeedCard } from '@/components/FeedCard';
+import { TrendingCard, ForYouCard, DeepDiveCard } from '@/components/FeedCard';
 import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   FeedItem,
   V3UserFeed,
-  ReadingStreak,
   getV3UserFeed,
-  getTrendingFeed,
-  recordReadingDay,
 } from '@/lib/firestore';
 import { logReadingEvent } from '@/lib/reading-analytics';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
@@ -51,10 +48,10 @@ function getGreeting(): string {
 
 type FeedTab = 'trending' | 'for_you' | 'deep_dives';
 
-const TAB_CONFIG: { key: FeedTab; label: string }[] = [
-  { key: 'trending', label: 'Trending' },
-  { key: 'for_you', label: 'For You' },
-  { key: 'deep_dives', label: 'Deep Dives' },
+const TAB_CONFIG: { key: FeedTab; label: string; Icon: typeof Flame }[] = [
+  { key: 'trending', label: 'Trending', Icon: Flame },
+  { key: 'for_you', label: 'For You', Icon: Crosshair },
+  { key: 'deep_dives', label: 'Deep Dives', Icon: GraduationCap },
 ];
 
 export default function FeedScreen() {
@@ -62,15 +59,10 @@ export default function FeedScreen() {
   const { user, profile } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
 
-  const [activeTab, setActiveTab] = useState<FeedTab>('for_you');
+  const [activeTab, setActiveTab] = useState<FeedTab>('trending');
   const [v3Feed, setV3Feed] = useState<V3UserFeed | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [streak, setStreak] = useState<ReadingStreak | null>(null);
-
-  // Unsubscribed users see trending from old collection
-  const [trendingFeed, setTrendingFeed] = useState<FeedItem[]>([]);
-  const [isTrendingLoading, setIsTrendingLoading] = useState(false);
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -80,24 +72,25 @@ export default function FeedScreen() {
   const { isProUser: isSubscribed, loading: rcLoading } = useRevenueCat();
   const isOnboarded = profile?.onboarded ?? false;
 
-  useEffect(() => {
-    if (!user || !isOnboarded) return;
-    recordReadingDay(user.uid).then(setStreak);
-  }, [user, isOnboarded]);
+  const FREE_LIMITS = { trending: Infinity, for_you: 2, deep_dives: 1 };
 
   // ─── Feed items for current tab ───
   const currentItems: FeedItem[] = (() => {
-    if (!isSubscribed) return trendingFeed;
     if (!v3Feed) return [];
-    if (activeTab === 'trending') return v3Feed.trending;
-    if (activeTab === 'for_you') return v3Feed.for_you;
-    if (activeTab === 'deep_dives') return v3Feed.deep_dives;
-    return [];
+    const all =
+      activeTab === 'trending' ? v3Feed.trending :
+      activeTab === 'for_you' ? v3Feed.for_you :
+      activeTab === 'deep_dives' ? v3Feed.deep_dives : [];
+    if (isSubscribed) return all;
+    const limit = FREE_LIMITS[activeTab] ?? 2;
+    return all.slice(0, limit);
   })();
 
-  // ─── Load v3 feed (no fallback) ───
+  const isTabLimited = !isSubscribed && activeTab !== 'trending' && v3Feed != null;
+
+  // ─── Load v3 feed for ALL users (free + pro) ───
   const loadFeed = useCallback(async (): Promise<boolean> => {
-    if (!user || !isOnboarded || !isSubscribed) return false;
+    if (!user || !isOnboarded) return false;
     try {
       const v3 = await getV3UserFeed(user.uid);
       if (v3) {
@@ -109,26 +102,14 @@ export default function FeedScreen() {
       console.error('Error loading feed:', error);
       return false;
     }
-  }, [user, isOnboarded, isSubscribed]);
-
-  // Load trending for unsubscribed users
-  useEffect(() => {
-    if (rcLoading) return;
-    if (!isSubscribed && isOnboarded) {
-      setIsTrendingLoading(true);
-      getTrendingFeed(8).then((items) => {
-        setTrendingFeed(items);
-        setIsTrendingLoading(false);
-      });
-    }
-  }, [isSubscribed, isOnboarded, rcLoading]);
+  }, [user, isOnboarded]);
 
   const isFeedBuilding = profile?.feedBuildStatus === 'building';
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Initial feed load
   useEffect(() => {
-    if (!isOnboarded || !isSubscribed) {
+    if (!isOnboarded) {
       setIsLoading(false);
       return;
     }
@@ -138,11 +119,11 @@ export default function FeedScreen() {
       setIsLoading(false);
     };
     init();
-  }, [loadFeed, isOnboarded, isSubscribed]);
+  }, [loadFeed, isOnboarded]);
 
   // Poll for feed when build is in progress
   useEffect(() => {
-    if (!isFeedBuilding || !user || !isSubscribed) return;
+    if (!isFeedBuilding || !user) return;
 
     pollRef.current = setInterval(async () => {
       const found = await loadFeed();
@@ -172,7 +153,7 @@ export default function FeedScreen() {
       itemType: item.type || item.source,
       feedCategory: item.metadata?.feed_category || item.feed_type,
     });
-    if (user) recordReadingDay(user.uid).then(setStreak);
+
 
     const fallbackBody =
       item.summary?.short_article?.body ||
@@ -192,6 +173,8 @@ export default function FeedScreen() {
         why_relevant: item.metadata?.why_relevant || '',
         is_hot: item.metadata?.is_hot ? 'true' : 'false',
         feed_category: item.metadata?.feed_category || item.feed_type || '',
+        key_takeaways: JSON.stringify(item.summary?.short_article?.key_takeaways || []),
+        why_it_matters: item.summary?.short_article?.why_it_matters || '',
       },
     });
   };
@@ -227,14 +210,6 @@ export default function FeedScreen() {
             </ThemedText>
           </View>
           <View style={styles.headerActions}>
-            {streak && streak.current_streak > 0 && (
-              <Pressable
-                onPress={() => router.push('/(tabs)/analytics')}
-                style={[styles.streakBadge, { backgroundColor: colorScheme === 'dark' ? '#2d1f08' : '#fffbeb' }]}>
-                <Flame size={14} color="#f97316" strokeWidth={2.5} />
-                <Text style={styles.streakText}>{streak.current_streak}</Text>
-              </Pressable>
-            )}
             <Pressable
               onPress={() => router.push('/(tabs)/explore')}
               style={[styles.profileBtn, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
@@ -243,59 +218,96 @@ export default function FeedScreen() {
           </View>
         </View>
 
-        {/* ─── Tab bar ─── */}
-        {isSubscribed && (
-          <View style={styles.tabBar}>
-            {TAB_CONFIG.map((tab) => {
-              const isActive = activeTab === tab.key;
-              return (
-                <Pressable
-                  key={tab.key}
-                  onPress={() => setActiveTab(tab.key)}
-                  style={[
-                    styles.tab,
-                    isActive && {
-                      borderBottomColor: Colors[colorScheme].foreground,
-                      borderBottomWidth: 2,
-                    },
-                  ]}>
+        {/* ─── Tab bar (all users) ─── */}
+        <View style={styles.tabBar}>
+          {TAB_CONFIG.map((tab) => {
+            const isActive = activeTab === tab.key;
+            const tabColor = isActive ? Colors[colorScheme].foreground : Colors[colorScheme].muted;
+            return (
+              <Pressable
+                key={tab.key}
+                onPress={() => setActiveTab(tab.key)}
+                style={[
+                  styles.tab,
+                  isActive && {
+                    borderBottomColor: '#F59E0B',
+                    borderBottomWidth: 2,
+                  },
+                ]}>
+                <View style={styles.tabInner}>
+                  <tab.Icon size={14} color={tabColor} strokeWidth={isActive ? 2.5 : 1.8} />
                   <ThemedText
                     style={[
                       styles.tabLabel,
-                      { color: isActive ? Colors[colorScheme].foreground : Colors[colorScheme].muted },
+                      { color: tabColor },
                       isActive && { fontWeight: '700' },
                     ]}>
                     {tab.label}
                   </ThemedText>
-                </Pressable>
-              );
-            })}
-          </View>
-        )}
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
 
-        {/* ─── Unsubscribed: trending feed + CTA ─── */}
-        {!isSubscribed && !rcLoading && (
+        {/* ─── Feed content ─── */}
+        {isLoading || rcLoading ? (
+          <SkeletonLoader colorScheme={colorScheme} />
+        ) : (isFeedBuilding && currentItems.length === 0) ? (
+          <FeedBuildingLoader colorScheme={colorScheme} />
+        ) : currentItems.length > 0 ? (
           <>
-            {isTrendingLoading ? (
-              <SkeletonLoader colorScheme={colorScheme} />
-            ) : (
-              <View style={styles.feedList}>
-                {trendingFeed.map((item, index) => (
-                  <View key={`trending-${item.id}-${index}`}>
-                    {index > 0 && (
-                      <View style={[styles.separator, { backgroundColor: Colors[colorScheme].border }]} />
-                    )}
-                    <FeedCard
-                      item={item}
-                      colorScheme={colorScheme}
-                      onPress={() => handleFeedItemPress(item)}
-                    />
-                  </View>
-                ))}
-              </View>
-            )}
+            <ThemedText style={[styles.sectionHeader, { color: Colors[colorScheme].muted }]}>
+              {activeTab === 'trending'
+                ? `${currentItems.length} stories buzzing right now`
+                : activeTab === 'for_you'
+                  ? 'Based on your interests'
+                  : 'From your trusted sources'}
+            </ThemedText>
 
-            {!isTrendingLoading && (
+            <View style={styles.feedList}>
+              {currentItems.map((item, index) => {
+                if (activeTab === 'trending') {
+                  return (
+                    <View key={`t-${item.id}-${index}`}>
+                      {index > 0 && (
+                        <View style={[styles.separator, { backgroundColor: Colors[colorScheme].border }]} />
+                      )}
+                      <TrendingCard
+                        item={item}
+                        colorScheme={colorScheme}
+                        onPress={() => handleFeedItemPress(item)}
+                      />
+                    </View>
+                  );
+                }
+                if (activeTab === 'for_you') {
+                  return (
+                    <View key={`fy-${item.id}-${index}`}>
+                      {index > 0 && (
+                        <View style={[styles.separator, { backgroundColor: Colors[colorScheme].border }]} />
+                      )}
+                      <ForYouCard
+                        item={item}
+                        colorScheme={colorScheme}
+                        onPress={() => handleFeedItemPress(item)}
+                      />
+                    </View>
+                  );
+                }
+                return (
+                  <DeepDiveCard
+                    key={`dd-${item.id}-${index}`}
+                    item={item}
+                    colorScheme={colorScheme}
+                    onPress={() => handleFeedItemPress(item)}
+                  />
+                );
+              })}
+            </View>
+
+            {/* Upgrade CTA for free users on limited tabs */}
+            {isTabLimited && (
               <View style={[
                 ctaStyles.banner,
                 {
@@ -303,14 +315,15 @@ export default function FeedScreen() {
                   borderColor: colorScheme === 'dark' ? '#166534' : '#bbf7d0',
                 },
               ]}>
-                <Text style={[ctaStyles.bannerEyebrow, { color: colorScheme === 'dark' ? '#6ee7b7' : '#059669' }]}>
-                  YOU{"'"}RE READING TRENDING NEWS
-                </Text>
                 <Text style={[ctaStyles.bannerTitle, { color: Colors[colorScheme].text }]}>
-                  Want stories picked just for you?
+                  {activeTab === 'for_you'
+                    ? 'Unlock all personalized stories'
+                    : 'Unlock all deep dives'}
                 </Text>
                 <Text style={[ctaStyles.bannerBody, { color: Colors[colorScheme].muted }]}>
-                  Start a free trial to unlock your personalized feed with AI summaries.
+                  {activeTab === 'for_you'
+                    ? 'You\'re seeing a preview. Go Pro for unlimited articles matched to your interests.'
+                    : 'You get 1 free deep dive. Go Pro for unlimited expert reads from your trusted sources.'}
                 </Text>
                 <Pressable
                   onPress={() => router.push('/paywall')}
@@ -326,53 +339,28 @@ export default function FeedScreen() {
                 </Text>
               </View>
             )}
-          </>
-        )}
 
-        {/* ─── Subscribed: tabbed feed ─── */}
-        {isSubscribed && (
-          <>
-            {isLoading ? (
-              <SkeletonLoader colorScheme={colorScheme} />
-            ) : (isFeedBuilding && currentItems.length === 0) ? (
-              <FeedBuildingLoader colorScheme={colorScheme} />
-            ) : currentItems.length > 0 ? (
-              <>
-                <View style={styles.feedList}>
-                  {currentItems.map((item, index) => (
-                    <View key={`${activeTab}-${item.id}-${index}`}>
-                      {index > 0 && (
-                        <View style={[styles.separator, { backgroundColor: Colors[colorScheme].border }]} />
-                      )}
-                      <FeedCard
-                        item={item}
-                        colorScheme={colorScheme}
-                        onPress={() => handleFeedItemPress(item)}
-                      />
-                    </View>
-                  ))}
-                </View>
-                <ThemedText style={[styles.endText, { color: Colors[colorScheme].muted }]}>
-                  You{"'"}re all caught up
-                </ThemedText>
-              </>
-            ) : (
-              <View style={styles.emptyState}>
-                <View
-                  style={[styles.emptyIllus, { backgroundColor: colorScheme === 'dark' ? '#1a1a2e' : '#f5f3ff' }]}
-                >
-                  <NewspaperIllus width={44} height={44} />
-                </View>
-                <ThemedText style={[styles.emptyText, { color: Colors[colorScheme].muted }]}>
-                  {activeTab === 'for_you'
-                    ? 'No articles for you yet. Pull to refresh.'
-                    : activeTab === 'deep_dives'
-                      ? 'No deep dives yet. Your sources are being indexed.'
-                      : 'No trending stories right now. Pull to refresh.'}
-                </ThemedText>
-              </View>
+            {isSubscribed && (
+              <ThemedText style={[styles.endText, { color: Colors[colorScheme].muted }]}>
+                You{"'"}re all caught up
+              </ThemedText>
             )}
           </>
+        ) : (
+          <View style={styles.emptyState}>
+            <View
+              style={[styles.emptyIllus, { backgroundColor: colorScheme === 'dark' ? '#1a1a2e' : '#f5f3ff' }]}
+            >
+              <DigestIllus width={44} height={44} color={Colors[colorScheme].text} />
+            </View>
+            <ThemedText style={[styles.emptyText, { color: Colors[colorScheme].muted }]}>
+              {activeTab === 'for_you'
+                ? 'No articles for you yet. Pull to refresh.'
+                : activeTab === 'deep_dives'
+                  ? 'No deep dives yet. Your sources are being indexed.'
+                  : 'No trending stories right now. Pull to refresh.'}
+            </ThemedText>
+          </View>
         )}
       </AnimatedScrollView>
     </SafeAreaView>
@@ -503,19 +491,6 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 4,
   },
-  streakBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  streakText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#f97316',
-  },
   profileBtn: {
     width: 34,
     height: 34,
@@ -539,9 +514,21 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
+  tabInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   tabLabel: {
     fontSize: 14,
     fontWeight: '500',
+  },
+
+  // Section header
+  sectionHeader: {
+    fontSize: 13,
+    marginTop: 12,
+    marginBottom: 4,
   },
 
   // Feed
@@ -637,13 +624,6 @@ const ctaStyles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 8,
     alignItems: 'center',
-  },
-  bannerEyebrow: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    marginBottom: 8,
   },
   bannerTitle: {
     fontSize: 20,

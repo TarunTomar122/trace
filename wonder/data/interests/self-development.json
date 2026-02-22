@@ -1,0 +1,139 @@
+{
+  "version": "2.0",
+  "description": "One starter book per interest with 20 reading cards per book.",
+  "card_format": {
+    "fields": [
+      "id",
+      "title",
+      "idea",
+      "description"
+    ]
+  },
+  "interest_id": "self-development",
+  "book": {
+    "title": "Atomic Habits",
+    "author": "James Clear"
+  },
+  "cards": [
+    {
+      "id": "self-development-01",
+      "title": "The Valley of Disappointment Is Where Most People Quit",
+      "idea": "You've meditated for 30 days straight. You still feel exactly the same. You heated ice from 25 to 31 degrees. Nothing melted.",
+      "description": "Day 30 feels identical to day 1. You're still anxious. Still distracted. Still convinced this isn't working. That's because you're standing on the flat part of an exponential curve—the part where all the work happens and none of the results show. At 32 degrees, the ice breaks. All the earlier heating mattered—it just wasn't visible yet. You quit one degree before the threshold. Habits work the same way. 1% better daily = invisible today, 37x better in a year. The work is banking even when you can't see the payoff. The lag between effort and result creates the illusion nothing is working. Most people quit in the valley of disappointment—right before the curve bends. Breakthroughs aren't sudden—they're cumulative. The work you did at day 5 still counts at day 30. The early days aren't broken. They're just boring."
+    },
+    {
+      "id": "self-development-02",
+      "title": "Systems Beat Goals",
+      "idea": "Every Olympic athlete wanted gold. Only one has it. They all had the same goal.",
+      "description": "The person who finished eighth wanted it just as badly as the person on the podium. Same dream, same ambition, different daily system. The winner wasn't more motivated—they had a better process for showing up when motivation ran out. Goals are the same for everyone in the race. The system is what differentiates. You don't rise to your goals—you fall to your systems. Fix the inputs and the scoreboard fixes itself."
+    },
+    {
+      "id": "self-development-03",
+      "title": "Identity Drives Behavior",
+      "idea": "Someone offers you a cigarette. You say 'I'm trying to quit' and take it anyway.",
+      "description": "'I'm trying to quit' is a behavior. 'I'm not a smoker' is an identity. The first requires constant willpower. The second is just describing who you are. When the habit becomes part of your identity, it stops being a decision. 'Trying to' leaves the door open. 'I am' shuts it. Every action is a vote for who you're becoming. Behavior change is hard. Identity change is self-reinforcing."
+    },
+    {
+      "id": "self-development-04",
+      "title": "Make It Obvious",
+      "idea": "You checked your phone 137 times yesterday. You don't remember opening it once.",
+      "description": "The habit runs on autopilot. No decision, no awareness, just the screen lighting up in your hand. You can't change what you don't notice. The first step isn't willpower—it's making the cue visible. Put the book on the pillow. Put the shoes by the door. Write the trigger: 'I will [behavior] at [time] in [location]'. You don't lack discipline. You lack a visible cue."
+    },
+    {
+      "id": "self-development-05",
+      "title": "Make It Attractive",
+      "idea": "You want to watch the show. You need to exercise. You do neither because they're separate.",
+      "description": "The show lives on the couch. The bike lives in the corner. They never meet, so you pick one or feel guilty. Temptation bundling is simple: you only watch the show while pedaling. Now the thing you want pulls you toward the thing you need. Dopamine drives anticipation more than reward. Bundle what you need with what you crave. The habit drafts behind the desire. Make the behavior feel like a reward, not a chore."
+    },
+    {
+      "id": "self-development-06",
+      "title": "Make It Easy",
+      "idea": "You planned to meditate for 20 minutes. You did zero because 20 felt impossible at 6am.",
+      "description": "The plan was perfect. The execution was nothing. Two minutes of meditation beats zero. Thirty seconds of writing beats a blank page. Frequency matters more than duration. Make starting so easy that saying no takes more effort than saying yes. Scale the habit down to two minutes. Perfection kills consistency. The right behavior should be the path of least resistance. You don't need more discipline. You need less friction."
+    },
+    {
+      "id": "self-development-07",
+      "title": "Make It Satisfying",
+      "idea": "You worked out for 30 days. The scale didn't move. You quit on day 31.",
+      "description": "The payoff is months away, but your brain wants satisfaction now. That's why bad habits stick—the reward is instant. Good habits need an immediate signal: a checkmark, a streak, a small win that closes the feedback loop today. Add immediate satisfaction to delayed-reward habits. The feeling of progress is itself a reward. The streak becomes its own motivation. What gets rewarded now gets repeated tomorrow."
+    },
+    {
+      "id": "self-development-08",
+      "title": "Environment Is Stronger Than Willpower",
+      "idea": "You resisted the cookies for three hours. At 11pm you ate four standing at the counter.",
+      "description": "Willpower ran out. It always does. The people who look disciplined aren't fighting harder—they removed the cookies from the house. The fridge has no junk food. The phone isn't in the bedroom. The path of least resistance leads to the right choice. Willpower depletes, environment stays. Self-control isn't about resisting temptation—it's about avoiding it. Change the room and the behavior follows. You don't need more discipline. You need fewer bad options."
+    },
+    {
+      "id": "self-development-09",
+      "title": "The Two-Minute Rule",
+      "idea": "'Run three miles' sits on your to-do list for a week. You run zero miles.",
+      "description": "The bar was too high to clear. 'Run three miles' becomes 'put on running shoes.' 'Read before bed' becomes 'read one page.' The point isn't the two-minute version—it's that showing up beats skipping. Once you start, you usually continue. The hardest part is starting. Two-minute habits are gateway habits. Mastery follows momentum, not perfection. Scale it down until saying no feels harder than saying yes."
+    },
+    {
+      "id": "self-development-10",
+      "title": "Never Miss Twice",
+      "idea": "You missed Monday's workout. Then Tuesday. By Friday the habit is gone.",
+      "description": "Missing once is an accident. Missing twice is the start of a new pattern. Everyone skips a day—the difference is what happens next. Get back to it tomorrow and you've lost nothing. Miss again and the break becomes the habit. Perfect streaks are rare and unnecessary. Recovery is the skill that matters. Bad days don't kill habits—bad days after bad days do. The rule isn't perfection. It's never miss twice."
+    },
+    {
+      "id": "self-development-11",
+      "title": "Habit Stacking Reduces Friction",
+      "idea": "You forget to meditate every morning until you don't. Because now it happens after coffee.",
+      "description": "'After I pour my morning coffee, I will meditate for one minute.' The coffee habit is locked in—it happens automatically. The new habit drafts behind it. You don't need to remember. The existing routine triggers the new one. Existing habits have built-in cues. New habits borrow that momentum. The formula: 'After I [current habit], I will [new habit]'. You're not building from scratch. You're attaching to what already works."
+    },
+    {
+      "id": "self-development-12",
+      "title": "Motion Is Not Action",
+      "idea": "You've read five books on writing. You've written zero pages.",
+      "description": "Reading about it feels like progress. Researching feels productive. Outlining feels like you're almost there. But motion is just a way to avoid the risk of actually doing it. At some point you have to stop planning and ship. Motion lets you feel productive without facing failure. Action produces outcomes, motion produces comfort. Reading about exercise doesn't make you fit. When is the next time you'll actually do this?."
+    },
+    {
+      "id": "self-development-13",
+      "title": "Boredom Is the Real Enemy",
+      "idea": "Week 12 of the same workout. You skip it. Not because it's hard—because it's boring.",
+      "description": "Anyone can show up when it's new and exciting. Professionals show up when the work is monotonous. Most habits die not from difficulty but from boredom. Novelty fades. Routine is what remains. The threat to success isn't failure—it's losing interest. Falling in love with boredom is the professional's edge. Sticking with it isn't about motivation—it's about tolerating repetition. The work doesn't get more exciting. You get more patient."
+    },
+    {
+      "id": "self-development-14",
+      "title": "Pointing and Calling Makes the Invisible Visible",
+      "idea": "You eat the cookie before you realize you picked it up. Again.",
+      "description": "Japanese train conductors point at signals and say them aloud. It reduces errors by 85%. The physical act of pointing and verbalizing breaks the autopilot. Point at the cookie and say 'I'm about to eat this and I'm not hungry.' Now it's a choice, not a reflex. Most habits are invisible to the person doing them. Verbalizing forces awareness. Awareness creates a choice point. You can't change what you don't notice."
+    },
+    {
+      "id": "self-development-15",
+      "title": "Temptation Bundling Uses Desire as Fuel",
+      "idea": "You skip the gym and binge the show on the couch. Both happen—just not together.",
+      "description": "The gym feels like work. The show feels like a reward. They live in separate worlds, so discipline loses. Solution: only watch the show while on the treadmill. Now the craving for the show pulls you to the gym. Desire is more reliable than discipline. Bundle a need with a genuine want. The habit stops feeling like a chore. Let the thing you crave drag the thing you need behind it."
+    },
+    {
+      "id": "self-development-16",
+      "title": "The Goldilocks Rule Keeps You Engaged",
+      "idea": "The workout was too easy, so you quit from boredom. The next one was too hard, so you quit from anxiety.",
+      "description": "Too easy and your brain checks out. Too hard and your brain shuts down. The sweet spot is about 4% beyond your current ability—just hard enough to stay engaged. That's where flow lives and habits stick. Boredom kills habits from below. Anxiety kills them from above. The zone in between keeps you coming back. Design the challenge at the edge of what you can do."
+    },
+    {
+      "id": "self-development-17",
+      "title": "The Cost of Good Habits Is in the Present",
+      "idea": "The workout hurts now. The benefit arrives in five years. The donut tastes good now. The damage shows up in five years.",
+      "description": "Good habits cost you today and pay you later. Bad habits pay you today and cost you later. The gap between effort and reward is the problem. Your brain weighs immediate pain heavier than future gain. Immediate costs feel unbearable. Delayed rewards feel irrelevant. Bad habits win because the reward is instant. Add immediate satisfaction to delayed-reward habits or they won't stick."
+    },
+    {
+      "id": "self-development-18",
+      "title": "Measurement Shifts What You Optimize For",
+      "idea": "You tracked word count. You hit 2,000 words a day. All of it was garbage.",
+      "description": "The metric became the goal, so you gamed it. Tracking creates accountability—until the measure replaces the outcome. A writer chasing word count writes filler. A runner chasing mileage runs injured. Track the wrong thing and you optimize for the wrong result. Measurement makes habits visible. But when a measure becomes a target, it breaks. Goodhart's Law: metrics become useless once they're goals. Use them as guides, not gods."
+    },
+    {
+      "id": "self-development-19",
+      "title": "Breaking Bad Habits Requires Reversing the Loop",
+      "idea": "You reach for your phone every time you're bored. The habit isn't the phone—it's escaping boredom.",
+      "description": "Good habits follow: cue, craving, response, reward. Bad habits follow the same loop. To break them, you can't just remove the behavior—you have to address the craving it satisfies. The phone isn't the problem. Boredom is the cue, distraction is the craving, scrolling is the response, temporary relief is the reward. Make the cue invisible—leave the phone in another room. Make the craving unattractive—remind yourself scrolling makes you feel worse. Make the response difficult—delete the apps. Make it unsatisfying—track how bad you feel after. Or replace it: when bored, take three deep breaths instead. Same cue, different response, better reward. You can't eliminate bad habits—you can only substitute them. The craving doesn't disappear. You redirect it."
+    },
+    {
+      "id": "self-development-20",
+      "title": "You Don't Rise to Your Goals, You Fall to Your Systems",
+      "idea": "You set the goal. You hit it. Six months later you're back where you started.",
+      "description": "Goals create a temporary spike. Systems create a permanent shift. You don't rise to the level of your ambitions—you fall to the level of your daily process. Fix the inputs and the scoreboard fixes itself. Goals are one-time achievements. Systems are continuous improvement. The people who build great lives don't dream bigger—they show up more. The process is the point. The outcome is just the scoreboard."
+    }
+  ]
+}

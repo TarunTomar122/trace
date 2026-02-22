@@ -8,7 +8,8 @@ Usage:
   python3 -m v3.scheduler                             # run all
   python3 -m v3.scheduler --jobs for_you trending     # specific jobs
   python3 -m v3.scheduler --jobs pools                 # pool refresh only
-  python3 -m v3.scheduler --jobs feeds                 # feed build only (skip pools)
+  python3 -m v3.scheduler --jobs feeds                 # feed build only
+                                                       # (skip pools)
   python3 -m v3.scheduler --jobs assemble              # assembly only
 """
 
@@ -29,12 +30,16 @@ JOBS = {
     "for_you": {
         "module": "v3.build_for_you",
         "pool_cadence_days": 1,
-        "description": "For You (interest-matched articles with career-goal boost)",
+        "description": (
+            "For You (interest-matched articles with career-goal boost)"
+        ),
     },
     "deep_dives": {
         "module": "v3.build_deep_dives",
         "pool_cadence_days": 3,
-        "description": "Deep Dives (expert content from user-selected sources)",
+        "description": (
+            "Deep Dives (expert content from user-selected sources)"
+        ),
     },
     "trending": {
         "module": "v3.build_trending",
@@ -60,13 +65,35 @@ def _parse_args() -> argparse.Namespace:
         "--jobs",
         nargs="+",
         default=["all"],
-        choices=["all", "pools", "feeds", "for_you", "deep_dives", "trending", "assemble"],
-        help="Jobs to run. 'all' runs everything. 'pools' runs pool refresh for all 3. 'feeds' skips pools.",
+        choices=[
+            "all",
+            "pools",
+            "feeds",
+            "for_you",
+            "deep_dives",
+            "trending",
+            "assemble",
+        ],
+        help=(
+            "Jobs to run. 'all' runs everything. "
+            "'pools' runs pool refresh for all 3. "
+            "'feeds' skips pools."
+        ),
     )
     p.add_argument("--date", default="", help="Date override (YYYY-MM-DD)")
     p.add_argument("--user-id", default="", help="Single user")
     p.add_argument("--limit-users", type=int, default=0)
-    p.add_argument("--force-pools", action="store_true", help="Force pool refresh regardless of cadence")
+    p.add_argument(
+        "--force-pools",
+        action="store_true",
+        help="Force pool refresh regardless of cadence",
+    )
+    p.add_argument(
+        "--audience",
+        choices=["subscribed", "unsubscribed", "all"],
+        default="subscribed",
+        help="Which audience to build feeds for",
+    )
     return p.parse_args()
 
 
@@ -91,6 +118,8 @@ def main() -> None:
         extra.extend(["--user-id", args.user_id])
     if args.limit_users > 0:
         extra.extend(["--limit-users", str(args.limit_users)])
+    if args.audience:
+        extra.extend(["--audience", args.audience])
 
     run_all = "all" in requested
     run_pools = "pools" in requested
@@ -99,6 +128,7 @@ def main() -> None:
     build_jobs = ["for_you", "deep_dives", "trending"]
 
     _log("=== V3 Pipeline Start ===")
+    _log(f"Audience: {args.audience}")
     start = time.time()
 
     for job_name in build_jobs:

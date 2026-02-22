@@ -19,7 +19,6 @@ import json
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
 
 from dotenv import load_dotenv
 
@@ -41,6 +40,12 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--user-id", default="")
     p.add_argument("--limit-users", type=int, default=0)
     p.add_argument("--date", default="")
+    p.add_argument(
+        "--audience",
+        choices=["subscribed", "unsubscribed", "all"],
+        default="subscribed",
+        help="Which users to assemble for",
+    )
     return p.parse_args()
 
 
@@ -54,7 +59,7 @@ def assemble(args: argparse.Namespace) -> dict[str, int]:
     target_date = args.date.strip() or _today_ist()
     yesterday = _yesterday(target_date)
 
-    users = store.get_onboarded_users()
+    users = store.get_onboarded_users(args.audience)
     if args.user_id:
         users = [u for u in users if u.get("uid") == args.user_id]
     if args.limit_users > 0:
@@ -99,7 +104,10 @@ def assemble(args: argparse.Namespace) -> dict[str, int]:
 
         stats["users"] += 1
         stats["total_items"] += total
-        _log(f"  user={uid} assembled: fy={len(for_you)} dd={len(deep_dives)} tr={len(trending)}")
+        _log(
+            f"  user={uid} assembled: fy={len(for_you)} "
+            f"dd={len(deep_dives)} tr={len(trending)}"
+        )
 
     store.record_run("assemble", {"date": target_date, **stats})
     _log(f"Assembly done: {stats}")
@@ -110,7 +118,10 @@ def main() -> None:
     args = _parse_args()
     _log("=" * 50)
     _log("ASSEMBLE — Starting")
-    _log(f"  user-id={args.user_id or 'ALL'} date={args.date or 'today'}")
+    _log(
+        f"  user-id={args.user_id or 'ALL'} audience={args.audience} "
+        f"date={args.date or 'today'}"
+    )
     _log("=" * 50)
     result = assemble(args)
     _log("=" * 50)

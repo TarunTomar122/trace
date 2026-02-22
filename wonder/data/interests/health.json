@@ -1,0 +1,139 @@
+{
+  "version": "2.0",
+  "description": "One starter book per interest with 20 reading cards per book.",
+  "card_format": {
+    "fields": [
+      "id",
+      "title",
+      "idea",
+      "description"
+    ]
+  },
+  "interest_id": "health",
+  "book": {
+    "title": "Outlive",
+    "author": "Peter Attia"
+  },
+  "cards": [
+    {
+      "id": "health-01",
+      "title": "Medicine 3.0 Means Prevention, Not Reaction",
+      "idea": "Your doctor says your numbers look fine. Ten years later you have your first heart attack.",
+      "description": "The disease was building for decades. The warning signs were visible in your bloodwork at 35. But 'normal for your age' meant nobody acted. By the time symptoms appeared, the damage was done. Modern medicine waits for disease, then fights it. The diseases that kill take 20-30 years to develop. Intervention at diagnosis means you're already late."
+    },
+    {
+      "id": "health-02",
+      "title": "The Four Horsemen Will Probably Kill You",
+      "idea": "You're optimizing to avoid cancer. Heart disease gets you instead. You were fighting the wrong war.",
+      "description": "Four diseases account for most deaths: heart disease, cancer, neurodegeneration, metabolic dysfunction. Preparing for one and ignoring the others is strategy without perspective. They share root causes. Metabolic health touches all four. The same interventions reduce multiple risks. Prevention isn't disease-specific—it's systemic."
+    },
+    {
+      "id": "health-03",
+      "title": "Exercise Is the Most Powerful Longevity Drug",
+      "idea": "The supplement industry is worth billions. The data says a 45-minute walk beats all of it.",
+      "description": "Regular exercise reduces all-cause mortality more than any drug on the market. Not by a little—by a margin that would make a pharmaceutical company rich. But you can't patent a pushup. The effect size dwarfs medication. Cardio and strength training both matter independently. The best program is the one you'll still do in ten years."
+    },
+    {
+      "id": "health-04",
+      "title": "Metabolic Health Is the Foundation of Everything",
+      "idea": "Your weight is normal. Your energy is fine. Your bloodwork says you're prediabetic anyway.",
+      "description": "Metabolic dysfunction hides. You look healthy. You feel okay. But insulin resistance, rising glucose, and visceral fat are quietly breaking systems you can't see. By the time symptoms show, the foundation cracked years ago. 88% of Americans are metabolically unhealthy by at least one marker. The damage is silent until it compounds. Every other intervention works better when metabolism is fixed first."
+    },
+    {
+      "id": "health-05",
+      "title": "VO2 Max Predicts How Long You'll Live",
+      "idea": "You've never measured it. It predicts your mortality better than smoking, diabetes, or cholesterol.",
+      "description": "VO2 max—how much oxygen your body can use during intense exercise—correlates with all-cause mortality tighter than almost anything else. Low fitness predicts death more accurately than most diseases. Most people have never checked it. Bottom 25% fitness carries more risk than smoking. It declines with age unless you train it. Going from low to average cuts risk more than average to elite."
+    },
+    {
+      "id": "health-06",
+      "title": "Stability Before Strength",
+      "idea": "You can squat 225 pounds. You can't stand on one leg for 30 seconds without wobbling.",
+      "description": "Strength without stability is power on a weak foundation. Load a joint that can't control its range of motion and eventually something tears. Most injuries don't come from being weak—they come from being unstable. Stability is control through full range. Hip, spine, and shoulder are the critical zones. Older adults fall because they lost stability, not strength."
+    },
+    {
+      "id": "health-07",
+      "title": "Muscle Is the Organ of Longevity",
+      "idea": "You lose muscle every year after 30. By 70, you don't have enough left to get off the floor.",
+      "description": "Muscle isn't decoration. It's a glucose sink, a metabolic buffer, an amino acid reserve for immune function. Lose it and every chronic disease accelerates. You build it now or you lose independence later. Sarcopenia predicts poor aging more than almost anything. The time to build muscle is decades before you need it. Strength training after 30 isn't optional."
+    },
+    {
+      "id": "health-08",
+      "title": "Emotional Health Belongs in the Conversation",
+      "idea": "Your bloodwork is perfect. Your marriage is failing. You optimized the wrong thing.",
+      "description": "Attia nearly destroyed his family chasing biomarker perfection. He fixed his lipids and broke his relationships. Longevity without emotional health is just more years of misery. Relationships show up in longevity data consistently. Emotional distress triggers biological inflammation. The longest-lived people have strong connections, not just strong bodies."
+    },
+    {
+      "id": "health-09",
+      "title": "Centenarians Don't Avoid Disease—They Delay It",
+      "idea": "People who live to 100 still get cancer and heart disease. They just get them at 95.",
+      "description": "Centenarians aren't disease-proof. They get the same illnesses everyone else gets—two or three decades later. By then, they've lived a full, functional life. The delay is the victory. Delaying by a decade changes quality of life completely. The goal is compressed morbidity—sick briefly at the end. Each year of delay is a year of function."
+    },
+    {
+      "id": "health-10",
+      "title": "Zone 2 Training Is Underrated and Underdone",
+      "idea": "It doesn't feel hard enough to matter. That's why you skip it. That's why it works.",
+      "description": "Zone 2 is the pace where you can still talk but not comfortably. It builds mitochondrial function, fat oxidation, cardiovascular efficiency. It feels too easy to be useful. That's exactly why people avoid it. Most people go too hard or do nothing. Zone 2 is where fat becomes primary fuel. Three to four hours per week is the floor."
+    },
+    {
+      "id": "health-11",
+      "title": "Nutrition Science Is a Mess",
+      "idea": "One study says eggs are fine. Another says they'll kill you. Both got published. Neither is definitive.",
+      "description": "Nutrition research is mostly observational, confounded, and contradictory. You can find a study supporting almost any claim. Randomized controlled trials are nearly impossible to run well over decades. Correlation and causation get confused constantly. The best diet varies by individual metabolism. Three agreements: limit sugar, eat protein, don't overeat."
+    },
+    {
+      "id": "health-12",
+      "title": "Sleep Is Non-Negotiable",
+      "idea": "You say you function fine on five hours. You've just forgotten what rested feels like.",
+      "description": "Short sleep raises insulin resistance, impairs cognition, weakens immunity, increases inflammation, degrades emotional control. No supplement or protocol compensates for chronic sleep deprivation. Seven to nine hours is the range. Quality matters as much as duration. People who claim they're fine on less are usually just adapted to impairment."
+    },
+    {
+      "id": "health-13",
+      "title": "Your Glucose Tells a Story",
+      "idea": "You eat the same meal she does. Her glucose barely moves. Yours spikes to 180.",
+      "description": "Two people, same food, completely different glucose response. A continuous glucose monitor shows this in real time. Nutrition guidelines are population averages. Your body is specific. Glucose spikes drive insulin resistance over time. CGMs reveal variation dietary guidelines can't capture. The goal is understanding your patterns, not perfection."
+    },
+    {
+      "id": "health-14",
+      "title": "Lipids Are More Nuanced Than Good and Bad",
+      "idea": "Your LDL is 'normal.' Your apoB says you've had too many atherogenic particles for too long.",
+      "description": "Standard cholesterol panels are crude. ApoB counts the number of dangerous particles, not just the cholesterol they carry. Total LDL is a blunt instrument. ApoB is specific. ApoB predicts cardiovascular risk better than LDL. Cumulative exposure over decades matters, not just today's snapshot. Early intervention on lipids has the highest return."
+    },
+    {
+      "id": "health-15",
+      "title": "Cancer Is a Numbers Game You Can Shift",
+      "idea": "You can't eliminate the risk. You can lower the probability and catch it when it's small.",
+      "description": "Cancer is probability—random mutations, immune failures, environmental triggers. You can't remove the risk. You can reduce metabolic fuel that feeds growth. You can screen aggressively to catch it early. Metabolic health cuts the fuel supply. Early detection is the biggest survival lever. Standard screening protocols wait too long."
+    },
+    {
+      "id": "health-16",
+      "title": "Cardiovascular Disease Starts Decades Early",
+      "idea": "You pass the stress test at 50. At 52 you have a heart attack. The disease started at 30.",
+      "description": "Atherosclerosis begins in your twenties and thirties—lipid particles infiltrating artery walls, building plaques silently. By the time you have symptoms, the damage has been compounding for decades. Clean stress test doesn't mean clean arteries. The disease is measurable long before it hurts. Early lipid management prevents decades of accumulation."
+    },
+    {
+      "id": "health-17",
+      "title": "Cognitive Decline Is Not Inevitable",
+      "idea": "The same things that protect your heart protect your brain. You're only working on one.",
+      "description": "Exercise, sleep, metabolic health, cardiovascular fitness—what reduces heart disease and cancer risk also protects cognition. Cognitive decline correlates with insulin resistance, poor sleep, low fitness. The interventions overlap. The brain is metabolic—what harms the body harms the brain. No drug matches exercise for neuroprotection. Protecting your brain at 80 starts in your 40s."
+    },
+    {
+      "id": "health-18",
+      "title": "The Marginal Decade Matters Most",
+      "idea": "You live to 90. The last ten years are bedridden, confused, and dependent. That's not victory.",
+      "description": "The question isn't how many years. It's what the last decade looks like. Can you pick up a grandchild? Climb stairs? Think clearly? Live independently? Lifespan without function is just more time suffering. Healthspan matters more than lifespan. What you want to do at 80 determines what you train for at 50. Work backward from the decline you want to avoid."
+    },
+    {
+      "id": "health-19",
+      "title": "Tactics Without Strategy Won't Save You",
+      "idea": "You spend $500 a month on supplements. You skip exercise and sleep five hours a night.",
+      "description": "Supplements, biohacks, trendy diets—all tactics. Tactics without strategy is just expensive noise. Strategy is: what kills me, when, what's the highest-leverage intervention? Fundamentals first. Exercise, sleep, nutrition, emotional health account for 80%+ of outcomes. Biohacking without fundamentals is distraction. Strategy, then tactics, then optimization."
+    },
+    {
+      "id": "health-20",
+      "title": "You Are the Project",
+      "idea": "Your doctor sees you twice a year for fifteen minutes. You live with your body every day.",
+      "description": "No doctor, trainer, or app can do this for you. Longevity is ownership—of your data, your decisions, your body, your emotional life. The person most responsible for your health is you. No one else will care as much as you should. The data is available—the question is whether you'll act. The best intervention is the one that starts today."
+    }
+  ]
+}

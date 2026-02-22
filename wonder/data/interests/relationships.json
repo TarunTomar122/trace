@@ -1,0 +1,139 @@
+{
+  "version": "2.0",
+  "description": "One starter book per interest with 20 reading cards per book.",
+  "card_format": {
+    "fields": [
+      "id",
+      "title",
+      "idea",
+      "description"
+    ]
+  },
+  "interest_id": "relationships",
+  "book": {
+    "title": "Attached",
+    "author": "Amir Levine and Rachel Heller"
+  },
+  "cards": [
+    {
+      "id": "relationships-01",
+      "title": "Your Attachment Style Is Running the Show",
+      "idea": "Same fight. Different partner. Third time this year.",
+      "description": "The relationship ends and you're convinced they were the problem. Then the next one unravels the exact same way. Different person, identical pattern. You're three relationships in before you realize the script is yours. The pattern shows up most when you're stressed. It explains why the same problems keep recurring. Once you see it, every past relationship suddenly makes sense."
+    },
+    {
+      "id": "relationships-02",
+      "title": "Anxious, Avoidant, Secure—Know Which One You Are",
+      "idea": "They didn't text back for two hours. You've already written the breakup speech.",
+      "description": "Anxious: you check your phone seventeen times before lunch. Avoidant: you feel suffocated when they want to see you three nights in a row. Secure: you can want someone and still sleep fine when they're gone. Half the population is secure, a quarter anxious, a quarter avoidant. Most advice assumes you're secure—useless if you're not. Knowing which one you are changes what your reactions actually mean."
+    },
+    {
+      "id": "relationships-03",
+      "title": "Neediness Is Not a Weakness",
+      "idea": "You apologized for needing them. They're the person you're dating.",
+      "description": "You want reassurance after a bad day and immediately feel pathetic. The culture says you should be complete alone. Your nervous system says otherwise—it's designed to co-regulate with another human. Partners regulate each other's heart rate, cortisol, immune function. Dependency and enmeshment are not the same thing. Shaming yourself for needing connection just blocks you from getting it."
+    },
+    {
+      "id": "relationships-04",
+      "title": "Avoidant People Aren't Cold—They're Defended",
+      "idea": "They said they needed space. What they meant was they needed armor.",
+      "description": "Avoidant people feel everything—they just learned early that closeness ends badly. So they built walls and called it independence. The distance looks like confidence. It's actually protection. Pulling away, minimizing the relationship—these are reflexes, not choices. They idealize exes to keep the current partner at arm's length. The wall keeps pain out. It also keeps connection out."
+    },
+    {
+      "id": "relationships-05",
+      "title": "Protest Behavior Is a Signal, Not a Strategy",
+      "idea": "You called six times, sent twelve texts, and threatened to leave. You don't know why.",
+      "description": "Excessive calling. Keeping score. Manufacturing jealousy. It looks manipulative. It's not a plan—it's an alarm system. Your nervous system detected disconnection and started screaming. The behavior looks insane from the outside. From the inside it feels like drowning. Recognizing it as panic, not character, is how you stop doing it."
+    },
+    {
+      "id": "relationships-06",
+      "title": "The Anxious-Avoidant Trap Is the Most Common Drama",
+      "idea": "You chase. They pull back. You chase harder. They disappear. Both of you feel proven right.",
+      "description": "Anxious pursues. Avoidant withdraws. The more you reach, the more they retreat. The more they retreat, the harder you reach. Both fears confirmed: you knew they'd abandon you, they knew you'd suffocate them. Most common dysfunctional pairing. Both people re-traumatize each other on autopilot. Someone has to see the loop before it stops."
+    },
+    {
+      "id": "relationships-07",
+      "title": "Secure People Make Everything Easier",
+      "idea": "They texted back in twenty minutes. You're bored. That's the problem.",
+      "description": "Secure people are consistent. They show up. They don't create mystery or drama. And if you're anxious, that feels flat. You mistake the calm for lack of chemistry. The intensity you think is passion is just your alarm system firing. Calm is not cold. Stability is not boring. The absence of panic is not the absence of love."
+    },
+    {
+      "id": "relationships-08",
+      "title": "Effective Communication and Availability Are the Foundation",
+      "idea": "\"You never call me\" starts a fight. \"I feel anxious when I don't hear from you\" ends one. Then they actually call.",
+      "description": "Say what you need, not what they failed to do. No blame, no subtext, no test. It's simple. It also requires admitting you need something, which most people would rather die than do. Specific, non-blaming, states the actual need. Works because it's information, not a puzzle. Most fights are just needs disguised as accusations. But communication only works if the other person is available. Availability isn't grand gestures or fireworks. It's answering the text. Showing up. Not vanishing when things get difficult. The most important quality in a partner, and the one people ignore while chasing charisma. Secure people are available—that's the whole point. Unavailable people can't provide a secure base—charm doesn't fix it. If you're still guessing whether they care after clear communication, you already know."
+    },
+    {
+      "id": "relationships-09",
+      "title": "Dependency Is Not the Opposite of Independence",
+      "idea": "She's out climbing mountains alone. She's also the one who texts her partner every night.",
+      "description": "Secure people take the biggest risks because their attachment base is solid. Anxious people obsess over the relationship because their needs aren't met. Avoidant people avoid commitment entirely. Neither is actually free. Secure attachment is the launch pad for independence. Anxious people look needy because they're starving. True independence requires a secure base, not isolation."
+    },
+    {
+      "id": "relationships-10",
+      "title": "Your Nervous System Picks Partners Before Your Brain Does",
+      "idea": "The chemistry was instant. So was the pattern you've been repeating for five years.",
+      "description": "That electric spark you felt on date one. That's not love—it's your nervous system recognizing someone who'll trigger you in familiar ways. Your attachment system just found another person to recreate the same wound. Familiarity registers as attraction. Anxious people mistake alarm bells for chemistry. If every relationship ends the same way, you're the common variable."
+    },
+    {
+      "id": "relationships-11",
+      "title": "Deactivating Strategies Look Like Strength",
+      "idea": "\"I don't need anyone.\" It sounds confident. It's actually terrified.",
+      "description": "Society rewards avoidant behavior. Fierce independence. Refusing to be needy. Quick exits. It all looks like strength. But if it's driven by fear rather than choice, it's just armor with better branding. Focusing on flaws, avoiding commitment, keeping an exit ready. Protects against vulnerability. Also blocks connection entirely."
+    },
+    {
+      "id": "relationships-12",
+      "title": "Activating Strategies Look Like Overreaction",
+      "idea": "They took four hours to respond. You've already drafted three breakup scenarios.",
+      "description": "When the anxious attachment system fires, threat detection goes nuclear. Every text gets analyzed. Every delay triggers alarm. It looks insane. It's not rational—it's biological. The system is trying to restore proximity by any means necessary. Calling repeatedly, monitoring their availability, manufacturing urgency. Involuntary responses, not deliberate manipulation. Shaming someone for it makes the panic worse."
+    },
+    {
+      "id": "relationships-13",
+      "title": "The Fantasy of the Phantom Ex",
+      "idea": "Your current partner is great. Your ex from five years ago was better. Somehow.",
+      "description": "The phantom ex lives in your head as the perfect one who got away. By keeping that fantasy alive, you guarantee no current partner measures up. It's a deactivating strategy with nostalgia as the excuse. The phantom was never that good—memory lies. Idealizing the past protects you from risking the present. If every new person loses to a ghost, the ghost is the weapon."
+    },
+    {
+      "id": "relationships-14",
+      "title": "Attachment Shows Up Everywhere, Not Just Romance",
+      "idea": "Your friend cancels plans last minute. Again. You're more hurt than angry. That's your attachment system talking.",
+      "description": "Attachment theory isn't just for romantic relationships—it shapes how you show up with friends, family, and coworkers. The anxious friend checks in constantly and takes distance personally. The avoidant coworker keeps interactions surface-level and resists team bonding. The secure colleague stays connected without clinging. Your parents triggered your attachment wounds first. Your boss might be doing it now. Recognizing the pattern in non-romantic relationships is harder because we don't expect it there. But the same nervous system that panics when your partner doesn't text also panics when your friend goes quiet. The anxious employee needs reassurance after feedback. The avoidant sibling skips family events when things get emotional. Understanding your attachment style outside romance helps you see it's not about this specific person—it's about your wiring."
+    },
+    {
+      "id": "relationships-15",
+      "title": "You Can Earn Security Over Time",
+      "idea": "Six months with them, you stopped checking your phone every ten minutes.",
+      "description": "Anxious with a secure partner. Gradually you calm down. Avoidant with someone patient. Slowly you let them in. Attachment styles shift—slowly, but they shift. Secure partners act as attachment therapists. Self-awareness speeds it up. The fact that it's changeable is the only hopeful part of this research."
+    },
+    {
+      "id": "relationships-16",
+      "title": "Distance Is Not Space—It's Avoidance in Disguise",
+      "idea": "You had three great days in a row. Now they need a week alone.",
+      "description": "Needing space is healthy. Needing distance every single time closeness increases is a pattern. Avoidant people don't pull away because they need rest—they retreat because intimacy triggered the alarm. Healthy space has a return time. Avoidant distance has no plan to come back. If distance always follows connection, it's not rest—it's defense."
+    },
+    {
+      "id": "relationships-17",
+      "title": "Dating Advice Often Rewards Avoidance",
+      "idea": "\"Wait three hours to text back.\" \"Don't seem too interested.\" Congrats, you're training yourself to be avoidant.",
+      "description": "Dating culture treats unavailability as attractive and availability as desperate. The advice is everywhere: play it cool, don't chase, make them wonder. It's just avoidant attachment rebranded as strategy. Playing it cool is performing avoidance. Vulnerability builds connection, mystery kills it. Most dating rules are a manual for insecure attachment."
+    },
+    {
+      "id": "relationships-18",
+      "title": "The Right Partner Calms Your Nervous System",
+      "idea": "You stopped checking your phone forty times a day. That's how you knew it was working.",
+      "description": "A secure relationship doesn't feel like a rollercoaster. It feels like exhaling. Your nervous system shuts off the alarms. You stop scanning for threats. You have energy for the rest of your life because you're not burning it on relationship panic. Partners literally regulate each other's biology. Anxiety in a relationship is data, not passion. The goal isn't excitement—it's calm."
+    },
+    {
+      "id": "relationships-19",
+      "title": "Conflict Isn't Failure—Withdrawal Is",
+      "idea": "You fought for two hours last night. This morning they won't speak to you. Guess which one damages the relationship more.",
+      "description": "Secure couples fight. They yell, they disagree, they work through it. What they don't do is stonewall. The argument isn't the problem—disappearing afterward is. Conflict is a bid for connection—\"I need something from you\". Withdrawal is a refusal to connect—\"You don't matter enough to engage\". Repair after fighting is what predicts relationship survival."
+    },
+    {
+      "id": "relationships-20",
+      "title": "Love Is a Regulation System",
+      "idea": "Your blood pressure drops when they walk in the room. That's not poetry—that's biology.",
+      "description": "Love isn't just emotion—it's a regulatory system. Your partner's presence affects your cortisol, immune function, heart rate. Attachment is as biological as hunger. You're not designed to self-regulate alone. We co-regulate each other at the biological level. The quality of your attachment affects your physical health. Treating it as biology, not just feelings, changes how you think about relationships."
+    }
+  ]
+}

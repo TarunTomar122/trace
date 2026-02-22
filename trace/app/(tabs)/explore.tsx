@@ -227,10 +227,13 @@ export default function ProfileScreen() {
 
         {/* ─── Interests ─── */}
         {isOnboarded && profile?.interests && profile.interests.length > 0 && (
-          <View style={styles.section}>
-            <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
-              Interests
-            </ThemedText>
+          <Pressable style={styles.section} onPress={() => router.push('/preferences/interests')}>
+            <View style={styles.sectionHeader}>
+              <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
+                Interests
+              </ThemedText>
+              <ChevronRight size={14} color={Colors[colorScheme].border} strokeWidth={1.5} />
+            </View>
             <View style={styles.pillsWrap}>
               {profile.interests.map((interest: string, index: number) => (
                 <View
@@ -242,15 +245,18 @@ export default function ProfileScreen() {
                 </View>
               ))}
             </View>
-          </View>
+          </Pressable>
         )}
 
         {/* ─── Deep Dive Sources ─── */}
         {isOnboarded && profile?.selectedLearningSources && profile.selectedLearningSources.length > 0 && (
-          <View style={styles.section}>
-            <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
-              Deep Dive Sources
-            </ThemedText>
+          <Pressable style={styles.section} onPress={() => router.push('/preferences/sources')}>
+            <View style={styles.sectionHeader}>
+              <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
+                Deep Dive Sources
+              </ThemedText>
+              <ChevronRight size={14} color={Colors[colorScheme].border} strokeWidth={1.5} />
+            </View>
             <View style={styles.pillsWrap}>
               {profile.selectedLearningSources.map((source: string, index: number) => (
                 <View
@@ -262,15 +268,18 @@ export default function ProfileScreen() {
                 </View>
               ))}
             </View>
-          </View>
+          </Pressable>
         )}
 
         {/* ─── Career Goals ─── */}
         {isOnboarded && profile?.careerGoals && profile.careerGoals.length > 0 && (
-          <View style={styles.section}>
-            <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
-              Career Goals
-            </ThemedText>
+          <Pressable style={styles.section} onPress={() => router.push('/preferences/goals')}>
+            <View style={styles.sectionHeader}>
+              <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
+                Career Goals
+              </ThemedText>
+              <ChevronRight size={14} color={Colors[colorScheme].border} strokeWidth={1.5} />
+            </View>
             <View style={styles.pillsWrap}>
               {profile.careerGoals.map((goal: string, index: number) => (
                 <View
@@ -282,15 +291,18 @@ export default function ProfileScreen() {
                 </View>
               ))}
             </View>
-          </View>
+          </Pressable>
         )}
 
         {/* ─── Summary Style ─── */}
         {isOnboarded && profile?.summaryStyle && (
-          <View style={styles.section}>
-            <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
-              Summary Style
-            </ThemedText>
+          <Pressable style={styles.section} onPress={() => router.push('/preferences/summary-style')}>
+            <View style={styles.sectionHeader}>
+              <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
+                Summary Style
+              </ThemedText>
+              <ChevronRight size={14} color={Colors[colorScheme].border} strokeWidth={1.5} />
+            </View>
             <View style={[styles.summaryStyleCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
               <ThemedText style={styles.summaryStyleLabel}>
                 {lookupLabel(SUMMARY_STYLES as unknown as { id: string; label: string }[], profile.summaryStyle)}
@@ -299,7 +311,7 @@ export default function ProfileScreen() {
                 {(SUMMARY_STYLES as unknown as { id: string; subtitle: string }[]).find(s => s.id === profile.summaryStyle)?.subtitle || ''}
               </ThemedText>
             </View>
-          </View>
+          </Pressable>
         )}
 
         {/* ─── Subscription ─── */}
@@ -546,6 +558,11 @@ const styles = StyleSheet.create({
   // ─── Sections ───
   section: {
     marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   sectionLabel: {
     fontFamily: Fonts.mono,

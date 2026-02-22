@@ -1,0 +1,108 @@
+{
+  "version": "3.0",
+  "description": "Conversational learning cards with subtitle, body paragraphs, and takeaway per card.",
+  "card_format": {
+    "fields": [
+      "id",
+      "title",
+      "subtitle",
+      "body",
+      "takeaway"
+    ]
+  },
+  "interest_id": "health",
+  "videos": [
+    {
+      "title": "Sleep Is Your Superpower",
+      "creator": "Matt Walker",
+      "platform": "TED",
+      "url": "",
+      "thumbnail_url": "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1200&q=80",
+      "duration": "",
+      "published_date": "",
+      "description": ""
+    }
+  ],
+  "cards": [
+    {
+      "id": "health-video-01",
+      "title": "Consistency Beats Intensity",
+      "subtitle": "A moderate routine done regularly usually outperforms occasional heroic effort.",
+      "body": [
+        "One brutal workout after weeks of inactivity feels productive but often leads to soreness and drop-off.",
+        "Short walks, basic strength work, and steady sleep habits compound quietly."
+      ],
+      "takeaway": "Health responds to rhythm more than drama."
+    },
+    {
+      "id": "health-video-02",
+      "title": "Sleep Is a Performance Multiplier",
+      "subtitle": "Poor sleep makes almost every health goal harder.",
+      "body": [
+        "When sleep drops, cravings rise, mood worsens, and training quality falls—even if motivation is high.",
+        "Treating sleep as infrastructure improves everything built on top of it."
+      ],
+      "takeaway": "Protect sleep and other habits get easier."
+    },
+    {
+      "id": "health-video-03",
+      "title": "Food Environment Shapes Choices",
+      "subtitle": "Willpower helps, but your environment often decides what you eat.",
+      "body": [
+        "If easy options at home are mostly processed snacks, decisions get harder when you are tired.",
+        "Simple changes like prep, visibility, and defaults reduce friction for better choices."
+      ],
+      "takeaway": "Design beats discipline on low-energy days."
+    },
+    {
+      "id": "health-video-04",
+      "title": "Stress Is a Physical Load Too",
+      "subtitle": "Mental stress still has biological costs when it stays chronic.",
+      "body": [
+        "High stress can disrupt appetite, sleep, recovery, and attention, even if your exercise routine is decent.",
+        "Downregulation practices like walking, breathing, and social connection are part of health, not extras."
+      ],
+      "takeaway": "Recovery includes your nervous system, not just your muscles."
+    },
+    {
+      "id": "health-video-05",
+      "title": "Prevention Is Boring and Powerful",
+      "subtitle": "Most meaningful health wins come from unglamorous basics.",
+      "body": [
+        "Regular checkups, vaccinations, movement, and simple nutrition habits prevent problems that are expensive later.",
+        "Prevention lacks drama, which is exactly why it is easy to neglect."
+      ],
+      "takeaway": "Do small maintenance before big repair is needed."
+    },
+    {
+      "id": "health-video-06",
+      "title": "Social Ties Affect Longevity",
+      "subtitle": "Health is not only individual behavior; relationships matter too.",
+      "body": [
+        "People with strong social connection often show better long-term outcomes across many metrics.",
+        "Belonging reduces stress load and supports better habits through accountability and care."
+      ],
+      "takeaway": "Connection is a health behavior."
+    },
+    {
+      "id": "health-video-07",
+      "title": "Pain Is Information, Not Always Damage",
+      "subtitle": "Not all pain signals serious injury, but all pain deserves attention.",
+      "body": [
+        "Some discomfort reflects deconditioning, load spikes, or stress sensitivity rather than structural harm.",
+        "Working with professionals and gradual exposure often helps more than total avoidance."
+      ],
+      "takeaway": "Interpret pain carefully; do not ignore or catastrophize."
+    },
+    {
+      "id": "health-video-08",
+      "title": "Health Plans Should Fit Real Life",
+      "subtitle": "Perfect plans fail when they ignore schedule, budget, and family context.",
+      "body": [
+        "A realistic plan you can keep is better than an ideal routine you abandon in two weeks.",
+        "Personalization is less about optimization and more about sustainability."
+      ],
+      "takeaway": "Build for adherence, not fantasy."
+    }
+  ]
+}

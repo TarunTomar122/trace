@@ -1,0 +1,139 @@
+{
+  "version": "2.0",
+  "description": "One starter book per interest with 20 reading cards per book.",
+  "card_format": {
+    "fields": [
+      "id",
+      "title",
+      "idea",
+      "description"
+    ]
+  },
+  "interest_id": "business",
+  "book": {
+    "title": "Good to Great",
+    "author": "Jim Collins"
+  },
+  "cards": [
+    {
+      "id": "business-01",
+      "title": "Good Is the Enemy of Great",
+      "idea": "Your quarterly earnings hit target three years straight. Nobody's asking why you should change.",
+      "description": "The revenue is decent. The board is satisfied. There's no crisis to solve, no fire to put out. So the strategy meeting ends with minor tweaks and everyone goes back to work. Good results erase urgency. No pressure means no transformation. The distance from failure to good is shorter than good to great."
+    },
+    {
+      "id": "business-02",
+      "title": "Level 5 Leaders Are Quiet, Not Charismatic",
+      "idea": "You expected to find the bold CEO on magazine covers. You found him at the failing company instead.",
+      "description": "The best-performing companies had leaders nobody had heard of. They sat in meetings and said less. When things went right, they credited the team. When things failed, they looked inward first. Quiet resolve outperformed loud vision. Celebrity status correlated with mediocre results. The pattern held across every pair of companies studied."
+    },
+    {
+      "id": "business-03",
+      "title": "Get the Right People Before the Right Strategy",
+      "idea": "You spent six months perfecting the strategy deck. The wrong team executed it anyway.",
+      "description": "Markets shift. Competitors copy. Technology changes. But a team that thinks clearly can pivot when needed. A weak team will follow the best plan straight into failure. The right people don't need motivating. Perfect structure doesn't fix mediocre judgment. Strategy matters less when you have to explain it constantly."
+    },
+    {
+      "id": "business-04",
+      "title": "Confront the Brutal Facts, Keep the Faith",
+      "idea": "The optimists kept saying \"we'll be rescued by Christmas.\" They didn't make it to spring.",
+      "description": "Stockdale survived eight years as a POW. He never denied how bad things were. But he never stopped believing he'd get out. The ones who died first were the cheerful ones—the ones who kept setting hopeful deadlines that passed. False hope drains faster than honest despair. Denial and faith are opposites, not partners. Companies that punish bad news stop hearing the truth."
+    },
+    {
+      "id": "business-05",
+      "title": "The Hedgehog Knows One Thing Well",
+      "idea": "You're chasing twelve opportunities. Your competitor owns one thing completely.",
+      "description": "Three circles: what you're best at, what makes you money, what you care about. Most companies operate in two circles. Great ones found the center where all three overlap and stayed there. You can't be best in the world at everything. Profit per X reveals where the engine actually runs. Caring about something you're mediocre at is just distraction."
+    },
+    {
+      "id": "business-06",
+      "title": "The Flywheel Has No Single Defining Push",
+      "idea": "The journalist asks which decision turned it around. You can't point to one.",
+      "description": "Push a massive flywheel once. Nothing. Push again. Still nothing. Keep pushing. Eventually it turns. Then faster. Then it spins on its own. No single push did it. The tenth push worked because of the first nine. Outsiders want the breakthrough moment. Insiders remember years of repetition. Momentum looks inevitable only after it arrives."
+    },
+    {
+      "id": "business-07",
+      "title": "Discipline Replaces Bureaucracy",
+      "idea": "The more policies in the handbook, the more people who can't be trusted.",
+      "description": "Bureaucracy exists because someone made a bad decision once. Then someone wrote a rule. Then the rule required approval. Then approval required a committee. Soon you need permission to order printer paper. Disciplined people don't need oversight. Rules multiply to manage the incompetent. The companies with the thinnest handbooks moved fastest."
+    },
+    {
+      "id": "business-08",
+      "title": "Technology Is an Accelerator, Not a Creator",
+      "idea": "You bought the software before you figured out what problem it solves.",
+      "description": "The failing companies chased technology trends first. ERP systems, data warehouses, websites—adopted because competitors had them. The great companies knew what they needed to do, then found tech to do it faster. Technology amplifies existing clarity or existing confusion. Pioneers in tech application, not tech adoption. The comparison companies kept waiting for the magic tool to fix strategy."
+    },
+    {
+      "id": "business-09",
+      "title": "Stop Doing Lists Matter More",
+      "idea": "That project is profitable. It still doesn't fit. You keep it anyway.",
+      "description": "Everyone builds to-do lists. Great companies kept stop-doing lists. They killed projects that made money but blurred focus. Comparison companies added every opportunity and called it diversification. Saying no to profitable work is harder than saying yes. Busy calendars hide the lack of direction. Diversification is often just scattered attention with better branding."
+    },
+    {
+      "id": "business-10",
+      "title": "The Comparison Companies Had the Same Chances",
+      "idea": "Same industry. Same decade. Same starting resources. One succeeded. One blamed circumstances.",
+      "description": "Every great company in the study was paired with a direct competitor. Same market, same resources, same regulatory environment. One made disciplined choices. The other made excuses. Luck doesn't explain pairs in identical conditions. The gap was decisions, not circumstances. Every failed company had the same opportunities."
+    },
+    {
+      "id": "business-11",
+      "title": "Culture Eats Everything",
+      "idea": "The founder retires. Half the executives leave with him. Revenue drops 40% in a year.",
+      "description": "Great companies kept running when the CEO left. Comparison companies collapsed. The difference wasn't the leader's skill—it was whether they built systems or cults of personality. Personality-driven companies die with the personality. Culture-driven companies survive succession. What happens when you leave the room is the real test."
+    },
+    {
+      "id": "business-12",
+      "title": "Big Goals Need a Hedgehog Foundation",
+      "idea": "The vision statement promises to transform the industry. You're not even good at the core business yet.",
+      "description": "Big goals work when rooted in deep competence. Set a massive target in what you're best at—catalytic. Set it in something you're mediocre at—catastrophic. Comparison companies had bold visions too. They were just bold in the wrong direction. Audacity inside competence compounds. Audacity outside competence destroys. Both types of companies had big goals. One group knew where to aim."
+    },
+    {
+      "id": "business-13",
+      "title": "Acquisitions Rarely Drive Greatness",
+      "idea": "You bought three companies this year to fill strategic gaps. All three are underperforming.",
+      "description": "Comparison companies acquired their way toward greatness—buying capabilities they lacked, chasing growth through deals. It rarely worked. Great companies acquired to accelerate momentum they already had, not to create it from scratch. Buying capability doesn't transfer understanding. Two weak companies combined make one expensive weak company. Acquisitions worked when they accelerated, not when they substituted."
+    },
+    {
+      "id": "business-14",
+      "title": "The Best Leaders Give Credit and Take Blame",
+      "idea": "Success? She credits the team. Failure? He blames the market. Guess which one led the great company.",
+      "description": "When things went right, Level 5 leaders pointed outward—team, timing, luck. When things failed, they looked inward. Comparison company leaders reversed it. They took credit and assigned blame. One pattern correlated with greatness. The opposite pattern correlated with mediocrity. The consistency was strong enough to predict outcomes."
+    },
+    {
+      "id": "business-15",
+      "title": "Consistency Compounds Faster Than Intensity",
+      "idea": "Year one: all-hands transformation. Year two: restructuring. Year three: back to basics. Year four: new CEO.",
+      "description": "Comparison companies swung between radical change and stagnation. Great companies repeated the same disciplined actions, year after year. No drama. Just direction. Intensity burns out. Consistency accumulates. Momentum builds quietly until it's too obvious to ignore."
+    },
+    {
+      "id": "business-16",
+      "title": "The Stockdale Paradox Is About Holding Two Truths",
+      "idea": "You need to believe you'll win and admit you're losing. Most people can only do one.",
+      "description": "Faith that you'll prevail in the end. Honesty about how bad things are right now. Held simultaneously. Drop faith—you give up. Drop honesty—you drift on delusion. Optimism without facts is denial. Facts without hope is despair. The productive zone is holding both at once."
+    },
+    {
+      "id": "business-17",
+      "title": "Doom Loop Companies Lurch From Fad to Fad",
+      "idea": "New leader. New strategy. New org chart. Disappointing results. New leader.",
+      "description": "Comparison companies followed a pattern: change direction, get disappointing results, panic, change direction again. Each lurch reset whatever momentum existed. They never pushed long enough to break through. Reaction kills accumulation. Every pivot restarts the clock. The doom loop feels productive because everyone's busy."
+    },
+    {
+      "id": "business-18",
+      "title": "Greatness Is Not a Function of Size",
+      "idea": "The competitor has ten times your revenue and half your clarity. You're faster.",
+      "description": "The study included companies of different sizes. Scale didn't predict greatness. What mattered was clarity about what to do and consistency in doing it. Resources create options, not results. Small and focused beats large and scattered. Size is an excuse more often than an advantage."
+    },
+    {
+      "id": "business-19",
+      "title": "Results Speak Louder Than Charisma",
+      "idea": "He was on the cover of three magazines this year. His stock is down 30% since he started.",
+      "description": "The most celebrated CEOs of that era led comparison companies—not the great ones. Media visibility predicted mediocre returns. Obscurity correlated with sustained performance. Fortune covers marked the wrong companies. Quiet leaders built better institutions. The best story and the best company are rarely the same."
+    },
+    {
+      "id": "business-20",
+      "title": "Greatness Is a Choice, Not a Circumstance",
+      "idea": "Same market. Same decade. Same starting point. One blamed conditions. One chose differently.",
+      "description": "Every pair faced the same industries, the same eras, the same conditions. The separation came from compounding choices—who to hire, what to cut, how long to push in the same direction. The stage was identical. The script was chosen. Greatness compounded in the decisions nobody photographed."
+    }
+  ]
+}

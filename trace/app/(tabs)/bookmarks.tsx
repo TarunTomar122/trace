@@ -5,7 +5,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { ChevronLeft, Lock } from 'lucide-react-native';
 
-import BrainIllus from '@/assets/images/brain-brainstorm-brainstorming-svgrepo-com.svg';
+import BookmarkIllus from '@/components/illustrations/BookmarkIllus';
 
 import { ThemedText } from '@/components/themed-text';
 import { FeedCard } from '@/components/FeedCard';
@@ -125,7 +125,7 @@ export default function BookmarksScreen() {
                 { backgroundColor: ILLUS_PALETTE.lavender[colorScheme] },
               ]}
             >
-              <BrainIllus width={80} height={80} />
+              <BookmarkIllus width={80} height={80} color={Colors[colorScheme].text} />
             </View>
             <ThemedText style={[styles.emptyTitle, { color: Colors[colorScheme].text }]}>
               No saved items yet

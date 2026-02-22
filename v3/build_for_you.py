@@ -30,14 +30,24 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 load_dotenv(REPO_ROOT / ".env")
 
+from v1.storage import is_user_subscribed  # noqa: E402
 from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
 from v3.lib.store import V3Store, FOR_YOU_POOL, _today_ist  # noqa: E402
 from v3.lib.content import fetch_content, fetch_og_image  # noqa: E402
 from v3.lib.summarizer import get_or_generate_summary  # noqa: E402
 from v3.lib.scorer import rank_articles  # noqa: E402
+from v3.lib.diversity import dedupe_and_cap  # noqa: E402
 
 CONFIG_PATH = "v3/config/for_you_sources.json"
-DEFAULT_ITEMS = 6
+DEFAULT_ITEMS = 8
+
+ROLE_INTEREST_MAP: dict[str, list[str]] = {
+    "designer":  ["experience", "marketing"],
+    "developer": ["engineering", "technology"],
+    "pm":        ["business-market", "leadership", "startups"],
+    "marketer":  ["marketing", "business-market"],
+    "founder":   ["startups", "leadership", "business-market"],
+}
 DEFAULT_LIMIT_PER_SOURCE = 5
 DEFAULT_MAX_AGE = 14
 
@@ -57,6 +67,12 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--limit-per-source", type=int, default=DEFAULT_LIMIT_PER_SOURCE)
     p.add_argument("--max-age-days", type=int, default=DEFAULT_MAX_AGE)
     p.add_argument("--date", default="")
+    p.add_argument(
+        "--audience",
+        choices=["subscribed", "unsubscribed", "all"],
+        default="subscribed",
+        help="Which users to build for",
+    )
     return p.parse_args()
 
 
@@ -171,7 +187,7 @@ def build_user_feeds(
     items_per_user = args.items_per_user or config.get("items_per_user", DEFAULT_ITEMS)
     max_age = args.max_age_days
 
-    users = store.get_onboarded_users()
+    users = store.get_onboarded_users(args.audience)
     if args.user_id:
         users = [u for u in users if u.get("uid") == args.user_id]
     if args.limit_users > 0:
@@ -186,20 +202,34 @@ def build_user_feeds(
             continue
 
         interests = set(profile.get("interests", []))
+        role = profile.get("role", "")
         goals = profile.get("careerGoals", []) or []
         style = profile.get("summaryStyle", "practitioner") or "practitioner"
         seniority = profile.get("seniority", "mid") or "mid"
+        is_subscribed = is_user_subscribed(profile)
+
+        # Unsubscribed users do not get For You items in v3 mode.
+        if not is_subscribed:
+            _log(f"  user={uid} unsubscribed, writing empty for_you")
+            store.write_feed_section(uid, target_date, "for_you", [])
+            stats["users"] += 1
+            continue
 
         if not interests:
             _log(f"  user={uid} no interests, skipping")
             continue
 
+        role_extras = set(ROLE_INTEREST_MAP.get(role, [])) - interests
+        expanded = interests | role_extras
+        if role_extras:
+            _log(f"  user={uid} role={role} → injecting {sorted(role_extras)}")
+
         seen_urls = store.get_seen_urls(uid)
-        _log(f"  user={uid} interests={sorted(interests)} seen={len(seen_urls)}")
+        _log(f"  user={uid} interests={sorted(interests)} expanded={sorted(expanded)} seen={len(seen_urls)}")
 
         candidates = store.load_pool(
             FOR_YOU_POOL,
-            interest_ids=interests,
+            interest_ids=expanded,
             max_age_days=max_age,
             exclude_urls=seen_urls,
         )
@@ -212,7 +242,8 @@ def build_user_feeds(
             continue
 
         ranked = rank_articles(candidates, goals)
-        picked = ranked[: items_per_user]
+        diverse = dedupe_and_cap(ranked)
+        picked = diverse[: items_per_user]
 
         feed_items: list[dict[str, Any]] = []
         for i, item in enumerate(picked, 1):
@@ -252,7 +283,10 @@ def main() -> None:
     args = _parse_args()
     _log("=" * 50)
     _log("FOR YOU — Starting")
-    _log(f"  user-id={args.user_id or 'ALL'} skip-pool={args.skip_pool} pool-only={args.pool_only}")
+    _log(
+        f"  user-id={args.user_id or 'ALL'} audience={args.audience} "
+        f"skip-pool={args.skip_pool} pool-only={args.pool_only}"
+    )
     _log("=" * 50)
 
     store = V3Store()

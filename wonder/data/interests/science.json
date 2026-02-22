@@ -1,0 +1,139 @@
+{
+  "version": "2.0",
+  "description": "One starter book per interest with 20 reading cards per book.",
+  "card_format": {
+    "fields": [
+      "id",
+      "title",
+      "idea",
+      "description"
+    ]
+  },
+  "interest_id": "science",
+  "book": {
+    "title": "A Brief History of Time",
+    "author": "Stephen Hawking"
+  },
+  "cards": [
+    {
+      "id": "science-01",
+      "title": "The Universe Doesn't Need a Beginning",
+      "idea": "You keep asking what happened before the Big Bang. The question itself might be broken.",
+      "description": "A sphere has no edge. Walk in any direction and you never fall off, never reach a starting point. Hawking said time could work the same way—finite but boundless. No first moment. No 'before.' Asking what's north of the North Pole makes the same mistake. The geometry is self-contained. Creation becomes optional, not required. Time itself began with the universe. The question 'what came before' assumes time existed independently. It didn't."
+    },
+    {
+      "id": "science-02",
+      "title": "Relativity Means There's No Universal Now",
+      "idea": "Your GPS would be off by miles every day if engineers hadn't corrected for time running differently in orbit.",
+      "description": "Satellites tick faster than ground clocks. Gravity slows time at sea level. An astronaut near light speed ages slower than her twin. There is no universal 'now' that everyone shares. Simultaneity depends on where you're standing and how fast you're moving. Two events that happen 'at the same time' for you happen at different times for someone moving relative to you. Your intuition about time—that it flows uniformly everywhere—is wrong in ways that matter. GPS works because engineers corrected for relativity. Without the adjustment, your phone would think you're miles from where you actually are."
+    },
+    {
+      "id": "science-03",
+      "title": "Gravity Isn't a Force—It's the Shape of Spacetime",
+      "idea": "The sun doesn't pull you. It bends the space around it, and you fall through the curve.",
+      "description": "Newton called gravity a force. Einstein called it geometry. Place the sun in space and it warps the fabric around it. Earth doesn't orbit because it's pulled—it follows the straightest path through curved spacetime. Falling is just moving straight through bent space. Light bends too—that's gravitational lensing, and we've photographed it. The curvature is in time as much as space. Clocks run slower near massive objects. The predictions have been tested for over a century. Every test confirms it. Mass tells space how to curve. Space tells mass how to move."
+    },
+    {
+      "id": "science-04",
+      "title": "Black Holes Break Physics at the Center",
+      "idea": "Cross the event horizon and your fate is sealed. Not because there's a wall—because the exit requires moving faster than light.",
+      "description": "A black hole is what's left when a massive star collapses past the point where physics can hold it up. Cross the event horizon and escape velocity exceeds light speed. Nothing escapes, not even photons. We've now photographed the glowing gas around a black hole's event horizon—the Event Horizon Telescope imaged M87 in 2019. What's at the center remains unknown. The equations predict infinite density and break down. General relativity admits its own failure. Singularities are signs we need a deeper theory. Quantum gravity should eliminate the infinities. No one has figured out how yet."
+    },
+    {
+      "id": "science-05",
+      "title": "The Uncertainty Principle Isn't About Instruments—It's Reality",
+      "idea": "You built a better microscope. Nature still won't let you know both where the electron is and how fast it's moving.",
+      "description": "Heisenberg's principle isn't about measurement limitations. Measure position precisely and momentum becomes uncertain. Measure momentum precisely and position blurs. Nature forbids simultaneous precision. It's not that particles have definite properties we can't measure—they don't have definite properties until you measure them. The electron doesn't have a location and a velocity before measurement. It has probabilities. Certainty at the quantum level doesn't exist. The universe at its smallest is fundamentally fuzzy. This isn't a bug. It's a feature of reality."
+    },
+    {
+      "id": "science-06",
+      "title": "Light Speed Is the Universe's Speed Limit",
+      "idea": "Accelerate close to light speed and your clock slows, your mass increases, and your length shrinks. Hit light speed and causality breaks.",
+      "description": "The speed of light isn't just fast. It's the maximum speed at which anything can move—information, energy, matter. Approach it and the universe does strange things to stop you. Time dilates, length contracts, mass increases toward infinity. Reach light speed and time stops entirely. This isn't theory—particle accelerators confirm it. Protons near light speed behave exactly as relativity predicts. Every theory in modern physics respects this limit or fails. Why this speed? We don't know. But if it were different, physics would break."
+    },
+    {
+      "id": "science-07",
+      "title": "The Big Bang Wasn't an Explosion Into Space",
+      "idea": "You picture matter exploding outward into empty space. Wrong. Space itself was born and started stretching.",
+      "description": "There was no center. No empty void it expanded into. Every point in the universe was the same point 13.8 billion years ago. Space itself began and has been growing ever since. Galaxies aren't flying apart through space—the fabric between them is stretching. The cosmic microwave background is still detectable, the afterglow of that moment. The evidence is overwhelming: redshift, background radiation, element abundances. The theory describes what happened after, not what caused it. 'Before' the Big Bang might not be a meaningful question."
+    },
+    {
+      "id": "science-08",
+      "title": "Space Is Expanding Faster Than Light in Places",
+      "idea": "Distant galaxies are receding faster than light. They're not violating physics—the space between you and them is growing.",
+      "description": "Hubble measured galaxies moving away in every direction. The farther they are, the faster they recede. This isn't motion through space—the fabric itself is stretching. General relativity predicted this before observation confirmed it. The expansion rate is accelerating, driven by something called dark energy that we don't understand. Some galaxies already exceed light speed relative to us. No law is violated—objects can't move through space faster than light, but space itself has no speed limit. We'll never see those galaxies. They've crossed the cosmic horizon."
+    },
+    {
+      "id": "science-09",
+      "title": "Hawking Radiation Means Black Holes Evaporate",
+      "idea": "Black holes were supposed to be eternal. Then Hawking proved they leak.",
+      "description": "Quantum mechanics says particle-antiparticle pairs pop into existence everywhere, then annihilate. Near a black hole's event horizon, one can fall in while the other escapes. The escaping particle carries energy away. The black hole shrinks. Small black holes evaporate faster than large ones. Eventually, they disappear entirely. This raises the information paradox: if a black hole evaporates, what happens to the information about everything that fell in? Quantum mechanics says information can't be destroyed. General relativity says it is. The paradox remains unsolved. Hawking spent decades trying to resolve it."
+    },
+    {
+      "id": "science-10",
+      "title": "The Arrow of Time Is Statistical, Not Fundamental",
+      "idea": "Film a ball bouncing and you can't tell which direction time flows. Film an egg breaking and it's obvious.",
+      "description": "Physics equations work forward and backward. Time has no preferred direction in the laws. But entropy only increases. Disorder grows. Eggs break but don't reassemble. Ice melts but doesn't spontaneously freeze. The second law of thermodynamics creates the arrow. The past had lower entropy, the future will have higher. Time's direction is statistical, not fundamental. A broken egg could reassemble—the physics allows it—but the odds are astronomically small. The arrow of time is probability, not law. Which makes it stranger, not less real."
+    },
+    {
+      "id": "science-11",
+      "title": "General Relativity and Quantum Mechanics Don't Talk",
+      "idea": "General relativity works. Quantum mechanics works. Apply both at once and the math explodes.",
+      "description": "Gravity at cosmic scales. Quantum mechanics at atomic scales. Try to combine them—inside a black hole, at the Big Bang—and the equations break. Relativity ignores quantum effects. Quantum mechanics ignores gravity. String theory and loop quantum gravity are candidates for unification. Neither proven. The gap isn't minor. It's the deepest unsolved problem in physics. We need quantum gravity to describe singularities. A theory that works everywhere, at every scale. We don't have it yet."
+    },
+    {
+      "id": "science-12",
+      "title": "Observation Collapses the Wave Function",
+      "idea": "The electron behaves like a wave. You measure it. Now it's a particle. Your measurement didn't just detect what it was—it changed what it is.",
+      "description": "A particle exists in superposition—multiple states at once—until you measure it. Then it collapses into one definite state. Not metaphor. Experimentally confirmed. The double-slit experiment demonstrates this: electrons act as waves until observed, then particles. What counts as 'observation' at a fundamental level is still debated. Some interpretations say consciousness matters. Others say any interaction counts. All agree: measurement changes reality. The quantum world doesn't have definite properties waiting to be discovered. It has probabilities waiting to be collapsed."
+    },
+    {
+      "id": "science-13",
+      "title": "Entropy Always Wins in the End",
+      "idea": "The star burns out. The ice melts. The building crumbles. Order doesn't hold.",
+      "description": "Entropy always increases in a closed system. Disorder grows. Every pocket of order—galaxy, cell, city—is a temporary arrangement fighting an inevitable tide. Life is a local decrease in entropy, paid for by a larger increase elsewhere. The sun pours entropy into space to keep Earth organized. Heat death is the ultimate consequence: a universe at maximum entropy, no energy differences left to do work. Order is expensive, temporary, and borrowed. The second law doesn't care about your plans. It will outlast everything."
+    },
+    {
+      "id": "science-14",
+      "title": "Dark Matter and Dark Energy Are 95% of the Universe",
+      "idea": "You look at a galaxy. The visible matter doesn't create enough gravity to hold it together. Something invisible is doing the work.",
+      "description": "Galaxies spin too fast. The visible matter can't explain it. Either gravity is wrong or there's mass we can't see. We call it dark matter. It doesn't emit light. It doesn't interact with regular matter except through gravity. It's five times more abundant than ordinary matter. We've never detected a dark matter particle directly. Then there's dark energy—the force accelerating the universe's expansion. It makes up 68% of the universe. We have no idea what it is. We know it's there because the expansion is speeding up. 95% of the universe is made of things we can't see and don't understand. We named the gaps and kept calculating."
+    },
+    {
+      "id": "science-15",
+      "title": "Quantum Entanglement Is Spooky, and It's Real",
+      "idea": "You measure one particle. Instantly, a particle light-years away changes state. No signal traveled between them.",
+      "description": "Einstein called it 'spooky action at a distance' and hated it. Entangled particles share a quantum state. Measure one and you instantly know the other's state—even if it's across the galaxy. This doesn't transmit information faster than light, so relativity survives. But it violates local realism: the idea that objects have definite properties independent of measurement and that influences travel at finite speeds. Experiments confirm entanglement. Bell's theorem proved local hidden variables can't explain it. The universe is fundamentally non-local. Particles that interacted once remain connected in ways that defy intuition. Quantum computers exploit this weirdness."
+    },
+    {
+      "id": "science-16",
+      "title": "We Detected Gravitational Waves a Century After Einstein Predicted Them",
+      "idea": "Two black holes collided 1.3 billion years ago. In 2015, the ripple reached Earth and moved a mirror by less than the width of a proton.",
+      "description": "Einstein's 1915 theory predicted gravitational waves—ripples in spacetime itself caused by accelerating masses. He thought they'd be too weak to ever detect. A century later, LIGO proved him wrong. When massive objects like black holes or neutron stars collide, they shake spacetime. The waves travel at light speed, stretching and squeezing space as they pass. LIGO detected the first waves in 2015 from two merging black holes. The interferometer arms changed length by a thousandth the width of a proton. We can now observe the universe through spacetime ripples, not just light. It's a new sense. We're listening to collisions from billions of years ago."
+    },
+    {
+      "id": "science-17",
+      "title": "The Higgs Boson Completes the Standard Model",
+      "idea": "Particles shouldn't have mass according to the equations. Then in 2012, CERN found the field that gives it to them.",
+      "description": "The Standard Model describes fundamental particles and forces—except it predicted particles should be massless. They're not. The Higgs mechanism was proposed in the 1960s: a field permeating space that particles interact with, gaining mass in the process. Photons don't interact with it, so they're massless. Electrons do, so they have mass. The Higgs boson is the particle associated with this field. CERN found it in 2012 after decades of searching. Peter Higgs won the Nobel Prize. The Standard Model is now complete. But it's not the final theory—it doesn't include gravity, and it doesn't explain dark matter. It's the best incomplete theory we have."
+    },
+    {
+      "id": "science-18",
+      "title": "The Anthropic Principle Explains Nothing and Everything",
+      "idea": "The constants are perfectly tuned for life. Your explanation: 'We exist because if they were different, we wouldn't.' True. Not useful.",
+      "description": "Change gravity slightly and stars don't form. Adjust the strong nuclear force and hydrogen doesn't exist. The constants seem finely tuned. The anthropic principle says we observe these values because different values wouldn't produce observers. The weak version is a tautology—of course we find ourselves in a universe that allows us. The strong version suggests the universe must allow consciousness, which is controversial. Some invoke the multiverse: if infinite universes exist with different constants, we're obviously in one that permits life. Others find this unsatisfying—it trades one mystery for infinite universes. The anthropic principle is either profound or circular, depending on who you ask."
+    },
+    {
+      "id": "science-19",
+      "title": "Progress Happens by Finding Where Theories Break",
+      "idea": "Newton broke Aristotle. Einstein broke Newton. Quantum mechanics broke determinism. Every revolution showed where the old model stopped working.",
+      "description": "Science doesn't replace wrong theories with right ones. It replaces incomplete theories with more complete ones. Newton's gravity still works for most purposes—we use it to launch satellites. Einstein's relativity works until quantum scales. The next revolution will show where our current theories break. That's how it always happens. Aristotle's physics worked for everyday objects at human speeds. Newton extended it to planets and precise motion. Einstein extended it to high speeds and strong gravity. Quantum mechanics extended it to the very small. Each revolution preserved the old theory as a special case and revealed its limits. General relativity and quantum mechanics both work—except where they overlap. That's where the next revolution is hiding."
+    },
+    {
+      "id": "science-20",
+      "title": "We Are Insignificant, and We Figured It Out Anyway",
+      "idea": "You're on a rock orbiting an average star in one galaxy among trillions. You figured out the universe is 13.8 billion years old.",
+      "description": "The scale should make this impossible. Small planet. Average star. One galaxy among hundreds of billions. And yet we know space curves, time dilates, black holes evaporate, the universe is expanding. We've measured the cosmic microwave background, detected gravitational waves, photographed a black hole. The gap between what we are and what we've understood is staggering. Ants on a speck figured out the age and fate of the cosmos. Science doesn't promise complete answers—it promises better questions and methods to test them. We'll never know everything. But what we have figured out, despite our size and lifespan, is remarkable. The audacity is the point."
+    }
+  ]
+}

@@ -36,7 +36,13 @@ import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { isBookmarked as checkBookmarked, toggleBookmark } from '@/lib/bookmarks';
-import { FeedItem, getFreeDailyReadUsed, markFreeDailyReadUsed } from '@/lib/firestore';
+import {
+  FeedItem,
+  getFreeDailyReadUsed,
+  markFreeDailyReadUsed,
+  getFreeWeeklyDeepDiveUsed,
+  markFreeWeeklyDeepDiveUsed,
+} from '@/lib/firestore';
 import { logReadingEvent } from '@/lib/reading-analytics';
 
 const SOURCE_CONFIG: Record<
@@ -103,14 +109,25 @@ export default function ArticleScreen() {
   const { user } = useAuth();
 
   const [freeDailyUsed, setFreeDailyUsed] = useState<boolean | null>(null);
+  const [freeWeeklyDeepDiveUsed, setFreeWeeklyDeepDiveUsed] = useState<boolean | null>(null);
   const isFreeRead = params.feed_category === 'free_daily_read';
+  const isDeepDiveRead = params.feed_category === 'deep_dives';
 
   useEffect(() => {
     if (isProUser || !user) return;
-    getFreeDailyReadUsed(user.uid).then(setFreeDailyUsed);
+    Promise.all([
+      getFreeDailyReadUsed(user.uid),
+      getFreeWeeklyDeepDiveUsed(user.uid),
+    ]).then(([dailyUsed, weeklyDeepDiveUsed]) => {
+      setFreeDailyUsed(dailyUsed);
+      setFreeWeeklyDeepDiveUsed(weeklyDeepDiveUsed);
+    });
   }, [isProUser, user]);
 
-  const hasAccess = isProUser || (isFreeRead && freeDailyUsed === false);
+  const hasAccess =
+    isProUser ||
+    (isFreeRead && freeDailyUsed === false) ||
+    (isDeepDiveRead && freeWeeklyDeepDiveUsed === false);
 
   useEffect(() => {
     if (hasAccess && isFreeRead && user && freeDailyUsed === false) {
@@ -118,6 +135,13 @@ export default function ArticleScreen() {
       setFreeDailyUsed(true);
     }
   }, [hasAccess, isFreeRead, user, freeDailyUsed]);
+
+  useEffect(() => {
+    if (hasAccess && isDeepDiveRead && user && freeWeeklyDeepDiveUsed === false) {
+      markFreeWeeklyDeepDiveUsed(user.uid);
+      setFreeWeeklyDeepDiveUsed(true);
+    }
+  }, [hasAccess, isDeepDiveRead, user, freeWeeklyDeepDiveUsed]);
 
   const [upvoted, setUpvoted] = useState(false);
   const [downvoted, setDownvoted] = useState(false);
@@ -432,7 +456,9 @@ export default function ArticleScreen() {
                   Read the key takeaways in 2 minutes
                 </ThemedText>
                 <ThemedText style={[styles.paywallDesc, { color: Colors[colorScheme].muted }]}>
-                  Every article, distilled to what matters most {'\u2014'} so you learn more, faster.
+                  {isDeepDiveRead
+                    ? 'You have used this week\'s free Deep Dive. Upgrade for unlimited deep dives and summaries.'
+                    : 'Every article, distilled to what matters most — so you learn more, faster.'}
                 </ThemedText>
 
                 <Pressable

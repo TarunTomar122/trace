@@ -1,0 +1,108 @@
+{
+  "version": "3.0",
+  "description": "Conversational learning cards with subtitle, body paragraphs, and takeaway per card.",
+  "card_format": {
+    "fields": [
+      "id",
+      "title",
+      "subtitle",
+      "body",
+      "takeaway"
+    ]
+  },
+  "interest_id": "culture",
+  "videos": [
+    {
+      "title": "The Danger of a Single Story",
+      "creator": "Chimamanda Ngozi Adichie",
+      "platform": "TED",
+      "url": "",
+      "thumbnail_url": "https://images.unsplash.com/photo-1533669955142-6a73332af4db?w=1200&q=80",
+      "duration": "",
+      "published_date": "",
+      "description": ""
+    }
+  ],
+  "cards": [
+    {
+      "id": "culture-video-01",
+      "title": "Most People Live Inside Defaults",
+      "subtitle": "Many of our choices feel personal, but they are often inherited from context.",
+      "body": [
+        "Language, norms, and expectations shape what seems normal long before we evaluate it consciously.",
+        "Noticing defaults creates room for agency. You can keep what serves you and question what does not."
+      ],
+      "takeaway": "Awareness is the first step to cultural choice."
+    },
+    {
+      "id": "culture-video-02",
+      "title": "Stories Shape Group Identity",
+      "subtitle": "Groups hold together through stories about who they are and what they value.",
+      "body": [
+        "Those stories can create solidarity, but they can also exclude people who do not match the script.",
+        "Healthy cultures update their stories as reality changes."
+      ],
+      "takeaway": "Identity should guide people, not trap them."
+    },
+    {
+      "id": "culture-video-03",
+      "title": "Online Culture Rewards Certainty",
+      "subtitle": "Nuance often loses to confidence in fast social environments.",
+      "body": [
+        "A complex idea takes time to explain, while a sharp one-liner spreads instantly.",
+        "That dynamic can make moderate voices seem weak even when they are more accurate."
+      ],
+      "takeaway": "Speed favors certainty; wisdom favors context."
+    },
+    {
+      "id": "culture-video-04",
+      "title": "Humor Is a Cultural Signal",
+      "subtitle": "Jokes are not just entertainment—they reveal boundaries and power.",
+      "body": [
+        "What a group laughs at shows what it normalizes, protects, or dismisses.",
+        "Paying attention to humor helps you read the emotional rules of a space."
+      ],
+      "takeaway": "Laughter can be a map of values."
+    },
+    {
+      "id": "culture-video-05",
+      "title": "Tradition and Change Need Each Other",
+      "subtitle": "Pure tradition can become rigid, and pure disruption can become rootless.",
+      "body": [
+        "Cultures stay alive when they preserve meaning while adapting form.",
+        "The goal is not choosing one side forever. It is balancing continuity with revision."
+      ],
+      "takeaway": "Keep the signal, update the system."
+    },
+    {
+      "id": "culture-video-06",
+      "title": "Subcultures Drive Innovation",
+      "subtitle": "New norms often begin at the edges before the mainstream adopts them.",
+      "body": [
+        "Music, design, language, and politics frequently move from niche scenes into broad culture over time.",
+        "Watching subcultures is often a better predictor than watching headlines."
+      ],
+      "takeaway": "The fringe is usually the future in draft form."
+    },
+    {
+      "id": "culture-video-07",
+      "title": "Representation Changes Imagination",
+      "subtitle": "Seeing people like you in meaningful roles expands what feels possible.",
+      "body": [
+        "Representation is not just symbolic. It influences aspiration, confidence, and belonging.",
+        "When stories widen, participation widens too."
+      ],
+      "takeaway": "Who is visible shapes who believes they belong."
+    },
+    {
+      "id": "culture-video-08",
+      "title": "Attention Is the Cultural Currency",
+      "subtitle": "In the digital era, what gets attention often sets the agenda.",
+      "body": [
+        "Platforms reward emotional intensity, which can crowd out slower, richer conversations.",
+        "Choosing where to place your attention is a cultural act, not just a personal habit."
+      ],
+      "takeaway": "What you feed grows."
+    }
+  ]
+}

@@ -1,0 +1,139 @@
+{
+  "version": "2.0",
+  "description": "One starter book per interest with 20 reading cards per book.",
+  "card_format": {
+    "fields": [
+      "id",
+      "title",
+      "idea",
+      "description"
+    ]
+  },
+  "interest_id": "society",
+  "book": {
+    "title": "Factfulness",
+    "author": "Hans Rosling, Ola Rosling, and Anna Rosling Ronnlund"
+  },
+  "cards": [
+    {
+      "id": "society-01",
+      "title": "The World Is Better Than You Think",
+      "idea": "You asked Nobel laureates basic questions about global health. They scored worse than random guessing.",
+      "description": "Child mortality rate: halved in 20 years. Extreme poverty: from 50% to under 10% in two generations. Life expectancy: up everywhere. Every educated audience Rosling tested got these facts backward. Professors thought poverty was increasing. Doctors overestimated child death rates by a factor of three. The gap between what's true and what smart people believe is the actual crisis."
+    },
+    {
+      "id": "society-02",
+      "title": "The Gap Instinct Divides the World Wrong",
+      "idea": "Your mental map has two boxes: rich countries and poor countries. Five billion people don't fit in either.",
+      "description": "Most humans live on income levels 2 and 3. They have electricity, send kids to school, and own a bike or motorbike. Not extreme poverty. Not luxury. The middle you keep ignoring. 'Developing world' lumps Bangladesh with Burundi. You see a cliff where there's actually a slope. The binary makes you blind to where most of humanity actually lives."
+    },
+    {
+      "id": "society-03",
+      "title": "Most People Live in the Middle",
+      "idea": "Level 1: barefoot, no electricity. Level 4: car, passport, college. Your mental model has those two. Rosling has four. The difference matters.",
+      "description": "Level 2: a bike, a bucket, electricity sometimes. Level 3: a motorbike, a washing machine, kids in school. That's where most of humanity lives. Not in the extremes you keep picturing. Majority of children are vaccinated. Majority of girls go to school. Your catastrophe narrative is decades out of date."
+    },
+    {
+      "id": "society-04",
+      "title": "Straight Lines Are Rare in Reality",
+      "idea": "Population has been rising for 200 years. You drew a straight line up. The line already bent.",
+      "description": "Birth rates are falling everywhere. The curve that looked exponential is flattening into an S. Growth is slowing. Peak population is in sight. You're still preparing for the apocalypse from a trend that ended a decade ago. The straight line assumption breaks every forecast. S-curves are the norm in biology, not the exception. You project disasters that already passed their inflection point."
+    },
+    {
+      "id": "society-05",
+      "title": "Fear Distorts Risk Assessment",
+      "idea": "You're afraid of sharks. Heart disease will kill you. Plane crashes scare you. Car rides kill 1.3 million people a year.",
+      "description": "The vivid image wins. Shark attack: front page. Air pollution deaths: page seventeen, below the fold. Your brain is wired to fear spectacle, not statistics. Dramatic and rare beats common and silent. Media amplifies what terrifies, not what threatens. Policy follows fear, not mortality tables."
+    },
+    {
+      "id": "society-06",
+      "title": "Size Without Context Is Meaningless",
+      "idea": "Four million babies died this year. You're horrified. Forty years ago the number was fourteen million.",
+      "description": "The single number is designed to shock. The comparison shows one of the greatest achievements in human history. Without context, you see catastrophe. With it, you see relentless progress. Compared to what?. Per capita or absolute?. The number alone is a weapon, not information."
+    },
+    {
+      "id": "society-07",
+      "title": "Generalization Erases the Useful Details",
+      "idea": "You said 'Africa' like it's one place. It's 54 countries. Tunisia and Mozambique have nothing in common.",
+      "description": "Lump a billion people into a label and you stop seeing them. Morocco's literacy rate is 75%. Niger's is 30%. Both are 'Africa' in your mental model. Both are invisible as a result. Within-group variation exceeds between-group variation. The category flattens what matters. Disaggregate or stay wrong."
+    },
+    {
+      "id": "society-08",
+      "title": "Destiny Is a Story, Not a Fact",
+      "idea": "Bangladesh was the case study for hopeless poverty in the 1970s. Its child survival rate now beats the US in some states.",
+      "description": "South Korea went from Level 1 to Level 4 in one generation. Iran's birth rate dropped faster than Sweden's ever did. The countries you wrote off changed while you were busy explaining why they couldn't. Destiny is yesterday's data treated as prophecy. Change happened while you were clinging to the old story. The slowest thing to update is your mental map."
+    },
+    {
+      "id": "society-09",
+      "title": "Single Perspectives Miss the System",
+      "idea": "The doctor sees disease. The economist sees markets. The activist sees injustice. Same problem, three explanations, no solution.",
+      "description": "Give an expert a complex problem and they'll explain it using their one framework. Works great in their domain. Fails everywhere else. Poverty isn't just economics. Health isn't just medicine. You need multiple lenses, not one ideology applied harder. Experts go blind at the edge of their training. Ideology is confidence without breadth. The useful perspective is the one you forgot to ask."
+    },
+    {
+      "id": "society-10",
+      "title": "Blame Blocks Understanding",
+      "idea": "You found the villain in twenty minutes. The system that produced the outcome took decades to build.",
+      "description": "Blame feels decisive. Point at the company, the politician, the group. Punishment follows. The problem continues. Systemic outcomes don't need villains—they need feedback loops, incentives, and accumulated decisions no one remembers making. Blame is energy aimed at revenge, not prevention. If the villain is obvious, you stopped thinking. Systems produce what no single actor wanted."
+    },
+    {
+      "id": "society-11",
+      "title": "Urgency Creates Bad Decisions",
+      "idea": "The headline says act NOW. You skip the analysis. The intervention makes it worse.",
+      "description": "Ebola: panic built bad quarantines, wasted resources, and spread the disease faster. The urgency instinct hijacks judgment. You feel decisive. You're just reactive. Drastic action is often destructive action wearing a better name. Most deadlines are manufactured. Take a breath. Check the data. Then move."
+    },
+    {
+      "id": "society-12",
+      "title": "Negativity Gets More Attention Than Progress",
+      "idea": "One factory explodes: front page. A thousand factories run safely all year: silence.",
+      "description": "Smallpox got eradicated over decades. No headline captured it. Plane crashes sell papers. Millions of safe landings don't. Your information diet is systematically skewed toward catastrophe, so your worldview is systematically wrong. Gradual improvement is invisible. The absence of crisis doesn't trend. Good news requires active searching because it won't find you."
+    },
+    {
+      "id": "society-13",
+      "title": "Data Without Questions Is Just Noise",
+      "idea": "You looked at the number. Formed an opinion. Never asked what it was measuring or over what period.",
+      "description": "Same dataset, opposite conclusions, depending on the question. 'Is it bad?' tells you nothing. 'What's the 50-year trend?' tells you everything. Data doesn't speak. You interrogate it or you just see what you want. Cherry-picked points prove anything. The question determines the answer. What is this measuring, compared to what, over how long?."
+    },
+    {
+      "id": "society-14",
+      "title": "The Media Isn't Lying—It's Selecting",
+      "idea": "Plane crashes make the news. Safe landings don't. You consumed a year of headlines and think flying got more dangerous.",
+      "description": "Journalists aren't lying. They're selecting abnormality. News is, by definition, the unusual. Consume it without a data baseline and you get progressively more wrong about what's normal. News selects for drama, conflict, fear. The more you watch, the worse your estimates get. Data literacy is the antidote to headline poisoning."
+    },
+    {
+      "id": "society-15",
+      "title": "Poverty Levels Tell You More Than Country Labels",
+      "idea": "A Level 2 family in Kenya has more in common with a Level 2 family in India than with their own country's elite.",
+      "description": "Income level predicts daily life better than nationality. Same level, same challenges: getting kids to school, paying for electricity, saving for emergencies. Nationality is a bad proxy for lived reality. Level 3 in Nigeria looks like Level 3 in Peru. Nation-state thinking hides the patterns that matter. Income bracket tells you more than passport."
+    },
+    {
+      "id": "society-16",
+      "title": "Slow Progress Is Still Progress",
+      "idea": "Girls' education went from 60% to 90% in thirty years. Reshapes civilizations. Never made a headline.",
+      "description": "Change that takes a generation is invisible day to day. You see the chaos in the foreground. Miss the transformation in the background. The most important shifts are incremental, silent, and real. Gradual is invisible. Invisible doesn't mean unimportant. Historians celebrate what journalists missed."
+    },
+    {
+      "id": "society-17",
+      "title": "Extreme Poverty Dropped and Nobody Noticed",
+      "idea": "Extreme poverty: 85% of humanity in 1800. Under 10% today. Population quadrupled during the same period. You think it got worse.",
+      "description": "No ribbon-cutting ceremony. No single breakthrough. A thousand small improvements compounded across two centuries. Medicine, agriculture, trade, governance. And most people believe poverty is rising. Greatest achievement in human history. Least-known fact about the modern world. Not knowing this breaks every policy debate and donation decision."
+    },
+    {
+      "id": "society-18",
+      "title": "Educated People Get These Questions Wrong Too",
+      "idea": "Professors, Nobel laureates, world leaders—all tested. All scored worse than random guessing.",
+      "description": "Not a problem of intelligence. Problem of outdated models. They learned their worldview in 1985 and never updated it. Their confidence made them worse—certain about facts that changed while they weren't looking. Education doesn't protect you from stale maps. What was true in 1990 is fiction in 2025. Humility beats expertise when the data moved."
+    },
+    {
+      "id": "society-19",
+      "title": "Categories Collapse When You Look Closely",
+      "idea": "Zoom in on 'Africa.' Find 54 countries. Zoom in on one country. Find urban and rural opposites. Zoom in on a village. Find five income levels.",
+      "description": "Every generalization is lossy compression. 'The average' hides the spread. The spread is where reality lives. Disaggregate or stay blind. Averages flatten what matters. Variation is the truth. Willingness to zoom in separates analysis from laziness."
+    },
+    {
+      "id": "society-20",
+      "title": "Factfulness Is a Practice, Not a Position",
+      "idea": "Your brain evolved for survival, not accuracy. Fear, blame, urgency—all useful on the savanna. All misleading now.",
+      "description": "You can't delete your instincts. You can check them against evidence. Factfulness is that habit. Repeated daily. Updated when the data shifts. Biases don't disappear. Management beats denial. The goal isn't optimism or pessimism. It's seeing what's actually there."
+    }
+  ]
+}

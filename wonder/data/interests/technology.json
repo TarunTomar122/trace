@@ -1,0 +1,139 @@
+{
+  "version": "2.0",
+  "description": "One starter book per interest with 20 reading cards per book.",
+  "card_format": {
+    "fields": [
+      "id",
+      "title",
+      "idea",
+      "description"
+    ]
+  },
+  "interest_id": "technology",
+  "book": {
+    "title": "Chip War",
+    "author": "Chris Miller"
+  },
+  "cards": [
+    {
+      "id": "technology-01",
+      "title": "The Most Important Product You've Never Seen",
+      "idea": "Your car stopped working because a factory in Taiwan flooded.",
+      "description": "The dealership told you it's a chip shortage. You've never heard of TSMC. You don't know what a foundry is. But your $60,000 vehicle is now a paperweight in your driveway because a semiconductor fab on the other side of the world went offline. Every modern device runs on chips most people couldn't identify. The entire supply chain for one chip spans continents and decades of R&D. Invisible infrastructure only becomes visible when it breaks."
+    },
+    {
+      "id": "technology-02",
+      "title": "Geography Is Destiny in Silicon",
+      "idea": "One earthquake in Taiwan and your iPhone production stops. Forever, maybe.",
+      "description": "Over 90% of advanced chips come from a single island. Not a diverse region—an island. One that sits on a fault line and 100 miles from a superpower that wants to invade it. A blockade doesn't need to succeed, just be credible. Every industry that depends on semiconductors—which is every industry—has the same single point of failure. You optimized for efficiency and got fragility."
+    },
+    {
+      "id": "technology-03",
+      "title": "One Machine Controls the Future",
+      "idea": "You want to build advanced chips. One company in the Netherlands says no.",
+      "description": "ASML makes the only machine that can print cutting-edge semiconductors. $150 million each. No alternatives exist. They stopped shipping to China because the Dutch government told them to. No EUV lithography machine, no advanced chips—period. Every fab in the world depends on equipment from one Dutch company. The chokepoint isn't the factory. It's the machine inside the factory."
+    },
+    {
+      "id": "technology-04",
+      "title": "Fabrication Is the New Oil",
+      "idea": "The U.S. invented semiconductors. Then outsourced the manufacturing. Now it's panicking.",
+      "description": "Intel, Apple, Nvidia—American companies designed the chips that run the modern world. But they don't make them. Taiwan does. The country that controls fabrication controls which weapons exist, which economies function, which technologies are possible. You can't bomb your way to semiconductor dominance. The nation with fab capacity has leverage over everyone else. The CHIPS Act is $52 billion worth of realizing you gave away strategic infrastructure for quarterly earnings."
+    },
+    {
+      "id": "technology-05",
+      "title": "The Design-Manufacturing Split Changed Everything",
+      "idea": "Apple designs the chip. TSMC decides if it gets made.",
+      "description": "You spent $2 billion developing the world's best chip design. Now you're on a waitlist for fab capacity. The foundry tells you Q3, maybe Q4. Your competitors are in the same line. Fabless companies can innovate without building billion-dollar fabs. They also can't manufacture without someone else's permission and schedule. TSMC became the chokepoint nobody planned for."
+    },
+    {
+      "id": "technology-06",
+      "title": "Moore's Law Was Never a Law",
+      "idea": "Your entire product roadmap assumes chips double in power every two years. They won't.",
+      "description": "Gordon Moore noticed a pattern in 1965. The industry spent fifty years organizing around it—investment cycles, R&D budgets, product launches—all calibrated to that pace. Now the physics is hitting walls and everyone's timeline just broke. Moore's Law was coordination dressed up as inevitability. Belief in it created the funding that made it real. The engine sputters when the fuel runs out, not when people stop believing."
+    },
+    {
+      "id": "technology-07",
+      "title": "Military Demand Built the Industry",
+      "idea": "Nobody wanted your $1,000 chip. Except the Pentagon.",
+      "description": "Early semiconductors were expensive, unreliable, and worthless to consumers. But missile guidance systems needed small computers, and the military didn't care what they cost. Defense contracts kept the first chip companies alive for years until the market caught up. The Pentagon bought chips when no one else would pay for them. Government funding absorbed the risk that private capital wouldn't touch. Silicon Valley's origin story starts at the Department of Defense, not in a garage."
+    },
+    {
+      "id": "technology-08",
+      "title": "The Foundry Model Rewrote Power",
+      "idea": "You don't need a fab anymore. You need Morris Chang's permission.",
+      "description": "TSMC offered to manufacture anyone's chip design without competing against them. Revolutionary in 1987. It meant scrappy startups could access world-class fabs. It also meant one company in Taiwan gradually became indispensable to everyone. Before TSMC, you needed a billion-dollar fab to compete. After TSMC, design talent alone could build a chip company. They democratized design and concentrated all the power in manufacturing."
+    },
+    {
+      "id": "technology-09",
+      "title": "You Can't Stockpile Innovation",
+      "idea": "You hoarded a million chips. Last year's chips. They're already obsolete.",
+      "description": "Strategic reserves work for oil. Not for semiconductors. The AI model you need to run didn't exist when you stockpiled those chips. Neither did the weapons system. Neither did the threat. Last generation's chips can't run this generation's workloads. Inventory buys time, not capability. The real advantage is access to the next fabrication node, not a warehouse full of old ones."
+    },
+    {
+      "id": "technology-10",
+      "title": "Export Controls Are Weapons",
+      "idea": "China built a $100 billion chip industry. The U.S. ended it with a memo.",
+      "description": "No missiles. No troops. Just export restrictions on lithography machines and chip designs. China's leading foundries went from cutting-edge to stranded overnight. Turns out you can't build advanced chips if no one will sell you the equipment. Export controls target the toolchain, not the product. Cutting off ASML machines cuts off the future, not just today's chips. China's now pouring hundreds of billions into alternatives that might not work."
+    },
+    {
+      "id": "technology-11",
+      "title": "Taiwan Sits on a Fault Line—Two Kinds",
+      "idea": "An earthquake or an invasion. Either one stops chip production. Both are coming.",
+      "description": "TSMC's fabs sit on a seismic fault line. They also sit 100 miles from China. A natural disaster or a blockade—doesn't matter which—paralyzes every industry that needs semiconductors. Which is every industry. Taiwan's chip dominance is called a 'silicon shield'. The theory: the world needs Taiwan's chips too much to let it fall. Theories get stress-tested when it's too late to revise them."
+    },
+    {
+      "id": "technology-12",
+      "title": "Talent Is the Real Bottleneck",
+      "idea": "You built a $20 billion fab. Now you need 3,000 engineers who don't exist.",
+      "description": "The subsidies got you the building. Now you need people who understand physics, chemistry, and precision manufacturing at nanometer scales. This expertise takes decades to develop. You can't buy it and you can't skip the learning curve. TSMC's workforce is its deepest moat. You can't train semiconductor engineers faster than universities can graduate them. The building is the easy part. The people are the bottleneck."
+    },
+    {
+      "id": "technology-13",
+      "title": "Copying Chips Is Harder Than It Looks",
+      "idea": "The Soviets stole chip designs for thirty years. Still couldn't build them.",
+      "description": "They had the blueprints. Didn't matter. The design is 10% of the problem. The manufacturing process—the chemistry, the precision, the yield rates—that's where the knowledge lives. You can't photograph tacit expertise. Design knowledge fits on a hard drive. Manufacturing knowledge is embedded in people, equipment, and years of trial and error. You can steal the recipe and still not make the dish."
+    },
+    {
+      "id": "technology-14",
+      "title": "The Supply Chain Has No Backup",
+      "idea": "A chemical plant in Japan catches fire. Global chip production stops.",
+      "description": "Semiconductor manufacturing depends on materials from Japan, gases from Europe, designs from America, equipment from the Netherlands, fabrication in Taiwan. One supplier goes down and the entire chain breaks. No alternatives exist for most of these inputs. Specialization created efficiency and eliminated every backup. The supply chain was optimized for cost, not resilience. COVID exposed this years ago. Still not fixed."
+    },
+    {
+      "id": "technology-15",
+      "title": "Speed Wins, Scale Follows",
+      "idea": "You hit 3nm six months after TSMC. Apple already signed with them.",
+      "description": "First to the next process node gets Apple, Nvidia, and the Pentagon. Faster chips, better margins, premium customers. Second place gets whoever couldn't get capacity at TSMC. Leading-edge fabs earn disproportionate profits from early access. Falling behind one generation creates a compounding disadvantage. You're not racing other fabs. You're racing irrelevance."
+    },
+    {
+      "id": "technology-16",
+      "title": "Software Ate the World, Chips Ate Software",
+      "idea": "Your AI startup raised $100 million. Then Nvidia said no more GPUs until Q4.",
+      "description": "Every software revolution has a hardware dependency no one mentions. AI needs GPUs. Cloud needs server chips. Smartphones need mobile processors. The software layer gets the press. The silicon layer decides what's possible. No Moore's Law, no smartphone revolution. No GPU advances, no AI boom. Software gets the headlines. Chips do the work."
+    },
+    {
+      "id": "technology-17",
+      "title": "Government Money Doesn't Guarantee Results",
+      "idea": "China spent $100 billion on semiconductor independence. Half the fabs are abandoned.",
+      "description": "Subsidies bought buildings and equipment. They didn't buy the talent, suppliers, or institutional knowledge. Some investments worked. Most produced fraud, waste, and empty facilities sitting in industrial parks. Money is necessary but not sufficient. The ecosystem—engineers, materials suppliers, process knowledge—takes decades to build. Industrial policy works when it amplifies existing strengths. It fails when it tries to conjure an industry from nothing."
+    },
+    {
+      "id": "technology-18",
+      "title": "The Company That Makes the Machines Rules",
+      "idea": "You own a $10 billion fab. ASML owns you.",
+      "description": "ASML doesn't make chips. They make the machines that make chips. Every advanced fab in the world depends on their lithography systems. You can't print cutting-edge semiconductors without them. No alternatives exist. Control the tools, control the output. ASML's customer list is a dependency list. The bottleneck isn't the factory. It's the machine inside the factory."
+    },
+    {
+      "id": "technology-19",
+      "title": "Consumer Demand Funds Military Power",
+      "idea": "You bought an iPhone. You just funded the chip in a cruise missile.",
+      "description": "Consumer electronics fund the R&D for the next generation of semiconductors. That technology goes into smartphones, laptops, and fighter jets. The volume from civilian sales pays for the breakthroughs that end up in weapons systems. Military-only demand can't sustain the pace of innovation. High volume drives down costs and funds the next node. The Pentagon depends on a commercial market it doesn't control."
+    },
+    {
+      "id": "technology-20",
+      "title": "The Next War May Be Won in a Cleanroom",
+      "idea": "Your missiles can't hit the target. Their chips are two generations ahead.",
+      "description": "Precision guidance, encrypted comms, drone swarms, electronic warfare—all run on semiconductors. The side with better chips has weapons the other side can't build. More tanks won't fix it. Modern warfare is a computing problem. Access to advanced chips determines what weapons are even possible. The cleanroom is now a strategic military asset."
+    }
+  ]
+}

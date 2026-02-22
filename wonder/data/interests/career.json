@@ -1,0 +1,139 @@
+{
+  "version": "2.0",
+  "description": "One starter book per interest with 20 reading cards per book.",
+  "card_format": {
+    "fields": [
+      "id",
+      "title",
+      "idea",
+      "description"
+    ]
+  },
+  "interest_id": "career",
+  "book": {
+    "title": "So Good They Can't Ignore You",
+    "author": "Cal Newport"
+  },
+  "cards": [
+    {
+      "id": "career-01",
+      "title": "Follow Your Passion Is a Trap",
+      "idea": "You quit your job to follow your passion. Six months in, you're broke and the passion feels like work.",
+      "description": "Everyone said find what you love. So you did. Now you're doing it full-time and it turns out you hate the business side, the client management, the parts where it's not just the fun stuff. The people who love their work got good first. The love came after. Steve Jobs was into Zen and electronics, not computers. Passion grows from competence, not from soul-searching. The advice produces anxious people switching careers every two years. The treasure you're looking for doesn't exist yet."
+    },
+    {
+      "id": "career-02",
+      "title": "Craftsman Mindset Beats Passion Mindset",
+      "idea": "You spend Monday morning asking if your job fulfills you. Your coworker spends it getting better at the job. Guess who's happier by Friday.",
+      "description": "Does this align with my values? Is this my purpose? Am I living authentically? Every question makes you a judge of your work instead of someone doing it. The other person in your office isn't asking these questions. They have one question: did I improve today? That's it. One metric. One focus. The passion mindset is about what you get. The craftsman mindset is about what you give. One produces anxiety and endless introspection, the other produces progress and skills. Improvement is measurable, passion is not. The clarity is the advantage. Only one of these people will still be here in five years enjoying the work."
+    },
+    {
+      "id": "career-03",
+      "title": "Career Capital Comes Before Control",
+      "idea": "You ask for remote work and flexible hours in the interview. They hire someone else who didn't ask for anything.",
+      "description": "You want autonomy, interesting projects, the freedom to work from anywhere. Everyone does. The problem is you're asking before you have leverage. The person who got the job will work on-site for two years, get good, then negotiate everything you wanted upfront. Control without competence is called unemployment. The market doesn't care about your preferences until you're hard to replace. Wanting something doesn't make it available. Skills are the only negotiating position that matters."
+    },
+    {
+      "id": "career-04",
+      "title": "Deliberate Practice Is Uncomfortable",
+      "idea": "You've been doing the same job for five years and you're not any better than you were at year two.",
+      "description": "You hit a plateau and stayed there. Every day you do what you already know how to do. It feels fine. Comfortable, even. But you're not learning anymore. The person who started after you is already better because they're still working at the edge of what they can't do yet. Comfort means you stopped improving. Deliberate practice isolates your weaknesses and attacks them. Real improvement lives in the place that feels awkward. Experts seek discomfort. You're avoiding it."
+    },
+    {
+      "id": "career-05",
+      "title": "Patience Beats Shortcuts",
+      "idea": "You've been looking for the fast path for three years. Your colleague who started when you did just got promoted.",
+      "description": "You want the interesting work now. The recognition now. So you keep looking for the angle, the hack, the shortcut. Meanwhile someone else just put their head down and got good. They weren't smarter. They just stayed in place long enough to accumulate something you keep resetting. There's no career capital for beginners. The shortcut fantasy keeps you switching paths before you get good. The people with great careers put in a decade while you were searching. Time in the game, done right, is the only advantage that compounds."
+    },
+    {
+      "id": "career-06",
+      "title": "Mission Requires a Foundation",
+      "idea": "You launch your mission-driven startup. No one cares because you don't have the skills to make it matter.",
+      "description": "The mission felt purposeful. More meaningful than just getting good at something. So you skipped the boring part and went straight to the bold part. Turns out the bold part requires skills you don't have. No one pays attention to ambitious ideas from people who can't execute. Missions don't make you valuable—they require that you already are. The mission comes after the mastery, not instead of it. Without the foundation it's just a daydream with a blog. The mission collapses under its own ambition."
+    },
+    {
+      "id": "career-07",
+      "title": "Adjacent Possible Is Where Missions Hide",
+      "idea": "You spend six months brainstorming your big career move. Someone at the frontier sees the opportunity in a week.",
+      "description": "The mission won't reveal itself from your couch. You're trying to see what's possible from the outside looking in. The person who's been building skills for years is standing at the cutting edge. They can see what's newly possible because they're already there. You can't see it yet. Missions aren't invented in brainstorming sessions—they're discovered at the frontier. You have to get good before you can see what's worth pursuing. The cutting edge reveals options that don't exist anywhere else. The adjacent possible is invisible until you're standing next to it."
+    },
+    {
+      "id": "career-08",
+      "title": "Little Bets Beat Grand Plans",
+      "idea": "You quit your job for the grand plan. Six months in, you realize it was the wrong plan and now you're broke.",
+      "description": "The plan felt right. You thought about it for months. So you made the big move. Now you're committed to something that doesn't work and you can't afford to pivot. The person who kept their job and ran small experiments already figured out what you're learning the expensive way. Small bets give you real feedback, not just theory. Each experiment costs little but teaches a lot. Grand plans fail because they're too expensive to abandon. The winning path reveals itself through iteration, not introspection."
+    },
+    {
+      "id": "career-09",
+      "title": "Remarkable Work Needs a Venue",
+      "idea": "You built something great. It's sitting on your hard drive. No one knows it exists.",
+      "description": "The work is good. You know it's good. But it doesn't matter because it's not going anywhere. Remarkable work needs a market that can notice and share it. The venue isn't vanity. It's distribution. Without it, your best work dies quietly on your laptop. Remarkable means people remark on it. The purple cow stands out in the field, not in your garage. Quality without distribution is a hobby. You need both the work and a mechanism for spread."
+    },
+    {
+      "id": "career-10",
+      "title": "Autonomy Without Capital Fails",
+      "idea": "You quit to freelance and gain freedom. Three months later you're taking any client who'll pay you.",
+      "description": "Freedom sounded better than the job. So you left. Now you're scrambling for work, saying yes to projects you hate, working weekends. Turns out the market doesn't care what you want. Without rare skills, autonomy just means you're unemployed with extra steps. Early autonomy feels like freedom, looks like struggle. Employers resist giving you control until you have leverage. Control is a perk you earn, not a starting condition. The timing matters. You left too soon."
+    },
+    {
+      "id": "career-11",
+      "title": "Passion Follows Mastery, Not the Other Way",
+      "idea": "You loved photography until you got good at spreadsheets. Now you think about spreadsheets on weekends.",
+      "description": "The logic runs backward. You didn't start out loving this. You got good at it. Competence created confidence. Confidence created engagement. Now it feels like passion. But it started with skill, not with soul-searching about what you loved at 22. Being bad at something makes it hard to love. Being good at something makes it easier to care. You love what you're good at, not the other way around. The feeling you're chasing is downstream from the work you're avoiding."
+    },
+    {
+      "id": "career-12",
+      "title": "Most Jobs Don't Match Pre-Existing Passions",
+      "idea": "You like hiking, podcasts, and philosophy. The economy doesn't have a vague intellectual interests sector.",
+      "description": "Your hobbies are great. They're also not jobs. Most fulfilling careers don't map to things you loved at 22. They map to skills you built over years in areas you didn't predict you'd care about. The overlap between your passions and what the market values is mostly luck. The job you want doesn't exist until you build the skills to create it. Forcing passion to match the market runs backward. Build capital in something valuable, then shape it. The career that fits comes after the skill, not before."
+    },
+    {
+      "id": "career-13",
+      "title": "Building Skills Unlocks Better Opportunities",
+      "idea": "You wanted remote work on day one. Three years later, you're good enough that companies compete to give it to you.",
+      "description": "Career capital opens doors that credentials can't. The first year you asked for flexibility and got rejected. You built rare skills instead. Now recruiters offer exactly what you wanted—remote work, autonomy, interesting projects—because you're hard to replace. The leverage came from mastery, not negotiation tactics. Companies resist giving control to beginners. They compete to give it to experts. What felt impossible at the start becomes automatic once you're valuable. Build the skills first, shape the job second."
+    },
+    {
+      "id": "career-14",
+      "title": "Feedback Loops Accelerate Skill",
+      "idea": "You get feedback once a year at your review. You've been making the same mistake for eleven months.",
+      "description": "If you only get feedback once a year, you improve once a year. The person in the other department gets it every week. They course-correct fast. You spend months heading in the wrong direction before anyone tells you. The speed of the loop determines the speed of growth. Slow feedback creates slow learners. Honest feedback beats polite feedback. Tight loops mean you fail small and learn fast. Seek environments where the loop is faster than annual."
+    },
+    {
+      "id": "career-15",
+      "title": "Most Courage Advice Skips the Capital",
+      "idea": "The entrepreneur on stage says be brave and quit your job. He spent eight years at Google first.",
+      "description": "The advice sounds inspiring. Take the leap. Follow your dreams. Be courageous. What they skip is the boring part where they built leverage. Courage without capital is just expensive. The people who make bold moves successfully usually spent years quietly building skills before anyone noticed. Courage without competence is called recklessness. The inspiring story skips the boring decade. Risk requires something to risk with. Build the foundation, then take the leap."
+    },
+    {
+      "id": "career-16",
+      "title": "Skills Compound, Passion Doesn't",
+      "idea": "You've changed careers three times in five years chasing passion. Your college roommate is a VP now.",
+      "description": "Passion is a feeling. Feelings fluctuate. Skills compound. What you master in year three builds on year two. Year five builds on year four. A decade in, you're not ten times better—you're exponentially better. But only if you stayed in the game. Time spent building capital is never wasted. Time spent searching for passion often is. Compounding requires staying long enough to see the curve. You keep resetting. They kept building."
+    },
+    {
+      "id": "career-17",
+      "title": "Lifestyle Design Requires Capital First",
+      "idea": "You want the four-hour workweek. You're working sixty hours because no one will pay you for four.",
+      "description": "The laptop-on-the-beach life sounds perfect. You want it now. Problem is that life costs capital. Either money or reputation or skills rare enough that people pay you on your terms. You don't have those yet. The lifestyle is what you buy with capital, not what you start with. Designing your life without leverage is called being broke. The four-hour workweek is a finish line, not a starting point. The lifestyle gurus already had the capital before they sold the dream. Build first, design second."
+    },
+    {
+      "id": "career-18",
+      "title": "The Market Doesn't Owe You Meaning",
+      "idea": "You want meaningful work. The market wants you to solve a problem it cares about. These aren't the same thing.",
+      "description": "Meaningful work is rare and valuable. Which means you need to offer something rare and valuable in return. The market isn't structured to hand you purpose. It's structured to reward people who solve expensive problems. You earn meaning by becoming good enough that you get to shape your work. Meaning is a feature of rare jobs, not common ones. The economy runs on supply and demand, not your preferences. You have to create the conditions—they don't arrive by default. Create value first, negotiate meaning second."
+    },
+    {
+      "id": "career-19",
+      "title": "Quitting Restarts the Clock",
+      "idea": "You're three years in and it doesn't feel right, so you switch. Now you're back at zero and someone else has your leverage.",
+      "description": "It still didn't feel like your passion, so you left. Now you're starting over. The passion mindset creates serial restarts. The craftsman mindset sticks around long enough to get good. Compounding requires time in the same game. You keep resetting the clock. Switching feels like progress but resets your advantage. Capital only accumulates if you stay long enough. The people who win walked one path long enough to get somewhere. They didn't find the perfect path. They just stayed on one."
+    },
+    {
+      "id": "career-20",
+      "title": "Good Careers Are Built, Not Found",
+      "idea": "You've been searching for your dream job for two years. It doesn't exist yet because you haven't built it.",
+      "description": "The myth is that your perfect job is out there waiting to be discovered. You just have to find it. The reality is you build it incrementally—by getting good, earning leverage, and shaping your work toward what matters. Stop searching. Start building. The job you want doesn't exist yet. You create it by accumulating capital and trading it for control. Construction beats discovery. They're not hiring for your dream job. You have to build it yourself."
+    }
+  ]
+}

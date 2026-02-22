@@ -12,21 +12,27 @@ on:
   workflow_dispatch:
     inputs:
       jobs:
-        description: 'Jobs to run'
+        description: 'v3 jobs to run'
         required: true
         default: 'all'
         type: choice
         options:
           - all
-          - pool
-          - learning
-          - trending
+          - pools
           - feeds
-          - insights
-          - weekly_wrap
-          - newsletters
-          - newsletter_build
-          - newsletter_send
+          - for_you
+          - deep_dives
+          - trending
+          - assemble
+      audience:
+        description: 'Audience segment'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - subscribed
+          - unsubscribed
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -58,9 +64,9 @@ jobs:
       - name: Run morning jobs
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            python -u v2/scheduler_firestore.py --jobs ${{ inputs.jobs }} --items-per-user 8
+            python -u -m v3.scheduler --jobs ${{ inputs.jobs }} --audience ${{ inputs.audience }}
           else
-            python -u v2/scheduler_firestore.py --jobs all --items-per-user 8
+            python -u -m v3.scheduler --jobs all --audience all
           fi
 
   afternoon-trending:
@@ -83,5 +89,4 @@ jobs:
       
       - name: Refresh trending and rebuild feeds
         run: |
-          python -u v2/scheduler_firestore.py --jobs trending --items-per-user 8
-          python -u v2/scheduler_firestore.py --jobs feeds --items-per-user 8
+          python -u -m v3.scheduler --jobs trending assemble --audience all
