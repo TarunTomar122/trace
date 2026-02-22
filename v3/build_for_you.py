@@ -215,7 +215,8 @@ def build_user_feeds(
         picked = ranked[: items_per_user]
 
         feed_items: list[dict[str, Any]] = []
-        for item in picked:
+        for i, item in enumerate(picked, 1):
+            _log(f"    [{i}/{len(picked)}] summarizing: {item.get('title', '')[:50]}")
             summary, was_cached = get_or_generate_summary(
                 store=store,
                 url=item.get("url", ""),
@@ -224,6 +225,8 @@ def build_user_feeds(
                 style=style,
                 seniority=seniority,
             )
+            cache_tag = "cached" if was_cached else ("new" if summary else "failed")
+            _log(f"    [{i}/{len(picked)}] summary={cache_tag}")
             if was_cached:
                 stats["summaries_cached"] += 1
             elif summary:
@@ -247,16 +250,32 @@ def build_user_feeds(
 
 def main() -> None:
     args = _parse_args()
+    _log("=" * 50)
+    _log("FOR YOU — Starting")
+    _log(f"  user-id={args.user_id or 'ALL'} skip-pool={args.skip_pool} pool-only={args.pool_only}")
+    _log("=" * 50)
+
     store = V3Store()
     config = _load_config()
+    sources = config.get("sources", [])
+    _log(f"Config loaded: {len(sources)} sources")
 
     if not args.skip_pool:
+        _log("-" * 40)
+        _log("PHASE 1: Pool refresh")
+        _log("-" * 40)
         pool_stats = refresh_pool(store, config, args.limit_per_source)
         if args.pool_only:
             print(json.dumps(pool_stats, indent=2))
             return
 
+    _log("-" * 40)
+    _log("PHASE 2: Per-user feed generation")
+    _log("-" * 40)
     feed_stats = build_user_feeds(store, config, args)
+    _log("=" * 50)
+    _log(f"FOR YOU — Complete: {feed_stats}")
+    _log("=" * 50)
     print(json.dumps(feed_stats, indent=2))
 
 

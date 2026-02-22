@@ -27,8 +27,21 @@ import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
-import { updateUserProfile, getReadingStreak, ReadingStreak } from '@/lib/firestore';
+import {
+  updateUserProfile,
+  getReadingStreak,
+  ReadingStreak,
+  ROLES,
+  SENIORITY_LEVELS,
+  ONBOARDING_INTERESTS,
+  CAREER_GOALS,
+  SUMMARY_STYLES,
+} from '@/lib/firestore';
 import { ILLUS_PALETTE } from '@/app/(auth)/welcome';
+
+function lookupLabel(items: readonly { id: string; label: string }[], id: string): string {
+  return items.find((i) => i.id === id)?.label || id.replace(/-/g, ' ');
+}
 
 const PRIVACY_URL = 'https://www.yourtrace.online/privacy-policy';
 const TERMS_URL = 'https://www.yourtrace.online/terms';
@@ -124,11 +137,22 @@ export default function ProfileScreen() {
           <ThemedText style={[styles.profileEmail, { color: Colors[colorScheme].muted }]}>
             {user?.email || 'No email'}
           </ThemedText>
-          {profile?.role && (
-            <View style={[styles.roleBadge, { backgroundColor: Colors[colorScheme].foreground + '0D' }]}>
-              <ThemedText style={[styles.roleText, { color: Colors[colorScheme].foreground }]}>
-                {profile.role}
-              </ThemedText>
+          {(profile?.role || profile?.seniority) && (
+            <View style={styles.badgeRow}>
+              {profile?.role && (
+                <View style={[styles.roleBadge, { backgroundColor: Colors[colorScheme].foreground + '0D' }]}>
+                  <ThemedText style={[styles.roleText, { color: Colors[colorScheme].foreground }]}>
+                    {lookupLabel(ROLES as unknown as { id: string; label: string }[], profile.role)}
+                  </ThemedText>
+                </View>
+              )}
+              {profile?.seniority && (
+                <View style={[styles.roleBadge, { backgroundColor: '#F59E0B18' }]}>
+                  <ThemedText style={[styles.roleText, { color: '#D97706' }]}>
+                    {lookupLabel(SENIORITY_LEVELS as unknown as { id: string; label: string }[], profile.seniority)}
+                  </ThemedText>
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -208,12 +232,12 @@ export default function ProfileScreen() {
               Interests
             </ThemedText>
             <View style={styles.pillsWrap}>
-              {profile.interests.map((interest, index) => (
+              {profile.interests.map((interest: string, index: number) => (
                 <View
                   key={index}
                   style={[styles.pill, { backgroundColor: Colors[colorScheme].foreground + '0A' }]}>
                   <ThemedText style={[styles.pillText, { color: Colors[colorScheme].text }]}>
-                    {interest.replace(/-/g, ' ')}
+                    {lookupLabel(ONBOARDING_INTERESTS as unknown as { id: string; label: string }[], interest)}
                   </ThemedText>
                 </View>
               ))}
@@ -221,22 +245,59 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* ─── Skills ─── */}
-        {isOnboarded && profile?.skills && profile.skills.length > 0 && (
+        {/* ─── Deep Dive Sources ─── */}
+        {isOnboarded && profile?.selectedLearningSources && profile.selectedLearningSources.length > 0 && (
           <View style={styles.section}>
             <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
-              Skills
+              Deep Dive Sources
             </ThemedText>
             <View style={styles.pillsWrap}>
-              {profile.skills.map((skill, index) => (
+              {profile.selectedLearningSources.map((source: string, index: number) => (
                 <View
                   key={index}
-                  style={[styles.pill, { backgroundColor: Colors[colorScheme].foreground + '0A' }]}>
-                  <ThemedText style={[styles.pillText, { color: Colors[colorScheme].text }]}>
-                    {skill.replace(/-/g, ' ')}
+                  style={[styles.pill, { backgroundColor: colorScheme === 'dark' ? '#1a1408' : '#fffbeb' }]}>
+                  <ThemedText style={[styles.pillText, { color: '#D97706' }]}>
+                    {source}
                   </ThemedText>
                 </View>
               ))}
+            </View>
+          </View>
+        )}
+
+        {/* ─── Career Goals ─── */}
+        {isOnboarded && profile?.careerGoals && profile.careerGoals.length > 0 && (
+          <View style={styles.section}>
+            <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
+              Career Goals
+            </ThemedText>
+            <View style={styles.pillsWrap}>
+              {profile.careerGoals.map((goal: string, index: number) => (
+                <View
+                  key={index}
+                  style={[styles.pill, { backgroundColor: colorScheme === 'dark' ? '#0d1f12' : '#f0fdf4' }]}>
+                  <ThemedText style={[styles.pillText, { color: '#059669' }]}>
+                    {lookupLabel(CAREER_GOALS as unknown as { id: string; label: string }[], goal)}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* ─── Summary Style ─── */}
+        {isOnboarded && profile?.summaryStyle && (
+          <View style={styles.section}>
+            <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
+              Summary Style
+            </ThemedText>
+            <View style={[styles.summaryStyleCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
+              <ThemedText style={styles.summaryStyleLabel}>
+                {lookupLabel(SUMMARY_STYLES as unknown as { id: string; label: string }[], profile.summaryStyle)}
+              </ThemedText>
+              <ThemedText style={[styles.summaryStyleDesc, { color: Colors[colorScheme].muted }]}>
+                {(SUMMARY_STYLES as unknown as { id: string; subtitle: string }[]).find(s => s.id === profile.summaryStyle)?.subtitle || ''}
+              </ThemedText>
             </View>
           </View>
         )}
@@ -446,11 +507,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 8,
   },
+  badgeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
   roleBadge: {
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 999,
-    marginTop: 4,
   },
   roleText: {
     fontSize: 12,
@@ -503,7 +568,20 @@ const styles = StyleSheet.create({
   pillText: {
     fontSize: 13,
     fontWeight: '500',
-    textTransform: 'capitalize',
+  },
+  summaryStyleCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 16,
+  },
+  summaryStyleLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  summaryStyleDesc: {
+    fontSize: 13,
+    lineHeight: 18,
   },
 
   // ─── Subscription ───

@@ -108,7 +108,14 @@ def assemble(args: argparse.Namespace) -> dict[str, int]:
 
 def main() -> None:
     args = _parse_args()
+    _log("=" * 50)
+    _log("ASSEMBLE — Starting")
+    _log(f"  user-id={args.user_id or 'ALL'} date={args.date or 'today'}")
+    _log("=" * 50)
     result = assemble(args)
+    _log("=" * 50)
+    _log(f"ASSEMBLE — Complete: {result}")
+    _log("=" * 50)
     print(json.dumps(result, indent=2))
 
 

@@ -20,7 +20,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Flame, Zap, Sparkles, BookOpen, Cpu } from 'lucide-react-native';
+import { Flame, Zap, Sparkles, BookOpen, Cpu, User } from 'lucide-react-native';
 
 import NewspaperIllus from '@/assets/images/newspaper-svgrepo-com.svg';
 
@@ -41,6 +41,13 @@ import { logReadingEvent } from '@/lib/reading-analytics';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
+
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
 
 type FeedTab = 'trending' | 'for_you' | 'deep_dives';
 
@@ -212,9 +219,11 @@ export default function FeedScreen() {
         {/* ─── Header ─── */}
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <ThemedText style={styles.headerTitle}>Feed</ThemedText>
+            <ThemedText style={styles.headerTitle}>
+              {profile?.name ? `Welcome, ${profile.name.split(' ')[0]}` : 'Welcome'}
+            </ThemedText>
             <ThemedText style={[styles.headerSubtitle, { color: Colors[colorScheme].muted }]}>
-              Your daily briefing
+              {getGreeting()}
             </ThemedText>
           </View>
           <View style={styles.headerActions}>
@@ -226,6 +235,11 @@ export default function FeedScreen() {
                 <Text style={styles.streakText}>{streak.current_streak}</Text>
               </Pressable>
             )}
+            <Pressable
+              onPress={() => router.push('/(tabs)/explore')}
+              style={[styles.profileBtn, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
+              <User size={16} color={Colors[colorScheme].muted} strokeWidth={2} />
+            </Pressable>
           </View>
         </View>
 
@@ -501,6 +515,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#f97316',
+  },
+  profileBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Tab bar

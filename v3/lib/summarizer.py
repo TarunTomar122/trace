@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from typing import Any
 
 from openai import OpenAI
@@ -174,6 +175,7 @@ def generate_summary(
     )
 
     try:
+        t0 = time.time()
         resp = client.chat.completions.create(
             model=MODEL,
             messages=[
@@ -187,6 +189,9 @@ def generate_summary(
             response_format={"type": "json_object"},
             timeout=TIMEOUT,
         )
+        elapsed = time.time() - t0
+        tokens = getattr(resp.usage, "total_tokens", 0) if resp.usage else 0
+        print(f"      [summarizer] OpenAI {MODEL} took {elapsed:.1f}s, {tokens} tokens — {title[:40]}")
     except Exception as exc:
         return None, f"openai_error:{exc}"
 
