@@ -11,6 +11,8 @@ import json
 import os
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
 from typing import Any
 
 from openai import OpenAI
@@ -347,3 +349,102 @@ def get_or_generate_summary(
         return summary, False
 
     return None, False
+
+
+# ---------------------------------------------------------------------------
+# Batch pre-summarization — parallel OpenAI calls via thread pool
+# ---------------------------------------------------------------------------
+
+def _log_presummary(msg: str) -> None:
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{ts}] [pre-summarize] {msg}")
+
+
+def batch_presummarize(
+    store,  # V3Store
+    pool_items: list[dict[str, Any]],
+    style_seniority_combos: list[tuple[str, str]],
+    feed_type: str = "default",
+    max_workers: int = 8,
+) -> dict[str, int]:
+    """
+    Pre-generate summaries for all pool_items × style/seniority combos.
+
+    Checks cache first, only calls OpenAI for missing summaries.
+    Uses ThreadPoolExecutor for parallel generation.
+
+    Call this BEFORE the per-user loop so every summary is already cached
+    and per-user generation is just fast Firestore reads.
+    """
+    tasks: list[tuple[str, str, str, str, str, str]] = []
+    already_cached = 0
+
+    for item in pool_items:
+        url = item.get("url", "")
+        title = item.get("title", "")
+        content = item.get("content", "")
+        if not url or not content:
+            continue
+
+        for style, seniority in style_seniority_combos:
+            cache_style = f"{style}__deep" if feed_type == "deep_dives" else style
+            cached = store.get_cached_summary(url, cache_style, seniority)
+            if cached:
+                already_cached += 1
+                continue
+            tasks.append((url, title, content, style, seniority, feed_type))
+
+    stats = {
+        "to_generate": len(tasks),
+        "already_cached": already_cached,
+        "generated": 0,
+        "failed": 0,
+    }
+
+    if not tasks:
+        _log_presummary(f"All {already_cached} summaries already cached — nothing to do")
+        return stats
+
+    _log_presummary(
+        f"Generating {len(tasks)} summaries with {max_workers} parallel workers "
+        f"({already_cached} already cached)"
+    )
+
+    def _generate_one(
+        task: tuple[str, str, str, str, str, str],
+    ) -> tuple[str, str]:
+        url, title, content, style, seniority, ft = task
+        try:
+            summary, error = generate_summary(
+                title, url, content, style, seniority, feed_type=ft,
+            )
+            if summary:
+                cache_style = f"{style}__deep" if ft == "deep_dives" else style
+                store.save_cached_summary(url, cache_style, seniority, summary, MODEL)
+                return "generated", title[:50]
+            return "failed", f"{title[:40]}: {error}"
+        except Exception as exc:
+            return "failed", f"{title[:40]}: {exc}"
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(_generate_one, t): t for t in tasks}
+        done = 0
+        for future in as_completed(futures):
+            result, detail = future.result()
+            done += 1
+            if result == "generated":
+                stats["generated"] += 1
+            else:
+                stats["failed"] += 1
+            if done % 10 == 0 or done == len(tasks):
+                _log_presummary(
+                    f"  Progress: {done}/{len(tasks)} "
+                    f"(ok={stats['generated']} fail={stats['failed']})"
+                )
+
+    _log_presummary(
+        f"Done: {stats['generated']} generated, "
+        f"{stats['failed']} failed, "
+        f"{stats['already_cached']} were cached"
+    )
+    return stats

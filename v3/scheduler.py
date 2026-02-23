@@ -5,12 +5,12 @@ V3 pipeline scheduler.
 Orchestrates the three feed builders + assembly step.
 
 Usage:
-  python3 -m v3.scheduler                             # run all
-  python3 -m v3.scheduler --jobs for_you trending     # specific jobs
+  python3 -m v3.scheduler                             # run all (feeds + newsletter)
+  python3 -m v3.scheduler --jobs for_you trending     # specific feed jobs
   python3 -m v3.scheduler --jobs pools                 # pool refresh only
-  python3 -m v3.scheduler --jobs feeds                 # feed build only
-                                                       # (skip pools)
+  python3 -m v3.scheduler --jobs feeds                 # feed build only (skip pools)
   python3 -m v3.scheduler --jobs assemble              # assembly only
+  python3 -m v3.scheduler --jobs newsletter            # build + send newsletter only
 """
 
 from __future__ import annotations
@@ -51,6 +51,16 @@ JOBS = {
         "pool_cadence_days": 0,
         "description": "Assemble final feeds from all 3 sections",
     },
+    "newsletter_build": {
+        "module": "v2.flows.build_unified_newsletter",
+        "pool_cadence_days": 0,
+        "description": "Build daily newsletter from trending feed",
+    },
+    "newsletter_send": {
+        "module": "v2.flows.send_unified_newsletter",
+        "pool_cadence_days": 0,
+        "description": "Send daily newsletter to all signups",
+    },
 }
 
 
@@ -73,6 +83,9 @@ def _parse_args() -> argparse.Namespace:
             "deep_dives",
             "trending",
             "assemble",
+            "newsletter",
+            "newsletter_build",
+            "newsletter_send",
         ],
         help=(
             "Jobs to run. 'all' runs everything. "
@@ -157,6 +170,27 @@ def main() -> None:
     if run_all or "assemble" in requested:
         _log("--- Assemble feeds ---")
         _run_module(JOBS["assemble"]["module"], extra)
+
+    run_newsletter = (
+        run_all
+        or "newsletter" in requested
+        or "newsletter_build" in requested
+        or "newsletter_send" in requested
+    )
+    if run_newsletter:
+        nl_date = args.date or ""
+        nl_build_args = []
+        if nl_date:
+            nl_build_args.extend(["--date", nl_date])
+
+        if run_all or "newsletter" in requested or "newsletter_build" in requested:
+            _log("--- Build newsletter ---")
+            _run_module(JOBS["newsletter_build"]["module"], nl_build_args)
+
+        if run_all or "newsletter" in requested or "newsletter_send" in requested:
+            _log("--- Send newsletter ---")
+            nl_send_args = list(nl_build_args) + ["--recipient-mode", "all_signups"]
+            _run_module(JOBS["newsletter_send"]["module"], nl_send_args)
 
     elapsed = time.time() - start
     _log(f"=== V3 Pipeline Done ({elapsed:.1f}s) ===")

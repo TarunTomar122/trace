@@ -79,15 +79,16 @@ def assemble(args: argparse.Namespace) -> dict[str, int]:
         trending = feed.get("trending", [])
         total = len(for_you) + len(deep_dives) + len(trending)
 
-        # Promote yesterday's feed URLs to seen
-        yesterday_feed = store.load_feed(uid, yesterday)
-        y_urls = []
-        for section in ("for_you", "deep_dives", "trending"):
-            for item in yesterday_feed.get(section, []):
-                if isinstance(item, dict) and item.get("url"):
-                    y_urls.append(item["url"])
-        if y_urls:
-            promoted = store.promote_feed_to_seen(uid, y_urls)
+        # Promote today's AND yesterday's feed URLs to seen
+        all_seen_urls: list[str] = []
+        for date_key in (target_date, yesterday):
+            day_feed = store.load_feed(uid, date_key) if date_key != target_date else feed
+            for section in ("for_you", "deep_dives", "trending"):
+                for item in day_feed.get(section, []):
+                    if isinstance(item, dict) and item.get("url"):
+                        all_seen_urls.append(item["url"])
+        if all_seen_urls:
+            promoted = store.promote_feed_to_seen(uid, all_seen_urls)
             stats["seen_promoted"] += promoted
 
         metadata = {

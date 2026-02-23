@@ -8,7 +8,8 @@ import {
   getDocs,
   query,
   orderBy,
-  limit
+  limit,
+  documentId,
 } from 'firebase/firestore';
 import { firestore } from './firebase';
 
@@ -67,6 +68,7 @@ export interface UserProfile {
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;
   onboardedAt: Timestamp | null;
+  lastActiveAt?: Timestamp | null;
 }
 
 export interface FeedItem {
@@ -593,6 +595,15 @@ export async function updateUserProfile(
   }
 }
 
+export async function recordLastActive(uid: string): Promise<void> {
+  try {
+    const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
+    await setDoc(docRef, { lastActiveAt: serverTimestamp() }, { merge: true });
+  } catch {
+    // fire-and-forget — don't block the UI for this
+  }
+}
+
 export async function deleteUserData(uid: string): Promise<void> {
   try {
     const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
@@ -686,21 +697,44 @@ export async function getLatestUserFeed(uid: string): Promise<UserFeed | null> {
 export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
   try {
     const feedRef = collection(firestore, 'v3_user_feeds', uid, 'daily');
-    const snapshot = await getDocs(feedRef);
+    const latestQuery = query(feedRef, orderBy(documentId(), 'desc'), limit(1));
+    const snapshot = await getDocs(latestQuery);
     if (snapshot.empty) return null;
 
-    const sortedDocs = snapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
-    const data = sortedDocs[0].data();
+    const latestDoc = snapshot.docs[0];
+    const data = latestDoc.data();
+    console.log('[Feed] Latest feed doc:', latestDoc.id, 'fields:', Object.keys(data));
+
     const forYou = Array.isArray(data.for_you) ? data.for_you : [];
     const deepDives = Array.isArray(data.deep_dives) ? data.deep_dives : [];
     const trending = Array.isArray(data.trending) ? data.trending : [];
 
     if (forYou.length === 0 && deepDives.length === 0 && trending.length === 0) {
+      console.log('[Feed] Doc exists but all sections empty, falling back to previous');
+      const fallbackQuery = query(feedRef, orderBy(documentId(), 'desc'), limit(2));
+      const fallbackSnap = await getDocs(fallbackQuery);
+      if (fallbackSnap.docs.length > 1) {
+        const prevDoc = fallbackSnap.docs[1];
+        const prevData = prevDoc.data();
+        const prevForYou = Array.isArray(prevData.for_you) ? prevData.for_you : [];
+        const prevDeepDives = Array.isArray(prevData.deep_dives) ? prevData.deep_dives : [];
+        const prevTrending = Array.isArray(prevData.trending) ? prevData.trending : [];
+        if (prevForYou.length > 0 || prevDeepDives.length > 0 || prevTrending.length > 0) {
+          return {
+            date: prevData.date || prevDoc.id,
+            for_you: prevForYou as FeedItem[],
+            deep_dives: prevDeepDives as FeedItem[],
+            trending: prevTrending as FeedItem[],
+            assembled_at: prevData.assembled_at,
+            metadata: prevData.metadata,
+          };
+        }
+      }
       return null;
     }
 
     return {
-      date: data.date || sortedDocs[0].id,
+      date: data.date || latestDoc.id,
       for_you: forYou as FeedItem[],
       deep_dives: deepDives as FeedItem[],
       trending: trending as FeedItem[],

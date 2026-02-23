@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import {
   ChevronLeft,
   Youtube,
@@ -18,15 +18,12 @@ import {
   MessageCircle,
   Sparkles,
   Newspaper,
-  ThumbsUp,
-  ThumbsDown,
   Bookmark,
   ExternalLink,
   Flame,
   Clock,
   Crown,
   Lock,
-  Gift,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -36,14 +33,10 @@ import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { isBookmarked as checkBookmarked, toggleBookmark } from '@/lib/bookmarks';
-import {
-  FeedItem,
-  getFreeDailyReadUsed,
-  markFreeDailyReadUsed,
-  getFreeWeeklyDeepDiveUsed,
-  markFreeWeeklyDeepDiveUsed,
-} from '@/lib/firestore';
+import { getCurrentArticle } from '@/lib/article-store';
 import { logReadingEvent } from '@/lib/reading-analytics';
+
+const ACCENT = '#F59E0B';
 
 const SOURCE_CONFIG: Record<
   string,
@@ -69,16 +62,23 @@ function isLikelyRealImageUrl(url?: string | null): boolean {
   return true;
 }
 
-/** Renders inline markdown: **bold** → <Text style={{fontWeight:'700'}}>bold</Text> */
+/** Renders inline markdown: **bold** and *italic* */
 function RichText({ children, style }: { children: string; style?: any }) {
-  const parts = children.split(/(\*\*.*?\*\*)/g);
+  const parts = children.split(/(\*\*.*?\*\*|\*.*?\*)/g);
   return (
     <Text style={style}>
       {parts.map((part, i) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
+        if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
           return (
             <Text key={i} style={[style, { fontWeight: '700' }]}>
               {part.slice(2, -2)}
+            </Text>
+          );
+        }
+        if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+          return (
+            <Text key={i} style={[style, { fontStyle: 'italic' }]}>
+              {part.slice(1, -1)}
             </Text>
           );
         }
@@ -91,170 +91,111 @@ function RichText({ children, style }: { children: string; style?: any }) {
 export default function ArticleScreen() {
   const router = useRouter();
   const { showToast } = useToast();
-  const params = useLocalSearchParams<{
-    id: string;
-    title: string;
-    url: string;
-    thumbnail: string;
-    type: string;
-    subtitle: string;
-    body: string;
-    reading_time: string;
-    why_relevant: string;
-    is_hot: string;
-    feed_category: string;
-  }>();
   const colorScheme = useColorScheme() ?? 'light';
   const { isProUser, presentPaywall } = useRevenueCat();
   const { user } = useAuth();
 
-  const [freeDailyUsed, setFreeDailyUsed] = useState<boolean | null>(null);
-  const [freeWeeklyDeepDiveUsed, setFreeWeeklyDeepDiveUsed] = useState<boolean | null>(null);
-  const isFreeRead = params.feed_category === 'free_daily_read';
-  const isDeepDiveRead = params.feed_category === 'deep_dives';
+  const item = getCurrentArticle();
 
-  useEffect(() => {
-    if (isProUser || !user) return;
-    Promise.all([
-      getFreeDailyReadUsed(user.uid),
-      getFreeWeeklyDeepDiveUsed(user.uid),
-    ]).then(([dailyUsed, weeklyDeepDiveUsed]) => {
-      setFreeDailyUsed(dailyUsed);
-      setFreeWeeklyDeepDiveUsed(weeklyDeepDiveUsed);
-    });
-  }, [isProUser, user]);
-
-  const hasAccess =
-    isProUser ||
-    (isFreeRead && freeDailyUsed === false) ||
-    (isDeepDiveRead && freeWeeklyDeepDiveUsed === false);
-
-  useEffect(() => {
-    if (hasAccess && isFreeRead && user && freeDailyUsed === false) {
-      markFreeDailyReadUsed(user.uid);
-      setFreeDailyUsed(true);
-    }
-  }, [hasAccess, isFreeRead, user, freeDailyUsed]);
-
-  useEffect(() => {
-    if (hasAccess && isDeepDiveRead && user && freeWeeklyDeepDiveUsed === false) {
-      markFreeWeeklyDeepDiveUsed(user.uid);
-      setFreeWeeklyDeepDiveUsed(true);
-    }
-  }, [hasAccess, isDeepDiveRead, user, freeWeeklyDeepDiveUsed]);
-
-  const [upvoted, setUpvoted] = useState(false);
-  const [downvoted, setDownvoted] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [imgError, setImgError] = useState(false);
 
-  // Build a FeedItem from route params for bookmarking
-  const feedItem: FeedItem = {
-    id: params.id || params.url || params.title || '',
-    title: params.title || '',
-    url: params.url || '',
-    thumbnail: params.thumbnail || undefined,
-    type: params.type || 'blog',
-    summary: {
-      short_article: {
-        subtitle: params.subtitle || undefined,
-        body: params.body || undefined,
-      },
-      reading_time_minutes: params.reading_time ? parseInt(params.reading_time) : undefined,
-    },
-    metadata: {
-      why_relevant: params.why_relevant || undefined,
-      is_hot: params.is_hot === 'true',
-    },
-  };
-
-  // Check bookmark state on mount
   useEffect(() => {
-    checkBookmarked(feedItem.id).then(setBookmarked);
-  }, [feedItem.id]);
+    if (!item) {
+      router.back();
+      return;
+    }
+    checkBookmarked(item.id).then(setBookmarked);
+    logReadingEvent({
+      eventType: 'summary_open',
+      itemId: item.id,
+      title: item.title,
+      url: item.url,
+      itemType: item.type || item.source,
+      feedCategory: item.metadata?.feed_category || item.feed_type,
+    });
+  }, [item, router]);
+
+  if (!item) return null;
 
   const handleToggleBookmark = async () => {
     if (!isProUser) {
       presentPaywall();
       return;
     }
-    const nowBookmarked = await toggleBookmark(feedItem);
+    const nowBookmarked = await toggleBookmark(item);
     setBookmarked(nowBookmarked);
     showToast(nowBookmarked ? 'Saved to bookmarks.' : 'Removed from bookmarks.', 'success');
   };
 
-  const itemType = params.type || 'blog';
+  const itemType = item.type || item.source || 'blog';
   const config = SOURCE_CONFIG[itemType] || SOURCE_CONFIG.blog;
   const Icon = config.icon;
-  const isHot = params.is_hot === 'true';
-  const readingTime = params.reading_time ? parseInt(params.reading_time) : null;
-  const showHeroImage = isLikelyRealImageUrl(params.thumbnail) && !imgError;
+  const isHot = item.metadata?.is_hot;
+  const readingTime = item.summary?.reading_time_minutes;
+  const showHeroImage = isLikelyRealImageUrl(item.thumbnail) && !imgError;
 
-  // Parse markdown body into simple paragraphs
-  const bodyParagraphs = (params.body || '')
-    .split(/\n\n+/)
-    .map((p) => p.trim())
-    .filter(Boolean);
+  const body = item.summary?.short_article?.body || '';
+  const subtitle = item.summary?.short_article?.subtitle;
+  const keyTakeaways = item.summary?.short_article?.key_takeaways;
+  const whyItMatters = item.summary?.short_article?.why_it_matters;
 
-  const renderParagraph = (paragraph: string, index: number, cs: 'light' | 'dark') => {
-    if (paragraph.startsWith('## ')) {
+  // Split on double newlines first, then split each block on single newlines
+  // so that headings on their own line don't merge with body text.
+  const bodyLines: string[] = [];
+  for (const block of body.split(/\n\n+/)) {
+    const lines = block.split(/\n/);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed) bodyLines.push(trimmed);
+    }
+  }
+
+  const renderLine = (line: string, index: number) => {
+    if (line.startsWith('### ')) {
       return (
-        <ThemedText key={index} style={styles.bodyH2}>
-          {paragraph.replace(/^##\s*/, '')}
-        </ThemedText>
+        <RichText key={index} style={[styles.bodyH3, { color: Colors[colorScheme].text }]}>
+          {line.replace(/^###\s*/, '')}
+        </RichText>
       );
     }
-    if (paragraph.startsWith('### ')) {
+    if (line.startsWith('## ')) {
       return (
-        <ThemedText key={index} style={styles.bodyH3}>
-          {paragraph.replace(/^###\s*/, '')}
-        </ThemedText>
+        <RichText key={index} style={[styles.bodyH2, { color: Colors[colorScheme].text }]}>
+          {line.replace(/^##\s*/, '')}
+        </RichText>
       );
     }
-    if (paragraph.startsWith('- ') || paragraph.startsWith('* ')) {
-      const items = paragraph.split(/\n/).filter(Boolean);
+    if (line.startsWith('- ') || line.startsWith('* ')) {
       return (
-        <View key={index} style={styles.listContainer}>
-          {items.map((li, liIdx) => (
-            <View key={liIdx} style={styles.listItem}>
-              <ThemedText style={[styles.listBullet, { color: Colors[cs].muted }]}>•</ThemedText>
-              <RichText style={[styles.bodyText, { color: Colors[cs].text }]}>
-                {li.replace(/^[-*]\s*/, '')}
-              </RichText>
-            </View>
-          ))}
+        <View key={index} style={styles.listItem}>
+          <ThemedText style={[styles.listBullet, { color: Colors[colorScheme].muted }]}>•</ThemedText>
+          <RichText style={[styles.bodyText, { color: Colors[colorScheme].text }]}>
+            {line.replace(/^[-*]\s*/, '')}
+          </RichText>
+        </View>
+      );
+    }
+    if (/^\d+\.\s/.test(line)) {
+      return (
+        <View key={index} style={styles.listItem}>
+          <ThemedText style={[styles.listBullet, { color: Colors[colorScheme].muted }]}>
+            {line.match(/^(\d+)\./)?.[1]}.
+          </ThemedText>
+          <RichText style={[styles.bodyText, { color: Colors[colorScheme].text }]}>
+            {line.replace(/^\d+\.\s*/, '')}
+          </RichText>
         </View>
       );
     }
     return (
-      <RichText key={index} style={[styles.bodyText, { color: Colors[cs].text }]}>
-        {paragraph}
+      <RichText key={index} style={[styles.bodyText, { color: Colors[colorScheme].text }]}>
+        {line}
       </RichText>
     );
   };
 
-  const handleUpvote = () => {
-    const newUpvoted = !upvoted;
-    setUpvoted(newUpvoted);
-    if (newUpvoted) setDownvoted(false);
-  };
-
-  const handleDownvote = () => {
-    const newDownvoted = !downvoted;
-    setDownvoted(newDownvoted);
-    if (newDownvoted) setUpvoted(false);
-  };
-
-  useEffect(() => {
-    if (!params.id && !params.url && !params.title) return;
-    logReadingEvent({
-      eventType: 'summary_open',
-      itemId: params.id || params.url || params.title,
-      title: params.title || '',
-      url: params.url || '',
-      itemType: params.type || 'blog',
-    });
-  }, [params.id, params.url, params.title, params.type]);
+  const hasAccess = isProUser || item.feed_type === 'trending';
 
   return (
     <SafeAreaView
@@ -266,10 +207,7 @@ export default function ArticleScreen() {
           <ChevronLeft size={24} color={Colors[colorScheme].foreground} strokeWidth={2} />
         </Pressable>
         <View style={{ flex: 1 }} />
-        <Pressable
-          onPress={handleToggleBookmark}
-          hitSlop={12}
-          style={styles.topAction}>
+        <Pressable onPress={handleToggleBookmark} hitSlop={12} style={styles.topAction}>
           <Bookmark
             size={20}
             color={bookmarked ? Colors[colorScheme].foreground : Colors[colorScheme].muted}
@@ -278,15 +216,15 @@ export default function ArticleScreen() {
         </Pressable>
         <Pressable
           onPress={() => {
-            if (!params.url) return;
+            if (!item.url) return;
             logReadingEvent({
               eventType: 'external_open',
-              itemId: params.id || params.url || params.title || '',
-              title: params.title || '',
-              url: params.url,
-              itemType: params.type || 'blog',
+              itemId: item.id,
+              title: item.title,
+              url: item.url,
+              itemType: item.type || item.source || 'blog',
             });
-            WebBrowser.openBrowserAsync(params.url);
+            WebBrowser.openBrowserAsync(item.url);
           }}
           hitSlop={12}
           style={styles.topAction}>
@@ -294,11 +232,8 @@ export default function ArticleScreen() {
         </Pressable>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
-
-        {/* Article header */}
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Header */}
         <View style={styles.articleHeader}>
           <View style={styles.metaRow}>
             <View style={[styles.typeBadge, { backgroundColor: config.bgColor[colorScheme] }]}>
@@ -323,122 +258,82 @@ export default function ArticleScreen() {
             )}
           </View>
 
-          <ThemedText style={styles.articleTitle}>{params.title}</ThemedText>
+          <ThemedText style={styles.articleTitle}>{item.title}</ThemedText>
 
-          {params.subtitle && (
+          {subtitle ? (
             <ThemedText style={[styles.articleSubtitle, { color: Colors[colorScheme].secondary }]}>
-              {params.subtitle}
+              {subtitle}
             </ThemedText>
-          )}
+          ) : null}
 
           {showHeroImage && (
             <Image
-              source={{ uri: params.thumbnail }}
+              source={{ uri: item.thumbnail! }}
               style={styles.heroImage}
               resizeMode="cover"
               onError={() => setImgError(true)}
             />
           )}
 
+          {item.source_name ? (
+            <ThemedText style={[styles.sourceName, { color: Colors[colorScheme].muted }]}>
+              {item.source_name}
+            </ThemedText>
+          ) : null}
         </View>
 
-        {/* Divider */}
         <View style={[styles.divider, { backgroundColor: Colors[colorScheme].border }]} />
 
         {hasAccess ? (
-          <>
-            {/* Full article body */}
-            <View style={styles.articleBody}>
-              {bodyParagraphs.map((paragraph, index) => renderParagraph(paragraph, index, colorScheme))}
-            </View>
+          <View style={styles.articleBody}>
+            {/* Key Takeaways */}
+            {keyTakeaways && keyTakeaways.length > 0 && (
+              <View style={[styles.takeawaysCard, { backgroundColor: '#fffbeb' }]}>
+                <ThemedText style={styles.takeawaysLabel}>Key Takeaways</ThemedText>
+                {keyTakeaways.map((t: string, i: number) => (
+                  <View key={i} style={styles.takeawayRow}>
+                    <View style={styles.takeawayDot} />
+                    <RichText style={[styles.takeawayText, { color: Colors[colorScheme].text }]}>
+                      {t}
+                    </RichText>
+                  </View>
+                ))}
+              </View>
+            )}
 
-            {/* Actions row */}
-            <View style={[styles.actionsRow, { borderTopColor: Colors[colorScheme].border }]}>
-              <Pressable
-                onPress={handleUpvote}
-                style={[styles.bottomAction, upvoted && { backgroundColor: colorScheme === 'dark' ? '#1a1408' : '#fef3c7' }]}>
-                <ThumbsUp
-                  size={18}
-                  color={upvoted ? '#F59E0B' : Colors[colorScheme].muted}
-                  strokeWidth={upvoted ? 2.5 : 1.5}
-                />
-                <ThemedText
-                  style={[
-                    styles.bottomActionLabel,
-                    { color: upvoted ? '#F59E0B' : Colors[colorScheme].muted },
-                  ]}>
-                  Like
-                </ThemedText>
-              </Pressable>
+            {/* Body */}
+            {bodyLines.map((line: string, index: number) => renderLine(line, index))}
 
-              <Pressable
-                onPress={handleDownvote}
-                style={[styles.bottomAction, downvoted && { backgroundColor: colorScheme === 'dark' ? '#2a1515' : '#fee2e2' }]}>
-                <ThumbsDown
-                  size={18}
-                  color={downvoted ? '#ef4444' : Colors[colorScheme].muted}
-                  strokeWidth={downvoted ? 2.5 : 1.5}
-                />
-                <ThemedText
-                  style={[
-                    styles.bottomActionLabel,
-                    { color: downvoted ? '#ef4444' : Colors[colorScheme].muted },
-                  ]}>
-                  Dislike
+            {/* Why it matters */}
+            {whyItMatters ? (
+              <View style={[styles.whyItMattersCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
+                <ThemedText style={[styles.whyItMattersLabel, { color: Colors[colorScheme].muted }]}>
+                  Why it matters
                 </ThemedText>
-              </Pressable>
-
-              <Pressable
-                onPress={handleToggleBookmark}
-                style={[
-                  styles.bottomAction,
-                  bookmarked && { backgroundColor: Colors[colorScheme].foreground + '12' },
-                ]}>
-                <Bookmark
-                  size={18}
-                  color={bookmarked ? Colors[colorScheme].foreground : Colors[colorScheme].muted}
-                  strokeWidth={bookmarked ? 2.5 : 1.5}
-                />
-                <ThemedText
-                  style={[
-                    styles.bottomActionLabel,
-                    { color: bookmarked ? Colors[colorScheme].foreground : Colors[colorScheme].muted },
-                  ]}>
-                  Save
-                </ThemedText>
-              </Pressable>
-            </View>
-          </>
+                <RichText style={[styles.whyItMattersText, { color: Colors[colorScheme].secondary }]}>
+                  {whyItMatters}
+                </RichText>
+              </View>
+            ) : null}
+          </View>
         ) : (
           <>
-            {/* Teaser: show first paragraph if available, else a placeholder */}
             <View style={styles.articleBody}>
-              {bodyParagraphs.length > 0 ? (
-                renderParagraph(bodyParagraphs[0], 0, colorScheme)
+              {bodyLines.length > 0 ? (
+                renderLine(bodyLines[0], 0)
               ) : (
-                <>
-                  <ThemedText style={[styles.bodyText, { color: Colors[colorScheme].muted }]}>
-                    The full breakdown is just a tap away for subscribers.
-                  </ThemedText>
-                </>
+                <ThemedText style={[styles.bodyText, { color: Colors[colorScheme].muted }]}>
+                  The full breakdown is just a tap away for subscribers.
+                </ThemedText>
               )}
             </View>
 
-            {/* Blurred / faded fake content (compact) */}
             <View style={styles.blurredSection}>
               <View style={{ opacity: 0.12 }}>
                 <View style={[styles.fakeLine, { width: '100%', backgroundColor: Colors[colorScheme].foreground }]} />
                 <View style={[styles.fakeLine, { width: '88%', backgroundColor: Colors[colorScheme].foreground }]} />
                 <View style={[styles.fakeLine, { width: '55%', backgroundColor: Colors[colorScheme].foreground }]} />
               </View>
-
-              <View style={{ opacity: 0.12 }}>
-                <View style={[styles.fakeLine, { width: '100%', backgroundColor: Colors[colorScheme].foreground }]} />
-                <View style={[styles.fakeLine, { width: '88%', backgroundColor: Colors[colorScheme].foreground }]} />
-                <View style={[styles.fakeLine, { width: '55%', backgroundColor: Colors[colorScheme].foreground }]} />
-              </View>
-
-              {/* Gradient fade overlay (pure RN layers) */}
               <View style={styles.gradientOverlay}>
                 <View style={[styles.gradientStep, { backgroundColor: Colors[colorScheme].background, opacity: 0.3 }]} />
                 <View style={[styles.gradientStep, { backgroundColor: Colors[colorScheme].background, opacity: 0.7 }]} />
@@ -446,40 +341,26 @@ export default function ArticleScreen() {
               </View>
             </View>
 
-            {/* Paywall CTA */}
             <View style={styles.paywallContainer}>
-              <View style={[styles.paywallCard, { backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#f8f9fa' }]}>
-                <View style={[styles.paywallIconCircle, { backgroundColor: colorScheme === 'dark' ? '#1a1408' : '#fffbeb' }]}>
-                  <Lock size={22} color="#F59E0B" strokeWidth={2} />
+              <View style={[styles.paywallCard, { backgroundColor: '#f8f9fa' }]}>
+                <View style={[styles.paywallIconCircle, { backgroundColor: '#fffbeb' }]}>
+                  <Lock size={22} color={ACCENT} strokeWidth={2} />
                 </View>
                 <ThemedText style={styles.paywallTitle}>
                   Read the key takeaways in 2 minutes
                 </ThemedText>
                 <ThemedText style={[styles.paywallDesc, { color: Colors[colorScheme].muted }]}>
-                  {isDeepDiveRead
-                    ? 'You have used this week\'s free Deep Dive. Upgrade for unlimited deep dives and summaries.'
-                    : 'Every article, distilled to what matters most — so you learn more, faster.'}
+                  Every article, distilled to what matters most — so you learn more, faster.
                 </ThemedText>
-
-                <Pressable
-                  style={styles.subscribeButton}
-                  onPress={() => presentPaywall()}>
+                <Pressable style={styles.subscribeButton} onPress={() => presentPaywall()}>
                   <Crown size={16} color="#fff" strokeWidth={2} />
                   <Text style={styles.subscribeButtonText}>Unlock full access</Text>
                 </Pressable>
-
                 <Pressable
                   style={styles.openOriginalLink}
                   onPress={() => {
-                    if (!params.url) return;
-                    logReadingEvent({
-                      eventType: 'external_open',
-                      itemId: params.id || params.url || params.title || '',
-                      title: params.title || '',
-                      url: params.url,
-                      itemType: params.type || 'blog',
-                    });
-                    WebBrowser.openBrowserAsync(params.url);
+                    if (!item.url) return;
+                    WebBrowser.openBrowserAsync(item.url);
                   }}>
                   <ExternalLink size={14} color={Colors[colorScheme].muted} strokeWidth={1.5} />
                   <ThemedText style={[styles.openOriginalLinkText, { color: Colors[colorScheme].muted }]}>
@@ -496,9 +377,7 @@ export default function ArticleScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
+  safeArea: { flex: 1 },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -507,231 +386,123 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 40, height: 40,
+    alignItems: 'center', justifyContent: 'center',
     borderRadius: 20,
   },
   topAction: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 40, height: 40,
+    alignItems: 'center', justifyContent: 'center',
   },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-  },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
   heroImage: {
-    width: '100%',
-    height: 220,
-    borderRadius: 16,
-    marginBottom: 18,
+    width: '100%', height: 220,
+    borderRadius: 16, marginBottom: 4,
   },
-  articleHeader: {
-    gap: 12,
-    marginBottom: 24,
-  },
+  articleHeader: { gap: 12, marginBottom: 24 },
   metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
+    flexDirection: 'row', alignItems: 'center',
+    gap: 8, flexWrap: 'wrap',
   },
   typeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    flexDirection: 'row', alignItems: 'center',
+    gap: 6, paddingHorizontal: 12, paddingVertical: 6,
     borderRadius: 999,
   },
-  typeLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
+  typeLabel: { fontSize: 12, fontWeight: '600' },
   hotBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    flexDirection: 'row', alignItems: 'center',
+    gap: 3, paddingHorizontal: 8, paddingVertical: 4,
     borderRadius: 999,
   },
-  hotText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#ea580c',
-  },
-  readingTime: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  readingTimeText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
+  hotText: { fontSize: 11, fontWeight: '600', color: '#ea580c' },
+  readingTime: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  readingTimeText: { fontSize: 12, fontWeight: '500' },
   articleTitle: {
-    fontSize: 26,
-    fontWeight: '700',
-    lineHeight: 34,
-    letterSpacing: -0.3,
+    fontSize: 26, fontWeight: '700',
+    lineHeight: 34, letterSpacing: -0.3,
   },
   articleSubtitle: {
-    fontSize: 17,
-    lineHeight: 24,
-    fontStyle: 'italic',
+    fontSize: 17, lineHeight: 24, fontStyle: 'italic',
   },
-  relevanceBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    alignSelf: 'flex-start',
+  sourceName: { fontSize: 13, fontWeight: '500' },
+  divider: { height: 1, marginBottom: 24 },
+  articleBody: { gap: 16, marginBottom: 32 },
+
+  // Key Takeaways
+  takeawaysCard: {
+    borderRadius: 16, padding: 18, gap: 10,
+    marginBottom: 8,
   },
-  relevanceText: {
-    fontSize: 13,
-    fontWeight: '500',
+  takeawaysLabel: {
+    fontSize: 11, fontWeight: '700',
+    textTransform: 'uppercase', letterSpacing: 1,
+    color: '#b45309', marginBottom: 2,
   },
-  divider: {
-    height: 1,
-    marginBottom: 24,
+  takeawayRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  takeawayDot: {
+    width: 6, height: 6, borderRadius: 3,
+    backgroundColor: '#F59E0B', marginTop: 8,
   },
-  articleBody: {
-    gap: 16,
-    marginBottom: 32,
+  takeawayText: { fontSize: 15, lineHeight: 22, flex: 1 },
+
+  // Why it matters
+  whyItMattersCard: {
+    borderRadius: 16, padding: 18,
+    borderWidth: 1, marginTop: 8,
   },
-  bodyH2: {
-    fontSize: 20,
-    fontWeight: '700',
-    lineHeight: 28,
-    marginTop: 8,
+  whyItMattersLabel: {
+    fontSize: 11, fontWeight: '700',
+    textTransform: 'uppercase', letterSpacing: 1,
+    marginBottom: 6,
   },
-  bodyH3: {
-    fontSize: 17,
-    fontWeight: '600',
-    lineHeight: 24,
-    marginTop: 4,
+  whyItMattersText: {
+    fontSize: 15, lineHeight: 23, fontStyle: 'italic',
   },
-  bodyText: {
-    fontSize: 16,
-    lineHeight: 26,
-  },
-  listContainer: {
-    gap: 6,
-    paddingLeft: 4,
-  },
-  listItem: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  listBullet: {
-    fontSize: 16,
-    lineHeight: 26,
-  },
-  // ─── Paywall ───
-  blurredSection: {
-    position: 'relative',
-    marginBottom: 0,
-  },
-  fakeLine: {
-    height: 14,
-    borderRadius: 7,
-    marginBottom: 10,
-  },
+
+  // Body text
+  bodyH2: { fontSize: 20, fontWeight: '700', lineHeight: 28, marginTop: 8 },
+  bodyH3: { fontSize: 17, fontWeight: '600', lineHeight: 24, marginTop: 4 },
+  bodyText: { fontSize: 16, lineHeight: 26 },
+  listContainer: { gap: 6, paddingLeft: 4 },
+  listItem: { flexDirection: 'row', gap: 8 },
+  listBullet: { fontSize: 16, lineHeight: 26, width: 16 },
+
+  // Paywall
+  blurredSection: { position: 'relative', marginBottom: 0 },
+  fakeLine: { height: 14, borderRadius: 7, marginBottom: 10 },
   gradientOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 120,
-    flexDirection: 'column',
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    height: 120, flexDirection: 'column',
   },
-  gradientStep: {
-    flex: 1,
-  },
-  paywallContainer: {
-    marginTop: -20,
-    marginBottom: 32,
-  },
+  gradientStep: { flex: 1 },
+  paywallContainer: { marginTop: -20, marginBottom: 32 },
   paywallCard: {
-    borderRadius: 20,
-    padding: 28,
-    alignItems: 'center',
-    gap: 14,
+    borderRadius: 20, padding: 28,
+    alignItems: 'center', gap: 14,
   },
   paywallIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
+    width: 52, height: 52, borderRadius: 26,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
   },
   paywallTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    textAlign: 'center',
-    letterSpacing: -0.3,
+    fontSize: 20, fontWeight: '700',
+    textAlign: 'center', letterSpacing: -0.3,
   },
   paywallDesc: {
-    fontSize: 14,
-    lineHeight: 21,
-    textAlign: 'center',
-    paddingHorizontal: 8,
+    fontSize: 14, lineHeight: 21,
+    textAlign: 'center', paddingHorizontal: 8,
   },
   subscribeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#F59E0B',
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 999,
-    marginTop: 6,
-    width: '100%',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, backgroundColor: '#F59E0B',
+    paddingHorizontal: 28, paddingVertical: 14,
+    borderRadius: 999, marginTop: 6, width: '100%',
   },
-  subscribeButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  subscribeButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   openOriginalLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    marginTop: 4,
+    flexDirection: 'row', alignItems: 'center',
+    gap: 6, paddingVertical: 8, marginTop: 4,
   },
-  openOriginalLinkText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-
-  actionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: 20,
-    marginTop: 8,
-  },
-  bottomAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  bottomActionLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
+  openOriginalLinkText: { fontSize: 14, fontWeight: '500' },
 });
-

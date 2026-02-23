@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -28,19 +29,18 @@ if str(REPO_ROOT) not in sys.path:
 load_dotenv(REPO_ROOT / ".env")
 
 from v1.storage import FirestoreStore  # noqa: E402
+from v3.lib.store import V3Store  # noqa: E402
 
-MAX_ITEMS_DEFAULT = 8
+MAX_ITEMS_DEFAULT = 6
 TOPIC_PRIORITY = [
     "technology",
     "business-market",
     "experience",
-    "productivity",
 ]
 TOPIC_TARGET_COUNTS = {
-    "technology": 3,
-    "business-market": 3,
-    "experience": 1,
-    "productivity": 1,
+    "technology": 2,
+    "business-market": 2,
+    "experience": 2,
 }
 MAX_PER_DOMAIN = 2
 
@@ -116,6 +116,52 @@ def _collect_trending_articles(
     return rows
 
 
+def _collect_v3_feed_trending(store: FirestoreStore, date: str) -> list[dict[str, Any]]:
+    """Pull trending items from an existing v3 user feed (already has AI summaries)."""
+    v3 = V3Store()
+    users = v3.get_onboarded_users()
+
+    best_items: list[dict[str, Any]] = []
+    for user in users:
+        uid = user.get("uid", "")
+        if not uid:
+            continue
+        feed = v3.load_feed(uid, date)
+        trending = feed.get("trending", [])
+        if isinstance(trending, list) and trending:
+            best_items = trending
+            break
+
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in best_items:
+        if not isinstance(item, dict):
+            continue
+        url = str(item.get("url", "")).strip()
+        title = str(item.get("title", "")).strip()
+        if not url or not title or url in seen:
+            continue
+        seen.add(url)
+
+        summary = item.get("summary", {})
+        short = summary.get("short_article", {}) if isinstance(summary, dict) else {}
+        subtitle = str(short.get("subtitle", "")).strip() if isinstance(short, dict) else ""
+
+        rows.append({
+            "topic_id": str(item.get("interest_id", "")).strip(),
+            "topic_name": "",
+            "title": title,
+            "url": url,
+            "subtitle": subtitle,
+            "details": subtitle,
+            "thumbnail": str(item.get("thumbnail", "")).strip(),
+            "published_date": str(item.get("published_date", "")).strip(),
+            "source_name": str(item.get("source_name", "")).strip(),
+        })
+
+    return rows
+
+
 def _select_diverse(
     articles: list[dict[str, Any]],
     max_items: int,
@@ -123,66 +169,24 @@ def _select_diverse(
     def _domain(url: str) -> str:
         return (urlparse(url).hostname or "").lower().replace("www.", "")
 
-    by_topic: dict[str, list[dict[str, Any]]] = {}
-    for item in articles:
-        by_topic.setdefault(item["topic_id"], []).append(item)
-
-    topic_ids = sorted(
-        by_topic.keys(),
-        key=lambda t: (
-            TOPIC_PRIORITY.index(t)
-            if t in TOPIC_PRIORITY
-            else len(TOPIC_PRIORITY),
-            t,
-        ),
-    )
     selected: list[dict[str, Any]] = []
     seen_urls: set[str] = set()
     domain_counts: dict[str, int] = {}
 
-    # Pass 1: enforce AI/tech-first target mix.
-    for topic_id in topic_ids:
-        target = TOPIC_TARGET_COUNTS.get(topic_id, 0)
-        queue = by_topic.get(topic_id, [])
-        while queue and len(selected) < max_items and target > 0:
-            candidate = queue.pop(0)
-            url = candidate["url"]
-            domain = _domain(url)
-            if url in seen_urls:
-                continue
-            if domain and domain_counts.get(domain, 0) >= MAX_PER_DOMAIN:
-                continue
-            seen_urls.add(url)
-            selected.append(candidate)
-            if domain:
-                domain_counts[domain] = domain_counts.get(domain, 0) + 1
-            target -= 1
+    for candidate in articles:
         if len(selected) >= max_items:
-            return selected
-
-    # Pass 2: fill remaining slots in priority order.
-    while len(selected) < max_items:
-        added = False
-        for topic_id in topic_ids:
-            queue = by_topic.get(topic_id, [])
-            while queue and queue[0]["url"] in seen_urls:
-                queue.pop(0)
-            if not queue:
-                continue
-            candidate = queue.pop(0)
-            url = candidate["url"]
-            domain = _domain(url)
-            if domain and domain_counts.get(domain, 0) >= MAX_PER_DOMAIN:
-                continue
-            seen_urls.add(url)
-            selected.append(candidate)
-            if domain:
-                domain_counts[domain] = domain_counts.get(domain, 0) + 1
-            added = True
-            if len(selected) >= max_items:
-                break
-        if not added:
             break
+        url = str(candidate.get("url", "")).strip()
+        if not url or url in seen_urls:
+            continue
+        domain = _domain(url)
+        if domain and domain_counts.get(domain, 0) >= MAX_PER_DOMAIN:
+            continue
+        seen_urls.add(url)
+        selected.append(candidate)
+        if domain:
+            domain_counts[domain] = domain_counts.get(domain, 0) + 1
+
     return selected
 
 
@@ -232,11 +236,11 @@ def _generate_editorial(
         intro = ""
 
     if not subject:
-        subject = f"Trace Daily: {len(items)} trending stories for {date}"
+        subject = f"Trace Daily: AI, Product & Design picks for {date}"
     if not intro:
         intro = (
-            "Here are today's top trending stories across all categories. "
-            "Quick, useful updates in one edition."
+            "Here are today's best trending picks across AI, Product, and Design. "
+            "Just the essential stories in one quick edition."
         )
     intro_html = (
         '<p style="margin: 0; font-size: 15px; color: #52525b; '
@@ -313,11 +317,15 @@ def build_unified_newsletter(
             "item_count": int(data.get("item_count", 0)),
         }
 
+    source = "trending_news"
     articles = _collect_trending_articles(store, target_date)
+    if not articles:
+        articles = _collect_v3_feed_trending(store, target_date)
+        source = "v3_user_feed"
     if not articles:
         return {
             "success": False,
-            "error": "no trending articles found for date",
+            "error": "no trending articles found",
             "date": target_date,
         }
 
@@ -329,9 +337,15 @@ def build_unified_newsletter(
             "date": target_date,
         }
 
-    client = OpenAI()
-    subject, intro_html = _generate_editorial(client, selected, target_date)
-    rewritten_blurbs = _rewrite_item_blurbs(client, selected)
+    subject = f"Trace Daily: AI, Product & Design picks for {target_date}"
+    intro_html = (
+        '<p style="margin: 0; font-size: 15px; color: #52525b; '
+        "line-height: 1.7; font-family: -apple-system, BlinkMacSystemFont, "
+        f"'Segoe UI', sans-serif;\">"
+        "Here are today's top trending picks across AI, product development, and design."
+        "</p>"
+    )
+    rewritten_blurbs: dict[str, str] = {}
 
     newsletter_items = []
     for idx, item in enumerate(selected, start=1):
@@ -344,7 +358,7 @@ def build_unified_newsletter(
                 or _build_item_summary(item)
             ),
             "type": "news",
-            "source": "trending_news",
+            "source": source,
             "tags": [item.get("topic_id", "")],
             "topic_id": item.get("topic_id", ""),
             "topic_name": item.get("topic_name", ""),
@@ -363,7 +377,7 @@ def build_unified_newsletter(
         "items": newsletter_items,
         "email_subject": subject,
         "intro_html": intro_html,
-        "source": "v2_unified_trending",
+        "source": f"v2_unified_trending:{source}",
     }
     doc_ref.set(payload, merge=True)
     return {

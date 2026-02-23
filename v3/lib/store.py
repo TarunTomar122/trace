@@ -67,25 +67,79 @@ class V3Store:
     # ------------------------------------------------------------------
 
     def get_onboarded_users(
-        self, audience: str = "subscribed"
+        self, audience: str = "subscribed", max_inactive_days: int = 7,
     ) -> list[dict[str, Any]]:
         """
-        Get onboarded users by audience segment.
+        Get onboarded users by audience segment, skipping stale ones.
 
         audience:
           - subscribed: trial/active users only (default; backward compatible)
           - unsubscribed: onboarded users without active/trial subscription
           - all: all onboarded users
+
+        max_inactive_days:
+          Skip free users whose lastActiveAt (or updatedAt/onboardedAt
+          fallback) is older than this many days. Subscribed users are
+          never skipped regardless of activity.
         """
         profiles = self._base.get_all_user_profiles()
         onboarded = [p for p in profiles if p.get("onboarded") is True]
 
         if audience == "all":
-            return onboarded
-        if audience == "unsubscribed":
-            return [p for p in onboarded if not is_user_subscribed(p)]
-        # default: subscribed
-        return [p for p in onboarded if is_user_subscribed(p)]
+            filtered = onboarded
+        elif audience == "unsubscribed":
+            filtered = [p for p in onboarded if not is_user_subscribed(p)]
+        else:
+            filtered = [p for p in onboarded if is_user_subscribed(p)]
+
+        if max_inactive_days <= 0:
+            return filtered
+
+        cutoff = datetime.now(timezone.utc) - timedelta(days=max_inactive_days)
+        active: list[dict[str, Any]] = []
+        skipped = 0
+
+        for p in filtered:
+            if is_user_subscribed(p):
+                active.append(p)
+                continue
+
+            last = (
+                p.get("lastActiveAt")
+                or p.get("updatedAt")
+                or p.get("onboardedAt")
+            )
+            if last is None:
+                skipped += 1
+                continue
+
+            try:
+                if hasattr(last, "isoformat"):
+                    ts = last
+                elif hasattr(last, "seconds"):
+                    ts = datetime.fromtimestamp(last.seconds, tz=timezone.utc)
+                else:
+                    ts = datetime.fromisoformat(
+                        str(last).replace("Z", "+00:00")
+                    )
+                    if ts.tzinfo is None:
+                        ts = ts.replace(tzinfo=timezone.utc)
+
+                if ts < cutoff:
+                    skipped += 1
+                    continue
+            except (ValueError, TypeError, AttributeError):
+                pass
+
+            active.append(p)
+
+        if skipped:
+            print(
+                f"[v3-store] Skipped {skipped} stale free users "
+                f"(inactive >{max_inactive_days}d), "
+                f"building for {len(active)}"
+            )
+        return active
 
     def get_user_profile(self, uid: str) -> dict[str, Any] | None:
         return self._base.get_user_profile(uid)

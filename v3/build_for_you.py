@@ -34,7 +34,7 @@ from v1.storage import is_user_subscribed  # noqa: E402
 from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
 from v3.lib.store import V3Store, FOR_YOU_POOL, FREE_TIER_LIMITS, _today_ist  # noqa: E402
 from v3.lib.content import fetch_content, fetch_og_image  # noqa: E402
-from v3.lib.summarizer import get_or_generate_summary  # noqa: E402
+from v3.lib.summarizer import get_or_generate_summary, batch_presummarize  # noqa: E402
 from v3.lib.scorer import rank_articles  # noqa: E402
 from v3.lib.diversity import dedupe_and_cap  # noqa: E402
 
@@ -194,7 +194,15 @@ def build_user_feeds(
         users = users[: args.limit_users]
 
     _log(f"Building For You feeds for {len(users)} users, date={target_date}")
-    stats = {"users": 0, "items_total": 0, "summaries_generated": 0, "summaries_cached": 0}
+
+    # ------------------------------------------------------------------
+    # PHASE 2a: Pick articles for every user (fast — no OpenAI calls)
+    # ------------------------------------------------------------------
+    _log("-" * 40)
+    _log("PHASE 2a: Select articles per user")
+    _log("-" * 40)
+
+    user_picks: list[tuple[dict, list[dict], str, str]] = []
 
     for profile in users:
         uid = profile.get("uid", "")
@@ -211,15 +219,13 @@ def build_user_feeds(
 
         if not interests:
             _log(f"  user={uid} no interests, skipping")
+            store.write_feed_section(uid, target_date, "for_you", [])
             continue
 
         role_extras = set(ROLE_INTEREST_MAP.get(role, [])) - interests
         expanded = interests | role_extras
-        if role_extras:
-            _log(f"  user={uid} role={role} → injecting {sorted(role_extras)}")
 
         seen_urls = store.get_seen_urls(uid)
-        _log(f"  user={uid} interests={sorted(interests)} expanded={sorted(expanded)} seen={len(seen_urls)}")
 
         candidates = store.load_pool(
             FOR_YOU_POOL,
@@ -227,23 +233,59 @@ def build_user_feeds(
             max_age_days=max_age,
             exclude_urls=seen_urls,
         )
-        _log(f"  user={uid} candidates={len(candidates)}")
 
         if not candidates:
-            _log(f"  user={uid} no candidates, writing empty")
             store.write_feed_section(uid, target_date, "for_you", [])
-            stats["users"] += 1
             continue
 
         ranked = rank_articles(candidates, goals)
         diverse = dedupe_and_cap(ranked)
         picked = diverse[: user_items_target]
         if not is_subscribed:
-            _log(f"  user={uid} free tier → capped to {user_items_target} items")
+            _log(f"  user={uid} free → {len(picked)} items")
+        else:
+            _log(f"  user={uid} pro → {len(picked)} items")
+
+        user_picks.append((profile, picked, style, seniority))
+
+    # ------------------------------------------------------------------
+    # PHASE 2b: Batch pre-summarize only the articles users actually need
+    # ------------------------------------------------------------------
+    _log("-" * 40)
+    _log("PHASE 2b: Pre-summarize needed articles (parallel)")
+    _log("-" * 40)
+
+    needed_items: dict[str, dict] = {}
+    needed_combos: set[tuple[str, str]] = set()
+    for _, picked, style, seniority in user_picks:
+        needed_combos.add((style, seniority))
+        for item in picked:
+            url = item.get("url", "")
+            if url and url not in needed_items:
+                needed_items[url] = item
+
+    _log(f"Unique articles needed: {len(needed_items)}, combos: {len(needed_combos)}")
+
+    if needed_items and needed_combos:
+        batch_presummarize(
+            store, list(needed_items.values()), list(needed_combos),
+            feed_type="default", max_workers=8,
+        )
+
+    # ------------------------------------------------------------------
+    # PHASE 2c: Assemble feeds (all summaries now cached — fast)
+    # ------------------------------------------------------------------
+    _log("-" * 40)
+    _log("PHASE 2c: Assemble feeds from cache")
+    _log("-" * 40)
+
+    stats = {"users": 0, "items_total": 0, "summaries_generated": 0, "summaries_cached": 0}
+
+    for profile, picked, style, seniority in user_picks:
+        uid = profile.get("uid", "")
 
         feed_items: list[dict[str, Any]] = []
-        for i, item in enumerate(picked, 1):
-            _log(f"    [{i}/{len(picked)}] summarizing: {item.get('title', '')[:50]}")
+        for item in picked:
             summary, was_cached = get_or_generate_summary(
                 store=store,
                 url=item.get("url", ""),
@@ -252,8 +294,6 @@ def build_user_feeds(
                 style=style,
                 seniority=seniority,
             )
-            cache_tag = "cached" if was_cached else ("new" if summary else "failed")
-            _log(f"    [{i}/{len(picked)}] summary={cache_tag}")
             if was_cached:
                 stats["summaries_cached"] += 1
             elif summary:

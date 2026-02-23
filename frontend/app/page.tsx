@@ -26,7 +26,10 @@ import {
   ArrowUpRight,
   Lightbulb,
   Search,
-  TrendingUp
+  TrendingUp,
+  Flame,
+  Crosshair,
+  GraduationCap,
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -271,9 +274,9 @@ const Nav = () => {
             {/* Desktop Left Nav */}
             <div className="hidden md:flex items-center gap-1 flex-1">
               {!user && (
-                <a href="#how" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
-                  How It Works
-                </a>
+                <Link href="#what-trace-replaces" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+                  How it works
+                </Link>
               )}
               {user ? (
                 <>
@@ -352,11 +355,11 @@ const Nav = () => {
                 <div className="pt-4 pb-2 flex flex-col gap-1 border-t border-gray-200 dark:border-gray-800 mt-4">
                   {!user && (
                     <a
-                      href="#how"
+                      href="#what-trace-replaces"
                       className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      How It Works
+                      How it works
                     </a>
                   )}
                   {user ? (
@@ -420,7 +423,7 @@ const Hero = () => {
   const isLoggedIn = !!user;
   const isOnboarded = !!user && !!profile?.onboarded;
   const heroCtaHref = isLoggedIn && !isOnboarded ? '/onboarding' : null;
-  const heroCtaText = isLoggedIn && !isOnboarded ? 'Personalize my feed' : 'Unlock full feed';
+  const heroCtaText = isLoggedIn && !isOnboarded ? 'Personalize my feed' : 'Start reading for free';
 
   return (
     <section className="relative pt-32 pb-16 md:pt-36 lg:pt-60 md:pb-24 lg:pb-40 overflow-hidden z-10">
@@ -448,20 +451,8 @@ const Hero = () => {
                   transition={{ duration: 0.6, delay: 0.3 }}
                   className="text-base md:text-lg text-secondary leading-relaxed mb-6 md:mb-8 max-w-lg"
                 >
-                  Fresh picks from across the web, curated around what you care about.
+                  Trending news, personalized articles, and expert deep dives — refreshed daily.
                 </motion.p>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.25 }}
-                  className="flex items-center gap-2 mb-6 md:mb-8"
-                >
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 rounded-full">
-                    <Lightbulb size={14} className="text-primary" />
-                    <span className="text-sm font-medium text-primary">Upvote and downvote items to help Trace learn what matters to you.</span>
-                  </div>
-                </motion.div>
 
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -496,8 +487,8 @@ const Hero = () => {
                   className="text-base md:text-lg text-secondary leading-relaxed mb-4 max-w-md"
                 >
                   {isAlphaMode()
-                    ? "Trace scans the sources you care about and gives you a short daily brief with links worth opening. Read fast. Stay sharp. Move on."
-                    : "Join the waitlist for early access. Trace scans the sources you care about and gives you a short daily brief with links worth opening."
+                    ? "One place for everything worth reading today, tailored to what you actually care about."
+                    : "One place for everything worth reading today, tailored to what you actually care about."
                   }
                 </motion.p>
 
@@ -508,11 +499,14 @@ const Hero = () => {
                   className="flex flex-wrap gap-2 mb-6 md:mb-8"
                 >
                   {[
-                    "Your daily brief, personalized",
+                    "Trending news",
+                    "For You articles",
+                    "Expert deep dives",
+                    "AI summaries",
                   ].map((item) => (
                     <div
                       key={item}
-                      className="px-3 py-1.5 rounded-full text-primary text-xs font-medium"
+                      className="px-3 py-1.5 rounded-full border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-xs font-medium"
                     >
                       {item}
                     </div>
@@ -553,17 +547,6 @@ const Hero = () => {
                   transition={{ duration: 0.6, delay: 0.4 }}
                   className="flex items-center gap-4"
                 >
-                  {/* Avatar stack */}
-                  <div className="flex -space-x-2">
-                    {['Z', 'M', 'S', 'A'].map((initial, i) => (
-                      <div
-                        key={i}
-                        className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/40 border-2 border-background flex items-center justify-center text-xs font-medium text-primary"
-                      >
-                        {initial}
-                      </div>
-                    ))}
-                  </div>
                   <div className="flex items-center gap-1.5">
                     <div className="flex text-amber-400">
                       {[1, 2, 3, 4, 5].map(i => (
@@ -573,7 +556,7 @@ const Hero = () => {
                       ))}
                     </div>
                     <span className="text-sm text-secondary">
-                      Loved by <span className="font-medium text-foreground">1K+ users</span>
+                      <span className="font-medium text-foreground">200+ readers</span> get their daily brief
                     </span>
                   </div>
                 </motion.div>
@@ -582,27 +565,13 @@ const Hero = () => {
             )}
           </div>
 
-          {/* Right Side - Interactive Demo */}
+          {/* Right Side - Feed Preview */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
             className="block relative"
           >
-            {/* Annotation with arrow */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.8 }}
-              className="absolute -top-4 md:-top-14 left-4 md:left-8 flex items-end gap-2"
-            >
-              <span className="text-secondary/60 text-sm italic font-serif pb-3">This could be your feed</span>
-              <img
-                src="/arrow.png"
-                alt="Arrow pointing to feed preview"
-                className="w-6 h-6 opacity-50 pt-1"
-              />
-            </motion.div>
             <HeroDemo />
           </motion.div>
         </div>
@@ -627,7 +596,7 @@ const DemoVideo = () => {
             See Trace in action
           </h2>
           <p className="text-secondary text-base md:text-lg max-w-xl mx-auto">
-            One feed from hundreds of sources, personalized to what you care about
+            Three personalized feeds — Trending, For You, and Deep Dives — refreshed daily
           </p>
         </motion.div>
 
@@ -657,43 +626,35 @@ const HowItWorks = () => {
     {
       number: "01",
       icon: User,
-      title: "Choose topics",
-      description: "Pick what you care about — AI, product, design, startups, finance, science, or anything else.",
+      title: "Tell us about you",
+      description: "Pick your role, interests, and career goals. Choose expert sources you trust for deep dives.",
       color: "text-blue-500",
       bgColor: "bg-blue-50 dark:bg-blue-950"
     },
     {
       number: "02",
       icon: Search,
-      title: "We find the best stuff",
-      description: "Trace scans YouTube, GitHub, Hacker News, Reddit, arXiv, top blogs, and hundreds more sources — daily.",
+      title: "We build three feeds",
+      description: "Trending news across tech, For You articles matched to your interests, and Deep Dives from expert sources you pick.",
       color: "text-purple-500",
       bgColor: "bg-purple-50 dark:bg-purple-950"
     },
     {
       number: "03",
-      icon: ThumbsUp,
-      title: "You steer",
-      description: "Upvote what matters, downvote what doesn't. Add notes when you want.",
+      icon: Brain,
+      title: "AI-powered summaries",
+      description: "Every article gets an AI summary in your preferred style — executive brief, practitioner deep-dive, or casual talking points.",
       color: "text-green-500",
       bgColor: "bg-green-50 dark:bg-green-950"
     },
     {
       number: "04",
-      icon: Brain,
-      title: "Trace adapts",
-      description: "Your feed learns what you like and sharpens itself over time. More signal, less noise.",
+      icon: TrendingUp,
+      title: "Stay ahead, every day",
+      description: "Your feeds refresh daily with fresh content. Bookmark what matters, and your feed gets smarter over time.",
       color: "text-orange-500",
       bgColor: "bg-orange-50 dark:bg-orange-950"
     },
-    {
-      number: "05",
-      icon: TrendingUp,
-      title: "Never miss what matters",
-      description: "Every day, your feed surfaces the most important content from across the web, tailored to your interests.",
-      color: "text-pink-500",
-      bgColor: "bg-pink-50 dark:bg-pink-950"
-    }
   ];
 
   return (
@@ -826,39 +787,39 @@ const HowItWorks = () => {
 const WhatTraceReplaces = () => {
   const habits = [
     {
-      icon: "🐦",
-      title: "Twitter / X",
-      description: "Tech news, AI updates, and threads from the people you actually want to hear from"
+      icon: "🔥",
+      title: "Trending",
+      description: "The latest news across tech, AI, design, business — an unfiltered pulse of what's buzzing right now"
     },
     {
-      icon: "📱",
-      title: "Reddit",
-      description: "Discussions across AI, product, engineering, and niche communities"
+      icon: "🎯",
+      title: "For You",
+      description: "Articles matched to your interests and career goals, with AI summaries in your preferred reading style"
     },
     {
-      icon: "💬",
-      title: "Hacker News",
-      description: "Launches, deep technical discussions, and Show HN gems"
+      icon: "🎓",
+      title: "Deep Dives",
+      description: "In-depth content from expert sources you pick — top blogs, newsletters, and thought leaders in your field"
     },
     {
-      icon: "🎥",
-      title: "YouTube",
-      description: "Tutorials, breakdowns, and the best video content from creators you care about"
+      icon: "✨",
+      title: "AI Summaries",
+      description: "Every article gets a smart summary — choose executive brief, practitioner deep-dive, or casual talking points"
     },
     {
-      icon: "📰",
-      title: "Blogs & Newsletters",
-      description: "The best writing from across the web — posts you'd never find on your own"
+      icon: "🔖",
+      title: "Bookmarks",
+      description: "Save articles to read later. Your bookmarks sync across devices and are always available"
     },
     {
-      icon: "📄",
-      title: "Research & GitHub",
-      description: "arXiv papers, trending repos, and open-source projects worth knowing about"
+      icon: "⚙️",
+      title: "Personalized",
+      description: "Pick your role, seniority, interests, and sources. Your feeds are built around who you are"
     }
   ];
 
   return (
-    <section className="py-16 md:py-24 lg:py-32 bg-gray-50 dark:bg-gray-900 relative overflow-hidden z-10">
+    <section id="what-trace-replaces" className="py-16 md:py-24 lg:py-32 bg-gray-50 dark:bg-gray-900 relative overflow-hidden z-10">
       <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
         <div className="text-center mb-12 md:mb-16">
           <motion.h2
@@ -867,7 +828,7 @@ const WhatTraceReplaces = () => {
             viewport={{ once: true }}
             className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-3 md:mb-4"
           >
-            What Trace <span className="text-secondary/50">Brings Together</span>
+            Three Feeds, <span className="text-secondary/50">One App</span>
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -876,7 +837,7 @@ const WhatTraceReplaces = () => {
             transition={{ delay: 0.1 }}
             className="text-secondary text-base md:text-lg leading-relaxed max-w-2xl mx-auto"
           >
-            All the places you used to check — now in one feed
+            Trace scans the web and organizes it into three focused feeds, updated daily
           </motion.p>
         </div>
 
@@ -950,18 +911,18 @@ const HowPeopleUseTrace = () => {
               </div>
             </div>
             <div className="text-sm md:text-base font-medium text-foreground">
-              Your Morning Digest — Jan 28, 2025
+              Your Daily Briefing — Feb 17, 2026
             </div>
           </div>
 
-          {/* Email Body Preview */}
+          {/* Feed Preview */}
           <div className="px-4 md:px-6 py-4 md:py-6 space-y-2">
             {[
-              { icon: "🎬", title: "A practical AI agent stack for product teams", source: "YouTube" },
-              { icon: "💬", title: "Show HN: A calmer way to stay current as a builder", source: "Hacker News" },
-              { icon: "📦", title: "open-source: design review checklist for operators", source: "GitHub" },
-              { icon: "📄", title: "New research on evaluation for applied AI systems", source: "arXiv" },
-              { icon: "📝", title: "How great product teams triage signal vs noise", source: "Blog" },
+              { icon: "🔥", title: "OpenAI releases GPT-5 with reasoning capabilities", source: "Trending" },
+              { icon: "🎯", title: "How senior designers are using AI in their workflows", source: "For You" },
+              { icon: "🎓", title: "Building scalable design systems: a complete guide", source: "Deep Dive" },
+              { icon: "🔥", title: "React Server Components: the full mental model", source: "Trending" },
+              { icon: "🎯", title: "Career ladder strategies for IC-to-manager transition", source: "For You" },
             ].map((item, i) => (
               <div key={i} className="flex items-start gap-3 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
                 <span className="text-lg">{item.icon}</span>
@@ -983,14 +944,14 @@ const HowPeopleUseTrace = () => {
           className="text-center max-w-2xl mx-auto"
         >
           <p className="text-base text-secondary leading-relaxed mb-6">
-            Every morning, Trace sends you one brief.<br />
-            The best from Reddit, Hacker News, YouTube, blogs, and research —<br />
-            filtered for what you care about.
+            Every day, Trace builds three feeds just for you.<br />
+            Trending news, interest-matched articles, and deep dives from experts —<br />
+            all with AI summaries in your preferred reading style.
           </p>
           <div className="flex flex-col items-center gap-1 text-sm text-foreground/70">
-            <span>Hundreds of sources.</span>
-            <span>One feed.</span>
-            <span className="font-medium text-foreground">Never miss what matters.</span>
+            <span>Three focused feeds.</span>
+            <span>Refreshed daily.</span>
+            <span className="font-medium text-foreground">Stay ahead without the noise.</span>
           </div>
         </motion.div>
       </div>
@@ -1229,7 +1190,7 @@ const InteractiveDemo = () => {
             transition={{ delay: 0.1 }}
             className="text-secondary font-mono text-xs md:text-sm leading-relaxed max-w-2xl mx-auto"
           >
-            This is what your daily feed could look like — content from across the web, just for you.
+            See how Trace organizes your world into three focused feeds — Trending, For You, and Deep Dives.
           </motion.p>
         </div>
 
@@ -1326,13 +1287,13 @@ const InteractiveDemo = () => {
             <div className="px-5 py-6 bg-gradient-to-t from-primary/5 to-transparent border-t border-border/30">
               <div className="text-center">
                 <p className="text-sm font-mono text-foreground mb-3">
-                  Like what you see? Get your own personalized feed from hundreds of sources.
+                  Like what you see? Get Trending, For You, and Deep Dive feeds built for you.
                 </p>
                 <button
                   onClick={signInWithGoogle}
                   className="px-6 py-3 bg-primary text-primary-foreground text-xs font-mono uppercase tracking-widest hover:bg-primary/90 transition-colors"
                 >
-                  Sign Up Free — 3 Day Trial
+                  Start Free — 4 Day Trial
                 </button>
               </div>
             </div>
@@ -1347,371 +1308,102 @@ const InteractiveDemo = () => {
   );
 };
 
-// --- Animated Hero Demo (for right side of hero) ---
-const heroDelay = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
+// --- Static Hero Feed Preview (for right side of hero) ---
+const HERO_TABS = [
+  { key: 'trending', label: 'Trending', icon: Flame },
+  { key: 'for_you', label: 'For You', icon: Crosshair },
+  { key: 'deep_dives', label: 'Deep Dives', icon: GraduationCap },
+] as const;
+
+const HERO_FEED_ITEMS: Record<string, { source: string; initials: string; time: string; title: string; subtitle: string }[]> = {
+  trending: [
+    { source: "TechCrunch", initials: "TC", time: "2h ago", title: "OpenAI launches GPT-5 with real-time reasoning and 1M token context", subtitle: "The new model handles multi-step planning and code generation at unprecedented levels." },
+    { source: "The Verge", initials: "TV", time: "4h ago", title: "Apple announces M5 chip with dedicated AI co-processor", subtitle: "On-device AI inference gets 3x faster with Apple's latest silicon." },
+    { source: "MIT Tech Review", initials: "MT", time: "5h ago", title: "Europe's AI Act enforcement begins — here's what changes", subtitle: "New rules require transparency labels on AI-generated content across all platforms." },
+    { source: "Wired", initials: "WI", time: "6h ago", title: "Google DeepMind cracks protein-drug interaction prediction", subtitle: "AlphaFold 3 can now model how drugs bind to proteins, accelerating pharma R&D." },
+  ],
+  for_you: [
+    { source: "Lenny's Newsletter", initials: "LN", time: "3h ago", title: "The quiet revolution in solo SaaS: founders hitting $1M ARR alone", subtitle: "How indie builders are using AI and niche markets to build real businesses." },
+    { source: "a16z", initials: "A1", time: "5h ago", title: "Why every product team needs an AI strategy by Q3", subtitle: "A framework for integrating AI into product roadmaps without the hype." },
+    { source: "Stratechery", initials: "ST", time: "8h ago", title: "The unbundling of search is finally happening", subtitle: "AI assistants are eating Google's lunch — and creating new opportunities." },
+    { source: "Pragmatic Engineer", initials: "PE", time: "10h ago", title: "How senior engineers actually spend their time", subtitle: "A survey of 2,000 staff+ engineers reveals surprising patterns in how they allocate focus." },
+  ],
+  deep_dives: [
+    { source: "Anthropic Research", initials: "AR", time: "12 min read", title: "Constitutional AI: building safe systems from the ground up", subtitle: "A deep technical look at RLHF alternatives and alignment research." },
+    { source: "Figma Engineering", initials: "FE", time: "15 min read", title: "How we rebuilt multiplayer from scratch using CRDTs", subtitle: "Real-time collaboration infra that scales to millions of concurrent users." },
+    { source: "Stripe Press", initials: "SP", time: "10 min read", title: "Designing payment flows that convert: lessons from 10M checkouts", subtitle: "Data-backed patterns that reduced cart abandonment by 23%." },
+    { source: "Netflix Tech Blog", initials: "NT", time: "8 min read", title: "Scaling recommendation systems to 250M users", subtitle: "How Netflix's ML infra serves personalized picks in under 100ms globally." },
+  ],
+};
 
 const HeroDemo = () => {
-  const [view, setView] = useState<'feed' | 'article'>('feed');
-  const [cursorPos, setCursorPos] = useState({ x: 80, y: -5 });
-  const [cursorVisible, setCursorVisible] = useState(false);
-  const [cursorClicking, setCursorClicking] = useState(false);
-  const [hoveredItem, setHoveredItem] = useState<number | null>(null);
-  const [scrollY, setScrollY] = useState(0);
-  const [thumbsUp, setThumbsUp] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const run = async () => {
-      while (!cancelled) {
-        // Reset everything
-        setView('feed');
-        setCursorVisible(false);
-        setHoveredItem(null);
-        setScrollY(0);
-        setThumbsUp(false);
-
-        // 1. Show feed list
-        await heroDelay(2800);
-        if (cancelled) return;
-
-        // 2. Cursor enters from top-right, glides to second item (blog)
-        setCursorVisible(true);
-        setCursorPos({ x: 78, y: -4 });
-        await heroDelay(80);
-        if (cancelled) return;
-        setCursorPos({ x: 42, y: 42 });
-        await heroDelay(900);
-        if (cancelled) return;
-
-        // 3. Hover highlight on second card (blog)
-        setHoveredItem(1);
-        await heroDelay(450);
-        if (cancelled) return;
-
-        // 4. Click
-        setCursorClicking(true);
-        await heroDelay(150);
-        if (cancelled) return;
-        setCursorClicking(false);
-        await heroDelay(250);
-        if (cancelled) return;
-
-        // 5. Transition to article view
-        setView('article');
-        setCursorVisible(false);
-        setHoveredItem(null);
-        await heroDelay(1600);
-        if (cancelled) return;
-
-        // 6. Smooth-scroll the article content
-        const steps = 90;
-        const maxScroll = 200;
-        for (let i = 1; i <= steps; i++) {
-          if (cancelled) return;
-          const t = i / steps;
-          const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-          setScrollY(eased * maxScroll);
-          await heroDelay(45);
-        }
-        await heroDelay(700);
-        if (cancelled) return;
-
-        // 7. Cursor reappears, moves to thumbs-up button
-        setCursorVisible(true);
-        setCursorPos({ x: 78, y: 88 });
-        await heroDelay(80);
-        if (cancelled) return;
-        setCursorPos({ x: 14, y: 85 });
-        await heroDelay(850);
-        if (cancelled) return;
-
-        // 8. Click thumbs-up
-        setCursorClicking(true);
-        await heroDelay(150);
-        if (cancelled) return;
-        setCursorClicking(false);
-        setThumbsUp(true);
-        await heroDelay(2200);
-        if (cancelled) return;
-
-        // 9. Fade cursor, pause, loop
-        setCursorVisible(false);
-        await heroDelay(1200);
-      }
-    };
-
-    run();
-    return () => { cancelled = true; };
-  }, []);
-
-  const clickedItem = DEMO_FEED_ITEMS[1]; // Blog post
+  const [activeTab, setActiveTab] = useState<string>('trending');
 
   return (
     <div className="relative w-full mt-6 md:mt-0">
-      <div className="bg-white dark:bg-gray-950 rounded-2xl border border-border/60 overflow-hidden shadow-xl shadow-black/5 dark:shadow-gray-950/20 relative">
-        {/* ── Header ── */}
+      <div className="bg-white dark:bg-gray-950 rounded-2xl border border-border/60 overflow-hidden shadow-xl shadow-black/5 dark:shadow-gray-950/20">
         <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between bg-gray-50/50 dark:bg-gray-900/50">
-          <AnimatePresence mode="wait">
-            {view === 'article' ? (
-              <motion.div
-                key="back"
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: 0.2 }}
-                className="flex items-center gap-1.5 text-secondary"
-              >
-                <ChevronRight size={14} className="rotate-180" />
-                <span className="text-[11px]">Back to feed</span>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="logo"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex items-center gap-2"
-              >
-                <img src="/trace.png" alt="Trace" className="h-5 w-auto" loading="lazy" />
-                <span className="text-xs font-semibold text-foreground uppercase tracking-wider">Your Feed</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-secondary/60 font-mono">Today</span>
-            {view === 'feed' && (
-              <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-secondary text-[10px] font-medium">4 new</span>
-            )}
+            <img src="/trace.png" alt="Trace" className="h-5 w-auto" loading="lazy" />
+            <span className="text-xs font-semibold text-foreground uppercase tracking-wider">Your Feed</span>
           </div>
+          <span className="text-[10px] text-secondary/60 font-mono">Today</span>
         </div>
 
-        {/* ── Content area (fixed height) ── */}
-        <div className="relative h-[440px] overflow-hidden select-none">
+        <div className="px-4 py-2.5 border-b border-border/40 flex gap-1">
+          {HERO_TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${
+                  isActive
+                    ? 'bg-foreground text-background'
+                    : 'text-secondary/60 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                <Icon size={12} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="overflow-hidden select-none">
           <AnimatePresence mode="wait">
-            {view === 'feed' ? (
-              <motion.div
-                key="feed-view"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, x: -30 }}
-                transition={{ duration: 0.25 }}
-              >
-                {/* Filter pills */}
-                <div className="px-4 py-2.5 border-b border-border/40 flex gap-1.5">
-                  {DEMO_FILTERS.slice(0, 4).map((filter, i) => (
-                    <div
-                      key={filter.id}
-                      className={`px-3 py-1 rounded-full text-[11px] font-medium ${i === 0 ? 'bg-foreground text-background' : 'bg-gray-100 dark:bg-gray-800 text-secondary'
-                        }`}
-                    >
-                      {filter.label}
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="divide-y divide-border/30"
+            >
+              {(HERO_FEED_ITEMS[activeTab] || []).map((item, i) => (
+                <div key={i} className="px-4 py-3.5 hover:bg-gray-50/50 dark:hover:bg-gray-900/50 transition-colors">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[8px] font-bold text-secondary/70">
+                      {item.initials}
                     </div>
-                  ))}
-                </div>
-
-                {/* Feed items */}
-                <div className="divide-y divide-border/30">
-                  {DEMO_FEED_ITEMS.map((item, i) => (
-                    <HeroDemoCard key={item.id} item={item} index={i} isHovered={hoveredItem === i} />
-                  ))}
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="article-view"
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 30 }}
-                transition={{ duration: 0.3 }}
-                className="h-full overflow-hidden"
-              >
-                {/* Scrollable article body */}
-                <div
-                  className="px-5 py-4"
-                  style={{ transform: `translateY(-${scrollY}px)`, transition: 'transform 0.06s linear' }}
-                >
-                  {/* Source badge */}
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center">
-                      <BookOpen size={14} className="text-emerald-600" strokeWidth={1.5} />
-                    </div>
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-emerald-600">Blog</span>
-                    <span className="text-[10px] text-secondary/40">·</span>
-                    <span className="text-[10px] text-secondary/50">{clickedItem.author}</span>
+                    <span className="text-[11px] text-secondary/60 font-medium">{item.source}</span>
+                    <span className="text-[11px] text-secondary/30">·</span>
+                    <span className="text-[11px] text-secondary/40">{item.time}</span>
                   </div>
-
-                  {/* Title */}
-                  <h3 className="text-[15px] font-semibold leading-snug text-foreground mb-1.5">
-                    {clickedItem.title}
-                  </h3>
-
-                  {/* Subtitle */}
-                  <p className="text-[11px] text-secondary italic mb-5">
-                    What the most successful indie builders are doing differently — and the playbook behind their growth.
-                  </p>
-
-                  {/* Article body */}
-                  <div className="space-y-3 text-[11.5px] leading-[1.7] text-foreground/80">
-                    <h4 className="text-[12px] font-semibold text-foreground">The $1M Solo Founder Is No Longer Rare</h4>
-                    <p>
-                      Five years ago, building a million-dollar SaaS alone was a unicorn story. Now Lenny counts
-                      11 founders who&apos;ve done it — and the number is accelerating. The common thread
-                      isn&apos;t talent or luck. It&apos;s leverage.
-                    </p>
-                    <p>
-                      AI handles the grunt work. No-code tools replaced entire engineering teams. And niche
-                      markets turned out to be <strong>far more profitable</strong> than anyone expected.
-                    </p>
-
-                    <h4 className="text-[12px] font-semibold text-foreground mt-1">The Playbook That Keeps Showing Up</h4>
-                    <p>
-                      Nearly every founder in the list followed the same rough sequence — and it&apos;s not
-                      what the YC playbook tells you.
-                    </p>
-                    <ul className="space-y-1 text-[11px] text-foreground/70 ml-3">
-                      <li className="flex items-start gap-1.5">
-                        <span className="mt-1.5 w-1 h-1 rounded-full bg-foreground/30 shrink-0" />
-                        <span><strong>Pick a boring niche</strong> — payroll, invoicing, niche CRMs</span>
-                      </li>
-                      <li className="flex items-start gap-1.5">
-                        <span className="mt-1.5 w-1 h-1 rounded-full bg-foreground/30 shrink-0" />
-                        <span><strong>Ship ugly, iterate fast</strong> — design polish came after $10K MRR</span>
-                      </li>
-                      <li className="flex items-start gap-1.5">
-                        <span className="mt-1.5 w-1 h-1 rounded-full bg-foreground/30 shrink-0" />
-                        <span><strong>SEO + community &gt; ads</strong> — organic channels compound</span>
-                      </li>
-                    </ul>
-
-                    <h4 className="text-[12px] font-semibold text-foreground mt-1">Why Now</h4>
-                    <p>
-                      The cost of building dropped by <strong>10× in two years</strong>. What used to take
-                      a 5-person team and $500K now takes one founder, a few AI tools, and a weekend.
-                      The golden age of solo SaaS is just getting started.
-                    </p>
-                  </div>
-
-                  {/* Vote actions */}
-                  <div className="flex items-center gap-2 mt-6 pt-4 border-t border-border/30">
-                    <div
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-200 ${thumbsUp
-                        ? 'bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400'
-                        : 'text-secondary/40'
-                        }`}
-                    >
-                      <ThumbsUp size={13} fill={thumbsUp ? 'currentColor' : 'none'} strokeWidth={1.5} />
-                      <span>Useful</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-secondary/40">
-                      <ThumbsDown size={13} strokeWidth={1.5} />
-                      <span>Not for me</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-secondary/40 ml-auto">
-                      <Bookmark size={13} strokeWidth={1.5} />
-                    </div>
-                  </div>
-
-                  {/* "Trace learned" nudge after vote */}
-                  <AnimatePresence>
-                    {thumbsUp && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50/80 dark:bg-emerald-950/80 border border-emerald-100 dark:border-emerald-900"
-                      >
-                        <Sparkles size={12} className="text-emerald-500" />
-                        <span className="text-[10px] text-emerald-700 dark:text-emerald-200">Trace learned you like startup strategy from newsletters</span>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  <h4 className="text-[13px] font-semibold leading-snug text-foreground mb-1">{item.title}</h4>
+                  <p className="text-[11px] text-secondary/50 leading-relaxed">{item.subtitle}</p>
                 </div>
-              </motion.div>
-            )}
+              ))}
+
+            </motion.div>
           </AnimatePresence>
-
-          {/* ── Animated cursor ── */}
-          <motion.div
-            className="absolute pointer-events-none z-50"
-            animate={{
-              left: `${cursorPos.x}%`,
-              top: `${cursorPos.y}%`,
-              opacity: cursorVisible ? 1 : 0,
-              scale: cursorClicking ? 0.8 : 1,
-            }}
-            transition={{
-              left: { type: 'tween', duration: 0.85, ease: [0.4, 0, 0.2, 1] },
-              top: { type: 'tween', duration: 0.85, ease: [0.4, 0, 0.2, 1] },
-              opacity: { duration: 0.25 },
-              scale: { duration: 0.1 },
-            }}
-          >
-            <svg width="18" height="22" viewBox="0 0 18 22" fill="none" className="drop-shadow-md">
-              <path
-                d="M1 1L1 17.5L5.2 13L9.2 21.5L12 20L8 11.5L14.5 11.5L1 1Z"
-                fill="white"
-                stroke="#222"
-                strokeWidth="1.4"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </motion.div>
         </div>
       </div>
     </div>
   );
 };
 
-// Card for the Hero demo feed list
-const HeroDemoCard = ({ item, index, isHovered = false }: { item: typeof DEMO_FEED_ITEMS[0]; index: number; isHovered?: boolean }) => {
-  const typeConfig: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
-    youtube: { icon: Youtube, color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-950' },
-    article: { icon: BookOpen, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950' },
-    news: { icon: Newspaper, color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-950' },
-    discussion: { icon: MessageCircle, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-950' },
-  };
-
-  const config = typeConfig[item.type] || typeConfig.article;
-  const Icon = config.icon;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: index * 0.05 }}
-      className={`p-4 cursor-pointer transition-colors ${isHovered ? 'bg-gray-50 dark:bg-gray-800/60' : 'bg-white dark:bg-gray-950'}`}
-    >
-      <div className="flex items-start gap-3">
-        <div className={`w-10 h-10 rounded-xl ${config.bg} flex items-center justify-center shrink-0`}>
-          <Icon size={18} className={config.color} strokeWidth={1.5} />
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 mb-1">
-            <span className={`text-[10px] font-medium uppercase tracking-wider ${config.color}`}>{item.source}</span>
-            <span className="text-[10px] text-secondary/40">·</span>
-            <span className="text-[10px] text-secondary/50">{item.author}</span>
-          </div>
-
-          <h3 className="text-[13px] font-medium leading-snug text-foreground line-clamp-2">
-            {item.title}
-          </h3>
-
-          <p className="text-[11px] text-secondary/60 leading-relaxed line-clamp-1 mt-0.5 mb-2">
-            {item.description}
-          </p>
-
-          <div className="flex items-center gap-1">
-            <div className="p-1 text-secondary/30"><ThumbsUp size={13} strokeWidth={1.5} /></div>
-            <div className="p-1 text-secondary/30"><ThumbsDown size={13} strokeWidth={1.5} /></div>
-            <div className="p-1 text-secondary/30 ml-auto"><Bookmark size={13} strokeWidth={1.5} /></div>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
 
 // --- Product Screenshot Section ---
 const DemoFeed = () => {
@@ -1734,7 +1426,7 @@ const DemoFeed = () => {
             transition={{ delay: 0.1 }}
             className="text-secondary font-mono text-xs md:text-sm leading-relaxed max-w-2xl mx-auto"
           >
-            Articles, videos, discussions — pulled from hundreds of sources and filtered by your interests
+            Trending news, personalized articles, and expert deep dives — three feeds, one app
           </motion.p>
         </div>
 
@@ -1749,7 +1441,7 @@ const DemoFeed = () => {
           <div className="border-2 border-border bg-background shadow-2xl dark:shadow-gray-900/50 overflow-hidden">
             <img
               src="/feed.png"
-              alt="Trace Feed - Personalized content from across the web"
+              alt="Trace Feed - Trending, For You, and Deep Dives"
               className="w-full h-auto"
               loading="lazy"
             />
@@ -1782,24 +1474,24 @@ const DemoFeed = () => {
   );
 };
 
-// --- Testimonials Section ---
+// --- Metrics / Social Proof Section ---
 const Testimonials = () => {
-  const testimonials = [
+  const metrics = [
     {
-      quote: "I used to check Twitter, Reddit, and HN separately every morning. Now I open Trace once and I've got everything. It's like RSS but it actually works.",
-      name: "Zeba",
-      role: "AI Engineer"
+      value: "200+",
+      label: "readers onboarded",
+      detail: "Engineers, designers, founders",
     },
     {
-      quote: "Trace catches things I would have completely missed — blog posts, threads, papers. It's like having a research assistant who knows exactly what I care about.",
-      name: "Monisha",
-      role: "Product Designer"
+      value: "60+",
+      label: "sources tracked daily",
+      detail: "TechCrunch, HN, arXiv, Lenny's & more",
     },
     {
-      quote: "I stopped worrying about missing important launches or discussions. If it matters for my interests, Trace finds it. That peace of mind is worth everything.",
-      name: "Sebastian",
-      role: "Indie Hacker"
-    }
+      value: "3",
+      label: "feeds, refreshed every morning",
+      detail: "Trending, For You, Deep Dives",
+    },
   ];
 
   return (
@@ -1812,7 +1504,7 @@ const Testimonials = () => {
             viewport={{ once: true }}
             className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-4 md:mb-6"
           >
-            What People <span className="text-secondary/50">Are Saying</span>
+            Trace in <span className="text-secondary/50">Numbers</span>
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -1821,27 +1513,23 @@ const Testimonials = () => {
             transition={{ delay: 0.1 }}
             className="text-secondary text-base md:text-lg leading-relaxed max-w-2xl mx-auto"
           >
-            Real people who never miss what matters anymore
+            Real usage from real people — no fluff
           </motion.p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
-          {testimonials.map((testimonial, i) => (
+          {metrics.map((metric, i) => (
             <motion.div
               key={i}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 md:p-8 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-sm transition-all"
+              className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 md:p-8 text-center hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-sm transition-all"
             >
-              <blockquote className="text-sm md:text-base text-secondary leading-relaxed mb-6">
-                &ldquo;{testimonial.quote}&rdquo;
-              </blockquote>
-              <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
-                <p className="text-sm font-semibold text-foreground">{testimonial.name}</p>
-                <p className="text-xs text-secondary/70">{testimonial.role}</p>
-              </div>
+              <p className="text-4xl md:text-5xl font-bold text-foreground mb-2 tracking-tight">{metric.value}</p>
+              <p className="text-sm md:text-base font-medium text-foreground mb-2">{metric.label}</p>
+              <p className="text-xs text-secondary/60">{metric.detail}</p>
             </motion.div>
           ))}
         </div>
@@ -1893,19 +1581,19 @@ const LivingFeed = () => {
 
   const feedItems = [
     {
-      title: "How AI is Reshaping UX Design Workflows",
-      source: "github",
-      description: "Exploring the intersection of artificial intelligence and user experience—from generative design to predictive interfaces."
+      title: "Why GPT-5 Changes Everything for Product Teams",
+      source: "trending",
+      description: "The latest model from OpenAI brings structured reasoning and tool use, with major implications for how product teams build."
     },
     {
-      title: "Vibecoding: Finding Your Flow State",
-      source: "youtube",
-      description: "Tips and techniques for creating the perfect coding environment, music, and mindset for deep, productive work sessions."
+      title: "Design Systems at Scale: Lessons from Stripe",
+      source: "for_you",
+      description: "How Stripe's design team manages consistency across 50+ products with a living design system and shared components."
     },
     {
-      title: "Attention Is All You Need",
-      source: "arxiv",
-      description: "The groundbreaking paper that introduced the transformer architecture, revolutionizing how we think about machine learning."
+      title: "The Complete Guide to React Server Components",
+      source: "deep_dive",
+      description: "A practitioner's deep dive into RSC — mental models, data fetching patterns, and when to use client vs server components."
     },
   ];
 
@@ -1915,12 +1603,12 @@ const LivingFeed = () => {
       <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
         <div className="text-center mb-12 md:mb-16 lg:mb-20">
           <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-serif font-light tracking-tighter text-foreground uppercase mb-3 md:mb-4 lg:mb-6 px-4">
-            A Feed That <span className="text-secondary/40">Lives</span>
+            Built Around <span className="text-secondary/40">You</span>
           </h2>
           <p className="text-secondary font-mono text-xs md:text-sm uppercase tracking-wider md:tracking-widest mb-4">
             {isLoggedIn
-              ? `Curated for ${profile?.interests.length || 0}+ interests // Updated daily from hundreds of sources`
-              : 'Content from across the entire web, curated around your interests and updated every day.'
+              ? `Your ${profile?.interests?.length || 0} interests power three daily feeds // Trending · For You · Deep Dives`
+              : 'Three daily feeds — trending news, interest-matched articles, and expert deep dives with AI summaries.'
             }
           </p>
         </div>
@@ -1933,21 +1621,21 @@ const LivingFeed = () => {
 
         <div className="flex flex-wrap justify-center gap-4 md:gap-6 lg:gap-8 items-center">
           <div className="flex items-center gap-2 md:gap-3">
-            <Youtube size={16} className="md:hidden text-red-500" />
-            <Youtube size={20} className="hidden md:block text-red-500" />
-            <span className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary">Videos</span>
+            <Newspaper size={16} className="md:hidden text-amber-500" />
+            <Newspaper size={20} className="hidden md:block text-amber-500" />
+            <span className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary">Trending</span>
           </div>
           <div className="w-px h-4 md:h-6 bg-border"></div>
           <div className="flex items-center gap-2 md:gap-3">
-            <BookOpen size={16} className="md:hidden text-blue-500" />
-            <BookOpen size={20} className="hidden md:block text-blue-500" />
-            <span className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary">Research</span>
+            <Sparkles size={16} className="md:hidden text-blue-500" />
+            <Sparkles size={20} className="hidden md:block text-blue-500" />
+            <span className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary">For You</span>
           </div>
           <div className="w-px h-4 md:h-6 bg-border"></div>
           <div className="flex items-center gap-2 md:gap-3">
-            <Github size={16} className="md:hidden text-purple-500" />
-            <Github size={20} className="hidden md:block text-purple-500" />
-            <span className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary">Projects</span>
+            <BookOpen size={16} className="md:hidden text-purple-500" />
+            <BookOpen size={20} className="hidden md:block text-purple-500" />
+            <span className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary">Deep Dives</span>
           </div>
           <div className="w-px h-4 md:h-6 bg-border"></div>
           <div className="flex items-center gap-2 md:gap-3">
@@ -2609,7 +2297,7 @@ const Pricing = () => {
   const pricingCtaHref = user ? (profile?.onboarded ? '/feed' : '/onboarding') : null;
   const pricingCtaText = user
     ? (profile?.onboarded ? 'Go To Your Feed' : 'Personalize my feed')
-    : 'Unlock full feed';
+    : 'Start reading for free';
 
   return (
     <section className="py-16 md:py-24 lg:py-32 bg-background relative z-10">
@@ -2650,7 +2338,7 @@ const Pricing = () => {
                 <span className="text-green-600 dark:text-green-400 text-xs">✓</span>
               </div>
               <div className="text-sm text-foreground">
-                Daily personalized email digest
+                Three daily feeds: Trending, For You, Deep Dives
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl">
@@ -2658,7 +2346,7 @@ const Pricing = () => {
                 <span className="text-green-600 dark:text-green-400 text-xs">✓</span>
               </div>
               <div className="text-sm text-foreground">
-                Content from 1,000+ sources, curated for you
+                AI summaries in your preferred reading style
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl">
@@ -2666,7 +2354,7 @@ const Pricing = () => {
                 <span className="text-green-600 dark:text-green-400 text-xs">✓</span>
               </div>
               <div className="text-sm text-foreground">
-                Feed that learns and gets better over time
+                Expert deep dives from sources you trust
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl">
@@ -2674,7 +2362,7 @@ const Pricing = () => {
                 <span className="text-green-600 dark:text-green-400 text-xs">✓</span>
               </div>
               <div className="text-sm text-foreground">
-                Unlimited bookmarks &amp; summaries
+                Unlimited articles, bookmarks &amp; daily refreshes
               </div>
             </div>
           </div>
@@ -2729,7 +2417,7 @@ const GetStarted = () => {
   };
 
   const getCtaText = () => {
-    if (!user) return 'Unlock full feed';
+    if (!user) return 'Start reading for free';
     if (!alphaMode) return 'View Waitlist Status';
     if (!profile?.onboarded) return 'Personalize my feed';
     return 'Go To Your Feed';
@@ -2758,9 +2446,9 @@ const GetStarted = () => {
             <p className="text-secondary text-base md:text-lg leading-relaxed max-w-xl mx-auto">
               {user
                 ? profile?.onboarded
-                  ? "Your personalized feed awaits."
-                  : "30 seconds to set up. Then you'll see your first feed."
-                : "Sign in → Tell us 3 topics → See your feed."
+                  ? "Your three feeds are waiting — Trending, For You, and Deep Dives."
+                  : "Pick your role, interests, and sources. Your feeds build in under a minute."
+                : "Sign in → Set your preferences → Get three personalized feeds."
               }
             </p>
           </motion.div>
@@ -2813,7 +2501,7 @@ const GetStarted = () => {
                     <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                     <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                   </svg>
-                  Unlock full feed
+                  Start reading for free
                 </button>
               </div>
             )}
@@ -2848,7 +2536,7 @@ const Footer = () => (
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground mb-4 md:mb-5">Product</h4>
             <div className="flex flex-col gap-3 md:gap-4">
-              <Link href="#get-started" className="text-sm text-secondary hover:text-foreground transition-colors">Unlock full feed</Link>
+              <Link href="#get-started" className="text-sm text-secondary hover:text-foreground transition-colors">Start reading for free</Link>
               <Link href="/trending" className="text-sm text-secondary hover:text-foreground transition-colors">Trending Topics</Link>
             </div>
           </div>
@@ -2889,7 +2577,7 @@ export default function LandingPage() {
       <Hero />
       <NewsletterSignupSection />
       {/* <DemoVideo /> */}
-      <HowItWorks />
+      {/* <HowItWorks /> */}
       {/* <InteractiveDemo />
       <DemoFeed /> */}
       <WhatTraceReplaces />

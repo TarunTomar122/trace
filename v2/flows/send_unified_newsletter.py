@@ -59,6 +59,21 @@ def _build_recipients(store: FirestoreStore) -> list[str]:
     return recipients
 
 
+def _build_all_signup_recipients(store: FirestoreStore) -> list[str]:
+    """All emails we've ever collected:
+    - every user_profiles email
+    - free newsletter subscribers
+    """
+    profile_emails = {
+        (u.get("email") or "").strip().lower()
+        for u in store.get_all_user_profiles()
+        if u.get("email")
+    }
+    free_emails = set(store.get_all_free_newsletter_emails())
+    recipients = sorted((profile_emails | free_emails) - {""})
+    return recipients
+
+
 def _generate_html(
     items: list[dict[str, Any]],
     date: str,
@@ -148,6 +163,8 @@ def send_unified_newsletter(
     date: str | None = None,
     dry_run: bool = False,
     force: bool = False,
+    user_id: str = "",
+    recipient_mode: str = "newsletter",
 ) -> dict[str, Any]:
     store = FirestoreStore()
     target_date = (date or "").strip() or _today_ist()
@@ -174,7 +191,14 @@ def send_unified_newsletter(
             "date": target_date,
         }
 
-    recipients = _build_recipients(store)
+    if user_id:
+        profile = store.get_user_profile(user_id) or {}
+        email = (profile.get("email") or "").strip().lower()
+        recipients = [email] if email else []
+    elif recipient_mode == "all_signups":
+        recipients = _build_all_signup_recipients(store)
+    else:
+        recipients = _build_recipients(store)
     if not recipients:
         return {
             "success": False,
@@ -245,6 +269,13 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--date", default="", help="YYYY-MM-DD")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--force", action="store_true")
+    parser.add_argument("--user-id", default="", help="Send only to one uid")
+    parser.add_argument(
+        "--recipient-mode",
+        choices=["newsletter", "all_signups"],
+        default="newsletter",
+        help="newsletter=opted-in + free list, all_signups=all known signed-up emails",
+    )
     return parser.parse_args()
 
 
@@ -254,6 +285,8 @@ def main() -> None:
         date=args.date,
         dry_run=args.dry_run,
         force=args.force,
+        user_id=args.user_id,
+        recipient_mode=args.recipient_mode,
     )
     print(json.dumps(result, indent=2))
 

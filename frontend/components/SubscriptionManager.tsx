@@ -271,18 +271,18 @@ export default function SubscriptionManager() {
         <section className="pb-8 border-b border-gray-200 dark:border-gray-800">
           <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6 flex items-center gap-2">
             <Lock size={14} className="text-foreground" />
-            How your free trial works
+            What you get with Pro
           </h2>
 
           <div className="space-y-5">
             <div className="flex items-start gap-3.5">
               <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0 mt-0.5">
-                <Lock size={14} className="text-accent-foreground" />
+                <Zap size={14} className="text-accent-foreground" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-foreground">Today</p>
+                <p className="text-sm font-semibold text-foreground">Unlimited For You &amp; Deep Dives</p>
                 <p className="text-sm text-secondary mt-0.5">
-                  Full access to your personalized feed and AI summaries.
+                  Full access to all personalized articles and expert deep dives, refreshed daily.
                 </p>
               </div>
             </div>
@@ -292,9 +292,9 @@ export default function SubscriptionManager() {
                 <Bell size={14} className="text-accent-foreground" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-foreground">In 2 days</p>
+                <p className="text-sm font-semibold text-foreground">AI summaries in your style</p>
                 <p className="text-sm text-secondary mt-0.5">
-                  We&apos;ll remind you your trial is ending.
+                  Choose executive brief, practitioner deep-dive, or casual talking points.
                 </p>
               </div>
             </div>
@@ -304,9 +304,9 @@ export default function SubscriptionManager() {
                 <CheckCircle2 size={14} className="text-accent-foreground" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-foreground">In 3 days</p>
+                <p className="text-sm font-semibold text-foreground">Start with a free trial</p>
                 <p className="text-sm text-secondary mt-0.5">
-                  Subscription starts at $2.99/mo. Cancel before &mdash; no charge.
+                  Try Pro free for 4 days, then $2.99/mo. Cancel anytime &mdash; no charge if you cancel before the trial ends.
                 </p>
               </div>
             </div>
@@ -340,7 +340,7 @@ export default function SubscriptionManager() {
           </button>
 
           <p className="text-xs text-secondary/50 mt-3">
-            3-day free trial, then $2.99/month. Cancel anytime.
+            4-day free trial, then $2.99/month. Cancel anytime.
           </p>
         </section>
 
@@ -366,7 +366,7 @@ export default function SubscriptionManager() {
             </div>
             <div>
               <h3 className="text-lg font-semibold text-foreground">
-                Premium Feed Access
+                Trace Pro
               </h3>
               <p className={`text-sm font-medium mt-0.5 ${getStatusColor(status)}`}>
                 {status.replace('_', ' ')}
@@ -464,7 +464,7 @@ export default function SubscriptionManager() {
               ) : (
                 <div className="space-y-3 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/40">
                   <p className="text-sm text-foreground">
-                    Are you sure you want to cancel? You&apos;ll lose access to your premium feed.
+                    Are you sure? You&apos;ll lose unlimited For You articles and Deep Dives.
                   </p>
                   <div className="flex gap-3">
                     <button

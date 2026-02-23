@@ -5,9 +5,6 @@ import {
   Clock,
   Bookmark,
   BookmarkCheck,
-  Layers,
-  Lightbulb,
-  Info,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -62,21 +59,6 @@ function getTimeAgo(dateStr?: string): string {
   return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-const TOPIC_MAP: Record<string, { label: string; color: string }> = {
-  'technology': { label: 'AI', color: '#3b82f6' },
-  'experience': { label: 'DESIGN', color: '#ec4899' },
-  'business-market': { label: 'PRODUCT', color: '#f97316' },
-  'startups': { label: 'STARTUPS', color: '#8b5cf6' },
-  'leadership': { label: 'LEADERSHIP', color: '#ef4444' },
-  'engineering': { label: 'TECH', color: '#06b6d4' },
-  'marketing': { label: 'GROWTH', color: '#22c55e' },
-  'fintech': { label: 'FINTECH', color: '#eab308' },
-  'health': { label: 'HEALTH', color: '#14b8a6' },
-  'web3': { label: 'WEB3', color: '#6366f1' },
-  'climate': { label: 'CLIMATE', color: '#84cc16' },
-  'productivity': { label: 'PRODUCTIVITY', color: '#a855f7' },
-};
-
 const AVATAR_PALETTE = [
   '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6',
   '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#d946ef',
@@ -109,7 +91,6 @@ export function TrendingCard({ item, colorScheme, onPress }: CardProps) {
   const initials = getSourceInitials(sourceName);
   const avatarBg = hashColor(sourceName);
   const timeAgo = getTimeAgo(item.published_date);
-  const topic = TOPIC_MAP[item.interest_id || ''];
   const snippet = item.summary?.short_article?.subtitle || item.description || '';
   const [imgErr, setImgErr] = useState(false);
   const showImg = isLikelyRealImageUrl(item.thumbnail) && !imgErr;
@@ -132,11 +113,6 @@ export function TrendingCard({ item, colorScheme, onPress }: CardProps) {
               <Text style={[tStyles.dot, { color: Colors[colorScheme].border }]}>·</Text>
               <Text style={[tStyles.time, { color: Colors[colorScheme].muted }]}>{timeAgo}</Text>
             </>
-          )}
-          {topic && (
-            <View style={[tStyles.topicBadge, { backgroundColor: topic.color + '20' }]}>
-              <Text style={[tStyles.topicText, { color: topic.color }]}>{topic.label}</Text>
-            </View>
           )}
         </View>
 
@@ -212,17 +188,6 @@ const tStyles = StyleSheet.create({
   },
   dot: { fontSize: 12 },
   time: { fontSize: 11 },
-  topicBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginLeft: 2,
-  },
-  topicText: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
   snippet: {
     fontSize: 13,
     lineHeight: 18,
@@ -249,7 +214,6 @@ export function ForYouCard({ item, colorScheme, onPress }: CardProps) {
   const initials = getSourceInitials(sourceName);
   const avatarBg = hashColor(sourceName);
   const timeAgo = getTimeAgo(item.published_date);
-  const topic = TOPIC_MAP[item.interest_id || ''];
   const snippet = item.summary?.short_article?.subtitle || item.description || '';
   const readTime = item.summary?.reading_time_minutes;
   const itemType = item.type || item.source || 'blog';
@@ -260,8 +224,6 @@ export function ForYouCard({ item, colorScheme, onPress }: CardProps) {
 
   return (
     <Pressable onPress={onPress} style={fyStyles.container}>
-      <View style={[fyStyles.accentBar, { backgroundColor: ACCENT + '50' }]} />
-
       <View style={fyStyles.content}>
         {/* Source row */}
         <View style={fyStyles.sourceRow}>
@@ -320,11 +282,6 @@ export function ForYouCard({ item, colorScheme, onPress }: CardProps) {
 
         {/* Footer */}
         <View style={fyStyles.footer}>
-          {topic && (
-            <View style={[fyStyles.topicPill, { backgroundColor: topic.color + '20' }]}>
-              <Text style={[fyStyles.topicPillText, { color: topic.color }]}>{topic.label}</Text>
-            </View>
-          )}
           <View style={{ flex: 1 }} />
           <Pressable hitSlop={8} onPress={onToggleBookmark}>
             {saved ? (
@@ -343,11 +300,6 @@ const fyStyles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     paddingVertical: 16,
-  },
-  accentBar: {
-    width: 3,
-    borderRadius: 2,
-    marginRight: 14,
   },
   content: {
     flex: 1,
@@ -421,16 +373,6 @@ const fyStyles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 2,
   },
-  topicPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-  topicPillText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
 });
 
 /* ═══════════════════════════════════════════════════════════
@@ -442,18 +384,14 @@ export function DeepDiveCard({ item, colorScheme, onPress }: CardProps) {
   const initials = getSourceInitials(sourceName);
   const avatarBg = hashColor(sourceName);
   const timeAgo = getTimeAgo(item.published_date);
-  const topic = TOPIC_MAP[item.interest_id || ''];
   const snippet = item.summary?.short_article?.subtitle || item.description || '';
   const readTime = item.summary?.reading_time_minutes;
   const sections = item.summary?.short_article?.outline;
-  const takeaways = item.summary?.short_article?.key_takeaways;
-  const whyMatters = item.summary?.short_article?.why_it_matters;
   const [imgErr, setImgErr] = useState(false);
   const showImg = isLikelyRealImageUrl(item.thumbnail) && !imgErr;
   const { saved, toggle: onToggleBookmark } = useBookmark(item);
 
   const cardBg = colorScheme === 'dark' ? '#161616' : '#f5f5f0';
-  const sectionBg = colorScheme === 'dark' ? '#1f1f1f' : '#eaeae5';
 
   return (
     <Pressable onPress={onPress} style={[ddStyles.card, { backgroundColor: cardBg }]}>
@@ -517,61 +455,15 @@ export function DeepDiveCard({ item, colorScheme, onPress }: CardProps) {
         </Text>
       )}
 
-      {/* Key Sections */}
+      {/* One-line sections preview */}
       {sections && sections.length > 0 && (
-        <View style={[ddStyles.sectionsBox, { backgroundColor: sectionBg }]}>
-          <View style={ddStyles.sectionsHeader}>
-            <Layers size={12} color={Colors[colorScheme].muted} strokeWidth={2} />
-            <Text style={[ddStyles.sectionsLabel, { color: Colors[colorScheme].muted }]}>
-              KEY SECTIONS
-            </Text>
-          </View>
-          <Text
-            style={[ddStyles.sectionsText, { color: Colors[colorScheme].text }]}
-            numberOfLines={2}>
-            {sections.join(' · ')}
-          </Text>
-        </View>
+        <Text
+          style={[ddStyles.sectionsPreview, { color: Colors[colorScheme].muted }]}
+          numberOfLines={1}>
+          {sections.slice(0, 3).join(' · ')}
+        </Text>
       )}
 
-      {/* Key Takeaways */}
-      {takeaways && takeaways.length > 0 && (
-        <View style={ddStyles.takeawaysBox}>
-          <View style={ddStyles.sectionsHeader}>
-            <Lightbulb size={12} color={ACCENT} strokeWidth={2} />
-            <Text style={[ddStyles.sectionsLabel, { color: ACCENT }]}>
-              KEY TAKEAWAYS
-            </Text>
-          </View>
-          {takeaways.map((t, idx) => (
-            <View key={idx} style={ddStyles.takeawayRow}>
-              <Text style={[ddStyles.takeawayBullet, { color: ACCENT }]}>•</Text>
-              <Text style={[ddStyles.takeawayText, { color: Colors[colorScheme].text }]}>
-                {t}
-              </Text>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Why It Matters */}
-      {whyMatters ? (
-        <View style={ddStyles.whyBox}>
-          <Info size={12} color={Colors[colorScheme].muted} strokeWidth={2} />
-          <Text style={[ddStyles.whyText, { color: Colors[colorScheme].muted }]}>
-            {whyMatters}
-          </Text>
-        </View>
-      ) : null}
-
-      {/* Footer */}
-      {topic && (
-        <View style={ddStyles.footer}>
-          <View style={[ddStyles.topicPill, { backgroundColor: topic.color + '20' }]}>
-            <Text style={[ddStyles.topicPillText, { color: topic.color }]}>{topic.label}</Text>
-          </View>
-        </View>
-      )}
     </Pressable>
   );
 }
@@ -654,69 +546,9 @@ const ddStyles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  sectionsBox: {
-    borderRadius: 10,
-    padding: 12,
-    gap: 6,
-  },
-  sectionsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  sectionsLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  sectionsText: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  takeawaysBox: {
-    gap: 6,
-  },
-  takeawayRow: {
-    flexDirection: 'row',
-    gap: 6,
-    paddingRight: 4,
-  },
-  takeawayBullet: {
-    fontSize: 14,
-    lineHeight: 18,
-    fontWeight: '700',
-  },
-  takeawayText: {
-    fontSize: 13,
-    lineHeight: 18,
-    flex: 1,
-  },
-  whyBox: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'flex-start',
-    paddingTop: 2,
-  },
-  whyText: {
+  sectionsPreview: {
     fontSize: 12,
-    lineHeight: 17,
-    flex: 1,
-    fontStyle: 'italic',
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  topicPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-  topicPillText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    lineHeight: 16,
   },
 });
 

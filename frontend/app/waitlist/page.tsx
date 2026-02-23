@@ -51,7 +51,7 @@ export default function WaitlistPage() {
           </h1>
           
           <p className="text-lg text-secondary font-mono max-w-md mx-auto">
-            Thanks for joining Trace! We're putting the finishing touches on your personalized feed.
+            Thanks for joining Trace! We&apos;re putting the finishing touches on your three daily feeds — Trending, For You, and Deep Dives.
           </p>
 
           <div className="bg-secondary/10 dark:bg-secondary/20 border border-border dark:border-border/50 p-6 space-y-4 text-left max-w-md mx-auto">

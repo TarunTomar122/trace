@@ -27,6 +27,7 @@ import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
+
 import {
   updateUserProfile,
   getReadingStreak,
@@ -450,6 +451,8 @@ export default function ProfileScreen() {
             </View>
           </View>
         )}
+
+        {/* Dark mode toggle hidden — forced light mode for now */}
 
         {/* ─── Sign out ─── */}
         <Pressable style={styles.actionRow} onPress={handleSignOut}>

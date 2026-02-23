@@ -37,13 +37,42 @@ from v1.storage import is_user_subscribed  # noqa: E402
 from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
 from v3.lib.store import V3Store, DEEP_DIVE_POOL, FREE_TIER_LIMITS, _today_ist  # noqa: E402
 from v3.lib.content import fetch_content, fetch_og_image  # noqa: E402
-from v3.lib.summarizer import get_or_generate_summary  # noqa: E402
+from v3.lib.summarizer import get_or_generate_summary, batch_presummarize  # noqa: E402
 from v3.lib.diversity import dedupe_and_cap  # noqa: E402
 
 CONFIG_PATH = "v3/config/deep_dive_sources.json"
 DEFAULT_ITEMS = 4
 DEFAULT_LIMIT_PER_SOURCE = 5
 DEFAULT_MAX_AGE = 60
+
+# Fallback: map user interests → deep dive source categories.
+# Used when a user has no selectedLearningSources (onboarded before step existed).
+INTEREST_TO_DD_CATEGORIES: dict[str, list[str]] = {
+    "technology":       ["tech-engineering"],
+    "engineering":      ["tech-engineering"],
+    "experience":       ["design-ux"],
+    "business-market":  ["business-strategy"],
+    "startups":         ["startups-product", "business-strategy"],
+    "leadership":       ["business-strategy", "productivity-growth"],
+    "marketing":        ["business-strategy"],
+    "fintech":          ["finance-markets"],
+    "productivity":     ["productivity-growth"],
+    "web3":             ["tech-engineering"],
+    "climate":          ["business-strategy"],
+    "health":           ["productivity-growth"],
+}
+
+
+def _sources_for_interests(interests: list[str], config_sources: list[dict]) -> set[str]:
+    """Derive a set of deep dive source names from user interests."""
+    categories: set[str] = set()
+    for interest_id in interests:
+        categories.update(INTEREST_TO_DD_CATEGORIES.get(interest_id, []))
+    if not categories:
+        categories = {"tech-engineering", "business-strategy"}
+    return {
+        s["name"] for s in config_sources if s.get("category_id") in categories
+    }
 
 
 def _log(msg: str) -> None:
@@ -57,7 +86,12 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--pool-only", action="store_true")
     p.add_argument("--user-id", default="")
     p.add_argument("--limit-users", type=int, default=0)
-    p.add_argument("--items-per-user", type=int, default=DEFAULT_ITEMS)
+    p.add_argument(
+        "--items-per-user",
+        type=int,
+        default=0,
+        help="Override items per user; 0 uses config value",
+    )
     p.add_argument("--limit-per-source", type=int, default=DEFAULT_LIMIT_PER_SOURCE)
     p.add_argument("--max-age-days", type=int, default=DEFAULT_MAX_AGE)
     p.add_argument("--date", default="")
@@ -189,7 +223,15 @@ def build_user_feeds(
         users = users[: args.limit_users]
 
     _log(f"Building Deep Dive feeds for {len(users)} users, date={target_date}")
-    stats = {"users": 0, "items_total": 0, "summaries_generated": 0, "summaries_cached": 0}
+
+    # ------------------------------------------------------------------
+    # PHASE 2a: Pick articles for every user (fast — no OpenAI calls)
+    # ------------------------------------------------------------------
+    _log("-" * 40)
+    _log("PHASE 2a: Select articles per user")
+    _log("-" * 40)
+
+    user_picks: list[tuple[dict, list[dict], str, str]] = []
 
     for profile in users:
         uid = profile.get("uid", "")
@@ -201,17 +243,17 @@ def build_user_feeds(
         seniority = profile.get("seniority", "mid") or "mid"
         is_subscribed = is_user_subscribed(profile)
         user_items_target = items_per_user if is_subscribed else FREE_TIER_LIMITS.get("deep_dives", 1)
-        if not is_subscribed:
-            _log(f"  user={uid} free tier → capped to {user_items_target} deep dives")
 
         if not selected_sources:
-            _log(f"  user={uid} no selected sources, skipping")
-            store.write_feed_section(uid, target_date, "deep_dives", [])
-            stats["users"] += 1
-            continue
+            interests = profile.get("interests", []) or []
+            selected_sources = _sources_for_interests(interests, config.get("sources", []))
+            if selected_sources:
+                _log(f"  user={uid} no sources picked → auto-assigned {len(selected_sources)} from interests")
+            else:
+                store.write_feed_section(uid, target_date, "deep_dives", [])
+                continue
 
         seen_urls = store.get_seen_urls(uid)
-        _log(f"  user={uid} sources={sorted(selected_sources)} seen={len(seen_urls)}")
 
         candidates = store.load_pool(
             DEEP_DIVE_POOL,
@@ -219,12 +261,9 @@ def build_user_feeds(
             max_age_days=max_age,
             exclude_urls=seen_urls,
         )
-        _log(f"  user={uid} candidates={len(candidates)}")
 
         if not candidates:
-            _log(f"  user={uid} no candidates, writing empty")
             store.write_feed_section(uid, target_date, "deep_dives", [])
-            stats["users"] += 1
             continue
 
         candidates = dedupe_and_cap(candidates, max_per_source=3)
@@ -249,9 +288,47 @@ def build_user_feeds(
             for k in exhausted:
                 source_keys.remove(k)
 
+        _log(f"  user={uid} → {len(picked)} deep dives")
+        user_picks.append((profile, picked, style, seniority))
+
+    # ------------------------------------------------------------------
+    # PHASE 2b: Batch pre-summarize only the articles users actually need
+    # ------------------------------------------------------------------
+    _log("-" * 40)
+    _log("PHASE 2b: Pre-summarize needed articles (parallel)")
+    _log("-" * 40)
+
+    needed_items: dict[str, dict] = {}
+    needed_combos: set[tuple[str, str]] = set()
+    for _, picked, style, seniority in user_picks:
+        needed_combos.add((style, seniority))
+        for item in picked:
+            url = item.get("url", "")
+            if url and url not in needed_items:
+                needed_items[url] = item
+
+    _log(f"Unique articles needed: {len(needed_items)}, combos: {len(needed_combos)}")
+
+    if needed_items and needed_combos:
+        batch_presummarize(
+            store, list(needed_items.values()), list(needed_combos),
+            feed_type="deep_dives", max_workers=8,
+        )
+
+    # ------------------------------------------------------------------
+    # PHASE 2c: Assemble feeds (all summaries now cached — fast)
+    # ------------------------------------------------------------------
+    _log("-" * 40)
+    _log("PHASE 2c: Assemble feeds from cache")
+    _log("-" * 40)
+
+    stats = {"users": 0, "items_total": 0, "summaries_generated": 0, "summaries_cached": 0}
+
+    for profile, picked, style, seniority in user_picks:
+        uid = profile.get("uid", "")
+
         feed_items: list[dict[str, Any]] = []
-        for i, item in enumerate(picked, 1):
-            _log(f"    [{i}/{len(picked)}] summarizing: {item.get('title', '')[:50]}")
+        for item in picked:
             summary, was_cached = get_or_generate_summary(
                 store=store,
                 url=item.get("url", ""),
@@ -261,8 +338,6 @@ def build_user_feeds(
                 seniority=seniority,
                 feed_type="deep_dives",
             )
-            cache_tag = "cached" if was_cached else ("new" if summary else "failed")
-            _log(f"    [{i}/{len(picked)}] summary={cache_tag}")
             if was_cached:
                 stats["summaries_cached"] += 1
             elif summary:

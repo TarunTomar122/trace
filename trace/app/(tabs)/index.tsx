@@ -34,8 +34,10 @@ import {
   FeedItem,
   V3UserFeed,
   getV3UserFeed,
+  recordLastActive,
 } from '@/lib/firestore';
 import { logReadingEvent } from '@/lib/reading-analytics';
+import { setCurrentArticle } from '@/lib/article-store';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
@@ -118,7 +120,7 @@ export default function FeedScreen() {
   })();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Initial feed load
+  // Initial feed load + record activity
   useEffect(() => {
     if (!isOnboarded) {
       setIsLoading(false);
@@ -130,7 +132,8 @@ export default function FeedScreen() {
       setIsLoading(false);
     };
     init();
-  }, [loadFeed, isOnboarded]);
+    if (user?.uid) recordLastActive(user.uid);
+  }, [loadFeed, isOnboarded, user?.uid]);
 
   // Poll for feed when build is in progress
   useEffect(() => {
@@ -166,29 +169,8 @@ export default function FeedScreen() {
       feedCategory: item.metadata?.feed_category || item.feed_type,
     });
 
-
-    const fallbackBody =
-      item.summary?.short_article?.body ||
-      item.description ||
-      'Open the original article to read the full story.';
-    router.push({
-      pathname: '/article',
-      params: {
-        id: item.id,
-        title: item.title,
-        url: item.url,
-        thumbnail: item.thumbnail || '',
-        type: item.type || item.source || 'blog',
-        subtitle: item.summary?.short_article?.subtitle || '',
-        body: fallbackBody,
-        reading_time: item.summary?.reading_time_minutes?.toString() || '',
-        why_relevant: item.metadata?.why_relevant || '',
-        is_hot: item.metadata?.is_hot ? 'true' : 'false',
-        feed_category: item.metadata?.feed_category || item.feed_type || '',
-        key_takeaways: JSON.stringify(item.summary?.short_article?.key_takeaways || []),
-        why_it_matters: item.summary?.short_article?.why_it_matters || '',
-      },
-    });
+    setCurrentArticle(item);
+    router.push('/article');
   };
 
   if (!isOnboarded) return null;

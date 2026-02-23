@@ -1,6 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { useColorScheme as useRNColorScheme } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createContext, useContext, type ReactNode } from 'react';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 type ColorScheme = 'light' | 'dark';
@@ -14,55 +12,17 @@ type ThemeContextType = {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const THEME_STORAGE_KEY = '@trace_theme_mode';
-
+// Force light mode for all users — dark mode toggle is hidden for now.
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const systemColorScheme = useRNColorScheme() ?? 'light';
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
-  const [isReady, setIsReady] = useState(false);
-
-  // Load theme preference from AsyncStorage
-  useEffect(() => {
-    const loadTheme = async () => {
-      try {
-        const saved = await AsyncStorage.getItem(THEME_STORAGE_KEY);
-        if (saved === 'light' || saved === 'dark' || saved === 'system') {
-          setThemeModeState(saved);
-        }
-      } catch (error) {
-        console.error('Failed to load theme preference:', error);
-      } finally {
-        setIsReady(true);
-      }
-    };
-    loadTheme();
-  }, []);
-
-  const setThemeMode = async (mode: ThemeMode) => {
-    setThemeModeState(mode);
-    try {
-      await AsyncStorage.setItem(THEME_STORAGE_KEY, mode);
-    } catch (error) {
-      console.error('Failed to save theme preference:', error);
-    }
-  };
-
-  const toggleTheme = () => {
-    // Simple toggle: light -> dark -> light (ignoring system for now)
-    setThemeMode(themeMode === 'light' ? 'dark' : 'light');
-  };
-
-  // Determine the actual color scheme based on mode
-  const colorScheme: ColorScheme =
-    themeMode === 'system' ? systemColorScheme : themeMode;
-
-  // Don't render children until theme is loaded
-  if (!isReady) {
-    return null;
-  }
-
   return (
-    <ThemeContext.Provider value={{ themeMode, colorScheme, setThemeMode, toggleTheme }}>
+    <ThemeContext.Provider
+      value={{
+        themeMode: 'light',
+        colorScheme: 'light',
+        setThemeMode: () => {},
+        toggleTheme: () => {},
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );

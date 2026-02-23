@@ -25,6 +25,7 @@ import {
   CAREER_GOALS,
   SUMMARY_STYLES,
   triggerFeedGeneration,
+  updateUserProfile,
 } from '@/lib/firestore';
 
 const ACCENT = '#F59E0B';
@@ -88,9 +89,24 @@ export default function PreferencesHub() {
     ? lookupLabel(SUMMARY_STYLES as any, profile.summaryStyle)
     : '';
 
+  const lastRebuildTs = (() => {
+    const raw = profile?.feedBuildRequestedAt;
+    if (!raw) return 0;
+    if (typeof raw === 'string') return new Date(raw).getTime();
+    if (raw?.toDate) return raw.toDate().getTime();
+    if (raw?.seconds) return raw.seconds * 1000;
+    return 0;
+  })();
+  const canRebuild = Date.now() - lastRebuildTs > 24 * 60 * 60 * 1000;
+
   const handleRebuild = async () => {
     if (!user) return;
+    if (!canRebuild) {
+      showToast('You can rebuild once per day. Try again tomorrow.', 'info');
+      return;
+    }
     try {
+      await updateUserProfile(user.uid, { feedBuildStatus: 'building', feedBuildRequestedAt: new Date().toISOString() } as any);
       await triggerFeedGeneration(user.uid, { reason: 'preferences_edit', force: true });
       showToast('Feed rebuild started!', 'success');
     } catch {
@@ -169,7 +185,8 @@ export default function PreferencesHub() {
           <>
             <Pressable
               onPress={handleRebuild}
-              style={[styles.rebuildBtn, { borderColor: ACCENT }]}>
+              disabled={!canRebuild}
+              style={[styles.rebuildBtn, { borderColor: ACCENT, opacity: canRebuild ? 1 : 0.4 }]}>
               <RefreshCw size={16} color={ACCENT} strokeWidth={2} />
               <ThemedText style={[styles.rebuildText, { color: ACCENT }]}>
                 Rebuild my feed now
@@ -177,7 +194,9 @@ export default function PreferencesHub() {
             </Pressable>
 
             <ThemedText style={[styles.hint, { color: Colors[colorScheme].muted }]}>
-              Your feed refreshes daily. Tap above to apply changes immediately.
+              {canRebuild
+                ? 'Your feed refreshes daily. Tap above to apply changes immediately.'
+                : 'Already rebuilt today — your feed refreshes again tomorrow.'}
             </ThemedText>
           </>
         )}

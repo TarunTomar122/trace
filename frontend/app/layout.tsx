@@ -19,9 +19,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Trace — Your Personalized Feed from Across the Web",
-  description: "Never miss what matters. Trace curates content from YouTube, GitHub, Reddit, Hacker News, blogs, and hundreds more sources — all in one personalized feed.",
-  keywords: ["personalized feed", "RSS alternative", "content curation", "reddit", "hacker news", "youtube", "arxiv", "github", "curated news", "topic feed", "daily digest"],
+  title: "Trace — Trending, For You & Deep Dives with AI Summaries",
+  description: "Three daily feeds built around you — trending news, interest-matched articles, and expert deep dives. All with AI-powered summaries in your preferred style.",
+  keywords: ["personalized feed", "AI summaries", "trending news", "deep dives", "content curation", "daily briefing", "for you feed", "RSS alternative"],
   authors: [{ name: "Trace" }],
   metadataBase: new URL('https://www.yourtrace.online'),
   alternates: {
@@ -32,21 +32,21 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://www.yourtrace.online",
     siteName: "Trace",
-    title: "Trace — Your Personalized Feed from Across the Web",
-    description: "Never miss what matters. Trace curates content from YouTube, GitHub, Reddit, Hacker News, blogs, and hundreds more sources — all in one personalized feed.",
+    title: "Trace — Trending, For You & Deep Dives with AI Summaries",
+    description: "Three daily feeds built around you — trending news, interest-matched articles, and expert deep dives with AI-powered summaries.",
     images: [
       {
         url: "/trace.png",
         width: 1200,
         height: 630,
-        alt: "Trace — Your Personalized Feed from Across the Web",
+        alt: "Trace — Trending, For You & Deep Dives",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Trace — Your Personalized Feed from Across the Web",
-    description: "Never miss what matters. Content from hundreds of sources, curated around your interests.",
+    title: "Trace — Trending, For You & Deep Dives with AI Summaries",
+    description: "Three daily feeds built around you with AI summaries in your preferred reading style.",
     images: ["/trace.png"],
   },
   robots: {
@@ -105,7 +105,7 @@ export default function RootLayout({
         "@type": "Product",
         "@id": "https://www.yourtrace.online/#product",
         "name": "Trace Pro",
-        "description": "Personalized feed from hundreds of sources, curated around your interests",
+        "description": "Three daily feeds — Trending, For You, and Deep Dives — with AI summaries in your preferred style",
         "image": "https://www.yourtrace.online/trace.png",
         "offers": {
           "@type": "Offer",

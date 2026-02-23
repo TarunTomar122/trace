@@ -191,6 +191,43 @@ export interface UserPatterns {
   updated?: string;
 }
 
+export interface FeedItem {
+  id: string;
+  type?: string;
+  source?: string;
+  source_name?: string;
+  title: string;
+  description?: string;
+  url: string;
+  thumbnail?: string | null;
+  view_count?: number | null;
+  stars?: number | null;
+  tags?: string[];
+  interest_id?: string;
+  feed_type?: 'for_you' | 'deep_dives' | 'trending';
+  published_date?: string;
+  published_at?: string;
+  fetched_at?: string;
+  summary?: {
+    short_article?: {
+      subtitle?: string;
+      outline?: string[];
+      body?: string;
+      key_takeaways?: string[];
+      why_it_matters?: string;
+    };
+    reading_time_minutes?: number;
+  };
+  metadata?: {
+    why_relevant?: string;
+    is_hot?: boolean;
+    feed_category?: string;
+    feed_type?: string;
+    source_description?: string;
+  };
+  _seen?: boolean;
+}
+
 export interface UserFeed {
   date: string;
   items: unknown[];
@@ -199,6 +236,21 @@ export interface UserFeed {
     freshness_ratio?: number;
     generated_at?: string;
     version?: string;
+  };
+}
+
+export interface V3UserFeed {
+  date: string;
+  for_you: FeedItem[];
+  deep_dives: FeedItem[];
+  trending: FeedItem[];
+  assembled_at?: string;
+  metadata?: {
+    for_you_count?: number;
+    deep_dives_count?: number;
+    trending_count?: number;
+    total_items?: number;
+    pipeline?: string;
   };
 }
 
@@ -314,6 +366,10 @@ export interface UserProfile {
   cancelledAt: Timestamp | null; // When cancellation was requested
   willCancelAt: Timestamp | null; // When subscription will actually end
   
+  // Feed build status
+  feedBuildStatus?: 'building' | 'ready' | string;
+  feedBuildRequestedAt?: Timestamp | string | null;
+
   // Newsletter settings
   newsletterOptIn?: boolean; // Default true for subscribed users
   newsletterSendTime?: string; // Default '10:00' IST
@@ -365,16 +421,124 @@ export const INTEREST_SUBTOPICS: Record<string, { id: string; label: string }[]>
 };
 
 export const ROLES = [
-  'Software Engineer',
-  'Designer',
-  'Product Manager',
-  'Marketing',
-  'Creator',
-  'Student',
-  'Founder',
-  'Data Scientist',
-  'Other'
-];
+  { id: 'designer', label: 'Designer', subtitle: 'UI/UX, Product, Visual' },
+  { id: 'developer', label: 'Developer', subtitle: 'Frontend, Backend, Full-stack' },
+  { id: 'pm', label: 'Product Manager', subtitle: 'Strategy & Roadmaps' },
+  { id: 'marketer', label: 'Marketer', subtitle: 'Growth, Content, Brand' },
+  { id: 'founder', label: 'Founder / CEO', subtitle: 'Building & Leading' },
+  { id: 'other', label: 'Other', subtitle: 'Tell us your path' },
+] as const;
+
+export const SENIORITY_LEVELS = [
+  { id: 'early', label: 'Early Career', subtitle: '0-3 years' },
+  { id: 'mid', label: 'Mid-Level', subtitle: '3-7 years' },
+  { id: 'senior', label: 'Senior', subtitle: '7-12 years' },
+  { id: 'executive', label: 'Executive / Lead', subtitle: '12+ years' },
+] as const;
+
+export const ONBOARDING_INTERESTS = [
+  { id: 'technology', label: 'AI & Machine Learning' },
+  { id: 'experience', label: 'Design & UX' },
+  { id: 'business-market', label: 'Product Strategy' },
+  { id: 'startups', label: 'Startups & VC' },
+  { id: 'leadership', label: 'Leadership' },
+  { id: 'engineering', label: 'Engineering' },
+  { id: 'marketing', label: 'Growth & Marketing' },
+  { id: 'fintech', label: 'Fintech' },
+  { id: 'health', label: 'Health & Wellness' },
+  { id: 'web3', label: 'Web3 & Crypto' },
+  { id: 'climate', label: 'Climate & Sustainability' },
+  { id: 'productivity', label: 'Productivity' },
+] as const;
+
+export const LEARNING_SOURCE_CATEGORIES = [
+  {
+    id: 'design-ux',
+    label: 'Design & UX',
+    sources: [
+      { name: 'Nielsen Norman Group', description: 'Evidence-based UX research and guidelines' },
+      { name: 'The Pudding', description: 'Visual essays explaining ideas in culture and society' },
+      { name: 'UX Movement', description: 'Practical UI/UX patterns and usability' },
+      { name: 'Baymard Institute Blog', description: 'E-commerce UX research, checkout usability' },
+      { name: 'Aeon Essays', description: 'Philosophy, science, society — deep thoughtful essays' },
+    ],
+  },
+  {
+    id: 'tech-engineering',
+    label: 'Tech & Engineering',
+    sources: [
+      { name: 'Chip Huyen Blog', description: 'ML engineering, AI systems design' },
+      { name: 'Simon Willison Blog', description: 'Python, LLMs, data, developer tools' },
+      { name: 'Julia Evans Blog', description: 'Systems, networking, debugging explained simply' },
+      { name: 'Martin Fowler', description: 'Software architecture, design patterns, refactoring' },
+      { name: "Lil'Log (Lilian Weng)", description: 'In-depth AI/ML explainers from OpenAI researcher' },
+      { name: 'Quanta Magazine', description: 'Math, physics, CS, biology — deep explainers' },
+    ],
+  },
+  {
+    id: 'business-strategy',
+    label: 'Business & Strategy',
+    sources: [
+      { name: 'Stratechery', description: 'Tech strategy, business models, platform dynamics' },
+      { name: 'Benedict Evans', description: 'Tech/market macro analysis, annual trend decks' },
+      { name: 'Andrew Chen Blog', description: 'Growth, marketplaces, network effects' },
+      { name: "Lenny's Newsletter", description: 'Product management, growth, career' },
+      { name: 'Noahpinion', description: 'Economics, policy, technology and society' },
+    ],
+  },
+  {
+    id: 'startups-product',
+    label: 'Startups & Product',
+    sources: [
+      { name: 'Paul Graham Essays', description: 'Startups, ideas, working on hard things' },
+      { name: 'Elad Gil Blog', description: 'High-growth startups, scaling, executive advice' },
+    ],
+  },
+  {
+    id: 'productivity-growth',
+    label: 'Productivity & Growth',
+    sources: [
+      { name: 'Farnam Street Blog', description: 'Mental models, decision-making, learning' },
+      { name: 'James Clear Articles', description: 'Habits, continuous improvement, behavioral psychology' },
+      { name: 'Cal Newport Blog', description: 'Deep work, focus, digital minimalism' },
+    ],
+  },
+  {
+    id: 'finance-markets',
+    label: 'Finance & Markets',
+    sources: [
+      { name: 'Of Dollars and Data', description: 'Data-driven personal finance and investing' },
+      { name: 'A Wealth of Common Sense', description: 'Investing, markets, financial planning — plain language' },
+    ],
+  },
+] as const;
+
+export const CAREER_GOALS = [
+  { id: 'get-promoted', label: 'Get promoted', subtitle: 'Level up in my current role' },
+  { id: 'switch-careers', label: 'Switch careers', subtitle: 'Pivot to a new field' },
+  { id: 'build-something', label: 'Build something', subtitle: 'Launch a product or startup' },
+  { id: 'lead-team', label: 'Lead a team', subtitle: 'Move into management' },
+  { id: 'stay-sharp', label: 'Stay sharp', subtitle: 'Keep up with industry trends' },
+  { id: 'grow-network', label: 'Grow my network', subtitle: 'Connect with the right people' },
+] as const;
+
+export const SUMMARY_STYLES = [
+  {
+    id: 'executive',
+    label: 'Executive Brief',
+    subtitle: 'Key takeaways + business impact. No jargon, just what matters.',
+  },
+  {
+    id: 'practitioner',
+    label: 'Practitioner Deep-Dive',
+    subtitle: 'How-to details, frameworks, and actionable steps.',
+  },
+  {
+    id: 'casual',
+    label: 'Water Cooler Ready',
+    subtitle: 'Talking points to sound smart in meetings. Casual but informed.',
+  },
+] as const;
 
 // Get user profile from Firestore
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
@@ -432,6 +596,36 @@ export async function getLatestUserFeed(uid: string): Promise<UserFeed | null> {
     return sortedDocs[0].data() as UserFeed;
   } catch (error) {
     console.error('Error getting latest feed:', error);
+    return null;
+  }
+}
+
+export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
+  try {
+    const feedRef = collection(firestore, 'v3_user_feeds', uid, 'daily');
+    const snapshot = await getDocs(feedRef);
+    if (snapshot.empty) return null;
+
+    const sortedDocs = snapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
+    const data = sortedDocs[0].data();
+    const forYou = Array.isArray(data.for_you) ? data.for_you : [];
+    const deepDives = Array.isArray(data.deep_dives) ? data.deep_dives : [];
+    const trending = Array.isArray(data.trending) ? data.trending : [];
+
+    if (forYou.length === 0 && deepDives.length === 0 && trending.length === 0) {
+      return null;
+    }
+
+    return {
+      date: data.date || sortedDocs[0].id,
+      for_you: forYou as FeedItem[],
+      deep_dives: deepDives as FeedItem[],
+      trending: trending as FeedItem[],
+      assembled_at: data.assembled_at,
+      metadata: data.metadata,
+    };
+  } catch (error) {
+    console.error('Error getting v3 feed:', error);
     return null;
   }
 }
@@ -536,28 +730,16 @@ export async function completeOnboarding(
   data: {
     name: string;
     role?: string;
-    company?: string;
-    location?: string;
-    experienceYears?: number | null;
-    currentWork?: {
-      project?: string;
-      focus?: string;
-      company?: string;
-    };
-    projects?: string[];
-    goals?: {
-      shortTerm?: string;
-      longTerm?: string;
-    };
-    learningStyle?: string;
-    attentionConstraints?: string;
-    motivationTriggers?: string[];
+    seniority?: string;
     interests: string[];
+    selectedLearningSources?: string[];
+    careerGoals?: string[];
+    summaryStyle?: string;
     interestQueries?: Record<string, string[]>;
-    hobbies: string[];
-    skills: string[];
-    dislikedTopics: string[];
-    sourcePreferences: {
+    hobbies?: string[];
+    skills?: string[];
+    dislikedTopics?: string[];
+    sourcePreferences?: {
       youtube: number;
       articles: number;
       papers: number;
@@ -566,42 +748,36 @@ export async function completeOnboarding(
       discussions: number;
     };
     contentDepth?: 'quick' | 'deep' | 'surprise' | null;
-    contentPreferences?: {
-      likes?: string[];
-      dislikes?: string[];
-    };
-    favoriteSources?: string[];
-    personalityTraits?: string[];
-    petPeeves?: string[];
-    insights?: Partial<UserProfile['insights']>;
-    chatHistory?: ChatMessage[];
   }
 ): Promise<void> {
   try {
     const docRef = doc(firestore, 'user_profiles', uid);
     
-    // Remove undefined values from data
     const cleanData = Object.fromEntries(
       Object.entries(data).filter(([, value]) => value !== undefined)
     );
     
-    // Use setDoc with merge to create if doesn't exist or update if it does
     await setDoc(docRef, {
       ...cleanData,
       uid,
       onboarded: true,
+      feedBuildStatus: 'building',
+      feedBuildRequestedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       onboardedAt: serverTimestamp(),
     }, { merge: true });
     
-    // Normalize slider preferences to percentages
-    const normalizedPreferences = normalizeSourcePreferences(data.sourcePreferences);
+    const normalizedPreferences = data.sourcePreferences 
+      ? normalizeSourcePreferences(data.sourcePreferences)
+      : undefined;
     
-    // Initialize user_preferences collection (for agent to read)
-    await initializeUserPreferences(uid, normalizedPreferences);
+    if (normalizedPreferences) {
+      await initializeUserPreferences(uid, normalizedPreferences);
+    }
     
-    // Initialize user_patterns collection with interests/hobbies
-    await initializeUserPatterns(uid, data.interests, data.hobbies);
+    await initializeUserPatterns(uid, data.interests, data.hobbies || []);
+
+    triggerFeedGeneration(uid);
     
   } catch (error) {
     console.error('Error completing onboarding:', error);
@@ -609,7 +785,30 @@ export async function completeOnboarding(
   }
 }
 
+export async function triggerFeedGeneration(uid: string): Promise<void> {
+  try {
+    const res = await fetch('/api/onboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid }),
+    });
+    const text = await res.text();
+    console.log('[FeedGen] Status:', res.status, 'Body:', text);
+  } catch (error) {
+    console.error('[FeedGen] Error:', error);
+  }
+}
+
 // Update user profile
+export async function recordLastActive(uid: string): Promise<void> {
+  try {
+    const docRef = doc(firestore, 'user_profiles', uid);
+    await setDoc(docRef, { lastActiveAt: serverTimestamp() }, { merge: true });
+  } catch {
+    // fire-and-forget
+  }
+}
+
 export async function updateUserProfile(
   uid: string,
   data: Partial<UserProfile>
