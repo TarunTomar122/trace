@@ -114,10 +114,14 @@ def _load_config() -> dict[str, Any]:
 # -----------------------------------------------------------------------
 
 def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) -> dict[str, int]:
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import threading
+
     sources = config.get("sources", [])
     stats = {"sources": len(sources), "links_found": 0, "new_items": 0, "skipped": 0, "errors": 0}
+    stats_lock = threading.Lock()
 
-    for src in sources:
+    def _process_source(src: dict[str, Any]) -> None:
         src_name = src["name"]
         _log(f"Fetching {src_name} ({src['url']})")
 
@@ -125,12 +129,14 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
             result = fetch_article_links(src["url"], limit=limit_per_source)
             articles = result.articles if hasattr(result, "articles") else []
         except Exception as exc:
-            _log(f"  ERROR fetching links: {exc}")
-            stats["errors"] += 1
-            continue
+            _log(f"  ERROR fetching {src_name}: {exc}")
+            with stats_lock:
+                stats["errors"] += 1
+            return
 
-        stats["links_found"] += len(articles)
-        _log(f"  Found {len(articles)} links")
+        with stats_lock:
+            stats["links_found"] += len(articles)
+        _log(f"  {src_name}: {len(articles)} links")
 
         for art in articles:
             url = art.url if hasattr(art, "url") else art.get("url", "")
@@ -138,7 +144,8 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
                 continue
 
             if store.pool_item_exists(DEEP_DIVE_POOL, url):
-                stats["skipped"] += 1
+                with stats_lock:
+                    stats["skipped"] += 1
                 continue
 
             title = art.title if hasattr(art, "title") else art.get("title", "")
@@ -149,7 +156,8 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
             content = result_content["content"]
             if not content:
                 _log(f"  No content for {url}")
-                stats["errors"] += 1
+                with stats_lock:
+                    stats["errors"] += 1
                 continue
 
             if not og_image:
@@ -169,8 +177,16 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
                 "fetched_at": datetime.now(timezone.utc).isoformat(),
                 "is_active": True,
             })
-            stats["new_items"] += 1
+            with stats_lock:
+                stats["new_items"] += 1
             _log(f"  + {title[:60]}")
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(_process_source, src) for src in sources]
+        for f in as_completed(futures):
+            exc = f.exception()
+            if exc:
+                _log(f"  Source worker error: {exc}")
 
     stale = store.deactivate_stale(DEEP_DIVE_POOL, max_age_days=DEFAULT_MAX_AGE + 30)
     stats["deactivated"] = stale
@@ -322,7 +338,13 @@ def build_user_feeds(
     _log("PHASE 2c: Assemble feeds from cache")
     _log("-" * 40)
 
-    stats = {"users": 0, "items_total": 0, "summaries_generated": 0, "summaries_cached": 0}
+    stats = {
+        "users": 0,
+        "items_total": 0,
+        "summaries_generated": 0,
+        "summaries_cached": 0,
+        "rejected_items": 0,
+    }
 
     for profile, picked, style, seniority in user_picks:
         uid = profile.get("uid", "")
@@ -338,9 +360,12 @@ def build_user_feeds(
                 seniority=seniority,
                 feed_type="deep_dives",
             )
+            if not summary:
+                stats["rejected_items"] += 1
+                continue
             if was_cached:
                 stats["summaries_cached"] += 1
-            elif summary:
+            else:
                 stats["summaries_generated"] += 1
 
             feed_items.append(_build_feed_item(item, summary))

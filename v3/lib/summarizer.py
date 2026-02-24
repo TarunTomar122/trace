@@ -34,7 +34,7 @@ SENIORITY_LABELS = {
 
 EXECUTIVE_BRIEF = """You are a sharp executive briefer summarizing content for a busy {seniority_label} professional.
 
-Deliver the key takeaways and business impact. No jargon, no filler — just what matters.
+Before writing, identify the 3-5 most important NEW facts, conclusions, or implications. Each must be distinct — if two points say the same thing differently, merge them into one.
 
 SOURCE:
 Title: {title}
@@ -46,8 +46,8 @@ Return JSON with EXACT structure:
 {{
   "short_article": {{
     "subtitle": "One sentence — the key takeaway",
-    "outline": ["3-4 bullets: the important facts and implications"],
-    "body": "Concise analysis in markdown — 3-4 paragraphs max"
+    "outline": ["3-5 bullets: the important facts and implications"],
+    "body": "Concise analysis in markdown"
   }},
   "reading_time_minutes": <estimated int>
 }}
@@ -56,14 +56,18 @@ RULES:
 - Lead with the bottom line — what changed, what it means
 - Use numbers and specifics, not vague claims
 - Skip background the reader already knows
-- End with "so what" — why this matters for their work
 - Keep paragraphs to 2-3 sentences
 - Bold the single most important data point or claim
+- Include specific conclusions, data points, or decisions from the article — don't generalize them away
+- NEVER write a paragraph that summarizes or restates previous paragraphs. No "In summary", "Overall", "In conclusion", or "To sum up" paragraphs. Ever.
+- NEVER repeat the same idea across paragraphs using different words. If you've said it, move on.
+- Each paragraph = one distinct point. Delete any paragraph where you can't name a NEW fact it introduces.
+- Fewer strong paragraphs > more fluffy ones. 2 paragraphs is fine. 1 is fine if the article is thin.
 """
 
 PRACTITIONER_DEEP_DIVE = """You are a hands-on technical writer creating an actionable summary for a {seniority_label} practitioner.
 
-They want how-to details, frameworks, and steps they can actually use.
+Before writing, list every distinct actionable insight from the article. Merge any that overlap. Your summary covers each one ONCE.
 
 SOURCE:
 Title: {title}
@@ -76,7 +80,7 @@ Return JSON with EXACT structure:
   "short_article": {{
     "subtitle": "The practical insight or framework",
     "outline": ["3-5 bullets: key techniques, tools, or steps"],
-    "body": "Detailed walkthrough in markdown — 4-6 paragraphs"
+    "body": "Detailed walkthrough in markdown"
   }},
   "reading_time_minutes": <estimated int>
 }}
@@ -84,15 +88,19 @@ Return JSON with EXACT structure:
 RULES:
 - Start with the core technique or framework
 - Include specific tools, methods, or code patterns when relevant
-- Use ## headers to break into logical sections
+- Use ## headers to break into logical sections if the article has multiple distinct topics
 - Give concrete examples, not abstract advice
-- End with actionable next steps
 - Bold key terms and tool names
+- Preserve the article's specific conclusions and recommendations — don't water them down into generic advice
+- NEVER write a paragraph that summarizes or restates previous paragraphs. No "In summary", "Overall", "In conclusion", "To sum up", or "As a next step, experiment with..." filler. Ever.
+- NEVER repeat the same idea across paragraphs using different words. Read back your draft — if two paragraphs make the same point, delete one.
+- Each paragraph = one distinct insight. If you can't name the NEW thing it teaches, delete it.
+- If the source article is short or has only 1-2 real insights, write 1-2 paragraphs. Do NOT pad thin content.
 """
 
 WATER_COOLER = """You are a smart, well-read friend sharing an interesting find with a {seniority_label} professional.
 
-Make them sound informed in their next meeting. Casual but accurate.
+Before writing, identify the 2-4 most interesting or surprising things from this article. Each must be genuinely different. Your summary hits each one ONCE.
 
 SOURCE:
 Title: {title}
@@ -105,7 +113,7 @@ Return JSON with EXACT structure:
   "short_article": {{
     "subtitle": "The hook — why this is interesting",
     "outline": ["3-4 bullets: the talking points"],
-    "body": "Engaging, conversational summary in markdown — 3-4 paragraphs"
+    "body": "Engaging, conversational summary in markdown"
   }},
   "reading_time_minutes": <estimated int>
 }}
@@ -113,10 +121,13 @@ Return JSON with EXACT structure:
 RULES:
 - Open with the most surprising or conversation-worthy angle
 - Write like you're texting a smart colleague, not writing a report
-- Use "here's the thing" / "turns out" / "the wild part" energy
-- Include one specific stat or fact they can drop in conversation
 - Keep it light but substantive — no dumbing down
+- Include specific stats, names, or facts — these are what make it shareable
 - Short paragraphs, punchy sentences
+- NEVER write a concluding paragraph that restates what you already said. No "In summary", "Overall", "In conclusion", "To sum up". Ever.
+- NEVER repeat the same idea in different words across paragraphs. If you've said it, move on to the next thing.
+- If the article is thin and only has 1-2 interesting points, write 1-2 short paragraphs. That's it. Don't stretch.
+- The reader should learn something NEW from every single paragraph. If they don't, cut it.
 """
 
 STYLE_PROMPTS = {
@@ -234,6 +245,60 @@ DEEP_DIVE_PROMPTS = {
     "casual": DEEP_DIVE_CASUAL,
 }
 
+TRENDING_BRIEF = """You are an elite news editor writing a concise trending brief.
+
+This summary is for a fast-scrolling feed, so make it sharp and useful.
+
+SOURCE:
+Title: {title}
+URL: {url}
+Content:
+{content}
+
+Return JSON with EXACT structure:
+{{
+  "short_article": {{
+    "subtitle": "One short line (max 12 words) saying what's new",
+    "outline": [],
+    "body": "Exactly 2-3 short paragraphs separated by a blank line"
+  }},
+  "reading_time_minutes": <estimated int>
+}}
+
+RULES:
+- Body paragraph 1: 35-45 words
+- Body paragraph 2: 25-35 words
+- Body paragraph 3: optional 20-30 words
+- Do NOT use markdown headers, bullets, or numbered lists
+- You MAY use light markdown emphasis with **bold** (max 1-2 highlights total)
+- Use plain language, no fluff
+- Paragraph 1 must include concrete specifics (at least one of: company/org, metric/number, timeline/date, or named product/model)
+- Paragraph 2 must be a clear conclusion/so-what (impact, risk, or practical implication)
+- Do NOT prefix paragraphs with labels like "What's new:", "What happened:", "Why it matters:", "The impact:"
+"""
+
+
+QUALITY_GATE_RULES = """
+QUALITY GATE (VERY IMPORTANT):
+- First, judge whether this source is genuinely useful for professionals.
+- Reject low-signal or junk content such as: pure promos/ads, coupons/deals,
+  shopping roundups, affiliate pieces, watch-live filler, thin clickbait,
+  or articles with too little substance to summarize well.
+- If rejected, set "rejected": true and include a short reason.
+- If accepted, set "rejected": false and produce the full summary fields.
+"""
+
+
+def _rejection_payload(reason: str) -> dict[str, Any]:
+    return {
+        "_rejected": True,
+        "reason": (reason or "low_signal_content").strip()[:200],
+    }
+
+
+def _is_rejection(summary: dict[str, Any] | None) -> bool:
+    return bool(isinstance(summary, dict) and summary.get("_rejected") is True)
+
 
 def _parse_summary_json(raw: str) -> dict[str, Any] | None:
     cleaned = (raw or "").strip()
@@ -251,6 +316,56 @@ def _parse_summary_json(raw: str) -> dict[str, Any] | None:
             except json.JSONDecodeError:
                 pass
     return None
+
+
+def _cache_bucket(
+    style: str, seniority: str, feed_type: str
+) -> tuple[str, str]:
+    # Trending is shared across users by design; keep one cache bucket.
+    if feed_type == "trending":
+        return "trending__brief_v3", "all"
+    if feed_type == "deep_dives":
+        return f"{style}__deep", seniority
+    return style, seniority
+
+
+def _clip_words(text: str, max_words: int) -> str:
+    words = (text or "").split()
+    if len(words) <= max_words:
+        return " ".join(words).strip()
+    return " ".join(words[:max_words]).strip()
+
+
+def _normalize_trending_summary(parsed: dict[str, Any]) -> dict[str, Any]:
+    short = parsed.get("short_article")
+    if not isinstance(short, dict):
+        short = {}
+
+    subtitle = _clip_words(str(short.get("subtitle", "")).strip(), 12)
+
+    body = str(short.get("body", "")).strip()
+    body = re.sub(r"^\s*#+\s*", "", body, flags=re.MULTILINE)
+    body = re.sub(r"^\s*[-*]\s+", "", body, flags=re.MULTILINE)
+    body = re.sub(r"^\s*\d+\.\s+", "", body, flags=re.MULTILINE)
+    body = re.sub(r"\n{3,}", "\n\n", body).strip()
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", body) if p.strip()]
+    label_prefix = re.compile(
+        r"^\s*(what'?s\s+new|what\s+happened|why\s+it\s+matters|the\s+impact|bottom\s+line)\s*:\s*",
+        re.IGNORECASE,
+    )
+    paragraphs = [label_prefix.sub("", p).strip() for p in paragraphs if p.strip()]
+    if not paragraphs:
+        paragraphs = [subtitle or "Fresh developments in this story are drawing attention."]
+
+    first = _clip_words(paragraphs[0], 45)
+    second_source = " ".join(paragraphs[1:]).strip() or first
+    second = _clip_words(label_prefix.sub("", second_source).strip(), 30)
+
+    short["subtitle"] = subtitle
+    short["outline"] = []
+    short["body"] = f"{first}\n\n{second}".strip()
+    parsed["short_article"] = short
+    return parsed
 
 
 def _get_client() -> OpenAI | None:
@@ -282,14 +397,31 @@ def generate_summary(
 
     if feed_type == "deep_dives":
         template = DEEP_DIVE_PROMPTS.get(style, DEEP_DIVE_PRACTITIONER)
+    elif feed_type == "trending":
+        template = TRENDING_BRIEF
     else:
         template = STYLE_PROMPTS.get(style, PRACTITIONER_DEEP_DIVE)
     seniority_label = SENIORITY_LABELS.get(seniority, seniority)
-    prompt = template.format(
+    gate_suffix = (
+        "\n" + QUALITY_GATE_RULES + "\n"
+        "Return JSON with EXACT structure:\n"
+        '{{\n'
+        '  "rejected": <true|false>,\n'
+        '  "rejection_reason": "<short reason when rejected, '
+        'else empty string>",\n'
+        '  "short_article": {{\n'
+        '    "subtitle": "...",\n'
+        '    "outline": [],\n'
+        '    "body": "..."\n'
+        '  }},\n'
+        '  "reading_time_minutes": <estimated int>\n'
+        '}}\n'
+    )
+    prompt = (template + gate_suffix).format(
         seniority_label=seniority_label,
         title=title,
         url=url,
-        content=content[:12000],
+        content=content[:16000],
     )
 
     try:
@@ -316,8 +448,16 @@ def generate_summary(
     parsed = _parse_summary_json(
         (resp.choices[0].message.content or "").strip()
     )
-    if not parsed or "short_article" not in parsed:
+    if not parsed:
         return None, "bad_json_response"
+    rejected_flag = bool(parsed.get("rejected"))
+    rejection_reason = str(parsed.get("rejection_reason", "")).strip()
+    if rejected_flag:
+        return None, f"rejected:{rejection_reason or 'low_signal_content'}"
+    if "short_article" not in parsed:
+        return None, "bad_json_response"
+    if feed_type == "trending":
+        parsed = _normalize_trending_summary(parsed)
     return parsed, ""
 
 
@@ -336,17 +476,31 @@ def get_or_generate_summary(
 
     Returns (summary_dict, was_cached).
     """
-    cache_style = f"{style}__deep" if feed_type == "deep_dives" else style
-    cached = store.get_cached_summary(url, cache_style, seniority)
+    cache_style, cache_seniority = _cache_bucket(style, seniority, feed_type)
+    cached = store.get_cached_summary(url, cache_style, cache_seniority)
     if cached:
-        return cached.get("summary"), True
+        cached_summary = cached.get("summary")
+        if _is_rejection(cached_summary):
+            return None, True
+        return cached_summary, True
 
     summary, error = generate_summary(
         title, url, content, style, seniority, feed_type=feed_type,
     )
     if summary:
-        store.save_cached_summary(url, cache_style, seniority, summary, MODEL)
+        store.save_cached_summary(
+            url, cache_style, cache_seniority, summary, MODEL
+        )
         return summary, False
+    if error.startswith("rejected:"):
+        store.save_cached_summary(
+            url,
+            cache_style,
+            cache_seniority,
+            _rejection_payload(error.split(":", 1)[1]),
+            MODEL,
+        )
+        return None, False
 
     return None, False
 
@@ -387,8 +541,12 @@ def batch_presummarize(
             continue
 
         for style, seniority in style_seniority_combos:
-            cache_style = f"{style}__deep" if feed_type == "deep_dives" else style
-            cached = store.get_cached_summary(url, cache_style, seniority)
+            cache_style, cache_seniority = _cache_bucket(
+                style, seniority, feed_type
+            )
+            cached = store.get_cached_summary(
+                url, cache_style, cache_seniority
+            )
             if cached:
                 already_cached += 1
                 continue
@@ -398,6 +556,7 @@ def batch_presummarize(
         "to_generate": len(tasks),
         "already_cached": already_cached,
         "generated": 0,
+        "rejected": 0,
         "failed": 0,
     }
 
@@ -419,9 +578,29 @@ def batch_presummarize(
                 title, url, content, style, seniority, feed_type=ft,
             )
             if summary:
-                cache_style = f"{style}__deep" if ft == "deep_dives" else style
-                store.save_cached_summary(url, cache_style, seniority, summary, MODEL)
+                cache_style, cache_seniority = _cache_bucket(
+                    style, seniority, ft
+                )
+                store.save_cached_summary(
+                    url,
+                    cache_style,
+                    cache_seniority,
+                    summary,
+                    MODEL,
+                )
                 return "generated", title[:50]
+            if error.startswith("rejected:"):
+                cache_style, cache_seniority = _cache_bucket(
+                    style, seniority, ft
+                )
+                store.save_cached_summary(
+                    url,
+                    cache_style,
+                    cache_seniority,
+                    _rejection_payload(error.split(":", 1)[1]),
+                    MODEL,
+                )
+                return "rejected", f"{title[:40]}: {error}"
             return "failed", f"{title[:40]}: {error}"
         except Exception as exc:
             return "failed", f"{title[:40]}: {exc}"
@@ -434,16 +613,20 @@ def batch_presummarize(
             done += 1
             if result == "generated":
                 stats["generated"] += 1
+            elif result == "rejected":
+                stats["rejected"] += 1
             else:
                 stats["failed"] += 1
             if done % 10 == 0 or done == len(tasks):
                 _log_presummary(
                     f"  Progress: {done}/{len(tasks)} "
-                    f"(ok={stats['generated']} fail={stats['failed']})"
+                    f"(ok={stats['generated']} "
+                    f"rejected={stats['rejected']} fail={stats['failed']})"
                 )
 
     _log_presummary(
         f"Done: {stats['generated']} generated, "
+        f"{stats['rejected']} rejected, "
         f"{stats['failed']} failed, "
         f"{stats['already_cached']} were cached"
     )

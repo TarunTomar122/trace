@@ -487,15 +487,18 @@ def fetch_article_links(
         candidates = _extract_from_html(response.text or "", source_url)
 
     base_host = urlparse(source_url).netloc.lower()
-    filtered = [
-        article
-        for article in candidates
-        if _is_likely_article(
-            article.get("url", ""),
-            base_host=base_host,
-            include_external=include_external,
-        )
-    ][: max(0, limit)]
+    if source_type in ("rss", "atom"):
+        filtered = [a for a in candidates if a.get("url")][:max(0, limit)]
+    else:
+        filtered = [
+            article
+            for article in candidates
+            if _is_likely_article(
+                article.get("url", ""),
+                base_host=base_host,
+                include_external=include_external,
+            )
+        ][: max(0, limit)]
 
     if enrich_metadata:
         filtered = [_enrich_article_metadata(article) for article in filtered]

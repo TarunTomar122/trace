@@ -13,7 +13,9 @@
       "interest_id": "technology",
       "name": "The Verge",
       "url": "https://www.theverge.com/rss/index.xml",
-      "type": "atom"
+      "type": "atom",
+      "exclude_title_keywords": ["deal", "deals", "sale", "discount", "review", "how to watch"],
+      "source_weight": 1.1
     },
     {
       "interest_id": "technology",
@@ -25,13 +27,16 @@
       "interest_id": "technology",
       "name": "Wired",
       "url": "https://www.wired.com/feed/rss",
-      "type": "rss"
+      "type": "rss",
+      "exclude_title_keywords": ["best ", "review", "deal", "deals", "sale", "discount"],
+      "source_weight": 1.1
     },
     {
       "interest_id": "technology",
       "name": "TechCrunch",
       "url": "https://techcrunch.com/feed/",
-      "type": "rss"
+      "type": "rss",
+      "source_weight": 1.2
     },
     {
       "interest_id": "technology",
@@ -46,12 +51,6 @@
       "type": "rss"
     },
     {
-      "interest_id": "startups",
-      "name": "Product Hunt",
-      "url": "https://www.producthunt.com/feed",
-      "type": "atom"
-    },
-    {
       "interest_id": "business-market",
       "name": "MarketWatch Top Stories",
       "url": "https://www.marketwatch.com/rss/topstories",
@@ -62,13 +61,25 @@
       "interest_id": "business-market",
       "name": "CNBC Top News",
       "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
-      "type": "rss"
+      "type": "rss",
+      "exclude_title_keywords": ["how to watch", "deal", "deals", "sale", "discount"],
+      "source_weight": 1.15
     },
     {
-      "interest_id": "business-market",
+      "interest_id": "technology",
       "name": "Fast Company",
-      "url": "https://www.fastcompany.com/latest/rss",
-      "type": "rss"
+      "url": "https://www.fastcompany.com/technology/rss",
+      "type": "rss",
+      "exclude_title_keywords": ["how to watch", "deal", "deals", "sale", "discount", "list of sightings"],
+      "source_weight": 1.15
+    },
+    {
+      "interest_id": "productivity",
+      "name": "Fast Company",
+      "url": "https://www.fastcompany.com/work-life/rss",
+      "type": "rss",
+      "exclude_title_keywords": ["how to watch", "deal", "deals", "sale", "discount", "list of sightings"],
+      "source_weight": 1.15
     },
     {
       "interest_id": "business-market",
@@ -92,13 +103,8 @@
       "interest_id": "science",
       "name": "MIT Technology Review",
       "url": "https://www.technologyreview.com/feed",
-      "type": "rss"
-    },
-    {
-      "interest_id": "productivity",
-      "name": "Lifehacker",
-      "url": "https://lifehacker.com/index.xml",
-      "type": "rss"
+      "type": "rss",
+      "source_weight": 1.2
     }
   ]
 }

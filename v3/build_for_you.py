@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 """
-Build "For You" feed — interest-matched articles with career-goal boosting.
+Build "For You" feed — role-first, interest-matched articles.
+
+Selection priority:
+  1. Role's primary interest domain (majority of feed)
+  2. User's explicitly chosen interests
+  3. Career-goal keyword boosts within eligible items
+  4. LLM reject-gate drops low-signal content at summary time
 
 Phase 1 (pool): Fetch articles from for_you_sources.json → v3_for_you_pool
-Phase 2 (feed): Per-user selection + scoring + summarise → write feed section
+Phase 2 (feed): Per-user selection + scoring + summarise → write feed
 
 Usage:
   python3 -m v3.build_for_you                          # both phases
@@ -39,17 +45,19 @@ from v3.lib.scorer import rank_articles  # noqa: E402
 from v3.lib.diversity import dedupe_and_cap  # noqa: E402
 
 CONFIG_PATH = "v3/config/for_you_sources.json"
-DEFAULT_ITEMS = 8
-
-ROLE_INTEREST_MAP: dict[str, list[str]] = {
-    "designer":  ["experience", "marketing"],
-    "developer": ["engineering", "technology"],
-    "pm":        ["business-market", "leadership", "startups"],
-    "marketer":  ["marketing", "business-market"],
-    "founder":   ["startups", "leadership", "business-market"],
-}
+DEFAULT_ITEMS = 0
 DEFAULT_LIMIT_PER_SOURCE = 5
 DEFAULT_MAX_AGE = 14
+
+ROLE_PRIMARY_INTERESTS: dict[str, list[str]] = {
+    "designer":  ["experience"],
+    "developer": ["engineering", "technology"],
+    "pm":        ["business-market", "startups"],
+    "marketer":  ["marketing", "business-market"],
+    "founder":   ["startups", "business-market", "leadership"],
+}
+
+ROLE_QUOTA = 0.5
 
 
 def _log(msg: str) -> None:
@@ -63,9 +71,17 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--pool-only", action="store_true")
     p.add_argument("--user-id", default="")
     p.add_argument("--limit-users", type=int, default=0)
-    p.add_argument("--items-per-user", type=int, default=DEFAULT_ITEMS)
-    p.add_argument("--limit-per-source", type=int, default=DEFAULT_LIMIT_PER_SOURCE)
-    p.add_argument("--max-age-days", type=int, default=DEFAULT_MAX_AGE)
+    p.add_argument(
+        "--items-per-user", type=int, default=DEFAULT_ITEMS,
+        help="Items per user (0 = use config value)",
+    )
+    p.add_argument(
+        "--limit-per-source", type=int,
+        default=DEFAULT_LIMIT_PER_SOURCE,
+    )
+    p.add_argument(
+        "--max-age-days", type=int, default=DEFAULT_MAX_AGE,
+    )
     p.add_argument("--date", default="")
     p.add_argument(
         "--audience",
@@ -81,28 +97,88 @@ def _load_config() -> dict[str, Any]:
         return json.load(f)
 
 
+def _title_matches_keywords(
+    title: str, keywords: list[str],
+) -> bool:
+    if not keywords:
+        return True
+    lower = title.lower()
+    return any(kw.lower() in lower for kw in keywords)
+
+
+def _title_has_excluded_keywords(
+    title: str, keywords: list[str],
+) -> bool:
+    if not keywords:
+        return False
+    lower = title.lower()
+    return any(kw.lower() in lower for kw in keywords)
+
+
+def _build_source_weight_map(
+    config: dict[str, Any],
+) -> dict[str, float]:
+    """Map source_name → source_weight from config."""
+    out: dict[str, float] = {}
+    for src in config.get("sources", []):
+        name = src.get("name", "").strip()
+        if name:
+            out[name] = src.get("source_weight", 1.0)
+    return out
+
+
+def _apply_role_quota(
+    ranked: list[dict[str, Any]],
+    role_primary: set[str],
+    target: int,
+) -> list[dict[str, Any]]:
+    """Enforce role-first quota: at least ROLE_QUOTA of items
+    from role's primary interests, then fill from the rest."""
+    if not role_primary:
+        return ranked[:target]
+
+    primary = [a for a in ranked if a.get("interest_id") in role_primary]
+    other = [a for a in ranked if a.get("interest_id") not in role_primary]
+
+    min_primary = max(1, int(target * ROLE_QUOTA))
+    picked_primary = primary[:min_primary]
+    remaining = target - len(picked_primary)
+    leftover_primary = primary[min_primary:]
+    fill_pool = leftover_primary + other
+    picked = picked_primary + fill_pool[:remaining]
+    return picked
+
+
 # -----------------------------------------------------------------------
 # Phase 1: Pool refresh
 # -----------------------------------------------------------------------
 
 def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) -> dict[str, int]:
-    sources = config.get("sources", [])
-    stats = {"sources": len(sources), "links_found": 0, "new_items": 0, "skipped": 0, "errors": 0}
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import threading
 
-    for src in sources:
+    sources = config.get("sources", [])
+    stats = {"sources": len(sources), "links_found": 0, "new_items": 0, "skipped": 0, "filtered": 0, "errors": 0}
+    stats_lock = threading.Lock()
+
+    def _process_source(src: dict[str, Any]) -> None:
         src_name = src["name"]
+        title_keywords = src.get("title_keywords", [])
+        exclude_title_keywords = src.get("exclude_title_keywords", [])
         _log(f"Fetching {src_name} ({src['url']})")
 
         try:
             result = fetch_article_links(src["url"], limit=limit_per_source)
             articles = result.articles if hasattr(result, "articles") else []
         except Exception as exc:
-            _log(f"  ERROR fetching links: {exc}")
-            stats["errors"] += 1
-            continue
+            _log(f"  ERROR fetching {src_name}: {exc}")
+            with stats_lock:
+                stats["errors"] += 1
+            return
 
-        stats["links_found"] += len(articles)
-        _log(f"  Found {len(articles)} links")
+        with stats_lock:
+            stats["links_found"] += len(articles)
+        _log(f"  {src_name}: {len(articles)} links")
 
         for art in articles:
             url = art.url if hasattr(art, "url") else art.get("url", "")
@@ -110,10 +186,21 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
                 continue
 
             if store.pool_item_exists(FOR_YOU_POOL, url):
-                stats["skipped"] += 1
+                with stats_lock:
+                    stats["skipped"] += 1
                 continue
 
             title = art.title if hasattr(art, "title") else art.get("title", "")
+            if title_keywords and not _title_matches_keywords(title, title_keywords):
+                with stats_lock:
+                    stats["filtered"] += 1
+                continue
+            if exclude_title_keywords and _title_has_excluded_keywords(
+                title, exclude_title_keywords
+            ):
+                with stats_lock:
+                    stats["filtered"] += 1
+                continue
             published = art.published_date if hasattr(art, "published_date") else art.get("published_date", "")
             og_image = art.og_image if hasattr(art, "og_image") else art.get("og_image", "")
 
@@ -121,9 +208,9 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
             content = result_content["content"]
             if not content:
                 _log(f"  No content for {url}")
-                stats["errors"] += 1
+                with stats_lock:
+                    stats["errors"] += 1
                 continue
-
             if not og_image:
                 og_image = result_content.get("image", "") or fetch_og_image(url)
 
@@ -141,8 +228,16 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
                 "fetched_at": datetime.now(timezone.utc).isoformat(),
                 "is_active": True,
             })
-            stats["new_items"] += 1
+            with stats_lock:
+                stats["new_items"] += 1
             _log(f"  + {title[:60]}")
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(_process_source, src) for src in sources]
+        for f in as_completed(futures):
+            exc = f.exception()
+            if exc:
+                _log(f"  Source worker error: {exc}")
 
     stale = store.deactivate_stale(FOR_YOU_POOL, max_age_days=DEFAULT_MAX_AGE + 7)
     stats["deactivated"] = stale
@@ -184,25 +279,37 @@ def build_user_feeds(
     args: argparse.Namespace,
 ) -> dict[str, int]:
     target_date = args.date.strip() or _today_ist()
-    items_per_user = args.items_per_user or config.get("items_per_user", DEFAULT_ITEMS)
+    cfg_items = config.get("items_per_user", 8)
+    items_per_user = args.items_per_user or cfg_items
     max_age = args.max_age_days
 
     users = store.get_onboarded_users(args.audience)
     if args.user_id:
-        users = [u for u in users if u.get("uid") == args.user_id]
+        users = [
+            u for u in users if u.get("uid") == args.user_id
+        ]
     if args.limit_users > 0:
         users = users[: args.limit_users]
 
-    _log(f"Building For You feeds for {len(users)} users, date={target_date}")
+    _log(
+        f"Building For You for {len(users)} users, "
+        f"date={target_date}"
+    )
 
     # ------------------------------------------------------------------
-    # PHASE 2a: Pick articles for every user (fast — no OpenAI calls)
+    # PHASE 2a: Pick articles per user (role-first, strict interests)
     # ------------------------------------------------------------------
     _log("-" * 40)
     _log("PHASE 2a: Select articles per user")
     _log("-" * 40)
 
     user_picks: list[tuple[dict, list[dict], str, str]] = []
+    allowed_sources = {
+        str(src.get("name", "")).strip()
+        for src in config.get("sources", [])
+        if str(src.get("name", "")).strip()
+    }
+    source_weights = _build_source_weight_map(config)
 
     for profile in users:
         uid = profile.get("uid", "")
@@ -212,41 +319,74 @@ def build_user_feeds(
         interests = set(profile.get("interests", []))
         role = profile.get("role", "")
         goals = profile.get("careerGoals", []) or []
-        style = profile.get("summaryStyle", "practitioner") or "practitioner"
-        seniority = profile.get("seniority", "mid") or "mid"
-        is_subscribed = is_user_subscribed(profile)
-        user_items_target = items_per_user if is_subscribed else FREE_TIER_LIMITS.get("for_you", 2)
+        style = (
+            profile.get("summaryStyle", "practitioner")
+            or "practitioner"
+        )
+        seniority = (
+            profile.get("seniority", "mid") or "mid"
+        )
+        is_sub = is_user_subscribed(profile)
+        target = (
+            items_per_user
+            if is_sub
+            else FREE_TIER_LIMITS.get("for_you", 2)
+        )
 
-        if not interests:
-            _log(f"  user={uid} no interests, skipping")
-            store.write_feed_section(uid, target_date, "for_you", [])
+        role_primary = set(
+            ROLE_PRIMARY_INTERESTS.get(role, [])
+        )
+
+        if not interests and not role_primary:
+            _log(f"  user={uid} no interests, skip")
+            store.write_feed_section(
+                uid, target_date, "for_you", [],
+            )
             continue
 
-        role_extras = set(ROLE_INTEREST_MAP.get(role, [])) - interests
-        expanded = interests | role_extras
+        eligible = set(interests)
+        if not eligible:
+            eligible = role_primary.copy()
+        elif role_primary - eligible:
+            eligible |= role_primary
 
         seen_urls = store.get_seen_urls(uid)
 
         candidates = store.load_pool(
             FOR_YOU_POOL,
-            interest_ids=expanded,
+            interest_ids=eligible,
+            source_names=allowed_sources,
             max_age_days=max_age,
             exclude_urls=seen_urls,
         )
 
+        for c in candidates:
+            sn = c.get("source_name", "")
+            c["_source_weight"] = source_weights.get(sn, 1.0)
+
         if not candidates:
-            store.write_feed_section(uid, target_date, "for_you", [])
+            store.write_feed_section(
+                uid, target_date, "for_you", [],
+            )
             continue
 
-        ranked = rank_articles(candidates, goals)
+        ranked = rank_articles(
+            candidates, goals,
+            role_primary_interests=role_primary,
+        )
         diverse = dedupe_and_cap(ranked)
-        picked = diverse[: user_items_target]
-        if not is_subscribed:
-            _log(f"  user={uid} free → {len(picked)} items")
-        else:
-            _log(f"  user={uid} pro → {len(picked)} items")
+        picked = _apply_role_quota(
+            diverse, role_primary, target,
+        )
 
-        user_picks.append((profile, picked, style, seniority))
+        tier = "free" if not is_sub else "pro"
+        _log(
+            f"  user={uid} {tier} role={role} "
+            f"eligible={sorted(eligible)} → {len(picked)}"
+        )
+        user_picks.append(
+            (profile, picked, style, seniority),
+        )
 
     # ------------------------------------------------------------------
     # PHASE 2b: Batch pre-summarize only the articles users actually need
@@ -279,7 +419,13 @@ def build_user_feeds(
     _log("PHASE 2c: Assemble feeds from cache")
     _log("-" * 40)
 
-    stats = {"users": 0, "items_total": 0, "summaries_generated": 0, "summaries_cached": 0}
+    stats = {
+        "users": 0,
+        "items_total": 0,
+        "summaries_generated": 0,
+        "summaries_cached": 0,
+        "rejected_items": 0,
+    }
 
     for profile, picked, style, seniority in user_picks:
         uid = profile.get("uid", "")
@@ -294,9 +440,12 @@ def build_user_feeds(
                 style=style,
                 seniority=seniority,
             )
+            if not summary:
+                stats["rejected_items"] += 1
+                continue
             if was_cached:
                 stats["summaries_cached"] += 1
-            elif summary:
+            else:
                 stats["summaries_generated"] += 1
 
             feed_items.append(_build_feed_item(item, summary))

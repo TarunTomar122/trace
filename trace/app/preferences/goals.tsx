@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -9,7 +9,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { CAREER_GOALS, updateUserProfile } from '@/lib/firestore';
+import { CAREER_GOALS, updateUserProfile, triggerFeedGeneration } from '@/lib/firestore';
 
 const ACCENT = '#F59E0B';
 
@@ -24,9 +24,11 @@ export default function EditGoalsScreen() {
   );
   const [saving, setSaving] = useState(false);
 
-  const original = (profile?.careerGoals || []).slice().sort().join(',');
+  const originalRef = useRef<string>(
+    (Array.isArray(profile?.careerGoals) ? [...profile.careerGoals] : []).sort().join(',')
+  );
   const current = [...selected].sort().join(',');
-  const hasChanges = original !== current;
+  const hasChanges = originalRef.current !== current;
 
   const toggle = (id: string) => {
     setSelected((prev) =>
@@ -41,9 +43,14 @@ export default function EditGoalsScreen() {
     }
     setSaving(true);
     try {
-      await updateUserProfile(user.uid, { careerGoals: selected } as any);
+      await updateUserProfile(user.uid, {
+        careerGoals: selected,
+        feedBuildStatus: 'building',
+        feedBuildRequestedAt: new Date().toISOString(),
+      } as any);
+      await triggerFeedGeneration(user.uid, { reason: 'preferences_edit', force: true });
       await refreshProfile();
-      showToast('Goals updated', 'success');
+      showToast('Goals saved — feed is rebuilding!', 'success');
       router.back();
     } catch {
       showToast('Could not save. Try again.', 'error');

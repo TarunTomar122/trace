@@ -19,6 +19,7 @@ import argparse
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -144,6 +145,7 @@ def main() -> None:
     _log(f"Audience: {args.audience}")
     start = time.time()
 
+    jobs_to_run: list[tuple[str, dict]] = []
     for job_name in build_jobs:
         job = JOBS[job_name]
         should_run = (
@@ -152,20 +154,40 @@ def main() -> None:
             or run_feeds
             or job_name in requested
         )
-        if not should_run:
-            continue
+        if should_run:
+            jobs_to_run.append((job_name, job))
 
-        _log(f"--- {job['description']} ---")
+    if len(jobs_to_run) > 1:
+        _log(f"Running {len(jobs_to_run)} feed builders in parallel")
 
-        job_extra = list(extra)
-        if run_pools:
-            job_extra.append("--pool-only")
-        elif run_feeds:
-            job_extra.append("--skip-pool")
+        def _run_job(name_and_job: tuple[str, dict]) -> tuple[str, int]:
+            name, job = name_and_job
+            _log(f"--- {job['description']} (parallel) ---")
+            job_extra = list(extra)
+            if run_pools:
+                job_extra.append("--pool-only")
+            elif run_feeds:
+                job_extra.append("--skip-pool")
+            rc = _run_module(job["module"], job_extra)
+            return name, rc
 
-        rc = _run_module(job["module"], job_extra)
-        if rc != 0:
-            _log(f"WARNING: {job_name} exited with code {rc}")
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = {executor.submit(_run_job, j): j[0] for j in jobs_to_run}
+            for f in as_completed(futures):
+                name, rc = f.result()
+                if rc != 0:
+                    _log(f"WARNING: {name} exited with code {rc}")
+    else:
+        for job_name, job in jobs_to_run:
+            _log(f"--- {job['description']} ---")
+            job_extra = list(extra)
+            if run_pools:
+                job_extra.append("--pool-only")
+            elif run_feeds:
+                job_extra.append("--skip-pool")
+            rc = _run_module(job["module"], job_extra)
+            if rc != 0:
+                _log(f"WARNING: {job_name} exited with code {rc}")
 
     if run_all or "assemble" in requested:
         _log("--- Assemble feeds ---")

@@ -139,6 +139,7 @@ export default function ArticleScreen() {
   const subtitle = item.summary?.short_article?.subtitle;
   const keyTakeaways = item.summary?.short_article?.key_takeaways;
   const whyItMatters = item.summary?.short_article?.why_it_matters;
+  const isTrending = item.feed_type === 'trending' || item.metadata?.feed_type === 'trending';
 
   // Split on double newlines first, then split each block on single newlines
   // so that headings on their own line don't merge with body text.
@@ -287,7 +288,7 @@ export default function ArticleScreen() {
         {hasAccess ? (
           <View style={styles.articleBody}>
             {/* Key Takeaways */}
-            {keyTakeaways && keyTakeaways.length > 0 && (
+            {!isTrending && keyTakeaways && keyTakeaways.length > 0 && (
               <View style={[styles.takeawaysCard, { backgroundColor: '#fffbeb' }]}>
                 <ThemedText style={styles.takeawaysLabel}>Key Takeaways</ThemedText>
                 {keyTakeaways.map((t: string, i: number) => (
@@ -305,7 +306,7 @@ export default function ArticleScreen() {
             {bodyLines.map((line: string, index: number) => renderLine(line, index))}
 
             {/* Why it matters */}
-            {whyItMatters ? (
+            {!isTrending && whyItMatters ? (
               <View style={[styles.whyItMattersCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
                 <ThemedText style={[styles.whyItMattersLabel, { color: Colors[colorScheme].muted }]}>
                   Why it matters

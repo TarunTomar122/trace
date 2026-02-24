@@ -54,6 +54,21 @@ function isValidImage(url?: string | null): boolean {
   return true;
 }
 
+function stripMarkdown(text: string): string {
+  return (text || "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/^\s*#+\s*/gm, "")
+    .trim();
+}
+
+function firstParagraph(text?: string): string {
+  if (!text) return "";
+  const normalized = text.replace(/\n{3,}/g, "\n\n").trim();
+  const para = normalized.split(/\n\s*\n/)[0] || "";
+  return stripMarkdown(para);
+}
+
 function FeedBuildingLoader() {
   const steps = [
     'Scanning sources for fresh content...',
@@ -79,6 +94,9 @@ function FeedBuildingLoader() {
 
 function TrendingCard({ item, onPress }: { item: FeedItem; onPress: () => void }) {
   const hasImage = isValidImage(item.thumbnail);
+  const subtitle = stripMarkdown(item.summary?.short_article?.subtitle || "");
+  const brief = firstParagraph(item.summary?.short_article?.body);
+  const snippet = brief || subtitle;
   return (
     <button onClick={onPress} className="w-full text-left p-4 rounded-xl transition-all group hover:bg-gray-50 dark:hover:bg-gray-900">
       <div className="flex gap-4">
@@ -99,9 +117,9 @@ function TrendingCard({ item, onPress }: { item: FeedItem; onPress: () => void }
           <h3 className="font-semibold text-[15px] leading-snug line-clamp-2 group-hover:text-amber-600 transition-colors">
             {item.title}
           </h3>
-          {item.summary?.short_article?.subtitle && (
+          {snippet && (
             <p className="text-sm text-secondary/60 mt-1.5 line-clamp-2 leading-relaxed">
-              {item.summary.short_article.subtitle}
+              {snippet}
             </p>
           )}
         </div>

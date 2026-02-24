@@ -62,7 +62,7 @@ export default function FeedScreen() {
   const { user, profile, refreshProfile } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
 
-  const [activeTab, setActiveTab] = useState<FeedTab>('trending');
+  const [activeTab, setActiveTab] = useState<FeedTab>('for_you');
   const [v3Feed, setV3Feed] = useState<V3UserFeed | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -196,7 +196,11 @@ export default function FeedScreen() {
         {/* ─── Header ─── */}
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <ThemedText style={styles.headerTitle}>
+            <ThemedText
+              style={styles.headerTitle}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}>
               {profile?.name ? `Welcome, ${profile.name.split(' ')[0]}` : 'Welcome'}
             </ThemedText>
             <ThemedText style={[styles.headerSubtitle, { color: Colors[colorScheme].muted }]}>
@@ -482,6 +486,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '800',
     letterSpacing: -0.5,
+    lineHeight: 36,
   },
   headerSubtitle: {
     fontSize: 14,

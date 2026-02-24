@@ -1,5 +1,5 @@
 {
-  "description": "Sources for the 'For You' feed. Mapped to ONBOARDING_INTERESTS ids. Articles matched to user interests with personalized summaries.",
+  "description": "Sources for the 'For You' feed. Mapped to ONBOARDING_INTERESTS ids. ~2-3 quality sources per interest for balanced coverage.",
   "max_age_days": 14,
   "items_per_user": 8,
   "sources": [
@@ -8,182 +8,257 @@
       "subinterest_id": "ai",
       "name": "VentureBeat",
       "url": "https://venturebeat.com/feed",
-      "type": "rss"
-    },
-    {
-      "interest_id": "technology",
-      "subinterest_id": "software-tech",
-      "name": "The Verge",
-      "url": "https://www.theverge.com/rss/index.xml",
-      "type": "atom"
+      "type": "rss",
+      "source_weight": 1.1
     },
     {
       "interest_id": "technology",
       "subinterest_id": "future-tech",
       "name": "MIT Technology Review",
       "url": "https://www.technologyreview.com/feed",
-      "type": "rss"
-    },
-    {
-      "interest_id": "technology",
-      "subinterest_id": "startups-tech",
-      "name": "TechCrunch",
-      "url": "https://techcrunch.com/feed/",
-      "type": "rss"
+      "type": "rss",
+      "source_weight": 1.2
     },
     {
       "interest_id": "technology",
       "subinterest_id": "deep-tech",
       "name": "Ars Technica",
       "url": "https://feeds.arstechnica.com/arstechnica/index",
-      "type": "rss"
+      "type": "rss",
+      "source_weight": 1.1
     },
-    {
-      "interest_id": "technology",
-      "subinterest_id": "wired-tech",
-      "name": "Wired",
-      "url": "https://www.wired.com/feed/rss",
-      "type": "rss"
-    },
-    {
-      "interest_id": "technology",
-      "subinterest_id": "hacker-news",
-      "name": "Hacker News Best",
-      "url": "https://hnrss.org/best",
-      "type": "rss"
-    },
-    {
-      "interest_id": "startups",
-      "subinterest_id": "startups",
-      "name": "TechCrunch Startups",
-      "url": "https://techcrunch.com/category/startups/feed/",
-      "type": "rss"
-    },
-    {
-      "interest_id": "startups",
-      "subinterest_id": "product-launches",
-      "name": "Product Hunt",
-      "url": "https://www.producthunt.com/feed",
-      "type": "atom"
-    },
-    {
-      "interest_id": "business-market",
-      "subinterest_id": "market-trends",
-      "name": "Fast Company",
-      "url": "https://www.fastcompany.com/latest/rss",
-      "type": "rss"
-    },
-    {
-      "interest_id": "business-market",
-      "subinterest_id": "economy-impact",
-      "name": "Yahoo Finance",
-      "url": "https://finance.yahoo.com/news/rssindex",
-      "type": "rss"
-    },
-    {
-      "interest_id": "business-market",
-      "subinterest_id": "market-trends",
-      "name": "CNBC Markets",
-      "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
-      "type": "rss"
-    },
+
     {
       "interest_id": "experience",
       "subinterest_id": "ux-design",
       "name": "Smashing Magazine",
       "url": "https://www.smashingmagazine.com/feed/",
-      "type": "rss"
-    },
-    {
-      "interest_id": "experience",
-      "subinterest_id": "design-news",
-      "name": "Creative Bloq",
-      "url": "https://www.creativebloq.com/feeds/all",
-      "type": "rss"
+      "type": "rss",
+      "source_weight": 1.2
     },
     {
       "interest_id": "experience",
       "subinterest_id": "design-systems",
       "name": "A List Apart",
       "url": "https://alistapart.com/main/feed/",
-      "type": "rss"
+      "type": "rss",
+      "source_weight": 1.2
     },
     {
       "interest_id": "experience",
+      "subinterest_id": "ux-research",
+      "name": "Nielsen Norman Group",
+      "url": "https://www.nngroup.com/feed/rss/",
+      "type": "rss",
+      "source_weight": 1.3
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "ux-articles",
+      "name": "UX Collective",
+      "url": "https://uxdesign.cc/feed",
+      "type": "rss",
+      "source_weight": 1.2
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "ux-patterns",
+      "name": "UX Planet",
+      "url": "https://uxplanet.org/feed",
+      "type": "rss",
+      "source_weight": 1.1
+    },
+
+    {
+      "interest_id": "engineering",
       "subinterest_id": "css-frontend",
       "name": "CSS-Tricks",
       "url": "https://css-tricks.com/feed/",
-      "type": "rss"
+      "type": "rss",
+      "source_weight": 1.1
     },
     {
       "interest_id": "engineering",
       "subinterest_id": "software",
-      "name": "Ars Technica",
-      "url": "https://feeds.arstechnica.com/arstechnica/index",
-      "type": "rss"
+      "name": "The Verge",
+      "url": "https://www.theverge.com/rss/index.xml",
+      "type": "atom",
+      "source_weight": 1.0,
+      "exclude_title_keywords": ["review", "deal", "buy", "watch live", "how to watch", "best "]
     },
     {
       "interest_id": "engineering",
       "subinterest_id": "dev-community",
       "name": "Hacker News Best",
       "url": "https://hnrss.org/best",
-      "type": "rss"
+      "type": "rss",
+      "source_weight": 1.1
     },
+    {
+      "interest_id": "engineering",
+      "subinterest_id": "wired-tech",
+      "name": "Wired",
+      "url": "https://www.wired.com/feed/rss",
+      "type": "rss",
+      "source_weight": 1.0,
+      "exclude_title_keywords": ["review", "deal", "buy", "best "]
+    },
+
+    {
+      "interest_id": "startups",
+      "subinterest_id": "startups",
+      "name": "TechCrunch Startups",
+      "url": "https://techcrunch.com/category/startups/feed/",
+      "type": "rss",
+      "source_weight": 1.1
+    },
+    {
+      "interest_id": "startups",
+      "subinterest_id": "startups-tech",
+      "name": "TechCrunch",
+      "url": "https://techcrunch.com/feed/",
+      "type": "rss",
+      "source_weight": 1.0,
+      "exclude_title_keywords": ["review", "deal", "how to watch", "watch live"]
+    },
+
+    {
+      "interest_id": "business-market",
+      "subinterest_id": "market-trends",
+      "name": "Fast Company",
+      "url": "https://www.fastcompany.com/technology/rss",
+      "type": "rss",
+      "source_weight": 1.0,
+      "exclude_title_keywords": ["deal", "buy", "coupon", "review", "best "]
+    },
+    {
+      "interest_id": "business-market",
+      "subinterest_id": "business-strategy",
+      "name": "Harvard Business Review",
+      "url": "https://hbr.org/feed",
+      "type": "rss",
+      "source_weight": 1.2
+    },
+
     {
       "interest_id": "leadership",
       "subinterest_id": "management",
       "name": "Fast Company Work Life",
       "url": "https://www.fastcompany.com/work-life/rss",
-      "type": "rss"
+      "type": "rss",
+      "source_weight": 1.0,
+      "exclude_title_keywords": ["deal", "buy", "coupon", "review", "best "]
     },
     {
       "interest_id": "leadership",
       "subinterest_id": "leadership-hbr",
       "name": "HBR Leadership",
       "url": "https://hbr.org/topic/leadership/feed",
-      "type": "rss"
+      "type": "rss",
+      "source_weight": 1.2
     },
+
     {
       "interest_id": "marketing",
       "subinterest_id": "growth",
       "name": "Content Marketing Institute",
       "url": "https://contentmarketinginstitute.com/feed/",
-      "type": "rss"
+      "type": "rss",
+      "source_weight": 1.0
     },
     {
-      "interest_id": "productivity",
-      "subinterest_id": "career-growth",
-      "name": "Lifehacker",
-      "url": "https://lifehacker.com/index.xml",
-      "type": "rss"
+      "interest_id": "marketing",
+      "subinterest_id": "growth-hacking",
+      "name": "HubSpot Marketing Blog",
+      "url": "https://blog.hubspot.com/marketing/rss.xml",
+      "type": "rss",
+      "source_weight": 1.0
     },
+
     {
       "interest_id": "productivity",
       "subinterest_id": "soft-skills",
       "name": "Fast Company Work Life",
       "url": "https://www.fastcompany.com/work-life/rss",
-      "type": "rss"
+      "type": "rss",
+      "source_weight": 1.0,
+      "exclude_title_keywords": ["deal", "buy", "coupon", "review", "best "]
+    },
+    {
+      "interest_id": "productivity",
+      "subinterest_id": "deep-work",
+      "name": "Farnam Street",
+      "url": "https://fs.blog/feed/",
+      "type": "rss",
+      "source_weight": 1.2
+    },
+
+    {
+      "interest_id": "fintech",
+      "subinterest_id": "fintech-news",
+      "name": "TechCrunch Fintech",
+      "url": "https://techcrunch.com/category/fintech/feed/",
+      "type": "rss",
+      "source_weight": 1.1
     },
     {
       "interest_id": "fintech",
-      "subinterest_id": "personal-finance",
-      "name": "NerdWallet",
-      "url": "https://www.nerdwallet.com/blog/feed/",
-      "type": "rss"
+      "subinterest_id": "fintech-industry",
+      "name": "Finextra",
+      "url": "https://www.finextra.com/rss/headlines.aspx",
+      "type": "rss",
+      "source_weight": 1.0
     },
+
     {
-      "interest_id": "fintech",
-      "subinterest_id": "markets",
-      "name": "Motley Fool",
-      "url": "https://www.fool.com/feeds/index.aspx",
-      "type": "rss"
+      "interest_id": "health",
+      "subinterest_id": "health-tech",
+      "name": "STAT News",
+      "url": "https://www.statnews.com/feed/",
+      "type": "rss",
+      "source_weight": 1.1
     },
     {
       "interest_id": "health",
-      "subinterest_id": "wellbeing",
-      "name": "Well+Good",
-      "url": "https://www.wellandgood.com/feed/",
-      "type": "rss"
+      "subinterest_id": "health-science",
+      "name": "Ars Technica Health",
+      "url": "https://arstechnica.com/tag/health/feed/",
+      "type": "rss",
+      "source_weight": 1.0
+    },
+
+    {
+      "interest_id": "web3",
+      "subinterest_id": "crypto-news",
+      "name": "CoinDesk",
+      "url": "https://www.coindesk.com/arc/outboundfeeds/rss/",
+      "type": "rss",
+      "source_weight": 1.1
+    },
+    {
+      "interest_id": "web3",
+      "subinterest_id": "blockchain",
+      "name": "The Block",
+      "url": "https://www.theblock.co/rss.xml",
+      "type": "rss",
+      "source_weight": 1.0
+    },
+
+    {
+      "interest_id": "climate",
+      "subinterest_id": "cleantech",
+      "name": "CleanTechnica",
+      "url": "https://cleantechnica.com/feed/",
+      "type": "rss",
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "climate",
+      "subinterest_id": "climate-tech",
+      "name": "MIT Climate",
+      "url": "https://www.technologyreview.com/topic/climate-change-and-energy/feed",
+      "type": "rss",
+      "source_weight": 1.1
     }
   ]
 }

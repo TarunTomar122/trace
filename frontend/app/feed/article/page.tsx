@@ -42,6 +42,7 @@ export default function ArticlePage() {
   const keyTakeaways = item.summary?.short_article?.key_takeaways;
   const whyItMatters = item.summary?.short_article?.why_it_matters;
   const readingTime = item.summary?.reading_time_minutes || 3;
+  const isTrending = item.feed_type === "trending" || item.metadata?.feed_type === "trending";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -75,7 +76,7 @@ export default function ArticlePage() {
           </a>
         </div>
 
-        {keyTakeaways && keyTakeaways.length > 0 && (
+        {!isTrending && keyTakeaways && keyTakeaways.length > 0 && (
           <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl p-5 mb-6">
             <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-3">
               Key Takeaways
@@ -106,7 +107,7 @@ export default function ArticlePage() {
           </p>
         )}
 
-        {whyItMatters && (
+        {!isTrending && whyItMatters && (
           <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-5 mb-6">
             <p className="text-xs font-semibold text-secondary/60 uppercase tracking-wider mb-1.5">
               Why it matters

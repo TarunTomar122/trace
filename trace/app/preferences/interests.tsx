@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -9,7 +9,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { ONBOARDING_INTERESTS, updateUserProfile } from '@/lib/firestore';
+import { ONBOARDING_INTERESTS, updateUserProfile, triggerFeedGeneration } from '@/lib/firestore';
 
 const ACCENT = '#F59E0B';
 
@@ -24,9 +24,12 @@ export default function EditInterestsScreen() {
   );
   const [saving, setSaving] = useState(false);
 
-  const original = (profile?.interests || []).slice().sort().join(',');
+  // Capture original at mount time so reactive profile updates don't reset hasChanges
+  const originalRef = useRef<string>(
+    (Array.isArray(profile?.interests) ? [...profile.interests] : []).sort().join(',')
+  );
   const current = [...selected].sort().join(',');
-  const hasChanges = original !== current;
+  const hasChanges = originalRef.current !== current;
 
   const toggle = (id: string) => {
     setSelected((prev) =>
@@ -41,9 +44,14 @@ export default function EditInterestsScreen() {
     }
     setSaving(true);
     try {
-      await updateUserProfile(user.uid, { interests: selected } as any);
+      await updateUserProfile(user.uid, {
+        interests: selected,
+        feedBuildStatus: 'building',
+        feedBuildRequestedAt: new Date().toISOString(),
+      } as any);
+      await triggerFeedGeneration(user.uid, { reason: 'preferences_edit', force: true });
       await refreshProfile();
-      showToast('Interests updated', 'success');
+      showToast('Interests saved — feed is rebuilding!', 'success');
       router.back();
     } catch {
       showToast('Could not save. Try again.', 'error');

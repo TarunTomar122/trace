@@ -461,6 +461,9 @@ export const LEARNING_SOURCE_CATEGORIES = [
       { name: 'UX Movement', description: 'Practical UI/UX patterns and usability' },
       { name: 'Baymard Institute Blog', description: 'E-commerce UX research, checkout usability' },
       { name: 'Aeon Essays', description: 'Philosophy, science, society — deep thoughtful essays' },
+      { name: 'Sidebar', description: 'The 5 best design links, curated daily' },
+      { name: "It's Nice That", description: 'Visual design, creative industry, inspiration' },
+      { name: 'Creative Boom', description: 'Design industry insights and creative career advice' },
     ],
   },
   {

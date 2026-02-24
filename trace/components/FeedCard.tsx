@@ -74,6 +74,21 @@ function hashColor(str: string): string {
 
 const ACCENT = '#F59E0B';
 
+function stripMd(text: string): string {
+  return (text || '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/^\s*#+\s*/gm, '')
+    .trim();
+}
+
+function firstParagraph(text?: string): string {
+  if (!text) return '';
+  const normalized = text.replace(/\n{3,}/g, '\n\n').trim();
+  const para = normalized.split(/\n\s*\n/)[0] || '';
+  return stripMd(para);
+}
+
 /* ─── Types ───────────────────────────────────────────────── */
 
 type CardProps = {
@@ -91,7 +106,9 @@ export function TrendingCard({ item, colorScheme, onPress }: CardProps) {
   const initials = getSourceInitials(sourceName);
   const avatarBg = hashColor(sourceName);
   const timeAgo = getTimeAgo(item.published_date);
-  const snippet = item.summary?.short_article?.subtitle || item.description || '';
+  const subtitle = stripMd(item.summary?.short_article?.subtitle || '');
+  const brief = firstParagraph(item.summary?.short_article?.body);
+  const snippet = brief || subtitle || item.description || '';
   const [imgErr, setImgErr] = useState(false);
   const showImg = isLikelyRealImageUrl(item.thumbnail) && !imgErr;
 
@@ -250,6 +267,13 @@ export function ForYouCard({ item, colorScheme, onPress }: CardProps) {
               </Text>
             </View>
           )}
+          <Pressable hitSlop={8} onPress={onToggleBookmark}>
+            {saved ? (
+              <BookmarkCheck size={16} color={ACCENT} strokeWidth={2} />
+            ) : (
+              <Bookmark size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+            )}
+          </Pressable>
         </View>
 
         {/* Body: text column + thumbnail */}
@@ -257,14 +281,14 @@ export function ForYouCard({ item, colorScheme, onPress }: CardProps) {
           <View style={fyStyles.textCol}>
             <Text
               style={[fyStyles.title, { color: Colors[colorScheme].text }]}
-              numberOfLines={showImg ? 2 : 3}>
+              numberOfLines={3}>
               {item.title}
             </Text>
             {snippet !== '' && (
               <Text
                 style={[fyStyles.snippet, { color: Colors[colorScheme].muted }]}
-                numberOfLines={showImg ? 2 : 3}>
-                {snippet}
+                numberOfLines={3}>
+                {stripMd(snippet)}
               </Text>
             )}
           </View>
@@ -278,18 +302,6 @@ export function ForYouCard({ item, colorScheme, onPress }: CardProps) {
               />
             </View>
           )}
-        </View>
-
-        {/* Footer */}
-        <View style={fyStyles.footer}>
-          <View style={{ flex: 1 }} />
-          <Pressable hitSlop={8} onPress={onToggleBookmark}>
-            {saved ? (
-              <BookmarkCheck size={18} color={ACCENT} strokeWidth={2} />
-            ) : (
-              <Bookmark size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-            )}
-          </Pressable>
         </View>
       </View>
     </Pressable>
@@ -367,11 +379,6 @@ const fyStyles = StyleSheet.create({
   snippet: {
     fontSize: 13,
     lineHeight: 19,
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
   },
 });
 

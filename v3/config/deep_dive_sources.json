@@ -39,6 +39,27 @@
       "description": "Philosophy, science, society deep essays"
     },
     {
+      "category_id": "design-ux",
+      "name": "Sidebar",
+      "url": "https://sidebar.io/feed.xml",
+      "type": "rss",
+      "description": "The 5 best design links, curated daily"
+    },
+    {
+      "category_id": "design-ux",
+      "name": "It's Nice That",
+      "url": "https://www.itsnicethat.com/articles.rss",
+      "type": "rss",
+      "description": "Visual design, creative industry, inspiration"
+    },
+    {
+      "category_id": "design-ux",
+      "name": "Creative Boom",
+      "url": "https://www.creativeboom.com/feed/",
+      "type": "rss",
+      "description": "Design industry insights, creative career advice"
+    },
+    {
       "category_id": "tech-engineering",
       "name": "Chip Huyen Blog",
       "url": "https://huyenchip.com/feed.xml",
