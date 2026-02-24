@@ -45,12 +45,7 @@ jobs:
             echo "user_id=${{ inputs.user_id }}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build v1/v2 feed (web app)
-        run: |
-          echo "Running v1 onboard hook for user: ${{ steps.uid.outputs.user_id }}"
-          python -u v1/hooks/on_user_onboard.py --user_id "${{ steps.uid.outputs.user_id }}"
-
-      - name: Build v3 feed (mobile app)
+      - name: Build v3 feed (web + mobile)
         run: |
           echo "Building v3 feed for user: ${{ steps.uid.outputs.user_id }}"
           python -u -m v3.scheduler --jobs all --user-id "${{ steps.uid.outputs.user_id }}" --audience all
