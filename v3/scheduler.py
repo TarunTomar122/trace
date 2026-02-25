@@ -16,8 +16,11 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import subprocess
 import sys
+import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
@@ -30,21 +33,21 @@ if str(REPO_ROOT) not in sys.path:
 JOBS = {
     "for_you": {
         "module": "v3.build_for_you",
-        "pool_cadence_days": 1,
+        "pool_cadence_days": 2,
         "description": (
             "For You (interest-matched articles with career-goal boost)"
         ),
     },
     "deep_dives": {
         "module": "v3.build_deep_dives",
-        "pool_cadence_days": 3,
+        "pool_cadence_days": 2,
         "description": (
             "Deep Dives (expert content from user-selected sources)"
         ),
     },
     "trending": {
         "module": "v3.build_trending",
-        "pool_cadence_days": 0,
+        "pool_cadence_days": 2,
         "description": "Trending (latest news across topics)",
     },
     "assemble": {
@@ -121,6 +124,60 @@ def _run_module(module: str, extra_args: list[str]) -> int:
     return result.returncode
 
 
+def _pool_mode_for_job(
+    *,
+    args: argparse.Namespace,
+    job_name: str,
+    cadence_days: int,
+    store,
+    run_all: bool,
+    run_pools: bool,
+    run_feeds: bool,
+) -> str:
+    """
+    Returns one of:
+      - "full": run pool + feeds
+      - "skip_pool": run feed only
+      - "pool_only": run pool only
+      - "skip_job": nothing to do
+    """
+    if run_feeds:
+        return "skip_pool"
+
+    if run_pools:
+        if args.force_pools:
+            return "pool_only"
+        pool_key = f"{job_name}_pool"
+        should_refresh = cadence_days <= 0 or store.should_run(pool_key, cadence_days)
+        return "pool_only" if should_refresh else "skip_job"
+
+    if args.force_pools:
+        return "full"
+
+    if cadence_days <= 0:
+        return "full"
+
+    pool_key = f"{job_name}_pool"
+    should_refresh = store.should_run(pool_key, cadence_days)
+    return "full" if should_refresh else "skip_pool"
+
+
+def _write_users_snapshot(audience: str, user_id: str = "") -> str:
+    from v3.lib.store import V3Store
+
+    store = V3Store()
+    if user_id:
+        profile = store.get_user_profile(user_id)
+        users = [profile] if profile else []
+    else:
+        users = store.get_onboarded_users(audience)
+    fd, path = tempfile.mkstemp(prefix="v3_users_", suffix=".json")
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump(users, f)
+    _log(f"Wrote user snapshot: {len(users)} users -> {path}")
+    return path
+
+
 def main() -> None:
     args = _parse_args()
     requested = set(args.jobs)
@@ -140,54 +197,100 @@ def main() -> None:
     run_feeds = "feeds" in requested
 
     build_jobs = ["for_you", "deep_dives", "trending"]
+    users_file = ""
 
     _log("=== V3 Pipeline Start ===")
     _log(f"Audience: {args.audience}")
     start = time.time()
 
-    jobs_to_run: list[tuple[str, dict]] = []
+    needs_user_snapshot = (
+        run_all
+        or run_feeds
+        or "assemble" in requested
+        or any(job_name in requested for job_name in build_jobs)
+    )
+
+    if needs_user_snapshot:
+        try:
+            users_file = _write_users_snapshot(args.audience, args.user_id)
+            extra.extend(["--users-file", users_file])
+        except Exception as exc:
+            _log(f"WARNING: Could not write users snapshot ({exc}); falling back to per-job user reads")
+
+    try:
+        from v3.lib.store import V3Store
+        cadence_store = V3Store()
+    except Exception as exc:
+        _log(f"WARNING: Cadence store unavailable ({exc}); defaulting to pool refresh")
+        cadence_store = None
+
+    jobs_to_run: list[tuple[str, dict, str]] = []
     for job_name in build_jobs:
         job = JOBS[job_name]
-        should_run = (
-            run_all
-            or run_pools
-            or run_feeds
-            or job_name in requested
-        )
-        if should_run:
-            jobs_to_run.append((job_name, job))
+        should_run = run_all or run_pools or run_feeds or job_name in requested
+        if not should_run:
+            continue
+
+        cadence_days = int(job.get("pool_cadence_days", 0))
+        mode = "full"
+        if cadence_store is not None:
+            mode = _pool_mode_for_job(
+                args=args,
+                job_name=job_name,
+                cadence_days=cadence_days,
+                store=cadence_store,
+                run_all=run_all,
+                run_pools=run_pools,
+                run_feeds=run_feeds,
+            )
+        elif run_pools:
+            mode = "pool_only"
+        elif run_feeds:
+            mode = "skip_pool"
+
+        if mode == "skip_job":
+            _log(
+                f"--- {job['description']} --- skipped "
+                f"(pool cadence={cadence_days}d, use --force-pools to override)"
+            )
+            continue
+        jobs_to_run.append((job_name, job, mode))
 
     if len(jobs_to_run) > 1:
         _log(f"Running {len(jobs_to_run)} feed builders in parallel")
 
-        def _run_job(name_and_job: tuple[str, dict]) -> tuple[str, int]:
-            name, job = name_and_job
+        def _run_job(name_job_mode: tuple[str, dict, str]) -> tuple[str, int, bool]:
+            name, job, mode = name_job_mode
             _log(f"--- {job['description']} (parallel) ---")
             job_extra = list(extra)
-            if run_pools:
+            if mode == "pool_only":
                 job_extra.append("--pool-only")
-            elif run_feeds:
+            elif mode == "skip_pool":
                 job_extra.append("--skip-pool")
             rc = _run_module(job["module"], job_extra)
-            return name, rc
+            return name, rc, mode in ("full", "pool_only")
 
         with ThreadPoolExecutor(max_workers=3) as executor:
             futures = {executor.submit(_run_job, j): j[0] for j in jobs_to_run}
             for f in as_completed(futures):
-                name, rc = f.result()
+                name, rc, ran_pool = f.result()
                 if rc != 0:
                     _log(f"WARNING: {name} exited with code {rc}")
+                elif ran_pool and cadence_store is not None:
+                    cadence_store.record_run(f"{name}_pool", {"mode": "scheduler"})
     else:
-        for job_name, job in jobs_to_run:
+        for job_name, job, mode in jobs_to_run:
             _log(f"--- {job['description']} ---")
             job_extra = list(extra)
-            if run_pools:
+            if mode == "pool_only":
                 job_extra.append("--pool-only")
-            elif run_feeds:
+            elif mode == "skip_pool":
                 job_extra.append("--skip-pool")
             rc = _run_module(job["module"], job_extra)
             if rc != 0:
                 _log(f"WARNING: {job_name} exited with code {rc}")
+            elif mode in ("full", "pool_only") and cadence_store is not None:
+                cadence_store.record_run(f"{job_name}_pool", {"mode": "scheduler"})
 
     if run_all or "assemble" in requested:
         _log("--- Assemble feeds ---")
@@ -216,6 +319,13 @@ def main() -> None:
 
     elapsed = time.time() - start
     _log(f"=== V3 Pipeline Done ({elapsed:.1f}s) ===")
+
+    if users_file:
+        try:
+            os.remove(users_file)
+            _log(f"Deleted user snapshot: {users_file}")
+        except OSError:
+            pass
 
     if args.user_id:
         try:

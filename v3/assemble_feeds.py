@@ -41,6 +41,11 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--limit-users", type=int, default=0)
     p.add_argument("--date", default="")
     p.add_argument(
+        "--users-file",
+        default="",
+        help="Optional JSON file with pre-fetched user profiles",
+    )
+    p.add_argument(
         "--audience",
         choices=["subscribed", "unsubscribed", "all"],
         default="subscribed",
@@ -54,12 +59,25 @@ def _yesterday(date_str: str) -> str:
     return (dt - timedelta(days=1)).strftime("%Y-%m-%d")
 
 
+def _load_users(store: V3Store, args: argparse.Namespace) -> list[dict]:
+    if args.users_file:
+        try:
+            with open(args.users_file, "r", encoding="utf-8") as f:
+                rows = json.load(f)
+            if isinstance(rows, list):
+                _log(f"Loaded {len(rows)} users from snapshot {args.users_file}")
+                return rows
+        except Exception as exc:
+            _log(f"WARNING users snapshot load failed ({exc}); falling back to Firestore")
+    return store.get_onboarded_users(args.audience)
+
+
 def assemble(args: argparse.Namespace) -> dict[str, int]:
     store = V3Store()
     target_date = args.date.strip() or _today_ist()
     yesterday = _yesterday(target_date)
 
-    users = store.get_onboarded_users(args.audience)
+    users = _load_users(store, args)
     if args.user_id:
         users = [u for u in users if u.get("uid") == args.user_id]
     if args.limit_users > 0:

@@ -32,8 +32,17 @@ PAYWALL_INDICATORS = (
 USER_AGENT = "TraceLinkFetcher/1.0 (+https://trace.app)"
 
 
-def _extract_text_from_html(html: str) -> str:
+def _extract_text_and_image_from_html(html: str) -> tuple[str, str]:
     soup = BeautifulSoup(html, "html.parser")
+    image = ""
+    og = soup.find("meta", property="og:image")
+    if og and og.get("content"):
+        image = str(og["content"])
+    else:
+        tw = soup.find("meta", attrs={"name": "twitter:image"})
+        if tw and tw.get("content"):
+            image = str(tw["content"])
+
     for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
         tag.decompose()
 
@@ -41,15 +50,15 @@ def _extract_text_from_html(html: str) -> str:
     if article:
         text = article.get_text(separator="\n", strip=True)
         if len(text) >= MIN_CONTENT_LENGTH:
-            return text
+            return text, image
 
     main = soup.find("main")
     if main:
         text = main.get_text(separator="\n", strip=True)
         if len(text) >= MIN_CONTENT_LENGTH:
-            return text
+            return text, image
 
-    return soup.get_text(separator="\n", strip=True)
+    return soup.get_text(separator="\n", strip=True), image
 
 
 def _is_paywall(text: str) -> bool:
@@ -57,7 +66,7 @@ def _is_paywall(text: str) -> bool:
     return any(p in lower for p in PAYWALL_INDICATORS)
 
 
-def _fetch_via_http(url: str) -> str:
+def _fetch_via_http(url: str) -> tuple[str, str]:
     try:
         resp = requests.get(
             url,
@@ -66,12 +75,12 @@ def _fetch_via_http(url: str) -> str:
             allow_redirects=True,
         )
         resp.raise_for_status()
-        text = _extract_text_from_html(resp.text)
+        text, image = _extract_text_and_image_from_html(resp.text)
         if len(text) >= MIN_CONTENT_LENGTH and not _is_paywall(text):
-            return text
+            return text, image
     except Exception:
         pass
-    return ""
+    return "", ""
 
 
 def _fetch_via_exa(url: str) -> tuple[str, str]:
@@ -108,9 +117,9 @@ def fetch_content(url: str) -> dict[str, Any]:
       image: str    — og_image or Exa image fallback
       source: str   — "http" or "exa"
     """
-    content = _fetch_via_http(url)
+    content, image = _fetch_via_http(url)
     if content:
-        return {"content": content, "image": "", "source": "http"}
+        return {"content": content, "image": image, "source": "http"}
 
     exa_content, exa_image = _fetch_via_exa(url)
     if exa_content:

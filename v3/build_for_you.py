@@ -40,7 +40,7 @@ from v1.storage import is_user_subscribed  # noqa: E402
 from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
 from v3.lib.store import V3Store, FOR_YOU_POOL, FREE_TIER_LIMITS, _today_ist  # noqa: E402
 from v3.lib.content import fetch_content, fetch_og_image  # noqa: E402
-from v3.lib.summarizer import get_or_generate_summary, batch_presummarize  # noqa: E402
+from v3.lib.summarizer import get_or_generate_summary, batch_presummarize, summary_lookup_key  # noqa: E402
 from v3.lib.scorer import rank_articles  # noqa: E402
 from v3.lib.diversity import dedupe_and_cap  # noqa: E402
 
@@ -84,6 +84,11 @@ def _parse_args() -> argparse.Namespace:
     )
     p.add_argument("--date", default="")
     p.add_argument(
+        "--users-file",
+        default="",
+        help="Optional JSON file with pre-fetched user profiles",
+    )
+    p.add_argument(
         "--audience",
         choices=["subscribed", "unsubscribed", "all"],
         default="subscribed",
@@ -95,6 +100,21 @@ def _parse_args() -> argparse.Namespace:
 def _load_config() -> dict[str, Any]:
     with open(REPO_ROOT / CONFIG_PATH) as f:
         return json.load(f)
+
+
+def _load_users(
+    store: V3Store, args: argparse.Namespace,
+) -> list[dict[str, Any]]:
+    if args.users_file:
+        try:
+            with open(args.users_file, "r", encoding="utf-8") as f:
+                rows = json.load(f)
+            if isinstance(rows, list):
+                _log(f"Loaded {len(rows)} users from snapshot {args.users_file}")
+                return rows
+        except Exception as exc:
+            _log(f"WARNING users snapshot load failed ({exc}); falling back to Firestore")
+    return store.get_onboarded_users(args.audience)
 
 
 def _title_matches_keywords(
@@ -180,12 +200,18 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
             stats["links_found"] += len(articles)
         _log(f"  {src_name}: {len(articles)} links")
 
+        article_urls = [
+            art.url if hasattr(art, "url") else art.get("url", "")
+            for art in articles
+        ]
+        existing_urls = store.pool_items_exist(FOR_YOU_POOL, article_urls)
+
         for art in articles:
             url = art.url if hasattr(art, "url") else art.get("url", "")
             if not url:
                 continue
 
-            if store.pool_item_exists(FOR_YOU_POOL, url):
+            if url in existing_urls:
                 with stats_lock:
                     stats["skipped"] += 1
                 continue
@@ -231,6 +257,7 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
             with stats_lock:
                 stats["new_items"] += 1
             _log(f"  + {title[:60]}")
+            existing_urls.add(url)
 
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = [executor.submit(_process_source, src) for src in sources]
@@ -283,7 +310,7 @@ def build_user_feeds(
     items_per_user = args.items_per_user or cfg_items
     max_age = args.max_age_days
 
-    users = store.get_onboarded_users(args.audience)
+    users = _load_users(store, args)
     if args.user_id:
         users = [
             u for u in users if u.get("uid") == args.user_id
@@ -310,6 +337,8 @@ def build_user_feeds(
         if str(src.get("name", "")).strip()
     }
     source_weights = _build_source_weight_map(config)
+    eligible_union: set[str] = set()
+    user_inputs: list[tuple[dict, set[str], set[str], list[str], str, str, int, str, bool]] = []
 
     for profile in users:
         uid = profile.get("uid", "")
@@ -350,15 +379,51 @@ def build_user_feeds(
         elif role_primary - eligible:
             eligible |= role_primary
 
-        seen_urls = store.get_seen_urls(uid)
+        eligible_union |= eligible
+        user_inputs.append(
+            (
+                profile,
+                eligible,
+                role_primary,
+                goals,
+                style,
+                seniority,
+                target,
+                role,
+                is_sub,
+            )
+        )
 
-        candidates = store.load_pool(
+    all_candidates: list[dict[str, Any]] = []
+    if user_inputs and eligible_union:
+        all_candidates = store.load_pool(
             FOR_YOU_POOL,
-            interest_ids=eligible,
+            interest_ids=eligible_union,
             source_names=allowed_sources,
             max_age_days=max_age,
-            exclude_urls=seen_urls,
         )
+    _log(f"Loaded {len(all_candidates)} shared for_you pool candidates")
+
+    for (
+        profile,
+        eligible,
+        role_primary,
+        goals,
+        style,
+        seniority,
+        target,
+        role,
+        is_sub,
+    ) in user_inputs:
+        uid = profile.get("uid", "")
+        if not uid:
+            continue
+        seen_urls = store.get_seen_urls(uid)
+        candidates = [
+            c for c in all_candidates
+            if c.get("interest_id", "") in eligible
+            and c.get("url", "") not in seen_urls
+        ]
 
         for c in candidates:
             sn = c.get("source_name", "")
@@ -406,11 +471,13 @@ def build_user_feeds(
 
     _log(f"Unique articles needed: {len(needed_items)}, combos: {len(needed_combos)}")
 
+    summary_map: dict[tuple[str, str, str], dict[str, Any] | None] = {}
     if needed_items and needed_combos:
-        batch_presummarize(
+        presummary = batch_presummarize(
             store, list(needed_items.values()), list(needed_combos),
             feed_type="default", max_workers=8,
         )
+        summary_map = presummary.get("summary_map", {}) or {}
 
     # ------------------------------------------------------------------
     # PHASE 2c: Assemble feeds (all summaries now cached — fast)
@@ -432,14 +499,20 @@ def build_user_feeds(
 
         feed_items: list[dict[str, Any]] = []
         for item in picked:
-            summary, was_cached = get_or_generate_summary(
-                store=store,
-                url=item.get("url", ""),
-                title=item.get("title", ""),
-                content=item.get("content", ""),
-                style=style,
-                seniority=seniority,
-            )
+            url = item.get("url", "")
+            lookup_key = summary_lookup_key(url, style, seniority, feed_type="default")
+            if lookup_key in summary_map:
+                summary = summary_map[lookup_key]
+                was_cached = True
+            else:
+                summary, was_cached = get_or_generate_summary(
+                    store=store,
+                    url=url,
+                    title=item.get("title", ""),
+                    content=item.get("content", ""),
+                    style=style,
+                    seniority=seniority,
+                )
             if not summary:
                 stats["rejected_items"] += 1
                 continue

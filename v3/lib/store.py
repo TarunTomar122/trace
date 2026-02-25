@@ -82,15 +82,57 @@ class V3Store:
           fallback) is older than this many days. Subscribed users are
           never skipped regardless of activity.
         """
-        profiles = self._base.get_all_user_profiles()
-        onboarded = [p for p in profiles if p.get("onboarded") is True]
+        def _to_jsonable(obj: Any) -> Any:
+            if obj is None:
+                return obj
+            if hasattr(obj, "isoformat"):
+                return obj.isoformat()
+            if isinstance(obj, dict):
+                return {k: _to_jsonable(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [_to_jsonable(i) for i in obj]
+            return obj
+
+        def _serialize(doc) -> dict[str, Any]:
+            raw = doc.to_dict() or {}
+            return {"uid": doc.id, **_to_jsonable(raw)}
 
         if audience == "all":
-            filtered = onboarded
+            onboarded_docs = self.db.collection("user_profiles").where(
+                "onboarded", "==", True
+            ).stream()
+            filtered = [_serialize(doc) for doc in onboarded_docs]
         elif audience == "unsubscribed":
+            onboarded_docs = self.db.collection("user_profiles").where(
+                "onboarded", "==", True
+            ).stream()
+            onboarded = [_serialize(doc) for doc in onboarded_docs]
             filtered = [p for p in onboarded if not is_user_subscribed(p)]
         else:
-            filtered = [p for p in onboarded if is_user_subscribed(p)]
+            # Query subscribed users server-side where possible, then merge.
+            # Fallback to in-memory check when query operators are unavailable.
+            try:
+                seen_uids: set[str] = set()
+                subscribed: list[dict[str, Any]] = []
+                for field in ("subscriptionStatus", "appSubscriptionStatus"):
+                    docs = (
+                        self.db.collection("user_profiles")
+                        .where("onboarded", "==", True)
+                        .where(field, "in", ["trial", "active"])
+                        .stream()
+                    )
+                    for doc in docs:
+                        if doc.id in seen_uids:
+                            continue
+                        seen_uids.add(doc.id)
+                        subscribed.append(_serialize(doc))
+                filtered = subscribed
+            except Exception:
+                onboarded_docs = self.db.collection("user_profiles").where(
+                    "onboarded", "==", True
+                ).stream()
+                onboarded = [_serialize(doc) for doc in onboarded_docs]
+                filtered = [p for p in onboarded if is_user_subscribed(p)]
 
         if max_inactive_days <= 0:
             return filtered
@@ -167,6 +209,35 @@ class V3Store:
     def pool_item_exists(self, collection: str, url: str) -> bool:
         doc_id = _url_hash(url)
         return self.db.collection(collection).document(doc_id).get().exists
+
+    def pool_items_exist(
+        self, collection: str, urls: list[str],
+    ) -> set[str]:
+        """
+        Batch-check pool URLs that already exist.
+
+        Returns a set of URLs that already have documents in the pool.
+        """
+        ordered = [u for u in dict.fromkeys(urls) if u]
+        if not ordered:
+            return set()
+
+        doc_to_url = {_url_hash(url): url for url in ordered}
+        refs = [
+            self.db.collection(collection).document(doc_id)
+            for doc_id in doc_to_url.keys()
+        ]
+
+        existing: set[str] = set()
+        chunk_size = 300
+        for i in range(0, len(refs), chunk_size):
+            chunk = refs[i:i + chunk_size]
+            for doc in self.db.get_all(chunk):
+                if doc.exists:
+                    url = doc_to_url.get(doc.id, "")
+                    if url:
+                        existing.add(url)
+        return existing
 
     def load_pool(
         self,

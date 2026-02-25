@@ -329,6 +329,13 @@ def _cache_bucket(
     return style, seniority
 
 
+def summary_lookup_key(
+    url: str, style: str, seniority: str, feed_type: str = "default",
+) -> tuple[str, str, str]:
+    cache_style, cache_seniority = _cache_bucket(style, seniority, feed_type)
+    return (url, cache_style, cache_seniority)
+
+
 def _clip_words(text: str, max_words: int) -> str:
     words = (text or "").split()
     if len(words) <= max_words:
@@ -520,7 +527,7 @@ def batch_presummarize(
     style_seniority_combos: list[tuple[str, str]],
     feed_type: str = "default",
     max_workers: int = 8,
-) -> dict[str, int]:
+) -> dict[str, Any]:
     """
     Pre-generate summaries for all pool_items × style/seniority combos.
 
@@ -532,6 +539,7 @@ def batch_presummarize(
     """
     tasks: list[tuple[str, str, str, str, str, str]] = []
     already_cached = 0
+    summary_map: dict[tuple[str, str, str], dict[str, Any] | None] = {}
 
     for item in pool_items:
         url = item.get("url", "")
@@ -548,16 +556,21 @@ def batch_presummarize(
                 url, cache_style, cache_seniority
             )
             if cached:
+                cached_summary = cached.get("summary")
+                summary_map[(url, cache_style, cache_seniority)] = (
+                    None if _is_rejection(cached_summary) else cached_summary
+                )
                 already_cached += 1
                 continue
             tasks.append((url, title, content, style, seniority, feed_type))
 
-    stats = {
+    stats: dict[str, Any] = {
         "to_generate": len(tasks),
         "already_cached": already_cached,
         "generated": 0,
         "rejected": 0,
         "failed": 0,
+        "summary_map": summary_map,
     }
 
     if not tasks:
@@ -588,6 +601,7 @@ def batch_presummarize(
                     summary,
                     MODEL,
                 )
+                summary_map[(url, cache_style, cache_seniority)] = summary
                 return "generated", title[:50]
             if error.startswith("rejected:"):
                 cache_style, cache_seniority = _cache_bucket(
@@ -600,6 +614,7 @@ def batch_presummarize(
                     _rejection_payload(error.split(":", 1)[1]),
                     MODEL,
                 )
+                summary_map[(url, cache_style, cache_seniority)] = None
                 return "rejected", f"{title[:40]}: {error}"
             return "failed", f"{title[:40]}: {error}"
         except Exception as exc:

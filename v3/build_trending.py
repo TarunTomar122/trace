@@ -36,7 +36,7 @@ from v1.storage import is_user_subscribed  # noqa: E402
 from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
 from v3.lib.store import V3Store, TRENDING_POOL, FREE_TIER_LIMITS, _today_ist  # noqa: E402
 from v3.lib.content import fetch_content, fetch_og_image  # noqa: E402
-from v3.lib.summarizer import get_or_generate_summary, batch_presummarize  # noqa: E402
+from v3.lib.summarizer import get_or_generate_summary, batch_presummarize, summary_lookup_key  # noqa: E402
 from v3.lib.diversity import dedupe_and_cap  # noqa: E402
 
 CONFIG_PATH = "v3/config/trending_sources.json"
@@ -86,6 +86,11 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--max-age-hours", type=int, default=DEFAULT_MAX_AGE_HOURS)
     p.add_argument("--date", default="")
     p.add_argument(
+        "--users-file",
+        default="",
+        help="Optional JSON file with pre-fetched user profiles",
+    )
+    p.add_argument(
         "--audience",
         choices=["subscribed", "unsubscribed", "all"],
         default="subscribed",
@@ -97,6 +102,21 @@ def _parse_args() -> argparse.Namespace:
 def _load_config() -> dict[str, Any]:
     with open(REPO_ROOT / CONFIG_PATH) as f:
         return json.load(f)
+
+
+def _load_users(
+    store: V3Store, args: argparse.Namespace,
+) -> list[dict[str, Any]]:
+    if args.users_file:
+        try:
+            with open(args.users_file, "r", encoding="utf-8") as f:
+                rows = json.load(f)
+            if isinstance(rows, list):
+                _log(f"Loaded {len(rows)} users from snapshot {args.users_file}")
+                return rows
+        except Exception as exc:
+            _log(f"WARNING users snapshot load failed ({exc}); falling back to Firestore")
+    return store.get_onboarded_users(args.audience)
 
 
 def _title_matches_keywords(title: str, keywords: list[str]) -> bool:
@@ -234,6 +254,12 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
             stats["links_found"] += len(articles)
         _log(f"  {src_name}: {len(articles)} links")
 
+        article_urls = [
+            art.url if hasattr(art, "url") else art.get("url", "")
+            for art in articles
+        ]
+        existing_urls = store.pool_items_exist(TRENDING_POOL, article_urls)
+
         for art in articles:
             url = art.url if hasattr(art, "url") else art.get("url", "")
             if not url:
@@ -252,7 +278,7 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
                     stats["filtered"] += 1
                 continue
 
-            if store.pool_item_exists(TRENDING_POOL, url):
+            if url in existing_urls:
                 with stats_lock:
                     stats["skipped"] += 1
                 continue
@@ -287,6 +313,7 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
             with stats_lock:
                 stats["new_items"] += 1
             _log(f"  + {title[:60]}")
+            existing_urls.add(url)
 
     with ThreadPoolExecutor(max_workers=8) as executor:
         futures = [executor.submit(_process_source, src) for src in sources]
@@ -340,7 +367,7 @@ def build_user_feeds(
     max_age_hours = args.max_age_hours
     max_age_days = max(1, max_age_hours // 24 + 1)
 
-    users = store.get_onboarded_users(args.audience)
+    users = _load_users(store, args)
     if args.user_id:
         users = [u for u in users if u.get("uid") == args.user_id]
     if args.limit_users > 0:
@@ -356,6 +383,13 @@ def build_user_feeds(
     _log("-" * 40)
 
     user_picks: list[tuple[dict, list[dict], str, str]] = []
+    all_candidates: list[dict[str, Any]] = []
+    if users:
+        all_candidates = store.load_pool(
+            TRENDING_POOL,
+            max_age_days=max_age_days,
+        )
+    _log(f"Loaded {len(all_candidates)} shared trending pool candidates")
     source_weights = {
         str(src.get("name", "")): float(src.get("source_weight", 1.0))
         for src in config.get("sources", [])
@@ -373,11 +407,10 @@ def build_user_feeds(
 
         seen_urls = store.get_seen_urls(uid)
 
-        candidates = store.load_pool(
-            TRENDING_POOL,
-            max_age_days=max_age_days,
-            exclude_urls=seen_urls,
-        )
+        candidates = [
+            c for c in all_candidates
+            if c.get("url", "") not in seen_urls
+        ]
 
         if not candidates:
             store.write_feed_section(uid, target_date, "trending", [])
@@ -409,11 +442,13 @@ def build_user_feeds(
 
     _log(f"Unique articles needed: {len(needed_items)}, combos: {len(needed_combos)}")
 
+    summary_map: dict[tuple[str, str, str], dict[str, Any] | None] = {}
     if needed_items and needed_combos:
-        batch_presummarize(
+        presummary = batch_presummarize(
             store, list(needed_items.values()), list(needed_combos),
             feed_type="trending", max_workers=8,
         )
+        summary_map = presummary.get("summary_map", {}) or {}
 
     # ------------------------------------------------------------------
     # PHASE 2c: Assemble feeds (all summaries now cached — fast)
@@ -435,15 +470,23 @@ def build_user_feeds(
 
         feed_items: list[dict[str, Any]] = []
         for item in picked:
-            summary, was_cached = get_or_generate_summary(
-                store=store,
-                url=item.get("url", ""),
-                title=item.get("title", ""),
-                content=item.get("content", ""),
-                style=style,
-                seniority=seniority,
-                feed_type="trending",
+            url = item.get("url", "")
+            lookup_key = summary_lookup_key(
+                url, style, seniority, feed_type="trending",
             )
+            if lookup_key in summary_map:
+                summary = summary_map[lookup_key]
+                was_cached = True
+            else:
+                summary, was_cached = get_or_generate_summary(
+                    store=store,
+                    url=url,
+                    title=item.get("title", ""),
+                    content=item.get("content", ""),
+                    style=style,
+                    seniority=seniority,
+                    feed_type="trending",
+                )
             if not summary:
                 stats["rejected_items"] += 1
                 continue
