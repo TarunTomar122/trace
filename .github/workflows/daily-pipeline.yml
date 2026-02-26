@@ -89,4 +89,4 @@ jobs:
       
       - name: Refresh trending and rebuild feeds
         run: |
-          python -u -m v3.scheduler --jobs trending assemble --audience all
+          python -u -m v3.scheduler --jobs trending assemble --audience all --force-pools
