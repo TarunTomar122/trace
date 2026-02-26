@@ -115,21 +115,49 @@ export default function RootLayout({
           "priceValidUntil": "2026-12-31",
           "url": "https://www.yourtrace.online/profile"
         }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://www.yourtrace.online/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What does Trace include?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Trace includes three daily feeds: Trending, For You, and Deep Dives. Every item includes an AI summary in your preferred reading style."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How much does Trace cost?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Trace starts with a free trial and then costs $2.99 per month. You can cancel anytime from your profile."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does personalization work?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "You choose your role, interests, and preferred sources. Trace uses those inputs to rank and summarize content for your daily feeds."
+            }
+          }
+        ]
       }
     ]
   };
 
   return (
     <html lang="en" className="scroll-smooth" suppressHydrationWarning>
-      <head>
+      <body
+        className={`${spaceGrotesk.variable} ${geistMono.variable} antialiased`}
+      >
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
-      </head>
-      <body
-        className={`${spaceGrotesk.variable} ${geistMono.variable} antialiased`}
-      >
         <ThemeProvider>
           <PostHogProvider>
             <AuthProvider>
@@ -139,7 +167,8 @@ export default function RootLayout({
         </ThemeProvider>
         <Analytics />
         <Script
-          defer
+          strategy="lazyOnload"
+          async
           data-website-id="dfid_m3LeCX0KgJACmcFPThB33"
           data-domain="www.yourtrace.online"
           src="https://datafa.st/js/script.js"

@@ -133,7 +133,7 @@ export default function OnboardingPage() {
         {/* Header */}
         <div className="text-center mb-2">
           <div className="text-base text-foreground uppercase flex items-center justify-center gap-2 tracking-[0.15em] font-semibold mb-4">
-            <img src="/trace.png" alt="Trace" className="h-5 md:h-6 w-auto" />
+            <img src="/trace.webp" alt="Trace" width={120} height={32} className="h-5 md:h-6 w-auto" />
             TRACE
           </div>
         </div>

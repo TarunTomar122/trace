@@ -1,0 +1,17 @@
+Daily Story for Tarun Singh Tomar (B19CSE090)
+Generated: 2026-02-25 19:59:16
+Feed Date: 2026-02-25
+
+============================================================
+
+Hey Tarun,
+
+Here’s a rundown of some of the most interesting tech and startup news making waves today.
+
+First off, Wayve, a U.K.-based self-driving tech startup, has just made headlines after raising a massive $1.2 billion in funding. This round saw contributions from big names like Nvidia, Uber, and three automakers, pushing Wayve's valuation to a staggering $8.6 billion. What sets Wayve apart is its innovative AI-driven approach that doesn’t rely on high-definition maps for autonomous driving. This investment speaks volumes about the growing interest and confidence in the future of automated driving technology, marking a significant step for startups in this competitive space. You can read more about it [here](https://techcrunch.com/2026/02/24/self-driving-tech-startup-wayve-raises-1-2b-from-nvidia-uber-and-three-automakers).
+
+In another intriguing development, Spanish startup Multiverse Computing has released a free, compressed AI model called HyperNova 60B. This model is half the size of OpenAI's gpt-oss-120b while maintaining impressive accuracy and lower latency. By making this model available for free on Hugging Face, Multiverse aims to democratize access to advanced AI technologies for businesses. They are also planning to open-source more models in 2026, which could reshape the AI landscape and make it more accessible for developers like us. You can find more details [here](https://techcrunch.com/2026/02/24/spanish-soonicorn-multiverse-computing-releases-free-compressed-ai-model).
+
+Lastly, there’s been a rather dramatic reaction in the tech market following a speculative blog post by Citrini Research. The post suggested a scenario where AI could potentially replace knowledge work, which led to a $200 billion loss in software stocks in just one day. The iShares Expanded Tech-Software Sector ETF dropped nearly 5%, which was significantly more than the overall 1% decline in the S&P 500. This reaction underscores the volatility and sensitivity of tech stocks to speculative narratives, showing just how quickly the market can turn on the mere suggestion of change. Check out more about this event [here](https://www.marketwatch.com/story/why-did-ai-science-fiction-spur-market-panic-we-asked-a-behavioral-finance-expert-to-find-out-beb32363).
+
+That’s the scoop for today. Lots happening in the tech and startup world!

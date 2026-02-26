@@ -18,8 +18,10 @@ export default function PrivacyPolicyPage() {
                         </Link>
                         <div className="text-lg text-foreground uppercase flex items-center gap-3 tracking-[0.1em] font-semibold">
                             <img
-                                src="/trace.png"
+                                src="/trace.webp"
                                 alt="Trace Logo"
+                                width={120}
+                                height={38}
                                 className="h-6 w-auto object-contain"
                             />
                             TRACE
@@ -239,4 +241,3 @@ export default function PrivacyPolicyPage() {
         </div>
     );
 }
-

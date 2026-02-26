@@ -372,6 +372,7 @@ export interface UserProfile {
 
   // Newsletter settings
   newsletterOptIn?: boolean; // Default true for subscribed users
+  dailyNewsletterEnabled?: boolean; // Daily digest email preference
   newsletterSendTime?: string; // Default '10:00' IST
   newsletterFrequency?: string; // Default 'daily'
   newsletterLastSentAt?: string | null; // ISO datetime

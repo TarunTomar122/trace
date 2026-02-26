@@ -24,7 +24,6 @@ import {
   MessageSquare,
   Newspaper,
   ArrowUpRight,
-  Lightbulb,
   Search,
   TrendingUp,
   Flame,
@@ -140,18 +139,21 @@ const BadgeMarquee = () => {
       alt: "Featured on neeed.directory",
       href: "https://neeed.directory/products/trace?utm_source=trace",
       width: 140,
+      height: 40,
     },
     {
       src: "https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1064894&amp;theme=light&amp;t=1770707483335",
       alt: "Featured on Product Hunt",
       href: "https://www.producthunt.com/products/trace-23/launches/trace-529d0891-421d-450f-8263-879fe3b9370c?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-trace-529d0891-421d-450f-8263-879fe3b9370c",
       width: 190,
+      height: 41,
     },
     {
       src: "https://foundrlist.com/api/badge/trace",
       alt: "Live on FoundrList",
       href: "https://foundrlist.com/product/trace",
       width: 106,
+      height: 40,
     },
     // Add more badges here as you get featured on more platforms
     // {
@@ -180,6 +182,7 @@ const BadgeMarquee = () => {
               src={badge.src}
               alt={badge.alt}
               width={badge.width}
+              height={badge.height}
               className="h-auto dark:hidden"
             />
             {badge.darkSrc && (
@@ -187,6 +190,7 @@ const BadgeMarquee = () => {
                 src={badge.darkSrc}
                 alt={badge.alt}
                 width={badge.width}
+                height={badge.height}
                 className="h-auto hidden dark:block"
               />
             )}
@@ -195,6 +199,7 @@ const BadgeMarquee = () => {
                 src={badge.src}
                 alt={badge.alt}
                 width={badge.width}
+                height={badge.height}
                 className="h-auto hidden dark:block"
               />
             )}
@@ -295,9 +300,9 @@ const Nav = () => {
             </div>
 
             {/* Logo - Centered */}
-            <Link href="/" className="text-lg md:text-xl text-foreground uppercase flex items-center gap-2 tracking-wide font-semibold md:absolute md:left-1/2 md:-translate-x-1/2">
-              <Lightbulb size={20} className="md:w-[22px] md:h-[22px]" strokeWidth={1.5} />
-              <span>TRACE</span>
+            <Link href="/" className="flex items-center gap-2 md:absolute md:left-1/2 md:-translate-x-1/2">
+              <img src="/trace.webp" alt="Trace" width={120} height={32} className="h-6 w-auto md:h-7" />
+              <span className="text-sm md:text-base font-semibold tracking-[0.12em] text-foreground">TRACE</span>
             </Link>
 
             {/* Desktop Right Nav */}
@@ -306,7 +311,7 @@ const Nav = () => {
                 <div className="flex items-center gap-3">
                   <Link href="/profile" className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                     {user.photoURL && (
-                      <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" loading="lazy" />
+                      <img src={user.photoURL} alt="Profile" width={32} height={32} className="w-8 h-8 rounded-full" loading="lazy" />
                     )}
                     <span className="text-sm font-medium text-secondary">
                       {profile?.name?.split(' ')[0] || user.displayName?.split(' ')[0]}
@@ -328,7 +333,7 @@ const Nav = () => {
               {user ? (
                 <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                   {user.photoURL && (
-                    <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" loading="lazy" />
+                    <img src={user.photoURL} alt="Profile" width={32} height={32} className="w-8 h-8 rounded-full" loading="lazy" />
                   )}
                 </Link>
               ) : (
@@ -449,16 +454,37 @@ const Hero = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.3 }}
-                  className="text-base md:text-lg text-secondary leading-relaxed mb-6 md:mb-8 max-w-lg"
+                  className="text-base md:text-lg text-secondary leading-relaxed mb-4 max-w-lg"
                 >
-                  Trending news, personalized articles, and expert deep dives — refreshed daily.
+                  Trending news, personalized articles, and expert deep dives — refreshed daily just for you.
                 </motion.p>
 
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.35 }}
+                  className="flex flex-wrap gap-2 mb-6 md:mb-8"
+                >
+                  {[
+                    { label: "Trending", desc: "What's hot today" },
+                    { label: "For You", desc: "Matched to your interests" },
+                    { label: "Deep Dives", desc: "Worth your time" },
+                  ].map((item) => (
+                    <div
+                      key={item.label}
+                      className="px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/50 dark:border-amber-800/30"
+                    >
+                      <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">{item.label}</span>
+                      <span className="text-xs text-secondary/60 ml-1.5">{item.desc}</span>
+                    </div>
+                  ))}
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.4 }}
-                  className="flex flex-col sm:flex-row gap-3"
+                  className="flex flex-col sm:flex-row gap-3 mb-6"
                 >
                   <a href="/feed" className="w-full sm:w-auto">
                     <button className="inline-flex items-center justify-center gap-2 bg-accent text-accent-foreground px-6 py-3.5 rounded-full text-sm font-medium hover:bg-accent/90 transition-colors w-full sm:w-auto">
@@ -466,7 +492,21 @@ const Hero = () => {
                       <ChevronRight size={16} />
                     </button>
                   </a>
+                  <a href="/trending" className="w-full sm:w-auto">
+                    <button className="inline-flex items-center justify-center gap-2 bg-transparent border border-border text-foreground px-6 py-3.5 rounded-full text-sm font-medium hover:bg-secondary/5 transition-colors w-full sm:w-auto">
+                      Browse Trending
+                    </button>
+                  </a>
                 </motion.div>
+
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.6, delay: 0.5 }}
+                  className="text-xs text-secondary/50"
+                >
+                  Updated every morning at 6 AM
+                </motion.p>
               </>
             ) : (
               // New or not-onboarded user view - Clean layout
@@ -535,10 +575,14 @@ const Hero = () => {
                       <ChevronRight size={16} />
                     </button>
                   )}
+                  <Link
+                    href="/tools/digest-preview"
+                    className="inline-flex items-center gap-1.5 px-4 py-3.5 text-sm font-medium text-secondary/70 hover:text-foreground transition-colors"
+                  >
+                    or preview your digest first
+                    <ArrowUpRight size={14} />
+                  </Link>
                 </motion.div>
-
-
-
 
                 {/* Social Proof */}
                 <motion.div
@@ -1308,96 +1352,146 @@ const InteractiveDemo = () => {
   );
 };
 
-// --- Static Hero Feed Preview (for right side of hero) ---
-const HERO_TABS = [
-  { key: 'trending', label: 'Trending', icon: Flame },
-  { key: 'for_you', label: 'For You', icon: Crosshair },
-  { key: 'deep_dives', label: 'Deep Dives', icon: GraduationCap },
-] as const;
-
-const HERO_FEED_ITEMS: Record<string, { source: string; initials: string; time: string; title: string; subtitle: string }[]> = {
-  trending: [
-    { source: "TechCrunch", initials: "TC", time: "2h ago", title: "OpenAI launches GPT-5 with real-time reasoning and 1M token context", subtitle: "The new model handles multi-step planning and code generation at unprecedented levels." },
-    { source: "The Verge", initials: "TV", time: "4h ago", title: "Apple announces M5 chip with dedicated AI co-processor", subtitle: "On-device AI inference gets 3x faster with Apple's latest silicon." },
-    { source: "MIT Tech Review", initials: "MT", time: "5h ago", title: "Europe's AI Act enforcement begins — here's what changes", subtitle: "New rules require transparency labels on AI-generated content across all platforms." },
-    { source: "Wired", initials: "WI", time: "6h ago", title: "Google DeepMind cracks protein-drug interaction prediction", subtitle: "AlphaFold 3 can now model how drugs bind to proteins, accelerating pharma R&D." },
-  ],
-  for_you: [
-    { source: "Lenny's Newsletter", initials: "LN", time: "3h ago", title: "The quiet revolution in solo SaaS: founders hitting $1M ARR alone", subtitle: "How indie builders are using AI and niche markets to build real businesses." },
-    { source: "a16z", initials: "A1", time: "5h ago", title: "Why every product team needs an AI strategy by Q3", subtitle: "A framework for integrating AI into product roadmaps without the hype." },
-    { source: "Stratechery", initials: "ST", time: "8h ago", title: "The unbundling of search is finally happening", subtitle: "AI assistants are eating Google's lunch — and creating new opportunities." },
-    { source: "Pragmatic Engineer", initials: "PE", time: "10h ago", title: "How senior engineers actually spend their time", subtitle: "A survey of 2,000 staff+ engineers reveals surprising patterns in how they allocate focus." },
-  ],
-  deep_dives: [
-    { source: "Anthropic Research", initials: "AR", time: "12 min read", title: "Constitutional AI: building safe systems from the ground up", subtitle: "A deep technical look at RLHF alternatives and alignment research." },
-    { source: "Figma Engineering", initials: "FE", time: "15 min read", title: "How we rebuilt multiplayer from scratch using CRDTs", subtitle: "Real-time collaboration infra that scales to millions of concurrent users." },
-    { source: "Stripe Press", initials: "SP", time: "10 min read", title: "Designing payment flows that convert: lessons from 10M checkouts", subtitle: "Data-backed patterns that reduced cart abandonment by 23%." },
-    { source: "Netflix Tech Blog", initials: "NT", time: "8 min read", title: "Scaling recommendation systems to 250M users", subtitle: "How Netflix's ML infra serves personalized picks in under 100ms globally." },
-  ],
+// --- Live Hero Feed Preview (for right side of hero) ---
+type HeroTrendingItem = {
+  id: string;
+  title: string;
+  url: string;
+  summary: string;
+  source: string;
+  thumbnail?: string;
 };
 
+function getHostname(url: string): string {
+  try {
+    return new URL(url).hostname.replace('www.', '');
+  } catch {
+    return '';
+  }
+}
+
+function isValidThumbnail(url?: string): boolean {
+  if (!url || typeof url !== 'string') return false;
+  if (url.length < 10) return false;
+  if (url.includes('placeholder') || url.includes('default')) return false;
+  return true;
+}
+
 const HeroDemo = () => {
-  const [activeTab, setActiveTab] = useState<string>('trending');
+  const [items, setItems] = useState<HeroTrendingItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchTrending() {
+      try {
+        const res = await fetch('/api/public/trending');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.items)) {
+            setItems(data.items.slice(0, 4));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch trending:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchTrending();
+  }, []);
 
   return (
     <div className="relative w-full mt-6 md:mt-0">
       <div className="bg-white dark:bg-gray-950 rounded-2xl border border-border/60 overflow-hidden shadow-xl shadow-black/5 dark:shadow-gray-950/20">
-        <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between bg-gray-50/50 dark:bg-gray-900/50">
-          <div className="flex items-center gap-2">
-            <img src="/trace.png" alt="Trace" className="h-5 w-auto" loading="lazy" />
-            <span className="text-xs font-semibold text-foreground uppercase tracking-wider">Your Feed</span>
-          </div>
-          <span className="text-[10px] text-secondary/60 font-mono">Today</span>
-        </div>
-
-        <div className="px-4 py-2.5 border-b border-border/40 flex gap-1">
-          {HERO_TABS.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${
-                  isActive
-                    ? 'bg-foreground text-background'
-                    : 'text-secondary/60 hover:bg-gray-100 dark:hover:bg-gray-800'
-                }`}
-              >
-                <Icon size={12} />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="overflow-hidden select-none">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="divide-y divide-border/30"
+        {/* Title + Link */}
+        <div className="px-4 py-3 border-b border-border/40">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-foreground">Trending Now</h3>
+              <p className="text-[10px] text-secondary/50">Today's top articles</p>
+            </div>
+            <Link
+              href="/trending"
+              className="text-[10px] font-medium text-amber-600 hover:text-amber-700 transition-colors flex items-center gap-0.5"
             >
-              {(HERO_FEED_ITEMS[activeTab] || []).map((item, i) => (
-                <div key={i} className="px-4 py-3.5 hover:bg-gray-50/50 dark:hover:bg-gray-900/50 transition-colors">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <div className="w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[8px] font-bold text-secondary/70">
-                      {item.initials}
-                    </div>
-                    <span className="text-[11px] text-secondary/60 font-medium">{item.source}</span>
-                    <span className="text-[11px] text-secondary/30">·</span>
-                    <span className="text-[11px] text-secondary/40">{item.time}</span>
-                  </div>
-                  <h4 className="text-[13px] font-semibold leading-snug text-foreground mb-1">{item.title}</h4>
-                  <p className="text-[11px] text-secondary/50 leading-relaxed">{item.subtitle}</p>
+              View all
+              <ChevronRight size={12} />
+            </Link>
+          </div>
+        </div>
+
+        {/* Cards Grid */}
+        <div className="p-3 overflow-hidden">
+          {loading ? (
+            <div className="grid grid-cols-2 gap-3">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="aspect-[16/10] rounded-lg bg-gray-200 dark:bg-gray-800 mb-2" />
+                  <div className="h-3 bg-gray-200 dark:bg-gray-800 rounded w-3/4 mb-1" />
+                  <div className="h-2 bg-gray-200 dark:bg-gray-800 rounded w-1/2" />
                 </div>
               ))}
+            </div>
+          ) : items.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3">
+              {items.map((item, i) => {
+                const host = item.source || getHostname(item.url);
+                const hasImage = isValidThumbnail(item.thumbnail);
+                return (
+                  <a
+                    key={item.id || i}
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group block"
+                  >
+                    {/* Image */}
+                    <div className="relative aspect-[16/10] rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 mb-2">
+                      {hasImage ? (
+                        <img
+                          src={item.thumbnail}
+                          alt=""
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="text-2xl font-bold text-gray-300 dark:text-gray-600">
+                            {host.charAt(0).toUpperCase() || '?'}
+                          </span>
+                        </div>
+                      )}
+                      {/* Source badge */}
+                      {host && (
+                        <div className="absolute top-1.5 left-1.5 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                          <span className="text-[8px] font-medium text-white leading-none">{host}</span>
+                        </div>
+                      )}
+                    </div>
+                    {/* Title */}
+                    <h4 className="text-[11px] font-semibold leading-snug text-foreground line-clamp-2 group-hover:text-amber-600 transition-colors">
+                      {item.title}
+                    </h4>
+                    {/* Summary */}
+                    <p className="text-[9px] text-secondary/50 line-clamp-1 mt-0.5">
+                      {item.summary || '\u00A0'}
+                    </p>
+                  </a>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="py-8 text-center">
+              <p className="text-xs text-secondary/50">Loading today's articles...</p>
+            </div>
+          )}
+        </div>
 
-            </motion.div>
-          </AnimatePresence>
+        {/* CTA footer */}
+        <div className="px-4 py-3 bg-amber-50/50 dark:bg-amber-950/20 border-t border-amber-200/30 dark:border-amber-800/20">
+          <p className="text-[10px] text-center text-secondary/70">
+            <span className="font-medium text-amber-700 dark:text-amber-400">Sign up free</span> to get personalized For You & Deep Dive feeds
+          </p>
         </div>
       </div>
     </div>
@@ -1440,8 +1534,10 @@ const DemoFeed = () => {
         >
           <div className="border-2 border-border bg-background shadow-2xl dark:shadow-gray-900/50 overflow-hidden">
             <img
-              src="/feed.png"
+              src="/feed.webp"
               alt="Trace Feed - Trending, For You, and Deep Dives"
+              width={1600}
+              height={1000}
               className="w-full h-auto"
               loading="lazy"
             />
@@ -2464,7 +2560,7 @@ const GetStarted = () => {
               <div className="space-y-6 md:space-y-8">
                 <div className="flex flex-col items-center gap-3 md:gap-4">
                   {user.photoURL && (
-                    <img src={user.photoURL} alt="Profile" className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-gray-200 dark:border-gray-800" loading="lazy" />
+                    <img src={user.photoURL} alt="Profile" width={80} height={80} className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-gray-200 dark:border-gray-800" loading="lazy" />
                   )}
                   <div>
                     <p className="text-lg md:text-xl font-semibold text-foreground mb-1">{profile?.name || user.displayName}</p>
@@ -2512,6 +2608,93 @@ const GetStarted = () => {
   );
 };
 
+const SEOContentSection = () => {
+  const faqItems = [
+    {
+      q: "What is Trace?",
+      a: "Trace is a personalized reading app that combines three daily feeds: trending news, interest-matched articles, and expert deep dives.",
+    },
+    {
+      q: "How long does onboarding take?",
+      a: "Most people complete onboarding in under one minute by selecting a role, interests, and preferred sources.",
+    },
+    {
+      q: "Is there a free trial?",
+      a: "Yes. Trace includes a free trial before the monthly plan starts, and you can cancel anytime.",
+    },
+  ];
+
+  return (
+    <section className="py-16 md:py-24 bg-background border-t border-border/50 relative z-10" aria-labelledby="trace-faq">
+      <div className="container mx-auto px-4 sm:px-6 max-w-5xl">
+        <article className="space-y-8">
+          <header className="text-center">
+            <h2 id="trace-faq" className="text-2xl md:text-4xl font-semibold tracking-tight text-foreground mb-3">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-secondary max-w-3xl mx-auto">
+              Trace helps professionals stay current without opening dozens of apps. The sections below summarize core product details in a structured format for people and search engines.
+            </p>
+          </header>
+
+          <section aria-labelledby="key-benefits">
+            <h3 id="key-benefits" className="text-lg font-semibold text-foreground mb-3">Key Benefits</h3>
+            <ul className="list-disc pl-6 space-y-2 text-secondary">
+              <li>One place to review trending topics, personalized recommendations, and long-form deep dives.</li>
+              <li>AI-generated summaries tuned to your preferred reading style and depth.</li>
+              <li>A daily workflow that reduces information overload and improves signal-to-noise ratio.</li>
+            </ul>
+          </section>
+
+          <section aria-labelledby="plan-compare">
+            <h3 id="plan-compare" className="text-lg font-semibold text-foreground mb-3">Plan Snapshot</h3>
+            <div className="overflow-x-auto border border-border/60 rounded-xl">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 dark:bg-gray-900">
+                  <tr>
+                    <th className="text-left p-3 font-semibold text-foreground">Feature</th>
+                    <th className="text-left p-3 font-semibold text-foreground">Included</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-t border-border/50">
+                    <td className="p-3 text-secondary">Daily Trending feed</td>
+                    <td className="p-3 text-secondary">Yes</td>
+                  </tr>
+                  <tr className="border-t border-border/50">
+                    <td className="p-3 text-secondary">Personalized For You feed</td>
+                    <td className="p-3 text-secondary">Yes</td>
+                  </tr>
+                  <tr className="border-t border-border/50">
+                    <td className="p-3 text-secondary">Deep Dive summaries</td>
+                    <td className="p-3 text-secondary">Yes</td>
+                  </tr>
+                  <tr className="border-t border-border/50">
+                    <td className="p-3 text-secondary">Monthly price after trial</td>
+                    <td className="p-3 text-secondary">$2.99</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section aria-labelledby="faq-list">
+            <h3 id="faq-list" className="text-lg font-semibold text-foreground mb-3">Common Questions</h3>
+            <ol className="space-y-3 text-secondary">
+              {faqItems.map((item) => (
+                <li key={item.q}>
+                  <p className="text-foreground font-medium">{item.q}</p>
+                  <p>{item.a}</p>
+                </li>
+              ))}
+            </ol>
+          </section>
+        </article>
+      </div>
+    </section>
+  );
+};
+
 // --- Footer Component ---
 const Footer = () => (
   <footer className="py-12 md:py-16 lg:py-20 bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 z-10 relative">
@@ -2520,8 +2703,10 @@ const Footer = () => (
         <div className="flex flex-col gap-4 md:gap-5">
           <div className="text-xl md:text-2xl text-foreground uppercase flex items-center gap-3 md:gap-4 tracking-[0.1em] font-semibold">
             <img
-              src="/trace.png"
+              src="/trace.webp"
               alt="Trace Logo"
+              width={160}
+              height={50}
               className="h-7 md:h-9 w-auto object-contain"
               loading="lazy"
             />
@@ -2538,6 +2723,7 @@ const Footer = () => (
             <div className="flex flex-col gap-3 md:gap-4">
               <Link href="#get-started" className="text-sm text-secondary hover:text-foreground transition-colors">Start reading for free</Link>
               <Link href="/trending" className="text-sm text-secondary hover:text-foreground transition-colors">Trending Topics</Link>
+              <Link href="/tools" className="text-sm text-secondary hover:text-foreground transition-colors">Free Tools</Link>
             </div>
           </div>
           <div>
@@ -2573,19 +2759,24 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background text-foreground px-2 selection:bg-primary/20 selection:text-primary font-serif antialiased">
       <GridBackground />
       <WaitlistBanner />
-      <Nav />
-      <Hero />
-      <NewsletterSignupSection />
-      {/* <DemoVideo /> */}
-      {/* <HowItWorks /> */}
-      {/* <InteractiveDemo />
-      <DemoFeed /> */}
-      <WhatTraceReplaces />
-      {/* <HowPeopleUseTrace /> */}
-      <Testimonials />
-      {/* <WhatYouGet /> */}
-      <Pricing />
-      <GetStarted />
+      <header>
+        <Nav />
+      </header>
+      <main>
+        <Hero />
+        <NewsletterSignupSection />
+        {/* <DemoVideo /> */}
+        {/* <HowItWorks /> */}
+        {/* <InteractiveDemo />
+        <DemoFeed /> */}
+        <WhatTraceReplaces />
+        {/* <HowPeopleUseTrace /> */}
+        <Testimonials />
+        {/* <WhatYouGet /> */}
+        <Pricing />
+        <GetStarted />
+        <SEOContentSection />
+      </main>
       <Footer />
     </div>
   );

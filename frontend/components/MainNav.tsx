@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Menu, X, LogOut, Lightbulb } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useAuth } from "@/contexts/AuthContext";
@@ -82,10 +82,13 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
             </div>
 
             {/* Logo - Centered */}
-            <div className="text-lg md:text-xl text-foreground uppercase flex items-center gap-2 tracking-wide font-semibold md:absolute md:left-1/2 md:-translate-x-1/2">
-              <Lightbulb size={20} className="md:w-[22px] md:h-[22px]" strokeWidth={1.5} />
-              TRACE
-            </div>
+            <Link
+              href="/"
+              className="flex items-center gap-2 md:absolute md:left-1/2 md:-translate-x-1/2"
+            >
+              <img src="/trace.webp" alt="Trace" width={120} height={32} className="h-6 w-auto md:h-7" />
+              <span className="text-sm md:text-base font-semibold tracking-[0.12em] text-foreground">TRACE</span>
+            </Link>
 
             {/* Desktop Right Nav */}
             <div className="hidden md:flex items-center gap-3 flex-1 justify-end">
@@ -99,6 +102,8 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
                       <img
                         src={user.photoURL}
                         alt="Profile"
+                        width={32}
+                        height={32}
                         className="w-8 h-8 rounded-full"
                       />
                     )}
@@ -129,6 +134,8 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
                     <img
                       src={user.photoURL}
                       alt="Profile"
+                      width={32}
+                      height={32}
                       className="w-8 h-8 rounded-full"
                     />
                   )}

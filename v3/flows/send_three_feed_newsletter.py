@@ -254,6 +254,13 @@ def send_three_feed_newsletter(
 
     for row in recipients:
         uid = row["uid"]
+
+        # Skip users who opted out of daily newsletter
+        profile = store.get_user_profile(uid) or {}
+        if profile.get("dailyNewsletterEnabled") is False:
+            skipped += 1
+            continue
+
         feed = _load_user_feed(store, uid, target_date)
         if not feed:
             skipped += 1

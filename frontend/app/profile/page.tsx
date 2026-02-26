@@ -13,6 +13,7 @@ import {
   Target,
   FileText,
   Circle,
+  Mail,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -50,6 +51,8 @@ function ProfileContent() {
   const [editSources, setEditSources] = useState<string[]>([]);
   const [editGoals, setEditGoals] = useState<string[]>([]);
   const [editStyle, setEditStyle] = useState('');
+  const [newsletterEnabled, setNewsletterEnabled] = useState(true);
+  const [savingNewsletter, setSavingNewsletter] = useState(false);
 
   useEffect(() => {
     if (!isAlphaMode()) {
@@ -65,6 +68,28 @@ function ProfileContent() {
     const tab = searchParams?.get('tab');
     if (tab === 'subscription') setActiveTab('subscription');
   }, [searchParams]);
+
+  // Initialize newsletter preference from profile
+  useEffect(() => {
+    if (profile) {
+      setNewsletterEnabled(profile.dailyNewsletterEnabled !== false);
+    }
+  }, [profile]);
+
+  const toggleNewsletter = async () => {
+    if (!user) return;
+    const newValue = !newsletterEnabled;
+    setNewsletterEnabled(newValue);
+    setSavingNewsletter(true);
+    try {
+      await updateUserProfile(user.uid, { dailyNewsletterEnabled: newValue });
+      await refreshProfile();
+    } catch (e) {
+      console.error('Failed to update newsletter preference:', e);
+      setNewsletterEnabled(!newValue); // revert on error
+    }
+    setSavingNewsletter(false);
+  };
 
   const startEditing = (key: PrefKey) => {
     if (!profile) return;
@@ -137,7 +162,7 @@ function ProfileContent() {
       <main className="container mx-auto px-4 max-w-2xl py-6">
         <div className="flex items-center gap-4 mb-8">
           {user.photoURL ? (
-            <img src={user.photoURL} alt="" className="w-14 h-14 rounded-full" />
+            <img src={user.photoURL} alt="" width={56} height={56} className="w-14 h-14 rounded-full" />
           ) : (
             <div className="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center text-lg font-bold text-secondary/70">
               {user.displayName?.charAt(0) || '?'}
@@ -325,6 +350,35 @@ function ProfileContent() {
               <p className="text-[11px] text-secondary/40 mt-2">
                 Changes take effect on your next daily feed refresh.
               </p>
+            </div>
+
+            {/* Notifications */}
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-secondary/50 font-medium mb-3">Notifications</p>
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                <div className="flex items-center gap-3 px-4 py-3.5">
+                  <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-900 flex items-center justify-center text-secondary/50 flex-shrink-0">
+                    <Mail size={16} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">Daily Newsletter</p>
+                    <p className="text-xs text-secondary/50">Receive your digest every morning at 6 AM</p>
+                  </div>
+                  <button
+                    onClick={toggleNewsletter}
+                    disabled={savingNewsletter}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${
+                      newsletterEnabled ? 'bg-amber-500' : 'bg-gray-300 dark:bg-gray-700'
+                    } ${savingNewsletter ? 'opacity-50' : ''}`}
+                  >
+                    <span
+                      className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                        newsletterEnabled ? 'left-6' : 'left-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-1 pt-2">

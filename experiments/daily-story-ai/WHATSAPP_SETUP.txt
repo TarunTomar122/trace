@@ -1,0 +1,123 @@
+WhatsApp Bot Setup - Quick Start Guide
+=======================================
+
+## Step 1: Install Dependencies
+
+cd experiments/daily-story-ai
+pip install -r whatsapp_requirements.txt
+
+
+## Step 2: Install ngrok (for exposing localhost)
+
+# macOS
+brew install ngrok
+
+# Or download from: https://ngrok.com/download
+
+
+## Step 3: Create Twilio Account
+
+1. Go to https://www.twilio.com/try-twilio
+2. Sign up (free trial gives you credits)
+3. Verify your phone number
+
+
+## Step 4: Get Twilio Credentials
+
+1. Go to Twilio Console: https://console.twilio.com/
+2. Find your Account SID and Auth Token
+3. Add to your .env file:
+
+TWILIO_ACCOUNT_SID=your_account_sid_here
+TWILIO_AUTH_TOKEN=your_auth_token_here
+
+
+## Step 5: Set Up WhatsApp Sandbox
+
+1. In Twilio Console, go to: Messaging > Try it out > Send a WhatsApp message
+2. You'll see a sandbox number (e.g., +1 415 523 8886)
+3. Join sandbox by sending the code to that number from your phone
+   (e.g., "join <your-code>")
+
+
+## Step 6: Start the Bot
+
+# Terminal 1 - Start the Flask server
+cd experiments/daily-story-ai
+python whatsapp_bot.py
+
+# Terminal 2 - Start ngrok
+ngrok http 5000
+
+You'll see output like:
+Forwarding: https://abc123.ngrok.io -> http://localhost:5000
+
+
+## Step 7: Configure Twilio Webhook
+
+1. Copy your ngrok URL (e.g., https://abc123.ngrok.io)
+2. Go to Twilio Console > Messaging > Try it out > Sandbox settings
+3. Set "WHEN A MESSAGE COMES IN" to:
+   https://abc123.ngrok.io/webhook
+4. Save
+
+
+## Step 8: Test It!
+
+Send a message to your Twilio WhatsApp number:
+- "news" - Get trending headlines
+- "1" - Select article #1
+- Then describe what you want to know
+
+
+## How It Works:
+
+1. User sends "news" → Bot fetches their trending feed
+2. Bot shows numbered list of headlines
+3. User replies with number (e.g., "1")
+4. Bot asks for context/question
+5. User provides context (e.g., "I'm a developer, what can I build with this?")
+6. Bot does web research + generates personalized deep dive
+7. User gets instant analysis via WhatsApp
+
+
+## Conversation Flow:
+
+User: news
+Bot: 📰 Your Trending Headlines
+     1. Wayve raises $1.2B
+     2. Multiverse releases free AI model
+     ...
+     Reply with a number to dive deep.
+
+User: 2
+Bot: 📖 Selected: Multiverse releases free AI model
+     💬 Tell me what you want to know...
+
+User: I build with open source models, what can I do?
+Bot: 🔬 Deep Dive
+     [Generated analysis with project ideas]
+
+
+## Costs:
+
+- Twilio Sandbox: FREE for testing
+- Production: ~$0.005 per message
+- OpenAI + Exa: ~$0.02 per deep dive
+- Total per interaction: ~$0.025
+
+
+## Troubleshooting:
+
+1. "Webhook not working" → Check ngrok is running and URL is correct
+2. "No articles found" → Make sure user has feed in Firebase
+3. "Twilio error" → Check Account SID and Auth Token are correct
+
+
+## Production Notes:
+
+- Replace in-memory sessions with Redis or Firestore
+- Add phone number to user profiles in Firebase
+- Apply for WhatsApp Business API (not sandbox)
+- Set up proper webhook with HTTPS (not ngrok)
+- Add rate limiting and error handling

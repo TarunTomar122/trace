@@ -221,7 +221,7 @@ export default function SubscriptionManager() {
     switch (status) {
       case 'trial':
       case 'active':
-        return 'text-green-500';
+        return 'text-amber-500';
       case 'on_hold':
         return 'text-yellow-500';
       case 'cancelled':
@@ -236,7 +236,7 @@ export default function SubscriptionManager() {
     switch (status) {
       case 'trial':
       case 'active':
-        return <CheckCircle2 className="text-green-500" size={20} />;
+        return <CheckCircle2 className="text-amber-500" size={20} />;
       case 'on_hold':
         return <AlertCircle className="text-yellow-500" size={20} />;
       case 'cancelled':
@@ -276,8 +276,8 @@ export default function SubscriptionManager() {
 
           <div className="space-y-5">
             <div className="flex items-start gap-3.5">
-              <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0 mt-0.5">
-                <Zap size={14} className="text-accent-foreground" />
+              <div className="w-9 h-9 rounded-full bg-amber-500 flex items-center justify-center shrink-0 mt-0.5">
+                <Zap size={14} className="text-white" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">Unlimited For You &amp; Deep Dives</p>
@@ -288,8 +288,8 @@ export default function SubscriptionManager() {
             </div>
 
             <div className="flex items-start gap-3.5">
-              <div className="w-9 h-9 rounded-full bg-accent/60 flex items-center justify-center shrink-0 mt-0.5">
-                <Bell size={14} className="text-accent-foreground" />
+              <div className="w-9 h-9 rounded-full bg-amber-500/60 flex items-center justify-center shrink-0 mt-0.5">
+                <Bell size={14} className="text-white" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">AI summaries in your style</p>
@@ -300,8 +300,8 @@ export default function SubscriptionManager() {
             </div>
 
             <div className="flex items-start gap-3.5">
-              <div className="w-9 h-9 rounded-full bg-accent/30 flex items-center justify-center shrink-0 mt-0.5">
-                <CheckCircle2 size={14} className="text-accent-foreground" />
+              <div className="w-9 h-9 rounded-full bg-amber-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                <CheckCircle2 size={14} className="text-white" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">Start with a free trial</p>
@@ -324,7 +324,7 @@ export default function SubscriptionManager() {
           <button
             onClick={handleSubscribe}
             disabled={isCreatingCheckout}
-            className="w-full bg-accent text-accent-foreground py-3.5 rounded-xl text-sm font-semibold hover:bg-accent/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full bg-amber-500 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-amber-500/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {isCreatingCheckout ? (
               <>
@@ -374,7 +374,7 @@ export default function SubscriptionManager() {
             </div>
           </div>
           {hasAccess && (
-            <span className="px-3 py-1.5 rounded-full bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs font-medium">
+            <span className="px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-xs font-medium">
               Active
             </span>
           )}
@@ -442,7 +442,7 @@ export default function SubscriptionManager() {
                   <button
                     onClick={handleResumeSubscription}
                     disabled={isResuming}
-                    className="w-full bg-accent text-accent-foreground py-3 rounded-xl text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full bg-amber-500 text-white py-3 rounded-xl text-sm font-medium hover:bg-amber-500/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {isResuming ? (
                       <>
@@ -490,7 +490,7 @@ export default function SubscriptionManager() {
             <button
               onClick={handleSubscribe}
               disabled={isCreatingCheckout}
-              className="w-full bg-accent text-accent-foreground py-4 rounded-xl text-sm font-medium hover:bg-accent/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full bg-amber-500 text-white py-4 rounded-xl text-sm font-medium hover:bg-amber-500/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isCreatingCheckout ? (
                 <>

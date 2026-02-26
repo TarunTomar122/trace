@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ExternalLink, Clock } from "lucide-react";
+import { ArrowLeft, ExternalLink, Clock, Share2, Check } from "lucide-react";
 import Header from "@/components/Header";
 import { FeedItem } from "@/lib/firestore";
 
@@ -13,6 +13,7 @@ const ACCENT = "#F59E0B";
 export default function ArticlePage() {
   const router = useRouter();
   const [item, setItem] = useState<FeedItem | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     try {
@@ -43,20 +44,33 @@ export default function ArticlePage() {
   const whyItMatters = item.summary?.short_article?.why_it_matters;
   const readingTime = item.summary?.reading_time_minutes || 3;
   const isTrending = item.feed_type === "trending" || item.metadata?.feed_type === "trending";
+  const hasImage = item.thumbnail && typeof item.thumbnail === 'string' && item.thumbnail.length > 10;
+
+  const handleShare = async () => {
+    if (!item.id) return;
+    const shareUrl = `${window.location.origin}/articles/${item.id}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = shareUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header  />
 
-      <main className="container mx-auto px-4 max-w-2xl py-6">
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-1.5 text-sm text-secondary/60 hover:text-foreground transition-colors mb-6"
-        >
-          <ArrowLeft size={16} />
-          Back to feed
-        </button>
-
+      <main className="container mx-auto px-4 max-w-3xl py-6">
         <h1 className="text-2xl font-bold leading-tight mb-3">{item.title}</h1>
 
         <div className="flex items-center gap-3 text-sm text-secondary/60 mb-6">
@@ -65,16 +79,18 @@ export default function ArticlePage() {
             <Clock size={13} />
             {readingTime} min read
           </span>
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ml-auto flex items-center gap-1 font-medium hover:opacity-80 transition-opacity"
-            style={{ color: ACCENT }}
-          >
-            Original <ExternalLink size={13} />
-          </a>
         </div>
+
+        {/* Thumbnail */}
+        {hasImage && (
+          <div className="relative aspect-[16/9] rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 mb-6">
+            <img
+              src={item.thumbnail!}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
 
         {!isTrending && keyTakeaways && keyTakeaways.length > 0 && (
           <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl p-5 mb-6">
@@ -126,15 +142,33 @@ export default function ArticlePage() {
             <ArrowLeft size={14} />
             Back to feed
           </button>
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: ACCENT }}
-          >
-            Read Original <ExternalLink size={14} />
-          </a>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleShare}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              {copied ? (
+                <>
+                  <Check size={14} className="text-green-500" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Share2 size={14} />
+                  Share
+                </>
+              )}
+            </button>
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: ACCENT }}
+            >
+              Read Original <ExternalLink size={14} />
+            </a>
+          </div>
         </div>
       </main>
     </div>
