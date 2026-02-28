@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import PublicHeader from '@/components/PublicHeader';
+import Footer from '@/components/Footer';
 import { adminFirestore } from '@/lib/firebase-admin';
 import TrendingContent from './TrendingContent';
 
@@ -185,6 +186,7 @@ export default async function TrendingPage() {
 
         <TrendingContent items={items} />
       </main>
+      <Footer />
     </div>
   );
 }

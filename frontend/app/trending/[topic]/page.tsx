@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { Sparkles, Calendar, Youtube, BookOpen, MessageCircle, ArrowUpRight, Newspaper } from 'lucide-react';
 import PublicHeader from '@/components/PublicHeader';
+import Footer from '@/components/Footer';
 import { adminFirestore } from '@/lib/firebase-admin';
 
 // Use dynamic rendering to avoid build-time API calls
@@ -355,6 +356,7 @@ export default async function TrendingTopicPage({
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,25 @@ import {
   StyleSheet,
   Dimensions,
   Platform,
+  Share,
 } from 'react-native';
 import Constants from 'expo-constants';
+import { Eye, Share2, Bookmark } from 'lucide-react-native';
 import { useTheme } from '../ThemeContext';
+import { useMascot } from '../lib/MascotContext';
+import { useBookmarks } from '../lib/BookmarksContext';
+import { markContentSeen, markContentCompleted } from '../lib/userPreferences';
+import { updateGoalProgress } from '../lib/dailyGoals';
+
+// Generate a consistent number from string for Picsum seed
+function hashCode(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } =
   Dimensions.get('window');
@@ -23,6 +39,8 @@ const FOOTER_ZONE = BOTTOM_INSET + 72;
 const CARD_MAX_HEIGHT = SCREEN_HEIGHT - HEADER_ZONE - FOOTER_ZONE;
 
 function IdeaCard({ card, book, colors }) {
+  const { isBookmarked, toggleBookmark } = useBookmarks();
+  const bookmarked = isBookmarked(card.id);
   const subtitle = card.subtitle || card.idea;
   const bodyParagraphs =
     Array.isArray(card.body) && card.body.length
@@ -30,6 +48,19 @@ function IdeaCard({ card, book, colors }) {
       : card.description
         ? [card.description]
         : [];
+
+  // Generate consistent image URL from card ID
+  const imageUrl = `https://picsum.photos/seed/${hashCode(card.id)}/800/400`;
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `${card.title}\n\n${subtitle}\n\nFrom "${book.title}" on Brainwave`,
+      });
+    } catch (e) {
+      console.log('Share error:', e);
+    }
+  };
 
   return (
     <View style={[styles.cardContainer, { height: SCREEN_HEIGHT }]}>
@@ -44,6 +75,13 @@ function IdeaCard({ card, book, colors }) {
           },
         ]}
       >
+        {/* Cover image at top */}
+        <Image
+          source={{ uri: imageUrl }}
+          style={styles.cardCoverImage}
+          resizeMode="cover"
+        />
+
         <ScrollView
           showsVerticalScrollIndicator={false}
           bounces={false}
@@ -56,7 +94,7 @@ function IdeaCard({ card, book, colors }) {
 
           {/* Subtitle */}
           {!!subtitle && (
-            <Text style={[styles.subtitleText, { color: colors.textPrimary + 'CC' }]}>
+            <Text style={[styles.subtitleText, { color: colors.textPrimary }]}>
               {subtitle}
             </Text>
           )}
@@ -65,7 +103,7 @@ function IdeaCard({ card, book, colors }) {
           <View
             style={[
               styles.cardDivider,
-              { backgroundColor: book.color + '25' },
+              { backgroundColor: colors.surfaceBorder },
             ]}
           />
 
@@ -86,10 +124,57 @@ function IdeaCard({ card, book, colors }) {
           ))}
 
           {!!card.takeaway && (
-            <Text style={[styles.takeawayText, { color: colors.textPrimary + 'D9' }]}>
+            <Text style={[styles.takeawayText, { color: colors.textPrimary }]}>
               {card.takeaway}
             </Text>
           )}
+
+          {/* Footer action bar */}
+          <View style={[styles.footerBar, { borderTopColor: colors.surfaceBorder }]}>
+            {/* Views */}
+            <TouchableOpacity style={styles.footerAction} activeOpacity={0.7}>
+              <Eye size={18} color={colors.textTertiary} strokeWidth={1.5} />
+              <Text style={[styles.footerCount, { color: colors.textTertiary }]}>
+                {Math.floor(Math.random() * 20 + 5)}K
+              </Text>
+            </TouchableOpacity>
+
+            {/* Share + Bookmark */}
+            <View style={styles.footerRight}>
+              <TouchableOpacity
+                style={styles.footerAction}
+                onPress={handleShare}
+                activeOpacity={0.7}
+              >
+                <Share2 size={18} color={colors.textTertiary} strokeWidth={1.5} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.footerAction}
+                onPress={() => toggleBookmark({
+                  id: card.id,
+                  type: book.type,
+                  interest: book.interest,
+                  title: card.title,
+                  subtitle: subtitle,
+                  body: bodyParagraphs,
+                  takeaway: card.takeaway,
+                  source: book.title,
+                  sourceAuthor: book.author,
+                  sourceCover: book.cover,
+                  color: book.color,
+                })}
+                activeOpacity={0.7}
+              >
+                <Bookmark
+                  size={18}
+                  color={bookmarked ? colors.accent : colors.textTertiary}
+                  fill={bookmarked ? colors.accent : 'transparent'}
+                  strokeWidth={1.5}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
         </ScrollView>
       </View>
 
@@ -128,11 +213,30 @@ export default function IdeaReel({ route, navigation }) {
   const { book } = route.params;
   const [currentIndex, setCurrentIndex] = useState(0);
   const { colors } = useTheme();
+  const { onCardRead } = useMascot();
+
+  // Record first card view and mark content as seen when opening
+  useEffect(() => {
+    onCardRead();
+    markContentSeen(book.id);
+    updateGoalProgress('cards_read', 1);
+    updateGoalProgress('new_topic_viewed', 1);
+  }, [book.id]);
 
   const onScrollEnd = useCallback((e) => {
     const idx = Math.round(e.nativeEvent.contentOffset.y / SCREEN_HEIGHT);
+    if (idx !== currentIndex) {
+      onCardRead(); // Record card read when user scrolls to new card
+      updateGoalProgress('cards_read', 1);
+
+      // Mark as completed when reaching last card
+      if (idx === book.cards.length - 1) {
+        markContentCompleted(book.id);
+        updateGoalProgress('content_completed', 1);
+      }
+    }
     setCurrentIndex(idx);
-  }, []);
+  }, [currentIndex, onCardRead, book.id, book.cards.length]);
 
   const renderItem = useCallback(
     ({ item }) => <IdeaCard card={item} book={book} colors={colors} />,
@@ -244,57 +348,83 @@ const styles = StyleSheet.create({
 
   // The visible card
   contentCard: {
-    borderRadius: 24,
+    borderRadius: 20,
     borderWidth: 1,
     width: '100%',
     maxWidth: 440,
     overflow: 'hidden',
   },
+  cardCoverImage: {
+    width: '100%',
+    height: 160,
+  },
   cardScrollContent: {
-    paddingHorizontal: 26,
-    paddingVertical: 30,
+    paddingHorizontal: 24,
+    paddingVertical: 24,
   },
 
   // Title
   cardTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
     letterSpacing: -0.4,
-    lineHeight: 32,
-    marginBottom: 18,
+    lineHeight: 28,
+    marginBottom: 12,
   },
 
   // Subtitle
   subtitleText: {
-    fontSize: 16,
-    fontWeight: '500',
-    lineHeight: 26,
-    letterSpacing: 0.1,
-    marginBottom: 22,
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 22,
+    marginBottom: 16,
   },
 
   // Divider
   cardDivider: {
-    height: 2,
-    borderRadius: 1,
-    marginBottom: 22,
+    height: 1,
+    marginBottom: 16,
   },
 
   // Body
   bodyParagraph: {
     fontSize: 15,
-    lineHeight: 25,
-    letterSpacing: 0.1,
-    marginBottom: 14,
+    lineHeight: 24,
+    marginBottom: 12,
   },
   lastBodyParagraph: {
     marginBottom: 0,
   },
   takeawayText: {
     fontSize: 15,
-    lineHeight: 24,
+    lineHeight: 22,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+
+  // Footer action bar
+  footerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    marginTop: 4,
+  },
+  footerAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    padding: 4,
+  },
+  footerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  footerCount: {
+    fontSize: 13,
     fontWeight: '600',
-    letterSpacing: 0.1,
   },
 
   // Book info at bottom

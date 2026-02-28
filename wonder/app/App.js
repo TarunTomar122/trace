@@ -6,8 +6,15 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ThemeProvider, useTheme } from './ThemeContext';
 import { AuthProvider, useAuth } from './lib/AuthContext';
+import { MascotProvider } from './lib/MascotContext';
+import { SubscriptionProvider } from './lib/SubscriptionContext';
+import { BookmarksProvider } from './lib/BookmarksContext';
+import { DEV_SKIP_ONBOARDING } from './lib/devConfig';
+import { refreshPersonalization } from './data';
+import { hasCompletedOnboarding } from './lib/userPreferences';
 import SplashScreen from './screens/SplashScreen';
 import IntroScreen from './screens/IntroScreen';
+import PreOnboardingScreen from './screens/PreOnboardingScreen';
 import WelcomeScreen from './screens/WelcomeScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
 import AppNavigator from './navigation/AppNavigator';
@@ -15,10 +22,30 @@ import AppNavigator from './navigation/AppNavigator';
 function Main() {
   const { colors } = useTheme();
   const { session, loading } = useAuth();
-  const [introDone, setIntroDone] = React.useState(false);
-  const [onboardingDone, setOnboardingDone] = React.useState(false);
 
-  if (loading) {
+  const [checkingOnboarding, setCheckingOnboarding] = React.useState(true);
+  const [introDone, setIntroDone] = React.useState(DEV_SKIP_ONBOARDING);
+  const [preOnboardingDone, setPreOnboardingDone] = React.useState(DEV_SKIP_ONBOARDING);
+  const [onboardingDone, setOnboardingDone] = React.useState(DEV_SKIP_ONBOARDING);
+  const [skippedSignIn, setSkippedSignIn] = React.useState(DEV_SKIP_ONBOARDING);
+
+  // Check if user already completed onboarding
+  React.useEffect(() => {
+    async function checkOnboarding() {
+      const completed = await hasCompletedOnboarding();
+      if (completed) {
+        setIntroDone(true);
+        setPreOnboardingDone(true);
+        setOnboardingDone(true);
+        setSkippedSignIn(true);
+      }
+      setCheckingOnboarding(false);
+      refreshPersonalization();
+    }
+    checkOnboarding();
+  }, []);
+
+  if (loading || checkingOnboarding) {
     return (
       <View
         style={{
@@ -33,20 +60,32 @@ function Main() {
     );
   }
 
-  if (!session) {
-    if (!introDone) {
-      return <IntroScreen onComplete={() => setIntroDone(true)} />;
-    }
-
-    // Run onboarding only for logged-out users.
-    if (!onboardingDone) {
-      return <OnboardingScreen onComplete={() => setOnboardingDone(true)} />;
-    }
-
-    return <WelcomeScreen />;
+  // User is signed in or skipped sign-in
+  if (session || skippedSignIn) {
+    return <AppNavigator />;
   }
 
-  return <AppNavigator />;
+  // Onboarding flow
+  if (!introDone) {
+    return <IntroScreen onComplete={() => setIntroDone(true)} />;
+  }
+
+  if (!preOnboardingDone) {
+    return <PreOnboardingScreen onComplete={() => setPreOnboardingDone(true)} />;
+  }
+
+  if (!onboardingDone) {
+    return (
+      <OnboardingScreen
+        onComplete={() => {
+          refreshPersonalization(); // Refresh feed with new preferences
+          setOnboardingDone(true);
+        }}
+      />
+    );
+  }
+
+  return <WelcomeScreen onSkip={() => setSkippedSignIn(true)} />;
 }
 
 /**
@@ -98,7 +137,13 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <AuthProvider>
-          <AppWithTheme />
+          <SubscriptionProvider>
+            <BookmarksProvider>
+              <MascotProvider>
+                <AppWithTheme />
+              </MascotProvider>
+            </BookmarksProvider>
+          </SubscriptionProvider>
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>

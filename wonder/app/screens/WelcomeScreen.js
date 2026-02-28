@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
@@ -13,8 +14,8 @@ import {
   GoogleSignin,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
-import { useTheme } from '../ThemeContext';
 
 GoogleSignin.configure({
   iosClientId:
@@ -22,10 +23,9 @@ GoogleSignin.configure({
 });
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const BOTTOM_INSET = Platform.OS === 'ios' ? 34 : 0;
 
-export default function WelcomeScreen() {
-  const { colors } = useTheme();
+export default function WelcomeScreen({ onSkip }) {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
 
   async function handleGoogleSignIn() {
@@ -65,43 +65,44 @@ export default function WelcomeScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Top section — brand */}
-      <View style={styles.brandSection}>
-        <View style={styles.wordmark}>
-          <Text style={[styles.logoLight, { color: colors.textPrimary }]}>brain</Text>
-          <Text style={[styles.logoBold, { color: colors.textPrimary }]}>wave</Text>
-        </View>
-        <Text style={[styles.tagline, { color: colors.textSecondary }]}>
-          big ideas from books, articles, and videos,{'\n'}one card at a time
-        </Text>
+    <View style={styles.container}>
+      {/* Mascot section */}
+      <View style={[styles.heroSection, { paddingTop: insets.top + 60 }]}>
+        <Image
+          source={require('../assets/images/scientist.png')}
+          style={styles.mascot}
+          resizeMode="contain"
+        />
       </View>
 
       {/* Bottom section — CTA */}
-      <View style={[styles.ctaSection, { marginBottom: BOTTOM_INSET + 32 }]}>
+      <View style={[styles.ctaSection, { paddingBottom: insets.bottom + 32 }]}>
+        <Text style={styles.title}>Create an account</Text>
+        <Text style={styles.subtitle}>Save your progress and sync across devices</Text>
+
         <TouchableOpacity
-          style={[styles.googleButton, { backgroundColor: colors.accent }]}
+          style={styles.googleButton}
           activeOpacity={0.85}
           onPress={handleGoogleSignIn}
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color={colors.background} size="small" />
+            <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (
             <>
               <Text style={styles.googleIcon}>G</Text>
-              <Text
-                style={[styles.googleButtonText, { color: colors.background }]}
-              >
-                Continue with Google
-              </Text>
+              <Text style={styles.googleButtonText}>Continue with Google</Text>
             </>
           )}
         </TouchableOpacity>
 
-        <Text style={[styles.disclaimer, { color: colors.textMuted }]}>
-          By continuing, you agree to our Terms & Privacy Policy
-        </Text>
+        <TouchableOpacity
+          style={styles.skipButton}
+          activeOpacity={0.7}
+          onPress={onSkip}
+        >
+          <Text style={styles.skipText}>Skip for now</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -110,63 +111,67 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: 32,
+    backgroundColor: '#FFFFFF',
   },
 
-  brandSection: {
+  heroSection: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  wordmark: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 16,
-  },
-  logoLight: {
-    fontSize: 48,
-    fontWeight: '300',
-    letterSpacing: -2,
-  },
-  logoBold: {
-    fontSize: 48,
-    fontWeight: '800',
-    letterSpacing: -2,
-  },
-  tagline: {
-    fontSize: 17,
-    lineHeight: 26,
-    textAlign: 'center',
-    letterSpacing: 0.2,
+  mascot: {
+    width: SCREEN_WIDTH * 0.7,
+    height: SCREEN_WIDTH * 0.7,
   },
 
   ctaSection: {
+    paddingHorizontal: 24,
     alignItems: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    letterSpacing: -0.5,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: '#777777',
+    marginBottom: 28,
   },
   googleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    width: SCREEN_WIDTH - 64,
+    width: SCREEN_WIDTH - 48,
     height: 56,
     borderRadius: 16,
+    backgroundColor: '#8BC34A',
     gap: 12,
+    shadowColor: '#5D8C2A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
   },
   googleIcon: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
-    color: '#050505',
+    color: '#FFFFFF',
   },
   googleButtonText: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
+    color: '#FFFFFF',
     letterSpacing: -0.2,
   },
-  disclaimer: {
-    fontSize: 11,
+  skipButton: {
     marginTop: 20,
-    textAlign: 'center',
-    letterSpacing: 0.2,
+    paddingVertical: 12,
+  },
+  skipText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#8BC34A',
   },
 });

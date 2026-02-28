@@ -31,24 +31,13 @@ import {
   X,
 } from 'lucide-react-native';
 import { useTheme } from '../ThemeContext';
-import businessVideos from '../../data/videos/business.json';
-import moneyVideos from '../../data/videos/money.json';
-import businessArticle from '../../data/articles/business.json';
-import moneyArticle from '../../data/articles/money.json';
+import { saveOnboardingData } from '../lib/userPreferences';
 
 const STATUS_BAR_HEIGHT = Constants.statusBarHeight || 0;
 const BOTTOM_INSET = Platform.OS === 'ios' ? 34 : 24;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
 const CARD_WIDTH = SCREEN_WIDTH - 90;
-
-/* ────────────────────────── Data ── */
-
-const ALL_TOPICS = [
-  'Technology', 'Science', 'Psychology', 'Ideas', 'Business', 'Money',
-  'Design', 'Career', 'Self-development', 'Health', 'Cooking', 'Culture',
-  'Relationships', 'Society',
-];
 
 const TOPIC_EMOJIS = {
   Technology:        '🚀',
@@ -102,14 +91,6 @@ const FOCUS_OPTIONS = [
 
 const GOAL_OPTIONS = ['10 min/day', '20 min/day', '30+ min/day'];
 
-function normalizeImageUrl(url) {
-  if (!url) return null;
-  if (url.includes('images.unsplash.com') && !url.includes('auto=format')) {
-    return `${url}&auto=format`;
-  }
-  return url;
-}
-
 function getFallbackImageUrl(url) {
   if (!url) return null;
   if (url.includes('maxresdefault.jpg')) {
@@ -118,73 +99,79 @@ function getFallbackImageUrl(url) {
   return null;
 }
 
+// Diverse swipe picks with reliable OpenLibrary covers
 const SWIPE_PICKS = [
   {
     type: 'book',
+    id: 'swipe-atomic-habits',
     title: 'Atomic Habits',
     by: 'James Clear',
-    color: '#F5E6CC',
+    interest: 'self-development',
+    color: '#DDA0DD',
     cover: 'https://covers.openlibrary.org/b/id/12539702-L.jpg',
   },
   {
-    type: 'video',
-    title: businessVideos.videos?.[1]?.title || 'How Amazon Makes Money',
-    by: businessVideos.videos?.[1]?.creator || 'Polymatter',
-    source: businessVideos.videos?.[1]?.platform || 'YouTube',
-    color: '#1A1A2E',
-    cover: normalizeImageUrl(
-      businessVideos.videos?.[1]?.thumbnail_url ||
-        businessVideos.videos?.[0]?.thumbnail_url,
-    ),
-  },
-  {
     type: 'book',
+    id: 'swipe-sapiens',
     title: 'Sapiens',
     by: 'Yuval Noah Harari',
-    color: '#E8DDD0',
+    interest: 'ideas',
+    color: '#FFB347',
     cover: 'https://covers.openlibrary.org/b/id/8634250-L.jpg',
   },
   {
-    type: 'article',
-    title: businessArticle.article?.title || 'The Myth of the Pivot',
-    by: businessArticle.article?.author || 'Sarah Chen',
-    source: businessArticle.article?.publication || 'Harvard Business Review',
-    color: '#2C3E50',
-    cover: normalizeImageUrl(businessArticle.article?.image_url),
+    type: 'book',
+    id: 'swipe-thinking-fast-slow',
+    title: 'Thinking, Fast and Slow',
+    by: 'Daniel Kahneman',
+    interest: 'psychology',
+    color: '#FF6B9D',
+    cover: 'https://covers.openlibrary.org/b/id/8259447-L.jpg',
   },
   {
     type: 'book',
+    id: 'swipe-brief-history',
+    title: 'A Brief History of Time',
+    by: 'Stephen Hawking',
+    interest: 'science',
+    color: '#50C878',
+    cover: 'https://covers.openlibrary.org/b/id/10432365-L.jpg',
+  },
+  {
+    type: 'book',
+    id: 'swipe-psychology-money',
     title: 'The Psychology of Money',
     by: 'Morgan Housel',
-    color: '#FFF3E0',
+    interest: 'money',
+    color: '#2ECC71',
     cover: 'https://covers.openlibrary.org/b/id/10389354-L.jpg',
   },
   {
-    type: 'video',
-    title: moneyVideos.videos?.[1]?.title || 'The Psychology of Money',
-    by: moneyVideos.videos?.[1]?.creator || 'The Plain Bagel',
-    source: moneyVideos.videos?.[1]?.platform || 'YouTube',
-    color: '#1B2838',
-    cover: normalizeImageUrl(
-      moneyVideos.videos?.[1]?.thumbnail_url || moneyVideos.videos?.[0]?.thumbnail_url,
-    ),
+    type: 'book',
+    id: 'swipe-chip-war',
+    title: 'Chip War',
+    by: 'Chris Miller',
+    interest: 'technology',
+    color: '#4A9DFF',
+    cover: 'https://covers.openlibrary.org/b/id/12968901-L.jpg',
   },
   {
     type: 'book',
-    title: 'Deep Work',
-    by: 'Cal Newport',
-    color: '#1C1C1C',
-    cover: 'https://covers.openlibrary.org/b/id/7988607-L.jpg',
+    id: 'swipe-good-to-great',
+    title: 'Good to Great',
+    by: 'Jim Collins',
+    interest: 'business',
+    color: '#7B68EE',
+    cover: 'https://covers.openlibrary.org/b/id/391104-L.jpg',
   },
   {
-    type: 'article',
-    title:
-      moneyArticle.article?.title ||
-      'Index Funds Won Because Competitors Helped Them',
-    by: moneyArticle.article?.author || 'Jason Park',
-    source: moneyArticle.article?.publication || 'Bloomberg Markets',
-    color: '#1A3C5E',
-    cover: normalizeImageUrl(moneyArticle.article?.image_url),
+    type: 'book',
+    id: 'swipe-outlive',
+    title: 'Outlive',
+    by: 'Peter Attia',
+    interest: 'health',
+    color: '#98FB98',
+    cover: 'https://covers.openlibrary.org/b/id/14350024-L.jpg',
   },
 ];
 
@@ -302,13 +289,14 @@ function TopicChip({ label, selected, onPress, colors }) {
 /* ────────────────────────── Trend line chart (SVG) ── */
 function TrendLine({ color }) {
   return (
-    <Svg width="100%" height="52" viewBox="0 0 240 52" preserveAspectRatio="none">
-      <SvgLine x1="0" y1="18" x2="240" y2="18" stroke="rgba(0,0,0,0.07)" strokeWidth="1" />
-      <SvgLine x1="0" y1="34" x2="240" y2="34" stroke="rgba(0,0,0,0.07)" strokeWidth="1" />
+    <Svg width="100%" height="100" viewBox="0 0 240 100" preserveAspectRatio="none">
+      <SvgLine x1="0" y1="30" x2="240" y2="30" stroke="rgba(0,0,0,0.06)" strokeWidth="1" />
+      <SvgLine x1="0" y1="55" x2="240" y2="55" stroke="rgba(0,0,0,0.06)" strokeWidth="1" />
+      <SvgLine x1="0" y1="80" x2="240" y2="80" stroke="rgba(0,0,0,0.06)" strokeWidth="1" />
       <Path
-        d="M 0 48 C 50 48 70 38 100 30 S 165 12 240 4"
+        d="M 0 90 C 40 88 60 75 100 60 S 160 25 240 8"
         stroke={color}
-        strokeWidth="2.5"
+        strokeWidth="3"
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -394,12 +382,13 @@ export default function OnboardingScreen({ onComplete }) {
   const [lifeGoals, setLifeGoals] = useState([]);
   const [interests, setInterests] = useState([]);
   const [likedItems, setLikedItems] = useState([]);
+  const [dislikedItems, setDislikedItems] = useState([]);
   const [cardIndex, setCardIndex] = useState(0);
   const [goal, setGoal] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState('yearly');
   const [hearAboutUs, setHearAboutUs] = useState(null);
   const [imageUriMap, setImageUriMap] = useState(() =>
-    Object.fromEntries(SWIPE_PICKS.map((pick) => [pick.title, pick.cover || null])),
+    Object.fromEntries(SWIPE_PICKS.map((pick) => [pick.id, pick.cover || null])),
   );
 
   /* ── Prefetch all swipe card images on mount via expo-image ── */
@@ -434,7 +423,9 @@ export default function OnboardingScreen({ onComplete }) {
       swipingRef.current = true;
 
       if (direction === 'right') {
-        setLikedItems((prev) => [...prev, SWIPE_PICKS[idx].title]);
+        setLikedItems((prev) => [...prev, SWIPE_PICKS[idx].id]);
+      } else {
+        setDislikedItems((prev) => [...prev, SWIPE_PICKS[idx].id]);
       }
 
       const toX =
@@ -532,6 +523,34 @@ export default function OnboardingScreen({ onComplete }) {
   const next = () => setStep((s) => Math.min(s + 1, totalSteps - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
+  // Save onboarding data and complete
+  const handleComplete = useCallback(async () => {
+    // Map interest names to lowercase keys
+    const topicKeys = interests.map((t) => t.toLowerCase().replace(' ', '-'));
+
+    // Get liked/disliked interests from swipe picks
+    const swipeLikes = likedItems.map((id) => {
+      const pick = SWIPE_PICKS.find((p) => p.id === id);
+      return pick?.interest;
+    }).filter(Boolean);
+
+    const swipeDislikes = dislikedItems.map((id) => {
+      const pick = SWIPE_PICKS.find((p) => p.id === id);
+      return pick?.interest;
+    }).filter(Boolean);
+
+    await saveOnboardingData({
+      focus,
+      goals: lifeGoals,
+      topics: topicKeys,
+      timeGoal: goal,
+      swipeLikes,
+      swipeDislikes,
+    });
+
+    onComplete();
+  }, [focus, lifeGoals, interests, goal, likedItems, dislikedItems, onComplete]);
+
   const canContinue = useMemo(() => {
     if (step === 0) return Boolean(focus);
     if (step === 1) return true;
@@ -546,15 +565,15 @@ export default function OnboardingScreen({ onComplete }) {
     return true;
   }, [step, focus, lifeGoals.length, interests.length, cardIndex, goal, hearAboutUs]);
 
-  const handleCardImageError = useCallback((title) => {
+  const handleCardImageError = useCallback((id) => {
     setImageUriMap((prev) => {
-      const currentUrl = prev[title];
+      const currentUrl = prev[id];
       if (!currentUrl) return prev;
       const fallback = getFallbackImageUrl(currentUrl);
       if (fallback && fallback !== currentUrl) {
-        return { ...prev, [title]: fallback };
+        return { ...prev, [id]: fallback };
       }
-      return { ...prev, [title]: null };
+      return { ...prev, [id]: null };
     });
   }, []);
 
@@ -593,24 +612,21 @@ export default function OnboardingScreen({ onComplete }) {
 
     const renderCardContent = (pick, TypeIcon) => (
       <>
-        {imageUriMap[pick.title] && (
+        {imageUriMap[pick.id] && (
           <Image
-            source={imageUriMap[pick.title]}
+            source={imageUriMap[pick.id]}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
             cachePolicy="memory-disk"
             priority="high"
             transition={0}
-            onError={() => handleCardImageError(pick.title)}
+            onError={() => handleCardImageError(pick.id)}
           />
         )}
         <View style={styles.cardOverlay}>
           <View style={styles.typeBadge}>
             {TypeIcon && <TypeIcon size={11} color="#fff" strokeWidth={2.2} />}
-            <Text style={styles.typeBadgeText}>
-              {TYPE_LABEL[pick.type]}
-              {pick.source ? ` · ${pick.source}` : ''}
-            </Text>
+            <Text style={styles.typeBadgeText}>{TYPE_LABEL[pick.type]}</Text>
           </View>
           <Text style={styles.cardTitle} numberOfLines={2}>
             {pick.title}
@@ -1109,7 +1125,7 @@ export default function OnboardingScreen({ onComplete }) {
       <View style={[styles.paywallScreen, { backgroundColor: colors.background }]}>
         {/* Top skip */}
         <View style={[styles.paywallTopBar, { paddingTop: STATUS_BAR_HEIGHT + 12 }]}>
-          <TouchableOpacity onPress={onComplete} activeOpacity={0.7} style={styles.paywallSkipBtn}>
+          <TouchableOpacity onPress={handleComplete} activeOpacity={0.7} style={styles.paywallSkipBtn}>
             <X size={20} color={colors.textTertiary} strokeWidth={2} />
           </TouchableOpacity>
         </View>
@@ -1239,7 +1255,7 @@ export default function OnboardingScreen({ onComplete }) {
             Two taps to start, super easy to cancel.
           </Text>
           <TouchableOpacity
-            onPress={onComplete}
+            onPress={handleComplete}
             activeOpacity={0.85}
             style={[styles.paywallCTA, { backgroundColor: colors.textPrimary }]}
           >
@@ -1363,7 +1379,7 @@ export default function OnboardingScreen({ onComplete }) {
       {/* ── Footer ── */}
       <View style={[styles.footer, { paddingBottom: BOTTOM_INSET + 10 }]}>
           <TouchableOpacity
-            onPress={step === totalSteps - 1 ? onComplete : next}
+            onPress={step === totalSteps - 1 ? handleComplete : next}
             disabled={!canContinue}
             activeOpacity={0.8}
             style={[
@@ -1453,11 +1469,11 @@ const styles = StyleSheet.create({
   /* ── Insight screen (step 1) ── */
   insightWrap: { paddingBottom: 8 },
   insightHeadline: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '800',
-    lineHeight: 38,
-    letterSpacing: -0.5,
-    marginBottom: 36,
+    lineHeight: 30,
+    letterSpacing: -0.4,
+    marginBottom: 28,
   },
   insightCardOuter: {
     position: 'relative',

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Mail, Sparkles, ArrowRight } from "lucide-react";
+import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Free Tools | Trace",
@@ -112,6 +113,7 @@ export default function ToolsPage() {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

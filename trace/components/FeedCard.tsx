@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Pressable, StyleSheet, View, Text, Image } from 'react-native';
+import { Pressable, StyleSheet, View, Text, Image, Share, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import {
   Clock,
   Bookmark,
   BookmarkCheck,
+  Share2,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { FeedItem } from '@/lib/firestore';
 import { toggleBookmark, isBookmarked } from '@/lib/bookmarks';
+import { getArticleImage } from '@/lib/fallback-images';
 
 function useBookmark(item: FeedItem) {
   const [saved, setSaved] = useState(false);
@@ -24,13 +26,20 @@ function useBookmark(item: FeedItem) {
   return { saved, toggle };
 }
 
-function isLikelyRealImageUrl(url?: string | null): boolean {
-  if (!url) return false;
-  const v = url.trim().toLowerCase();
-  if (!v.startsWith('http://') && !v.startsWith('https://')) return false;
-  if (v.endsWith('.svg')) return false;
-  if (v.includes('placeholder') || v.includes('ui-avatars.com')) return false;
-  return true;
+async function shareArticle(item: FeedItem) {
+  try {
+    const message = Platform.OS === 'ios'
+      ? item.title
+      : `${item.title}\n\n${item.url}`;
+
+    await Share.share({
+      message,
+      url: item.url, // iOS only
+      title: item.title,
+    });
+  } catch (error) {
+    // User cancelled or error
+  }
 }
 
 /* ─── Shared utilities ────────────────────────────────────── */
@@ -95,13 +104,14 @@ type CardProps = {
   item: FeedItem;
   colorScheme: 'light' | 'dark';
   onPress?: () => void;
+  accentColor?: string;
 };
 
 /* ═══════════════════════════════════════════════════════════
    1. TrendingCard — compact, source-first, explore feel
    ═══════════════════════════════════════════════════════════ */
 
-export function TrendingCard({ item, colorScheme, onPress }: CardProps) {
+export function TrendingCard({ item, colorScheme, onPress, accentColor = '#F97316' }: CardProps) {
   const sourceName = item.source_name || item.source || '';
   const initials = getSourceInitials(sourceName);
   const avatarBg = hashColor(sourceName);
@@ -109,55 +119,55 @@ export function TrendingCard({ item, colorScheme, onPress }: CardProps) {
   const subtitle = stripMd(item.summary?.short_article?.subtitle || '');
   const brief = firstParagraph(item.summary?.short_article?.body);
   const snippet = brief || subtitle || item.description || '';
-  const [imgErr, setImgErr] = useState(false);
-  const showImg = isLikelyRealImageUrl(item.thumbnail) && !imgErr;
+  const imageUrl = getArticleImage(item.thumbnail, item.title);
 
   return (
     <Pressable onPress={onPress} style={tStyles.container}>
-      {/* Content */}
-      <View style={tStyles.content}>
-        <View style={tStyles.sourceRow}>
-          <View style={[tStyles.avatar, { backgroundColor: avatarBg }]}>
-            <Text style={tStyles.avatarText}>{initials}</Text>
-          </View>
-          <Text
-            style={[tStyles.sourceName, { color: Colors[colorScheme].muted }]}
-            numberOfLines={1}>
-            {sourceName}
-          </Text>
-          {timeAgo !== '' && (
-            <>
-              <Text style={[tStyles.dot, { color: Colors[colorScheme].border }]}>·</Text>
-              <Text style={[tStyles.time, { color: Colors[colorScheme].muted }]}>{timeAgo}</Text>
-            </>
-          )}
-        </View>
-
-        <Text
-          style={[tStyles.title, { color: Colors[colorScheme].text }]}
-          numberOfLines={2}>
-          {item.title}
-        </Text>
-
-        {snippet !== '' && (
-          <Text
-            style={[tStyles.snippet, { color: Colors[colorScheme].muted }]}
-            numberOfLines={2}>
-            {snippet}
-          </Text>
-        )}
+      {/* Hero image at top */}
+      <View style={tStyles.heroWrap}>
+        <Image
+          source={{ uri: imageUrl }}
+          style={tStyles.heroImg}
+          resizeMode="cover"
+        />
       </View>
 
-      {/* Thumbnail */}
-      {showImg && (
-        <View style={[tStyles.thumbWrap, { backgroundColor: Colors[colorScheme].card }]}>
-          <Image
-            source={{ uri: item.thumbnail! }}
-            style={tStyles.thumb}
-            resizeMode="cover"
-            onError={() => setImgErr(true)}
-          />
+      {/* Source row with share on right */}
+      <View style={tStyles.sourceRow}>
+        <View style={[tStyles.avatar, { backgroundColor: avatarBg }]}>
+          <Text style={tStyles.avatarText}>{initials}</Text>
         </View>
+        <Text
+          style={[tStyles.sourceName, { color: Colors[colorScheme].muted }]}
+          numberOfLines={1}>
+          {sourceName}
+        </Text>
+        {timeAgo !== '' && (
+          <>
+            <Text style={[tStyles.dot, { color: Colors[colorScheme].border }]}>·</Text>
+            <Text style={[tStyles.time, { color: Colors[colorScheme].muted }]}>{timeAgo}</Text>
+          </>
+        )}
+        <View style={{ flex: 1 }} />
+        <Pressable hitSlop={12} onPress={() => shareArticle(item)} style={tStyles.actionBtn}>
+          <Share2 size={18} color={Colors[colorScheme].muted} strokeWidth={1.6} />
+        </Pressable>
+      </View>
+
+      {/* Title */}
+      <Text
+        style={[tStyles.title, { color: Colors[colorScheme].text }]}
+        numberOfLines={3}>
+        {item.title}
+      </Text>
+
+      {/* Snippet */}
+      {snippet !== '' && (
+        <Text
+          style={[tStyles.snippet, { color: Colors[colorScheme].muted }]}
+          numberOfLines={2}>
+          {snippet}
+        </Text>
       )}
     </Pressable>
   );
@@ -165,60 +175,58 @@ export function TrendingCard({ item, colorScheme, onPress }: CardProps) {
 
 const tStyles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    paddingVertical: 14,
-    gap: 12,
+    marginVertical: 10,
   },
-  content: {
-    flex: 1,
-    gap: 6,
+  heroWrap: {
+    width: '100%',
+    height: 240,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 12,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 21,
-    letterSpacing: -0.2,
+  heroImg: {
+    width: '100%',
+    height: '100%',
   },
   sourceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    flexWrap: 'nowrap',
+    gap: 8,
+    marginBottom: 10,
   },
   avatar: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '800',
     color: '#fff',
     letterSpacing: 0.5,
   },
   sourceName: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     flexShrink: 1,
   },
   dot: { fontSize: 12 },
-  time: { fontSize: 11 },
+  time: { fontSize: 12 },
+  actionBtn: {
+    padding: 4,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 24,
+    letterSpacing: -0.3,
+    marginBottom: 6,
+  },
   snippet: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  thumbWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 10,
-    overflow: 'hidden',
-    alignSelf: 'center',
-  },
-  thumb: {
-    width: '100%',
-    height: '100%',
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
 
@@ -226,83 +234,83 @@ const tStyles = StyleSheet.create({
    2. ForYouCard — accent left bar, match badges, actions
    ═══════════════════════════════════════════════════════════ */
 
-export function ForYouCard({ item, colorScheme, onPress }: CardProps) {
+export function ForYouCard({ item, colorScheme, onPress, accentColor = ACCENT }: CardProps) {
   const sourceName = item.source_name || item.source || '';
   const initials = getSourceInitials(sourceName);
   const avatarBg = hashColor(sourceName);
   const timeAgo = getTimeAgo(item.published_date);
   const snippet = item.summary?.short_article?.subtitle || item.description || '';
   const readTime = item.summary?.reading_time_minutes;
-  const itemType = item.type || item.source || 'blog';
-  const typeLabel = itemType === 'video' ? 'Video' : 'Article';
-  const [imgErr, setImgErr] = useState(false);
-  const showImg = isLikelyRealImageUrl(item.thumbnail) && !imgErr;
+  const imageUrl = getArticleImage(item.thumbnail, item.title);
   const { saved, toggle: onToggleBookmark } = useBookmark(item);
+  const accent = accentColor;
 
   return (
     <Pressable onPress={onPress} style={fyStyles.container}>
-      <View style={fyStyles.content}>
-        {/* Source row */}
-        <View style={fyStyles.sourceRow}>
-          <View style={[fyStyles.avatar, { backgroundColor: avatarBg }]}>
-            <Text style={fyStyles.avatarText}>{initials}</Text>
-          </View>
-          <Text
-            style={[fyStyles.sourceName, { color: Colors[colorScheme].muted }]}
-            numberOfLines={1}>
-            {sourceName}
-          </Text>
-          {timeAgo !== '' && (
-            <>
-              <Text style={[fyStyles.dot, { color: Colors[colorScheme].border }]}>·</Text>
-              <Text style={[fyStyles.time, { color: Colors[colorScheme].muted }]}>{timeAgo}</Text>
-            </>
-          )}
-          <View style={{ flex: 1 }} />
-          {readTime != null && (
-            <View style={fyStyles.readTimePill}>
-              <Clock size={10} color={Colors[colorScheme].muted} strokeWidth={1.8} />
-              <Text style={[fyStyles.readTimeText, { color: Colors[colorScheme].muted }]}>
-                {typeLabel} · {readTime} min
-              </Text>
-            </View>
-          )}
-          <Pressable hitSlop={8} onPress={onToggleBookmark}>
-            {saved ? (
-              <BookmarkCheck size={16} color={ACCENT} strokeWidth={2} />
-            ) : (
-              <Bookmark size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-            )}
-          </Pressable>
-        </View>
+      {/* Hero image at top */}
+      <View style={fyStyles.heroWrap}>
+        <Image
+          source={{ uri: imageUrl }}
+          style={fyStyles.heroImg}
+          resizeMode="cover"
+        />
+      </View>
 
-        {/* Body: text column + thumbnail */}
-        <View style={fyStyles.bodyRow}>
-          <View style={fyStyles.textCol}>
-            <Text
-              style={[fyStyles.title, { color: Colors[colorScheme].text }]}
-              numberOfLines={3}>
-              {item.title}
-            </Text>
-            {snippet !== '' && (
-              <Text
-                style={[fyStyles.snippet, { color: Colors[colorScheme].muted }]}
-                numberOfLines={3}>
-                {stripMd(snippet)}
-              </Text>
-            )}
-          </View>
-          {showImg && (
-            <View style={[fyStyles.thumbWrap, { backgroundColor: Colors[colorScheme].card }]}>
-              <Image
-                source={{ uri: item.thumbnail! }}
-                style={fyStyles.thumb}
-                resizeMode="cover"
-                onError={() => setImgErr(true)}
-              />
-            </View>
-          )}
+      {/* Source row */}
+      <View style={fyStyles.sourceRow}>
+        <View style={[fyStyles.avatar, { backgroundColor: avatarBg }]}>
+          <Text style={fyStyles.avatarText}>{initials}</Text>
         </View>
+        <Text
+          style={[fyStyles.sourceName, { color: Colors[colorScheme].muted }]}
+          numberOfLines={1}>
+          {sourceName}
+        </Text>
+        {timeAgo !== '' && (
+          <>
+            <Text style={[fyStyles.dot, { color: Colors[colorScheme].border }]}>·</Text>
+            <Text style={[fyStyles.time, { color: Colors[colorScheme].muted }]}>{timeAgo}</Text>
+          </>
+        )}
+      </View>
+
+      {/* Title */}
+      <Text
+        style={[fyStyles.title, { color: Colors[colorScheme].text }]}
+        numberOfLines={3}>
+        {item.title}
+      </Text>
+
+      {/* Snippet */}
+      {snippet !== '' && (
+        <Text
+          style={[fyStyles.snippet, { color: Colors[colorScheme].muted }]}
+          numberOfLines={2}>
+          {stripMd(snippet)}
+        </Text>
+      )}
+
+      {/* Footer: read time + actions */}
+      <View style={fyStyles.footerRow}>
+        {readTime != null && (
+          <View style={fyStyles.readTimePill}>
+            <Clock size={12} color={Colors[colorScheme].muted} strokeWidth={1.8} />
+            <Text style={[fyStyles.readTimeText, { color: Colors[colorScheme].muted }]}>
+              {readTime} min read
+            </Text>
+          </View>
+        )}
+        <View style={{ flex: 1 }} />
+        <Pressable hitSlop={12} onPress={() => shareArticle(item)} style={fyStyles.actionBtn}>
+          <Share2 size={20} color={Colors[colorScheme].muted} strokeWidth={1.6} />
+        </Pressable>
+        <Pressable hitSlop={12} onPress={onToggleBookmark} style={fyStyles.actionBtn}>
+          {saved ? (
+            <BookmarkCheck size={20} color={accent} strokeWidth={2} />
+          ) : (
+            <Bookmark size={20} color={Colors[colorScheme].muted} strokeWidth={1.6} />
+          )}
+        </Pressable>
       </View>
     </Pressable>
   );
@@ -310,75 +318,74 @@ export function ForYouCard({ item, colorScheme, onPress }: CardProps) {
 
 const fyStyles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    paddingVertical: 16,
+    marginVertical: 10,
   },
-  content: {
-    flex: 1,
-    gap: 10,
+  heroWrap: {
+    width: '100%',
+    height: 240,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  heroImg: {
+    width: '100%',
+    height: '100%',
   },
   sourceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    marginBottom: 8,
   },
   avatar: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '800',
     color: '#fff',
     letterSpacing: 0.5,
   },
   sourceName: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     flexShrink: 1,
   },
   dot: { fontSize: 12 },
-  time: { fontSize: 11 },
+  time: { fontSize: 12 },
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 24,
+    letterSpacing: -0.3,
+    marginBottom: 6,
+  },
+  snippet: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+  },
   readTimePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   readTimeText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
   },
-  bodyRow: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'flex-start',
-  },
-  textCol: {
-    flex: 1,
-    gap: 6,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 22,
-    letterSpacing: -0.2,
-  },
-  thumbWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  thumb: {
-    width: '100%',
-    height: '100%',
-  },
-  snippet: {
-    fontSize: 13,
-    lineHeight: 19,
+  actionBtn: {
+    padding: 6,
+    marginLeft: 12,
   },
 });
 
@@ -386,7 +393,7 @@ const fyStyles = StyleSheet.create({
    3. DeepDiveCard — elevated card, key sections, longer reads
    ═══════════════════════════════════════════════════════════ */
 
-export function DeepDiveCard({ item, colorScheme, onPress }: CardProps) {
+export function DeepDiveCard({ item, colorScheme, onPress, accentColor = '#0EA5E9' }: CardProps) {
   const sourceName = item.source_name || item.source || '';
   const initials = getSourceInitials(sourceName);
   const avatarBg = hashColor(sourceName);
@@ -394,25 +401,22 @@ export function DeepDiveCard({ item, colorScheme, onPress }: CardProps) {
   const snippet = item.summary?.short_article?.subtitle || item.description || '';
   const readTime = item.summary?.reading_time_minutes;
   const sections = item.summary?.short_article?.outline;
-  const [imgErr, setImgErr] = useState(false);
-  const showImg = isLikelyRealImageUrl(item.thumbnail) && !imgErr;
+  const imageUrl = getArticleImage(item.thumbnail, item.title);
   const { saved, toggle: onToggleBookmark } = useBookmark(item);
+  const accent = accentColor;
 
   const cardBg = colorScheme === 'dark' ? '#161616' : '#f5f5f0';
 
   return (
     <Pressable onPress={onPress} style={[ddStyles.card, { backgroundColor: cardBg }]}>
-      {/* Hero image */}
-      {showImg && (
-        <View style={ddStyles.heroWrap}>
-          <Image
-            source={{ uri: item.thumbnail! }}
-            style={ddStyles.heroImg}
-            resizeMode="cover"
-            onError={() => setImgErr(true)}
-          />
-        </View>
-      )}
+      {/* Hero image - always shown */}
+      <View style={ddStyles.heroWrap}>
+        <Image
+          source={{ uri: imageUrl }}
+          style={ddStyles.heroImg}
+          resizeMode="cover"
+        />
+      </View>
 
       {/* Header: avatar + source + read time */}
       <View style={ddStyles.topRow}>
@@ -431,18 +435,11 @@ export function DeepDiveCard({ item, colorScheme, onPress }: CardProps) {
         </View>
         <View style={ddStyles.topActions}>
           {readTime != null && (
-            <View style={[ddStyles.readTimeBadge, { borderColor: ACCENT }]}>
-              <Clock size={12} color={ACCENT} strokeWidth={2} />
-              <Text style={[ddStyles.readTimeText, { color: ACCENT }]}>{readTime} min</Text>
+            <View style={[ddStyles.readTimeBadge, { borderColor: accent }]}>
+              <Clock size={12} color={accent} strokeWidth={2} />
+              <Text style={[ddStyles.readTimeText, { color: accent }]}>{readTime} min</Text>
             </View>
           )}
-          <Pressable hitSlop={8} onPress={onToggleBookmark}>
-            {saved ? (
-              <BookmarkCheck size={18} color={ACCENT} strokeWidth={2} />
-            ) : (
-              <Bookmark size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-            )}
-          </Pressable>
         </View>
       </View>
 
@@ -471,23 +468,39 @@ export function DeepDiveCard({ item, colorScheme, onPress }: CardProps) {
         </Text>
       )}
 
+      {/* Footer actions */}
+      <View style={ddStyles.footerRow}>
+        <View style={{ flex: 1 }} />
+        <Pressable hitSlop={12} onPress={() => shareArticle(item)} style={ddStyles.actionBtn}>
+          <Share2 size={20} color={Colors[colorScheme].muted} strokeWidth={1.6} />
+        </Pressable>
+        <Pressable hitSlop={12} onPress={onToggleBookmark} style={ddStyles.actionBtn}>
+          {saved ? (
+            <BookmarkCheck size={20} color={accent} strokeWidth={2} />
+          ) : (
+            <Bookmark size={20} color={Colors[colorScheme].muted} strokeWidth={1.6} />
+          )}
+        </Pressable>
+      </View>
     </Pressable>
   );
 }
 
 const ddStyles = StyleSheet.create({
   card: {
-    borderRadius: 16,
-    padding: 18,
-    gap: 12,
-    marginVertical: 6,
+    borderRadius: 20,
+    padding: 16,
+    marginVertical: 8,
     overflow: 'hidden',
   },
   heroWrap: {
-    height: 140,
-    marginHorizontal: -18,
-    marginTop: -18,
-    marginBottom: 0,
+    height: 180,
+    marginHorizontal: -16,
+    marginTop: -16,
+    marginBottom: 14,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
   },
   heroImg: {
     width: '100%',
@@ -497,6 +510,7 @@ const ddStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 10,
   },
   sourceGroup: {
     flexDirection: 'row',
@@ -505,14 +519,14 @@ const ddStyles = StyleSheet.create({
     flex: 1,
   },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
     color: '#fff',
     letterSpacing: 0.5,
@@ -522,40 +536,51 @@ const ddStyles = StyleSheet.create({
     fontWeight: '700',
   },
   date: {
-    fontSize: 11,
-    marginTop: 1,
+    fontSize: 12,
+    marginTop: 2,
   },
   topActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   readTimeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    gap: 5,
+    borderWidth: 1.5,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   readTimeText: {
     fontSize: 12,
     fontWeight: '700',
   },
   title: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '700',
-    lineHeight: 24,
+    lineHeight: 26,
     letterSpacing: -0.3,
+    marginBottom: 8,
   },
   snippet: {
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 21,
+    marginBottom: 6,
   },
   sectionsPreview: {
     fontSize: 12,
     lineHeight: 16,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  actionBtn: {
+    padding: 6,
+    marginLeft: 10,
   },
 });
 

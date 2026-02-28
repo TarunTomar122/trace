@@ -34,6 +34,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useAuth } from '@/contexts/AuthContext';
 import { isAlphaMode } from '@/lib/alpha';
+import Footer from '@/components/Footer';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -2694,64 +2695,6 @@ const SEOContentSection = () => {
     </section>
   );
 };
-
-// --- Footer Component ---
-const Footer = () => (
-  <footer className="py-12 md:py-16 lg:py-20 bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 z-10 relative">
-    <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
-      <div className="flex flex-col md:flex-row justify-between items-start gap-10 md:gap-12 lg:gap-16 mb-12 md:mb-16 lg:mb-20">
-        <div className="flex flex-col gap-4 md:gap-5">
-          <div className="text-xl md:text-2xl text-foreground uppercase flex items-center gap-3 md:gap-4 tracking-[0.1em] font-semibold">
-            <img
-              src="/trace.webp"
-              alt="Trace Logo"
-              width={160}
-              height={50}
-              className="h-7 md:h-9 w-auto object-contain"
-              loading="lazy"
-            />
-            TRACE
-          </div>
-          <p className="text-secondary text-sm leading-relaxed max-w-[240px]">
-            Trace scans the sources you care about and gives you a short daily brief with links worth opening.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-12 lg:gap-24 w-full md:w-auto">
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground mb-4 md:mb-5">Product</h4>
-            <div className="flex flex-col gap-3 md:gap-4">
-              <Link href="#get-started" className="text-sm text-secondary hover:text-foreground transition-colors">Start reading for free</Link>
-              <Link href="/trending" className="text-sm text-secondary hover:text-foreground transition-colors">Trending Topics</Link>
-              <Link href="/tools" className="text-sm text-secondary hover:text-foreground transition-colors">Free Tools</Link>
-            </div>
-          </div>
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground mb-4 md:mb-5">Legal</h4>
-            <div className="flex flex-col gap-3 md:gap-4">
-              <a href="/privacy-policy" className="text-sm text-secondary hover:text-foreground transition-colors">Privacy Policy</a>
-              <a href="/terms" className="text-sm text-secondary hover:text-foreground transition-colors">Terms of Service</a>
-            </div>
-          </div>
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground mb-4 md:mb-5">Connect</h4>
-            <div className="flex flex-col gap-3 md:gap-4">
-              <a href="https://x.com/tarat_211" target="_blank" rel="noopener noreferrer" className="text-sm text-secondary hover:text-foreground transition-colors">Twitter</a>
-              <a href="https://github.com/TarunTomar122" target="_blank" rel="noopener noreferrer" className="text-sm text-secondary hover:text-foreground transition-colors">GitHub</a>
-              <a href="mailto:yourtrace.online@gmail.com" className="text-sm text-secondary hover:text-foreground transition-colors">Email</a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="pt-8 md:pt-10 border-t border-gray-200 dark:border-gray-800 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6">
-        <div className="text-sm text-secondary text-center md:text-left">
-          © 2026 Trace — Built with intention
-        </div>
-      </div>
-    </div>
-  </footer>
-);
 
 // --- Main Landing Page ---
 export default function LandingPage() {

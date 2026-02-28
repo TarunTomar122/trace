@@ -2,12 +2,14 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StyleSheet } from 'react-native';
-import { Compass, User } from 'lucide-react-native';
+import { Compass, Bookmark, Flame } from 'lucide-react-native';
 import { useTheme } from '../ThemeContext';
 
 import BookFeed from '../screens/BookFeed';
 import IdeaReel from '../screens/IdeaReel';
 import ProfileScreen from '../screens/ProfileScreen';
+import BookmarksScreen from '../screens/BookmarksScreen';
+import StreaksScreen from '../screens/StreaksScreen';
 
 const RootStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -45,11 +47,20 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
+        name="Saved"
+        component={BookmarksScreen}
         options={{
           tabBarIcon: ({ color, size }) => (
-            <User size={size} color={color} strokeWidth={1.8} />
+            <Bookmark size={size} color={color} strokeWidth={1.8} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Activity"
+        component={StreaksScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Flame size={size} color={color} strokeWidth={1.8} />
           ),
         }}
       />
@@ -67,6 +78,22 @@ export default function AppNavigator() {
         options={{
           animation: 'slide_from_bottom',
           presentation: 'fullScreenModal',
+        }}
+      />
+      <RootStack.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          animation: 'slide_from_right',
+          presentation: 'card',
+        }}
+      />
+      <RootStack.Screen
+        name="Streaks"
+        component={StreaksScreen}
+        options={{
+          animation: 'slide_from_right',
+          presentation: 'card',
         }}
       />
     </RootStack.Navigator>

@@ -40,8 +40,21 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut();
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+      });
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Google sign in error:', error);
+      return { success: false, error };
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ session, loading, signOut }}>
+    <AuthContext.Provider value={{ session, loading, signOut, signInWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );

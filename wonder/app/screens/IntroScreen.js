@@ -9,12 +9,10 @@ import {
   Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../ThemeContext';
 
 const { width: W } = Dimensions.get('window');
 
 export default function IntroScreen({ onComplete }) {
-  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -36,9 +34,9 @@ export default function IntroScreen({ onComplete }) {
   }, []);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Mascot — centered in the top half */}
-      <View style={[styles.heroArea, { paddingTop: insets.top + 40 }]}>
+    <View style={styles.container}>
+      {/* Mascot — centered */}
+      <View style={[styles.heroArea, { paddingTop: insets.top + 60 }]}>
         <Image
           source={require('../assets/images/scientist.png')}
           style={styles.mascot}
@@ -46,35 +44,27 @@ export default function IntroScreen({ onComplete }) {
         />
       </View>
 
-      {/* Headline + CTA — bottom half */}
+      {/* Title + CTA — bottom */}
       <Animated.View
         style={[
           styles.bottom,
           {
-            paddingBottom: insets.bottom + 24,
+            paddingBottom: insets.bottom + 32,
             opacity: fadeAnim,
             transform: [{ translateY: slideAnim }],
           },
         ]}
       >
-        <Text style={[styles.headline, { color: colors.textPrimary }]}>
-          Key Ideas from Books,{'\n'}Videos, and more
-        </Text>
-
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          5-minute insights from the world's best sources.{'\n'}The anti-brainrot app.
-        </Text>
+        <Text style={styles.title}>brainwave</Text>
+        <Text style={styles.subtitle}>Learn something new</Text>
 
         <TouchableOpacity
-          style={[styles.ctaButton, { backgroundColor: colors.accent }]}
+          style={styles.ctaButton}
           activeOpacity={0.85}
           onPress={onComplete}
         >
-          <Text style={[styles.ctaText, { color: colors.textPrimary }]}>
-            Get started
-          </Text>
+          <Text style={styles.ctaText}>GET STARTED</Text>
         </TouchableOpacity>
-
       </Animated.View>
     </View>
   );
@@ -83,6 +73,7 @@ export default function IntroScreen({ onComplete }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
 
   heroArea: {
@@ -91,48 +82,43 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   mascot: {
-    width: W * 0.6,
-    height: W * 0.6,
+    width: W * 0.7,
+    height: W * 0.7,
   },
 
   bottom: {
-    paddingHorizontal: 28,
+    paddingHorizontal: 24,
     alignItems: 'center',
   },
-  headline: {
-    fontSize: 30,
+  title: {
+    fontSize: 38,
     fontWeight: '800',
-    letterSpacing: -0.6,
-    lineHeight: 38,
-    textAlign: 'center',
-    marginBottom: 12,
+    color: '#E8A4A0',
+    letterSpacing: -1,
+    marginBottom: 8,
   },
   subtitle: {
-    fontSize: 15,
-    lineHeight: 22,
-    textAlign: 'center',
-    marginBottom: 32,
+    fontSize: 17,
+    color: '#777777',
+    marginBottom: 40,
   },
 
   ctaButton: {
-    width: W - 56,
-    height: 54,
+    width: W - 48,
+    height: 56,
     borderRadius: 16,
+    backgroundColor: '#8BC34A',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#5D8C2A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
   },
   ctaText: {
-    fontSize: 17,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  skipButton: {
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  skipText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.8,
   },
 });
