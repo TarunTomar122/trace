@@ -1,0 +1,35 @@
+{
+  "name": "brainwave",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-google-signin/google-signin": "^16.1.1",
+    "@react-navigation/bottom-tabs": "^7.12.0",
+    "@react-navigation/native": "^7.1.28",
+    "@react-navigation/native-stack": "^7.12.0",
+    "@supabase/supabase-js": "^2.95.3",
+    "expo": "~54.0.33",
+    "expo-auth-session": "^7.0.10",
+    "expo-crypto": "^15.0.8",
+    "expo-image": "~3.0.11",
+    "expo-linear-gradient": "^55.0.8",
+    "expo-linking": "~8.0.11",
+    "expo-status-bar": "~3.0.9",
+    "expo-web-browser": "~15.0.10",
+    "lucide-react-native": "^0.563.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-safe-area-context": "^5.6.2",
+    "react-native-screens": "^4.23.0",
+    "react-native-svg": "^15.15.3",
+    "react-native-worklets-core": "^1.6.2"
+  },
+  "private": true
+}
