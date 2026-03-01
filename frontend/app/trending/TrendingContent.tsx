@@ -115,9 +115,11 @@ function ArticleModal({
     fetchSummary();
   }, [item.url]);
 
-  // Handle both body and slides format
+  // Handle both body and slides format - prefer slides for trending
   const slides = fullSummary?.short_article?.slides;
-  const body = fullSummary?.short_article?.body || (slides?.length ? slides.join('\n\n') : '');
+  const rawBody = fullSummary?.short_article?.body || '';
+  // Use slides if available, otherwise use body only if it's substantial
+  const body = slides?.length ? slides.join('\n\n') : (rawBody.length > 100 ? rawBody : '');
   const keyTakeaways = fullSummary?.short_article?.key_takeaways;
 
   return (

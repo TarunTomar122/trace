@@ -109,11 +109,12 @@ async function getTodaysItems(): Promise<TrendingItem[]> {
     const trending = Array.isArray(globalData.trending) ? globalData.trending : [];
     if (trending.length > 0) {
       const items: TrendingItem[] = trending.map((item: any, idx: number) => {
-        // For slides-based summaries, join slides into summary
+        // For slides-based summaries, prefer slides over short body
         const slides = item.summary?.short_article?.slides;
-        const body = item.summary?.short_article?.body;
-        const subtitle = item.summary?.short_article?.subtitle;
-        const summary = body || (slides?.length ? slides.join(' ') : subtitle) || '';
+        const body = item.summary?.short_article?.body || '';
+        const subtitle = item.summary?.short_article?.subtitle || '';
+        // Use slides if available and body is short (likely just subtitle)
+        const summary = (slides?.length ? slides.join(' ') : '') || (body.length > 100 ? body : subtitle) || '';
 
         return {
           id: item.id || `trending-${idx}-${shortHash(item.url || String(idx))}`,
