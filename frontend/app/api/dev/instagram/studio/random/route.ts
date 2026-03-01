@@ -48,10 +48,13 @@ function itemText(item: FeedItem): string {
     summary.short_article && typeof summary.short_article === 'object'
       ? (summary.short_article as Record<string, unknown>)
       : {};
+  // Handle slides for trending items
+  const slides = Array.isArray(shortArticle.slides) ? shortArticle.slides.join(' ') : '';
   return [
     String(item.title || ''),
     String(shortArticle.subtitle || ''),
     String(shortArticle.body || ''),
+    slides,
     String(item.source_name || ''),
     String(item.source || ''),
   ]
@@ -135,6 +138,19 @@ function collectItemsFromDoc(docData: Record<string, unknown>, interest: string,
   return pool;
 }
 
+async function loadGlobalTrendingFeed(): Promise<Array<{ section: string; item: FeedItem }>> {
+  if (!adminDb) return [];
+  const globalRef = adminDb
+    .collection('v3_user_feeds')
+    .doc('_global')
+    .collection('daily');
+  const snap = await globalRef.orderBy(FieldPath.documentId(), 'desc').limit(1).get();
+  if (snap.empty) return [];
+  const data = snap.docs[0].data() || {};
+  const trending = Array.isArray(data.trending) ? data.trending : [];
+  return trending.map((item: FeedItem) => ({ section: 'trending', item }));
+}
+
 async function loadRecentDailyDocsFromAllUsers(maxDays: number = 2) {
   if (!adminDb) return [];
   const now = new Date();
@@ -144,7 +160,8 @@ async function loadRecentDailyDocsFromAllUsers(maxDays: number = 2) {
     dateIds.push(d.toISOString().slice(0, 10));
   }
   const userRefs = await adminDb.collection('v3_user_feeds').listDocuments();
-  const users = userRefs.slice(0, 1500); // Dev safeguard
+  // Filter out _global from user refs
+  const users = userRefs.filter(ref => ref.id !== '_global').slice(0, 1500); // Dev safeguard
   const docs: Array<FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>> = [];
   for (const userRef of users) {
     for (const dateId of dateIds) {
@@ -192,14 +209,27 @@ export async function GET(request: NextRequest) {
       picked = pickRandomItem(data, requestedInterest, requestedFeedType);
       sourceFeedDate = latestDoc.id;
     } else {
-      const docs = await loadRecentDailyDocsFromAllUsers(2);
-      const globalPool: Array<{ section: string; item: FeedItem }> = [];
-      for (const doc of docs) {
-        globalPool.push(...collectItemsFromDoc((doc.data() || {}) as Record<string, unknown>, requestedInterest, requestedFeedType));
+      // For news/trending, use the global feed first
+      if (requestedFeedType === 'news' || requestedFeedType === 'any') {
+        const globalTrending = await loadGlobalTrendingFeed();
+        const filtered = globalTrending.filter(({ item }) => matchesInterest(item, requestedInterest));
+        if (filtered.length) {
+          picked = filtered[Math.floor(Math.random() * filtered.length)];
+          sourceFeedDate = 'global';
+        }
       }
-      if (globalPool.length) {
-        picked = globalPool[Math.floor(Math.random() * globalPool.length)];
-        sourceFeedDate = docs[0]?.id || 'unknown';
+
+      // Fallback to user feeds for for_you/deep_dives or if no global trending
+      if (!picked) {
+        const docs = await loadRecentDailyDocsFromAllUsers(2);
+        const globalPool: Array<{ section: string; item: FeedItem }> = [];
+        for (const doc of docs) {
+          globalPool.push(...collectItemsFromDoc((doc.data() || {}) as Record<string, unknown>, requestedInterest, requestedFeedType));
+        }
+        if (globalPool.length) {
+          picked = globalPool[Math.floor(Math.random() * globalPool.length)];
+          sourceFeedDate = docs[0]?.id || 'unknown';
+        }
       }
     }
 
@@ -224,7 +254,9 @@ export async function GET(request: NextRequest) {
         ? (summary.short_article as Record<string, unknown>)
         : {};
     const subtitle = String(shortArticle.subtitle || '').trim();
-    const body = String(shortArticle.body || '').trim();
+    // Handle slides for trending items
+    const slides = Array.isArray(shortArticle.slides) ? shortArticle.slides : [];
+    const body = String(shortArticle.body || '').trim() || slides.join(' ');
 
     const sourceName = String(item.source_name || item.source || 'Unknown source');
     const sourceUrl = String(item.url || '');
