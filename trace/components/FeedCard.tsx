@@ -104,7 +104,9 @@ export function TrendingCard({ item, colorScheme, onPress, accentColor = '#F9731
   const initials = getSourceInitials(sourceName);
   const avatarBg = hashColor(sourceName);
   const timeAgo = getTimeAgo(item.published_date);
-  const imageUrl = getArticleImage(item.thumbnail, item.title);
+  const fallbackUrl = getArticleImage(null, item.title); // Always get fallback based on title
+  const [imageUrl, setImageUrl] = useState(getArticleImage(item.thumbnail, item.title));
+  const handleImageError = () => setImageUrl(fallbackUrl);
 
   // Get carousel data from summary
   const headline = stripMd(item.summary?.short_article?.headline || item.summary?.short_article?.subtitle || '');
@@ -143,7 +145,7 @@ export function TrendingCard({ item, colorScheme, onPress, accentColor = '#F9731
         {/* Slide 0: Hero image with headline overlay */}
         <View style={[tStyles.slide, { width: CARD_WIDTH }]}>
           <View style={tStyles.heroWrap}>
-            <Image source={{ uri: imageUrl }} style={tStyles.heroImg} resizeMode="cover" />
+            <Image source={{ uri: imageUrl }} style={tStyles.heroImg} resizeMode="cover" onError={handleImageError} />
             <LinearGradient
               colors={['transparent', 'rgba(0,0,0,0.8)']}
               style={tStyles.gradient}
@@ -392,7 +394,9 @@ export function ForYouCard({ item, colorScheme, onPress, accentColor = ACCENT }:
   const timeAgo = getTimeAgo(item.published_date);
   const snippet = item.summary?.short_article?.subtitle || item.description || '';
   const readTime = item.summary?.reading_time_minutes;
-  const imageUrl = getArticleImage(item.thumbnail, item.title);
+  const fallbackUrl = getArticleImage(null, item.title);
+  const [imageUrl, setImageUrl] = useState(getArticleImage(item.thumbnail, item.title));
+  const handleImageError = () => setImageUrl(fallbackUrl);
 
   return (
     <Pressable onPress={onPress} style={fyStyles.container}>
@@ -402,6 +406,7 @@ export function ForYouCard({ item, colorScheme, onPress, accentColor = ACCENT }:
           source={{ uri: imageUrl }}
           style={fyStyles.heroImg}
           resizeMode="cover"
+          onError={handleImageError}
         />
       </View>
 
@@ -539,7 +544,9 @@ export function DeepDiveCard({ item, colorScheme, onPress, accentColor = '#0EA5E
   const snippet = item.summary?.short_article?.subtitle || item.description || '';
   const readTime = item.summary?.reading_time_minutes;
   const sections = item.summary?.short_article?.outline;
-  const imageUrl = getArticleImage(item.thumbnail, item.title);
+  const fallbackUrl = getArticleImage(null, item.title);
+  const [imageUrl, setImageUrl] = useState(getArticleImage(item.thumbnail, item.title));
+  const handleImageError = () => setImageUrl(fallbackUrl);
   const accent = accentColor;
 
   const cardBg = colorScheme === 'dark' ? '#161616' : '#f5f5f0';
@@ -552,6 +559,7 @@ export function DeepDiveCard({ item, colorScheme, onPress, accentColor = '#0EA5E
           source={{ uri: imageUrl }}
           style={ddStyles.heroImg}
           resizeMode="cover"
+          onError={handleImageError}
         />
       </View>
 

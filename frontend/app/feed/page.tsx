@@ -54,7 +54,8 @@ function FeedBuildingLoader() {
 }
 
 function FeedCard({ item, onPress }: { item: FeedItem; onPress: () => void }) {
-  const imageUrl = getArticleImage(item.thumbnail, item.title);
+  const fallbackUrl = getArticleImage(null, item.title);
+  const [imageUrl, setImageUrl] = useState(getArticleImage(item.thumbnail, item.title));
   const subtitle = stripMarkdown(item.summary?.short_article?.subtitle || "");
 
   return (
@@ -68,6 +69,7 @@ function FeedCard({ item, onPress }: { item: FeedItem; onPress: () => void }) {
           src={imageUrl}
           alt=""
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          onError={() => setImageUrl(fallbackUrl)}
         />
         {/* Source badge */}
         {item.source_name && (
