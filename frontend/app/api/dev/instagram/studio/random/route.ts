@@ -254,9 +254,10 @@ export async function GET(request: NextRequest) {
         ? (summary.short_article as Record<string, unknown>)
         : {};
     const subtitle = String(shortArticle.subtitle || '').trim();
-    // Handle slides for trending items
+    // Handle slides for trending items - prefer slides over short body
     const slides = Array.isArray(shortArticle.slides) ? shortArticle.slides : [];
-    const body = String(shortArticle.body || '').trim() || slides.join(' ');
+    const rawBody = String(shortArticle.body || '').trim();
+    const body = slides.length ? slides.join(' ') : (rawBody.length > 100 ? rawBody : subtitle);
 
     const sourceName = String(item.source_name || item.source || 'Unknown source');
     const sourceUrl = String(item.url || '');

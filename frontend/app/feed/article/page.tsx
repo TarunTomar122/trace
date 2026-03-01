@@ -41,8 +41,9 @@ export default function ArticlePage() {
 
   const isTrending = item.feed_type === "trending" || item.metadata?.feed_type === "trending";
   const slides = item.summary?.short_article?.slides;
-  // For trending, join slides into body if no body exists
-  const body = item.summary?.short_article?.body || (isTrending && slides?.length ? slides.join('\n\n') : '');
+  const rawBody = item.summary?.short_article?.body || '';
+  // For trending, prefer slides over short body
+  const body = (isTrending && slides?.length) ? slides.join('\n\n') : (rawBody.length > 100 ? rawBody : (slides?.length ? slides.join('\n\n') : rawBody));
   const keyTakeaways = item.summary?.short_article?.key_takeaways;
   const whyItMatters = item.summary?.short_article?.why_it_matters;
   const readingTime = item.summary?.reading_time_minutes || 3;
