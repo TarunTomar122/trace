@@ -20,7 +20,7 @@ const TAB_CONFIG: { key: FeedTab; label: string }[] = [
   { key: 'deep_dives', label: 'Deep Dives' },
 ];
 
-const FREE_LIMITS: Record<FeedTab, number> = { trending: 5, for_you: 2, deep_dives: 1 };
+const FREE_LIMITS: Partial<Record<FeedTab, number>> = { for_you: 2, deep_dives: 1 };
 
 function stripMarkdown(text: string): string {
   return (text || "")
@@ -201,7 +201,8 @@ function FeedPageContent() {
     const all = activeTab === 'trending' ? v3Feed.trending
       : activeTab === 'for_you' ? v3Feed.for_you
       : v3Feed.deep_dives;
-    if (isSubscribed) return all;
+    // Free users get all trending, limited for_you and deep_dives
+    if (isSubscribed || activeTab === 'trending') return all;
     const limit = FREE_LIMITS[activeTab] ?? 2;
     return all.slice(0, limit);
   })();
@@ -219,6 +220,11 @@ function FeedPageContent() {
   const getSubtitle = () => {
     if (activeTab === 'trending') return 'Top trending content for you';
     if (activeTab === 'for_you') return 'Matched to your interests';
+    if (activeTab === 'deep_dives') {
+      return isSubscribed
+        ? 'From your trusted sources'
+        : 'Popular deep dive · Subscribe for personalized picks';
+    }
     return 'In-depth reads worth your time';
   };
 
@@ -343,10 +349,12 @@ function FeedPageContent() {
                 style={{ backgroundColor: `${ACCENT}10` }}>
                 <Lock size={20} className="mx-auto mb-2" style={{ color: ACCENT }} />
                 <p className="font-semibold text-sm mb-1">
-                  {activeTab === 'for_you' ? 'Unlock all personalized stories' : 'Unlock all deep dives'}
+                  {activeTab === 'for_you' ? 'Unlock all personalized stories' : 'Get personalized deep dives'}
                 </p>
                 <p className="text-xs text-secondary/60 mb-3">
-                  Start a free trial to get unlimited access
+                  {activeTab === 'for_you'
+                    ? 'Start a free trial to get unlimited access'
+                    : 'This is a popular deep dive for everyone. Go Pro to get deep dives from your trusted sources.'}
                 </p>
                 <Link
                   href="/profile?tab=subscription"

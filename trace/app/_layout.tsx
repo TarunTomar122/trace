@@ -14,7 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import 'react-native-reanimated';
-import Constants from 'expo-constants';
+import * as Application from 'expo-application';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
@@ -30,7 +30,7 @@ export const unstable_settings = {
   initialRouteName: '(auth)',
 };
 
-const LIGHT_LOGO = require('@/assets/images/trace-logo.png');
+const LIGHT_LOGO = require('@/assets/images/trace.png');
 const DARK_LOGO = require('@/assets/images/dark-icon.png');
 
 const STORE_URL = Platform.select({
@@ -44,7 +44,7 @@ function ForceUpdateGate({ children }: { children: ReactNode }) {
   const [needsUpdate, setNeedsUpdate] = useState(false);
 
   useEffect(() => {
-    const appVersion = Constants.expoConfig?.version || '1.0.0';
+    const appVersion = Application.nativeApplicationVersion || '1.0.0';
     checkMinAppVersion(appVersion).then((ok) => {
       if (!ok) setNeedsUpdate(true);
     });

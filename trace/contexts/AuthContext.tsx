@@ -237,12 +237,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const currentUser = auth.currentUser;
       if (!currentUser) throw new Error('No user signed in');
+
+      // Re-authenticate before sensitive operation (required by Firebase)
+      try {
+        const { data } = await GoogleSignin.signIn();
+        if (data?.idToken) {
+          const credential = GoogleAuthProvider.credential(data.idToken);
+          await signInWithCredential(auth, credential);
+        }
+      } catch (reAuthError) {
+        console.warn('Re-auth failed, trying without:', reAuthError);
+      }
+
       // Delete all Firestore data first
       await deleteUserData(currentUser.uid);
       // Sign out of Google
       await GoogleSignin.signOut();
       // Delete the Firebase auth account
-      await currentUser.delete();
+      await auth.currentUser?.delete();
       setProfile(null);
       setUser(null);
     } catch (error) {

@@ -563,6 +563,56 @@ def _build_feed_item(synthesis: dict[str, Any], index: int) -> dict[str, Any]:
     }
 
 
+def _build_global_deep_dive(
+    store: V3Store,
+    config: dict[str, Any],
+    target_date: str,
+    max_age: int,
+) -> list[dict[str, Any]]:
+    """Build a single global deep dive to share with all free users."""
+    _log("Building GLOBAL deep dive for free users...")
+
+    # Use all sources for global deep dive
+    all_sources = {s.get("name", "") for s in config.get("sources", []) if s.get("name")}
+
+    candidates = store.load_pool(
+        DEEP_DIVE_POOL,
+        source_names=all_sources,
+        max_age_days=max_age,
+    )
+
+    if len(candidates) < 3:
+        _log("  Not enough articles for global deep dive")
+        return []
+
+    # Pick top articles by recency/quality
+    candidates = sorted(
+        candidates,
+        key=lambda x: x.get("published_date", "") or x.get("fetched_at", ""),
+        reverse=True,
+    )[:20]
+
+    clusters = cluster_articles(candidates)
+    if not clusters:
+        _log("  No clusters found for global deep dive")
+        return []
+
+    # Generate one deep dive from the best cluster
+    synthesis = synthesize_deep_dive(clusters[0], store)
+    if not synthesis:
+        _log("  Failed to synthesize global deep dive")
+        return []
+
+    feed_item = _build_feed_item(synthesis, 0)
+    feed_item["metadata"]["is_global"] = True  # Mark as global/shared
+
+    # Store global deep dive
+    store.write_feed_section("_global", target_date, "deep_dives", [feed_item])
+    _log(f"  Global deep dive created: {feed_item.get('title', '')[:50]}")
+
+    return [feed_item]
+
+
 def build_user_feeds(
     store: V3Store,
     config: dict[str, Any],
@@ -585,17 +635,29 @@ def build_user_feeds(
         "syntheses_generated": 0,
         "syntheses_cached": 0,
         "users_skipped_no_articles": 0,
+        "free_users_global": 0,
     }
+
+    # Build global deep dive for free users (once, shared by all)
+    global_deep_dives = _build_global_deep_dive(store, config, target_date, max_age)
 
     for profile in users:
         uid = profile.get("uid", "")
         if not uid:
             continue
 
-        # Get user's sources
-        selected_sources = set(profile.get("selectedLearningSources", []) or [])
         is_sub = is_user_subscribed(profile)
-        target_deep_dives = DEFAULT_DEEP_DIVES_PER_USER if is_sub else FREE_TIER_LIMITS.get("deep_dives", 1)
+
+        # Free users get the global shared deep dive (no personalized generation)
+        if not is_sub:
+            store.write_feed_section(uid, target_date, "deep_dives", global_deep_dives)
+            stats["free_users_global"] += 1
+            _log(f"  user={uid} FREE → assigned global deep dive")
+            continue
+
+        # Get user's sources (only for subscribed users)
+        selected_sources = set(profile.get("selectedLearningSources", []) or [])
+        target_deep_dives = DEFAULT_DEEP_DIVES_PER_USER
 
         # Fallback to interests if no sources selected
         if not selected_sources:
@@ -622,8 +684,13 @@ def build_user_feeds(
         candidates = [c for c in candidates if c.get("url", "") not in seen_urls]
 
         if len(candidates) < 2:
-            _log(f"  user={uid} only {len(candidates)} articles, skipping")
-            store.write_feed_section(uid, target_date, "deep_dives", [])
+            # Fallback to global deep dive for pro users with no personalized content
+            if global_deep_dives:
+                store.write_feed_section(uid, target_date, "deep_dives", global_deep_dives)
+                _log(f"  user={uid} only {len(candidates)} articles → fallback to global deep dive")
+            else:
+                store.write_feed_section(uid, target_date, "deep_dives", [])
+                _log(f"  user={uid} only {len(candidates)} articles, skipping")
             stats["users_skipped_no_articles"] += 1
             continue
 
