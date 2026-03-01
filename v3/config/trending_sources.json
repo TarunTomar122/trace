@@ -21,14 +21,6 @@
     },
     {
       "interest_id": "technology",
-      "name": "Engadget",
-      "url": "https://www.engadget.com/rss.xml",
-      "type": "rss",
-      "exclude_title_keywords": ["deal", "deals", "sale", "discount", "review", "best "],
-      "source_weight": 1.1
-    },
-    {
-      "interest_id": "technology",
       "name": "Ars Technica",
       "url": "https://feeds.arstechnica.com/arstechnica/index",
       "type": "rss",
