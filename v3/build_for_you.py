@@ -462,18 +462,19 @@ def build_user_feeds(
             if url and url not in items_by_depth[depth]:
                 items_by_depth[depth][url] = item
 
-    # Run batch per depth
+    # Run batch per depth — using learning cards format for mobile
     summary_maps: dict[str, dict[str, dict[str, Any] | None]] = {}
     for depth in ["deep", "accessible"]:
         items = list(items_by_depth[depth].values())
         if not items:
             summary_maps[depth] = {}
             continue
-        _log(f"Batch summarize {len(items)} articles for depth={depth}")
+        _log(f"Batch summarize {len(items)} articles for depth={depth} (cards format)")
         presummary = batch_presummarize(
             store, items,
             feed_type="default", max_workers=8,
             technical_depth=depth,
+            output_format="cards",  # Generate learning cards for swipeable mobile UX
         )
         summary_maps[depth] = presummary.get("summary_map", {}) or {}
 
@@ -513,6 +514,7 @@ def build_user_feeds(
                     content=item.get("content", ""),
                     feed_type="default",
                     technical_depth=depth,
+                    output_format="cards",  # Learning cards for swipeable mobile UX
                 )
             if not summary:
                 stats["rejected_items"] += 1
