@@ -95,6 +95,11 @@ export interface FeedItem {
       body?: string;
       key_takeaways?: string[];
       why_it_matters?: string;
+      learning_cards?: Array<{
+        type: 'hook' | 'insight' | 'why' | 'takeaway';
+        emoji: string;
+        content: string;
+      }>;
     };
     reading_time_minutes?: number;
   };

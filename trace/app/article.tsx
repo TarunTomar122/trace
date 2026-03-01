@@ -6,6 +6,9 @@ import {
   View,
   Text,
   Image,
+  Dimensions,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -37,6 +40,16 @@ import { getCurrentArticle } from '@/lib/article-store';
 import { logReadingEvent } from '@/lib/reading-analytics';
 
 const ACCENT = '#F59E0B';
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = SCREEN_WIDTH - 40; // 20px padding on each side
+const CARD_HEIGHT = 280;
+
+const CARD_TYPE_LABELS: Record<string, string> = {
+  hook: 'THE STORY',
+  insight: 'KEY INSIGHT',
+  why: 'WHY IT MATTERS',
+  takeaway: 'YOUR TAKEAWAY',
+};
 
 const SOURCE_CONFIG: Record<
   string,
@@ -87,6 +100,161 @@ function RichText({ children, style }: { children: string; style?: any }) {
     </Text>
   );
 }
+
+type LearningCard = {
+  type: 'hook' | 'insight' | 'why' | 'takeaway';
+  emoji: string;
+  content: string;
+};
+
+/** Swipeable learning cards carousel */
+function LearningCardsCarousel({
+  cards,
+  colorScheme,
+  onReadOriginal,
+}: {
+  cards: LearningCard[];
+  colorScheme: 'light' | 'dark';
+  onReadOriginal: () => void;
+}) {
+  const [currentCard, setCurrentCard] = useState(0);
+  const totalCards = cards.length;
+
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const x = e.nativeEvent.contentOffset.x;
+    const idx = Math.round(x / CARD_WIDTH);
+    setCurrentCard(idx);
+  };
+
+  const cardBg = colorScheme === 'dark' ? '#1a1a1a' : '#fafafa';
+  const isLastCard = currentCard === totalCards - 1;
+
+  return (
+    <View style={lcStyles.container}>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        decelerationRate="fast"
+        snapToInterval={CARD_WIDTH}
+        contentContainerStyle={{ paddingRight: 0 }}
+      >
+        {cards.map((card, idx) => (
+          <View key={idx} style={[lcStyles.card, { width: CARD_WIDTH, backgroundColor: cardBg }]}>
+            {/* Card header */}
+            <View style={lcStyles.cardHeader}>
+              <Text style={lcStyles.emoji}>{card.emoji}</Text>
+              <Text style={[lcStyles.typeLabel, { color: ACCENT }]}>
+                {CARD_TYPE_LABELS[card.type] || card.type.toUpperCase()}
+              </Text>
+              <View style={{ flex: 1 }} />
+              <Text style={[lcStyles.progress, { color: Colors[colorScheme].muted }]}>
+                {idx + 1}/{totalCards}
+              </Text>
+            </View>
+
+            {/* Card content */}
+            <View style={lcStyles.cardContent}>
+              <RichText style={[lcStyles.cardText, { color: Colors[colorScheme].text }]}>
+                {card.content}
+              </RichText>
+            </View>
+
+            {/* Read original button on last card */}
+            {idx === totalCards - 1 && (
+              <Pressable style={lcStyles.readOriginalBtn} onPress={onReadOriginal}>
+                <ExternalLink size={16} color="#fff" strokeWidth={2} />
+                <Text style={lcStyles.readOriginalText}>Read Original</Text>
+              </Pressable>
+            )}
+          </View>
+        ))}
+      </ScrollView>
+
+      {/* Pagination dots */}
+      <View style={lcStyles.pagination}>
+        {cards.map((_, i) => (
+          <View
+            key={i}
+            style={[
+              lcStyles.dot,
+              {
+                backgroundColor: i === currentCard ? ACCENT : Colors[colorScheme].border,
+                width: i === currentCard ? 16 : 6,
+              },
+            ]}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const lcStyles = StyleSheet.create({
+  container: {
+    marginVertical: 8,
+  },
+  card: {
+    height: CARD_HEIGHT,
+    borderRadius: 20,
+    padding: 24,
+    justifyContent: 'space-between',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  emoji: {
+    fontSize: 20,
+  },
+  typeLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  progress: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  cardContent: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingVertical: 16,
+  },
+  cardText: {
+    fontSize: 17,
+    lineHeight: 26,
+    fontWeight: '400',
+  },
+  readOriginalBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: ACCENT,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  readOriginalText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  pagination: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 14,
+  },
+  dot: {
+    height: 6,
+    borderRadius: 3,
+  },
+});
 
 export default function ArticleScreen() {
   const router = useRouter();
@@ -139,7 +307,10 @@ export default function ArticleScreen() {
   const subtitle = item.summary?.short_article?.subtitle;
   const keyTakeaways = item.summary?.short_article?.key_takeaways;
   const whyItMatters = item.summary?.short_article?.why_it_matters;
+  const learningCards = item.summary?.short_article?.learning_cards;
+  const hasLearningCards = learningCards && learningCards.length > 0;
   const isTrending = item.feed_type === 'trending' || item.metadata?.feed_type === 'trending';
+  const isForYou = item.feed_type === 'for_you' || item.metadata?.feed_type === 'for_you';
 
   // Split on double newlines first, then split each block on single newlines
   // so that headings on their own line don't merge with body text.
@@ -286,37 +457,57 @@ export default function ArticleScreen() {
         <View style={[styles.divider, { backgroundColor: Colors[colorScheme].border }]} />
 
         {hasAccess ? (
-          <View style={styles.articleBody}>
-            {/* Key Takeaways */}
-            {!isTrending && keyTakeaways && keyTakeaways.length > 0 && (
-              <View style={[styles.takeawaysCard, { backgroundColor: '#fffbeb' }]}>
-                <ThemedText style={styles.takeawaysLabel}>Key Takeaways</ThemedText>
-                {keyTakeaways.map((t: string, i: number) => (
-                  <View key={i} style={styles.takeawayRow}>
-                    <View style={styles.takeawayDot} />
-                    <RichText style={[styles.takeawayText, { color: Colors[colorScheme].text }]}>
-                      {t}
-                    </RichText>
-                  </View>
-                ))}
-              </View>
-            )}
+          hasLearningCards ? (
+            /* Learning Cards View for For You articles */
+            <LearningCardsCarousel
+              cards={learningCards as LearningCard[]}
+              colorScheme={colorScheme}
+              onReadOriginal={() => {
+                if (!item.url) return;
+                logReadingEvent({
+                  eventType: 'external_open',
+                  itemId: item.id,
+                  title: item.title,
+                  url: item.url,
+                  itemType: item.type || item.source || 'blog',
+                });
+                WebBrowser.openBrowserAsync(item.url);
+              }}
+            />
+          ) : (
+            /* Traditional prose view */
+            <View style={styles.articleBody}>
+              {/* Key Takeaways */}
+              {!isTrending && keyTakeaways && keyTakeaways.length > 0 && (
+                <View style={[styles.takeawaysCard, { backgroundColor: '#fffbeb' }]}>
+                  <ThemedText style={styles.takeawaysLabel}>Key Takeaways</ThemedText>
+                  {keyTakeaways.map((t: string, i: number) => (
+                    <View key={i} style={styles.takeawayRow}>
+                      <View style={styles.takeawayDot} />
+                      <RichText style={[styles.takeawayText, { color: Colors[colorScheme].text }]}>
+                        {t}
+                      </RichText>
+                    </View>
+                  ))}
+                </View>
+              )}
 
-            {/* Body */}
-            {bodyLines.map((line: string, index: number) => renderLine(line, index))}
+              {/* Body */}
+              {bodyLines.map((line: string, index: number) => renderLine(line, index))}
 
-            {/* Why it matters */}
-            {!isTrending && whyItMatters ? (
-              <View style={[styles.whyItMattersCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-                <ThemedText style={[styles.whyItMattersLabel, { color: Colors[colorScheme].muted }]}>
-                  Why it matters
-                </ThemedText>
-                <RichText style={[styles.whyItMattersText, { color: Colors[colorScheme].secondary }]}>
-                  {whyItMatters}
-                </RichText>
-              </View>
-            ) : null}
-          </View>
+              {/* Why it matters */}
+              {!isTrending && whyItMatters ? (
+                <View style={[styles.whyItMattersCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
+                  <ThemedText style={[styles.whyItMattersLabel, { color: Colors[colorScheme].muted }]}>
+                    Why it matters
+                  </ThemedText>
+                  <RichText style={[styles.whyItMattersText, { color: Colors[colorScheme].secondary }]}>
+                    {whyItMatters}
+                  </RichText>
+                </View>
+              ) : null}
+            </View>
+          )
         ) : (
           <>
             <View style={styles.articleBody}>
