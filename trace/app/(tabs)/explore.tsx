@@ -36,7 +36,6 @@ import {
   SENIORITY_LEVELS,
   ONBOARDING_INTERESTS,
   CAREER_GOALS,
-  SUMMARY_STYLES,
 } from '@/lib/firestore';
 import { ILLUS_PALETTE } from '@/app/(auth)/welcome';
 
@@ -291,26 +290,6 @@ export default function ProfileScreen() {
                   </ThemedText>
                 </View>
               ))}
-            </View>
-          </Pressable>
-        )}
-
-        {/* ─── Summary Style ─── */}
-        {isOnboarded && profile?.summaryStyle && (
-          <Pressable style={styles.section} onPress={() => router.push('/preferences/summary-style')}>
-            <View style={styles.sectionHeader}>
-              <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
-                Summary Style
-              </ThemedText>
-              <ChevronRight size={14} color={Colors[colorScheme].border} strokeWidth={1.5} />
-            </View>
-            <View style={[styles.summaryStyleCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-              <ThemedText style={styles.summaryStyleLabel}>
-                {lookupLabel(SUMMARY_STYLES as unknown as { id: string; label: string }[], profile.summaryStyle)}
-              </ThemedText>
-              <ThemedText style={[styles.summaryStyleDesc, { color: Colors[colorScheme].muted }]}>
-                {(SUMMARY_STYLES as unknown as { id: string; subtitle: string }[]).find(s => s.id === profile.summaryStyle)?.subtitle || ''}
-              </ThemedText>
             </View>
           </Pressable>
         )}

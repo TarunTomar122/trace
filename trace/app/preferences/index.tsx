@@ -8,7 +8,6 @@ import {
   Sparkles,
   BookOpen,
   Target,
-  FileText,
   RefreshCw,
 } from 'lucide-react-native';
 
@@ -23,7 +22,6 @@ import {
   SENIORITY_LEVELS,
   ONBOARDING_INTERESTS,
   CAREER_GOALS,
-  SUMMARY_STYLES,
   triggerFeedGeneration,
   updateUserProfile,
 } from '@/lib/firestore';
@@ -84,10 +82,6 @@ export default function PreferencesHub() {
   const goalsValue = (profile?.careerGoals || [])
     .map((id: string) => lookupLabel(CAREER_GOALS as any, id))
     .join(', ');
-
-  const styleValue = profile?.summaryStyle
-    ? lookupLabel(SUMMARY_STYLES as any, profile.summaryStyle)
-    : '';
 
   const lastRebuildTs = (() => {
     const raw = profile?.feedBuildRequestedAt;
@@ -166,14 +160,6 @@ export default function PreferencesHub() {
             value={goalsValue}
             colorScheme={colorScheme}
             onPress={() => router.push('/preferences/goals')}
-          />
-          <View style={[styles.rowDivider, { backgroundColor: Colors[colorScheme].border }]} />
-          <PrefRow
-            icon={FileText}
-            label="Summary Style"
-            value={styleValue}
-            colorScheme={colorScheme}
-            onPress={() => router.push('/preferences/summary-style')}
           />
         </View>
 

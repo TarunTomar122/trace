@@ -1,14 +1,8 @@
 {
-  "description": "Sources for the 'Trending' feed. An unfiltered explore-style feed showing the latest news across ALL topics. 48h freshness window.",
-  "max_age_hours": 48,
-  "items_per_user": 8,
+  "description": "Sources for the 'Trending' feed. An unfiltered explore-style feed showing the latest news across ALL topics. Shows all items from last 24h, sorted newest first.",
+  "max_age_hours": 24,
+  "items_per_user": 0,
   "sources": [
-    {
-      "interest_id": "technology",
-      "name": "Hacker News Front Page",
-      "url": "https://hnrss.org/frontpage",
-      "type": "rss"
-    },
     {
       "interest_id": "technology",
       "name": "The Verge",
@@ -85,12 +79,6 @@
       "interest_id": "business-market",
       "name": "SaaStr",
       "url": "https://www.saastr.com/feed/",
-      "type": "rss"
-    },
-    {
-      "interest_id": "experience",
-      "name": "Smashing Magazine",
-      "url": "https://www.smashingmagazine.com/feed/",
       "type": "rss"
     },
     {

@@ -526,24 +526,6 @@ export const CAREER_GOALS = [
   { id: 'grow-network', label: 'Grow my network', subtitle: 'Connect with the right people' },
 ] as const;
 
-export const SUMMARY_STYLES = [
-  {
-    id: 'executive',
-    label: 'Executive Brief',
-    subtitle: 'Key takeaways + business impact. No jargon, just what matters.',
-  },
-  {
-    id: 'practitioner',
-    label: 'Practitioner Deep-Dive',
-    subtitle: 'How-to details, frameworks, and actionable steps.',
-  },
-  {
-    id: 'casual',
-    label: 'Water Cooler Ready',
-    subtitle: 'Talking points to sound smart in meetings. Casual but informed.',
-  },
-] as const;
-
 // Get user profile from Firestore
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   try {
@@ -606,27 +588,57 @@ export async function getLatestUserFeed(uid: string): Promise<UserFeed | null> {
 
 export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
   try {
+    // Fetch user-specific feed (for_you, deep_dives)
     const feedRef = collection(firestore, 'v3_user_feeds', uid, 'daily');
     const snapshot = await getDocs(feedRef);
-    if (snapshot.empty) return null;
 
-    const sortedDocs = snapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
-    const data = sortedDocs[0].data();
-    const forYou = Array.isArray(data.for_you) ? data.for_you : [];
-    const deepDives = Array.isArray(data.deep_dives) ? data.deep_dives : [];
-    const trending = Array.isArray(data.trending) ? data.trending : [];
+    // Fetch GLOBAL trending feed (shared by all users)
+    const globalFeedRef = collection(firestore, 'v3_user_feeds', '_global', 'daily');
+    const globalSnapshot = await getDocs(globalFeedRef);
+
+    let forYou: FeedItem[] = [];
+    let deepDives: FeedItem[] = [];
+    let trending: FeedItem[] = [];
+    let feedDate = '';
+    let assembledAt: string | undefined;
+    let metadata: V3UserFeed['metadata'];
+
+    // Get user's for_you and deep_dives
+    if (!snapshot.empty) {
+      const sortedDocs = snapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
+      const data = sortedDocs[0].data();
+      feedDate = data.date || sortedDocs[0].id;
+      assembledAt = data.assembled_at;
+      metadata = data.metadata;
+      forYou = Array.isArray(data.for_you) ? data.for_you : [];
+      deepDives = Array.isArray(data.deep_dives) ? data.deep_dives : [];
+    }
+
+    // Get trending from global feed (new system)
+    if (!globalSnapshot.empty) {
+      const sortedGlobal = globalSnapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
+      const globalData = sortedGlobal[0].data();
+      trending = Array.isArray(globalData.trending) ? globalData.trending : [];
+    }
+
+    // Fallback: if no global trending, try user's own trending (legacy)
+    if (trending.length === 0 && !snapshot.empty) {
+      const sortedDocs = snapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
+      const data = sortedDocs[0].data();
+      trending = Array.isArray(data.trending) ? data.trending : [];
+    }
 
     if (forYou.length === 0 && deepDives.length === 0 && trending.length === 0) {
       return null;
     }
 
     return {
-      date: data.date || sortedDocs[0].id,
+      date: feedDate,
       for_you: forYou as FeedItem[],
       deep_dives: deepDives as FeedItem[],
       trending: trending as FeedItem[],
-      assembled_at: data.assembled_at,
-      metadata: data.metadata,
+      assembled_at: assembledAt,
+      metadata,
     };
   } catch (error) {
     console.error('Error getting v3 feed:', error);

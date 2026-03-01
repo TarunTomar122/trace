@@ -37,7 +37,7 @@ from v1.storage import is_user_subscribed  # noqa: E402
 from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
 from v3.lib.store import V3Store, DEEP_DIVE_POOL, FREE_TIER_LIMITS, _today_ist  # noqa: E402
 from v3.lib.content import fetch_content, fetch_og_image  # noqa: E402
-from v3.lib.summarizer import get_or_generate_summary, batch_presummarize, summary_lookup_key  # noqa: E402
+from v3.lib.summarizer import get_or_generate_summary, batch_presummarize  # noqa: E402
 from v3.lib.diversity import dedupe_and_cap  # noqa: E402
 
 CONFIG_PATH = "v3/config/deep_dive_sources.json"
@@ -284,8 +284,6 @@ def build_user_feeds(
             continue
 
         selected_sources = set(profile.get("selectedLearningSources", []) or [])
-        style = profile.get("summaryStyle", "practitioner") or "practitioner"
-        seniority = profile.get("seniority", "mid") or "mid"
         is_subscribed = is_user_subscribed(profile)
         user_items_target = items_per_user if is_subscribed else FREE_TIER_LIMITS.get("deep_dives", 1)
 
@@ -299,9 +297,7 @@ def build_user_feeds(
                 continue
 
         selected_union |= selected_sources
-        user_inputs.append(
-            (profile, selected_sources, style, seniority, user_items_target)
-        )
+        user_inputs.append((profile, selected_sources, user_items_target))
 
     all_candidates: list[dict[str, Any]] = []
     if user_inputs and selected_union:
@@ -312,7 +308,7 @@ def build_user_feeds(
         )
     _log(f"Loaded {len(all_candidates)} shared deep_dive pool candidates")
 
-    for profile, selected_sources, style, seniority, user_items_target in user_inputs:
+    for profile, selected_sources, user_items_target in user_inputs:
         uid = profile.get("uid", "")
         if not uid:
             continue
@@ -350,7 +346,7 @@ def build_user_feeds(
                 source_keys.remove(k)
 
         _log(f"  user={uid} → {len(picked)} deep dives")
-        user_picks.append((profile, picked, style, seniority))
+        user_picks.append((profile, picked))
 
     # ------------------------------------------------------------------
     # PHASE 2b: Batch pre-summarize only the articles users actually need
@@ -360,20 +356,18 @@ def build_user_feeds(
     _log("-" * 40)
 
     needed_items: dict[str, dict] = {}
-    needed_combos: set[tuple[str, str]] = set()
-    for _, picked, style, seniority in user_picks:
-        needed_combos.add((style, seniority))
+    for _, picked in user_picks:
         for item in picked:
             url = item.get("url", "")
             if url and url not in needed_items:
                 needed_items[url] = item
 
-    _log(f"Unique articles needed: {len(needed_items)}, combos: {len(needed_combos)}")
+    _log(f"Unique articles needed: {len(needed_items)}")
 
-    summary_map: dict[tuple[str, str, str], dict[str, Any] | None] = {}
-    if needed_items and needed_combos:
+    summary_map: dict[str, dict[str, Any] | None] = {}
+    if needed_items:
         presummary = batch_presummarize(
-            store, list(needed_items.values()), list(needed_combos),
+            store, list(needed_items.values()),
             feed_type="deep_dives", max_workers=8,
         )
         summary_map = presummary.get("summary_map", {}) or {}
@@ -393,17 +387,14 @@ def build_user_feeds(
         "rejected_items": 0,
     }
 
-    for profile, picked, style, seniority in user_picks:
+    for profile, picked in user_picks:
         uid = profile.get("uid", "")
 
         feed_items: list[dict[str, Any]] = []
         for item in picked:
             url = item.get("url", "")
-            lookup_key = summary_lookup_key(
-                url, style, seniority, feed_type="deep_dives",
-            )
-            if lookup_key in summary_map:
-                summary = summary_map[lookup_key]
+            if url in summary_map:
+                summary = summary_map[url]
                 was_cached = True
             else:
                 summary, was_cached = get_or_generate_summary(
@@ -411,8 +402,6 @@ def build_user_feeds(
                     url=url,
                     title=item.get("title", ""),
                     content=item.get("content", ""),
-                    style=style,
-                    seniority=seniority,
                     feed_type="deep_dives",
                 )
             if not summary:

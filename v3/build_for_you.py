@@ -40,7 +40,7 @@ from v1.storage import is_user_subscribed  # noqa: E402
 from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
 from v3.lib.store import V3Store, FOR_YOU_POOL, FREE_TIER_LIMITS, _today_ist  # noqa: E402
 from v3.lib.content import fetch_content, fetch_og_image  # noqa: E402
-from v3.lib.summarizer import get_or_generate_summary, batch_presummarize, summary_lookup_key  # noqa: E402
+from v3.lib.summarizer import get_or_generate_summary, batch_presummarize  # noqa: E402
 from v3.lib.scorer import rank_articles  # noqa: E402
 from v3.lib.diversity import dedupe_and_cap  # noqa: E402
 
@@ -330,7 +330,7 @@ def build_user_feeds(
     _log("PHASE 2a: Select articles per user")
     _log("-" * 40)
 
-    user_picks: list[tuple[dict, list[dict], str, str]] = []
+    user_picks: list[tuple[dict, list[dict]]] = []
     allowed_sources = {
         str(src.get("name", "")).strip()
         for src in config.get("sources", [])
@@ -338,7 +338,7 @@ def build_user_feeds(
     }
     source_weights = _build_source_weight_map(config)
     eligible_union: set[str] = set()
-    user_inputs: list[tuple[dict, set[str], set[str], list[str], str, str, int, str, bool]] = []
+    user_inputs: list[tuple[dict, set[str], set[str], list[str], int, str, bool]] = []
 
     for profile in users:
         uid = profile.get("uid", "")
@@ -348,13 +348,6 @@ def build_user_feeds(
         interests = set(profile.get("interests", []))
         role = profile.get("role", "")
         goals = profile.get("careerGoals", []) or []
-        style = (
-            profile.get("summaryStyle", "practitioner")
-            or "practitioner"
-        )
-        seniority = (
-            profile.get("seniority", "mid") or "mid"
-        )
         is_sub = is_user_subscribed(profile)
         target = (
             items_per_user
@@ -386,8 +379,6 @@ def build_user_feeds(
                 eligible,
                 role_primary,
                 goals,
-                style,
-                seniority,
                 target,
                 role,
                 is_sub,
@@ -409,8 +400,6 @@ def build_user_feeds(
         eligible,
         role_primary,
         goals,
-        style,
-        seniority,
         target,
         role,
         is_sub,
@@ -449,9 +438,7 @@ def build_user_feeds(
             f"  user={uid} {tier} role={role} "
             f"eligible={sorted(eligible)} → {len(picked)}"
         )
-        user_picks.append(
-            (profile, picked, style, seniority),
-        )
+        user_picks.append((profile, picked))
 
     # ------------------------------------------------------------------
     # PHASE 2b: Batch pre-summarize only the articles users actually need
@@ -461,20 +448,18 @@ def build_user_feeds(
     _log("-" * 40)
 
     needed_items: dict[str, dict] = {}
-    needed_combos: set[tuple[str, str]] = set()
-    for _, picked, style, seniority in user_picks:
-        needed_combos.add((style, seniority))
+    for _, picked in user_picks:
         for item in picked:
             url = item.get("url", "")
             if url and url not in needed_items:
                 needed_items[url] = item
 
-    _log(f"Unique articles needed: {len(needed_items)}, combos: {len(needed_combos)}")
+    _log(f"Unique articles needed: {len(needed_items)}")
 
-    summary_map: dict[tuple[str, str, str], dict[str, Any] | None] = {}
-    if needed_items and needed_combos:
+    summary_map: dict[str, dict[str, Any] | None] = {}
+    if needed_items:
         presummary = batch_presummarize(
-            store, list(needed_items.values()), list(needed_combos),
+            store, list(needed_items.values()),
             feed_type="default", max_workers=8,
         )
         summary_map = presummary.get("summary_map", {}) or {}
@@ -494,15 +479,14 @@ def build_user_feeds(
         "rejected_items": 0,
     }
 
-    for profile, picked, style, seniority in user_picks:
+    for profile, picked in user_picks:
         uid = profile.get("uid", "")
 
         feed_items: list[dict[str, Any]] = []
         for item in picked:
             url = item.get("url", "")
-            lookup_key = summary_lookup_key(url, style, seniority, feed_type="default")
-            if lookup_key in summary_map:
-                summary = summary_map[lookup_key]
+            if url in summary_map:
+                summary = summary_map[url]
                 was_cached = True
             else:
                 summary, was_cached = get_or_generate_summary(
@@ -510,8 +494,7 @@ def build_user_feeds(
                     url=url,
                     title=item.get("title", ""),
                     content=item.get("content", ""),
-                    style=style,
-                    seniority=seniority,
+                    feed_type="default",
                 )
             if not summary:
                 stats["rejected_items"] += 1

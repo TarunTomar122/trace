@@ -89,6 +89,8 @@ export interface FeedItem {
   summary?: {
     short_article?: {
       subtitle?: string;
+      headline?: string;  // For trending carousel
+      slides?: string[];  // For trending carousel
       outline?: string[];
       body?: string;
       key_takeaways?: string[];
@@ -248,30 +250,6 @@ export const CAREER_GOALS = [
   { id: 'lead-team', label: 'Lead a team', subtitle: 'Move into management', icon: 'users' },
   { id: 'stay-sharp', label: 'Stay sharp', subtitle: 'Keep up with industry trends', icon: 'brain' },
   { id: 'grow-network', label: 'Grow my network', subtitle: 'Connect with the right people', icon: 'globe' },
-] as const;
-
-export const SUMMARY_STYLES = [
-  {
-    id: 'executive',
-    label: 'Executive Brief',
-    subtitle: 'Key takeaways + business impact. No jargon, just what matters.',
-    icon: 'file-text',
-    preview: '"OpenAI\'s new model means your design workflows could automate 40% of asset production..."',
-  },
-  {
-    id: 'practitioner',
-    label: 'Practitioner Deep-Dive',
-    subtitle: 'How-to details, frameworks, and actionable steps.',
-    icon: 'microscope',
-    preview: '"Here\'s how to implement this in your sprint: Step 1..."',
-  },
-  {
-    id: 'casual',
-    label: 'Water Cooler Ready',
-    subtitle: 'Talking points to sound smart in meetings. Casual but informed.',
-    icon: 'message-circle',
-    preview: '"Next time someone mentions GPT-5, here\'s what you should know..."',
-  },
 ] as const;
 
 // Legacy constants (kept for backward compat with old onboarding code paths)
@@ -476,12 +454,11 @@ export async function completeOnboarding(
     interests: string[];
     selectedLearningSources: string[];
     careerGoals: string[];
-    summaryStyle: string;
   }
 ): Promise<void> {
   try {
     const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
-    
+
     const updateData: Record<string, unknown> = {
       name: data.name,
       role: data.role,
@@ -489,7 +466,6 @@ export async function completeOnboarding(
       interests: data.interests,
       selectedLearningSources: data.selectedLearningSources,
       careerGoals: data.careerGoals,
-      summaryStyle: data.summaryStyle,
       onboarded: true,
       updatedAt: serverTimestamp(),
       onboardedAt: serverTimestamp(),
@@ -699,50 +675,64 @@ export async function getLatestUserFeed(uid: string): Promise<UserFeed | null> {
 
 export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
   try {
+    // Fetch user-specific feed (for_you, deep_dives)
     const feedRef = collection(firestore, 'v3_user_feeds', uid, 'daily');
     const latestQuery = query(feedRef, orderBy(documentId(), 'desc'), limit(1));
     const snapshot = await getDocs(latestQuery);
-    if (snapshot.empty) return null;
 
-    const latestDoc = snapshot.docs[0];
-    const data = latestDoc.data();
-    console.log('[Feed] Latest feed doc:', latestDoc.id, 'fields:', Object.keys(data));
+    // Fetch GLOBAL trending feed (shared by all users)
+    const globalFeedRef = collection(firestore, 'v3_user_feeds', '_global', 'daily');
+    const globalQuery = query(globalFeedRef, orderBy(documentId(), 'desc'), limit(1));
+    const globalSnapshot = await getDocs(globalQuery);
 
-    const forYou = Array.isArray(data.for_you) ? data.for_you : [];
-    const deepDives = Array.isArray(data.deep_dives) ? data.deep_dives : [];
-    const trending = Array.isArray(data.trending) ? data.trending : [];
+    let forYou: FeedItem[] = [];
+    let deepDives: FeedItem[] = [];
+    let trending: FeedItem[] = [];
+    let feedDate = '';
+    let assembledAt: string | undefined;
+    let metadata: V3UserFeed['metadata'];
+
+    // Get user's for_you and deep_dives
+    if (!snapshot.empty) {
+      const latestDoc = snapshot.docs[0];
+      const data = latestDoc.data();
+      feedDate = data.date || latestDoc.id;
+      assembledAt = data.assembled_at;
+      metadata = data.metadata;
+      forYou = Array.isArray(data.for_you) ? data.for_you : [];
+      deepDives = Array.isArray(data.deep_dives) ? data.deep_dives : [];
+      console.log('[Feed] User feed doc:', latestDoc.id, 'for_you:', forYou.length, 'deep_dives:', deepDives.length);
+    }
+
+    // Get trending from global feed (new system) or fallback to user feed (legacy)
+    if (!globalSnapshot.empty) {
+      const globalDoc = globalSnapshot.docs[0];
+      const globalData = globalDoc.data();
+      trending = Array.isArray(globalData.trending) ? globalData.trending : [];
+      console.log('[Feed] Global trending doc:', globalDoc.id, 'items:', trending.length);
+    }
+
+    // Fallback: if no global trending, try user's own trending (legacy per-user feeds)
+    if (trending.length === 0 && !snapshot.empty) {
+      const data = snapshot.docs[0].data();
+      trending = Array.isArray(data.trending) ? data.trending : [];
+      if (trending.length > 0) {
+        console.log('[Feed] Using legacy user trending:', trending.length);
+      }
+    }
 
     if (forYou.length === 0 && deepDives.length === 0 && trending.length === 0) {
-      console.log('[Feed] Doc exists but all sections empty, falling back to previous');
-      const fallbackQuery = query(feedRef, orderBy(documentId(), 'desc'), limit(2));
-      const fallbackSnap = await getDocs(fallbackQuery);
-      if (fallbackSnap.docs.length > 1) {
-        const prevDoc = fallbackSnap.docs[1];
-        const prevData = prevDoc.data();
-        const prevForYou = Array.isArray(prevData.for_you) ? prevData.for_you : [];
-        const prevDeepDives = Array.isArray(prevData.deep_dives) ? prevData.deep_dives : [];
-        const prevTrending = Array.isArray(prevData.trending) ? prevData.trending : [];
-        if (prevForYou.length > 0 || prevDeepDives.length > 0 || prevTrending.length > 0) {
-          return {
-            date: prevData.date || prevDoc.id,
-            for_you: prevForYou as FeedItem[],
-            deep_dives: prevDeepDives as FeedItem[],
-            trending: prevTrending as FeedItem[],
-            assembled_at: prevData.assembled_at,
-            metadata: prevData.metadata,
-          };
-        }
-      }
+      console.log('[Feed] All sections empty');
       return null;
     }
 
     return {
-      date: data.date || latestDoc.id,
+      date: feedDate,
       for_you: forYou as FeedItem[],
       deep_dives: deepDives as FeedItem[],
       trending: trending as FeedItem[],
-      assembled_at: data.assembled_at,
-      metadata: data.metadata,
+      assembled_at: assembledAt,
+      metadata,
     };
   } catch (error) {
     console.error('Error getting v3 feed:', error);

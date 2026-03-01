@@ -11,7 +11,6 @@ import {
   Sparkles,
   BookOpen,
   Target,
-  FileText,
   Circle,
   Mail,
 } from 'lucide-react';
@@ -22,7 +21,6 @@ import {
   SENIORITY_LEVELS,
   ONBOARDING_INTERESTS,
   CAREER_GOALS,
-  SUMMARY_STYLES,
   LEARNING_SOURCE_CATEGORIES,
 } from '@/lib/firestore';
 import { isAlphaMode } from '@/lib/alpha';
@@ -31,7 +29,7 @@ import SubscriptionManager from '@/components/SubscriptionManager';
 
 const ACCENT = '#F59E0B';
 
-type PrefKey = 'role' | 'interests' | 'sources' | 'goals' | 'style';
+type PrefKey = 'role' | 'interests' | 'sources' | 'goals';
 
 function lookupLabel(items: readonly { id: string; label: string }[], id: string): string {
   return items.find((i) => i.id === id)?.label || id.replace(/-/g, ' ');
@@ -50,7 +48,6 @@ function ProfileContent() {
   const [editInterests, setEditInterests] = useState<string[]>([]);
   const [editSources, setEditSources] = useState<string[]>([]);
   const [editGoals, setEditGoals] = useState<string[]>([]);
-  const [editStyle, setEditStyle] = useState('');
   const [newsletterEnabled, setNewsletterEnabled] = useState(true);
   const [savingNewsletter, setSavingNewsletter] = useState(false);
 
@@ -98,7 +95,6 @@ function ProfileContent() {
     setEditInterests(profile.interests || []);
     setEditSources(profile.selectedLearningSources || []);
     setEditGoals(profile.careerGoals || []);
-    setEditStyle(profile.summaryStyle || '');
     setEditing(key);
   };
 
@@ -135,10 +131,6 @@ function ProfileContent() {
   const goalsValue = (profile?.careerGoals || [])
     .map((id: string) => lookupLabel(CAREER_GOALS as unknown as { id: string; label: string }[], id))
     .join(', ');
-
-  const styleValue = profile?.summaryStyle
-    ? lookupLabel(SUMMARY_STYLES as unknown as { id: string; label: string }[], profile.summaryStyle)
-    : '';
 
   const handleSignOut = async () => {
     await signOut();
@@ -328,24 +320,6 @@ function ProfileContent() {
                   </div>
                 )}
 
-                {/* Summary Style */}
-                <PrefRow label="Summary Style" value={styleValue} icon={<FileText size={16} />} isOpen={editing === 'style'} onToggle={() => editing === 'style' ? cancelEditing() : startEditing('style')} />
-                {editing === 'style' && (
-                  <div className="px-4 py-4 bg-gray-50/50 dark:bg-gray-900/50 space-y-3">
-                    <div className="grid gap-2">
-                      {SUMMARY_STYLES.map((style) => (
-                        <button key={style.id} onClick={() => setEditStyle(style.id)}
-                          className={`p-3 rounded-xl border-2 text-left transition-all ${
-                            editStyle === style.id ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30' : 'border-gray-200 dark:border-gray-800'
-                          }`}>
-                          <div className="font-medium text-sm">{style.label}</div>
-                          <div className="text-xs text-secondary/60 mt-0.5">{style.subtitle}</div>
-                        </button>
-                      ))}
-                    </div>
-                    <EditActions saving={saving} onCancel={cancelEditing} disabled={!editStyle} onSave={() => savePrefs({ summaryStyle: editStyle })} />
-                  </div>
-                )}
               </div>
               <p className="text-[11px] text-secondary/40 mt-2">
                 Changes take effect on your next daily feed refresh.

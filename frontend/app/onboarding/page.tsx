@@ -12,13 +12,12 @@ import {
   ONBOARDING_INTERESTS,
   LEARNING_SOURCE_CATEGORIES,
   CAREER_GOALS,
-  SUMMARY_STYLES,
 } from '@/lib/firestore';
 import { isAlphaMode } from '@/lib/alpha';
 import { trackOnboardingStarted, trackOnboardingCompleted } from '@/lib/posthog';
 
 const ACCENT = '#F59E0B';
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 4;
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -30,7 +29,6 @@ export default function OnboardingPage() {
   const [interests, setInterests] = useState<string[]>([]);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [careerGoals, setCareerGoals] = useState<string[]>([]);
-  const [summaryStyle, setSummaryStyle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasTracked, setHasTracked] = useState(false);
 
@@ -60,7 +58,6 @@ export default function OnboardingPage() {
     if (step === 2) return interests.length >= 3;
     if (step === 3) return selectedSources.length >= 1;
     if (step === 4) return careerGoals.length >= 1;
-    if (step === 5) return !!summaryStyle;
     return false;
   })();
 
@@ -108,7 +105,6 @@ export default function OnboardingPage() {
         interests,
         selectedLearningSources: selectedSources,
         careerGoals,
-        summaryStyle: summaryStyle || 'practitioner',
       });
       trackOnboardingCompleted({ interests_count: interests.length, hobbies_count: 0, role });
       await refreshProfile();
@@ -328,41 +324,6 @@ export default function OnboardingPage() {
                   </button>
                 );
               })}
-            </div>
-          </div>
-        )}
-
-        {/* Step 5: Summary Style */}
-        {step === 5 && (
-          <div className="space-y-6">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-secondary/60 mb-1">Step 5</p>
-              <h2 className="text-xl font-semibold">How should we write for you?</h2>
-              <p className="text-sm text-secondary/70 mt-1">
-                Choose your preferred summary tone.
-              </p>
-            </div>
-
-            <div className="grid gap-3">
-              {SUMMARY_STYLES.map((style) => (
-                <button
-                  key={style.id}
-                  onClick={() => setSummaryStyle(style.id)}
-                  className={`relative p-4 rounded-xl border-2 text-left transition-all ${
-                    summaryStyle === style.id
-                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30'
-                      : 'border-gray-200 dark:border-gray-800 hover:border-gray-300'
-                  }`}
-                >
-                  {summaryStyle === style.id && (
-                    <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center">
-                      <Check size={12} className="text-white" />
-                    </div>
-                  )}
-                  <div className="font-medium text-sm">{style.label}</div>
-                  <div className="text-xs text-secondary/60 mt-0.5">{style.subtitle}</div>
-                </button>
-              ))}
             </div>
           </div>
         )}

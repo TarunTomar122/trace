@@ -1,11 +1,25 @@
-import { useState, useEffect } from 'react';
-import { Pressable, StyleSheet, View, Text, Image, Share, Platform } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  View,
+  Text,
+  Image,
+  Share,
+  Platform,
+  ScrollView,
+  Dimensions,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+} from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   Clock,
   Bookmark,
   BookmarkCheck,
   Share2,
+  ChevronRight,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -91,11 +105,10 @@ function stripMd(text: string): string {
     .trim();
 }
 
-function firstParagraph(text?: string): string {
-  if (!text) return '';
+function splitParagraphs(text?: string): string[] {
+  if (!text) return [];
   const normalized = text.replace(/\n{3,}/g, '\n\n').trim();
-  const para = normalized.split(/\n\s*\n/)[0] || '';
-  return stripMd(para);
+  return normalized.split(/\n\s*\n/).filter(Boolean);
 }
 
 /* ─── Types ───────────────────────────────────────────────── */
@@ -108,125 +121,266 @@ type CardProps = {
 };
 
 /* ═══════════════════════════════════════════════════════════
-   1. TrendingCard — compact, source-first, explore feel
+   1. TrendingCard — Instagram-style carousel with swipe
    ═══════════════════════════════════════════════════════════ */
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = SCREEN_WIDTH - 40; // 20px padding on each side
+const CARD_HEIGHT = 420;
 
 export function TrendingCard({ item, colorScheme, onPress, accentColor = '#F97316' }: CardProps) {
   const sourceName = item.source_name || item.source || '';
   const initials = getSourceInitials(sourceName);
   const avatarBg = hashColor(sourceName);
   const timeAgo = getTimeAgo(item.published_date);
-  const subtitle = stripMd(item.summary?.short_article?.subtitle || '');
-  const brief = firstParagraph(item.summary?.short_article?.body);
-  const snippet = brief || subtitle || item.description || '';
   const imageUrl = getArticleImage(item.thumbnail, item.title);
 
+  // Get carousel data from summary
+  const headline = stripMd(item.summary?.short_article?.headline || item.summary?.short_article?.subtitle || '');
+  const slides: string[] = item.summary?.short_article?.slides || [];
+  // Fallback for old format: split body into slides
+  const fallbackSlides = (() => {
+    if (slides.length > 0) return slides;
+    const body = item.summary?.short_article?.body || '';
+    if (!body) return item.description ? [item.description] : [];
+    return splitParagraphs(body).slice(0, 3);
+  })();
+
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const totalSlides = 1 + fallbackSlides.length; // image slide + text slides
+
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const x = e.nativeEvent.contentOffset.x;
+    const slide = Math.round(x / CARD_WIDTH);
+    setCurrentSlide(slide);
+  };
+
+  const textBg = colorScheme === 'dark' ? '#1a1a1a' : '#fff';
+
   return (
-    <Pressable onPress={onPress} style={tStyles.container}>
-      {/* Hero image at top */}
-      <View style={tStyles.heroWrap}>
-        <Image
-          source={{ uri: imageUrl }}
-          style={tStyles.heroImg}
-          resizeMode="cover"
-        />
-      </View>
-
-      {/* Source row with share on right */}
-      <View style={tStyles.sourceRow}>
-        <View style={[tStyles.avatar, { backgroundColor: avatarBg }]}>
-          <Text style={tStyles.avatarText}>{initials}</Text>
-        </View>
-        <Text
-          style={[tStyles.sourceName, { color: Colors[colorScheme].muted }]}
-          numberOfLines={1}>
-          {sourceName}
-        </Text>
-        {timeAgo !== '' && (
-          <>
-            <Text style={[tStyles.dot, { color: Colors[colorScheme].border }]}>·</Text>
-            <Text style={[tStyles.time, { color: Colors[colorScheme].muted }]}>{timeAgo}</Text>
-          </>
-        )}
-        <View style={{ flex: 1 }} />
-        <Pressable hitSlop={12} onPress={() => shareArticle(item)} style={tStyles.actionBtn}>
-          <Share2 size={18} color={Colors[colorScheme].muted} strokeWidth={1.6} />
+    <View style={tStyles.container}>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        decelerationRate="fast"
+        snapToInterval={CARD_WIDTH}
+        contentContainerStyle={{ paddingRight: 0 }}
+      >
+        {/* Slide 0: Hero image with headline overlay */}
+        <Pressable onPress={onPress} style={[tStyles.slide, { width: CARD_WIDTH }]}>
+          <View style={tStyles.heroWrap}>
+            <Image source={{ uri: imageUrl }} style={tStyles.heroImg} resizeMode="cover" />
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.8)']}
+              style={tStyles.gradient}
+            />
+            <View style={tStyles.overlayContent}>
+              {/* Source badge */}
+              <View style={tStyles.sourceBadge}>
+                <View style={[tStyles.avatar, { backgroundColor: avatarBg }]}>
+                  <Text style={tStyles.avatarText}>{initials}</Text>
+                </View>
+                <Text style={tStyles.sourceNameOverlay} numberOfLines={1}>
+                  {sourceName}
+                </Text>
+                {timeAgo !== '' && (
+                  <>
+                    <Text style={tStyles.dotOverlay}>·</Text>
+                    <Text style={tStyles.timeOverlay}>{timeAgo}</Text>
+                  </>
+                )}
+              </View>
+              {/* Title */}
+              <Text style={tStyles.titleOverlay} numberOfLines={4}>
+                {item.title}
+              </Text>
+              {/* Headline hook */}
+              {headline !== '' && (
+                <Text style={tStyles.headlineOverlay} numberOfLines={2}>
+                  {headline}
+                </Text>
+              )}
+              {/* Swipe hint */}
+              {fallbackSlides.length > 0 && (
+                <View style={tStyles.swipeHint}>
+                  <Text style={tStyles.swipeText}>Swipe for more</Text>
+                  <ChevronRight size={14} color="rgba(255,255,255,0.7)" />
+                </View>
+              )}
+            </View>
+          </View>
         </Pressable>
+
+        {/* Slides 1-3: Text detail slides */}
+        {fallbackSlides.map((slideText, idx) => (
+          <Pressable
+            key={idx}
+            onPress={onPress}
+            style={[tStyles.slide, tStyles.textSlide, { width: CARD_WIDTH, backgroundColor: textBg }]}
+          >
+            <View style={tStyles.textSlideInner}>
+              <View style={tStyles.slideHeader}>
+                <View style={[tStyles.avatar, { backgroundColor: avatarBg }]}>
+                  <Text style={tStyles.avatarText}>{initials}</Text>
+                </View>
+                <Text style={[tStyles.sourceName, { color: Colors[colorScheme].muted }]} numberOfLines={1}>
+                  {sourceName}
+                </Text>
+                <View style={{ flex: 1 }} />
+                <Text style={[tStyles.slideNum, { color: Colors[colorScheme].muted }]}>
+                  {idx + 2}/{totalSlides}
+                </Text>
+              </View>
+              <Text style={[tStyles.slideText, { color: Colors[colorScheme].text }]}>
+                {stripMd(slideText)}
+              </Text>
+            </View>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      {/* Pagination dots */}
+      <View style={tStyles.pagination}>
+        {Array.from({ length: totalSlides }).map((_, i) => (
+          <View
+            key={i}
+            style={[
+              tStyles.dot,
+              {
+                backgroundColor: i === currentSlide ? accentColor : Colors[colorScheme].border,
+                width: i === currentSlide ? 16 : 6,
+              },
+            ]}
+          />
+        ))}
       </View>
-
-      {/* Title */}
-      <Text
-        style={[tStyles.title, { color: Colors[colorScheme].text }]}
-        numberOfLines={3}>
-        {item.title}
-      </Text>
-
-      {/* Snippet */}
-      {snippet !== '' && (
-        <Text
-          style={[tStyles.snippet, { color: Colors[colorScheme].muted }]}
-          numberOfLines={2}>
-          {snippet}
-        </Text>
-      )}
-    </Pressable>
+    </View>
   );
 }
 
 const tStyles = StyleSheet.create({
   container: {
-    marginVertical: 10,
+    marginVertical: 12,
+  },
+  slide: {
+    height: CARD_HEIGHT,
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginRight: 0,
   },
   heroWrap: {
-    width: '100%',
-    height: 240,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 12,
+    flex: 1,
+    position: 'relative',
   },
   heroImg: {
     width: '100%',
     height: '100%',
   },
-  sourceRow: {
+  gradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '60%',
+  },
+  overlayContent: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: 20,
+  },
+  sourceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   avatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '800',
     color: '#fff',
     letterSpacing: 0.5,
+  },
+  sourceNameOverlay: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)',
+    flexShrink: 1,
+  },
+  dotOverlay: { fontSize: 12, color: 'rgba(255,255,255,0.6)' },
+  timeOverlay: { fontSize: 12, color: 'rgba(255,255,255,0.6)' },
+  titleOverlay: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+    lineHeight: 28,
+    letterSpacing: -0.3,
+    marginBottom: 8,
+  },
+  headlineOverlay: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.8)',
+    lineHeight: 21,
+  },
+  swipeHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  swipeText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '600',
+  },
+  textSlide: {
+    padding: 0,
+  },
+  textSlideInner: {
+    flex: 1,
+    padding: 24,
+    justifyContent: 'center',
+  },
+  slideHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 20,
   },
   sourceName: {
     fontSize: 13,
     fontWeight: '600',
     flexShrink: 1,
   },
-  dot: { fontSize: 12 },
-  time: { fontSize: 12 },
-  actionBtn: {
-    padding: 4,
+  slideNum: {
+    fontSize: 12,
+    fontWeight: '500',
   },
-  title: {
+  slideText: {
     fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 24,
-    letterSpacing: -0.3,
-    marginBottom: 6,
+    lineHeight: 28,
+    fontWeight: '400',
   },
-  snippet: {
-    fontSize: 14,
-    lineHeight: 20,
+  pagination: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 14,
+  },
+  dot: {
+    height: 6,
+    borderRadius: 3,
   },
 });
 

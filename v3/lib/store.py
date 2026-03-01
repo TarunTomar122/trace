@@ -358,6 +358,34 @@ class V3Store:
             }
         )
 
+    # V2 cache methods - simplified keys (no style/seniority variants)
+    def _cache_key_v2(self, url: str, bucket: str) -> str:
+        raw = f"{url}:{bucket}"
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:40]
+
+    def get_cached_summary_v2(
+        self, url: str, bucket: str
+    ) -> dict[str, Any] | None:
+        key = self._cache_key_v2(url, bucket)
+        doc = self.db.collection(SUMMARY_CACHE).document(key).get()
+        if doc.exists:
+            return doc.to_dict()
+        return None
+
+    def save_cached_summary_v2(
+        self, url: str, bucket: str, summary: dict[str, Any], model: str
+    ) -> None:
+        key = self._cache_key_v2(url, bucket)
+        self.db.collection(SUMMARY_CACHE).document(key).set(
+            {
+                "url": url,
+                "cache_bucket": bucket,
+                "summary": summary,
+                "model": model,
+                "created_at": _now_iso(),
+            }
+        )
+
     # ------------------------------------------------------------------
     # Seen URLs (per-user, with 30-day pruning)
     # ------------------------------------------------------------------
@@ -437,6 +465,39 @@ class V3Store:
         doc = (
             self.db.collection(USER_FEEDS)
             .document(uid)
+            .collection("daily")
+            .document(date)
+            .get()
+        )
+        return doc.to_dict() if doc.exists else {}
+
+    # ------------------------------------------------------------------
+    # Global feeds (shared across all users, e.g., trending)
+    # ------------------------------------------------------------------
+
+    def write_global_feed_section(
+        self,
+        date: str,
+        section: str,
+        items: list[dict[str, Any]],
+    ) -> None:
+        """Write a section to the global feed (shared by all users)."""
+        self.db.collection(USER_FEEDS).document("_global").collection(
+            "daily"
+        ).document(date).set(
+            {
+                section: items,
+                f"{section}_count": len(items),
+                f"{section}_generated_at": _now_iso(),
+            },
+            merge=True,
+        )
+
+    def load_global_feed(self, date: str) -> dict[str, Any]:
+        """Load the global feed for a given date."""
+        doc = (
+            self.db.collection(USER_FEEDS)
+            .document("_global")
             .collection("daily")
             .document(date)
             .get()

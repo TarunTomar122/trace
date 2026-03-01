@@ -38,14 +38,13 @@ import {
   ONBOARDING_INTERESTS,
   LEARNING_SOURCE_CATEGORIES,
   CAREER_GOALS,
-  SUMMARY_STYLES,
   completeOnboarding,
 } from '@/lib/firestore';
 
 const ACCENT = '#F59E0B';
 const ACCENT_BG_DARK = '#1a1408';
 const ACCENT_BG_LIGHT = '#fffbeb';
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 4;
 
 const ICON_MAP: Record<string, LucideIcon> = {
   'palette': Palette, 'code': Code, 'clipboard-list': ClipboardList,
@@ -198,9 +197,6 @@ export default function OnboardingScreen() {
   // Step 4
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
 
-  // Step 5
-  const [selectedSummaryStyle, setSelectedSummaryStyle] = useState<string>('');
-
   // ─── Toggles ───
   const toggleInterest = useCallback((id: string) => {
     setSelectedInterests(prev =>
@@ -239,7 +235,6 @@ export default function OnboardingScreen() {
     if (step === 2) return selectedInterests.length >= 3;
     if (step === 3) return selectedSources.length >= 1;
     if (step === 4) return selectedGoals.length >= 1;
-    if (step === 5) return !!selectedSummaryStyle;
     return true;
   };
 
@@ -268,7 +263,6 @@ export default function OnboardingScreen() {
         interests: selectedInterests,
         selectedLearningSources: selectedSources,
         careerGoals: selectedGoals,
-        summaryStyle: selectedSummaryStyle,
       });
 
       await refreshProfile();
@@ -527,71 +521,6 @@ export default function OnboardingScreen() {
             </Animated.View>
           )}
 
-          {/* ═══════ STEP 5: Summary Style ═══════ */}
-          {step === 5 && (
-            <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)}>
-              <ThemedText style={styles.title}>How should we brief you?</ThemedText>
-              <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
-                This shapes how every summary reads. You can change it anytime.
-              </ThemedText>
-
-              <View style={styles.goalList}>
-                {SUMMARY_STYLES.map((style, index) => (
-                  <Animated.View
-                    key={style.id}
-                    entering={FadeInDown.duration(400).delay(index * 80).easing(Easing.out(Easing.ease))}
-                  >
-                    <Pressable
-                      onPress={() => setSelectedSummaryStyle(style.id)}
-                      style={[
-                        styles.summaryCard,
-                        {
-                          backgroundColor: selectedSummaryStyle === style.id
-                            ? (colorScheme === 'dark' ? ACCENT_BG_DARK : ACCENT_BG_LIGHT)
-                            : Colors[colorScheme].card,
-                          borderColor: selectedSummaryStyle === style.id ? ACCENT : Colors[colorScheme].border,
-                          borderWidth: selectedSummaryStyle === style.id ? 2 : 1,
-                        },
-                      ]}
-                    >
-                      <View style={styles.summaryHeader}>
-                        <View style={[
-                          styles.summaryIconBox,
-                          {
-                            backgroundColor: selectedSummaryStyle === style.id
-                              ? ACCENT + '20'
-                              : Colors[colorScheme].border + '40',
-                          },
-                        ]}>
-                          <IconRenderer
-                            name={style.icon}
-                            size={24}
-                            color={selectedSummaryStyle === style.id ? ACCENT : Colors[colorScheme].muted}
-                          />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <ThemedText style={[
-                            styles.summaryLabel,
-                            selectedSummaryStyle === style.id && { color: ACCENT },
-                          ]}>
-                            {style.label}
-                          </ThemedText>
-                          <ThemedText style={[styles.summarySubtitle, { color: Colors[colorScheme].muted }]}>
-                            {style.subtitle}
-                          </ThemedText>
-                        </View>
-                      </View>
-                      <View style={[styles.previewBox, { backgroundColor: Colors[colorScheme].background }]}>
-                        <ThemedText style={[styles.previewText, { color: Colors[colorScheme].muted }]}>
-                          {style.preview}
-                        </ThemedText>
-                      </View>
-                    </Pressable>
-                  </Animated.View>
-                ))}
-              </View>
-            </Animated.View>
-          )}
         </ScrollView>
 
         {/* ═══════ Footer ═══════ */}
