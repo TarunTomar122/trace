@@ -1,10 +1,7 @@
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import { ThemedText } from '@/components/themed-text';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Check, X, Info } from 'lucide-react-native';
 
 type ToastKind = 'info' | 'success' | 'error';
 
@@ -18,50 +15,87 @@ const ToastContext = createContext<ToastContextValue>({
 
 export const useToast = () => useContext(ToastContext);
 
+const TOAST_CONFIG = {
+  success: {
+    bg: '#1a1a1a',
+    icon: Check,
+    iconBg: '#22c55e',
+  },
+  error: {
+    bg: '#1a1a1a',
+    icon: X,
+    iconBg: '#ef4444',
+  },
+  info: {
+    bg: '#1a1a1a',
+    icon: Info,
+    iconBg: '#3b82f6',
+  },
+};
+
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const colorScheme = useColorScheme() ?? 'light';
   const insets = useSafeAreaInsets();
   const [message, setMessage] = useState<string | null>(null);
   const [kind, setKind] = useState<ToastKind>('info');
   const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(8)).current;
+  const translateY = useRef(new Animated.Value(20)).current;
+  const scale = useRef(new Animated.Value(0.9)).current;
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hideToast = useCallback(() => {
     Animated.parallel([
       Animated.timing(opacity, {
         toValue: 0,
-        duration: 140,
+        duration: 200,
         useNativeDriver: true,
       }),
       Animated.timing(translateY, {
-        toValue: 8,
-        duration: 140,
+        toValue: 20,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scale, {
+        toValue: 0.9,
+        duration: 200,
         useNativeDriver: true,
       }),
     ]).start(() => {
       setMessage(null);
     });
-  }, [opacity, translateY]);
+  }, [opacity, translateY, scale]);
 
   const showToast = useCallback(
-    (nextMessage: string, nextKind: ToastKind = 'info', durationMs = 2000) => {
+    (nextMessage: string, nextKind: ToastKind = 'info', durationMs = 2500) => {
       if (hideTimer.current) {
         clearTimeout(hideTimer.current);
       }
 
       setKind(nextKind);
       setMessage(nextMessage);
+
+      // Reset values
+      opacity.setValue(0);
+      translateY.setValue(20);
+      scale.setValue(0.9);
+
       Animated.parallel([
-        Animated.timing(opacity, {
+        Animated.spring(opacity, {
           toValue: 1,
-          duration: 170,
           useNativeDriver: true,
+          tension: 100,
+          friction: 10,
         }),
-        Animated.timing(translateY, {
+        Animated.spring(translateY, {
           toValue: 0,
-          duration: 170,
           useNativeDriver: true,
+          tension: 100,
+          friction: 10,
+        }),
+        Animated.spring(scale, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 100,
+          friction: 10,
         }),
       ]).start();
 
@@ -69,47 +103,30 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         hideToast();
       }, durationMs);
     },
-    [hideToast, opacity, translateY]
+    [hideToast, opacity, translateY, scale]
   );
 
-  const tone = useMemo(() => {
-    if (kind === 'success') {
-      return {
-        bg: colorScheme === 'dark' ? '#0f2619' : '#ECFDF3',
-        border: colorScheme === 'dark' ? '#92400e' : '#fde68a',
-        text: colorScheme === 'dark' ? '#fde68a' : '#92400e',
-      };
-    }
-    if (kind === 'error') {
-      return {
-        bg: colorScheme === 'dark' ? '#2a1316' : '#FEF2F2',
-        border: colorScheme === 'dark' ? '#7f1d1d' : '#FECACA',
-        text: colorScheme === 'dark' ? '#fecaca' : '#991B1B',
-      };
-    }
-    return {
-      bg: colorScheme === 'dark' ? '#14171c' : '#F5F7FA',
-      border: colorScheme === 'dark' ? '#2f3742' : '#E5EAF0',
-      text: Colors[colorScheme].text,
-    };
-  }, [colorScheme, kind]);
+  const config = TOAST_CONFIG[kind];
+  const Icon = config.icon;
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
       {message && (
-        <View pointerEvents="none" style={[styles.overlay, { bottom: Math.max(insets.bottom + 24, 28) }]}>
+        <View pointerEvents="none" style={[styles.overlay, { bottom: Math.max(insets.bottom + 16, 24) }]}>
           <Animated.View
             style={[
               styles.toast,
               {
-                backgroundColor: tone.bg,
-                borderColor: tone.border,
+                backgroundColor: config.bg,
                 opacity,
-                transform: [{ translateY }],
+                transform: [{ translateY }, { scale }],
               },
             ]}>
-            <ThemedText style={[styles.toastText, { color: tone.text }]}>{message}</ThemedText>
+            <View style={[styles.iconCircle, { backgroundColor: config.iconBg }]}>
+              <Icon size={14} color="#fff" strokeWidth={2.5} />
+            </View>
+            <Text style={styles.toastText} numberOfLines={2}>{message}</Text>
           </Animated.View>
         </View>
       )}
@@ -124,19 +141,33 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     zIndex: 9999,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
   toast: {
-    maxWidth: 360,
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 100,
+    paddingLeft: 6,
+    paddingRight: 16,
+    paddingVertical: 6,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  iconCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   toastText: {
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#fff',
   },
 });
 

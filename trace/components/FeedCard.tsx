@@ -1,12 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import {
   Pressable,
   StyleSheet,
   View,
   Text,
   Image,
-  Share,
-  Platform,
   ScrollView,
   Dimensions,
   NativeSyntheticEvent,
@@ -16,45 +14,13 @@ import * as WebBrowser from 'expo-web-browser';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Clock,
-  Bookmark,
-  BookmarkCheck,
-  Share2,
   ChevronRight,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { FeedItem } from '@/lib/firestore';
-import { toggleBookmark, isBookmarked } from '@/lib/bookmarks';
 import { getArticleImage } from '@/lib/fallback-images';
-
-function useBookmark(item: FeedItem) {
-  const [saved, setSaved] = useState(false);
-  useEffect(() => {
-    isBookmarked(item.id).then(setSaved);
-  }, [item.id]);
-  const toggle = async () => {
-    const nowSaved = await toggleBookmark(item);
-    setSaved(nowSaved);
-  };
-  return { saved, toggle };
-}
-
-async function shareArticle(item: FeedItem) {
-  try {
-    const message = Platform.OS === 'ios'
-      ? item.title
-      : `${item.title}\n\n${item.url}`;
-
-    await Share.share({
-      message,
-      url: item.url, // iOS only
-      title: item.title,
-    });
-  } catch (error) {
-    // User cancelled or error
-  }
-}
 
 /* ─── Shared utilities ────────────────────────────────────── */
 
@@ -175,7 +141,7 @@ export function TrendingCard({ item, colorScheme, onPress, accentColor = '#F9731
         contentContainerStyle={{ paddingRight: 0 }}
       >
         {/* Slide 0: Hero image with headline overlay */}
-        <Pressable onPress={onPress} style={[tStyles.slide, { width: CARD_WIDTH }]}>
+        <View style={[tStyles.slide, { width: CARD_WIDTH }]}>
           <View style={tStyles.heroWrap}>
             <Image source={{ uri: imageUrl }} style={tStyles.heroImg} resizeMode="cover" />
             <LinearGradient
@@ -217,7 +183,7 @@ export function TrendingCard({ item, colorScheme, onPress, accentColor = '#F9731
               )}
             </View>
           </View>
-        </Pressable>
+        </View>
 
         {/* Slides 1-3: Text detail slides */}
         {fallbackSlides.map((slideText, idx) => {
@@ -225,9 +191,8 @@ export function TrendingCard({ item, colorScheme, onPress, accentColor = '#F9731
             ? `rgba(249, 115, 22, 0.06)` // subtle orange tint dark
             : `rgba(249, 115, 22, 0.03)`; // subtle orange tint light
           return (
-            <Pressable
+            <View
               key={idx}
-              onPress={onPress}
               style={[tStyles.slide, tStyles.textSlide, { width: CARD_WIDTH, backgroundColor: slideBg }]}
             >
               <View style={tStyles.textSlideInner}>
@@ -256,7 +221,7 @@ export function TrendingCard({ item, colorScheme, onPress, accentColor = '#F9731
                   {stripMd(slideText)}
                 </Text>
               </View>
-            </Pressable>
+            </View>
           );
         })}
       </ScrollView>
@@ -428,8 +393,6 @@ export function ForYouCard({ item, colorScheme, onPress, accentColor = ACCENT }:
   const snippet = item.summary?.short_article?.subtitle || item.description || '';
   const readTime = item.summary?.reading_time_minutes;
   const imageUrl = getArticleImage(item.thumbnail, item.title);
-  const { saved, toggle: onToggleBookmark } = useBookmark(item);
-  const accent = accentColor;
 
   return (
     <Pressable onPress={onPress} style={fyStyles.container}>
@@ -476,28 +439,17 @@ export function ForYouCard({ item, colorScheme, onPress, accentColor = ACCENT }:
         </Text>
       )}
 
-      {/* Footer: read time + actions */}
-      <View style={fyStyles.footerRow}>
-        {readTime != null && (
+      {/* Footer: read time */}
+      {readTime != null && (
+        <View style={fyStyles.footerRow}>
           <View style={fyStyles.readTimePill}>
             <Clock size={12} color={Colors[colorScheme].muted} strokeWidth={1.8} />
             <Text style={[fyStyles.readTimeText, { color: Colors[colorScheme].muted }]}>
               {readTime} min read
             </Text>
           </View>
-        )}
-        <View style={{ flex: 1 }} />
-        <Pressable hitSlop={12} onPress={() => shareArticle(item)} style={fyStyles.actionBtn}>
-          <Share2 size={20} color={Colors[colorScheme].muted} strokeWidth={1.6} />
-        </Pressable>
-        <Pressable hitSlop={12} onPress={onToggleBookmark} style={fyStyles.actionBtn}>
-          {saved ? (
-            <BookmarkCheck size={20} color={accent} strokeWidth={2} />
-          ) : (
-            <Bookmark size={20} color={Colors[colorScheme].muted} strokeWidth={1.6} />
-          )}
-        </Pressable>
-      </View>
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -588,7 +540,6 @@ export function DeepDiveCard({ item, colorScheme, onPress, accentColor = '#0EA5E
   const readTime = item.summary?.reading_time_minutes;
   const sections = item.summary?.short_article?.outline;
   const imageUrl = getArticleImage(item.thumbnail, item.title);
-  const { saved, toggle: onToggleBookmark } = useBookmark(item);
   const accent = accentColor;
 
   const cardBg = colorScheme === 'dark' ? '#161616' : '#f5f5f0';
@@ -653,21 +604,6 @@ export function DeepDiveCard({ item, colorScheme, onPress, accentColor = '#0EA5E
           {sections.slice(0, 3).join(' · ')}
         </Text>
       )}
-
-      {/* Footer actions */}
-      <View style={ddStyles.footerRow}>
-        <View style={{ flex: 1 }} />
-        <Pressable hitSlop={12} onPress={() => shareArticle(item)} style={ddStyles.actionBtn}>
-          <Share2 size={20} color={Colors[colorScheme].muted} strokeWidth={1.6} />
-        </Pressable>
-        <Pressable hitSlop={12} onPress={onToggleBookmark} style={ddStyles.actionBtn}>
-          {saved ? (
-            <BookmarkCheck size={20} color={accent} strokeWidth={2} />
-          ) : (
-            <Bookmark size={20} color={Colors[colorScheme].muted} strokeWidth={1.6} />
-          )}
-        </Pressable>
-      </View>
     </Pressable>
   );
 }
@@ -758,15 +694,6 @@ const ddStyles = StyleSheet.create({
   sectionsPreview: {
     fontSize: 12,
     lineHeight: 16,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  actionBtn: {
-    padding: 6,
-    marginLeft: 10,
   },
 });
 

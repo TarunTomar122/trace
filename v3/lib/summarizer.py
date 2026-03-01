@@ -343,9 +343,9 @@ Return JSON with EXACT structure:
         "content": "Why this matters — connect to reader's work/life (40-60 words)"
       }},
       {{
-        "type": "takeaway",
+        "type": "bottom_line",
         "emoji": "⚡",
-        "content": "Your action item — what to do or remember (30-50 words)"
+        "content": "The key point — what this means or what to remember (30-50 words)"
       }}
     ]
   }},
@@ -353,7 +353,7 @@ Return JSON with EXACT structure:
 }}
 
 CARD RULES:
-- 4-6 cards total. Hook first, Takeaway last.
+- 4-6 cards total. Hook first, Bottom Line last.
 - Each card: ONE idea only. If you need to say "also" or "additionally", make a new card.
 - 40-70 words per card MAX. Ruthlessly cut fluff.
 - Use **bold** for ONE key term or number per card.
@@ -366,7 +366,7 @@ EMOJI GUIDE:
 - hook: 🎯 or 📌 or 🔥
 - insight: 💡 or 🔍 or 📊 or 🧠 or 🛠️
 - why: 🎯 or 💪 or 🌍
-- takeaway: ⚡ or ✅ or 🚀
+- bottom_line: ⚡ or ✅ or 🚀
 """
 
 LEARNING_CARDS_DEEP = """You are creating LEARNING CARDS for a technical audience — bite-sized, swipeable.
@@ -405,9 +405,9 @@ Return JSON with EXACT structure:
         "content": "Industry/practical implications (40-60 words)"
       }},
       {{
-        "type": "takeaway",
+        "type": "bottom_line",
         "emoji": "⚡",
-        "content": "What to try, use, or watch (30-50 words)"
+        "content": "The key point — what this enables or changes (30-50 words)"
       }}
     ]
   }},
@@ -415,7 +415,7 @@ Return JSON with EXACT structure:
 }}
 
 CARD RULES:
-- 4-6 cards. Hook first, Takeaway last.
+- 4-6 cards. Hook first, Bottom Line last.
 - ONE idea per card. Dense but focused.
 - 50-70 words per insight card. Technical depth welcome.
 - **Bold** key metrics, model names, or tools.

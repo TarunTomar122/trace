@@ -86,6 +86,11 @@ def assemble(args: argparse.Namespace) -> dict[str, int]:
     _log(f"Assembling feeds for {len(users)} users, date={target_date}")
     stats = {"users": 0, "total_items": 0, "seen_promoted": 0}
 
+    # Load global trending feed (shared across all users)
+    global_feed = store.load_global_feed(target_date)
+    global_trending = global_feed.get("trending", [])
+    _log(f"Global trending: {len(global_trending)} items")
+
     for profile in users:
         uid = profile.get("uid", "")
         if not uid:
@@ -94,7 +99,11 @@ def assemble(args: argparse.Namespace) -> dict[str, int]:
         feed = store.load_feed(uid, target_date)
         for_you = feed.get("for_you", [])
         deep_dives = feed.get("deep_dives", [])
-        trending = feed.get("trending", [])
+        # Always use global trending (it's fresher news, refreshed every 2 hours)
+        trending = global_trending
+        # Write global trending to user's feed
+        if trending:
+            store.write_feed_section(uid, target_date, "trending", trending)
         total = len(for_you) + len(deep_dives) + len(trending)
 
         # Promote today's AND yesterday's feed URLs to seen

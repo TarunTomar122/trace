@@ -528,8 +528,8 @@ const Hero = () => {
                   className="text-base md:text-lg text-secondary leading-relaxed mb-4 max-w-md"
                 >
                   {isAlphaMode()
-                    ? "One place for everything worth reading today, tailored to what you actually care about."
-                    : "One place for everything worth reading today, tailored to what you actually care about."
+                    ? "Three feeds. Trending, personalized, deep dives. AI picks what's worth your time so you don't have to."
+                    : "Three feeds. Trending, personalized, deep dives. AI picks what's worth your time so you don't have to."
                   }
                 </motion.p>
 
@@ -2612,85 +2612,44 @@ const GetStarted = () => {
 const SEOContentSection = () => {
   const faqItems = [
     {
-      q: "What is Trace?",
-      a: "Trace is a personalized reading app that combines three daily feeds: trending news, interest-matched articles, and expert deep dives.",
+      q: "How is this different from Apple News or Feedly?",
+      a: "Those apps show you everything and let you sort through it. Trace does the opposite: we surface 10-15 things worth reading each day, organized into three feeds with different purposes. Less scrolling, more signal.",
     },
     {
-      q: "How long does onboarding take?",
-      a: "Most people complete onboarding in under one minute by selecting a role, interests, and preferred sources.",
+      q: "Will I just get clickbait and endless content?",
+      a: "No. We deliberately limit what we show you. The Trending feed covers what everyone's talking about. For You matches your interests. Deep Dives give you one long-form piece to think about. That's it for the day.",
     },
     {
-      q: "Is there a free trial?",
-      a: "Yes. Trace includes a free trial before the monthly plan starts, and you can cancel anytime.",
+      q: "How do you know what I'll want to read?",
+      a: "During onboarding, you pick your role, interests, and sources you trust. Our AI uses those to filter the noise. Over time, it learns from what you actually read and bookmark.",
+    },
+    {
+      q: "What sources do you pull from?",
+      a: "We index hundreds of publications across tech, business, culture, and more. You'll see names you recognize. No random blogs or AI-generated spam.",
+    },
+    {
+      q: "Why should I pay when Google News is free?",
+      a: "Free apps make money by keeping you scrolling. We make money by saving you time. $2.99/month gets you a curated reading list instead of an infinite feed. There's a free trial to try it first.",
     },
   ];
 
   return (
     <section className="py-16 md:py-24 bg-background border-t border-border/50 relative z-10" aria-labelledby="trace-faq">
-      <div className="container mx-auto px-4 sm:px-6 max-w-5xl">
-        <article className="space-y-8">
-          <header className="text-center">
-            <h2 id="trace-faq" className="text-2xl md:text-4xl font-semibold tracking-tight text-foreground mb-3">
-              Frequently Asked Questions
-            </h2>
-            <p className="text-secondary max-w-3xl mx-auto">
-              Trace helps professionals stay current without opening dozens of apps. The sections below summarize core product details in a structured format for people and search engines.
-            </p>
-          </header>
+      <div className="container mx-auto px-4 sm:px-6 max-w-3xl">
+        <header className="text-center mb-10">
+          <h2 id="trace-faq" className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground mb-3">
+            Questions before you sign up?
+          </h2>
+        </header>
 
-          <section aria-labelledby="key-benefits">
-            <h3 id="key-benefits" className="text-lg font-semibold text-foreground mb-3">Key Benefits</h3>
-            <ul className="list-disc pl-6 space-y-2 text-secondary">
-              <li>One place to review trending topics, personalized recommendations, and long-form deep dives.</li>
-              <li>AI-generated summaries tuned to your preferred reading style and depth.</li>
-              <li>A daily workflow that reduces information overload and improves signal-to-noise ratio.</li>
-            </ul>
-          </section>
-
-          <section aria-labelledby="plan-compare">
-            <h3 id="plan-compare" className="text-lg font-semibold text-foreground mb-3">Plan Snapshot</h3>
-            <div className="overflow-x-auto border border-border/60 rounded-xl">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 dark:bg-gray-900">
-                  <tr>
-                    <th className="text-left p-3 font-semibold text-foreground">Feature</th>
-                    <th className="text-left p-3 font-semibold text-foreground">Included</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-t border-border/50">
-                    <td className="p-3 text-secondary">Daily Trending feed</td>
-                    <td className="p-3 text-secondary">Yes</td>
-                  </tr>
-                  <tr className="border-t border-border/50">
-                    <td className="p-3 text-secondary">Personalized For You feed</td>
-                    <td className="p-3 text-secondary">Yes</td>
-                  </tr>
-                  <tr className="border-t border-border/50">
-                    <td className="p-3 text-secondary">Deep Dive summaries</td>
-                    <td className="p-3 text-secondary">Yes</td>
-                  </tr>
-                  <tr className="border-t border-border/50">
-                    <td className="p-3 text-secondary">Monthly price after trial</td>
-                    <td className="p-3 text-secondary">$2.99</td>
-                  </tr>
-                </tbody>
-              </table>
+        <div className="space-y-6">
+          {faqItems.map((item) => (
+            <div key={item.q} className="border-b border-border/40 pb-6 last:border-0">
+              <p className="text-foreground font-medium text-base mb-2">{item.q}</p>
+              <p className="text-secondary text-sm leading-relaxed">{item.a}</p>
             </div>
-          </section>
-
-          <section aria-labelledby="faq-list">
-            <h3 id="faq-list" className="text-lg font-semibold text-foreground mb-3">Common Questions</h3>
-            <ol className="space-y-3 text-secondary">
-              {faqItems.map((item) => (
-                <li key={item.q}>
-                  <p className="text-foreground font-medium">{item.q}</p>
-                  <p>{item.a}</p>
-                </li>
-              ))}
-            </ol>
-          </section>
-        </article>
+          ))}
+        </div>
       </div>
     </section>
   );

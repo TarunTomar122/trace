@@ -36,17 +36,19 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       
-      - name: Resolve user ID
-        id: uid
+      - name: Resolve user ID and tier
+        id: params
         run: |
           if [ "${{ github.event_name }}" == "repository_dispatch" ]; then
             echo "user_id=${{ github.event.client_payload.user_id }}" >> "$GITHUB_OUTPUT"
+            echo "tier=${{ github.event.client_payload.tier }}" >> "$GITHUB_OUTPUT"
           else
             echo "user_id=${{ inputs.user_id }}" >> "$GITHUB_OUTPUT"
+            echo "tier=pro" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build v3 feed (web + mobile)
         run: |
-          echo "Building v3 feed for user: ${{ steps.uid.outputs.user_id }}"
-          python -u -m v3.scheduler --jobs all --user-id "${{ steps.uid.outputs.user_id }}" --audience all
+          echo "Building v3 feed for user: ${{ steps.params.outputs.user_id }} (tier: ${{ steps.params.outputs.tier }})"
+          python -u -m v3.scheduler --jobs all --user-id "${{ steps.params.outputs.user_id }}" --audience all --tier "${{ steps.params.outputs.tier }}"
 

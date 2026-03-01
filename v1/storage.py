@@ -25,13 +25,16 @@ def _serialize_firestore(obj: Any) -> Any:
 
 
 def is_user_subscribed(profile: dict[str, Any]) -> bool:
-    """Check if a user has an active subscription from EITHER payment source.
-    
+    """Check if a user has pro access from ANY source.
+
     - subscriptionStatus: managed by Dodo Payments (web)
     - appSubscriptionStatus: managed by RevenueCat (mobile app)
-    
-    Returns True if either source indicates trial or active.
+    - isEarlyAdopter: free pro access for early adopters
+
+    Returns True if any source indicates pro access.
     """
+    if profile.get("isEarlyAdopter") is True:
+        return True
     web_status = profile.get("subscriptionStatus", "none")
     app_status = profile.get("appSubscriptionStatus", "none")
     return web_status in ("trial", "active") or app_status in ("trial", "active")

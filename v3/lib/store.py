@@ -536,3 +536,30 @@ class V3Store:
             )
         except (ValueError, TypeError):
             return True
+
+    # -----------------------------------------------------------------------
+    # Synthesis caching (for deep dives)
+    # -----------------------------------------------------------------------
+
+    def get_cached_synthesis(self, cache_key: str) -> dict[str, Any] | None:
+        """Get a cached synthesis by key."""
+        doc = self.db.collection("v3_synthesis_cache").document(cache_key).get()
+        if doc.exists:
+            data = doc.to_dict() or {}
+            # Check if cache is still fresh (7 days)
+            cached_at = data.get("cached_at", "")
+            if cached_at:
+                try:
+                    dt = datetime.fromisoformat(cached_at.replace("Z", "+00:00"))
+                    if datetime.now(timezone.utc) - dt < timedelta(days=7):
+                        return data.get("synthesis")
+                except (ValueError, TypeError):
+                    pass
+        return None
+
+    def cache_synthesis(self, cache_key: str, synthesis: dict[str, Any]) -> None:
+        """Cache a synthesis result."""
+        self.db.collection("v3_synthesis_cache").document(cache_key).set({
+            "synthesis": synthesis,
+            "cached_at": datetime.now(timezone.utc).isoformat(),
+        })

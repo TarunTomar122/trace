@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FeedItem } from './firestore';
 
 const BOOKMARKS_KEY = '@trace_bookmarks';
+const SNIPPETS_KEY = '@trace_snippets';
 
 export interface BookmarkedItem extends FeedItem {
   bookmarkedAt: string; // ISO date string
@@ -49,5 +50,43 @@ export async function toggleBookmark(item: FeedItem): Promise<boolean> {
     await addBookmark(item);
     return true;
   }
+}
+
+// ─── Snippets (saved excerpts from deep dives) ───
+
+export interface Snippet {
+  id: string;
+  content: string;
+  label: string;
+  savedAt: string;
+}
+
+export async function getSnippets(): Promise<Snippet[]> {
+  try {
+    const raw = await AsyncStorage.getItem(SNIPPETS_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as Snippet[];
+  } catch {
+    return [];
+  }
+}
+
+export async function addSnippet(content: string, label: string): Promise<void> {
+  const snippets = await getSnippets();
+  const id = `snippet_${Date.now()}`;
+  const entry: Snippet = {
+    id,
+    content,
+    label,
+    savedAt: new Date().toISOString(),
+  };
+  snippets.unshift(entry);
+  await AsyncStorage.setItem(SNIPPETS_KEY, JSON.stringify(snippets));
+}
+
+export async function removeSnippet(snippetId: string): Promise<void> {
+  const snippets = await getSnippets();
+  const filtered = snippets.filter((s) => s.id !== snippetId);
+  await AsyncStorage.setItem(SNIPPETS_KEY, JSON.stringify(filtered));
 }
 

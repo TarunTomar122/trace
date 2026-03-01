@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -27,6 +27,7 @@ import {
   Clock,
   Crown,
   Lock,
+  GraduationCap,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -35,20 +36,27 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { isBookmarked as checkBookmarked, toggleBookmark } from '@/lib/bookmarks';
+import { isBookmarked as checkBookmarked, toggleBookmark, addSnippet } from '@/lib/bookmarks';
 import { getCurrentArticle } from '@/lib/article-store';
 import { logReadingEvent } from '@/lib/reading-analytics';
 
 const ACCENT = '#F59E0B';
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH - 40; // 20px padding on each side
-const CARD_HEIGHT = 280;
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const CARD_WIDTH = SCREEN_WIDTH;
+const FULL_CARD_HEIGHT = SCREEN_HEIGHT - 120; // Full screen minus safe areas
 
 const CARD_TYPE_LABELS: Record<string, string> = {
   hook: 'THE STORY',
   insight: 'KEY INSIGHT',
   why: 'WHY IT MATTERS',
-  takeaway: 'YOUR TAKEAWAY',
+  bottom_line: 'THE BOTTOM LINE',
+};
+
+const CARD_COLORS: Record<string, { bg: string; accent: string }> = {
+  hook: { bg: '#FFF7ED', accent: '#F97316' },
+  insight: { bg: '#EFF6FF', accent: '#3B82F6' },
+  why: { bg: '#F0FDF4', accent: '#22C55E' },
+  bottom_line: { bg: '#FEF3C7', accent: '#F59E0B' },
 };
 
 const SOURCE_CONFIG: Record<
@@ -102,21 +110,60 @@ function RichText({ children, style }: { children: string; style?: any }) {
 }
 
 type LearningCard = {
-  type: 'hook' | 'insight' | 'why' | 'takeaway';
+  type: 'hook' | 'insight' | 'why' | 'bottom_line';
   emoji: string;
   content: string;
 };
 
-/** Swipeable learning cards carousel */
-function LearningCardsCarousel({
+type SourceRef = {
+  name: string;
+  title: string;
+  url: string;
+};
+
+type Chapter = {
+  title: string;
+  content: string;
+  quote?: {
+    text: string;
+    source: string;
+  };
+};
+
+type DeepDiveContent = {
+  subtitle?: string;
+  tldr?: string;
+  chapters?: Chapter[];
+  bottom_line?: {
+    title: string;
+    content: string;
+  };
+  images?: string[];
+};
+
+/** Full-screen immersive learning cards view */
+function FullScreenLearningCards({
   cards,
+  title,
+  sourceName,
+  sources,
   colorScheme,
+  onBack,
   onReadOriginal,
+  onBookmark,
+  isBookmarked,
 }: {
   cards: LearningCard[];
+  title: string;
+  sourceName: string;
+  sources?: SourceRef[];
   colorScheme: 'light' | 'dark';
+  onBack: () => void;
   onReadOriginal: () => void;
+  onBookmark: () => void;
+  isBookmarked: boolean;
 }) {
+  const isSynthesized = sources && sources.length > 0;
   const [currentCard, setCurrentCard] = useState(0);
   const totalCards = cards.length;
 
@@ -126,11 +173,41 @@ function LearningCardsCarousel({
     setCurrentCard(idx);
   };
 
-  const cardBg = colorScheme === 'dark' ? '#1a1a1a' : '#fafafa';
-  const isLastCard = currentCard === totalCards - 1;
+  const currentType = cards[currentCard]?.type || 'hook';
+  const colors = CARD_COLORS[currentType] || CARD_COLORS.hook;
+  const isDark = colorScheme === 'dark';
 
   return (
-    <View style={lcStyles.container}>
+    <SafeAreaView style={[lcStyles.fullScreen, { backgroundColor: isDark ? '#0a0a0a' : colors.bg }]} edges={['top', 'bottom']}>
+      {/* Minimal top bar */}
+      <View style={lcStyles.topBar}>
+        <Pressable onPress={onBack} hitSlop={12} style={lcStyles.backBtn}>
+          <ChevronLeft size={24} color={isDark ? '#fff' : '#000'} strokeWidth={2} />
+        </Pressable>
+        <View style={lcStyles.progressDots}>
+          {cards.map((_, i) => (
+            <View
+              key={i}
+              style={[
+                lcStyles.dot,
+                {
+                  backgroundColor: i === currentCard ? colors.accent : (isDark ? '#333' : '#ddd'),
+                  width: i === currentCard ? 20 : 8,
+                },
+              ]}
+            />
+          ))}
+        </View>
+        <Pressable onPress={onBookmark} hitSlop={12} style={lcStyles.bookmarkBtn}>
+          <Bookmark
+            size={22}
+            color={isBookmarked ? colors.accent : (isDark ? '#666' : '#999')}
+            strokeWidth={isBookmarked ? 2.5 : 1.5}
+          />
+        </Pressable>
+      </View>
+
+      {/* Cards */}
       <ScrollView
         horizontal
         pagingEnabled
@@ -139,120 +216,753 @@ function LearningCardsCarousel({
         scrollEventThrottle={16}
         decelerationRate="fast"
         snapToInterval={CARD_WIDTH}
-        contentContainerStyle={{ paddingRight: 0 }}
       >
-        {cards.map((card, idx) => (
-          <View key={idx} style={[lcStyles.card, { width: CARD_WIDTH, backgroundColor: cardBg }]}>
-            {/* Card header */}
-            <View style={lcStyles.cardHeader}>
-              <Text style={lcStyles.emoji}>{card.emoji}</Text>
-              <Text style={[lcStyles.typeLabel, { color: ACCENT }]}>
-                {CARD_TYPE_LABELS[card.type] || card.type.toUpperCase()}
-              </Text>
-              <View style={{ flex: 1 }} />
-              <Text style={[lcStyles.progress, { color: Colors[colorScheme].muted }]}>
-                {idx + 1}/{totalCards}
-              </Text>
-            </View>
+        {cards.map((card, idx) => {
+          const cardColors = CARD_COLORS[card.type] || CARD_COLORS.hook;
+          return (
+            <View key={idx} style={[lcStyles.card, { width: CARD_WIDTH }]}>
+              {/* Main content area - everything centered */}
+              <View style={lcStyles.contentArea}>
+                {/* Card type label */}
+                <View style={lcStyles.typeRow}>
+                  <Text style={lcStyles.emoji}>{card.emoji}</Text>
+                  <Text style={[lcStyles.typeLabel, { color: cardColors.accent }]}>
+                    {CARD_TYPE_LABELS[card.type] || card.type.toUpperCase()}
+                  </Text>
+                </View>
 
-            {/* Card content */}
-            <View style={lcStyles.cardContent}>
-              <RichText style={[lcStyles.cardText, { color: Colors[colorScheme].text }]}>
-                {card.content}
-              </RichText>
-            </View>
+                {/* Show title on first card */}
+                {idx === 0 && (
+                  <View style={lcStyles.titleSection}>
+                    <Text style={[lcStyles.sourceLabel, { color: isDark ? '#888' : '#666' }]}>
+                      {isSynthesized
+                        ? `Synthesized from ${sources!.map(s => s.name).join(', ')}`
+                        : sourceName}
+                    </Text>
+                    <Text style={[lcStyles.articleTitle, { color: isDark ? '#fff' : '#000' }]}>
+                      {title}
+                    </Text>
+                  </View>
+                )}
 
-            {/* Read original button on last card */}
-            {idx === totalCards - 1 && (
-              <Pressable style={lcStyles.readOriginalBtn} onPress={onReadOriginal}>
-                <ExternalLink size={16} color="#fff" strokeWidth={2} />
-                <Text style={lcStyles.readOriginalText}>Read Original</Text>
-              </Pressable>
-            )}
-          </View>
-        ))}
+                {/* Card content */}
+                <RichText style={[lcStyles.cardText, { color: isDark ? '#e5e5e5' : '#1a1a1a' }]}>
+                  {card.content}
+                </RichText>
+              </View>
+
+              {/* Bottom section */}
+              <View style={lcStyles.bottomSection}>
+                {idx === totalCards - 1 ? (
+                  isSynthesized ? (
+                    <View style={lcStyles.sourcesSection}>
+                      <Text style={[lcStyles.sourcesLabel, { color: isDark ? '#666' : '#999' }]}>
+                        Sources
+                      </Text>
+                      {sources!.map((src, i) => (
+                        <Pressable
+                          key={i}
+                          onPress={() => WebBrowser.openBrowserAsync(src.url)}
+                          style={lcStyles.sourceLink}
+                        >
+                          <Text style={[lcStyles.sourceLinkText, { color: cardColors.accent }]} numberOfLines={1}>
+                            {src.name}: {src.title}
+                          </Text>
+                          <ExternalLink size={12} color={cardColors.accent} strokeWidth={2} />
+                        </Pressable>
+                      ))}
+                    </View>
+                  ) : (
+                    <Pressable style={[lcStyles.readOriginalBtn, { backgroundColor: cardColors.accent }]} onPress={onReadOriginal}>
+                      <ExternalLink size={18} color="#fff" strokeWidth={2} />
+                      <Text style={lcStyles.readOriginalText}>Read Full Article</Text>
+                    </Pressable>
+                  )
+                ) : (
+                  <Text style={[lcStyles.swipeHint, { color: isDark ? '#555' : '#999' }]}>
+                    Swipe to continue →
+                  </Text>
+                )}
+              </View>
+            </View>
+          );
+        })}
       </ScrollView>
-
-      {/* Pagination dots */}
-      <View style={lcStyles.pagination}>
-        {cards.map((_, i) => (
-          <View
-            key={i}
-            style={[
-              lcStyles.dot,
-              {
-                backgroundColor: i === currentCard ? ACCENT : Colors[colorScheme].border,
-                width: i === currentCard ? 16 : 6,
-              },
-            ]}
-          />
-        ))}
-      </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
-const lcStyles = StyleSheet.create({
-  container: {
-    marginVertical: 8,
-  },
-  card: {
-    height: CARD_HEIGHT,
-    borderRadius: 20,
-    padding: 24,
+/** Ebook-style deep dive with paginated chapters */
+function ChapterDeepDive({
+  title,
+  thumbnail,
+  deepDive,
+  sources,
+  readingTime,
+  colorScheme,
+  onBack,
+  onSaveSnippet,
+}: {
+  title: string;
+  thumbnail?: string;
+  deepDive: DeepDiveContent;
+  sources?: SourceRef[];
+  readingTime?: number;
+  colorScheme: 'light' | 'dark';
+  onBack: () => void;
+  onSaveSnippet: (content: string, label: string) => void;
+}) {
+  const [currentPage, setCurrentPage] = useState(0);
+  const [imgError, setImgError] = useState(false);
+  const [savedSections, setSavedSections] = useState<Set<string>>(new Set());
+  const scrollViewRef = useRef<ScrollView>(null);
+  const isDark = colorScheme === 'dark';
+  const showHeroImage = isLikelyRealImageUrl(thumbnail) && !imgError;
+
+  const handleSave = (key: string, content: string, label: string) => {
+    // Prevent double-saving
+    if (savedSections.has(key)) return;
+    setSavedSections(prev => new Set(prev).add(key));
+    onSaveSnippet(content, label);
+  };
+
+  const chapters = deepDive.chapters || [];
+  // Pages: Cover (0), Chapters (1 to n), Bottom Line + Sources (n+1)
+  const totalPages = 1 + chapters.length + 1;
+
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const x = e.nativeEvent.contentOffset.x;
+    const idx = Math.round(x / CARD_WIDTH);
+    setCurrentPage(idx);
+  };
+
+  const goToPage = (page: number) => {
+    scrollViewRef.current?.scrollTo({ x: page * CARD_WIDTH, animated: true });
+  };
+
+  return (
+    <SafeAreaView style={[ddStyles.container, { backgroundColor: isDark ? '#0a0a0a' : '#fff' }]} edges={['top', 'bottom']}>
+      {/* Top bar */}
+      <View style={ddStyles.topBar}>
+        <Pressable onPress={onBack} hitSlop={12} style={ddStyles.backBtn}>
+          <ChevronLeft size={24} color={Colors[colorScheme].foreground} strokeWidth={2} />
+        </Pressable>
+        <View style={ddStyles.topBarLabel}>
+          <GraduationCap size={16} color={ACCENT} strokeWidth={2} />
+          <Text style={[ddStyles.topBarLabelText, { color: ACCENT }]}>Deep Dive</Text>
+        </View>
+        <View style={{ width: 40 }} />
+      </View>
+
+      {/* Page indicator */}
+      <View style={ddStyles.pageIndicator}>
+        {Array.from({ length: totalPages }).map((_, i) => (
+          <Pressable key={i} onPress={() => goToPage(i)} hitSlop={8}>
+            <View
+              style={[
+                ddStyles.pageIndicatorDot,
+                {
+                  backgroundColor: i === currentPage ? ACCENT : (isDark ? '#333' : '#ddd'),
+                  width: i === currentPage ? 20 : 8,
+                },
+              ]}
+            />
+          </Pressable>
+        ))}
+      </View>
+
+      {/* Paginated content */}
+      <ScrollView
+        ref={scrollViewRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        decelerationRate="fast"
+        snapToInterval={CARD_WIDTH}
+      >
+        {/* Page 0: Cover */}
+        <View style={[ddStyles.page, { width: CARD_WIDTH }]}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={ddStyles.pageContent}>
+            {showHeroImage && (
+              <Image
+                source={{ uri: thumbnail! }}
+                style={ddStyles.coverImage}
+                resizeMode="cover"
+                onError={() => setImgError(true)}
+              />
+            )}
+            <Text style={[ddStyles.coverTitle, { color: Colors[colorScheme].text }]}>{title}</Text>
+            {deepDive.subtitle && (
+              <Text style={[ddStyles.coverSubtitle, { color: Colors[colorScheme].secondary }]}>
+                {deepDive.subtitle}
+              </Text>
+            )}
+            <View style={ddStyles.coverMeta}>
+              {readingTime && (
+                <View style={ddStyles.coverMetaItem}>
+                  <Clock size={14} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+                  <Text style={[ddStyles.coverMetaText, { color: Colors[colorScheme].muted }]}>
+                    {readingTime} min
+                  </Text>
+                </View>
+              )}
+              {chapters.length > 0 && (
+                <View style={ddStyles.coverMetaItem}>
+                  <BookOpen size={14} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+                  <Text style={[ddStyles.coverMetaText, { color: Colors[colorScheme].muted }]}>
+                    {chapters.length} chapters
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* TL;DR */}
+            {deepDive.tldr && (
+              <View style={[ddStyles.tldrCard, { backgroundColor: isDark ? '#1a1a1a' : '#f9fafb' }]}>
+                <View style={ddStyles.sectionHeader}>
+                  <Text style={[ddStyles.tldrLabel, { color: ACCENT }]}>TL;DR</Text>
+                  <Pressable
+                    onPress={() => handleSave('tldr', deepDive.tldr!, `${title} - TL;DR`)}
+                    hitSlop={8}
+                    style={ddStyles.saveBtn}
+                  >
+                    <Bookmark
+                      size={18}
+                      color={savedSections.has('tldr') ? ACCENT : Colors[colorScheme].muted}
+                      strokeWidth={savedSections.has('tldr') ? 2.5 : 1.5}
+                    />
+                  </Pressable>
+                </View>
+                <RichText style={[ddStyles.tldrText, { color: Colors[colorScheme].text }]}>
+                  {deepDive.tldr}
+                </RichText>
+              </View>
+            )}
+
+            {/* Table of contents */}
+            <View style={ddStyles.toc}>
+              <Text style={[ddStyles.tocTitle, { color: Colors[colorScheme].muted }]}>Chapters</Text>
+              {chapters.map((ch, i) => (
+                <Pressable key={i} onPress={() => goToPage(i + 1)} style={ddStyles.tocItem}>
+                  <View style={[ddStyles.tocNumber, { backgroundColor: isDark ? '#262626' : '#f3f4f6' }]}>
+                    <Text style={[ddStyles.tocNumberText, { color: Colors[colorScheme].muted }]}>{i + 1}</Text>
+                  </View>
+                  <Text style={[ddStyles.tocItemText, { color: Colors[colorScheme].text }]} numberOfLines={1}>
+                    {ch.title}
+                  </Text>
+                  <ChevronLeft size={16} color={Colors[colorScheme].muted} style={{ transform: [{ rotate: '180deg' }] }} />
+                </Pressable>
+              ))}
+            </View>
+
+            <Text style={[ddStyles.swipeHint, { color: Colors[colorScheme].muted }]}>
+              Swipe to start reading →
+            </Text>
+          </ScrollView>
+        </View>
+
+        {/* Chapter pages */}
+        {chapters.map((chapter, idx) => {
+          const chapterKey = `chapter_${idx}`;
+          const chapterContent = chapter.quote
+            ? `${chapter.content}\n\n"${chapter.quote.text}" — ${chapter.quote.source}`
+            : chapter.content;
+          return (
+            <View key={idx} style={[ddStyles.page, { width: CARD_WIDTH }]}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={ddStyles.pageContent}>
+                <View style={ddStyles.chapterHeaderRow}>
+                  <View style={ddStyles.chapterHeader}>
+                    <Text style={[ddStyles.chapterLabel, { color: ACCENT }]}>Chapter {idx + 1}</Text>
+                    <Text style={[ddStyles.chapterTitle, { color: Colors[colorScheme].text }]}>
+                      {chapter.title}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => handleSave(chapterKey, chapterContent, `${title} - ${chapter.title}`)}
+                    hitSlop={8}
+                    style={ddStyles.saveBtn}
+                  >
+                    <Bookmark
+                      size={20}
+                      color={savedSections.has(chapterKey) ? ACCENT : Colors[colorScheme].muted}
+                      strokeWidth={savedSections.has(chapterKey) ? 2.5 : 1.5}
+                    />
+                  </Pressable>
+                </View>
+                <RichText style={[ddStyles.chapterContent, { color: Colors[colorScheme].text }]}>
+                  {chapter.content}
+                </RichText>
+                {chapter.quote && (
+                  <View style={[ddStyles.quoteCard, { borderLeftColor: ACCENT }]}>
+                    <Text style={[ddStyles.quoteText, { color: Colors[colorScheme].text }]}>
+                      "{chapter.quote.text}"
+                    </Text>
+                    <Text style={[ddStyles.quoteSource, { color: Colors[colorScheme].muted }]}>
+                      — {chapter.quote.source}
+                    </Text>
+                  </View>
+                )}
+                <Text style={[ddStyles.swipeHint, { color: Colors[colorScheme].muted }]}>
+                  {idx < chapters.length - 1 ? 'Swipe for next chapter →' : 'Swipe to finish →'}
+                </Text>
+              </ScrollView>
+            </View>
+          );
+        })}
+
+        {/* Final page: Bottom line + Sources */}
+        <View style={[ddStyles.page, { width: CARD_WIDTH }]}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={ddStyles.pageContent}>
+            {deepDive.bottom_line && (
+              <View style={[ddStyles.bottomLine, { backgroundColor: isDark ? '#1c1917' : '#fffbeb' }]}>
+                <View style={ddStyles.sectionHeader}>
+                  <View style={ddStyles.bottomLineHeader}>
+                    <Sparkles size={18} color={ACCENT} strokeWidth={2} />
+                    <Text style={[ddStyles.bottomLineLabel, { color: ACCENT }]}>
+                      {deepDive.bottom_line.title || 'The Bottom Line'}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => handleSave('bottom_line', deepDive.bottom_line!.content, `${title} - Bottom Line`)}
+                    hitSlop={8}
+                    style={ddStyles.saveBtn}
+                  >
+                    <Bookmark
+                      size={18}
+                      color={savedSections.has('bottom_line') ? ACCENT : Colors[colorScheme].muted}
+                      strokeWidth={savedSections.has('bottom_line') ? 2.5 : 1.5}
+                    />
+                  </Pressable>
+                </View>
+                <RichText style={[ddStyles.bottomLineText, { color: Colors[colorScheme].text }]}>
+                  {deepDive.bottom_line.content}
+                </RichText>
+              </View>
+            )}
+
+            {sources && sources.length > 0 && (
+              <View style={ddStyles.sourcesSection}>
+                <Text style={[ddStyles.sourcesLabel, { color: Colors[colorScheme].muted }]}>Sources</Text>
+                {sources.map((src, i) => (
+                  <Pressable
+                    key={i}
+                    onPress={() => WebBrowser.openBrowserAsync(src.url)}
+                    style={[ddStyles.sourceCard, { backgroundColor: isDark ? '#1a1a1a' : '#f9fafb' }]}
+                  >
+                    <View style={ddStyles.sourceInfo}>
+                      <Text style={[ddStyles.sourceName, { color: Colors[colorScheme].text }]} numberOfLines={1}>
+                        {src.name}
+                      </Text>
+                      <Text style={[ddStyles.sourceTitle, { color: Colors[colorScheme].secondary }]} numberOfLines={2}>
+                        {src.title}
+                      </Text>
+                    </View>
+                    <ExternalLink size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
+            <View style={ddStyles.finishSection}>
+              <Text style={[ddStyles.finishText, { color: Colors[colorScheme].text }]}>
+                You've completed this deep dive
+              </Text>
+              <Pressable style={ddStyles.finishBtn} onPress={onBack}>
+                <Text style={ddStyles.finishBtnText}>Done</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const ddStyles = StyleSheet.create({
+  container: { flex: 1 },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
-  cardHeader: {
+  backBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  topBarLabelText: {
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  bookmarkBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pageIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+  },
+  pageIndicatorDot: {
+    height: 6,
+    borderRadius: 3,
+  },
+  page: {
+    flex: 1,
+  },
+  pageContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+    minHeight: FULL_CARD_HEIGHT - 60,
+  },
+  coverImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: 16,
+    marginBottom: 24,
+  },
+  coverTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    lineHeight: 36,
+    letterSpacing: -0.5,
+    marginBottom: 8,
+  },
+  coverSubtitle: {
+    fontSize: 17,
+    lineHeight: 24,
+    fontStyle: 'italic',
+    marginBottom: 16,
+  },
+  coverMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+    marginBottom: 24,
+  },
+  coverMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  coverMetaText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  tldrCard: {
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  saveBtn: {
+    padding: 4,
+  },
+  tldrLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+  tldrText: {
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  toc: {
+    gap: 8,
+    marginBottom: 24,
+  },
+  tocTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  tocItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+  },
+  tocNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tocNumberText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  tocItemText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  swipeHint: {
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginTop: 'auto',
+    paddingTop: 24,
+  },
+  chapterHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  chapterHeader: {
+    flex: 1,
+  },
+  chapterLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  chapterTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    lineHeight: 32,
+  },
+  chapterContent: {
+    fontSize: 17,
+    lineHeight: 28,
+    marginBottom: 24,
+  },
+  quoteCard: {
+    borderLeftWidth: 3,
+    paddingLeft: 16,
+    paddingVertical: 8,
+    marginBottom: 16,
+  },
+  quoteText: {
+    fontSize: 16,
+    lineHeight: 26,
+    fontStyle: 'italic',
+  },
+  quoteSource: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 10,
+  },
+  bottomLine: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 32,
+  },
+  bottomLineHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginBottom: 12,
   },
-  emoji: {
-    fontSize: 20,
-  },
-  typeLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+  bottomLineLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  progress: {
-    fontSize: 12,
+  bottomLineText: {
+    fontSize: 17,
+    lineHeight: 28,
+  },
+  sourcesSection: {
+    gap: 12,
+    marginBottom: 32,
+  },
+  sourcesLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  sourceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    padding: 14,
+    gap: 12,
+  },
+  sourceInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  sourceName: {
+    fontSize: 14,
     fontWeight: '600',
   },
-  cardContent: {
+  sourceTitle: {
+    fontSize: 13,
+  },
+  finishSection: {
+    alignItems: 'center',
+    gap: 16,
+    marginTop: 'auto',
+    paddingTop: 24,
+  },
+  finishText: {
+    fontSize: 16,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  finishBtn: {
+    backgroundColor: ACCENT,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 999,
+  },
+  finishBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
+
+const lcStyles = StyleSheet.create({
+  fullScreen: {
+    flex: 1,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dot: {
+    height: 6,
+    borderRadius: 3,
+  },
+  bookmarkBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  card: {
+    flex: 1,
+    paddingHorizontal: 32,
+    paddingBottom: 24,
+  },
+  typeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 20,
+  },
+  emoji: {
+    fontSize: 28,
+  },
+  typeLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+  },
+  contentArea: {
     flex: 1,
     justifyContent: 'center',
-    paddingVertical: 16,
+    textAlign: 'center',
+    padding: 8,
+  },
+  titleSection: {
+    marginBottom: 32,
+  },
+  sourceLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  articleTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    lineHeight: 32,
+    letterSpacing: -0.5,
   },
   cardText: {
-    fontSize: 17,
-    lineHeight: 26,
+    fontSize: 20,
+    lineHeight: 32,
     fontWeight: '400',
+  },
+  bottomSection: {
+    paddingTop: 96,
   },
   readOriginalBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: ACCENT,
-    paddingVertical: 14,
-    borderRadius: 12,
+    gap: 10,
+    paddingVertical: 16,
+    borderRadius: 14,
   },
   readOriginalText: {
     color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
   },
-  pagination: {
+  sourcesSection: {
+    gap: 8,
+  },
+  sourcesLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  sourceLink: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
     gap: 6,
-    marginTop: 14,
   },
-  dot: {
-    height: 6,
-    borderRadius: 3,
+  sourceLinkText: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  swipeHint: {
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 
@@ -293,7 +1003,7 @@ export default function ArticleScreen() {
     }
     const nowBookmarked = await toggleBookmark(item);
     setBookmarked(nowBookmarked);
-    showToast(nowBookmarked ? 'Saved to bookmarks.' : 'Removed from bookmarks.', 'success');
+    showToast(nowBookmarked ? 'Saved' : 'Removed', 'success');
   };
 
   const itemType = item.type || item.source || 'blog';
@@ -311,6 +1021,8 @@ export default function ArticleScreen() {
   const hasLearningCards = learningCards && learningCards.length > 0;
   const isTrending = item.feed_type === 'trending' || item.metadata?.feed_type === 'trending';
   const isForYou = item.feed_type === 'for_you' || item.metadata?.feed_type === 'for_you';
+  const deepDiveContent = item.summary?.deep_dive as DeepDiveContent | undefined;
+  const isChapterDeepDive = deepDiveContent?.chapters && deepDiveContent.chapters.length > 0;
 
   // Split on double newlines first, then split each block on single newlines
   // so that headings on their own line don't merge with body text.
@@ -368,6 +1080,52 @@ export default function ArticleScreen() {
   };
 
   const hasAccess = isProUser || item.feed_type === 'trending';
+
+  // Chapter-style deep dive view
+  if (hasAccess && isChapterDeepDive) {
+    return (
+      <ChapterDeepDive
+        title={item.title}
+        thumbnail={item.thumbnail ?? undefined}
+        deepDive={deepDiveContent!}
+        sources={item.sources}
+        readingTime={readingTime}
+        colorScheme={colorScheme}
+        onBack={() => router.back()}
+        onSaveSnippet={async (content, label) => {
+          await addSnippet(content, label);
+          showToast('Saved', 'success');
+        }}
+      />
+    );
+  }
+
+  // Full-screen learning cards view for For You articles
+  if (hasAccess && hasLearningCards) {
+    return (
+      <FullScreenLearningCards
+        cards={learningCards as LearningCard[]}
+        title={item.title}
+        sourceName={item.source_name || item.source || ''}
+        sources={item.sources}
+        colorScheme={colorScheme}
+        onBack={() => router.back()}
+        onReadOriginal={() => {
+          if (!item.url) return;
+          logReadingEvent({
+            eventType: 'external_open',
+            itemId: item.id,
+            title: item.title,
+            url: item.url,
+            itemType: item.type || item.source || 'blog',
+          });
+          WebBrowser.openBrowserAsync(item.url);
+        }}
+        onBookmark={handleToggleBookmark}
+        isBookmarked={bookmarked}
+      />
+    );
+  }
 
   return (
     <SafeAreaView
@@ -457,24 +1215,6 @@ export default function ArticleScreen() {
         <View style={[styles.divider, { backgroundColor: Colors[colorScheme].border }]} />
 
         {hasAccess ? (
-          hasLearningCards ? (
-            /* Learning Cards View for For You articles */
-            <LearningCardsCarousel
-              cards={learningCards as LearningCard[]}
-              colorScheme={colorScheme}
-              onReadOriginal={() => {
-                if (!item.url) return;
-                logReadingEvent({
-                  eventType: 'external_open',
-                  itemId: item.id,
-                  title: item.title,
-                  url: item.url,
-                  itemType: item.type || item.source || 'blog',
-                });
-                WebBrowser.openBrowserAsync(item.url);
-              }}
-            />
-          ) : (
             /* Traditional prose view */
             <View style={styles.articleBody}>
               {/* Key Takeaways */}
@@ -507,7 +1247,6 @@ export default function ArticleScreen() {
                 </View>
               ) : null}
             </View>
-          )
         ) : (
           <>
             <View style={styles.articleBody}>

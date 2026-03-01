@@ -33,21 +33,21 @@ if str(REPO_ROOT) not in sys.path:
 JOBS = {
     "for_you": {
         "module": "v3.build_for_you",
-        "pool_cadence_days": 2,
+        "pool_cadence_days": 4,
         "description": (
             "For You (interest-matched articles with career-goal boost)"
         ),
     },
     "deep_dives": {
         "module": "v3.build_deep_dives",
-        "pool_cadence_days": 2,
+        "pool_cadence_days": 4,
         "description": (
             "Deep Dives (expert content from user-selected sources)"
         ),
     },
     "trending": {
         "module": "v3.build_trending",
-        "pool_cadence_days": 2,
+        "pool_cadence_days": 1,  # Trending should refresh daily for fresh news
         "description": "Trending (latest news across topics)",
     },
     "assemble": {
@@ -110,6 +110,12 @@ def _parse_args() -> argparse.Namespace:
         choices=["subscribed", "unsubscribed", "all"],
         default="subscribed",
         help="Which audience to build feeds for",
+    )
+    p.add_argument(
+        "--tier",
+        choices=["pro", "free"],
+        default="pro",
+        help="User tier - 'free' generates fewer items",
     )
     return p.parse_args()
 
@@ -191,6 +197,8 @@ def main() -> None:
         extra.extend(["--limit-users", str(args.limit_users)])
     if args.audience:
         extra.extend(["--audience", args.audience])
+    if args.tier:
+        extra.extend(["--tier", args.tier])
 
     run_all = "all" in requested
     run_pools = "pools" in requested
@@ -262,7 +270,11 @@ def main() -> None:
         def _run_job(name_job_mode: tuple[str, dict, str]) -> tuple[str, int, bool]:
             name, job, mode = name_job_mode
             _log(f"--- {job['description']} (parallel) ---")
-            job_extra = list(extra)
+            # Trending is global (not per-user), so skip user-specific args
+            if name == "trending":
+                job_extra = [a for i, a in enumerate(extra) if a not in ("--audience", "--users-file") and (i == 0 or extra[i-1] not in ("--audience", "--users-file"))]
+            else:
+                job_extra = list(extra)
             if mode == "pool_only":
                 job_extra.append("--pool-only")
             elif mode == "skip_pool":
@@ -281,7 +293,11 @@ def main() -> None:
     else:
         for job_name, job, mode in jobs_to_run:
             _log(f"--- {job['description']} ---")
-            job_extra = list(extra)
+            # Trending is global (not per-user), so skip user-specific args
+            if job_name == "trending":
+                job_extra = [a for i, a in enumerate(extra) if a not in ("--audience", "--users-file") and (i == 0 or extra[i-1] not in ("--audience", "--users-file"))]
+            else:
+                job_extra = list(extra)
             if mode == "pool_only":
                 job_extra.append("--pool-only")
             elif mode == "skip_pool":

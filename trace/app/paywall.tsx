@@ -25,21 +25,21 @@ const TRIAL_DAYS = 4;
 const REMINDER_DAY = 3;
 
 const FREE_FEATURES = [
-  'Full Trending feed across all topics',
-  'Preview of For You & Deep Dives',
-  'Bookmark articles to read later',
+  'Daily trending stories everyone is talking about',
+  'Preview of personalized & expert content',
+  'Save articles to read later',
 ];
 
 const PRO_FEATURES = [
-  'Unlimited For You articles matched to your interests',
-  'Full Deep Dives from experts you trust',
-  'Summaries tailored to your preferred reading style',
+  'AI finds the 5 articles you need to read today',
+  'Expert deep dives broken into digestible chapters',
+  'TL;DR summaries that actually get to the point',
 ];
 
 const BENEFITS = [
-  'Unlimited For You articles matched to your interests',
-  'Full Deep Dives from the industry sources you trust',
-  'Personalized summaries in your preferred reading style',
+  'Stop doom-scrolling. Get the 5 articles that matter.',
+  'Expert insights in 10 minutes, not 10 tabs.',
+  'AI summaries that cut through the noise.',
 ];
 
 type PlanId = 'weekly' | 'monthly' | 'yearly';
@@ -47,7 +47,7 @@ type PlanId = 'weekly' | 'monthly' | 'yearly';
 const PLAN_CONFIG: Record<PlanId, { label: string; badge?: string }> = {
   weekly: { label: 'Weekly' },
   monthly: { label: 'Monthly' },
-  yearly: { label: 'Yearly', badge: 'Best value' },
+  yearly: { label: 'Yearly', badge: 'Save 50%' },
 };
 
 const PLAN_ORDER: PlanId[] = ['yearly', 'monthly', 'weekly'];
@@ -177,10 +177,10 @@ function StepPrimer({
       <View style={styles.hero}>
         <AppLogo style={styles.heroLogo} />
         <ThemedText style={styles.heroTitle}>
-          {"You're all set!"}
+          {"You're in!"}
         </ThemedText>
         <ThemedText style={[styles.heroSub, { color: Colors[colorScheme].muted }]}>
-          Your feed is being built right now. Here{"'"}s what you get:
+          Your personalized feed is ready. Here{"'"}s what{"'"}s included:
         </ThemedText>
       </View>
 
@@ -218,13 +218,13 @@ function StepPrimer({
 
       <Pressable onPress={onNext} style={[styles.ctaButton, { marginTop: 28 }]}>
         <Gift size={18} color="#fff" strokeWidth={2} />
-        <Text style={styles.ctaText}>Try Pro free for {TRIAL_DAYS} days</Text>
+        <Text style={styles.ctaText}>Try free for {TRIAL_DAYS} days</Text>
         <ArrowRight size={18} color="#fff" strokeWidth={2.5} />
       </Pressable>
 
       <Pressable onPress={onClose} style={styles.skipButton}>
         <ThemedText style={[styles.skipText, { color: Colors[colorScheme].muted }]}>
-          Skip, I{"'"}ll use the free version
+          Continue with free version
         </ThemedText>
       </Pressable>
     </ScrollView>
@@ -256,10 +256,10 @@ function StepReminder({
       showsVerticalScrollIndicator={false}>
       <View style={[styles.hero, { marginBottom: 36 }]}>
         <ThemedText style={styles.heroTitle}>
-          {"No surprises,\nwe promise"}
+          {"Cancel anytime.\nNo tricks."}
         </ThemedText>
         <ThemedText style={[styles.heroSub, { color: Colors[colorScheme].muted }]}>
-          Here{"'"}s exactly how your free trial works:
+          We hate sneaky subscriptions too. Here{"'"}s the deal:
         </ThemedText>
       </View>
 
@@ -267,35 +267,35 @@ function StepReminder({
         <TimelineItem
           icon={<Gift size={18} color="#F59E0B" strokeWidth={2} />}
           label="Today"
-          title="Full Pro access starts"
-          desc="Unlimited articles, deep dives, personalized summaries."
+          title="Try everything free"
+          desc="Full access to all feeds, deep dives, and AI summaries."
           colorScheme={colorScheme}
         />
         <TimelineItem
           icon={<Bell size={18} color="#F59E0B" strokeWidth={2} />}
           label={`Day ${REMINDER_DAY}`}
-          title="We'll remind you"
-          desc="You'll get a heads-up before anything is charged."
+          title="Friendly reminder"
+          desc="We'll ping you before your trial ends. No gotchas."
           colorScheme={colorScheme}
         />
         <TimelineItem
           icon={<Calendar size={18} color="#F59E0B" strokeWidth={2} />}
           label={`Day ${TRIAL_DAYS + 1}`}
-          title="Your call"
-          desc="Keep Pro or cancel — no hard feelings either way."
+          title="You decide"
+          desc="Love it? Keep going. Not for you? Cancel in 2 taps."
           isLast
           colorScheme={colorScheme}
         />
       </View>
 
       <Pressable onPress={onNext} style={styles.ctaButton}>
-        <Text style={styles.ctaText}>Sounds good, show me plans</Text>
+        <Text style={styles.ctaText}>Sounds fair, show me plans</Text>
         <ArrowRight size={18} color="#fff" strokeWidth={2.5} />
       </Pressable>
 
       <Pressable onPress={onClose} style={styles.skipButton}>
         <ThemedText style={[styles.skipText, { color: Colors[colorScheme].muted }]}>
-          Skip, I{"'"}ll use the free version
+          Continue with free version
         </ThemedText>
       </Pressable>
     </ScrollView>
@@ -336,13 +336,13 @@ function StepPaywall({
       <View style={styles.hero}>
         <AppLogo style={styles.heroLogo} />
         <ThemedText style={styles.heroTitle}>
-          {fromOnboarding ? 'Choose your plan' : 'Unlock smarter\nmornings'}
+          {fromOnboarding ? 'Choose your plan' : 'Read less.\nKnow more.'}
         </ThemedText>
-        {fromOnboarding && (
-          <ThemedText style={[styles.heroSub, { color: Colors[colorScheme].muted }]}>
-            All plans include your {TRIAL_DAYS}-day free trial.
-          </ThemedText>
-        )}
+        <ThemedText style={[styles.heroSub, { color: Colors[colorScheme].muted }]}>
+          {fromOnboarding
+            ? `All plans include your ${TRIAL_DAYS}-day free trial.`
+            : '10 minutes a day. Zero information overload.'}
+        </ThemedText>
       </View>
 
       {!fromOnboarding && (
@@ -428,7 +428,7 @@ function StepPaywall({
           <>
             <Zap size={18} color="#fff" strokeWidth={2} />
             <Text style={styles.ctaText}>
-              {fromOnboarding ? `Start ${TRIAL_DAYS}-day free trial` : 'Start subscription'}
+              {fromOnboarding ? `Start free trial` : 'Upgrade now'}
             </Text>
           </>
         )}
@@ -442,8 +442,8 @@ function StepPaywall({
 
       <ThemedText style={[styles.legal, { color: Colors[colorScheme].muted }]}>
         {fromOnboarding
-          ? `Start your ${TRIAL_DAYS}-day free trial. Cancel anytime before Day ${TRIAL_DAYS + 1} to avoid being charged. After that, your subscription auto-renews unless cancelled at least 24 hours before the end of the current period.`
-          : 'Payment will be charged to your App Store account. Subscription auto-renews unless cancelled at least 24 hours before the end of the current period.'}
+          ? `Free for ${TRIAL_DAYS} days, then your plan kicks in. Cancel anytime in Settings — takes 2 taps.`
+          : 'Billed to your App Store account. Cancel anytime in Settings.'}
       </ThemedText>
     </ScrollView>
   );

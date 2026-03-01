@@ -25,6 +25,7 @@ import { Flame, Zap, Sparkles, BookOpen, Cpu, User, Crosshair, GraduationCap } f
 
 import DigestIllus from '@/components/illustrations/DigestIllus';
 import { MilestoneCelebration } from '@/components/MilestoneCelebration';
+import { EarlyAdopterBanner } from '@/components/EarlyAdopterBanner';
 
 import { ThemedText } from '@/components/themed-text';
 import { TrendingCard, ForYouCard, DeepDiveCard } from '@/components/FeedCard';
@@ -102,7 +103,7 @@ export default function FeedScreen() {
     onScroll: (event) => { scrollY.value = event.contentOffset.y; },
   });
 
-  const { isProUser: isSubscribed, loading: rcLoading } = useRevenueCat();
+  const { isProUser: isSubscribed, isEarlyAdopter, loading: rcLoading } = useRevenueCat();
   const isOnboarded = profile?.onboarded ?? false;
 
   const FREE_LIMITS = { trending: 5, for_you: 2, deep_dives: 1 };
@@ -260,7 +261,7 @@ export default function FeedScreen() {
             </View>
           </View>
           <Pressable
-            onPress={() => router.push('/(tabs)/analytics')}
+            onPress={() => router.push('/preferences')}
             style={[styles.profileBtn, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
             <User size={18} color={Colors[colorScheme].foreground} strokeWidth={2} />
             {currentStreak > 0 && (
@@ -271,6 +272,14 @@ export default function FeedScreen() {
             )}
           </Pressable>
         </View>
+
+        {/* ─── Early Adopter Banner ─── */}
+        <EarlyAdopterBanner
+          colorScheme={colorScheme}
+          isEarlyAdopter={isEarlyAdopter}
+          isSubscribed={isSubscribed}
+          onPress={() => router.push('/paywall')}
+        />
 
         {/* ─── Tab bar (all users) ─── */}
         <View style={styles.tabBar}>
@@ -338,7 +347,6 @@ export default function FeedScreen() {
                       <TrendingCard
                         item={item}
                         colorScheme={colorScheme}
-                        onPress={() => handleFeedItemPress(item)}
                         accentColor={accentColor}
                       />
                       {showDivider && <View style={[styles.divider, { backgroundColor: Colors[colorScheme].border }]} />}

@@ -35,7 +35,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'uid is required' }, { status: 400 });
     }
 
-    // Hard rule: never generate feeds for unsubscribed users.
+    // Check subscription status to pass to feed generator (pro users get more items)
+    let tier: 'pro' | 'free' = 'free';
     if (adminDb) {
       try {
         const userSnap = await adminDb.collection('user_profiles').doc(uid).get();
@@ -43,20 +44,15 @@ export async function POST(request: NextRequest) {
           const userData = userSnap.data() || {};
           const webSub = String(userData.subscriptionStatus || 'none');
           const appSub = String(userData.appSubscriptionStatus || 'none');
-          const hasSubscriptionAccess =
-            ['trial', 'active'].includes(webSub) || ['trial', 'active'].includes(appSub);
-
-          if (!hasSubscriptionAccess) {
-            return NextResponse.json({
-              ok: true,
-              message: 'Skipping feed generation for unsubscribed user.',
-              triggered: false,
-              blocked: 'unsubscribed',
-            });
-          }
+          const isEarlyAdopter = userData.isEarlyAdopter === true;
+          const hasProAccess =
+            isEarlyAdopter ||
+            ['trial', 'active'].includes(webSub) ||
+            ['trial', 'active'].includes(appSub);
+          tier = hasProAccess ? 'pro' : 'free';
         }
       } catch (error) {
-        console.warn('Failed to verify subscription before onboarding dispatch:', error);
+        console.warn('Failed to check subscription status:', error);
       }
     }
 
@@ -114,6 +110,7 @@ export async function POST(request: NextRequest) {
           event_type: 'user-onboard',
           client_payload: {
             user_id: uid,
+            tier, // 'pro' or 'free' - determines how many items to generate
           },
         }),
       }

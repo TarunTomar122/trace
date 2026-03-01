@@ -109,12 +109,24 @@ function AuthGate({ children }: { children: ReactNode }) {
     }
 
     if (!profile?.onboarded) {
-      if (!inOnboarding) {
-        hasNavigated.current = true;
-        router.replace('/onboarding');
-      } else {
+      const inEarlyAdopter = segments[0] === 'early-adopter';
+
+      // If already on early-adopter or onboarding, let those screens handle navigation
+      if (inEarlyAdopter || inOnboarding) {
         setAppReady(true);
+        return;
       }
+
+      // If not an early adopter yet, show the offer screen first
+      if (!profile?.isEarlyAdopter) {
+        hasNavigated.current = true;
+        router.replace('/early-adopter');
+        return;
+      }
+
+      // Already claimed early adopter, go to onboarding
+      hasNavigated.current = true;
+      router.replace('/onboarding');
       return;
     }
 
@@ -179,10 +191,10 @@ function RootLayoutNav() {
       >
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="early-adopter" options={{ presentation: 'fullScreenModal', animation: 'none' }} />
         <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal', animation: 'none' }} />
         <Stack.Screen name="preferences" options={{ presentation: 'card', animation: 'default' }} />
         <Stack.Screen name="article" options={{ presentation: 'card', animation: 'default' }} />
-        <Stack.Screen name="bookmarks" options={{ presentation: 'card', animation: 'default' }} />
         <Stack.Screen name="paywall" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>

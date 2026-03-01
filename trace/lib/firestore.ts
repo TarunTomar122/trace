@@ -1,7 +1,7 @@
-import { 
-  doc, 
-  getDoc, 
-  setDoc, 
+import {
+  doc,
+  getDoc,
+  setDoc,
   serverTimestamp,
   Timestamp,
   collection,
@@ -10,8 +10,12 @@ import {
   orderBy,
   limit,
   documentId,
+  getCountFromServer,
 } from 'firebase/firestore';
 import { firestore } from './firebase';
+
+// ============ Early Adopter Config ============
+const EARLY_ADOPTER_LIMIT = 200;
 
 // ============ Types ============
 export interface ChatMessage {
@@ -25,7 +29,7 @@ export interface UserProfile {
   email: string;
   displayName: string;
   photoURL: string | null;
-  
+
   // Onboarding data
   onboarded: boolean;
   name: string;
@@ -55,15 +59,19 @@ export interface UserProfile {
     shortTerm?: string;
     longTerm?: string;
   };
-  
+
   // Subscription (web / Dodo)
   subscriptionStatus: 'none' | 'trial' | 'active' | 'on_hold' | 'cancelled' | 'expired';
   // Subscription (app / RevenueCat)
   appSubscriptionStatus?: 'none' | 'trial' | 'active' | 'expired';
-  
+
+  // Early adopter (launch promo - free access for first N users)
+  isEarlyAdopter?: boolean;
+  earlyAdopterOfferSeen?: boolean;
+
   // Newsletter preferences
   newsletterOptIn?: boolean;
-  
+
   // Timestamps
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;
@@ -96,10 +104,27 @@ export interface FeedItem {
       key_takeaways?: string[];
       why_it_matters?: string;
       learning_cards?: Array<{
-        type: 'hook' | 'insight' | 'why' | 'takeaway';
+        type: 'hook' | 'insight' | 'why' | 'bottom_line';
         emoji: string;
         content: string;
       }>;
+    };
+    deep_dive?: {
+      subtitle?: string;
+      tldr?: string;
+      chapters?: Array<{
+        title: string;
+        content: string;
+        quote?: {
+          text: string;
+          source: string;
+        };
+      }>;
+      bottom_line?: {
+        title: string;
+        content: string;
+      };
+      images?: string[];
     };
     reading_time_minutes?: number;
   };
@@ -109,7 +134,14 @@ export interface FeedItem {
     feed_category?: string;
     feed_type?: string;
     source_description?: string;
+    synthesized?: boolean;
+    source_count?: number;
   };
+  sources?: Array<{
+    name: string;
+    title: string;
+    url: string;
+  }>;
   _seen?: boolean;
 }
 
@@ -379,6 +411,76 @@ const COLLECTIONS = {
   userFeeds: 'user_feeds',
 };
 
+// ============ Early Adopter Functions ============
+
+export interface EarlyAdopterStatus {
+  currentCount: number;
+  limit: number;
+  spotsRemaining: number;
+  isOpen: boolean;
+}
+
+/**
+ * Get the current early adopter count.
+ * Requires `allow list` permission in Firestore rules.
+ */
+export async function getEarlyAdopterStatus(): Promise<EarlyAdopterStatus> {
+  try {
+    const usersRef = collection(firestore, COLLECTIONS.userProfiles);
+    const countSnap = await getCountFromServer(usersRef);
+    const currentCount = countSnap.data().count;
+
+    const spotsRemaining = Math.max(0, EARLY_ADOPTER_LIMIT - currentCount);
+    return {
+      currentCount,
+      limit: EARLY_ADOPTER_LIMIT,
+      spotsRemaining,
+      isOpen: spotsRemaining > 0,
+    };
+  } catch (error) {
+    console.error('Error getting early adopter status:', error);
+    // Default to open if we can't check (be generous during launch)
+    return {
+      currentCount: 0,
+      limit: EARLY_ADOPTER_LIMIT,
+      spotsRemaining: EARLY_ADOPTER_LIMIT,
+      isOpen: true,
+    };
+  }
+}
+
+/**
+ * Claim early adopter status for a user.
+ * Call this when user accepts the early adopter offer.
+ */
+export async function claimEarlyAdopterStatus(uid: string): Promise<boolean> {
+  try {
+    const status = await getEarlyAdopterStatus();
+    if (!status.isOpen) {
+      return false; // No spots left
+    }
+
+    const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
+    await setDoc(docRef, { isEarlyAdopter: true }, { merge: true });
+    return true;
+  } catch (error) {
+    console.error('Error claiming early adopter status:', error);
+    return false;
+  }
+}
+
+/**
+ * Mark that user has seen the early adopter offer (even if they skipped it).
+ */
+export async function markEarlyAdopterOfferSeen(uid: string): Promise<void> {
+  try {
+    const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
+    await setDoc(docRef, { earlyAdopterOfferSeen: true }, { merge: true });
+  } catch (error) {
+    console.error('Error marking early adopter offer seen:', error);
+  }
+}
+
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   try {
     const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
@@ -422,6 +524,7 @@ export async function createUserProfile(
     },
     contentDepth: null,
     subscriptionStatus: 'none',
+    isEarlyAdopter: false, // Will be set when they claim the offer
     createdAt: serverTimestamp() as Timestamp,
     updatedAt: serverTimestamp() as Timestamp,
     onboardedAt: null,

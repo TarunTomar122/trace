@@ -17,12 +17,14 @@ const ENTITLEMENT_ID = 'trace Premium';
 
 // ─── Types ───
 interface RevenueCatContextType {
-  /** True if the user has access via EITHER RevenueCat (app) OR Dodo (web). */
+  /** True if the user has access via RevenueCat (app), Dodo (web), or Early Adopter. */
   isProUser: boolean;
   /** True only if the user has an active RevenueCat entitlement (app purchase). */
   hasRCEntitlement: boolean;
   /** True only if the user has an active web subscription via Dodo/Firestore. */
   hasWebSubscription: boolean;
+  /** True if user signed up during the early adopter promo period. */
+  isEarlyAdopter: boolean;
   customerInfo: CustomerInfo | null;
   offerings: PurchasesOfferings | null;
   loading: boolean;
@@ -38,6 +40,7 @@ const RevenueCatContext = createContext<RevenueCatContextType>({
   isProUser: false,
   hasRCEntitlement: false,
   hasWebSubscription: false,
+  isEarlyAdopter: false,
   customerInfo: null,
   offerings: null,
   loading: true,
@@ -92,8 +95,11 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
   const webStatus = profile?.subscriptionStatus || 'none';
   const hasWebSubscription = webStatus === 'active' || webStatus === 'trial';
 
-  // ─── Combined: user has access if EITHER source grants it ───
-  const isProUser = hasRCEntitlement || hasWebSubscription;
+  // ─── Access from Early Adopter program (launch promo) ───
+  const isEarlyAdopter = profile?.isEarlyAdopter === true;
+
+  // ─── Combined: user has access if ANY source grants it ───
+  const isProUser = hasRCEntitlement || hasWebSubscription || isEarlyAdopter;
 
   // - Sync appSubscriptionStatus to Firestore (stable - uses refs) -
   const syncAppSubStatus = useCallback(async (info: CustomerInfo) => {
@@ -277,6 +283,7 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
         isProUser,
         hasRCEntitlement,
         hasWebSubscription,
+        isEarlyAdopter,
         customerInfo,
         offerings,
         loading,

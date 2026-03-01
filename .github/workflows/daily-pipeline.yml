@@ -3,11 +3,17 @@ name: Daily Pipeline
 
 on:
   schedule:
-    # Morning pipeline at 8:00 AM IST (2:30 AM UTC)
+    # Morning pipeline at 8:00 AM IST (2:30 AM UTC) - full build
     - cron: '30 2 * * *'
 
-    # Afternoon trending refresh at 2:30 PM IST (9:00 AM UTC)
-    - cron: '0 9 * * *'
+    # Trending refreshes every 2 hours (10 AM - 10 PM IST)
+    - cron: '30 4 * * *'   # 10:00 AM IST
+    - cron: '30 6 * * *'   # 12:00 PM IST
+    - cron: '30 8 * * *'   # 2:00 PM IST
+    - cron: '30 10 * * *'  # 4:00 PM IST
+    - cron: '30 12 * * *'  # 6:00 PM IST
+    - cron: '30 14 * * *'  # 8:00 PM IST
+    - cron: '30 16 * * *'  # 10:00 PM IST
   
   workflow_dispatch:
     inputs:
@@ -69,24 +75,25 @@ jobs:
             python -u -m v3.scheduler --jobs for_you deep_dives trending assemble --audience all
           fi
 
-  afternoon-trending:
-    if: github.event.schedule == '0 9 * * *'
+  trending-refresh:
+    # Run for all non-morning schedules (every 2 hours from 10 AM - 10 PM IST)
+    if: github.event.schedule != '30 2 * * *' && github.event_name == 'schedule'
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
-      
+
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-      
+
       - name: Refresh trending and rebuild feeds
         run: |
           python -u -m v3.scheduler --jobs trending assemble --audience all --force-pools

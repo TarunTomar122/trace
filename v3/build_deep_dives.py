@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 """
-Build "Deep Dives" feed — expert content from user-selected sources.
+Build "Deep Dives" feed — synthesized original content from multiple sources.
 
-Users choose specific sources during onboarding (step 3).
-Only articles from those sources appear in their Deep Dives.
+Each deep dive combines 2-3 related articles from user's selected sources
+into one cohesive, original piece with our own title and narrative.
 
-Phase 1 (pool): Fetch articles from deep_dive_sources.json → v3_deep_dive_pool
-Phase 2 (feed): Per-user selection by selectedLearningSources → summarise → write
+Users get 2 deep dives per day, personalized to their source selections.
 
 Usage:
   python3 -m v3.build_deep_dives
   python3 -m v3.build_deep_dives --skip-pool
-  python3 -m v3.build_deep_dives --pool-only
   python3 -m v3.build_deep_dives --user-id <uid>
 """
 
@@ -24,9 +22,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 
 from dotenv import load_dotenv
+from openai import OpenAI
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -37,16 +35,16 @@ from v1.storage import is_user_subscribed  # noqa: E402
 from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
 from v3.lib.store import V3Store, DEEP_DIVE_POOL, FREE_TIER_LIMITS, _today_ist  # noqa: E402
 from v3.lib.content import fetch_content, fetch_og_image  # noqa: E402
-from v3.lib.summarizer import get_or_generate_summary, batch_presummarize  # noqa: E402
-from v3.lib.diversity import dedupe_and_cap  # noqa: E402
 
 CONFIG_PATH = "v3/config/deep_dive_sources.json"
-DEFAULT_ITEMS = 4
+DEFAULT_DEEP_DIVES_PER_USER = 2
 DEFAULT_LIMIT_PER_SOURCE = 5
 DEFAULT_MAX_AGE = 60
 
+MODEL = "gpt-4o-mini"
+CLUSTERING_MODEL = "gpt-4o-mini"
+
 # Fallback: map user interests → deep dive source categories.
-# Used when a user has no selectedLearningSources (onboarded before step existed).
 INTEREST_TO_DD_CATEGORIES: dict[str, list[str]] = {
     "technology":       ["tech-engineering"],
     "engineering":      ["tech-engineering"],
@@ -63,18 +61,6 @@ INTEREST_TO_DD_CATEGORIES: dict[str, list[str]] = {
 }
 
 
-def _sources_for_interests(interests: list[str], config_sources: list[dict]) -> set[str]:
-    """Derive a set of deep dive source names from user interests."""
-    categories: set[str] = set()
-    for interest_id in interests:
-        categories.update(INTEREST_TO_DD_CATEGORIES.get(interest_id, []))
-    if not categories:
-        categories = {"tech-engineering", "business-strategy"}
-    return {
-        s["name"] for s in config_sources if s.get("category_id") in categories
-    }
-
-
 def _log(msg: str) -> None:
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{ts}] [v3-deep-dives] {msg}")
@@ -86,12 +72,6 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--pool-only", action="store_true")
     p.add_argument("--user-id", default="")
     p.add_argument("--limit-users", type=int, default=0)
-    p.add_argument(
-        "--items-per-user",
-        type=int,
-        default=0,
-        help="Override items per user; 0 uses config value",
-    )
     p.add_argument("--limit-per-source", type=int, default=DEFAULT_LIMIT_PER_SOURCE)
     p.add_argument("--max-age-days", type=int, default=DEFAULT_MAX_AGE)
     p.add_argument("--date", default="")
@@ -129,9 +109,308 @@ def _load_users(
     return store.get_onboarded_users(args.audience)
 
 
-# -----------------------------------------------------------------------
-# Phase 1: Pool refresh
-# -----------------------------------------------------------------------
+def _sources_for_interests(interests: list[str], config_sources: list[dict]) -> set[str]:
+    """Derive a set of deep dive source names from user interests."""
+    categories: set[str] = set()
+    for interest_id in interests:
+        categories.update(INTEREST_TO_DD_CATEGORIES.get(interest_id, []))
+    if not categories:
+        categories = {"tech-engineering", "business-strategy"}
+    return {
+        s["name"] for s in config_sources if s.get("category_id") in categories
+    }
+
+
+# ---------------------------------------------------------------------------
+# Clustering: Group related articles by topic
+# ---------------------------------------------------------------------------
+
+CLUSTERING_PROMPT = """You are grouping articles by topic for synthesis.
+
+Given these articles, identify 2 distinct topic clusters where articles can be combined into a cohesive deep dive. Each cluster should have 2-3 articles that share a common theme.
+
+ARTICLES:
+{articles}
+
+Return JSON:
+{{
+  "clusters": [
+    {{
+      "theme": "Short theme description (3-5 words)",
+      "article_indices": [0, 2, 4],
+      "synthesis_angle": "What interesting narrative could combine these?"
+    }},
+    {{
+      "theme": "Another theme",
+      "article_indices": [1, 3],
+      "synthesis_angle": "The narrative angle"
+    }}
+  ]
+}}
+
+RULES:
+- Exactly 2 clusters
+- Each cluster has 2-3 articles (prefer 3 if possible)
+- Articles can only appear in ONE cluster
+- Find genuinely related articles, not forced groupings
+- If articles are too diverse, pick the best 2 groupings you can
+"""
+
+def cluster_articles(articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Use LLM to cluster articles into topic groups."""
+    if len(articles) < 4:
+        # Not enough to make 2 clusters, return single cluster
+        return [{"theme": "Mixed insights", "articles": articles[:3], "synthesis_angle": "Key learnings"}]
+
+    # Format articles for prompt
+    formatted = []
+    for i, art in enumerate(articles[:12]):  # Cap at 12 to avoid token limits
+        formatted.append(f"[{i}] \"{art.get('title', '')}\" - {art.get('source_name', '')}")
+
+    client = OpenAI()
+    try:
+        resp = client.chat.completions.create(
+            model=CLUSTERING_MODEL,
+            messages=[
+                {"role": "system", "content": "Return valid JSON only."},
+                {"role": "user", "content": CLUSTERING_PROMPT.format(articles="\n".join(formatted))}
+            ],
+            temperature=0.3,
+            response_format={"type": "json_object"},
+            timeout=30,
+        )
+        result = json.loads(resp.choices[0].message.content or "{}")
+        clusters = result.get("clusters", [])
+
+        # Map indices back to articles
+        output = []
+        for cluster in clusters[:2]:
+            indices = cluster.get("article_indices", [])
+            cluster_articles = [articles[i] for i in indices if i < len(articles)]
+            if cluster_articles:
+                output.append({
+                    "theme": cluster.get("theme", ""),
+                    "articles": cluster_articles,
+                    "synthesis_angle": cluster.get("synthesis_angle", ""),
+                })
+        return output
+    except Exception as e:
+        _log(f"Clustering failed: {e}, using fallback")
+        # Fallback: just split articles
+        mid = len(articles) // 2
+        return [
+            {"theme": "Insights Part 1", "articles": articles[:3], "synthesis_angle": ""},
+            {"theme": "Insights Part 2", "articles": articles[mid:mid+3], "synthesis_angle": ""},
+        ]
+
+
+# ---------------------------------------------------------------------------
+# Synthesis: Create original deep dive from multiple articles
+# ---------------------------------------------------------------------------
+
+SYNTHESIS_PROMPT = """You are creating a DEEP DIVE article that synthesizes insights from multiple expert sources.
+
+This is NOT a summary. It's an ORIGINAL, in-depth piece that weaves ideas into a cohesive narrative with chapters. Think of yourself as a magazine writer creating premium content.
+
+THEME: {theme}
+SYNTHESIS ANGLE: {angle}
+
+SOURCE ARTICLES:
+{sources}
+
+Create a chapter-style deep dive. Return JSON:
+{{
+  "title": "Compelling, original title (not copying sources)",
+  "subtitle": "One sentence hook that makes reader want to dive in",
+  "tldr": "2-3 sentence executive summary of the key insight",
+  "chapters": [
+    {{
+      "title": "Chapter title (e.g., 'The Shift Everyone Missed')",
+      "content": "150-200 words of original analysis weaving source insights together. Write in an engaging, editorial style. Use **bold** for key phrases.",
+      "quote": {{
+        "text": "An actual quote or key insight extracted from one of the sources",
+        "source": "Author/Source name"
+      }}
+    }},
+    {{
+      "title": "Second chapter title",
+      "content": "150-200 words continuing the narrative...",
+      "quote": {{
+        "text": "Another powerful quote from the sources",
+        "source": "Author name"
+      }}
+    }},
+    {{
+      "title": "Third chapter title",
+      "content": "150-200 words...",
+      "quote": null
+    }}
+  ],
+  "bottom_line": {{
+    "title": "The Bottom Line",
+    "content": "80-100 words synthesizing what this all means. What should the reader take away? What action or shift in thinking?"
+  }},
+  "reading_time_minutes": <estimated int, typically 4-6>
+}}
+
+RULES:
+- 3-4 chapters, each 150-200 words (total ~800 words of content)
+- Weave sources together naturally, don't treat them separately
+- Include 2-3 actual quotes extracted from the source content (not made up)
+- Write in engaging editorial style, not dry summary
+- Each chapter should have a compelling title
+- The narrative should BUILD - each chapter adds to the previous
+- **Bold** 1-2 key phrases per chapter
+- NO fluff, NO generic statements - every sentence should add value
+"""
+
+# Keep old prompt for backwards compatibility
+SYNTHESIS_PROMPT_CARDS = """You are creating an ORIGINAL deep dive that synthesizes insights from multiple expert sources.
+
+This is NOT a summary of each article. It's a NEW piece of content that weaves together the ideas into one cohesive narrative. Think of yourself as a writer creating original content, using these sources as research.
+
+THEME: {theme}
+SYNTHESIS ANGLE: {angle}
+
+SOURCE ARTICLES:
+{sources}
+
+Create a deep dive with:
+1. An ORIGINAL, compelling title (not copying any source title)
+2. Learning cards that teach the concept by drawing from all sources
+
+Return JSON:
+{{
+  "title": "Your original, intriguing title",
+  "subtitle": "One sentence hook",
+  "learning_cards": [
+    {{
+      "type": "hook",
+      "emoji": "🎯",
+      "content": "Set up the topic - why should reader care? (40-60 words)"
+    }},
+    {{
+      "type": "insight",
+      "emoji": "💡",
+      "content": "Key insight weaving perspectives from sources (50-70 words)"
+    }},
+    {{
+      "type": "insight",
+      "emoji": "🔍",
+      "content": "Another insight, maybe where sources agree/disagree (50-70 words)"
+    }},
+    {{
+      "type": "insight",
+      "emoji": "🛠️",
+      "content": "Practical angle or framework from the sources (50-70 words)"
+    }},
+    {{
+      "type": "why",
+      "emoji": "🎯",
+      "content": "Why this matters for the reader's work/thinking (40-60 words)"
+    }},
+    {{
+      "type": "bottom_line",
+      "emoji": "⚡",
+      "content": "The synthesis - what to take away from all this (40-50 words)"
+    }}
+  ]
+}}
+
+RULES:
+- Create ORIGINAL content, not summaries
+- Weave sources together, don't treat them separately
+- Reference sources naturally: "As [Author] points out..." or "Building on [Source]'s framework..."
+- The title should be compelling and original - something a top publication would use
+- 5-6 cards total
+- Dense with insights, no fluff
+"""
+
+def synthesize_deep_dive(
+    cluster: dict[str, Any],
+    store: V3Store,
+) -> dict[str, Any] | None:
+    """Generate a synthesized deep dive from a cluster of articles."""
+    articles = cluster.get("articles", [])
+    if not articles:
+        return None
+
+    # Check cache first (use different key for chapter format)
+    cache_key = _synthesis_cache_key(articles) + "_v2"
+    cached = store.get_cached_synthesis(cache_key)
+    if cached:
+        _log(f"  Using cached synthesis: {cached.get('title', '')[:50]}")
+        return cached
+
+    # Collect images from sources
+    images = []
+    for art in articles:
+        img = art.get("og_image", "")
+        if img and img.startswith("http") and img not in images:
+            images.append(img)
+
+    # Format sources for prompt
+    sources_text = []
+    for i, art in enumerate(articles):
+        content = art.get("content", "")[:10000]  # More content for deeper synthesis
+        sources_text.append(
+            f"--- SOURCE {i+1}: {art.get('source_name', '')} ---\n"
+            f"Title: {art.get('title', '')}\n"
+            f"Content:\n{content}\n"
+        )
+
+    client = OpenAI()
+    try:
+        resp = client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": "You are an expert magazine writer creating premium editorial content. Return valid JSON only."},
+                {"role": "user", "content": SYNTHESIS_PROMPT.format(
+                    theme=cluster.get("theme", ""),
+                    angle=cluster.get("synthesis_angle", ""),
+                    sources="\n\n".join(sources_text),
+                )}
+            ],
+            temperature=0.6,  # Higher for more creative writing
+            response_format={"type": "json_object"},
+            timeout=90,
+        )
+        result = json.loads(resp.choices[0].message.content or "{}")
+
+        if not result.get("title") or not result.get("chapters"):
+            _log(f"  Synthesis returned incomplete result")
+            return None
+
+        # Add source references and images
+        result["sources"] = [
+            {
+                "name": art.get("source_name", ""),
+                "title": art.get("title", ""),
+                "url": art.get("url", ""),
+            }
+            for art in articles
+        ]
+        result["images"] = images[:3]  # Max 3 images
+
+        # Cache the result
+        store.cache_synthesis(cache_key, result)
+        _log(f"  Synthesized: {result.get('title', '')[:50]}")
+        return result
+
+    except Exception as e:
+        _log(f"  Synthesis failed: {e}")
+        return None
+
+
+def _synthesis_cache_key(articles: list[dict]) -> str:
+    """Create a cache key from article URLs."""
+    urls = sorted(art.get("url", "") for art in articles)
+    return hashlib.sha256("|".join(urls).encode()).hexdigest()[:32]
+
+
+# ---------------------------------------------------------------------------
+# Phase 1: Pool refresh (same as before)
+# ---------------------------------------------------------------------------
 
 def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) -> dict[str, int]:
     from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -221,31 +500,40 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
     return stats
 
 
-# -----------------------------------------------------------------------
-# Phase 2: Per-user feed generation
-# -----------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Phase 2: Per-user synthesized deep dives
+# ---------------------------------------------------------------------------
 
-def _build_feed_item(pool_item: dict[str, Any], summary: dict[str, Any] | None) -> dict[str, Any]:
-    url = pool_item.get("url", "")
-    domain = urlparse(url).netloc.lower() if url else ""
-    item_id = hashlib.sha256(url.encode("utf-8")).hexdigest()[:32]
-    src_name = pool_item.get("source_name", domain)
+def _build_feed_item(synthesis: dict[str, Any], index: int) -> dict[str, Any]:
+    """Build a feed item from synthesized content."""
+    title = synthesis.get("title", "")
+    item_id = hashlib.sha256(f"{title}_{index}".encode()).hexdigest()[:32]
+    images = synthesis.get("images", [])
+
     return {
         "id": f"dd_{item_id}",
-        "url": url,
-        "title": pool_item.get("title", ""),
-        "type": "blog",
-        "source": domain,
-        "source_name": src_name,
-        "category_id": pool_item.get("category_id", ""),
+        "title": title,
+        "type": "deep_dive",
+        "source": "trace",
+        "source_name": "Trace Deep Dive",
         "feed_type": "deep_dives",
-        "published_date": pool_item.get("published_date", ""),
-        "thumbnail": pool_item.get("og_image", ""),
-        "summary": summary or {},
+        "thumbnail": images[0] if images else "",
+        "sources": synthesis.get("sources", []),
+        "summary": {
+            "deep_dive": {
+                "subtitle": synthesis.get("subtitle", ""),
+                "tldr": synthesis.get("tldr", ""),
+                "chapters": synthesis.get("chapters", []),
+                "bottom_line": synthesis.get("bottom_line", {}),
+                "images": images,
+            },
+            "reading_time_minutes": synthesis.get("reading_time_minutes", 5),
+        },
         "metadata": {
             "feed_type": "deep_dives",
-            "source_description": pool_item.get("source_description", ""),
-            "why_relevant": f"Deep dive \u2022 {src_name}",
+            "synthesized": True,
+            "source_count": len(synthesis.get("sources", [])),
+            "format": "chapters",
         },
     }
 
@@ -256,7 +544,6 @@ def build_user_feeds(
     args: argparse.Namespace,
 ) -> dict[str, int]:
     target_date = args.date.strip() or _today_ist()
-    items_per_user = args.items_per_user or config.get("items_per_user", DEFAULT_ITEMS)
     max_age = args.max_age_days
 
     users = _load_users(store, args)
@@ -265,173 +552,89 @@ def build_user_feeds(
     if args.limit_users > 0:
         users = users[: args.limit_users]
 
-    _log(f"Building Deep Dive feeds for {len(users)} users, date={target_date}")
+    _log(f"Building synthesized Deep Dives for {len(users)} users, date={target_date}")
 
-    # ------------------------------------------------------------------
-    # PHASE 2a: Pick articles for every user (fast — no OpenAI calls)
-    # ------------------------------------------------------------------
-    _log("-" * 40)
-    _log("PHASE 2a: Select articles per user")
-    _log("-" * 40)
-
-    user_picks: list[tuple[dict, list[dict], str, str]] = []
-    selected_union: set[str] = set()
-    user_inputs: list[tuple[dict, set[str], str, str, int]] = []
+    stats = {
+        "users": 0,
+        "deep_dives_total": 0,
+        "syntheses_generated": 0,
+        "syntheses_cached": 0,
+        "users_skipped_no_articles": 0,
+    }
 
     for profile in users:
         uid = profile.get("uid", "")
         if not uid:
             continue
 
+        # Get user's sources
         selected_sources = set(profile.get("selectedLearningSources", []) or [])
-        is_subscribed = is_user_subscribed(profile)
-        user_items_target = items_per_user if is_subscribed else FREE_TIER_LIMITS.get("deep_dives", 1)
+        is_sub = is_user_subscribed(profile)
+        target_deep_dives = DEFAULT_DEEP_DIVES_PER_USER if is_sub else FREE_TIER_LIMITS.get("deep_dives", 1)
 
+        # Fallback to interests if no sources selected
         if not selected_sources:
             interests = profile.get("interests", []) or []
             selected_sources = _sources_for_interests(interests, config.get("sources", []))
             if selected_sources:
-                _log(f"  user={uid} no sources picked → auto-assigned {len(selected_sources)} from interests")
-            else:
-                store.write_feed_section(uid, target_date, "deep_dives", [])
-                continue
+                _log(f"  user={uid} no sources → using {len(selected_sources)} from interests")
 
-        selected_union |= selected_sources
-        user_inputs.append((profile, selected_sources, user_items_target))
+        if not selected_sources:
+            _log(f"  user={uid} no sources, skipping")
+            store.write_feed_section(uid, target_date, "deep_dives", [])
+            stats["users_skipped_no_articles"] += 1
+            continue
 
-    all_candidates: list[dict[str, Any]] = []
-    if user_inputs and selected_union:
-        all_candidates = store.load_pool(
+        # Load articles from user's sources
+        candidates = store.load_pool(
             DEEP_DIVE_POOL,
-            source_names=selected_union,
+            source_names=selected_sources,
             max_age_days=max_age,
         )
-    _log(f"Loaded {len(all_candidates)} shared deep_dive pool candidates")
 
-    for profile, selected_sources, user_items_target in user_inputs:
-        uid = profile.get("uid", "")
-        if not uid:
-            continue
+        # Filter out seen URLs
         seen_urls = store.get_seen_urls(uid)
-        candidates = [
-            c for c in all_candidates
-            if c.get("source_name", "") in selected_sources
-            and c.get("url", "") not in seen_urls
-        ]
+        candidates = [c for c in candidates if c.get("url", "") not in seen_urls]
 
-        if not candidates:
+        if len(candidates) < 2:
+            _log(f"  user={uid} only {len(candidates)} articles, skipping")
             store.write_feed_section(uid, target_date, "deep_dives", [])
+            stats["users_skipped_no_articles"] += 1
             continue
 
-        candidates = dedupe_and_cap(candidates, max_per_source=3)
+        _log(f"  user={uid} has {len(candidates)} articles from {len(selected_sources)} sources")
 
-        by_source: dict[str, list[dict[str, Any]]] = {}
-        for item in candidates:
-            sn = item.get("source_name", "")
-            by_source.setdefault(sn, []).append(item)
+        # Cluster articles into topic groups
+        clusters = cluster_articles(candidates)
+        _log(f"  Found {len(clusters)} clusters")
 
-        picked: list[dict[str, Any]] = []
-        source_keys = sorted(by_source.keys())
-        while len(picked) < user_items_target and source_keys:
-            exhausted = []
-            for key in source_keys:
-                if len(picked) >= user_items_target:
-                    break
-                bucket = by_source[key]
-                if bucket:
-                    picked.append(bucket.pop(0))
-                else:
-                    exhausted.append(key)
-            for k in exhausted:
-                source_keys.remove(k)
+        # Generate synthesized deep dives
+        feed_items = []
+        for i, cluster in enumerate(clusters[:target_deep_dives]):
+            synthesis = synthesize_deep_dive(cluster, store)
+            if synthesis:
+                feed_items.append(_build_feed_item(synthesis, i))
+                stats["syntheses_generated"] += 1
 
-        _log(f"  user={uid} → {len(picked)} deep dives")
-        user_picks.append((profile, picked))
-
-    # ------------------------------------------------------------------
-    # PHASE 2b: Batch pre-summarize only the articles users actually need
-    # ------------------------------------------------------------------
-    _log("-" * 40)
-    _log("PHASE 2b: Pre-summarize needed articles (parallel)")
-    _log("-" * 40)
-
-    needed_items: dict[str, dict] = {}
-    for _, picked in user_picks:
-        for item in picked:
-            url = item.get("url", "")
-            if url and url not in needed_items:
-                needed_items[url] = item
-
-    _log(f"Unique articles needed: {len(needed_items)}")
-
-    summary_map: dict[str, dict[str, Any] | None] = {}
-    if needed_items:
-        presummary = batch_presummarize(
-            store, list(needed_items.values()),
-            feed_type="deep_dives", max_workers=8,
-        )
-        summary_map = presummary.get("summary_map", {}) or {}
-
-    # ------------------------------------------------------------------
-    # PHASE 2c: Assemble feeds (all summaries now cached — fast)
-    # ------------------------------------------------------------------
-    _log("-" * 40)
-    _log("PHASE 2c: Assemble feeds from cache")
-    _log("-" * 40)
-
-    stats = {
-        "users": 0,
-        "items_total": 0,
-        "summaries_generated": 0,
-        "summaries_cached": 0,
-        "rejected_items": 0,
-    }
-
-    for profile, picked in user_picks:
-        uid = profile.get("uid", "")
-
-        feed_items: list[dict[str, Any]] = []
-        for item in picked:
-            url = item.get("url", "")
-            if url in summary_map:
-                summary = summary_map[url]
-                was_cached = True
-            else:
-                summary, was_cached = get_or_generate_summary(
-                    store=store,
-                    url=url,
-                    title=item.get("title", ""),
-                    content=item.get("content", ""),
-                    feed_type="deep_dives",
-                )
-            if not summary:
-                stats["rejected_items"] += 1
-                continue
-            if was_cached:
-                stats["summaries_cached"] += 1
-            else:
-                stats["summaries_generated"] += 1
-
-            feed_items.append(_build_feed_item(item, summary))
-
+        # Write feed
         store.write_feed_section(uid, target_date, "deep_dives", feed_items)
         stats["users"] += 1
-        stats["items_total"] += len(feed_items)
-        _log(f"  user={uid} wrote {len(feed_items)} deep_dive items")
+        stats["deep_dives_total"] += len(feed_items)
+        _log(f"  user={uid} wrote {len(feed_items)} synthesized deep dives")
 
     store.record_run("deep_dives", {"date": target_date, **stats})
-    _log(f"Deep Dive feeds done: {stats}")
+    _log(f"Deep Dives done: {stats}")
     return stats
 
 
-# -----------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Main
-# -----------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 
 def main() -> None:
     args = _parse_args()
     _log("=" * 50)
-    _log("DEEP DIVES — Starting")
+    _log("DEEP DIVES (Synthesized) — Starting")
     _log(
         f"  user-id={args.user_id or 'ALL'} audience={args.audience} "
         f"skip-pool={args.skip_pool} pool-only={args.pool_only}"
@@ -453,7 +656,7 @@ def main() -> None:
             return
 
     _log("-" * 40)
-    _log("PHASE 2: Per-user feed generation")
+    _log("PHASE 2: Per-user synthesized deep dives")
     _log("-" * 40)
     feed_stats = build_user_feeds(store, config, args)
     _log("=" * 50)

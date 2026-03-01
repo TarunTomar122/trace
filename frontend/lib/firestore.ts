@@ -217,10 +217,27 @@ export interface FeedItem {
       key_takeaways?: string[];
       why_it_matters?: string;
       learning_cards?: Array<{
-        type: 'hook' | 'insight' | 'why' | 'takeaway';
+        type: 'hook' | 'insight' | 'why' | 'bottom_line';
         emoji: string;
         content: string;
       }>;
+    };
+    deep_dive?: {
+      subtitle?: string;
+      tldr?: string;
+      chapters?: Array<{
+        title: string;
+        content: string;
+        quote?: {
+          text: string;
+          source: string;
+        };
+      }>;
+      bottom_line?: {
+        title: string;
+        content: string;
+      };
+      images?: string[];
     };
     reading_time_minutes?: number;
   };
@@ -230,7 +247,14 @@ export interface FeedItem {
     feed_category?: string;
     feed_type?: string;
     source_description?: string;
+    synthesized?: boolean;
+    source_count?: number;
   };
+  sources?: Array<{
+    name: string;
+    title: string;
+    url: string;
+  }>;
   _seen?: boolean;
 }
 

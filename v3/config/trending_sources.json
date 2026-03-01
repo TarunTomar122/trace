@@ -1,5 +1,5 @@
 {
-  "description": "Sources for the 'Trending' feed. An unfiltered explore-style feed showing the latest news across ALL topics. Shows all items from last 24h, sorted newest first.",
+  "description": "Sources for the 'Trending' feed - BREAKING NEWS only. Fast-moving news sources covering tech, AI, startups, and business. No feature articles or long-form content.",
   "max_age_hours": 24,
   "items_per_user": 0,
   "sources": [
@@ -8,51 +8,74 @@
       "name": "The Verge",
       "url": "https://www.theverge.com/rss/index.xml",
       "type": "atom",
-      "exclude_title_keywords": ["deal", "deals", "sale", "discount", "review", "how to watch"],
-      "source_weight": 1.1
-    },
-    {
-      "interest_id": "technology",
-      "name": "Ars Technica",
-      "url": "https://feeds.arstechnica.com/arstechnica/index",
-      "type": "rss"
-    },
-    {
-      "interest_id": "technology",
-      "name": "Wired",
-      "url": "https://www.wired.com/feed/rss",
-      "type": "rss",
-      "exclude_title_keywords": ["best ", "review", "deal", "deals", "sale", "discount"],
-      "source_weight": 1.1
+      "exclude_title_keywords": ["deal", "deals", "sale", "discount", "review", "how to watch", "best "],
+      "source_weight": 1.2
     },
     {
       "interest_id": "technology",
       "name": "TechCrunch",
       "url": "https://techcrunch.com/feed/",
       "type": "rss",
+      "exclude_title_keywords": ["review", "best ", "how to"],
       "source_weight": 1.2
     },
     {
       "interest_id": "technology",
-      "name": "AI News Feed",
-      "url": "https://www.artificialintelligence-news.com/feed/",
-      "type": "rss"
+      "name": "Engadget",
+      "url": "https://www.engadget.com/rss.xml",
+      "type": "rss",
+      "exclude_title_keywords": ["deal", "deals", "sale", "discount", "review", "best "],
+      "source_weight": 1.1
     },
     {
       "interest_id": "technology",
-      "name": "Google AI Blog",
-      "url": "https://blog.google/technology/ai/rss/",
-      "type": "rss"
-    },
-    {
-      "interest_id": "business-market",
-      "name": "MarketWatch Top Stories",
-      "url": "https://www.marketwatch.com/rss/topstories",
+      "name": "Ars Technica",
+      "url": "https://feeds.arstechnica.com/arstechnica/index",
       "type": "rss",
-      "title_keywords": ["invest", "stock", "market", "fund", "nasdaq", "dow", "s&p", "economy"]
+      "exclude_title_keywords": ["review", "best ", "how to"],
+      "source_weight": 1.0
     },
     {
-      "interest_id": "business-market",
+      "interest_id": "technology",
+      "name": "9to5Mac",
+      "url": "https://9to5mac.com/feed/",
+      "type": "rss",
+      "exclude_title_keywords": ["deal", "deals", "sale", "discount", "best "],
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "technology",
+      "name": "9to5Google",
+      "url": "https://9to5google.com/feed/",
+      "type": "rss",
+      "exclude_title_keywords": ["deal", "deals", "sale", "discount", "best "],
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "ai",
+      "name": "VentureBeat AI",
+      "url": "https://venturebeat.com/category/ai/feed/",
+      "type": "rss",
+      "source_weight": 1.15
+    },
+    {
+      "interest_id": "business",
+      "name": "Yahoo Finance Tech",
+      "url": "https://finance.yahoo.com/news/rssindex",
+      "type": "rss",
+      "title_keywords": ["tech", "AI", "nvidia", "apple", "google", "microsoft", "meta", "amazon", "startup"],
+      "source_weight": 1.2
+    },
+    {
+      "interest_id": "business",
+      "name": "CNBC Technology",
+      "url": "https://www.cnbc.com/id/19854910/device/rss/rss.html",
+      "type": "rss",
+      "exclude_title_keywords": ["how to watch", "deal", "deals"],
+      "source_weight": 1.2
+    },
+    {
+      "interest_id": "business",
       "name": "CNBC Top News",
       "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
       "type": "rss",
@@ -60,39 +83,32 @@
       "source_weight": 1.15
     },
     {
+      "interest_id": "business",
+      "name": "Bloomberg Technology",
+      "url": "https://feeds.bloomberg.com/technology/news.rss",
+      "type": "rss",
+      "source_weight": 1.25
+    },
+    {
+      "interest_id": "ai",
+      "name": "AI News",
+      "url": "https://www.artificialintelligence-news.com/feed/",
+      "type": "rss",
+      "source_weight": 1.1
+    },
+    {
+      "interest_id": "startups",
+      "name": "TechCrunch Startups",
+      "url": "https://techcrunch.com/category/startups/feed/",
+      "type": "rss",
+      "source_weight": 1.1
+    },
+    {
       "interest_id": "technology",
-      "name": "Fast Company",
-      "url": "https://www.fastcompany.com/technology/rss",
+      "name": "Hacker News Best",
+      "url": "https://hnrss.org/best",
       "type": "rss",
-      "exclude_title_keywords": ["how to watch", "deal", "deals", "sale", "discount", "list of sightings"],
-      "source_weight": 1.15
-    },
-    {
-      "interest_id": "productivity",
-      "name": "Fast Company",
-      "url": "https://www.fastcompany.com/work-life/rss",
-      "type": "rss",
-      "exclude_title_keywords": ["how to watch", "deal", "deals", "sale", "discount", "list of sightings"],
-      "source_weight": 1.15
-    },
-    {
-      "interest_id": "business-market",
-      "name": "SaaStr",
-      "url": "https://www.saastr.com/feed/",
-      "type": "rss"
-    },
-    {
-      "interest_id": "experience",
-      "name": "A List Apart",
-      "url": "https://alistapart.com/main/feed/",
-      "type": "rss"
-    },
-    {
-      "interest_id": "science",
-      "name": "MIT Technology Review",
-      "url": "https://www.technologyreview.com/feed",
-      "type": "rss",
-      "source_weight": 1.2
+      "source_weight": 1.0
     }
   ]
 }
