@@ -22,6 +22,35 @@ TEMPERATURE = 0.3
 TIMEOUT = 45
 
 # ---------------------------------------------------------------------------
+# Technical depth detection from user profile
+# ---------------------------------------------------------------------------
+
+TECHNICAL_ROLES = {"developer", "founder", "engineer"}
+TECHNICAL_SENIORITIES = {"senior", "executive"}
+TECHNICAL_INTERESTS = {"engineering", "ai", "technology", "ai-machine-learning"}
+
+
+def compute_technical_depth(profile: dict) -> str:
+    """
+    Determine if user prefers technical ('deep') or accessible summaries.
+
+    Returns 'deep' or 'accessible'.
+    """
+    role = (profile.get("role") or "").lower().strip()
+    seniority = (profile.get("seniority") or "").lower().strip()
+    interests = {i.lower().strip() for i in (profile.get("interests") or [])}
+
+    # Technical if: (technical role + senior) OR has technical interests
+    is_technical_role = role in TECHNICAL_ROLES
+    is_senior = seniority in TECHNICAL_SENIORITIES
+    has_technical_interests = bool(interests & TECHNICAL_INTERESTS)
+
+    if (is_technical_role and is_senior) or has_technical_interests:
+        return "deep"
+    return "accessible"
+
+
+# ---------------------------------------------------------------------------
 # Unified summary prompt — one style for all "For You" content
 # ---------------------------------------------------------------------------
 
@@ -142,6 +171,138 @@ RULES:
 - Slide 3 = optional deeper context or what comes next
 """
 
+# ---------------------------------------------------------------------------
+# Technical Depth Variants — DEEP (jargon-friendly) vs ACCESSIBLE (plain)
+# ---------------------------------------------------------------------------
+
+FOR_YOU_DEEP = """You are a skilled editor creating a CONCISE summary for an experienced technical professional.
+
+Your reader is senior/technical — they know industry jargon and don't need hand-holding.
+
+SOURCE:
+Title: {title}
+URL: {url}
+Content:
+{content}
+
+Return JSON with EXACT structure:
+{{
+  "short_article": {{
+    "subtitle": "One sentence capturing the main point — can use technical terms",
+    "key_takeaways": ["3-4 key points — specific, technical, actionable"],
+    "body": "Concise summary in markdown (see rules below)"
+  }},
+  "reading_time_minutes": <estimated int>
+}}
+
+BODY RULES:
+- Assume domain knowledge — use technical terms freely (RLHF, RAG, transformers, etc.)
+- SHORT paragraphs: 2-3 sentences max
+- Total: 2-4 paragraphs. Dense and information-packed.
+- Include specific metrics, model names, architectures, benchmarks
+- Bold key numbers and technical claims
+- NO dumbed-down explanations. Skip "this means..." or "in other words..."
+- NO concluding paragraphs. No "In summary", "Overall". Ever.
+
+KEY_TAKEAWAYS RULES:
+- Technical and specific — include tool names, version numbers, metrics
+- Actionable for practitioners — what can they use or try?
+"""
+
+FOR_YOU_ACCESSIBLE = """You are a skilled editor creating a CLEAR summary for a professional learning about this topic.
+
+Your reader is smart but may not know all the jargon. Explain technical concepts briefly.
+
+SOURCE:
+Title: {title}
+URL: {url}
+Content:
+{content}
+
+Return JSON with EXACT structure:
+{{
+  "short_article": {{
+    "subtitle": "One sentence capturing the main point in plain language",
+    "key_takeaways": ["3-4 key points — clear, practical insights"],
+    "body": "Clear summary in markdown (see rules below)"
+  }},
+  "reading_time_minutes": <estimated int>
+}}
+
+BODY RULES:
+- When using technical terms, add a brief inline clarification: "RLHF (learning from human feedback)"
+- SHORT paragraphs: 2-3 sentences max
+- Total: 2-4 paragraphs. Clear and accessible.
+- Focus on the "so what" — why does this matter to the reader?
+- Bold key facts and numbers
+- NO jargon without explanation. But don't over-explain either.
+- NO concluding paragraphs. No "In summary", "Overall". Ever.
+
+KEY_TAKEAWAYS RULES:
+- Practical and understandable — what's the real-world impact?
+- Avoid acronyms unless explained
+"""
+
+DEEP_DIVE_DEEP = """You are creating an in-depth breakdown for an experienced technical professional.
+
+Go deep. Use technical language. The reader should feel like they absorbed a technical article.
+
+SOURCE:
+Title: {title}
+URL: {url}
+Content:
+{content}
+
+Return JSON with EXACT structure:
+{{
+  "short_article": {{
+    "subtitle": "One powerful sentence — the core technical thesis",
+    "key_takeaways": ["4-6 specific, technical, actionable takeaways"],
+    "body": "Thorough technical analysis in markdown",
+    "why_it_matters": "2-3 sentences on industry/technical significance"
+  }},
+  "reading_time_minutes": <estimated int>
+}}
+
+BODY RULES:
+- Use ## headers to break into 3-5 logical technical sections
+- Include architectures, benchmarks, comparisons, code patterns
+- Technical depth: model sizes, latency numbers, accuracy metrics
+- Bold the most important technical insights
+- 6-10 paragraphs — comprehensive for practitioners
+- NO "In summary", "Overall". Ever.
+"""
+
+DEEP_DIVE_ACCESSIBLE = """You are creating an in-depth breakdown that makes complex topics understandable.
+
+Go deep, but keep it clear. Explain concepts as you go.
+
+SOURCE:
+Title: {title}
+URL: {url}
+Content:
+{content}
+
+Return JSON with EXACT structure:
+{{
+  "short_article": {{
+    "subtitle": "One clear sentence — the core insight",
+    "key_takeaways": ["4-6 practical, understandable takeaways"],
+    "body": "Thorough but accessible analysis in markdown",
+    "why_it_matters": "2-3 sentences on real-world significance"
+  }},
+  "reading_time_minutes": <estimated int>
+}}
+
+BODY RULES:
+- Use ## headers with clear, descriptive titles
+- When introducing technical concepts, explain briefly
+- Focus on implications and applications, not just mechanics
+- Bold key insights and numbers
+- 6-10 paragraphs — thorough but readable
+- NO "In summary", "Overall". Ever.
+"""
+
 
 QUALITY_GATE_RULES = """
 QUALITY GATE (VERY IMPORTANT):
@@ -183,18 +344,30 @@ def _parse_summary_json(raw: str) -> dict[str, Any] | None:
     return None
 
 
-def _cache_bucket(feed_type: str) -> str:
-    """Return cache bucket name for the feed type. No more style/seniority variants."""
+def _cache_bucket(feed_type: str, technical_depth: str = "") -> str:
+    """Return cache bucket name for the feed type and technical depth.
+
+    technical_depth: 'deep' or 'accessible' (empty = legacy/default)
+    """
     if feed_type == "trending":
-        return "trending_v5"  # v5: carousel slides format
+        return "trending_v5"  # trending doesn't vary by technical depth
     if feed_type == "deep_dives":
-        return "deep_dive_v4"
-    return "for_you_v5"  # v5: more compact summaries
+        if technical_depth == "deep":
+            return "deep_dive_v6_deep"
+        if technical_depth == "accessible":
+            return "deep_dive_v6_accessible"
+        return "deep_dive_v4"  # legacy
+    # for_you / default
+    if technical_depth == "deep":
+        return "for_you_v6_deep"
+    if technical_depth == "accessible":
+        return "for_you_v6_accessible"
+    return "for_you_v5"  # legacy
 
 
-def summary_lookup_key(url: str, feed_type: str = "default") -> tuple[str, str]:
+def summary_lookup_key(url: str, feed_type: str = "default", technical_depth: str = "") -> tuple[str, str]:
     """Return (url, cache_bucket) for cache lookups."""
-    return (url, _cache_bucket(feed_type))
+    return (url, _cache_bucket(feed_type, technical_depth))
 
 
 def _normalize_trending_summary(parsed: dict[str, Any]) -> dict[str, Any]:
@@ -242,6 +415,7 @@ def generate_summary(
     url: str,
     content: str,
     feed_type: str = "default",
+    technical_depth: str = "",
 ) -> tuple[dict[str, Any] | None, str]:
     """
     Generate a summary using the appropriate prompt for the feed type.
@@ -251,6 +425,11 @@ def generate_summary(
     - "deep_dives": Longer, more comprehensive summary
     - "trending": Short news brief
 
+    technical_depth options:
+    - "deep": Technical jargon-friendly, dense
+    - "accessible": Plain language, explains concepts
+    - "": Use legacy default prompt
+
     Returns (summary_dict, error_string). summary_dict is None on failure.
     """
     client = _get_client()
@@ -259,12 +438,24 @@ def generate_summary(
     if not content:
         return None, "no_content"
 
+    # Select prompt template based on feed_type and technical_depth
     if feed_type == "deep_dives":
-        template = DEEP_DIVE_SUMMARY
+        if technical_depth == "deep":
+            template = DEEP_DIVE_DEEP
+        elif technical_depth == "accessible":
+            template = DEEP_DIVE_ACCESSIBLE
+        else:
+            template = DEEP_DIVE_SUMMARY
     elif feed_type == "trending":
-        template = TRENDING_BRIEF
+        template = TRENDING_BRIEF  # trending doesn't vary by depth
     else:
-        template = FOR_YOU_SUMMARY
+        # for_you / default
+        if technical_depth == "deep":
+            template = FOR_YOU_DEEP
+        elif technical_depth == "accessible":
+            template = FOR_YOU_ACCESSIBLE
+        else:
+            template = FOR_YOU_SUMMARY
 
     gate_suffix = (
         "\n" + QUALITY_GATE_RULES + "\n"
@@ -330,13 +521,14 @@ def get_or_generate_summary(
     title: str,
     content: str,
     feed_type: str = "default",
+    technical_depth: str = "",
 ) -> tuple[dict[str, Any] | None, bool]:
     """
     Check cache first, generate if missing.
 
     Returns (summary_dict, was_cached).
     """
-    cache_bucket = _cache_bucket(feed_type)
+    cache_bucket = _cache_bucket(feed_type, technical_depth)
     cached = store.get_cached_summary_v2(url, cache_bucket)
     if cached:
         cached_summary = cached.get("summary")
@@ -344,7 +536,7 @@ def get_or_generate_summary(
             return None, True
         return cached_summary, True
 
-    summary, error = generate_summary(title, url, content, feed_type=feed_type)
+    summary, error = generate_summary(title, url, content, feed_type=feed_type, technical_depth=technical_depth)
     if summary:
         store.save_cached_summary_v2(url, cache_bucket, summary, MODEL)
         return summary, False
@@ -371,6 +563,7 @@ def batch_presummarize(
     pool_items: list[dict[str, Any]],
     feed_type: str = "default",
     max_workers: int = 8,
+    technical_depth: str = "",
 ) -> dict[str, Any]:
     """
     Pre-generate summaries for all pool_items.
@@ -383,7 +576,7 @@ def batch_presummarize(
     """
     tasks: list[tuple[str, str, str]] = []
     already_cached = 0
-    cache_bucket = _cache_bucket(feed_type)
+    cache_bucket = _cache_bucket(feed_type, technical_depth)
     summary_map: dict[str, dict[str, Any] | None] = {}
 
     for item in pool_items:
@@ -415,14 +608,14 @@ def batch_presummarize(
         return stats
 
     _log_presummary(
-        f"Generating {len(tasks)} summaries with {max_workers} parallel workers "
+        f"Generating {len(tasks)} summaries ({technical_depth or 'default'}) with {max_workers} workers "
         f"({already_cached} already cached)"
     )
 
     def _generate_one(task: tuple[str, str, str]) -> tuple[str, str]:
         url, title, content = task
         try:
-            summary, error = generate_summary(title, url, content, feed_type=feed_type)
+            summary, error = generate_summary(title, url, content, feed_type=feed_type, technical_depth=technical_depth)
             if summary:
                 store.save_cached_summary_v2(url, cache_bucket, summary, MODEL)
                 summary_map[url] = summary

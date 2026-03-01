@@ -40,7 +40,7 @@ from v1.storage import is_user_subscribed  # noqa: E402
 from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
 from v3.lib.store import V3Store, FOR_YOU_POOL, FREE_TIER_LIMITS, _today_ist  # noqa: E402
 from v3.lib.content import fetch_content, fetch_og_image  # noqa: E402
-from v3.lib.summarizer import get_or_generate_summary, batch_presummarize  # noqa: E402
+from v3.lib.summarizer import get_or_generate_summary, batch_presummarize, compute_technical_depth  # noqa: E402
 from v3.lib.scorer import rank_articles  # noqa: E402
 from v3.lib.diversity import dedupe_and_cap  # noqa: E402
 
@@ -441,28 +441,41 @@ def build_user_feeds(
         user_picks.append((profile, picked))
 
     # ------------------------------------------------------------------
-    # PHASE 2b: Batch pre-summarize only the articles users actually need
+    # PHASE 2b: Batch pre-summarize by technical_depth
     # ------------------------------------------------------------------
     _log("-" * 40)
-    _log("PHASE 2b: Pre-summarize needed articles (parallel)")
+    _log("PHASE 2b: Pre-summarize needed articles (parallel, by depth)")
     _log("-" * 40)
 
-    needed_items: dict[str, dict] = {}
-    for _, picked in user_picks:
+    # Group articles by technical_depth
+    items_by_depth: dict[str, dict[str, dict]] = {"deep": {}, "accessible": {}}
+    user_depths: dict[str, str] = {}
+
+    for profile, picked in user_picks:
+        uid = profile.get("uid", "")
+        depth = compute_technical_depth(profile)
+        user_depths[uid] = depth
+        _log(f"  user={uid} → technical_depth={depth}")
+
         for item in picked:
             url = item.get("url", "")
-            if url and url not in needed_items:
-                needed_items[url] = item
+            if url and url not in items_by_depth[depth]:
+                items_by_depth[depth][url] = item
 
-    _log(f"Unique articles needed: {len(needed_items)}")
-
-    summary_map: dict[str, dict[str, Any] | None] = {}
-    if needed_items:
+    # Run batch per depth
+    summary_maps: dict[str, dict[str, dict[str, Any] | None]] = {}
+    for depth in ["deep", "accessible"]:
+        items = list(items_by_depth[depth].values())
+        if not items:
+            summary_maps[depth] = {}
+            continue
+        _log(f"Batch summarize {len(items)} articles for depth={depth}")
         presummary = batch_presummarize(
-            store, list(needed_items.values()),
+            store, items,
             feed_type="default", max_workers=8,
+            technical_depth=depth,
         )
-        summary_map = presummary.get("summary_map", {}) or {}
+        summary_maps[depth] = presummary.get("summary_map", {}) or {}
 
     # ------------------------------------------------------------------
     # PHASE 2c: Assemble feeds (all summaries now cached — fast)
@@ -477,16 +490,20 @@ def build_user_feeds(
         "summaries_generated": 0,
         "summaries_cached": 0,
         "rejected_items": 0,
+        "users_deep": 0,
+        "users_accessible": 0,
     }
 
     for profile, picked in user_picks:
         uid = profile.get("uid", "")
+        depth = user_depths.get(uid, "accessible")
+        depth_map = summary_maps.get(depth, {})
 
         feed_items: list[dict[str, Any]] = []
         for item in picked:
             url = item.get("url", "")
-            if url in summary_map:
-                summary = summary_map[url]
+            if url in depth_map:
+                summary = depth_map[url]
                 was_cached = True
             else:
                 summary, was_cached = get_or_generate_summary(
@@ -495,6 +512,7 @@ def build_user_feeds(
                     title=item.get("title", ""),
                     content=item.get("content", ""),
                     feed_type="default",
+                    technical_depth=depth,
                 )
             if not summary:
                 stats["rejected_items"] += 1
@@ -509,7 +527,11 @@ def build_user_feeds(
         store.write_feed_section(uid, target_date, "for_you", feed_items)
         stats["users"] += 1
         stats["items_total"] += len(feed_items)
-        _log(f"  user={uid} wrote {len(feed_items)} for_you items")
+        if depth == "deep":
+            stats["users_deep"] += 1
+        else:
+            stats["users_accessible"] += 1
+        _log(f"  user={uid} depth={depth} wrote {len(feed_items)} for_you items")
 
     store.record_run("for_you", {"date": target_date, **stats})
     _log(f"For You feeds done: {stats}")
