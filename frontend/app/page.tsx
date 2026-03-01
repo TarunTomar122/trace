@@ -540,10 +540,10 @@ const Hero = () => {
                   className="flex flex-wrap gap-2 mb-6 md:mb-8"
                 >
                   {[
-                    "Trending news",
-                    "For You articles",
-                    "Expert deep dives",
-                    "AI summaries",
+                    "Swipeable stories",
+                    "Learning cards",
+                    "Chapter deep dives",
+                    "Smart summaries",
                   ].map((item) => (
                     <div
                       key={item}
@@ -833,33 +833,39 @@ const WhatTraceReplaces = () => {
   const habits = [
     {
       icon: "🔥",
-      title: "Trending",
-      description: "The latest news across tech, AI, design, business — an unfiltered pulse of what's buzzing right now"
+      title: "Trending Stories",
+      description: "Swipe through breaking news like Instagram stories. Each story gives you the facts in 2-3 slides — what happened, why it matters.",
+      badge: "Story format"
     },
     {
       icon: "🎯",
-      title: "For You",
-      description: "Articles matched to your interests and career goals, with AI summaries in your preferred reading style"
+      title: "Learning Cards",
+      description: "Your personalized articles, reimagined as swipeable cards. Each insight on its own screen — perfect for learning on the go.",
+      badge: "Swipeable"
     },
     {
       icon: "🎓",
-      title: "Deep Dives",
-      description: "In-depth content from expert sources you pick — top blogs, newsletters, and thought leaders in your field"
+      title: "Chapter Deep Dives",
+      description: "Magazine-quality synthesis from multiple sources. Chapters, key quotes, and actionable takeaways — like having a personal research assistant.",
+      badge: "Multi-source"
     },
     {
       icon: "✨",
-      title: "AI Summaries",
-      description: "Every article gets a smart summary — choose executive brief, practitioner deep-dive, or casual talking points"
+      title: "AI That Knows You",
+      description: "Technical user? Get jargon-friendly summaries. Learning something new? Get plain-language explanations. It adapts to you.",
+      badge: "Adaptive"
     },
     {
       icon: "🔖",
-      title: "Bookmarks",
-      description: "Save articles to read later. Your bookmarks sync across devices and are always available"
+      title: "Save Snippets",
+      description: "Found a golden quote? Save specific passages with one tap. Build your personal knowledge library, not just a list of links.",
+      badge: "Smart saves"
     },
     {
       icon: "⚙️",
-      title: "Personalized",
-      description: "Pick your role, seniority, interests, and sources. Your feeds are built around who you are"
+      title: "Role-Based Feeds",
+      description: "Designer, developer, PM, marketer, or founder — your feed prioritizes content that matches your role and career goals.",
+      badge: "Personalized"
     }
   ];
 
@@ -873,7 +879,7 @@ const WhatTraceReplaces = () => {
             viewport={{ once: true }}
             className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-3 md:mb-4"
           >
-            Three Feeds, <span className="text-secondary/50">One App</span>
+            Reading, <span className="text-secondary/50">Reimagined</span>
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -882,7 +888,7 @@ const WhatTraceReplaces = () => {
             transition={{ delay: 0.1 }}
             className="text-secondary text-base md:text-lg leading-relaxed max-w-2xl mx-auto"
           >
-            Trace scans the web and organizes it into three focused feeds, updated daily
+            Not just another feed. Swipeable stories, learning cards, and magazine-style deep dives — content designed for how you actually read.
           </motion.p>
         </div>
 
@@ -896,7 +902,14 @@ const WhatTraceReplaces = () => {
               transition={{ delay: i * 0.1 }}
               className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-sm transition-all group"
             >
-              <div className="text-3xl mb-3">{habit.icon}</div>
+              <div className="flex items-start justify-between mb-3">
+                <div className="text-3xl">{habit.icon}</div>
+                {habit.badge && (
+                  <span className="px-2 py-1 text-[10px] font-medium uppercase tracking-wider bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full">
+                    {habit.badge}
+                  </span>
+                )}
+              </div>
               <h3 className="text-base md:text-lg font-semibold text-foreground mb-2 group-hover:text-foreground/80 transition-colors">
                 {habit.title}
               </h3>
@@ -905,6 +918,242 @@ const WhatTraceReplaces = () => {
               </p>
             </motion.div>
           ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+// --- Experience Showcase Section ---
+const ExperienceShowcase = () => {
+  const [activeTab, setActiveTab] = useState(0);
+
+  const experiences = [
+    {
+      id: 'trending',
+      title: 'Trending Stories',
+      subtitle: 'Swipe through breaking news',
+      color: 'from-orange-500 to-red-500',
+      bgColor: 'bg-orange-50 dark:bg-orange-950/20',
+      borderColor: 'border-orange-200 dark:border-orange-800',
+      preview: (
+        <div className="bg-gray-900 rounded-2xl p-4 shadow-2xl max-w-[280px] mx-auto">
+          {/* Phone mockup */}
+          <div className="aspect-[9/16] bg-gradient-to-br from-orange-600 to-red-600 rounded-xl overflow-hidden relative">
+            <div className="absolute inset-0 p-4 flex flex-col">
+              {/* Progress dots */}
+              <div className="flex gap-1 mb-4">
+                <div className="h-1 flex-1 bg-white rounded-full" />
+                <div className="h-1 flex-1 bg-white/30 rounded-full" />
+                <div className="h-1 flex-1 bg-white/30 rounded-full" />
+              </div>
+              {/* Content */}
+              <div className="flex-1 flex flex-col justify-end">
+                <div className="bg-white/10 backdrop-blur rounded-lg px-3 py-1.5 inline-flex items-center gap-2 w-fit mb-3">
+                  <span className="text-white text-xs font-medium">TechCrunch</span>
+                  <span className="text-white/60 text-xs">2h ago</span>
+                </div>
+                <h3 className="text-white text-lg font-bold leading-tight mb-2">
+                  OpenAI Announces GPT-5 with Real-Time Learning
+                </h3>
+                <p className="text-white/80 text-sm">
+                  The new model can adapt to user feedback in real-time...
+                </p>
+                <div className="flex items-center gap-2 mt-4 text-white/60 text-xs">
+                  <span>Swipe for more</span>
+                  <ChevronRight size={14} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'foryou',
+      title: 'Learning Cards',
+      subtitle: 'Bite-sized insights you can swipe',
+      color: 'from-amber-500 to-yellow-500',
+      bgColor: 'bg-amber-50 dark:bg-amber-950/20',
+      borderColor: 'border-amber-200 dark:border-amber-800',
+      preview: (
+        <div className="bg-gray-900 rounded-2xl p-4 shadow-2xl max-w-[280px] mx-auto">
+          <div className="aspect-[9/16] bg-gradient-to-br from-amber-50 to-orange-50 dark:from-gray-800 dark:to-gray-900 rounded-xl overflow-hidden relative">
+            <div className="absolute inset-0 p-4 flex flex-col">
+              {/* Card type label */}
+              <div className="flex items-center justify-between mb-6">
+                <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-xs font-bold rounded-full uppercase tracking-wide">
+                  Key Insight
+                </span>
+                <span className="text-gray-400 text-xs">2/5</span>
+              </div>
+              {/* Emoji */}
+              <div className="text-4xl mb-4">💡</div>
+              {/* Content */}
+              <div className="flex-1">
+                <p className="text-gray-800 dark:text-gray-100 text-base leading-relaxed">
+                  The key innovation is <span className="font-bold">memory persistence</span> — the model remembers context across sessions, enabling truly personalized AI assistants.
+                </p>
+              </div>
+              {/* Progress dots */}
+              <div className="flex justify-center gap-2 mt-4">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "h-2 rounded-full transition-all",
+                      i === 1 ? "w-5 bg-amber-500" : "w-2 bg-gray-300 dark:bg-gray-600"
+                    )}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'deepdives',
+      title: 'Chapter Deep Dives',
+      subtitle: 'Magazine-quality synthesis',
+      color: 'from-blue-500 to-indigo-500',
+      bgColor: 'bg-blue-50 dark:bg-blue-950/20',
+      borderColor: 'border-blue-200 dark:border-blue-800',
+      preview: (
+        <div className="bg-gray-900 rounded-2xl p-4 shadow-2xl max-w-[280px] mx-auto">
+          <div className="aspect-[9/16] bg-white dark:bg-gray-900 rounded-xl overflow-hidden relative">
+            <div className="absolute inset-0 flex flex-col">
+              {/* Header image */}
+              <div className="h-28 bg-gradient-to-br from-blue-600 to-indigo-600 relative">
+                <div className="absolute bottom-3 left-3">
+                  <span className="px-2 py-1 bg-white/20 backdrop-blur text-white text-[10px] font-medium rounded">
+                    3 sources synthesized
+                  </span>
+                </div>
+              </div>
+              {/* Content */}
+              <div className="flex-1 p-4">
+                <h3 className="text-gray-900 dark:text-white font-bold text-sm mb-2">
+                  The State of AI Infrastructure in 2024
+                </h3>
+                <p className="text-gray-500 dark:text-gray-400 text-xs mb-4">
+                  A deep dive into how companies are building for the AI era
+                </p>
+                {/* Chapters */}
+                <div className="space-y-2">
+                  {['The Hardware Race', 'Cloud vs On-Prem', 'Key Takeaways'].map((ch, i) => (
+                    <div
+                      key={ch}
+                      className={cn(
+                        "px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2",
+                        i === 0
+                          ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                          : "bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                      )}
+                    >
+                      <span className="w-5 h-5 rounded-full bg-current/10 flex items-center justify-center text-[10px]">
+                        {i + 1}
+                      </span>
+                      {ch}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+  ];
+
+  return (
+    <section className="py-16 md:py-24 lg:py-32 bg-background relative z-10 overflow-hidden">
+      <div className="container mx-auto px-4 sm:px-6 max-w-6xl">
+        <div className="text-center mb-12 md:mb-16">
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-amber-600 dark:text-amber-400 text-sm font-medium uppercase tracking-wider mb-3"
+          >
+            See it in action
+          </motion.p>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-3 md:mb-4"
+          >
+            Three Ways to <span className="text-secondary/50">Read</span>
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="text-secondary text-base md:text-lg leading-relaxed max-w-xl mx-auto"
+          >
+            Each feed has its own experience, optimized for the content type
+          </motion.p>
+        </div>
+
+        {/* Tab buttons */}
+        <div className="flex justify-center gap-2 mb-10">
+          {experiences.map((exp, i) => (
+            <button
+              key={exp.id}
+              onClick={() => setActiveTab(i)}
+              className={cn(
+                "px-4 py-2 rounded-full text-sm font-medium transition-all",
+                activeTab === i
+                  ? `bg-gradient-to-r ${exp.color} text-white shadow-lg`
+                  : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+              )}
+            >
+              {exp.title}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+          {/* Preview */}
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="order-2 md:order-1"
+          >
+            {experiences[activeTab].preview}
+          </motion.div>
+
+          {/* Description */}
+          <motion.div
+            key={`desc-${activeTab}`}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
+            className="order-1 md:order-2 text-center md:text-left"
+          >
+            <h3 className="text-2xl md:text-3xl font-semibold text-foreground mb-3">
+              {experiences[activeTab].title}
+            </h3>
+            <p className="text-lg text-secondary mb-6">
+              {experiences[activeTab].subtitle}
+            </p>
+            <div className={cn(
+              "inline-block px-4 py-3 rounded-xl border",
+              experiences[activeTab].bgColor,
+              experiences[activeTab].borderColor
+            )}>
+              <p className="text-sm text-foreground/80">
+                {activeTab === 0 && "Breaking news distilled into story-format slides. Swipe through the facts, context, and implications — all in under 30 seconds."}
+                {activeTab === 1 && "Each article becomes a deck of insight cards. One idea per screen, designed for mobile-first learning. Save any card to your collection."}
+                {activeTab === 2 && "AI synthesizes multiple articles into a single, well-structured piece. Chapters, quotes, and a clear narrative — like a mini research report."}
+              </p>
+            </div>
+          </motion.div>
         </div>
       </div>
     </section>
@@ -2672,6 +2921,7 @@ export default function LandingPage() {
         {/* <InteractiveDemo />
         <DemoFeed /> */}
         <WhatTraceReplaces />
+        <ExperienceShowcase />
         {/* <HowPeopleUseTrace /> */}
         <Testimonials />
         {/* <WhatYouGet /> */}
