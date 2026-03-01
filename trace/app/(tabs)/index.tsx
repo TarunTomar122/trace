@@ -211,8 +211,6 @@ export default function FeedScreen() {
     router.push('/article');
   };
 
-  if (!isOnboarded) return null;
-
   const accentColor = getActiveTabColor(activeTab);
 
   // Render item for FlashList
@@ -432,6 +430,9 @@ export default function FeedScreen() {
   const keyExtractor = useCallback((item: FeedItem, index: number) => {
     return `${activeTab}-${item.id}-${index}`;
   }, [activeTab]);
+
+  // Early return AFTER all hooks
+  if (!isOnboarded) return null;
 
   return (
     <>
