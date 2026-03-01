@@ -303,6 +303,126 @@ BODY RULES:
 - NO "In summary", "Overall". Ever.
 """
 
+# ---------------------------------------------------------------------------
+# Learning Cards — swipeable bite-sized cards for mobile
+# ---------------------------------------------------------------------------
+
+LEARNING_CARDS_PROMPT = """You are creating LEARNING CARDS — bite-sized, swipeable content for mobile.
+
+Think Instagram stories but for learning. Each card is ONE idea, easily digestible while scrolling.
+
+SOURCE:
+Title: {title}
+URL: {url}
+Content:
+{content}
+
+Return JSON with EXACT structure:
+{{
+  "short_article": {{
+    "subtitle": "One sentence hook — makes reader want to swipe through",
+    "learning_cards": [
+      {{
+        "type": "hook",
+        "emoji": "🎯",
+        "content": "What this is about in 2-3 punchy sentences. Set the stage."
+      }},
+      {{
+        "type": "insight",
+        "emoji": "💡",
+        "content": "Key insight #1 — one specific, interesting point (40-60 words)"
+      }},
+      {{
+        "type": "insight",
+        "emoji": "🔍",
+        "content": "Key insight #2 — another important point (40-60 words)"
+      }},
+      {{
+        "type": "why",
+        "emoji": "🎯",
+        "content": "Why this matters — connect to reader's work/life (40-60 words)"
+      }},
+      {{
+        "type": "takeaway",
+        "emoji": "⚡",
+        "content": "Your action item — what to do or remember (30-50 words)"
+      }}
+    ]
+  }},
+  "reading_time_minutes": <estimated int>
+}}
+
+CARD RULES:
+- 4-6 cards total. Hook first, Takeaway last.
+- Each card: ONE idea only. If you need to say "also" or "additionally", make a new card.
+- 40-70 words per card MAX. Ruthlessly cut fluff.
+- Use **bold** for ONE key term or number per card.
+- Conversational tone — like a smart friend explaining something cool.
+- Include specific names, numbers, tools — no vague generalities.
+- insight cards: Include 2-4 depending on article depth.
+- NO headers or labels in content — the type field handles that.
+
+EMOJI GUIDE:
+- hook: 🎯 or 📌 or 🔥
+- insight: 💡 or 🔍 or 📊 or 🧠 or 🛠️
+- why: 🎯 or 💪 or 🌍
+- takeaway: ⚡ or ✅ or 🚀
+"""
+
+LEARNING_CARDS_DEEP = """You are creating LEARNING CARDS for a technical audience — bite-sized, swipeable.
+
+Reader knows their stuff. Use jargon freely. Dense, technical, no hand-holding.
+
+SOURCE:
+Title: {title}
+URL: {url}
+Content:
+{content}
+
+Return JSON with EXACT structure:
+{{
+  "short_article": {{
+    "subtitle": "One sentence technical hook",
+    "learning_cards": [
+      {{
+        "type": "hook",
+        "emoji": "🎯",
+        "content": "Technical context — what's new/interesting (2-3 sentences)"
+      }},
+      {{
+        "type": "insight",
+        "emoji": "💡",
+        "content": "Technical insight — architecture, benchmarks, implementation (50-70 words)"
+      }},
+      {{
+        "type": "insight",
+        "emoji": "🔍",
+        "content": "Another key technical point (50-70 words)"
+      }},
+      {{
+        "type": "why",
+        "emoji": "🎯",
+        "content": "Industry/practical implications (40-60 words)"
+      }},
+      {{
+        "type": "takeaway",
+        "emoji": "⚡",
+        "content": "What to try, use, or watch (30-50 words)"
+      }}
+    ]
+  }},
+  "reading_time_minutes": <estimated int>
+}}
+
+CARD RULES:
+- 4-6 cards. Hook first, Takeaway last.
+- ONE idea per card. Dense but focused.
+- 50-70 words per insight card. Technical depth welcome.
+- **Bold** key metrics, model names, or tools.
+- Include version numbers, benchmarks, specific tools.
+- Use technical jargon — no explanations needed.
+"""
+
 
 QUALITY_GATE_RULES = """
 QUALITY GATE (VERY IMPORTANT):
@@ -344,13 +464,14 @@ def _parse_summary_json(raw: str) -> dict[str, Any] | None:
     return None
 
 
-def _cache_bucket(feed_type: str, technical_depth: str = "") -> str:
-    """Return cache bucket name for the feed type and technical depth.
+def _cache_bucket(feed_type: str, technical_depth: str = "", output_format: str = "") -> str:
+    """Return cache bucket name for the feed type, technical depth, and format.
 
     technical_depth: 'deep' or 'accessible' (empty = legacy/default)
+    output_format: 'cards' for learning cards, '' for prose (default)
     """
     if feed_type == "trending":
-        return "trending_v5"  # trending doesn't vary by technical depth
+        return "trending_v5"  # trending doesn't vary by depth or format
     if feed_type == "deep_dives":
         if technical_depth == "deep":
             return "deep_dive_v6_deep"
@@ -358,6 +479,10 @@ def _cache_bucket(feed_type: str, technical_depth: str = "") -> str:
             return "deep_dive_v6_accessible"
         return "deep_dive_v4"  # legacy
     # for_you / default
+    if output_format == "cards":
+        if technical_depth == "deep":
+            return "for_you_cards_v1_deep"
+        return "for_you_cards_v1"
     if technical_depth == "deep":
         return "for_you_v6_deep"
     if technical_depth == "accessible":
@@ -365,9 +490,9 @@ def _cache_bucket(feed_type: str, technical_depth: str = "") -> str:
     return "for_you_v5"  # legacy
 
 
-def summary_lookup_key(url: str, feed_type: str = "default", technical_depth: str = "") -> tuple[str, str]:
+def summary_lookup_key(url: str, feed_type: str = "default", technical_depth: str = "", output_format: str = "") -> tuple[str, str]:
     """Return (url, cache_bucket) for cache lookups."""
-    return (url, _cache_bucket(feed_type, technical_depth))
+    return (url, _cache_bucket(feed_type, technical_depth, output_format))
 
 
 def _normalize_trending_summary(parsed: dict[str, Any]) -> dict[str, Any]:
@@ -416,6 +541,7 @@ def generate_summary(
     content: str,
     feed_type: str = "default",
     technical_depth: str = "",
+    output_format: str = "",
 ) -> tuple[dict[str, Any] | None, str]:
     """
     Generate a summary using the appropriate prompt for the feed type.
@@ -430,6 +556,10 @@ def generate_summary(
     - "accessible": Plain language, explains concepts
     - "": Use legacy default prompt
 
+    output_format options:
+    - "cards": Generate learning cards (swipeable mobile format)
+    - "": Generate prose summary (default)
+
     Returns (summary_dict, error_string). summary_dict is None on failure.
     """
     client = _get_client()
@@ -438,8 +568,14 @@ def generate_summary(
     if not content:
         return None, "no_content"
 
-    # Select prompt template based on feed_type and technical_depth
-    if feed_type == "deep_dives":
+    # Select prompt template based on feed_type, technical_depth, and output_format
+    if output_format == "cards" and feed_type not in ("trending", "deep_dives"):
+        # Learning cards format
+        if technical_depth == "deep":
+            template = LEARNING_CARDS_DEEP
+        else:
+            template = LEARNING_CARDS_PROMPT
+    elif feed_type == "deep_dives":
         if technical_depth == "deep":
             template = DEEP_DIVE_DEEP
         elif technical_depth == "accessible":
@@ -449,7 +585,7 @@ def generate_summary(
     elif feed_type == "trending":
         template = TRENDING_BRIEF  # trending doesn't vary by depth
     else:
-        # for_you / default
+        # for_you / default prose
         if technical_depth == "deep":
             template = FOR_YOU_DEEP
         elif technical_depth == "accessible":
@@ -457,21 +593,28 @@ def generate_summary(
         else:
             template = FOR_YOU_SUMMARY
 
-    gate_suffix = (
-        "\n" + QUALITY_GATE_RULES + "\n"
-        "Return JSON with EXACT structure:\n"
-        '{{\n'
-        '  "rejected": <true|false>,\n'
-        '  "rejection_reason": "<short reason when rejected, '
-        'else empty string>",\n'
-        '  "short_article": {{\n'
-        '    "subtitle": "...",\n'
-        '    "key_takeaways": ["..."],\n'
-        '    "body": "..."\n'
-        '  }},\n'
-        '  "reading_time_minutes": <estimated int>\n'
-        '}}\n'
-    )
+    # Gate suffix varies based on output format
+    if output_format == "cards":
+        gate_suffix = (
+            "\n" + QUALITY_GATE_RULES + "\n"
+            "Add rejected/rejection_reason to your JSON response."
+        )
+    else:
+        gate_suffix = (
+            "\n" + QUALITY_GATE_RULES + "\n"
+            "Return JSON with EXACT structure:\n"
+            '{{\n'
+            '  "rejected": <true|false>,\n'
+            '  "rejection_reason": "<short reason when rejected, '
+            'else empty string>",\n'
+            '  "short_article": {{\n'
+            '    "subtitle": "...",\n'
+            '    "key_takeaways": ["..."],\n'
+            '    "body": "..."\n'
+            '  }},\n'
+            '  "reading_time_minutes": <estimated int>\n'
+            '}}\n'
+        )
     prompt = (template + gate_suffix).format(
         title=title,
         url=url,
@@ -522,13 +665,14 @@ def get_or_generate_summary(
     content: str,
     feed_type: str = "default",
     technical_depth: str = "",
+    output_format: str = "",
 ) -> tuple[dict[str, Any] | None, bool]:
     """
     Check cache first, generate if missing.
 
     Returns (summary_dict, was_cached).
     """
-    cache_bucket = _cache_bucket(feed_type, technical_depth)
+    cache_bucket = _cache_bucket(feed_type, technical_depth, output_format)
     cached = store.get_cached_summary_v2(url, cache_bucket)
     if cached:
         cached_summary = cached.get("summary")
@@ -536,7 +680,7 @@ def get_or_generate_summary(
             return None, True
         return cached_summary, True
 
-    summary, error = generate_summary(title, url, content, feed_type=feed_type, technical_depth=technical_depth)
+    summary, error = generate_summary(title, url, content, feed_type=feed_type, technical_depth=technical_depth, output_format=output_format)
     if summary:
         store.save_cached_summary_v2(url, cache_bucket, summary, MODEL)
         return summary, False
@@ -564,6 +708,7 @@ def batch_presummarize(
     feed_type: str = "default",
     max_workers: int = 8,
     technical_depth: str = "",
+    output_format: str = "",
 ) -> dict[str, Any]:
     """
     Pre-generate summaries for all pool_items.
@@ -576,7 +721,7 @@ def batch_presummarize(
     """
     tasks: list[tuple[str, str, str]] = []
     already_cached = 0
-    cache_bucket = _cache_bucket(feed_type, technical_depth)
+    cache_bucket = _cache_bucket(feed_type, technical_depth, output_format)
     summary_map: dict[str, dict[str, Any] | None] = {}
 
     for item in pool_items:
@@ -607,15 +752,16 @@ def batch_presummarize(
         _log_presummary(f"All {already_cached} summaries already cached — nothing to do")
         return stats
 
+    format_label = f"{technical_depth or 'default'}" + (f"/{output_format}" if output_format else "")
     _log_presummary(
-        f"Generating {len(tasks)} summaries ({technical_depth or 'default'}) with {max_workers} workers "
+        f"Generating {len(tasks)} summaries ({format_label}) with {max_workers} workers "
         f"({already_cached} already cached)"
     )
 
     def _generate_one(task: tuple[str, str, str]) -> tuple[str, str]:
         url, title, content = task
         try:
-            summary, error = generate_summary(title, url, content, feed_type=feed_type, technical_depth=technical_depth)
+            summary, error = generate_summary(title, url, content, feed_type=feed_type, technical_depth=technical_depth, output_format=output_format)
             if summary:
                 store.save_cached_summary_v2(url, cache_bucket, summary, MODEL)
                 summary_map[url] = summary
