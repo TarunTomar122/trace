@@ -19,6 +19,8 @@ type TrendingItem = {
 type FullSummary = {
   short_article?: {
     subtitle?: string;
+    headline?: string;
+    slides?: string[];
     body?: string;
     key_takeaways?: string[];
     why_it_matters?: string;
@@ -113,7 +115,9 @@ function ArticleModal({
     fetchSummary();
   }, [item.url]);
 
-  const body = fullSummary?.short_article?.body;
+  // Handle both body and slides format
+  const slides = fullSummary?.short_article?.slides;
+  const body = fullSummary?.short_article?.body || (slides?.length ? slides.join('\n\n') : '');
   const keyTakeaways = fullSummary?.short_article?.key_takeaways;
 
   return (
