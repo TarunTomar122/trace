@@ -10,6 +10,11 @@ import { FeedItem } from "@/lib/firestore";
 
 const ACCENT = "#F59E0B";
 
+// Strip "Slide N:" prefix from slides
+function cleanSlides(slides: string[]): string[] {
+  return slides.map(s => s.replace(/^Slide\s*\d+:\s*/i, ''));
+}
+
 export default function ArticlePage() {
   const router = useRouter();
   const [item, setItem] = useState<FeedItem | null>(null);
@@ -40,10 +45,11 @@ export default function ArticlePage() {
   }
 
   const isTrending = item.feed_type === "trending" || item.metadata?.feed_type === "trending";
-  const slides = item.summary?.short_article?.slides;
+  const rawSlides = item.summary?.short_article?.slides;
+  const slides = rawSlides?.length ? cleanSlides(rawSlides) : [];
   const rawBody = item.summary?.short_article?.body || '';
   // For trending, prefer slides over short body
-  const body = (isTrending && slides?.length) ? slides.join('\n\n') : (rawBody.length > 100 ? rawBody : (slides?.length ? slides.join('\n\n') : rawBody));
+  const body = (isTrending && slides.length) ? slides.join('\n\n') : (rawBody.length > 100 ? rawBody : (slides.length ? slides.join('\n\n') : rawBody));
   const keyTakeaways = item.summary?.short_article?.key_takeaways;
   const whyItMatters = item.summary?.short_article?.why_it_matters;
   const readingTime = item.summary?.reading_time_minutes || 3;

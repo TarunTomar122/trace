@@ -86,6 +86,24 @@ function shortHash(value: string): string {
   return Math.abs(hash).toString(36).slice(0, 8);
 }
 
+// Strip "Slide N:" prefix from slides
+function cleanSlides(slides: string[]): string[] {
+  return slides.map(s => s.replace(/^Slide\s*\d+:\s*/i, ''));
+}
+
+// Strip markdown formatting for plain text display
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/_([^_]+)_/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/#{1,6}\s*/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .trim();
+}
+
 async function getTodaysItems(): Promise<TrendingItem[]> {
   if (!adminFirestore) {
     return [];
@@ -110,11 +128,13 @@ async function getTodaysItems(): Promise<TrendingItem[]> {
     if (trending.length > 0) {
       const items: TrendingItem[] = trending.map((item: any, idx: number) => {
         // For slides-based summaries, prefer slides over short body
-        const slides = item.summary?.short_article?.slides;
+        const rawSlides = item.summary?.short_article?.slides;
+        const slides = rawSlides?.length ? cleanSlides(rawSlides) : [];
         const body = item.summary?.short_article?.body || '';
         const subtitle = item.summary?.short_article?.subtitle || '';
-        // Use slides if available and body is short (likely just subtitle)
-        const summary = (slides?.length ? slides.join(' ') : '') || (body.length > 100 ? body : subtitle) || '';
+        // Use slides if available and body is short (likely just subtitle), strip markdown
+        const rawSummary = (slides.length ? slides.join(' ') : '') || (body.length > 100 ? body : subtitle) || '';
+        const summary = stripMarkdown(rawSummary);
 
         return {
           id: item.id || `trending-${idx}-${shortHash(item.url || String(idx))}`,

@@ -7,6 +7,11 @@ import remarkGfm from "remark-gfm";
 import { X, ExternalLink, Sparkles, Loader2 } from "lucide-react";
 import { getArticleImage, isValidThumbnail } from "@/lib/fallback-images";
 
+// Strip "Slide N:" prefix from slides
+function cleanSlides(slides: string[]): string[] {
+  return slides.map(s => s.replace(/^Slide\s*\d+:\s*/i, ''));
+}
+
 type TrendingItem = {
   id: string;
   title: string;
@@ -116,10 +121,11 @@ function ArticleModal({
   }, [item.url]);
 
   // Handle both body and slides format - prefer slides for trending
-  const slides = fullSummary?.short_article?.slides;
+  const rawSlides = fullSummary?.short_article?.slides;
+  const slides = rawSlides?.length ? cleanSlides(rawSlides) : [];
   const rawBody = fullSummary?.short_article?.body || '';
   // Use slides if available, otherwise use body only if it's substantial
-  const body = slides?.length ? slides.join('\n\n') : (rawBody.length > 100 ? rawBody : '');
+  const body = slides.length ? slides.join('\n\n') : (rawBody.length > 100 ? rawBody : '');
   const keyTakeaways = fullSummary?.short_article?.key_takeaways;
 
   return (
