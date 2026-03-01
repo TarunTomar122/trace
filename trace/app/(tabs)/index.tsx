@@ -41,7 +41,8 @@ import { logReadingEvent, getReadingAnalytics } from '@/lib/reading-analytics';
 import { setCurrentArticle } from '@/lib/article-store';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { updateStreak, getStreakStatus } from '@/lib/streaks';
-import { initializeNotifications, onArticleRead } from '@/lib/notifications';
+// TODO: Re-enable when EAS project is configured
+// import { initializeNotifications, onArticleRead } from '@/lib/notifications';
 
 // Using FlashList for virtualized rendering of 60+ items
 
@@ -93,8 +94,8 @@ export default function FeedScreen() {
     getStreakStatus().then((status) => {
       setCurrentStreak(status.currentStreak);
     });
-    // Initialize push notifications
-    initializeNotifications().catch(() => {});
+    // TODO: Re-enable when EAS project is configured
+    // initializeNotifications().catch(() => {});
   }, []);
 
   const scrollY = useSharedValue(0);
@@ -102,7 +103,7 @@ export default function FeedScreen() {
   const { isProUser: isSubscribed, isEarlyAdopter, loading: rcLoading } = useRevenueCat();
   const isOnboarded = profile?.onboarded ?? false;
 
-  const FREE_LIMITS = { trending: 5, for_you: 2, deep_dives: 1 };
+  const FREE_LIMITS = { for_you: 2, deep_dives: 1 };
 
   // ─── Feed items for current tab ───
   const currentItems: FeedItem[] = (() => {
@@ -111,8 +112,9 @@ export default function FeedScreen() {
       activeTab === 'trending' ? v3Feed.trending :
       activeTab === 'for_you' ? v3Feed.for_you :
       activeTab === 'deep_dives' ? v3Feed.deep_dives : [];
-    if (isSubscribed) return all;
-    const limit = FREE_LIMITS[activeTab] ?? 2;
+    // Free users get all trending, limited for_you and deep_dives
+    if (isSubscribed || activeTab === 'trending') return all;
+    const limit = FREE_LIMITS[activeTab as 'for_you' | 'deep_dives'] ?? 2;
     return all.slice(0, limit);
   })();
 
@@ -181,9 +183,10 @@ export default function FeedScreen() {
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
+    await refreshProfile();
     await loadFeed();
     setIsRefreshing(false);
-  }, [loadFeed]);
+  }, [loadFeed, refreshProfile]);
 
   const handleFeedItemPress = async (item: FeedItem) => {
     logReadingEvent({
@@ -204,8 +207,8 @@ export default function FeedScreen() {
     setCurrentStreak(data.currentStreak);
     setTodayReads((r) => r + 1);
 
-    // Cancel today's reminder notification
-    onArticleRead().catch(() => {});
+    // TODO: Re-enable when EAS project is configured
+    // onArticleRead().catch(() => {});
 
     setCurrentArticle(item);
     router.push('/article');
@@ -355,7 +358,9 @@ export default function FeedScreen() {
               ? `${currentItems.length} stories buzzing right now`
               : activeTab === 'for_you'
                 ? 'Based on your interests'
-                : 'From your trusted sources'}
+                : isSubscribed
+                  ? 'From your trusted sources'
+                  : 'Popular deep dive · Subscribe for personalized picks'}
           </ThemedText>
         </>
       ) : (
@@ -395,12 +400,12 @@ export default function FeedScreen() {
             <Text style={[ctaStyles.bannerTitle, { color: Colors[colorScheme].text }]}>
               {activeTab === 'for_you'
                 ? 'Unlock all personalized stories'
-                : 'Unlock all deep dives'}
+                : 'Get personalized deep dives'}
             </Text>
             <Text style={[ctaStyles.bannerBody, { color: Colors[colorScheme].muted }]}>
               {activeTab === 'for_you'
                 ? 'You\'re seeing a preview. Go Pro for unlimited articles matched to your interests.'
-                : 'You get 1 free deep dive. Go Pro for unlimited expert reads from your trusted sources.'}
+                : 'This is a popular deep dive for everyone. Go Pro to get deep dives from your trusted sources.'}
             </Text>
             <Pressable
               onPress={() => router.push('/paywall')}

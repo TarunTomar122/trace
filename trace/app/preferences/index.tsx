@@ -30,10 +30,11 @@ import {
   CAREER_GOALS,
   updateUserProfile,
 } from '@/lib/firestore';
-import {
-  enablePushNotifications,
-  disablePushNotifications,
-} from '@/lib/notifications';
+// TODO: Re-enable when EAS project is configured
+// import {
+//   enablePushNotifications,
+//   disablePushNotifications,
+// } from '@/lib/notifications';
 
 const ACCENT = '#F59E0B';
 
@@ -116,14 +117,15 @@ export default function PreferencesHub() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [newsletterEnabled, setNewsletterEnabled] = useState(true);
-  const [pushEnabled, setPushEnabled] = useState(false);
-  const [pushLoading, setPushLoading] = useState(false);
+  // TODO: Re-enable when EAS project is configured
+  // const [pushEnabled, setPushEnabled] = useState(false);
+  // const [pushLoading, setPushLoading] = useState(false);
 
   useEffect(() => {
     // Load preferences from profile
     if (profile) {
       setNewsletterEnabled(profile.newsletterOptIn !== false);
-      setPushEnabled(profile.pushNotificationsEnabled === true);
+      // setPushEnabled(profile.pushNotificationsEnabled === true);
     }
   }, [profile]);
 
@@ -139,33 +141,34 @@ export default function PreferencesHub() {
     }
   };
 
-  const handlePushToggle = async (enabled: boolean) => {
-    if (!user) return;
-    setPushLoading(true);
-    try {
-      if (enabled) {
-        const success = await enablePushNotifications(user.uid);
-        if (success) {
-          setPushEnabled(true);
-          await refreshProfile();
-        } else {
-          Alert.alert(
-            'Notifications Disabled',
-            'Please enable notifications in your device settings to receive updates.',
-            [{ text: 'OK' }]
-          );
-        }
-      } else {
-        await disablePushNotifications(user.uid);
-        setPushEnabled(false);
-        await refreshProfile();
-      }
-    } catch (error) {
-      console.error('Failed to update push notification preference:', error);
-    } finally {
-      setPushLoading(false);
-    }
-  };
+  // TODO: Re-enable when EAS project is configured
+  // const handlePushToggle = async (enabled: boolean) => {
+  //   if (!user) return;
+  //   setPushLoading(true);
+  //   try {
+  //     if (enabled) {
+  //       const success = await enablePushNotifications(user.uid);
+  //       if (success) {
+  //         setPushEnabled(true);
+  //         await refreshProfile();
+  //       } else {
+  //         Alert.alert(
+  //           'Notifications Disabled',
+  //           'Please enable notifications in your device settings to receive updates.',
+  //           [{ text: 'OK' }]
+  //         );
+  //       }
+  //     } else {
+  //       await disablePushNotifications(user.uid);
+  //       setPushEnabled(false);
+  //       await refreshProfile();
+  //     }
+  //   } catch (error) {
+  //     console.error('Failed to update push notification preference:', error);
+  //   } finally {
+  //     setPushLoading(false);
+  //   }
+  // };
 
   const roleValue = [
     profile?.role ? lookupLabel(ROLES as any, profile.role) : '',
@@ -340,6 +343,7 @@ export default function PreferencesHub() {
         </ThemedText>
 
         <View style={[styles.card, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
+          {/* TODO: Re-enable when EAS project is configured
           <ToggleRow
             icon={Bell}
             label="Push Notifications"
@@ -349,6 +353,7 @@ export default function PreferencesHub() {
             onToggle={handlePushToggle}
           />
           <View style={[styles.rowDivider, { backgroundColor: Colors[colorScheme].border }]} />
+          */}
           <ToggleRow
             icon={Mail}
             label="Daily Newsletter"

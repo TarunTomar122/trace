@@ -49,10 +49,22 @@ export async function registerForPushNotifications(): Promise<string | null> {
     }
 
     // Get the Expo push token
-    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: projectId,
-    });
+    // Try multiple sources for projectId
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ??
+      Constants.easConfig?.projectId ??
+      Constants.expoConfig?.slug; // Fallback to slug for Expo Go
+
+    let tokenData;
+    try {
+      tokenData = await Notifications.getExpoPushTokenAsync({
+        projectId: projectId,
+      });
+    } catch (e) {
+      // If projectId fails, try without it (works in some Expo Go scenarios)
+      console.log('[notifications] Trying without explicit projectId...');
+      tokenData = await Notifications.getExpoPushTokenAsync();
+    }
 
     console.log('[notifications] Push token:', tokenData.data);
 
