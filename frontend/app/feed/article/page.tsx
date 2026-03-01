@@ -39,11 +39,13 @@ export default function ArticlePage() {
     );
   }
 
-  const body = item.summary?.short_article?.body;
+  const isTrending = item.feed_type === "trending" || item.metadata?.feed_type === "trending";
+  const slides = item.summary?.short_article?.slides;
+  // For trending, join slides into body if no body exists
+  const body = item.summary?.short_article?.body || (isTrending && slides?.length ? slides.join('\n\n') : '');
   const keyTakeaways = item.summary?.short_article?.key_takeaways;
   const whyItMatters = item.summary?.short_article?.why_it_matters;
   const readingTime = item.summary?.reading_time_minutes || 3;
-  const isTrending = item.feed_type === "trending" || item.metadata?.feed_type === "trending";
   const hasImage = item.thumbnail && typeof item.thumbnail === 'string' && item.thumbnail.length > 10;
 
   const handleShare = async () => {

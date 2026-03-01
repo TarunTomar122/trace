@@ -92,6 +92,43 @@ async function getTodaysItems(): Promise<TrendingItem[]> {
   }
 
   const today = getTodayIstDate();
+
+  // Try the new global feed first (v3_user_feeds/_global/daily/{date})
+  const globalFeedRef = adminFirestore
+    .collection('v3_user_feeds')
+    .doc('_global')
+    .collection('daily');
+
+  const globalSnapshot = await globalFeedRef
+    .orderBy('__name__', 'desc')
+    .limit(1)
+    .get();
+
+  if (!globalSnapshot.empty) {
+    const globalData = globalSnapshot.docs[0].data() || {};
+    const trending = Array.isArray(globalData.trending) ? globalData.trending : [];
+    if (trending.length > 0) {
+      const items: TrendingItem[] = trending.map((item: any, idx: number) => {
+        // For slides-based summaries, join slides into summary
+        const slides = item.summary?.short_article?.slides;
+        const body = item.summary?.short_article?.body;
+        const subtitle = item.summary?.short_article?.subtitle;
+        const summary = body || (slides?.length ? slides.join(' ') : subtitle) || '';
+
+        return {
+          id: item.id || `trending-${idx}-${shortHash(item.url || String(idx))}`,
+          title: item.title || '',
+          url: item.url || '',
+          summary,
+          source: item.source_name || item.source || '',
+          thumbnail: item.thumbnail || undefined,
+        };
+      });
+      return items;
+    }
+  }
+
+  // Fallback to legacy unified_newsletters
   const latestUnifiedDate = await getLatestUnifiedDate();
   const latestDate = await getLatestTrendingDate();
   const dateToUse = latestUnifiedDate || latestDate || today;
@@ -117,6 +154,7 @@ async function getTodaysItems(): Promise<TrendingItem[]> {
     }
   }
 
+  // Fallback to trending_news collection
   const topicsSnapshot = await adminFirestore
     .collection('trending_news')
     .doc(dateToUse)

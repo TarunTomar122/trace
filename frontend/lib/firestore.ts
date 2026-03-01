@@ -614,7 +614,7 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
       deepDives = Array.isArray(data.deep_dives) ? data.deep_dives : [];
     }
 
-    // Get trending from global feed (new system)
+    // Get trending from global feed (shared by all users)
     if (!globalSnapshot.empty) {
       const sortedGlobal = globalSnapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
       const globalData = sortedGlobal[0].data();
