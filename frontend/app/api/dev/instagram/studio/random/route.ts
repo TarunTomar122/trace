@@ -10,6 +10,18 @@ function norm(text: string): string {
   return text.trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '$1')  // **bold** -> bold
+    .replace(/\*([^*]+)\*/g, '$1')      // *italic* -> italic
+    .replace(/__([^_]+)__/g, '$1')      // __bold__ -> bold
+    .replace(/_([^_]+)_/g, '$1')        // _italic_ -> italic
+    .replace(/`([^`]+)`/g, '$1')        // `code` -> code
+    .replace(/#{1,6}\s*/g, '')          // ## headers -> remove
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')  // [link](url) -> link
+    .trim();
+}
+
 function toSentences(text: string): string[] {
   return text
     .replace(/\s+/g, ' ')
@@ -23,7 +35,7 @@ function buildCaption(headline: string, subtitle: string, body: string): string 
   const seen = new Set<string>();
   const chunks: string[] = [];
   const pushUnique = (line: string) => {
-    const cleaned = line.trim();
+    const cleaned = stripMarkdown(line.trim());
     if (!cleaned) return;
     const key = norm(cleaned);
     if (!key) return;
@@ -34,10 +46,10 @@ function buildCaption(headline: string, subtitle: string, body: string): string 
   };
 
   pushUnique(subtitle);
-  toSentences(body).forEach(pushUnique);
+  toSentences(stripMarkdown(body)).forEach(pushUnique);
 
   const summary = chunks.join(' ');
-  return [headline, '', summary || 'Big story to watch today.', '', 'Read more such stories at yourtrace.online'].join(
+  return [stripMarkdown(headline), '', summary || 'Big story to watch today.', '', 'Read more such stories at yourtrace.online'].join(
     '\n'
   );
 }
