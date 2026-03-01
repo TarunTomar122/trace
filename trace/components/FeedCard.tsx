@@ -220,31 +220,45 @@ export function TrendingCard({ item, colorScheme, onPress, accentColor = '#F9731
         </Pressable>
 
         {/* Slides 1-3: Text detail slides */}
-        {fallbackSlides.map((slideText, idx) => (
-          <Pressable
-            key={idx}
-            onPress={onPress}
-            style={[tStyles.slide, tStyles.textSlide, { width: CARD_WIDTH, backgroundColor: textBg }]}
-          >
-            <View style={tStyles.textSlideInner}>
-              <View style={tStyles.slideHeader}>
-                <View style={[tStyles.avatar, { backgroundColor: avatarBg }]}>
-                  <Text style={tStyles.avatarText}>{initials}</Text>
+        {fallbackSlides.map((slideText, idx) => {
+          const slideBg = colorScheme === 'dark'
+            ? `rgba(249, 115, 22, 0.06)` // subtle orange tint dark
+            : `rgba(249, 115, 22, 0.03)`; // subtle orange tint light
+          return (
+            <Pressable
+              key={idx}
+              onPress={onPress}
+              style={[tStyles.slide, tStyles.textSlide, { width: CARD_WIDTH, backgroundColor: slideBg }]}
+            >
+              <View style={tStyles.textSlideInner}>
+                {/* Header row */}
+                <View style={tStyles.slideHeader}>
+                  <View style={tStyles.slideHeaderLeft}>
+                    <View style={[tStyles.avatar, { backgroundColor: avatarBg }]}>
+                      <Text style={tStyles.avatarText}>{initials}</Text>
+                    </View>
+                    <View>
+                      <Text style={[tStyles.sourceName, { color: Colors[colorScheme].text }]} numberOfLines={1}>
+                        {sourceName}
+                      </Text>
+                      <Text style={[tStyles.slideLabel, { color: accentColor }]}>
+                        TOP STORY
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={[tStyles.slideNum, { color: Colors[colorScheme].muted }]}>
+                    {idx + 2}/{totalSlides}
+                  </Text>
                 </View>
-                <Text style={[tStyles.sourceName, { color: Colors[colorScheme].muted }]} numberOfLines={1}>
-                  {sourceName}
-                </Text>
-                <View style={{ flex: 1 }} />
-                <Text style={[tStyles.slideNum, { color: Colors[colorScheme].muted }]}>
-                  {idx + 2}/{totalSlides}
+
+                {/* Main text content */}
+                <Text style={[tStyles.slideText, { color: Colors[colorScheme].text }]}>
+                  {stripMd(slideText)}
                 </Text>
               </View>
-              <Text style={[tStyles.slideText, { color: Colors[colorScheme].text }]}>
-                {stripMd(slideText)}
-              </Text>
-            </View>
-          </Pressable>
-        ))}
+            </Pressable>
+          );
+        })}
       </ScrollView>
 
       {/* Pagination dots */}
@@ -359,22 +373,35 @@ const tStyles = StyleSheet.create({
   slideHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 20,
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  slideHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
   },
   sourceName: {
-    fontSize: 13,
-    fontWeight: '600',
-    flexShrink: 1,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  slideLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginTop: 2,
   },
   slideNum: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
+    opacity: 0.6,
   },
   slideText: {
     fontSize: 18,
     lineHeight: 28,
     fontWeight: '400',
+    letterSpacing: -0.3,
   },
   pagination: {
     flexDirection: 'row',
