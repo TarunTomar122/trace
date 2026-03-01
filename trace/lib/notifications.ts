@@ -1,170 +1,187 @@
+/**
+ * Push Notifications Service
+ *
+ * Handles registration, token management, and notification handling.
+ */
+
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { hasReadToday } from './streaks';
+import { doc, updateDoc, getFirestore } from 'firebase/firestore';
 
-// Dynamic import to handle case where expo-notifications isn't installed
-let Notifications: typeof import('expo-notifications') | null = null;
-try {
-  Notifications = require('expo-notifications');
-} catch {
-  console.log('[Notifications] expo-notifications not installed - notifications disabled');
-}
-
-const NOTIFICATION_SETTINGS_KEY = '@trace_notification_settings';
-
-interface NotificationSettings {
-  streakReminderEnabled: boolean;
-  streakReminderTime: string; // "20:00" format
-  lastScheduledDate: string | null;
-}
-
-const DEFAULT_SETTINGS: NotificationSettings = {
-  streakReminderEnabled: true,
-  streakReminderTime: '20:00',
-  lastScheduledDate: null,
-};
+// Configure how notifications appear when app is foregrounded
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 /**
- * Configure notification handler
+ * Register for push notifications and get the Expo push token.
+ * Returns the token string or null if registration fails.
  */
-export function configureNotifications() {
-  if (!Notifications) return;
+export async function registerForPushNotifications(): Promise<string | null> {
+  // Push notifications only work on physical devices
+  if (!Device.isDevice) {
+    console.log('[notifications] Push notifications require a physical device');
+    return null;
+  }
 
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
-  });
+  try {
+    // Check existing permissions
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    // Request permissions if not already granted
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== 'granted') {
+      console.log('[notifications] Permission not granted');
+      return null;
+    }
+
+    // Get the Expo push token
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    const tokenData = await Notifications.getExpoPushTokenAsync({
+      projectId: projectId,
+    });
+
+    console.log('[notifications] Push token:', tokenData.data);
+
+    // Android needs a notification channel
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#F59E0B',
+      });
+    }
+
+    return tokenData.data;
+  } catch (error) {
+    console.error('[notifications] Error registering for push notifications:', error);
+    return null;
+  }
 }
 
 /**
- * Request notification permissions
+ * Save the push token to Firestore for the given user.
  */
-export async function requestNotificationPermission(): Promise<boolean> {
-  if (!Notifications) return false;
+export async function savePushToken(userId: string, token: string): Promise<void> {
+  try {
+    const db = getFirestore();
+    const userRef = doc(db, 'user_profiles', userId);
+    await updateDoc(userRef, {
+      pushToken: token,
+      pushTokenUpdatedAt: new Date().toISOString(),
+      pushNotificationsEnabled: true,
+    });
+    console.log('[notifications] Token saved to Firestore');
+  } catch (error) {
+    console.error('[notifications] Error saving push token:', error);
+  }
+}
 
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+/**
+ * Disable push notifications for a user (clears token from Firestore).
+ */
+export async function disablePushNotifications(userId: string): Promise<void> {
+  try {
+    const db = getFirestore();
+    const userRef = doc(db, 'user_profiles', userId);
+    await updateDoc(userRef, {
+      pushNotificationsEnabled: false,
+    });
+    console.log('[notifications] Push notifications disabled');
+  } catch (error) {
+    console.error('[notifications] Error disabling push notifications:', error);
+  }
+}
 
-  if (existingStatus === 'granted') {
+/**
+ * Enable push notifications for a user (registers and saves token).
+ */
+export async function enablePushNotifications(userId: string): Promise<boolean> {
+  const token = await registerForPushNotifications();
+  if (token) {
+    await savePushToken(userId, token);
     return true;
   }
-
-  const { status } = await Notifications.requestPermissionsAsync();
-  return status === 'granted';
+  return false;
 }
 
 /**
- * Get notification settings
+ * Add a listener for when a notification is received while the app is foregrounded.
  */
-export async function getNotificationSettings(): Promise<NotificationSettings> {
-  try {
-    const raw = await AsyncStorage.getItem(NOTIFICATION_SETTINGS_KEY);
-    if (!raw) return { ...DEFAULT_SETTINGS };
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
-  } catch {
-    return { ...DEFAULT_SETTINGS };
-  }
+export function addNotificationReceivedListener(
+  callback: (notification: Notifications.Notification) => void
+): Notifications.Subscription {
+  return Notifications.addNotificationReceivedListener(callback);
 }
 
 /**
- * Save notification settings
+ * Add a listener for when a user taps on a notification.
  */
-export async function saveNotificationSettings(settings: Partial<NotificationSettings>): Promise<void> {
-  const current = await getNotificationSettings();
-  const updated = { ...current, ...settings };
-  await AsyncStorage.setItem(NOTIFICATION_SETTINGS_KEY, JSON.stringify(updated));
+export function addNotificationResponseListener(
+  callback: (response: Notifications.NotificationResponse) => void
+): Notifications.Subscription {
+  return Notifications.addNotificationResponseReceivedListener(callback);
 }
 
 /**
- * Schedule daily streak reminder at 8pm
+ * Schedule a local notification (for testing).
  */
-export async function scheduleStreakReminder(): Promise<void> {
-  if (!Notifications) return;
-
-  const settings = await getNotificationSettings();
-
-  if (!settings.streakReminderEnabled) {
-    return;
-  }
-
-  // Check if already read today - don't bother scheduling
-  const readToday = await hasReadToday();
-  if (readToday) {
-    return;
-  }
-
-  // Cancel existing streak reminders
-  await cancelStreakReminder();
-
-  // Parse time
-  const [hours, minutes] = settings.streakReminderTime.split(':').map(Number);
-
-  // Calculate next 8pm
-  const now = new Date();
-  const trigger = new Date();
-  trigger.setHours(hours, minutes, 0, 0);
-
-  // If 8pm already passed today, schedule for tomorrow
-  if (trigger <= now) {
-    trigger.setDate(trigger.getDate() + 1);
-  }
-
-  // Schedule notification
-  await Notifications.scheduleNotificationAsync({
+export async function scheduleLocalNotification(
+  title: string,
+  body: string,
+  data?: Record<string, unknown>
+): Promise<string> {
+  return await Notifications.scheduleNotificationAsync({
     content: {
-      title: "Don't break your streak! 🔥",
-      body: "Read one article to keep your streak alive.",
-      data: { type: 'streak_reminder' },
-      sound: true,
+      title,
+      body,
+      data,
     },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DATE,
-      date: trigger,
-    },
-    identifier: 'streak_reminder',
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1 },
   });
 }
 
 /**
- * Cancel streak reminder
+ * Get the current notification permissions status.
  */
-export async function cancelStreakReminder(): Promise<void> {
-  if (!Notifications) return;
-  await Notifications.cancelScheduledNotificationAsync('streak_reminder');
+export async function getNotificationPermissions(): Promise<Notifications.PermissionStatus> {
+  const { status } = await Notifications.getPermissionsAsync();
+  return status;
 }
 
 /**
- * Update streak reminder based on reading activity
- * Call this when user reads an article
- */
-export async function onArticleRead(): Promise<void> {
-  // Cancel today's reminder since they've read
-  await cancelStreakReminder();
-}
-
-/**
- * Initialize notifications on app start
+ * Initialize notifications - sets up Android channel.
+ * Call this early in the app lifecycle.
  */
 export async function initializeNotifications(): Promise<void> {
-  configureNotifications();
-
-  const hasPermission = await requestNotificationPermission();
-  if (!hasPermission) {
-    return;
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'Default',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#F59E0B',
+    });
   }
-
-  // Schedule reminder if needed
-  await scheduleStreakReminder();
 }
 
 /**
- * Get all scheduled notifications (for debugging)
+ * Track article read for engagement (placeholder for future analytics).
  */
-export async function getScheduledNotifications() {
-  if (!Notifications) return [];
-  return Notifications.getAllScheduledNotificationsAsync();
+export async function onArticleRead(): Promise<void> {
+  // Placeholder for engagement tracking
+  // Could be used to adjust notification frequency based on engagement
 }

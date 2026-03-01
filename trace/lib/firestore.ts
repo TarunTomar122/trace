@@ -15,7 +15,7 @@ import {
 import { firestore } from './firebase';
 
 // ============ Early Adopter Config ============
-const EARLY_ADOPTER_LIMIT = 500;
+const EARLY_ADOPTER_LIMIT = 350;
 
 // ============ Types ============
 export interface ChatMessage {
@@ -71,6 +71,15 @@ export interface UserProfile {
 
   // Newsletter preferences
   newsletterOptIn?: boolean;
+
+  // Push notification preferences
+  pushNotificationsEnabled?: boolean;
+  pushToken?: string;
+  pushTokenUpdatedAt?: string;
+
+  // Feed build status (for new user onboarding)
+  feedBuildStatus?: 'pending' | 'building' | 'ready' | 'error';
+  feedBuildRequestedAt?: string;
 
   // Timestamps
   createdAt: Timestamp | null;
@@ -1198,13 +1207,24 @@ function _compareVersions(current: string, minimum: string): boolean {
  */
 export async function checkMinAppVersion(currentVersion: string): Promise<boolean> {
   try {
+    console.log('[ForceUpdate] Checking version, current:', currentVersion);
     const ref = doc(firestore, 'app_config', 'version');
     const snap = await getDoc(ref);
-    if (!snap.exists()) return true;
+    if (!snap.exists()) {
+      console.log('[ForceUpdate] No app_config/version doc found');
+      return true;
+    }
     const data = snap.data() as { min_version?: string };
-    if (!data.min_version) return true;
-    return _compareVersions(currentVersion, data.min_version);
-  } catch {
+    console.log('[ForceUpdate] Firestore data:', data);
+    if (!data.min_version) {
+      console.log('[ForceUpdate] No min_version field');
+      return true;
+    }
+    const result = _compareVersions(currentVersion, data.min_version);
+    console.log('[ForceUpdate] Compare result:', result, '(false = needs update)');
+    return result;
+  } catch (error) {
+    console.error('[ForceUpdate] Error:', error);
     return true;
   }
 }

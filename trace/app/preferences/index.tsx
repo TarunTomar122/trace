@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, Text, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { Pressable, ScrollView, StyleSheet, View, Text, Alert, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -14,6 +14,8 @@ import {
   Trash2,
   Crown,
   Gift,
+  Mail,
+  Bell,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -26,7 +28,12 @@ import {
   SENIORITY_LEVELS,
   ONBOARDING_INTERESTS,
   CAREER_GOALS,
+  updateUserProfile,
 } from '@/lib/firestore';
+import {
+  enablePushNotifications,
+  disablePushNotifications,
+} from '@/lib/notifications';
 
 const ACCENT = '#F59E0B';
 
@@ -67,14 +74,98 @@ function PrefRow({ icon: Icon, label, value, colorScheme, onPress, danger }: Pre
   );
 }
 
+type ToggleRowProps = {
+  icon: typeof Mail;
+  label: string;
+  subtitle?: string;
+  value: boolean;
+  colorScheme: 'light' | 'dark';
+  onToggle: (value: boolean) => void;
+};
+
+function ToggleRow({ icon: Icon, label, subtitle, value, colorScheme, onToggle }: ToggleRowProps) {
+  return (
+    <View style={styles.row}>
+      <View style={[styles.rowIcon, { backgroundColor: Colors[colorScheme].foreground + '08' }]}>
+        <Icon size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+      </View>
+      <View style={styles.rowText}>
+        <ThemedText style={styles.rowLabel}>{label}</ThemedText>
+        {subtitle && (
+          <ThemedText style={[styles.rowValue, { color: Colors[colorScheme].muted }]}>
+            {subtitle}
+          </ThemedText>
+        )}
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onToggle}
+        trackColor={{ false: Colors[colorScheme].border, true: ACCENT }}
+        thumbColor="#fff"
+      />
+    </View>
+  );
+}
+
 export default function PreferencesHub() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
-  const { user, profile, signOut, deleteAccount } = useAuth();
+  const { user, profile, signOut, deleteAccount, refreshProfile } = useAuth();
   const { isProUser, isEarlyAdopter, presentPaywall } = useRevenueCat();
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [newsletterEnabled, setNewsletterEnabled] = useState(true);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+
+  useEffect(() => {
+    // Load preferences from profile
+    if (profile) {
+      setNewsletterEnabled(profile.newsletterOptIn !== false);
+      setPushEnabled(profile.pushNotificationsEnabled === true);
+    }
+  }, [profile]);
+
+  const handleNewsletterToggle = async (enabled: boolean) => {
+    if (!user) return;
+    setNewsletterEnabled(enabled);
+    try {
+      await updateUserProfile(user.uid, { newsletterOptIn: enabled });
+      await refreshProfile();
+    } catch (error) {
+      console.error('Failed to update newsletter preference:', error);
+      setNewsletterEnabled(!enabled); // Revert on error
+    }
+  };
+
+  const handlePushToggle = async (enabled: boolean) => {
+    if (!user) return;
+    setPushLoading(true);
+    try {
+      if (enabled) {
+        const success = await enablePushNotifications(user.uid);
+        if (success) {
+          setPushEnabled(true);
+          await refreshProfile();
+        } else {
+          Alert.alert(
+            'Notifications Disabled',
+            'Please enable notifications in your device settings to receive updates.',
+            [{ text: 'OK' }]
+          );
+        }
+      } else {
+        await disablePushNotifications(user.uid);
+        setPushEnabled(false);
+        await refreshProfile();
+      }
+    } catch (error) {
+      console.error('Failed to update push notification preference:', error);
+    } finally {
+      setPushLoading(false);
+    }
+  };
 
   const roleValue = [
     profile?.role ? lookupLabel(ROLES as any, profile.role) : '',
@@ -241,6 +332,30 @@ export default function PreferencesHub() {
             value={goalsValue}
             colorScheme={colorScheme}
             onPress={() => router.push('/preferences/goals')}
+          />
+        </View>
+
+        <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted, marginTop: 28 }]}>
+          Notifications
+        </ThemedText>
+
+        <View style={[styles.card, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
+          <ToggleRow
+            icon={Bell}
+            label="Push Notifications"
+            subtitle="Get notified about trending news"
+            value={pushEnabled}
+            colorScheme={colorScheme}
+            onToggle={handlePushToggle}
+          />
+          <View style={[styles.rowDivider, { backgroundColor: Colors[colorScheme].border }]} />
+          <ToggleRow
+            icon={Mail}
+            label="Daily Newsletter"
+            subtitle="Get your daily digest via email"
+            value={newsletterEnabled}
+            colorScheme={colorScheme}
+            onToggle={handleNewsletterToggle}
           />
         </View>
 
