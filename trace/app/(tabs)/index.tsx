@@ -1,16 +1,15 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Pressable,
   StyleSheet,
   View,
   RefreshControl,
-  ScrollView,
   Text,
   ActivityIndicator,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import Animated, {
   useSharedValue,
-  useAnimatedScrollHandler,
   useAnimatedStyle,
   withRepeat,
   withTiming,
@@ -44,7 +43,7 @@ import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { updateStreak, getStreakStatus } from '@/lib/streaks';
 import { initializeNotifications, onArticleRead } from '@/lib/notifications';
 
-const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
+// Using FlashList for virtualized rendering of 60+ items
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -99,9 +98,6 @@ export default function FeedScreen() {
   }, []);
 
   const scrollY = useSharedValue(0);
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => { scrollY.value = event.contentOffset.y; },
-  });
 
   const { isProUser: isSubscribed, isEarlyAdopter, loading: rcLoading } = useRevenueCat();
   const isOnboarded = profile?.onboarded ?? false;
@@ -217,16 +213,240 @@ export default function FeedScreen() {
 
   if (!isOnboarded) return null;
 
+  const accentColor = getActiveTabColor(activeTab);
+
+  // Render item for FlashList
+  const renderItem = useCallback(({ item, index }: { item: FeedItem; index: number }) => {
+    const showDivider = index < currentItems.length - 1;
+
+    if (activeTab === 'trending') {
+      return (
+        <View style={styles.itemContainer}>
+          <TrendingCard
+            item={item}
+            colorScheme={colorScheme}
+            accentColor={accentColor}
+          />
+          {showDivider && <View style={[styles.divider, { backgroundColor: Colors[colorScheme].border }]} />}
+        </View>
+      );
+    }
+    if (activeTab === 'for_you') {
+      return (
+        <View style={styles.itemContainer}>
+          <ForYouCard
+            item={item}
+            colorScheme={colorScheme}
+            onPress={() => handleFeedItemPress(item)}
+            accentColor={accentColor}
+          />
+          {showDivider && <View style={[styles.divider, { backgroundColor: Colors[colorScheme].border }]} />}
+        </View>
+      );
+    }
+    return (
+      <View style={styles.itemContainer}>
+        <DeepDiveCard
+          item={item}
+          colorScheme={colorScheme}
+          onPress={() => handleFeedItemPress(item)}
+          accentColor={accentColor}
+        />
+        {showDivider && <View style={[styles.divider, { backgroundColor: Colors[colorScheme].border }]} />}
+      </View>
+    );
+  }, [activeTab, colorScheme, accentColor, currentItems.length, handleFeedItemPress]);
+
+  // Header component for FlashList
+  const ListHeader = useMemo(() => (
+    <View style={styles.listHeader}>
+      {/* ─── Header ─── */}
+      <View style={styles.header}>
+        <View style={{ flex: 1 }}>
+          <ThemedText
+            style={styles.headerTitle}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}>
+            {profile?.name ? `Hey, ${profile.name.split(' ')[0]}` : 'Hey there'}
+          </ThemedText>
+          <View style={styles.headerMetaRow}>
+            <ThemedText style={[styles.headerSubtitle, { color: Colors[colorScheme].muted }]}>
+              {getGreeting()}
+            </ThemedText>
+            {todayReads > 0 && (
+              <View style={[styles.readsBadge, { backgroundColor: accentColor + '18' }]}>
+                <BookOpen size={12} color={accentColor} strokeWidth={2} />
+                <Text style={[styles.readsBadgeText, { color: accentColor }]}>
+                  {todayReads} read today
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+        <Pressable
+          onPress={() => router.push('/preferences')}
+          style={[styles.profileBtn, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
+          <User size={18} color={Colors[colorScheme].foreground} strokeWidth={2} />
+          {currentStreak > 0 && (
+            <View style={styles.streakBadge}>
+              <Flame size={10} color="#fff" fill="#fff" strokeWidth={2} />
+              <Text style={styles.streakBadgeText}>{currentStreak}</Text>
+            </View>
+          )}
+        </Pressable>
+      </View>
+
+      {/* ─── Early Adopter Banner ─── */}
+      <EarlyAdopterBanner
+        colorScheme={colorScheme}
+        isEarlyAdopter={isEarlyAdopter}
+        isSubscribed={isSubscribed}
+        onPress={() => router.push('/paywall')}
+      />
+
+      {/* ─── Tab bar (all users) ─── */}
+      <View style={styles.tabBar}>
+        {TAB_CONFIG.map((tab) => {
+          const isActive = activeTab === tab.key;
+          const tabColor = isActive ? tab.color : Colors[colorScheme].muted;
+          return (
+            <Pressable
+              key={tab.key}
+              onPress={() => setActiveTab(tab.key)}
+              style={[
+                styles.tab,
+                isActive && {
+                  backgroundColor: tab.color + '15',
+                  borderColor: tab.color + '30',
+                },
+              ]}>
+              <View style={styles.tabInner}>
+                <tab.Icon size={15} color={tabColor} strokeWidth={isActive ? 2.5 : 1.8} />
+                <ThemedText
+                  style={[
+                    styles.tabLabel,
+                    { color: tabColor },
+                    isActive && { fontWeight: '700' },
+                  ]}>
+                  {tab.label}
+                </ThemedText>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {/* ─── Loading / Building states ─── */}
+      {(isLoading || rcLoading) ? (
+        <SkeletonLoader colorScheme={colorScheme} />
+      ) : (isFeedBuilding && currentItems.length === 0) ? (
+        <FeedBuildingLoader colorScheme={colorScheme} />
+      ) : currentItems.length > 0 ? (
+        <>
+          {isFeedBuilding && (
+            <View style={[styles.upgradingBanner, { backgroundColor: accentColor + '12' }]}>
+              <ActivityIndicator size="small" color={accentColor} />
+              <ThemedText style={[styles.upgradingText, { color: Colors[colorScheme].muted }]}>
+                Your full feed is building — pull to refresh in a minute
+              </ThemedText>
+            </View>
+          )}
+          <ThemedText style={[styles.sectionHeader, { color: Colors[colorScheme].muted }]}>
+            {activeTab === 'trending'
+              ? `${currentItems.length} stories buzzing right now`
+              : activeTab === 'for_you'
+                ? 'Based on your interests'
+                : 'From your trusted sources'}
+          </ThemedText>
+        </>
+      ) : (
+        <View style={styles.emptyState}>
+          <View
+            style={[styles.emptyIllus, { backgroundColor: colorScheme === 'dark' ? '#1a1a2e' : '#f5f3ff' }]}
+          >
+            <DigestIllus width={44} height={44} color={Colors[colorScheme].text} />
+          </View>
+          <ThemedText style={[styles.emptyText, { color: Colors[colorScheme].muted }]}>
+            {activeTab === 'for_you'
+              ? 'No articles for you yet. Pull to refresh.'
+              : activeTab === 'deep_dives'
+                ? 'No deep dives yet. Your sources are being indexed.'
+                : 'No trending stories right now. Pull to refresh.'}
+          </ThemedText>
+        </View>
+      )}
+    </View>
+  ), [profile?.name, colorScheme, todayReads, accentColor, currentStreak, isEarlyAdopter, isSubscribed, activeTab, isLoading, rcLoading, isFeedBuilding, currentItems.length, router]);
+
+  // Footer component for FlashList
+  const ListFooter = useMemo(() => {
+    if (currentItems.length === 0) return null;
+
+    return (
+      <View style={styles.listFooter}>
+        {/* Upgrade CTA for free users on limited tabs */}
+        {isTabLimited && (
+          <View style={[
+            ctaStyles.banner,
+            {
+              backgroundColor: accentColor + '10',
+              borderColor: accentColor + '30',
+            },
+          ]}>
+            <Text style={[ctaStyles.bannerTitle, { color: Colors[colorScheme].text }]}>
+              {activeTab === 'for_you'
+                ? 'Unlock all personalized stories'
+                : 'Unlock all deep dives'}
+            </Text>
+            <Text style={[ctaStyles.bannerBody, { color: Colors[colorScheme].muted }]}>
+              {activeTab === 'for_you'
+                ? 'You\'re seeing a preview. Go Pro for unlimited articles matched to your interests.'
+                : 'You get 1 free deep dive. Go Pro for unlimited expert reads from your trusted sources.'}
+            </Text>
+            <Pressable
+              onPress={() => router.push('/paywall')}
+              style={[ctaStyles.ctaButton, { backgroundColor: accentColor }]}
+            >
+              <Zap size={16} color="#fff" />
+              <Text style={[ctaStyles.ctaText, { color: '#fff' }]}>
+                Start Free Trial
+              </Text>
+            </Pressable>
+            <Text style={[ctaStyles.bannerLegal, { color: Colors[colorScheme].muted }]}>
+              4-day free trial · Cancel anytime
+            </Text>
+          </View>
+        )}
+
+        {isSubscribed && (
+          <ThemedText style={[styles.endText, { color: Colors[colorScheme].muted }]}>
+            You{"'"}re all caught up
+          </ThemedText>
+        )}
+      </View>
+    );
+  }, [currentItems.length, isTabLimited, accentColor, colorScheme, activeTab, isSubscribed, router]);
+
+  // Key extractor for FlashList
+  const keyExtractor = useCallback((item: FeedItem, index: number) => {
+    return `${activeTab}-${item.id}-${index}`;
+  }, [activeTab]);
+
   return (
     <>
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
       edges={['top']}>
 
-      <AnimatedScrollView
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
+      <FlashList
+        data={currentItems}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        ListHeaderComponent={ListHeader}
+        ListFooterComponent={ListFooter}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.flashListContent}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -234,209 +454,7 @@ export default function FeedScreen() {
             tintColor={Colors[colorScheme].foreground}
           />
         }
-        contentContainerStyle={styles.scrollContent}>
-
-        {/* ─── Header ─── */}
-        <View style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <ThemedText
-              style={styles.headerTitle}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.7}>
-              {profile?.name ? `Hey, ${profile.name.split(' ')[0]}` : 'Hey there'}
-            </ThemedText>
-            <View style={styles.headerMetaRow}>
-              <ThemedText style={[styles.headerSubtitle, { color: Colors[colorScheme].muted }]}>
-                {getGreeting()}
-              </ThemedText>
-              {todayReads > 0 && (
-                <View style={[styles.readsBadge, { backgroundColor: getActiveTabColor(activeTab) + '18' }]}>
-                  <BookOpen size={12} color={getActiveTabColor(activeTab)} strokeWidth={2} />
-                  <Text style={[styles.readsBadgeText, { color: getActiveTabColor(activeTab) }]}>
-                    {todayReads} read today
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
-          <Pressable
-            onPress={() => router.push('/preferences')}
-            style={[styles.profileBtn, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-            <User size={18} color={Colors[colorScheme].foreground} strokeWidth={2} />
-            {currentStreak > 0 && (
-              <View style={styles.streakBadge}>
-                <Flame size={10} color="#fff" fill="#fff" strokeWidth={2} />
-                <Text style={styles.streakBadgeText}>{currentStreak}</Text>
-              </View>
-            )}
-          </Pressable>
-        </View>
-
-        {/* ─── Early Adopter Banner ─── */}
-        <EarlyAdopterBanner
-          colorScheme={colorScheme}
-          isEarlyAdopter={isEarlyAdopter}
-          isSubscribed={isSubscribed}
-          onPress={() => router.push('/paywall')}
-        />
-
-        {/* ─── Tab bar (all users) ─── */}
-        <View style={styles.tabBar}>
-          {TAB_CONFIG.map((tab) => {
-            const isActive = activeTab === tab.key;
-            const tabColor = isActive ? tab.color : Colors[colorScheme].muted;
-            return (
-              <Pressable
-                key={tab.key}
-                onPress={() => setActiveTab(tab.key)}
-                style={[
-                  styles.tab,
-                  isActive && {
-                    backgroundColor: tab.color + '15',
-                    borderColor: tab.color + '30',
-                  },
-                ]}>
-                <View style={styles.tabInner}>
-                  <tab.Icon size={15} color={tabColor} strokeWidth={isActive ? 2.5 : 1.8} />
-                  <ThemedText
-                    style={[
-                      styles.tabLabel,
-                      { color: tabColor },
-                      isActive && { fontWeight: '700' },
-                    ]}>
-                    {tab.label}
-                  </ThemedText>
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {/* ─── Feed content ─── */}
-        {isLoading || rcLoading ? (
-          <SkeletonLoader colorScheme={colorScheme} />
-        ) : (isFeedBuilding && currentItems.length === 0) ? (
-          <FeedBuildingLoader colorScheme={colorScheme} />
-        ) : currentItems.length > 0 ? (
-          <>
-            {isFeedBuilding && (
-              <View style={[styles.upgradingBanner, { backgroundColor: getActiveTabColor(activeTab) + '12' }]}>
-                <ActivityIndicator size="small" color={getActiveTabColor(activeTab)} />
-                <ThemedText style={[styles.upgradingText, { color: Colors[colorScheme].muted }]}>
-                  Your full feed is building — pull to refresh in a minute
-                </ThemedText>
-              </View>
-            )}
-            <ThemedText style={[styles.sectionHeader, { color: Colors[colorScheme].muted }]}>
-              {activeTab === 'trending'
-                ? `${currentItems.length} stories buzzing right now`
-                : activeTab === 'for_you'
-                  ? 'Based on your interests'
-                  : 'From your trusted sources'}
-            </ThemedText>
-
-            <View style={styles.feedList}>
-              {currentItems.map((item, index) => {
-                const accentColor = getActiveTabColor(activeTab);
-                const showDivider = index < currentItems.length - 1;
-
-                if (activeTab === 'trending') {
-                  return (
-                    <View key={`t-${item.id}-${index}`}>
-                      <TrendingCard
-                        item={item}
-                        colorScheme={colorScheme}
-                        accentColor={accentColor}
-                      />
-                      {showDivider && <View style={[styles.divider, { backgroundColor: Colors[colorScheme].border }]} />}
-                    </View>
-                  );
-                }
-                if (activeTab === 'for_you') {
-                  return (
-                    <View key={`fy-${item.id}-${index}`}>
-                      <ForYouCard
-                        item={item}
-                        colorScheme={colorScheme}
-                        onPress={() => handleFeedItemPress(item)}
-                        accentColor={accentColor}
-                      />
-                      {showDivider && <View style={[styles.divider, { backgroundColor: Colors[colorScheme].border }]} />}
-                    </View>
-                  );
-                }
-                return (
-                  <View key={`dd-${item.id}-${index}`}>
-                    <DeepDiveCard
-                      item={item}
-                      colorScheme={colorScheme}
-                      onPress={() => handleFeedItemPress(item)}
-                      accentColor={accentColor}
-                    />
-                    {showDivider && <View style={[styles.divider, { backgroundColor: Colors[colorScheme].border }]} />}
-                  </View>
-                );
-              })}
-            </View>
-
-            {/* Upgrade CTA for free users on limited tabs */}
-            {isTabLimited && (
-              <View style={[
-                ctaStyles.banner,
-                {
-                  backgroundColor: getActiveTabColor(activeTab) + '10',
-                  borderColor: getActiveTabColor(activeTab) + '30',
-                },
-              ]}>
-                <Text style={[ctaStyles.bannerTitle, { color: Colors[colorScheme].text }]}>
-                  {activeTab === 'for_you'
-                    ? 'Unlock all personalized stories'
-                    : 'Unlock all deep dives'}
-                </Text>
-                <Text style={[ctaStyles.bannerBody, { color: Colors[colorScheme].muted }]}>
-                  {activeTab === 'for_you'
-                    ? 'You\'re seeing a preview. Go Pro for unlimited articles matched to your interests.'
-                    : 'You get 1 free deep dive. Go Pro for unlimited expert reads from your trusted sources.'}
-                </Text>
-                <Pressable
-                  onPress={() => router.push('/paywall')}
-                  style={[ctaStyles.ctaButton, { backgroundColor: getActiveTabColor(activeTab) }]}
-                >
-                  <Zap size={16} color="#fff" />
-                  <Text style={[ctaStyles.ctaText, { color: '#fff' }]}>
-                    Start Free Trial
-                  </Text>
-                </Pressable>
-                <Text style={[ctaStyles.bannerLegal, { color: Colors[colorScheme].muted }]}>
-                  4-day free trial · Cancel anytime
-                </Text>
-              </View>
-            )}
-
-            {isSubscribed && (
-              <ThemedText style={[styles.endText, { color: Colors[colorScheme].muted }]}>
-                You{"'"}re all caught up
-              </ThemedText>
-            )}
-          </>
-        ) : (
-          <View style={styles.emptyState}>
-            <View
-              style={[styles.emptyIllus, { backgroundColor: colorScheme === 'dark' ? '#1a1a2e' : '#f5f3ff' }]}
-            >
-              <DigestIllus width={44} height={44} color={Colors[colorScheme].text} />
-            </View>
-            <ThemedText style={[styles.emptyText, { color: Colors[colorScheme].muted }]}>
-              {activeTab === 'for_you'
-                ? 'No articles for you yet. Pull to refresh.'
-                : activeTab === 'deep_dives'
-                  ? 'No deep dives yet. Your sources are being indexed.'
-                  : 'No trending stories right now. Pull to refresh.'}
-            </ThemedText>
-          </View>
-        )}
-      </AnimatedScrollView>
+      />
     </SafeAreaView>
 
     {/* Milestone Celebration Modal */}
@@ -550,7 +568,10 @@ function SkeletonLoader({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
+  flashListContent: { paddingHorizontal: 20, paddingBottom: 40 },
+  listHeader: { paddingTop: 0 },
+  listFooter: { paddingBottom: 20 },
+  itemContainer: {},
 
   // Header
   header: {

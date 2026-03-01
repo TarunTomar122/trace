@@ -15,7 +15,7 @@ import {
 import { firestore } from './firebase';
 
 // ============ Early Adopter Config ============
-const EARLY_ADOPTER_LIMIT = 200;
+const EARLY_ADOPTER_LIMIT = 500;
 
 // ============ Types ============
 export interface ChatMessage {
