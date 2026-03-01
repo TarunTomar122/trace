@@ -19,6 +19,7 @@ import argparse
 import hashlib
 import json
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -156,8 +157,11 @@ RULES:
 - If articles are too diverse, pick the best 2 groupings you can
 """
 
-def cluster_articles(articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Use LLM to cluster articles into topic groups."""
+def cluster_articles(articles: list[dict[str, Any]], max_retries: int = 2) -> list[dict[str, Any]]:
+    """Use LLM to cluster articles into topic groups.
+
+    Includes retry logic for transient API errors.
+    """
     if len(articles) < 4:
         # Not enough to make 2 clusters, return single cluster
         return [{"theme": "Mixed insights", "articles": articles[:3], "synthesis_angle": "Key learnings"}]
@@ -168,40 +172,47 @@ def cluster_articles(articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
         formatted.append(f"[{i}] \"{art.get('title', '')}\" - {art.get('source_name', '')}")
 
     client = OpenAI()
-    try:
-        resp = client.chat.completions.create(
-            model=CLUSTERING_MODEL,
-            messages=[
-                {"role": "system", "content": "Return valid JSON only."},
-                {"role": "user", "content": CLUSTERING_PROMPT.format(articles="\n".join(formatted))}
-            ],
-            temperature=0.3,
-            response_format={"type": "json_object"},
-            timeout=30,
-        )
-        result = json.loads(resp.choices[0].message.content or "{}")
-        clusters = result.get("clusters", [])
 
-        # Map indices back to articles
-        output = []
-        for cluster in clusters[:2]:
-            indices = cluster.get("article_indices", [])
-            cluster_articles = [articles[i] for i in indices if i < len(articles)]
-            if cluster_articles:
-                output.append({
-                    "theme": cluster.get("theme", ""),
-                    "articles": cluster_articles,
-                    "synthesis_angle": cluster.get("synthesis_angle", ""),
-                })
-        return output
-    except Exception as e:
-        _log(f"Clustering failed: {e}, using fallback")
-        # Fallback: just split articles
-        mid = len(articles) // 2
-        return [
-            {"theme": "Insights Part 1", "articles": articles[:3], "synthesis_angle": ""},
-            {"theme": "Insights Part 2", "articles": articles[mid:mid+3], "synthesis_angle": ""},
-        ]
+    for attempt in range(max_retries):
+        try:
+            resp = client.chat.completions.create(
+                model=CLUSTERING_MODEL,
+                messages=[
+                    {"role": "system", "content": "Return valid JSON only."},
+                    {"role": "user", "content": CLUSTERING_PROMPT.format(articles="\n".join(formatted))}
+                ],
+                temperature=0.3,
+                response_format={"type": "json_object"},
+                timeout=30,
+            )
+            result = json.loads(resp.choices[0].message.content or "{}")
+            clusters = result.get("clusters", [])
+
+            # Map indices back to articles
+            output = []
+            for cluster in clusters[:2]:
+                indices = cluster.get("article_indices", [])
+                cluster_articles_list = [articles[i] for i in indices if i < len(articles)]
+                if cluster_articles_list:
+                    output.append({
+                        "theme": cluster.get("theme", ""),
+                        "articles": cluster_articles_list,
+                        "synthesis_angle": cluster.get("synthesis_angle", ""),
+                    })
+            return output
+        except Exception as e:
+            if attempt < max_retries - 1:
+                _log(f"Clustering attempt {attempt + 1} failed: {e}. Retrying...")
+                time.sleep(2)
+            else:
+                _log(f"Clustering failed after {max_retries} attempts: {e}, using fallback")
+
+    # Fallback: just split articles
+    mid = len(articles) // 2
+    return [
+        {"theme": "Insights Part 1", "articles": articles[:3], "synthesis_angle": ""},
+        {"theme": "Insights Part 2", "articles": articles[mid:mid+3], "synthesis_angle": ""},
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -329,8 +340,12 @@ RULES:
 def synthesize_deep_dive(
     cluster: dict[str, Any],
     store: V3Store,
+    max_retries: int = 3,
 ) -> dict[str, Any] | None:
-    """Generate a synthesized deep dive from a cluster of articles."""
+    """Generate a synthesized deep dive from a cluster of articles.
+
+    Includes automatic retry with exponential backoff for transient API errors.
+    """
     articles = cluster.get("articles", [])
     if not articles:
         return None
@@ -360,46 +375,56 @@ def synthesize_deep_dive(
         )
 
     client = OpenAI()
-    try:
-        resp = client.chat.completions.create(
-            model=MODEL,
-            messages=[
-                {"role": "system", "content": "You are an expert magazine writer creating premium editorial content. Return valid JSON only."},
-                {"role": "user", "content": SYNTHESIS_PROMPT.format(
-                    theme=cluster.get("theme", ""),
-                    angle=cluster.get("synthesis_angle", ""),
-                    sources="\n\n".join(sources_text),
-                )}
-            ],
-            temperature=0.6,  # Higher for more creative writing
-            response_format={"type": "json_object"},
-            timeout=90,
-        )
-        result = json.loads(resp.choices[0].message.content or "{}")
+    last_error = None
 
-        if not result.get("title") or not result.get("chapters"):
-            _log(f"  Synthesis returned incomplete result")
-            return None
+    for attempt in range(max_retries):
+        try:
+            resp = client.chat.completions.create(
+                model=MODEL,
+                messages=[
+                    {"role": "system", "content": "You are an expert magazine writer creating premium editorial content. Return valid JSON only."},
+                    {"role": "user", "content": SYNTHESIS_PROMPT.format(
+                        theme=cluster.get("theme", ""),
+                        angle=cluster.get("synthesis_angle", ""),
+                        sources="\n\n".join(sources_text),
+                    )}
+                ],
+                temperature=0.6,  # Higher for more creative writing
+                response_format={"type": "json_object"},
+                timeout=90,
+            )
+            result = json.loads(resp.choices[0].message.content or "{}")
 
-        # Add source references and images
-        result["sources"] = [
-            {
-                "name": art.get("source_name", ""),
-                "title": art.get("title", ""),
-                "url": art.get("url", ""),
-            }
-            for art in articles
-        ]
-        result["images"] = images[:3]  # Max 3 images
+            if not result.get("title") or not result.get("chapters"):
+                _log(f"  Synthesis returned incomplete result")
+                return None
 
-        # Cache the result
-        store.cache_synthesis(cache_key, result)
-        _log(f"  Synthesized: {result.get('title', '')[:50]}")
-        return result
+            # Add source references and images
+            result["sources"] = [
+                {
+                    "name": art.get("source_name", ""),
+                    "title": art.get("title", ""),
+                    "url": art.get("url", ""),
+                }
+                for art in articles
+            ]
+            result["images"] = images[:3]  # Max 3 images
 
-    except Exception as e:
-        _log(f"  Synthesis failed: {e}")
-        return None
+            # Cache the result
+            store.cache_synthesis(cache_key, result)
+            _log(f"  Synthesized: {result.get('title', '')[:50]}")
+            return result
+
+        except Exception as e:
+            last_error = e
+            if attempt < max_retries - 1:
+                wait_time = (2 ** attempt) + 1  # 2s, 3s, 5s
+                _log(f"  Synthesis attempt {attempt + 1} failed: {e}. Retrying in {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                _log(f"  Synthesis failed after {max_retries} attempts: {last_error}")
+
+    return None
 
 
 def _synthesis_cache_key(articles: list[dict]) -> str:
