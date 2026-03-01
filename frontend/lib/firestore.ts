@@ -213,6 +213,7 @@ export interface FeedItem {
       subtitle?: string;
       outline?: string[];
       body?: string;
+      slides?: string[];
       key_takeaways?: string[];
       why_it_matters?: string;
     };
