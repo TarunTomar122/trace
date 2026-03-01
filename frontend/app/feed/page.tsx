@@ -56,6 +56,7 @@ function FeedBuildingLoader() {
 function FeedCard({ item, onPress }: { item: FeedItem; onPress: () => void }) {
   const fallbackUrl = getArticleImage(null, item.title);
   const [imageUrl, setImageUrl] = useState(getArticleImage(item.thumbnail, item.title));
+  const [showFallback, setShowFallback] = useState(false);
   const subtitle = stripMarkdown(item.summary?.short_article?.subtitle || "");
 
   return (
@@ -65,12 +66,21 @@ function FeedCard({ item, onPress }: { item: FeedItem; onPress: () => void }) {
     >
       {/* Image - always shows either thumbnail or relevant fallback */}
       <div className="relative aspect-[16/10] rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 mb-3">
+        {/* Fallback image layer - always present behind main image */}
         <img
-          src={imageUrl}
+          src={fallbackUrl}
           alt=""
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-          onError={() => setImageUrl(fallbackUrl)}
+          className="absolute inset-0 w-full h-full object-cover"
         />
+        {/* Main image on top */}
+        {!showFallback && (
+          <img
+            src={imageUrl}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            onError={() => setShowFallback(true)}
+          />
+        )}
         {/* Source badge */}
         {item.source_name && (
           <div className="absolute top-3 left-3 px-2.5 py-1.5 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center">
