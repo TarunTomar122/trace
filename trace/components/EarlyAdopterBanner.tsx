@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Gift, Rocket, ChevronRight } from 'lucide-react-native';
+import { Gift, Rocket, ChevronRight, X } from 'lucide-react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { Colors } from '@/constants/theme';
 import { getEarlyAdopterStatus, EarlyAdopterStatus } from '@/lib/firestore';
+
+const DISMISSED_KEY = 'early_adopter_banner_dismissed';
 
 interface Props {
   colorScheme: 'light' | 'dark';
@@ -15,12 +18,24 @@ interface Props {
 
 export function EarlyAdopterBanner({ colorScheme, isEarlyAdopter, isSubscribed, onPress }: Props) {
   const [status, setStatus] = useState<EarlyAdopterStatus | null>(null);
+  const [dismissed, setDismissed] = useState(true); // Start hidden until we check
 
   useEffect(() => {
-    if (!isEarlyAdopter && !isSubscribed) {
+    if (isEarlyAdopter) {
+      // Check if early adopter banner was already dismissed
+      AsyncStorage.getItem(DISMISSED_KEY).then((val) => {
+        setDismissed(val === 'true');
+      });
+    } else if (!isSubscribed) {
+      setDismissed(false);
       getEarlyAdopterStatus().then(setStatus).catch(() => {});
     }
   }, [isEarlyAdopter, isSubscribed]);
+
+  const handleDismiss = async () => {
+    setDismissed(true);
+    await AsyncStorage.setItem(DISMISSED_KEY, 'true');
+  };
 
   const isDark = colorScheme === 'dark';
   const bgColor = isDark ? '#1a1408' : '#fffbeb';
@@ -29,8 +44,9 @@ export function EarlyAdopterBanner({ colorScheme, isEarlyAdopter, isSubscribed, 
   const mutedColor = Colors[colorScheme].muted;
   const accentColor = '#F59E0B';
 
-  // If user is an early adopter, show the success message
+  // If user is an early adopter, show the success message (once)
   if (isEarlyAdopter) {
+    if (dismissed) return null;
     return (
       <Animated.View
         entering={FadeIn.duration(300)}
@@ -48,6 +64,9 @@ export function EarlyAdopterBanner({ colorScheme, isEarlyAdopter, isSubscribed, 
             Full Pro access is yours free — forever
           </Text>
         </View>
+        <Pressable onPress={handleDismiss} hitSlop={8}>
+          <X size={18} color={mutedColor} strokeWidth={2} />
+        </Pressable>
       </Animated.View>
     );
   }

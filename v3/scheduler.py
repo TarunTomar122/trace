@@ -267,14 +267,30 @@ def main() -> None:
     if len(jobs_to_run) > 1:
         _log(f"Running {len(jobs_to_run)} feed builders in parallel")
 
+        def _filter_args(args: list[str], exclude: tuple[str, ...]) -> list[str]:
+            """Filter out arguments and their values from the args list."""
+            result = []
+            skip_next = False
+            for i, arg in enumerate(args):
+                if skip_next:
+                    skip_next = False
+                    continue
+                if arg in exclude:
+                    skip_next = True  # Skip the value too
+                    continue
+                result.append(arg)
+            return result
+
         def _run_job(name_job_mode: tuple[str, dict, str]) -> tuple[str, int, bool]:
             name, job, mode = name_job_mode
             _log(f"--- {job['description']} (parallel) ---")
-            # Trending is global (not per-user), so skip user-specific args
+            # Filter out unsupported args per job
+            # --tier is not yet supported by any build script
+            # Trending is global, doesn't need user-specific args
             if name == "trending":
-                job_extra = [a for i, a in enumerate(extra) if a not in ("--audience", "--users-file") and (i == 0 or extra[i-1] not in ("--audience", "--users-file"))]
+                job_extra = _filter_args(extra, ("--audience", "--users-file", "--tier", "--user-id"))
             else:
-                job_extra = list(extra)
+                job_extra = _filter_args(extra, ("--tier",))
             if mode == "pool_only":
                 job_extra.append("--pool-only")
             elif mode == "skip_pool":
@@ -291,13 +307,27 @@ def main() -> None:
                 elif ran_pool and cadence_store is not None:
                     cadence_store.record_run(f"{name}_pool", {"mode": "scheduler"})
     else:
+        def _filter_args_seq(args: list[str], exclude: tuple[str, ...]) -> list[str]:
+            """Filter out arguments and their values from the args list."""
+            result = []
+            skip_next = False
+            for i, arg in enumerate(args):
+                if skip_next:
+                    skip_next = False
+                    continue
+                if arg in exclude:
+                    skip_next = True
+                    continue
+                result.append(arg)
+            return result
+
         for job_name, job, mode in jobs_to_run:
             _log(f"--- {job['description']} ---")
-            # Trending is global (not per-user), so skip user-specific args
+            # Filter out unsupported args per job
             if job_name == "trending":
-                job_extra = [a for i, a in enumerate(extra) if a not in ("--audience", "--users-file") and (i == 0 or extra[i-1] not in ("--audience", "--users-file"))]
+                job_extra = _filter_args_seq(extra, ("--audience", "--users-file", "--tier", "--user-id"))
             else:
-                job_extra = list(extra)
+                job_extra = _filter_args_seq(extra, ("--tier",))
             if mode == "pool_only":
                 job_extra.append("--pool-only")
             elif mode == "skip_pool":
@@ -310,7 +340,9 @@ def main() -> None:
 
     if run_all or "assemble" in requested:
         _log("--- Assemble feeds ---")
-        _run_module(JOBS["assemble"]["module"], extra)
+        # Filter out --tier as assemble doesn't support it
+        assemble_extra = [a for i, a in enumerate(extra) if a != "--tier" and (i == 0 or extra[i-1] != "--tier")]
+        _run_module(JOBS["assemble"]["module"], assemble_extra)
 
     run_newsletter = (
         run_all
