@@ -234,7 +234,7 @@ export default async function TrendingPage() {
     <div className="min-h-screen bg-background text-foreground">
       <PublicHeader />
 
-      <main className="container mx-auto px-4 max-w-3xl">
+      <main className="mx-auto px-6 lg:px-10 max-w-[1600px]">
         {/* Header */}
         <div className="py-6 border-b border-gray-100 dark:border-gray-800 mb-6">
           <h1 className="text-xl font-bold mb-0.5">Today's Top Reads</h1>

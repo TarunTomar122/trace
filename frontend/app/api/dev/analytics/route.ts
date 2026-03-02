@@ -26,18 +26,36 @@ export async function GET(request: NextRequest) {
     const token = authHeader.split('Bearer ')[1];
     await adminAuth.verifyIdToken(token);
 
-    // Get all users
+    // Get all users from Firebase Auth (accurate creation dates)
+    const authUsers: Map<string, { createdAt: string }> = new Map();
+    let nextPageToken: string | undefined;
+    do {
+      const listResult = await adminAuth.listUsers(1000, nextPageToken);
+      listResult.users.forEach(user => {
+        authUsers.set(user.uid, {
+          createdAt: user.metadata.creationTime || '',
+        });
+      });
+      nextPageToken = listResult.pageToken;
+    } while (nextPageToken);
+
+    // Get all user profiles from Firestore
     const usersSnapshot = await adminFirestore
       .collection('user_profiles')
       .get();
 
-    const totalUsers = usersSnapshot.docs.length;
-    
-    // Process each user
-    console.log(`Processing ${usersSnapshot.docs.length} users...`);
-    const users = await Promise.all(usersSnapshot.docs.map(async (doc) => {
-      const data = doc.data();
-      const uid = doc.id;
+    const totalUsers = authUsers.size; // Use Auth count, not Firestore
+
+    // Create a map of Firestore profiles
+    const firestoreProfiles: Map<string, any> = new Map();
+    usersSnapshot.docs.forEach(doc => {
+      firestoreProfiles.set(doc.id, doc.data());
+    });
+
+    // Process ONLY users that exist in Firebase Auth (the source of truth)
+    console.log(`Processing ${authUsers.size} auth users (${usersSnapshot.docs.length} Firestore profiles)...`);
+    const users = await Promise.all(Array.from(authUsers.entries()).map(async ([uid, authData]) => {
+      const data = firestoreProfiles.get(uid) || {};
       
       // Get latest feed (single query, avoid scanning all feeds)
       let feedItemCount = 0;
@@ -109,8 +127,9 @@ export async function GET(request: NextRequest) {
         interactionCount, // Today's interactions
         totalInteractionCount, // All-time interactions
         lastInteractionDate,
-        createdAt: data.createdAt,
-        onboardedAt: data.onboardedAt,
+        // Use Firebase Auth creation time (the source of truth for signups)
+        createdAt: authData.createdAt || null,
+        onboardedAt: data.onboardedAt?.toDate?.() ? data.onboardedAt.toDate().toISOString() : data.onboardedAt || null,
         interests: data.interests || [],
       };
     }));
@@ -175,7 +194,7 @@ export async function GET(request: NextRequest) {
         : 0,
     };
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       summary,
       users: users.sort((a, b) => {
         // Sort by subscription status, then by name

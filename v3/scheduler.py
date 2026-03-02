@@ -139,6 +139,7 @@ def _pool_mode_for_job(
     run_all: bool,
     run_pools: bool,
     run_feeds: bool,
+    user_scoped: bool,
 ) -> str:
     """
     Returns one of:
@@ -148,6 +149,11 @@ def _pool_mode_for_job(
       - "skip_job": nothing to do
     """
     if run_feeds:
+        return "skip_pool"
+
+    # User-scoped builds should be cheap by default: reuse existing pool data.
+    # Callers can still force pool refresh via --force-pools / --jobs pools.
+    if user_scoped and not run_pools and not args.force_pools:
         return "skip_pool"
 
     if run_pools:
@@ -187,6 +193,20 @@ def _write_users_snapshot(audience: str, user_id: str = "") -> str:
 def main() -> None:
     args = _parse_args()
     requested = set(args.jobs)
+    run_all = "all" in requested
+
+    # Guardrail: user-scoped "all" should only build that user's feed sections.
+    if args.user_id and run_all:
+        requested = {"for_you", "deep_dives", "assemble"}
+        run_all = False
+        _log(
+            "User-scoped run with --jobs all detected; "
+            "limiting to for_you + deep_dives + assemble."
+        )
+
+    run_pools = "pools" in requested
+    run_feeds = "feeds" in requested
+    user_scoped = bool(args.user_id)
 
     extra: list[str] = []
     if args.date:
@@ -199,10 +219,6 @@ def main() -> None:
         extra.extend(["--audience", args.audience])
     if args.tier:
         extra.extend(["--tier", args.tier])
-
-    run_all = "all" in requested
-    run_pools = "pools" in requested
-    run_feeds = "feeds" in requested
 
     build_jobs = ["for_you", "deep_dives", "trending"]
     users_file = ""
@@ -250,6 +266,7 @@ def main() -> None:
                 run_all=run_all,
                 run_pools=run_pools,
                 run_feeds=run_feeds,
+                user_scoped=user_scoped,
             )
         elif run_pools:
             mode = "pool_only"

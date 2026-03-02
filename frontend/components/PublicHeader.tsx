@@ -13,7 +13,7 @@ export default function PublicHeader({
 }: PublicHeaderProps) {
   return (
     <header className="sticky top-0 bg-white/95 dark:bg-[#101014]/95 backdrop-blur-md z-50">
-      <div className="container mx-auto px-4 max-w-3xl">
+      <div className="mx-auto px-6 lg:px-10 max-w-[1600px]">
         <div className="flex items-center justify-between h-16">
           {/* Left - Logo */}
           <Link href="/" className="flex items-center gap-2.5">

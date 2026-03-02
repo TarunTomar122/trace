@@ -563,3 +563,37 @@ class V3Store:
             "synthesis": synthesis,
             "cached_at": datetime.now(timezone.utc).isoformat(),
         })
+
+    # -----------------------------------------------------------------------
+    # Extraction caching (for deep dive article key points)
+    # -----------------------------------------------------------------------
+
+    def _extraction_cache_key(self, url: str) -> str:
+        """Generate cache key for article extraction."""
+        return hashlib.sha256(url.encode("utf-8")).hexdigest()[:40]
+
+    def get_cached_extraction(self, url: str) -> dict[str, Any] | None:
+        """Get cached key points extraction for an article URL."""
+        key = self._extraction_cache_key(url)
+        doc = self.db.collection("v3_extraction_cache").document(key).get()
+        if doc.exists:
+            data = doc.to_dict() or {}
+            # Check if cache is still fresh (7 days)
+            cached_at = data.get("cached_at", "")
+            if cached_at:
+                try:
+                    dt = datetime.fromisoformat(cached_at.replace("Z", "+00:00"))
+                    if datetime.now(timezone.utc) - dt < timedelta(days=7):
+                        return data.get("extraction")
+                except (ValueError, TypeError):
+                    pass
+        return None
+
+    def cache_extraction(self, url: str, extraction: dict[str, Any]) -> None:
+        """Cache article key points extraction."""
+        key = self._extraction_cache_key(url)
+        self.db.collection("v3_extraction_cache").document(key).set({
+            "url": url,
+            "extraction": extraction,
+            "cached_at": datetime.now(timezone.utc).isoformat(),
+        })

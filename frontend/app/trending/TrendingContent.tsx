@@ -5,7 +5,7 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { X, ExternalLink, Sparkles, Loader2 } from "lucide-react";
-import { getArticleImage, isValidThumbnail } from "@/lib/fallback-images";
+import { getArticleImage } from "@/lib/fallback-images";
 
 // Strip "Slide N:" prefix from slides
 function cleanSlides(slides: string[]): string[] {
@@ -33,14 +33,24 @@ type FullSummary = {
   reading_time_minutes?: number;
 };
 
-function TrendingCard({
+// Deterministic aspect ratio based on item index
+function getAspectRatio(index: number): 'square' | 'portrait' {
+  // Pattern: portrait, square, square, portrait, square, portrait...
+  const pattern = [1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1];
+  return pattern[index % pattern.length] ? 'portrait' : 'square';
+}
+
+function PinterestCard({
   item,
+  index,
   onClick,
 }: {
   item: TrendingItem;
+  index: number;
   onClick: () => void;
 }) {
   const imageUrl = getArticleImage(item.thumbnail, item.title);
+  const aspectRatio = getAspectRatio(index);
   const host = (() => {
     try {
       return new URL(item.url).hostname.replace("www.", "");
@@ -50,32 +60,58 @@ function TrendingCard({
   })();
 
   return (
-    <button onClick={onClick} className="block w-full text-left group">
-      {/* Image - always shows either thumbnail or relevant fallback */}
-      <div className="relative aspect-[16/10] rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 mb-3">
-        <img
-          src={imageUrl}
-          alt=""
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-          loading="lazy"
-        />
-        {/* Source badge */}
-        {host && (
-          <div className="absolute top-3 left-3 px-2.5 py-1.5 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center">
-            <span className="text-[11px] font-medium text-white leading-none">{host}</span>
-          </div>
-        )}
+    <button
+      onClick={onClick}
+      className="block w-full text-left group relative overflow-hidden rounded-2xl bg-gray-900 break-inside-avoid mb-4"
+      style={{
+        aspectRatio: aspectRatio === 'portrait' ? '4/5' : '1/1',
+      }}
+    >
+      {/* Background Image */}
+      <img
+        src={imageUrl}
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+        loading="lazy"
+      />
+
+      {/* Gradient Overlays */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/10 to-black/70" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/90" />
+
+      {/* Headline at bottom - hidden on hover */}
+      <div className="absolute bottom-0 left-0 right-0 p-5 z-10 transition-opacity duration-300 group-hover:opacity-0">
+        <h3
+          className="text-white font-extrabold leading-tight drop-shadow-xl"
+          style={{
+            fontSize: aspectRatio === 'portrait' ? '1.25rem' : '1.1rem',
+            lineHeight: 1.15,
+          }}
+        >
+          {item.title.length > 100 ? item.title.slice(0, 100) + '...' : item.title}
+        </h3>
       </div>
 
-      {/* Title */}
-      <h3 className="font-semibold text-[15px] leading-snug line-clamp-2 group-hover:text-amber-600 transition-colors">
-        {item.title}
-      </h3>
+      {/* Hover Overlay - shows summary */}
+      <div className="absolute inset-0 bg-black/85 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-center p-5 z-20">
+        {/* Source badge */}
+        {host && (
+          <span className="text-amber-400 text-xs font-semibold uppercase tracking-wider mb-3">
+            {host}
+          </span>
+        )}
 
-      {/* Summary */}
-      <p className="text-sm text-secondary/60 line-clamp-2 leading-relaxed mt-1">
-        {item.summary || "\u00A0"}
-      </p>
+        {/* Summary */}
+        {item.summary ? (
+          <p className="text-white/90 text-sm leading-relaxed line-clamp-6">
+            {item.summary}
+          </p>
+        ) : (
+          <p className="text-white/60 text-sm italic">
+            Tap to read more
+          </p>
+        )}
+      </div>
     </button>
   );
 }
@@ -90,7 +126,7 @@ function ArticleModal({
   const [fullSummary, setFullSummary] = useState<FullSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const hasImage = isValidThumbnail(item.thumbnail);
+  const imageUrl = getArticleImage(item.thumbnail, item.title);
   const host = (() => {
     try {
       return new URL(item.url).hostname.replace("www.", "");
@@ -134,7 +170,7 @@ function ArticleModal({
       onClick={onClose}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
 
       {/* Modal */}
       <div
@@ -150,20 +186,18 @@ function ArticleModal({
         </button>
 
         {/* Image */}
-        {hasImage && (
-          <div className="relative aspect-[16/9] w-full">
-            <img
-              src={item.thumbnail}
-              alt=""
-              className="w-full h-full object-cover"
-            />
-            {/* Gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
-          </div>
-        )}
+        <div className="relative aspect-[16/9] w-full">
+          <img
+            src={imageUrl}
+            alt=""
+            className="w-full h-full object-cover"
+          />
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+        </div>
 
         {/* Content */}
-        <div className={`p-5 ${hasImage ? "-mt-12 relative" : "pt-12"}`}>
+        <div className="-mt-12 relative p-5">
           {/* Source */}
           {host && (
             <span className="text-xs font-medium text-amber-600 uppercase tracking-wider">
@@ -260,12 +294,13 @@ export default function TrendingContent({ items }: { items: TrendingItem[] }) {
       {/* Content */}
       {items.length > 0 ? (
         <>
-          {/* Grid of cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
+          {/* Pinterest-style Masonry Grid */}
+          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
             {items.map((item, i) => (
-              <TrendingCard
+              <PinterestCard
                 key={item.id || i}
                 item={item}
+                index={i}
                 onClick={() => setSelectedItem(item)}
               />
             ))}

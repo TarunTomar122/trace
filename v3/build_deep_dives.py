@@ -26,6 +26,7 @@ from typing import Any
 
 from dotenv import load_dotenv
 from openai import OpenAI
+import os
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -171,7 +172,7 @@ def cluster_articles(articles: list[dict[str, Any]], max_retries: int = 2) -> li
     for i, art in enumerate(articles[:12]):  # Cap at 12 to avoid token limits
         formatted.append(f"[{i}] \"{art.get('title', '')}\" - {art.get('source_name', '')}")
 
-    client = OpenAI()
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", "").strip())
 
     for attempt in range(max_retries):
         try:
@@ -201,11 +202,12 @@ def cluster_articles(articles: list[dict[str, Any]], max_retries: int = 2) -> li
                     })
             return output
         except Exception as e:
+            error_type = type(e).__name__
             if attempt < max_retries - 1:
-                _log(f"Clustering attempt {attempt + 1} failed: {e}. Retrying...")
+                _log(f"Clustering attempt {attempt + 1} failed: [{error_type}] {e}. Retrying...")
                 time.sleep(2)
             else:
-                _log(f"Clustering failed after {max_retries} attempts: {e}, using fallback")
+                _log(f"Clustering failed after {max_retries} attempts: [{error_type}] {e}, using fallback")
 
     # Fallback: just split articles
     mid = len(articles) // 2
@@ -213,6 +215,99 @@ def cluster_articles(articles: list[dict[str, Any]], max_retries: int = 2) -> li
         {"theme": "Insights Part 1", "articles": articles[:3], "synthesis_angle": ""},
         {"theme": "Insights Part 2", "articles": articles[mid:mid+3], "synthesis_angle": ""},
     ]
+
+
+# ---------------------------------------------------------------------------
+# Pre-summarization: Extract key points before synthesis
+# ---------------------------------------------------------------------------
+
+EXTRACT_PROMPT = """Extract the key insights from this article for a deep dive synthesis.
+
+ARTICLE: {title}
+SOURCE: {source}
+
+CONTENT:
+{content}
+
+Return JSON:
+{{
+  "key_points": [
+    "First key insight or argument (1-2 sentences)",
+    "Second key point (1-2 sentences)",
+    "Third key point if available (1-2 sentences)"
+  ],
+  "notable_quotes": [
+    "Any memorable quote or strong statement from the article",
+    "Another quote if available"
+  ],
+  "main_thesis": "What is the article's central argument? (1-2 sentences)"
+}}
+
+RULES:
+- Extract 2-4 key points that capture the essence
+- Include 1-2 actual quotes from the text (not paraphrased)
+- Keep total output under 400 words
+- Focus on unique insights, not generic statements
+"""
+
+
+def extract_article_key_points(
+    article: dict[str, Any],
+    client: OpenAI,
+    store: V3Store,
+    max_retries: int = 2,
+) -> tuple[dict[str, Any] | None, bool]:
+    """Extract key points from an article before synthesis.
+
+    This produces a focused ~300 word summary that captures what matters,
+    rather than arbitrary truncation.
+
+    Returns:
+        Tuple of (extraction_result, was_cached)
+    """
+    url = article.get("url", "")
+    content = article.get("content", "")
+    if not content or len(content) < 200:
+        return None, False
+
+    # Check cache first
+    if url:
+        cached = store.get_cached_extraction(url)
+        if cached:
+            return cached, True
+
+    # Truncate very long content for extraction (but model picks what matters)
+    content_for_extraction = content[:8000] if len(content) > 8000 else content
+
+    for attempt in range(max_retries):
+        try:
+            resp = client.chat.completions.create(
+                model="gpt-4o-mini",  # Cheap, fast model for extraction
+                messages=[
+                    {"role": "system", "content": "Extract key insights. Return valid JSON only."},
+                    {"role": "user", "content": EXTRACT_PROMPT.format(
+                        title=article.get("title", ""),
+                        source=article.get("source_name", ""),
+                        content=content_for_extraction,
+                    )}
+                ],
+                temperature=0.2,
+                response_format={"type": "json_object"},
+                timeout=30,
+            )
+            result = json.loads(resp.choices[0].message.content or "{}")
+
+            # Cache the result
+            if url and result:
+                store.cache_extraction(url, result)
+
+            return result, False
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(1)
+            else:
+                _log(f"  Extract failed for {article.get('title', '')[:30]}: {e}")
+    return None, False
 
 
 # ---------------------------------------------------------------------------
@@ -364,17 +459,37 @@ def synthesize_deep_dive(
         if img and img.startswith("http") and img not in images:
             images.append(img)
 
-    # Format sources for prompt
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", "").strip())
+
+    # Pre-extract key points from each article (smart extraction, not truncation)
+    cached_count = 0
     sources_text = []
     for i, art in enumerate(articles):
-        content = art.get("content", "")[:10000]  # More content for deeper synthesis
+        extracted, was_cached = extract_article_key_points(art, client, store)
+        if was_cached:
+            cached_count += 1
+
+        if extracted:
+            # Use model-extracted key points
+            key_points = "\n".join(f"- {p}" for p in extracted.get("key_points", []))
+            quotes = "\n".join(f'"{q}"' for q in extracted.get("notable_quotes", []))
+            thesis = extracted.get("main_thesis", "")
+
+            source_content = f"Main thesis: {thesis}\n\nKey points:\n{key_points}"
+            if quotes:
+                source_content += f"\n\nNotable quotes:\n{quotes}"
+        else:
+            # Fallback: simple truncation if extraction fails
+            content = art.get("content", "")
+            source_content = content[:2000] if len(content) > 2000 else content
+
         sources_text.append(
             f"--- SOURCE {i+1}: {art.get('source_name', '')} ---\n"
             f"Title: {art.get('title', '')}\n"
-            f"Content:\n{content}\n"
+            f"{source_content}\n"
         )
 
-    client = OpenAI()
+    _log(f"  Extracted {len(articles)} articles ({cached_count} from cache)")
     last_error = None
 
     for attempt in range(max_retries):
@@ -417,12 +532,13 @@ def synthesize_deep_dive(
 
         except Exception as e:
             last_error = e
+            error_type = type(e).__name__
             if attempt < max_retries - 1:
                 wait_time = (2 ** attempt) + 1  # 2s, 3s, 5s
-                _log(f"  Synthesis attempt {attempt + 1} failed: {e}. Retrying in {wait_time}s...")
+                _log(f"  Synthesis attempt {attempt + 1} failed: [{error_type}] {e}. Retrying in {wait_time}s...")
                 time.sleep(wait_time)
             else:
-                _log(f"  Synthesis failed after {max_retries} attempts: {last_error}")
+                _log(f"  Synthesis failed after {max_retries} attempts: [{error_type}] {last_error}")
 
     return None
 
@@ -638,15 +754,50 @@ def build_user_feeds(
         "free_users_global": 0,
     }
 
-    # Build global deep dive for free users (once, shared by all)
-    global_deep_dives = _build_global_deep_dive(store, config, target_date, max_age)
+    # Precompute per-user source selections and shared source union once.
+    # This avoids N repeated Firestore pool scans for subscribed users.
+    user_jobs: list[tuple[dict[str, Any], bool, set[str]]] = []
+    subscribed_source_union: set[str] = set()
 
     for profile in users:
         uid = profile.get("uid", "")
         if not uid:
             continue
-
         is_sub = is_user_subscribed(profile)
+        selected_sources: set[str] = set()
+
+        if is_sub:
+            selected_sources = set(profile.get("selectedLearningSources", []) or [])
+            if not selected_sources:
+                interests = profile.get("interests", []) or []
+                selected_sources = _sources_for_interests(interests, config.get("sources", []))
+                if selected_sources:
+                    _log(f"  user={uid} no sources → using {len(selected_sources)} from interests")
+            if selected_sources:
+                subscribed_source_union |= selected_sources
+        user_jobs.append((profile, is_sub, selected_sources))
+
+    # Build global deep dive once per run.
+    # Used for free users and as a fallback for subscribed users with sparse matches.
+    global_deep_dives = _build_global_deep_dive(store, config, target_date, max_age)
+
+    # Load subscribed candidates once and filter in memory per user.
+    subscribed_candidates: list[dict[str, Any]] = []
+    if subscribed_source_union:
+        subscribed_candidates = store.load_pool(
+            DEEP_DIVE_POOL,
+            source_names=subscribed_source_union,
+            max_age_days=max_age,
+        )
+        _log(
+            f"Loaded {len(subscribed_candidates)} shared deep-dive candidates "
+            f"for {len(subscribed_source_union)} subscribed sources"
+        )
+
+    for profile, is_sub, selected_sources in user_jobs:
+        uid = profile.get("uid", "")
+        if not uid:
+            continue
 
         # Free users get the global shared deep dive (no personalized generation)
         if not is_sub:
@@ -655,16 +806,7 @@ def build_user_feeds(
             _log(f"  user={uid} FREE → assigned global deep dive")
             continue
 
-        # Get user's sources (only for subscribed users)
-        selected_sources = set(profile.get("selectedLearningSources", []) or [])
         target_deep_dives = DEFAULT_DEEP_DIVES_PER_USER
-
-        # Fallback to interests if no sources selected
-        if not selected_sources:
-            interests = profile.get("interests", []) or []
-            selected_sources = _sources_for_interests(interests, config.get("sources", []))
-            if selected_sources:
-                _log(f"  user={uid} no sources → using {len(selected_sources)} from interests")
 
         if not selected_sources:
             _log(f"  user={uid} no sources, skipping")
@@ -672,14 +814,11 @@ def build_user_feeds(
             stats["users_skipped_no_articles"] += 1
             continue
 
-        # Load articles from user's sources
-        candidates = store.load_pool(
-            DEEP_DIVE_POOL,
-            source_names=selected_sources,
-            max_age_days=max_age,
-        )
-
-        # Filter out seen URLs
+        # Filter shared candidate pool by user's source choices, then by seen URLs.
+        candidates = [
+            c for c in subscribed_candidates
+            if c.get("source_name", "") in selected_sources
+        ]
         seen_urls = store.get_seen_urls(uid)
         candidates = [c for c in candidates if c.get("url", "") not in seen_urls]
 
