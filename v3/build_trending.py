@@ -36,7 +36,7 @@ from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
 from v3.lib.store import V3Store, TRENDING_POOL, _today_ist  # noqa: E402
 from v3.lib.content import fetch_content, fetch_og_image  # noqa: E402
 from v3.lib.summarizer import batch_presummarize  # noqa: E402
-from v3.lib.diversity import dedupe_and_cap  # noqa: E402
+from v3.lib.diversity import dedupe_trending_latest_story  # noqa: E402
 
 CONFIG_PATH = "v3/config/trending_sources.json"
 DEFAULT_LIMIT_PER_SOURCE = 10
@@ -367,9 +367,17 @@ def build_global_feed(
 
     # Filter low-quality/promos and sort by recency (latest first)
     ranked = _rank_candidates(all_candidates, source_weights)
-    # Dedup to avoid too many from same source
-    ranked = dedupe_and_cap(ranked, max_per_source=4)
-    _log(f"After filtering and dedup: {len(ranked)} articles")
+    # Story-level dedupe (latest wins) + per-source cap.
+    ranked, dedupe_stats = dedupe_trending_latest_story(
+        ranked,
+        max_per_source=4,
+    )
+    _log(
+        "After filtering and story-dedup: "
+        f"{len(ranked)} articles "
+        f"(merged={dedupe_stats.get('dropped_similar_story', 0)} "
+        f"source_cap={dedupe_stats.get('dropped_source_cap', 0)})"
+    )
 
     if not ranked:
         _log("No articles to process")
