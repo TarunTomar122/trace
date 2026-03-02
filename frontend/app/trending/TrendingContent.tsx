@@ -1,11 +1,25 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import useSWR, { preload } from "swr";
 import { X, ExternalLink, Sparkles, Loader2 } from "lucide-react";
 import { getArticleImage } from "@/lib/fallback-images";
+
+// SWR fetcher for article summaries
+const summaryFetcher = async (url: string) => {
+  const res = await fetch(`/api/public/summary?url=${encodeURIComponent(url)}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.summary || null;
+};
+
+// Preload summary on hover
+const preloadSummary = (url: string) => {
+  preload(`summary-${url}`, () => summaryFetcher(url));
+};
 
 // Strip "Slide N:" prefix from slides
 function cleanSlides(slides: string[]): string[] {
@@ -44,13 +58,16 @@ function PinterestCard({
   item,
   index,
   onClick,
+  onHover,
 }: {
   item: TrendingItem;
   index: number;
   onClick: () => void;
+  onHover?: () => void;
 }) {
   const imageUrl = getArticleImage(item.thumbnail, item.title);
   const aspectRatio = getAspectRatio(index);
+  const hasHovered = useRef(false);
   const host = (() => {
     try {
       return new URL(item.url).hostname.replace("www.", "");
@@ -59,9 +76,17 @@ function PinterestCard({
     }
   })();
 
+  const handleMouseEnter = () => {
+    if (!hasHovered.current && onHover) {
+      hasHovered.current = true;
+      onHover();
+    }
+  };
+
   return (
     <button
       onClick={onClick}
+      onMouseEnter={handleMouseEnter}
       className="block w-full text-left group relative overflow-hidden rounded-2xl bg-gray-900 break-inside-avoid mb-4"
       style={{
         aspectRatio: aspectRatio === 'portrait' ? '4/5' : '1/1',
@@ -123,8 +148,15 @@ function ArticleModal({
   item: TrendingItem;
   onClose: () => void;
 }) {
-  const [fullSummary, setFullSummary] = useState<FullSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  // SWR for summary - uses cache from hover prefetch
+  const { data: fullSummary, isLoading: loading } = useSWR<FullSummary | null>(
+    `summary-${item.url}`,
+    () => summaryFetcher(item.url),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 300000, // 5 min cache
+    }
+  );
 
   const imageUrl = getArticleImage(item.thumbnail, item.title);
   const host = (() => {
@@ -134,27 +166,6 @@ function ArticleModal({
       return item.source || "";
     }
   })();
-
-  // Fetch full summary when modal opens
-  useEffect(() => {
-    async function fetchSummary() {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/public/summary?url=${encodeURIComponent(item.url)}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.summary) {
-            setFullSummary(data.summary);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch summary:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchSummary();
-  }, [item.url]);
 
   // Handle both body and slides format - prefer slides for trending
   const rawSlides = fullSummary?.short_article?.slides;
@@ -302,6 +313,7 @@ export default function TrendingContent({ items }: { items: TrendingItem[] }) {
                 item={item}
                 index={i}
                 onClick={() => setSelectedItem(item)}
+                onHover={() => preloadSummary(item.url)}
               />
             ))}
           </div>
