@@ -131,6 +131,8 @@ export async function GET(request: NextRequest) {
         createdAt: authData.createdAt || null,
         onboardedAt: data.onboardedAt?.toDate?.() ? data.onboardedAt.toDate().toISOString() : data.onboardedAt || null,
         interests: data.interests || [],
+        selectedLearningSources: data.selectedLearningSources || [],
+        selectedSources: data.selectedSources || [],
       };
     }));
 

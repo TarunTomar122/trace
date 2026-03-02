@@ -10,7 +10,10 @@ import {
   UserCheck,
   Zap,
   Copy,
-  Check
+  Check,
+  ExternalLink,
+  Loader2,
+  X
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -33,6 +36,9 @@ type UserData = {
   subscriptionStatus: string;
   createdAt: any;
   onboardedAt: any;
+  interests?: string[];
+  selectedLearningSources?: string[];
+  selectedSources?: string[];
 };
 
 type DailyStats = {
@@ -40,6 +46,25 @@ type DailyStats = {
   signups: number;
   onboarded: number;
   subscribed: number;
+};
+
+type FeedItem = {
+  id: string;
+  title: string;
+  url?: string;
+  source_name?: string;
+  thumbnail?: string;
+  summary?: any;
+  type?: string;
+  sources?: { name: string; title: string; url: string }[];
+};
+
+type UserFeed = {
+  version: string;
+  date: string;
+  for_you: FeedItem[];
+  deep_dives: FeedItem[];
+  trending: FeedItem[];
 };
 
 type TimeRange = 'week' | 'month' | 'all';
@@ -86,6 +111,9 @@ export default function AnalyticsPage() {
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [copiedUid, setCopiedUid] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [userFeed, setUserFeed] = useState<UserFeed | null>(null);
+  const [isFetchingFeed, setIsFetchingFeed] = useState(false);
 
   // Load preferences from localStorage
   const [timeRange, setTimeRange] = useState<TimeRange>(() => {
@@ -330,6 +358,31 @@ export default function AnalyticsPage() {
     navigator.clipboard.writeText(uid);
     setCopiedUid(uid);
     setTimeout(() => setCopiedUid(null), 2000);
+  };
+
+  // Fetch user's feed when selected
+  const fetchUserFeed = async (userData: UserData) => {
+    setSelectedUser(userData);
+    setUserFeed(null);
+    setIsFetchingFeed(true);
+
+    try {
+      const authToken = user ? await user.getIdToken() : null;
+      if (!authToken) return;
+
+      const response = await fetch(`/api/dev/feed?userId=${userData.uid}`, {
+        headers: { 'Authorization': `Bearer ${authToken}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUserFeed(data);
+      }
+    } catch (error) {
+      console.error('Error fetching user feed:', error);
+    } finally {
+      setIsFetchingFeed(false);
+    }
   };
 
   // Fetch Firebase user data (with caching)
@@ -817,7 +870,12 @@ export default function AnalyticsPage() {
                     {searchResults.map(u => (
                       <div
                         key={u.uid}
-                        className="flex items-center justify-between p-4 rounded-xl bg-black/[0.02] dark:bg-white/5 hover:bg-black/[0.04] dark:hover:bg-white/10 transition-colors"
+                        className={`flex items-center justify-between p-4 rounded-xl transition-colors cursor-pointer ${
+                          selectedUser?.uid === u.uid
+                            ? 'bg-blue-500/10 ring-2 ring-blue-500/30'
+                            : 'bg-black/[0.02] dark:bg-white/5 hover:bg-black/[0.04] dark:hover:bg-white/10'
+                        }`}
+                        onClick={() => fetchUserFeed(u)}
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-xs font-semibold">
@@ -828,26 +886,19 @@ export default function AnalyticsPage() {
                             <p className="text-xs text-secondary/50">{u.email}</p>
                           </div>
                         </div>
-                        <button
-                          onClick={() => copyUid(u.uid)}
-                          className={`flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg transition-all ${
-                            copiedUid === u.uid
-                              ? 'bg-green-500/10 text-green-600'
-                              : 'bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-secondary/70'
-                          }`}
-                        >
-                          {copiedUid === u.uid ? (
-                            <>
-                              <Check size={14} />
-                              Copied!
-                            </>
-                          ) : (
-                            <>
-                              <Copy size={14} />
-                              Copy ID
-                            </>
-                          )}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); copyUid(u.uid); }}
+                            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                              copiedUid === u.uid
+                                ? 'bg-green-500/10 text-green-600'
+                                : 'bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-secondary/70'
+                            }`}
+                          >
+                            {copiedUid === u.uid ? <Check size={14} /> : <Copy size={14} />}
+                          </button>
+                          <span className="text-xs text-secondary/40">Click to view feed</span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -860,6 +911,176 @@ export default function AnalyticsPage() {
                 )}
               </div>
             </div>
+
+            {/* User Feed Viewer */}
+            {selectedUser && (
+              <div className="bg-white dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-black/5 dark:border-white/5 flex items-center justify-between">
+                  <div>
+                    <h2 className="font-semibold">{selectedUser.name}'s Feed</h2>
+                    <p className="text-xs text-secondary/50 mt-0.5">
+                      {userFeed?.date ? `Feed for ${userFeed.date}` : 'Loading...'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { setSelectedUser(null); setUserFeed(null); }}
+                    className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  >
+                    <X size={18} className="text-secondary/50" />
+                  </button>
+                </div>
+
+                <div className="p-6">
+                  {/* User Preferences */}
+                  <div className="mb-6 p-4 rounded-xl bg-black/[0.02] dark:bg-white/5">
+                    <h3 className="text-xs font-semibold text-secondary/60 uppercase tracking-wider mb-3">Preferences</h3>
+                    <div className="space-y-3">
+                      {/* Interests */}
+                      <div>
+                        <span className="text-xs text-secondary/50">Interests: </span>
+                        {selectedUser.interests && selectedUser.interests.length > 0 ? (
+                          <span className="text-xs">
+                            {selectedUser.interests.map((i, idx) => (
+                              <span key={i} className="inline-block px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 mr-1 mb-1">
+                                {i}
+                              </span>
+                            ))}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-secondary/40 italic">None selected</span>
+                        )}
+                      </div>
+                      {/* Learning Sources (Deep Dives) */}
+                      <div>
+                        <span className="text-xs text-secondary/50">Deep Dive Sources: </span>
+                        {selectedUser.selectedLearningSources && selectedUser.selectedLearningSources.length > 0 ? (
+                          <span className="text-xs">
+                            {selectedUser.selectedLearningSources.map((s) => (
+                              <span key={s} className="inline-block px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 mr-1 mb-1">
+                                {s}
+                              </span>
+                            ))}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-secondary/40 italic">None selected</span>
+                        )}
+                      </div>
+                      {/* News Sources (For You) */}
+                      <div>
+                        <span className="text-xs text-secondary/50">News Sources: </span>
+                        {selectedUser.selectedSources && selectedUser.selectedSources.length > 0 ? (
+                          <span className="text-xs">
+                            {selectedUser.selectedSources.slice(0, 10).map((s) => (
+                              <span key={s} className="inline-block px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 mr-1 mb-1">
+                                {s}
+                              </span>
+                            ))}
+                            {selectedUser.selectedSources.length > 10 && (
+                              <span className="text-xs text-secondary/40">+{selectedUser.selectedSources.length - 10} more</span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-secondary/40 italic">None selected</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {isFetchingFeed ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 size={24} className="text-blue-500 animate-spin" />
+                    </div>
+                  ) : userFeed ? (
+                    <div className="space-y-6">
+                      {/* For You Section */}
+                      <div>
+                        <h3 className="text-sm font-semibold text-blue-500 mb-3 flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-blue-500" />
+                          For You ({userFeed.for_you?.length || 0} items)
+                        </h3>
+                        {userFeed.for_you?.length > 0 ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {userFeed.for_you.slice(0, 10).map((item, idx) => (
+                              <a
+                                key={item.id || idx}
+                                href={item.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-start gap-3 p-3 rounded-xl bg-black/[0.02] dark:bg-white/5 hover:bg-black/[0.04] dark:hover:bg-white/10 transition-colors group"
+                              >
+                                {item.thumbnail && (
+                                  <img
+                                    src={item.thumbnail}
+                                    alt=""
+                                    className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                                  />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium line-clamp-2 group-hover:text-blue-500 transition-colors">
+                                    {item.title}
+                                  </p>
+                                  <p className="text-xs text-secondary/50 mt-1">
+                                    {item.source_name}
+                                  </p>
+                                </div>
+                                <ExternalLink size={14} className="text-secondary/30 flex-shrink-0 mt-1" />
+                              </a>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-secondary/50 italic">No items in For You feed</p>
+                        )}
+                      </div>
+
+                      {/* Deep Dives Section */}
+                      <div>
+                        <h3 className="text-sm font-semibold text-amber-500 mb-3 flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-amber-500" />
+                          Deep Dives ({userFeed.deep_dives?.length || 0} items)
+                        </h3>
+                        {userFeed.deep_dives?.length > 0 ? (
+                          <div className="space-y-3">
+                            {userFeed.deep_dives.map((item, idx) => (
+                              <div
+                                key={item.id || idx}
+                                className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/10"
+                              >
+                                <p className="font-semibold text-sm mb-2">{item.title}</p>
+                                {item.summary?.deep_dive?.tldr && (
+                                  <p className="text-xs text-secondary/70 mb-3">{item.summary.deep_dive.tldr}</p>
+                                )}
+                                {item.summary?.deep_dive?.chapters && (
+                                  <div className="space-y-2">
+                                    {item.summary.deep_dive.chapters.slice(0, 3).map((ch: any, i: number) => (
+                                      <div key={i} className="text-xs">
+                                        <span className="font-medium text-amber-600">{ch.title}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {item.sources && item.sources.length > 0 && (
+                                  <div className="mt-3 pt-3 border-t border-amber-500/10">
+                                    <p className="text-xs text-secondary/50">
+                                      Sources: {item.sources.map(s => s.name).join(', ')}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-secondary/50 italic">No deep dives</p>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-secondary/50 text-center py-8">
+                      No feed data available
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>

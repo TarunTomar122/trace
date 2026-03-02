@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, Suspense, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Lock, ArrowRight, Sparkles } from 'lucide-react';
 import Link from 'next/link';
+import useSWR, { preload } from 'swr';
 import { useAuth } from '@/contexts/AuthContext';
 import { isAlphaMode } from '@/lib/alpha';
 import Header from '@/components/Header';
@@ -21,6 +22,25 @@ const TAB_CONFIG: { key: FeedTab; label: string }[] = [
 ];
 
 const FREE_LIMITS: Partial<Record<FeedTab, number>> = { for_you: 2, deep_dives: 1 };
+
+// SWR fetcher for user feed
+const feedFetcher = (uid: string) => getV3UserFeed(uid);
+
+// SWR fetcher for public trending
+const trendingFetcher = async () => {
+  const res = await fetch('/api/public/trending');
+  if (!res.ok) return [];
+  const data = await res.json();
+  if (!Array.isArray(data.items)) return [];
+  return data.items.map((item: any): FeedItem => ({
+    id: item.id,
+    title: item.title,
+    url: item.url,
+    thumbnail: item.thumbnail,
+    source_name: item.source,
+    summary: { short_article: { subtitle: item.summary } },
+  }));
+};
 
 function stripMarkdown(text: string): string {
   return (text || "")
@@ -53,15 +73,33 @@ function FeedBuildingLoader() {
   );
 }
 
-function FeedCard({ item, onPress }: { item: FeedItem; onPress: () => void }) {
+function FeedCard({
+  item,
+  onPress,
+  onHover,
+}: {
+  item: FeedItem;
+  onPress: () => void;
+  onHover?: () => void;
+}) {
   const fallbackUrl = getArticleImage(null, item.title);
   const [imageUrl, setImageUrl] = useState(getArticleImage(item.thumbnail, item.title));
   const [showFallback, setShowFallback] = useState(false);
   const subtitle = stripMarkdown(item.summary?.short_article?.subtitle || "");
+  const hasHovered = useRef(false);
+
+  const handleMouseEnter = () => {
+    // Only trigger prefetch once per card
+    if (!hasHovered.current && onHover) {
+      hasHovered.current = true;
+      onHover();
+    }
+  };
 
   return (
     <button
       onClick={onPress}
+      onMouseEnter={handleMouseEnter}
       className="w-full text-left group"
     >
       {/* Image - always shows either thumbnail or relevant fallback */}
@@ -107,7 +145,6 @@ function FeedPageContent() {
   const { user, profile, loading } = useAuth();
 
   const [activeTab, setActiveTab] = useState<FeedTab>(() => {
-    // Restore tab from sessionStorage
     if (typeof window !== 'undefined') {
       const saved = sessionStorage.getItem('trace_feed_tab');
       if (saved === 'for_you' || saved === 'deep_dives' || saved === 'trending') {
@@ -117,49 +154,58 @@ function FeedPageContent() {
     return 'trending';
   });
 
-  // Persist tab to sessionStorage when it changes
+  // Persist tab to sessionStorage
   useEffect(() => {
     sessionStorage.setItem('trace_feed_tab', activeTab);
   }, [activeTab]);
-  const [v3Feed, setV3Feed] = useState<V3UserFeed | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [fallbackTrending, setFallbackTrending] = useState<FeedItem[]>([]);
 
-  // Fetch public trending as fallback while personal feed builds
-  useEffect(() => {
-    async function fetchFallback() {
-      try {
-        const res = await fetch('/api/public/trending');
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data.items)) {
-            // Convert to FeedItem format
-            const items: FeedItem[] = data.items.map((item: any) => ({
-              id: item.id,
-              title: item.title,
-              url: item.url,
-              thumbnail: item.thumbnail,
-              source_name: item.source,
-              summary: {
-                short_article: {
-                  subtitle: item.summary,
-                },
-              },
-            }));
-            setFallbackTrending(items);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to fetch fallback trending:', err);
-      }
+  // SWR for user feed - cached automatically, instant on back navigation
+  const { data: v3Feed, isLoading: feedLoading, mutate: mutateFeed } = useSWR<V3UserFeed | null>(
+    user?.uid ? `feed-${user.uid}` : null,
+    () => feedFetcher(user!.uid),
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 60000, // Dedupe requests within 1 minute
     }
-    fetchFallback();
+  );
+
+  // SWR for fallback trending
+  const { data: fallbackTrending = [] } = useSWR<FeedItem[]>(
+    'public-trending',
+    trendingFetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 300000, // 5 min cache for public trending
+    }
+  );
+
+  // Prefetch article data on hover
+  const prefetchArticle = useCallback((item: FeedItem) => {
+    // Store item in sessionStorage for instant access
+    sessionStorage.setItem(`trace_article_${item.id}`, JSON.stringify(item));
   }, []);
 
   const openArticle = useCallback((item: FeedItem) => {
+    // Save scroll position
+    sessionStorage.setItem('trace_feed_scroll', String(window.scrollY));
     sessionStorage.setItem("trace_article", JSON.stringify(item));
     router.push("/feed/article");
   }, [router]);
+
+  // Restore scroll position
+  useEffect(() => {
+    if (v3Feed && !feedLoading) {
+      const savedScroll = sessionStorage.getItem('trace_feed_scroll');
+      if (savedScroll) {
+        requestAnimationFrame(() => {
+          window.scrollTo(0, parseInt(savedScroll, 10));
+          // Clear after restoring so it doesn't persist on fresh visits
+          sessionStorage.removeItem('trace_feed_scroll');
+        });
+      }
+    }
+  }, [v3Feed, feedLoading]);
 
   const isSubscribed = profile?.subscriptionStatus === 'active' || profile?.subscriptionStatus === 'trial'
     || profile?.appSubscriptionStatus === 'active' || profile?.appSubscriptionStatus === 'trial';
@@ -174,16 +220,7 @@ function FeedPageContent() {
     return ts > 0 && Date.now() - ts < 5 * 60 * 1000;
   })();
 
-  const loadFeed = useCallback(async () => {
-    if (!user) return;
-    try {
-      const feed = await getV3UserFeed(user.uid);
-      if (feed) setV3Feed(feed);
-    } catch (error) {
-      console.error('Error loading feed:', error);
-    }
-  }, [user]);
-
+  // Redirect logic
   useEffect(() => {
     if (!isAlphaMode()) {
       router.push(user ? '/waitlist' : '/');
@@ -194,32 +231,31 @@ function FeedPageContent() {
       return;
     }
     if (user && profile?.onboarded) {
-      setIsLoading(true);
-      loadFeed().finally(() => setIsLoading(false));
       recordLastActive(user.uid);
     } else if (user && !loading && !profile?.onboarded) {
       router.push('/onboarding');
     }
-  }, [user, profile, loading, router, loadFeed]);
+  }, [user, profile, loading, router]);
 
+  // Poll for feed updates while building
   useEffect(() => {
     if (!isFeedBuilding || !user) return;
-    const interval = setInterval(loadFeed, 15000);
+    const interval = setInterval(() => mutateFeed(), 15000);
     return () => clearInterval(interval);
-  }, [isFeedBuilding, user, loadFeed]);
+  }, [isFeedBuilding, user, mutateFeed]);
 
   const currentItems: FeedItem[] = (() => {
     if (!v3Feed) return [];
     const all = activeTab === 'trending' ? v3Feed.trending
       : activeTab === 'for_you' ? v3Feed.for_you
       : v3Feed.deep_dives;
-    // Free users get all trending, limited for_you and deep_dives
     if (isSubscribed || activeTab === 'trending') return all;
     const limit = FREE_LIMITS[activeTab] ?? 2;
     return all.slice(0, limit);
   })();
 
   const isTabLimited = !isSubscribed && activeTab !== 'trending' && v3Feed != null;
+  const isLoading = loading || (feedLoading && !v3Feed);
 
   if (loading) {
     return (
@@ -308,6 +344,7 @@ function FeedPageContent() {
                   key={`fallback-${item.id || i}`}
                   item={item}
                   onPress={() => openArticle(item)}
+                  onHover={() => prefetchArticle(item)}
                 />
               ))}
             </div>
@@ -323,6 +360,7 @@ function FeedPageContent() {
                   key={`fallback-${item.id || i}`}
                   item={item}
                   onPress={() => openArticle(item)}
+                  onHover={() => prefetchArticle(item)}
                 />
               ))}
             </div>
@@ -351,6 +389,7 @@ function FeedPageContent() {
                   key={`${activeTab}-${item.id || i}`}
                   item={item}
                   onPress={() => openArticle(item)}
+                  onHover={() => prefetchArticle(item)}
                 />
               ))}
             </div>
