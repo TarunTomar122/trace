@@ -326,60 +326,6 @@ function FeedPageContent() {
           <div className="flex items-center justify-center py-24">
             <Loader2 size={24} className="animate-spin text-secondary/40" />
           </div>
-        ) : isFeedBuilding && isSubscribed && currentItems.length === 0 && fallbackTrending.length > 0 ? (
-          <>
-            {/* Show fallback trending while personal feed builds (subscribed users) */}
-            <div className="flex items-center gap-3 p-4 rounded-xl mb-6 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200/50 dark:border-amber-800/30">
-              <div className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0">
-                <Loader2 size={18} className="animate-spin text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">Building your personalized feed...</p>
-                <p className="text-xs text-secondary/60">Meanwhile, here's what's trending today</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
-              {fallbackTrending.map((item, i) => (
-                <FeedCard
-                  key={`fallback-${item.id || i}`}
-                  item={item}
-                  onPress={() => openArticle(item)}
-                  onHover={() => prefetchArticle(item)}
-                />
-              ))}
-            </div>
-          </>
-        ) : isFeedBuilding && isSubscribed && currentItems.length === 0 ? (
-          <FeedBuildingLoader />
-        ) : !isSubscribed && currentItems.length === 0 && fallbackTrending.length > 0 ? (
-          <>
-            {/* Free user with no feed - show trending with upgrade prompt */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
-              {fallbackTrending.map((item, i) => (
-                <FeedCard
-                  key={`fallback-${item.id || i}`}
-                  item={item}
-                  onPress={() => openArticle(item)}
-                  onHover={() => prefetchArticle(item)}
-                />
-              ))}
-            </div>
-            <div className="mt-8 p-6 rounded-2xl text-center bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200/50 dark:border-amber-800/30">
-              <Sparkles size={24} className="mx-auto mb-2 text-amber-500" />
-              <p className="font-semibold text-sm mb-1">Get your personalized feed</p>
-              <p className="text-xs text-secondary/60 mb-3">
-                Start a free trial to unlock For You & Deep Dive feeds tailored to your interests
-              </p>
-              <Link
-                href="/profile?tab=subscription"
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-sm font-semibold text-white"
-                style={{ backgroundColor: ACCENT }}
-              >
-                Start Free Trial
-                <ArrowRight size={14} />
-              </Link>
-            </div>
-          </>
         ) : currentItems.length > 0 ? (
           <>
             {/* Grid of cards */}
@@ -406,6 +352,49 @@ function FeedPageContent() {
                   {activeTab === 'for_you'
                     ? 'Start a free trial to get unlimited access'
                     : 'This is a popular deep dive for everyone. Go Pro to get deep dives from your trusted sources.'}
+                </p>
+                <Link
+                  href="/profile?tab=subscription"
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-sm font-semibold text-white"
+                  style={{ backgroundColor: ACCENT }}
+                >
+                  Start Free Trial
+                  <ArrowRight size={14} />
+                </Link>
+              </div>
+            )}
+          </>
+        ) : fallbackTrending.length > 0 ? (
+          <>
+            {/* No personal feed yet - show trending as fallback */}
+            {isFeedBuilding && (
+              <div className="flex items-center gap-3 p-4 rounded-xl mb-6 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200/50 dark:border-amber-800/30">
+                <div className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0">
+                  <Loader2 size={18} className="animate-spin text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Building your personalized feed...</p>
+                  <p className="text-xs text-secondary/60">Meanwhile, here's what's trending today</p>
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
+              {fallbackTrending.map((item, i) => (
+                <FeedCard
+                  key={`fallback-${item.id || i}`}
+                  item={item}
+                  onPress={() => openArticle(item)}
+                  onHover={() => prefetchArticle(item)}
+                />
+              ))}
+            </div>
+            {/* Upgrade CTA for non-subscribed users */}
+            {!isSubscribed && (
+              <div className="mt-8 p-6 rounded-2xl text-center bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200/50 dark:border-amber-800/30">
+                <Sparkles size={24} className="mx-auto mb-2 text-amber-500" />
+                <p className="font-semibold text-sm mb-1">Get your personalized feed</p>
+                <p className="text-xs text-secondary/60 mb-3">
+                  Start a free trial to unlock For You & Deep Dive feeds tailored to your interests
                 </p>
                 <Link
                   href="/profile?tab=subscription"
