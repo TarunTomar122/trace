@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import {
@@ -2906,6 +2907,25 @@ const SEOContentSection = () => {
 
 // --- Main Landing Page ---
 export default function LandingPage() {
+  const { user, profile, loading } = useAuth();
+  const router = useRouter();
+
+  // Redirect logged-in users to feed
+  useEffect(() => {
+    if (!loading && user && profile?.onboarded) {
+      router.replace('/feed');
+    }
+  }, [user, profile, loading, router]);
+
+  // Show loading while checking auth
+  if (loading || (user && profile?.onboarded)) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground px-2 selection:bg-primary/20 selection:text-primary font-serif antialiased">
       <GridBackground />
