@@ -42,6 +42,15 @@ const trendingFetcher = async () => {
   }));
 };
 
+// SWR fetcher for global deep dives fallback
+const globalDeepDivesFetcher = async () => {
+  const res = await fetch('/api/public/deep-dives');
+  if (!res.ok) return [];
+  const data = await res.json();
+  if (!Array.isArray(data.items)) return [];
+  return data.items as FeedItem[];
+};
+
 function stripMarkdown(text: string): string {
   return (text || "")
     .replace(/\*\*(.*?)\*\*/g, "$1")
@@ -180,6 +189,16 @@ function FeedPageContent() {
     }
   );
 
+  // SWR for fallback deep dives (from global feed)
+  const { data: fallbackDeepDives = [] } = useSWR<FeedItem[]>(
+    'public-deep-dives',
+    globalDeepDivesFetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 300000, // 5 min cache
+    }
+  );
+
   // Prefetch article data on hover
   const prefetchArticle = useCallback((item: FeedItem) => {
     // Store item in sessionStorage for instant access
@@ -246,13 +265,26 @@ function FeedPageContent() {
 
   const currentItems: FeedItem[] = (() => {
     if (!v3Feed) return [];
-    const all = activeTab === 'trending' ? v3Feed.trending
-      : activeTab === 'for_you' ? v3Feed.for_you
-      : v3Feed.deep_dives;
+    let all: FeedItem[];
+
+    if (activeTab === 'trending') {
+      all = v3Feed.trending;
+    } else if (activeTab === 'for_you') {
+      all = v3Feed.for_you;
+    } else {
+      // Deep dives - use global fallback if user has none
+      all = v3Feed.deep_dives?.length > 0 ? v3Feed.deep_dives : fallbackDeepDives;
+    }
+
     if (isSubscribed || activeTab === 'trending') return all;
     const limit = FREE_LIMITS[activeTab] ?? 2;
     return all.slice(0, limit);
   })();
+
+  // Check if showing fallback deep dives
+  const isShowingFallbackDeepDives = activeTab === 'deep_dives' &&
+    v3Feed && (v3Feed.deep_dives?.length === 0 || !v3Feed.deep_dives) &&
+    fallbackDeepDives.length > 0;
 
   const isTabLimited = !isSubscribed && activeTab !== 'trending' && v3Feed != null;
   const isLoading = loading || (feedLoading && !v3Feed);
@@ -269,6 +301,9 @@ function FeedPageContent() {
     if (activeTab === 'trending') return 'Top trending content for you';
     if (activeTab === 'for_you') return 'Matched to your interests';
     if (activeTab === 'deep_dives') {
+      if (isShowingFallbackDeepDives) {
+        return 'Popular deep dive for everyone';
+      }
       return isSubscribed
         ? 'From your trusted sources'
         : 'Popular deep dive · Subscribe for personalized picks';
