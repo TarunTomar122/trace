@@ -1,0 +1,138 @@
+{
+  "version": "3.0",
+  "description": "Article-based learning cards with subtitle, body paragraphs, and takeaway.",
+  "card_format": {
+    "fields": ["id", "title", "subtitle", "body", "takeaway"]
+  },
+  "interest_id": "ideas",
+  "article": {
+    "title": "This Is Water",
+    "author": "David Foster Wallace",
+    "publication": "Kenyon College Commencement Address",
+    "url": "https://fs.blog/david-foster-wallace-this-is-water/",
+    "image_url": null,
+    "published_date": "2005-05-21"
+  },
+  "cards": [
+    {
+      "id": "article-ideas-01",
+      "title": "The Most Obvious Realities Are Hardest to See",
+      "subtitle": "'How's the water?' 'What the hell is water?'",
+      "body": [
+        "Fish don't know they're in water—it's too constant to notice.",
+        "Same for humans. The beliefs and patterns that shape everything are invisible because they're everywhere."
+      ],
+      "takeaway": "What's most pervasive is often least visible."
+    },
+    {
+      "id": "article-ideas-02",
+      "title": "Education Teaches How to Think",
+      "subtitle": "The real value isn't facts—it's choosing what to pay attention to.",
+      "body": [
+        "A liberal arts education gives you control over your own attention and interpretation.",
+        "You decide what has meaning. Most people never exercise the option."
+      ],
+      "takeaway": "Education's real gift is conscious choice over how you interpret experience."
+    },
+    {
+      "id": "article-ideas-03",
+      "title": "Your Default Is Self-Centeredness",
+      "subtitle": "You're at the center of your universe—but so is everyone else.",
+      "body": [
+        "Every experience you've ever had has happened to you. You're the center. This is how consciousness works.",
+        "But every other person experiences the same thing. You're a background character in their story."
+      ],
+      "takeaway": "Everyone is the protagonist of their own story."
+    },
+    {
+      "id": "article-ideas-04",
+      "title": "Adult Life Is Tedious Routine",
+      "subtitle": "The grocery store. The commute. The waiting.",
+      "body": [
+        "Not dramatic crises—just low-grade frustration on repeat.",
+        "How you handle the boring, frustrating parts is how you handle life."
+      ],
+      "takeaway": "The mundane is where most of life actually happens."
+    },
+    {
+      "id": "article-ideas-05",
+      "title": "In Traffic, Everyone's in Your Way",
+      "subtitle": "Your default: these people are obstacles.",
+      "body": [
+        "• The SUV that cut you off\n• The slow driver\n• The person who took your spot",
+        "Your automatic response is irritation. That interpretation is optional—it just doesn't feel optional."
+      ],
+      "takeaway": "Frustration feels like fact but it's actually interpretation."
+    },
+    {
+      "id": "article-ideas-06",
+      "title": "You Can Choose Different Stories",
+      "subtitle": "That SUV might be rushing to a hospital.",
+      "body": [
+        "You don't know why people do what they do. You're making up a story.",
+        "Neither story is provably true. One makes your life harder."
+      ],
+      "takeaway": "Stories about others are fabrications—you might as well choose kinder ones."
+    },
+    {
+      "id": "article-ideas-07",
+      "title": "Awareness Requires Constant Effort",
+      "subtitle": "Your default mode is autopilot, not conscious choice.",
+      "body": [
+        "Staying aware, questioning automatic responses—this is exhausting.",
+        "Freedom takes work. Continuous, daily work."
+      ],
+      "takeaway": "Conscious living is effortful; autopilot is the default."
+    },
+    {
+      "id": "article-ideas-08",
+      "title": "Worship Something—You Don't Get to Not",
+      "subtitle": "Everyone worships. The only choice is what.",
+      "body": [
+        "• Worship money = never enough\n• Worship body = always ugly\n• Worship intellect = always fraudulent",
+        "These aren't evil—they're just insatiable masters."
+      ],
+      "takeaway": "Whatever you organize your life around will eventually own you."
+    },
+    {
+      "id": "article-ideas-09",
+      "title": "Real Hell Is Unconscious Living",
+      "subtitle": "The same routine forever, with no awareness that anything else is possible.",
+      "body": [
+        "Hell isn't fire—it's the rat race with no sense that you chose any of it.",
+        "The alternative isn't escaping routine. It's being awake within it."
+      ],
+      "takeaway": "Unconscious routine is its own kind of death."
+    },
+    {
+      "id": "article-ideas-10",
+      "title": "Real Freedom Is Attention",
+      "subtitle": "You control what you notice and what meaning you assign.",
+      "body": [
+        "You can't control what happens. You can control how you interpret it.",
+        "This is the only real freedom. Everything else is in service of this or hollow."
+      ],
+      "takeaway": "Attention is the fundamental freedom."
+    },
+    {
+      "id": "article-ideas-11",
+      "title": "Clichés Are True",
+      "subtitle": "'It's about the journey, not the destination.' Eye-roll. But correct.",
+      "body": [
+        "The truest things have been said so often they've become invisible.",
+        "The trick is to actually live them. Hearing truth and living truth are years apart."
+      ],
+      "takeaway": "Clichés point at real things we've stopped seeing."
+    },
+    {
+      "id": "article-ideas-12",
+      "title": "This Is Water",
+      "subtitle": "The obvious is invisible. The choice is yours.",
+      "body": [
+        "The water is still there. The routine doesn't change.",
+        "What changes is whether you're conscious. This is water. Will you notice it?"
+      ],
+      "takeaway": "Awareness of the obvious is the work of a lifetime."
+    }
+  ]
+}

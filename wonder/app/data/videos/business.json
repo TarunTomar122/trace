@@ -1,0 +1,108 @@
+{
+  "version": "3.0",
+  "description": "Conversational learning cards with subtitle, body paragraphs, and takeaway per card.",
+  "card_format": {
+    "fields": [
+      "id",
+      "title",
+      "subtitle",
+      "body",
+      "takeaway"
+    ]
+  },
+  "interest_id": "business",
+  "videos": [
+    {
+      "title": "How Great Leaders Inspire Action",
+      "creator": "Simon Sinek",
+      "platform": "TED",
+      "url": "",
+      "thumbnail_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200&q=80",
+      "duration": "",
+      "published_date": "",
+      "description": ""
+    }
+  ],
+  "cards": [
+    {
+      "id": "business-video-01",
+      "title": "Strategy Is Choosing What Not to Do",
+      "subtitle": "Most teams call everything a priority, then wonder why nothing ships well.",
+      "body": [
+        "A strategy meeting often becomes a wish list. You keep adding markets, features, and customer segments until execution gets blurry.",
+        "Strong strategy feels uncomfortable because it includes clear no's. Constraints make focus possible, and focus makes results repeatable."
+      ],
+      "takeaway": "If everything is strategic, nothing is."
+    },
+    {
+      "id": "business-video-02",
+      "title": "Competing on Price Is a Fragile Plan",
+      "subtitle": "Lower pricing can win attention fast, but it can quietly kill your margins.",
+      "body": [
+        "A cheaper offer pulls in customers, but it also leaves less room to invest in people, product quality, and support.",
+        "Unless you have real cost advantages, a price war is usually a race to exhaustion. Differentiation gives you breathing room."
+      ],
+      "takeaway": "Price can open the door, but value keeps you alive."
+    },
+    {
+      "id": "business-video-03",
+      "title": "Culture Shows Up in Incentives",
+      "subtitle": "What people are rewarded for matters more than what posters on the wall say.",
+      "body": [
+        "A company might claim it values quality, then reward only speed. Teams adapt to the scoreboard, not the slogan.",
+        "If you want better behavior, redesign incentives first. Culture follows repeated signals, not speeches."
+      ],
+      "takeaway": "People do what the system pays for."
+    },
+    {
+      "id": "business-video-04",
+      "title": "Distribution Often Beats Product Quality",
+      "subtitle": "A great product with weak distribution usually loses to a good product with strong reach.",
+      "body": [
+        "Founders spend months polishing details, but customers still need to discover and trust the product before any detail matters.",
+        "Channels, partnerships, and positioning are not side work. They are part of the product experience."
+      ],
+      "takeaway": "Build value, then build the path to it."
+    },
+    {
+      "id": "business-video-05",
+      "title": "Meetings Can Hide Decision Avoidance",
+      "subtitle": "Sometimes long meetings are just a polite way to delay hard choices.",
+      "body": [
+        "You revisit the same options every week, gather more input, and still avoid committing. It feels productive because everyone is involved.",
+        "Decide who owns the call, what data is enough, and by when. Fast learning usually beats perfect certainty."
+      ],
+      "takeaway": "Clarity beats consensus theater."
+    },
+    {
+      "id": "business-video-06",
+      "title": "Unit Economics Matter Early",
+      "subtitle": "Growth can look exciting while each new customer quietly loses money.",
+      "body": [
+        "Top-line charts can hide a weak core if acquisition costs stay high and retention stays low.",
+        "You do not need perfect financial models on day one, but you do need honest math on how value is created and kept."
+      ],
+      "takeaway": "Scale a healthy model, not a leak."
+    },
+    {
+      "id": "business-video-07",
+      "title": "Moats Are Built, Not Declared",
+      "subtitle": "A moat is not a tagline. It is a durable advantage that survives competition.",
+      "body": [
+        "Network effects, switching costs, trust, and data advantages take time to build and maintain.",
+        "If a competitor can copy you quickly, your edge is temporary. Temporary edges are fine, but call them what they are."
+      ],
+      "takeaway": "Defensibility comes from compounding, not claiming."
+    },
+    {
+      "id": "business-video-08",
+      "title": "Execution Is Strategy in Real Life",
+      "subtitle": "A clever strategy without operational follow-through is just a slide deck.",
+      "body": [
+        "Plans break when ownership is fuzzy, priorities shift weekly, and feedback loops are slow.",
+        "Execution quality is strategic because it determines how fast you learn and adapt under pressure."
+      ],
+      "takeaway": "Your operating rhythm is your real strategy."
+    }
+  ]
+}

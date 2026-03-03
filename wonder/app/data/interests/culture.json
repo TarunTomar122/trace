@@ -1,0 +1,214 @@
+{
+  "version": "3.0",
+  "description": "Learning cards with subtitle, body paragraphs, and takeaway per card.",
+  "card_format": {
+    "fields": ["id", "title", "subtitle", "body", "takeaway"]
+  },
+  "interest_id": "culture",
+  "book": {
+    "title": "The Culture Map",
+    "author": "Erin Meyer"
+  },
+  "cards": [
+    {
+      "id": "culture-01",
+      "title": "Every Culture Is Normal to Itself",
+      "subtitle": "You called their behavior unprofessional in the meeting. They thought the same thing about you.",
+      "body": [
+        "The Danish manager gives blunt feedback. The Thai employee stops responding to emails. Both think the other violated basic professional norms.",
+        "Neither realizes they're running different operating systems. What feels rude to you is efficient to them."
+      ],
+      "takeaway": "Judging by your own standards guarantees misunderstanding."
+    },
+    {
+      "id": "culture-02",
+      "title": "Direct Is Not the Same as Rude",
+      "subtitle": "The Dutch client said your proposal was weak. The Japanese client smiled and said it was interesting. Both meant no.",
+      "body": [
+        "Direct cultures state the problem. Indirect cultures signal it through tone and what they don't say.",
+        "• You walk out of both meetings with completely different reads on the same rejection\n• The Dutch aren't being aggressive, the Japanese aren't being dishonest"
+      ],
+      "takeaway": "Misreading the code breaks the relationship before you know it happened."
+    },
+    {
+      "id": "culture-03",
+      "title": "Silence Means Different Things",
+      "subtitle": "You asked the question. Twenty seconds pass. The American panics. The Finn is still thinking.",
+      "body": [
+        "In Helsinki, the pause means they're taking you seriously. In São Paulo, it means you said something offensive.",
+        "Americans fill every gap. Japanese use silence as punctuation. Rushing to fill their pause signals you don't respect their process."
+      ],
+      "takeaway": "Learn what silence means before you try to fill it."
+    },
+    {
+      "id": "culture-04",
+      "title": "Trust Is Built Differently Everywhere",
+      "subtitle": "The American wants to discuss terms in meeting one. The Chinese partner is still pouring tea in meeting three.",
+      "body": [
+        "Task-based cultures trust through delivery. Relationship-based cultures trust through knowing you.",
+        "Americans build trust fast, lose it fast. Chinese trust takes months to earn and years to break."
+      ],
+      "takeaway": "The order of trust-building is non-negotiable."
+    },
+    {
+      "id": "culture-05",
+      "title": "Low Context and High Context Are Real Divides",
+      "subtitle": "Your email spelled out the action item, owner, and deadline. The Japanese team thought you were treating them like children.",
+      "body": [
+        "Low-context cultures put everything in the words. High-context cultures put it in the tone, the gaps, what's implied.",
+        "• American clarity reads as condescension in Tokyo\n• Japanese subtlety reads as evasion in New York"
+      ],
+      "takeaway": "The message and the medium are culturally fused."
+    },
+    {
+      "id": "culture-06",
+      "title": "Feedback Styles Can Destroy Teams",
+      "subtitle": "The Dutch manager tells the Thai employee the report isn't good. Three weeks later, the employee resigns.",
+      "body": [
+        "Direct feedback cultures state the problem. Indirect feedback cultures wrap it in six layers of softening language.",
+        "Netherlands: 'This is wrong.' Thailand: 'Perhaps we could explore another direction.'"
+      ],
+      "takeaway": "The packaging of feedback matters as much as the content."
+    },
+    {
+      "id": "culture-07",
+      "title": "Decisions Are Made Differently",
+      "subtitle": "Your team decided in one meeting and spent six months fixing it. Their team spent six weeks deciding and executed in one month.",
+      "body": [
+        "Top-down cultures decide fast, execute slow, adjust constantly. Consensus cultures decide slow, execute fast, adjust never.",
+        "American boss calls it Monday, team argues until Friday. Japanese team argues for weeks, then moves as one."
+      ],
+      "takeaway": "Rushing consensus reads as contempt for the group."
+    },
+    {
+      "id": "culture-08",
+      "title": "Hierarchy Is Invisible Until It's Violated",
+      "subtitle": "The junior analyst challenged the VP's idea in the meeting. In Denmark, she got promoted. In Korea, she got fired.",
+      "body": [
+        "Egalitarian cultures call it initiative. Hierarchical cultures call it insubordination. Same behavior, opposite career outcome.",
+        "• Dutch junior staff question the boss openly\n• Korean junior staff speak only when asked"
+      ],
+      "takeaway": "Learn the hierarchy rules before you test them."
+    },
+    {
+      "id": "culture-09",
+      "title": "Time Is Relative—Culturally",
+      "subtitle": "The 2pm meeting started at 2:00 in Munich. At 2:23 in Mumbai. Both sides think the other is unprofessional.",
+      "body": [
+        "Linear-time cultures treat the schedule as a contract. Flexible-time cultures treat it as an estimate.",
+        "Five minutes late in Germany is an insult. Twenty minutes late in Brazil is expected."
+      ],
+      "takeaway": "Punctuality is a cultural value, not a universal virtue."
+    },
+    {
+      "id": "culture-10",
+      "title": "Disagreement Has Rules You Don't Know",
+      "subtitle": "You argued with his proposal for ten minutes. In Paris, he's engaged. In Jakarta, he won't return your calls.",
+      "body": [
+        "Confrontational cultures separate the idea from the person. Avoidant cultures see them as fused.",
+        "French meetings sound like arguments to outsiders. Indonesian disagreement happens in private, carefully."
+      ],
+      "takeaway": "Debating style is culturally coded."
+    },
+    {
+      "id": "culture-11",
+      "title": "What Sounds Persuasive Depends on Where You're From",
+      "subtitle": "You opened with the recommendation. The American client nodded. The French client stopped listening.",
+      "body": [
+        "Applications-first cultures want the answer up front. Principles-first cultures want the reasoning that leads to it.",
+        "• Americans: conclusion, then support\n• French: framework, then conclusion"
+      ],
+      "takeaway": "The structure of persuasion is culturally coded, not universal."
+    },
+    {
+      "id": "culture-12",
+      "title": "Relationships First or Business First",
+      "subtitle": "You pulled out the contract in meeting one. The Saudi partner pulled out for good.",
+      "body": [
+        "Task-first cultures earn trust through delivery. Relationship-first cultures earn deals through trust.",
+        "Americans discuss contracts on day one. Saudis discuss family and tea for weeks first."
+      ],
+      "takeaway": "Skipping the relationship phase doesn't save time—it kills the deal."
+    },
+    {
+      "id": "culture-13",
+      "title": "Egalitarian Doesn't Mean Flat",
+      "subtitle": "The Swedish CEO bikes to work and eats in the cafeteria. Then overrules the team and nobody questions it.",
+      "body": [
+        "Egalitarian cultures hide power, they don't erase it. The hierarchy exists—it's just performed quietly.",
+        "Danish bosses dress down and listen carefully. Then they decide and the conversation is over."
+      ],
+      "takeaway": "Informal power is harder to see, not easier to challenge."
+    },
+    {
+      "id": "culture-14",
+      "title": "Yes Doesn't Always Mean Yes",
+      "subtitle": "The Indian partner said yes in the meeting. Three weeks later, nothing happened. You're confused. He's confused why you're confused.",
+      "body": [
+        "In many cultures, yes means 'I hear you,' not 'I agree.' Context determines which meaning applies.",
+        "• Yes can mean: I hear you, I understand, I'll consider it, or I agree\n• Japanese yes often means 'I understand your question'"
+      ],
+      "takeaway": "Clarifying which yes you got requires asking without insulting."
+    },
+    {
+      "id": "culture-15",
+      "title": "Emotional Expression Has a Spectrum",
+      "subtitle": "The Italian client talked with his hands for twenty minutes. The Finnish client said three sentences. Both were equally interested.",
+      "body": [
+        "Expressive cultures show engagement through animation. Neutral cultures show it through attention.",
+        "Italian expressiveness doesn't mean more invested. Finnish reserve doesn't mean less engaged."
+      ],
+      "takeaway": "Judging interest by volume is a beginner error."
+    },
+    {
+      "id": "culture-16",
+      "title": "Written vs Spoken Carry Different Weight",
+      "subtitle": "You shook hands. The Nigerian partner considers it done. You sent a contract. He thinks you don't trust him.",
+      "body": [
+        "Contract cultures trust documents. Relationship cultures trust handshakes. Insist on the wrong one and you signal bad faith.",
+        "• American lawyers want everything written\n• Nigerian partners seal it with eye contact"
+      ],
+      "takeaway": "Know which form of commitment counts."
+    },
+    {
+      "id": "culture-17",
+      "title": "Small Talk Is Strategic",
+      "subtitle": "You skipped the small talk and opened your laptop. The Brazilian client checked his phone. The meeting was over before it started.",
+      "body": [
+        "Task cultures see pre-meeting chat as wasted time. Relationship cultures see it as the foundation.",
+        "Thirty minutes on family and football isn't filler. It's the trust layer that makes business possible."
+      ],
+      "takeaway": "Small talk is often where the deal is actually made."
+    },
+    {
+      "id": "culture-18",
+      "title": "Your Default Is Not Universal",
+      "subtitle": "You assumed direct feedback was professional. They assumed it was hostile. Both of you assumed everyone agreed.",
+      "body": [
+        "Your communication style feels normal because it's invisible to you. Their style looks wrong because you can see it.",
+        "Neither of you realizes you're both culturally programmed. What feels natural is just what you learned first."
+      ],
+      "takeaway": "The map starts with admitting you're not neutral."
+    },
+    {
+      "id": "culture-19",
+      "title": "Adapt, Don't Abandon Who You Are",
+      "subtitle": "You tried to act Japanese in Tokyo. They could tell you were faking it. The Dutch version of you would have worked better.",
+      "body": [
+        "Adaptation isn't impersonation. Explain your defaults, ask about theirs, adjust where it matters.",
+        "• Fake fluency reads worse than honest difference\n• Name the gap instead of pretending it doesn't exist"
+      ],
+      "takeaway": "Explain your style rather than imitate theirs."
+    },
+    {
+      "id": "culture-20",
+      "title": "Maps Don't Replace Curiosity",
+      "subtitle": "You read that Germans are direct. This one speaks in careful layers. The framework didn't prepare you for her.",
+      "body": [
+        "Cultural maps show averages, not individuals. A blunt Japanese person exists. An indirect German exists.",
+        "The map helps you ask better questions, not skip them. Every person is culture plus personality plus experience."
+      ],
+      "takeaway": "The best cross-cultural operators stay curious after they think they understand."
+    }
+  ]
+}

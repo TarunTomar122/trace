@@ -1,0 +1,138 @@
+{
+  "version": "3.0",
+  "description": "Article-based learning cards with subtitle, body paragraphs, and takeaway.",
+  "card_format": {
+    "fields": ["id", "title", "subtitle", "body", "takeaway"]
+  },
+  "interest_id": "money",
+  "article": {
+    "title": "I Will Teach You to Be Rich",
+    "author": "Ramit Sethi",
+    "publication": "Personal Finance Classic Essay",
+    "url": "https://www.iwillteachyoutoberich.com/blog/",
+    "image_url": null,
+    "published_date": "2009-01-01"
+  },
+  "cards": [
+    {
+      "id": "article-money-01",
+      "title": "Spend Extravagantly on What You Love",
+      "subtitle": "Cut costs mercilessly on what you don't care about.",
+      "body": [
+        "Figure out what you actually value and spend aggressively there. If you love coffee, don't cut the lattes.",
+        "Cut the things you buy out of habit that bring no joy. Money is a tool for living well."
+      ],
+      "takeaway": "Intentional spending on what matters beats universal frugality."
+    },
+    {
+      "id": "article-money-02",
+      "title": "Automate Everything",
+      "subtitle": "Willpower fails. Systems don't.",
+      "body": [
+        "Manual money management requires constant decisions. Every paycheck becomes a negotiation with yourself.",
+        "• Automate savings and investments\n• Money moves before you see it\n• No decisions required"
+      ],
+      "takeaway": "Automation removes the need for willpower in financial decisions."
+    },
+    {
+      "id": "article-money-03",
+      "title": "Big Wins Beat Small Cuts",
+      "subtitle": "Negotiating salary once adds thousands forever.",
+      "body": [
+        "People obsess over $5 daily expenses while ignoring $5,000 annual decisions.",
+        "Negotiate salary once—it compounds your entire career. Focus on big wins; small stuff barely matters."
+      ],
+      "takeaway": "Major one-time decisions have more impact than daily micro-frugality."
+    },
+    {
+      "id": "article-money-04",
+      "title": "Credit Cards Are Tools, Not Traps",
+      "subtitle": "Used correctly, they offer free money. Used incorrectly, they're ruin.",
+      "body": [
+        "• Points and cash back\n• Purchase protection\n• Credit building\n...but only if you pay in full monthly.",
+        "Carrying a balance negates all benefits. 20% interest erases any rewards instantly."
+      ],
+      "takeaway": "Credit cards reward discipline and punish its absence."
+    },
+    {
+      "id": "article-money-05",
+      "title": "Start Investing Now",
+      "subtitle": "Waiting until you understand everything costs more than learning by doing.",
+      "body": [
+        "People delay investing because they want to learn first. Meanwhile, compound interest isn't waiting.",
+        "Start with index funds—simple, diversified, low-cost. A beginner's portfolio today beats an expert's in five years."
+      ],
+      "takeaway": "Imperfect action beats perfect paralysis in investing."
+    },
+    {
+      "id": "article-money-06",
+      "title": "Your 401(k) Match Is Free Money",
+      "subtitle": "Not getting the full match? You're declining a raise.",
+      "body": [
+        "A 100% match means every dollar you contribute is immediately doubled. No investment can match that return.",
+        "Get the full match first. Everything else comes second."
+      ],
+      "takeaway": "Employer matching is the highest guaranteed return available."
+    },
+    {
+      "id": "article-money-07",
+      "title": "Spending Plans Beat Budgets",
+      "subtitle": "Budgets feel restrictive. A spending plan is permission.",
+      "body": [
+        "Traditional budgets feel like punishment. A conscious spending plan starts with what you love.",
+        "• Fixed costs first\n• Savings and investments\n• Then guilt-free spending money"
+      ],
+      "takeaway": "Frame your finances around permission, not restriction."
+    },
+    {
+      "id": "article-money-08",
+      "title": "Negotiate Everything",
+      "subtitle": "The sticker price is often just the opening offer.",
+      "body": [
+        "Salary. Rent. Credit card rates. Bank fees. Medical bills. All negotiable.",
+        "A five-minute call can save hundreds. Worst case: they say no. Best case: changes your finances."
+      ],
+      "takeaway": "Asking for a better deal costs nothing and often works."
+    },
+    {
+      "id": "article-money-09",
+      "title": "Your Network Drives Your Net Worth",
+      "subtitle": "The people around you shape your financial expectations.",
+      "body": [
+        "If your friends think investing is for rich people, you won't start.",
+        "Your reference group sets your financial normal. Upgrade your normal and the behaviors follow."
+      ],
+      "takeaway": "Financial habits are socially contagious—choose your influences."
+    },
+    {
+      "id": "article-money-10",
+      "title": "The $3 Question Doesn't Matter",
+      "subtitle": "Stop agonizing over small purchases.",
+      "body": [
+        "Should you buy the coffee? The book? These decisions don't matter—it's not where money is won or lost.",
+        "The systems—automatic savings, investment allocations—these determine outcomes."
+      ],
+      "takeaway": "Small purchase decisions matter far less than automated systems."
+    },
+    {
+      "id": "article-money-11",
+      "title": "Rich Life Is Personal",
+      "subtitle": "Your version of rich isn't someone else's.",
+      "body": [
+        "Rich might mean travel, early retirement, or freedom to quit a bad job. The definition is yours to choose.",
+        "Clarity on what rich means to you is prerequisite to getting there."
+      ],
+      "takeaway": "Define your own version of rich before optimizing for it."
+    },
+    {
+      "id": "article-money-12",
+      "title": "Financial Advice Is Often Wrong",
+      "subtitle": "Most advice is written for someone else's situation.",
+      "body": [
+        "Generic advice assumes average circumstances. You have specific goals, constraints, and values.",
+        "Take principles, not prescriptions. The frameworks matter—the specific numbers are yours to set."
+      ],
+      "takeaway": "Adapt financial principles to your specific situation."
+    }
+  ]
+}

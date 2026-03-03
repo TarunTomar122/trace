@@ -1,0 +1,138 @@
+{
+  "version": "3.0",
+  "description": "Article-based learning cards with subtitle, body paragraphs, and takeaway.",
+  "card_format": {
+    "fields": ["id", "title", "subtitle", "body", "takeaway"]
+  },
+  "interest_id": "psychology",
+  "article": {
+    "title": "The Tyranny of Choice",
+    "author": "Barry Schwartz",
+    "publication": "Scientific American",
+    "url": "https://www.scientificamerican.com/article/the-tyranny-of-choice/",
+    "image_url": null,
+    "published_date": "2004-04-01"
+  },
+  "cards": [
+    {
+      "id": "article-psychology-01",
+      "title": "More Options Don't Make You Happier",
+      "subtitle": "24 jam varieties attracted crowds. 6 varieties sold more jam.",
+      "body": [
+        "The big display attracted more people. The small display sold ten times more jam.",
+        "Too many options creates paralysis. People walk away rather than choose wrong."
+      ],
+      "takeaway": "More options increase attraction but can decrease action."
+    },
+    {
+      "id": "article-psychology-02",
+      "title": "Maximizers vs Satisficers",
+      "subtitle": "People who seek 'the best' end up less satisfied than those who seek 'good enough.'",
+      "body": [
+        "• Maximizers research exhaustively and second-guess constantly\n• Satisficers set a threshold and stop when they hit it",
+        "The maximizer found the best restaurant. The satisficer enjoyed dinner."
+      ],
+      "takeaway": "Seeking 'good enough' often produces more satisfaction than seeking 'the best.'"
+    },
+    {
+      "id": "article-psychology-03",
+      "title": "Opportunity Cost Escalates",
+      "subtitle": "Every choice means giving up alternatives.",
+      "body": [
+        "Chocolate or vanilla? You give up one thing. Thirty-one flavors? You give up thirty.",
+        "The more options you rejected, the more reasons you have to second-guess."
+      ],
+      "takeaway": "Abundant choice multiplies the things you didn't pick."
+    },
+    {
+      "id": "article-psychology-04",
+      "title": "Expectations Rise With Options",
+      "subtitle": "Limited options? Blame the options. Unlimited? Blame yourself.",
+      "body": [
+        "One pair of jeans in your size—you buy it. Fifty pairs—you expect perfection.",
+        "With unlimited choice, anything less than perfect feels like your failure."
+      ],
+      "takeaway": "Unlimited options create expectations that reality can't meet."
+    },
+    {
+      "id": "article-psychology-05",
+      "title": "Regret and Reversibility",
+      "subtitle": "Decisions you can undo feel lighter—but get revisited forever.",
+      "body": [
+        "Return policies seem like a gift. They're actually a trap—keeping the decision open.",
+        "Irreversible decisions hurt more upfront but create peace faster."
+      ],
+      "takeaway": "Reversible choices stay open; irreversible choices force closure."
+    },
+    {
+      "id": "article-psychology-06",
+      "title": "Adaptation Erases Perfect Choices",
+      "subtitle": "You found the perfect apartment. Six months later, it's just home.",
+      "body": [
+        "Hedonic adaptation means we adjust to both good and bad. The thrill of the perfect choice fades.",
+        "The maximizer spent months searching. The satisficer spent a weekend. Both feel the same a year later."
+      ],
+      "takeaway": "Adaptation equalizes outcomes that felt vastly different at decision time."
+    },
+    {
+      "id": "article-psychology-07",
+      "title": "Social Comparison Poisons Satisfaction",
+      "subtitle": "Your new car felt great until your neighbor bought a better one.",
+      "body": [
+        "More options means more comparison points. Social media shows everyone who chose differently.",
+        "Satisfaction isn't absolute—it's relative to what you're comparing against."
+      ],
+      "takeaway": "Comparison transforms good choices into inadequate ones."
+    },
+    {
+      "id": "article-psychology-08",
+      "title": "Choice Becomes a Burden",
+      "subtitle": "Freedom to choose should feel empowering. Sometimes it's just exhausting.",
+      "body": [
+        "Decision fatigue is real. Every choice depletes a limited resource.",
+        "The freedom to optimize everything becomes the obligation to optimize everything."
+      ],
+      "takeaway": "Too much choice converts freedom into exhaustion."
+    },
+    {
+      "id": "article-psychology-09",
+      "title": "Constraints Can Be Liberating",
+      "subtitle": "Three menu options = enjoy dinner. Hundred options = work.",
+      "body": [
+        "Constraints reduce decision load. Less energy choosing, more experiencing.",
+        "Artists work within constraints—the sonnet, the budget, the deadline. Constraints focus creativity."
+      ],
+      "takeaway": "Well-chosen constraints reduce burden and increase satisfaction."
+    },
+    {
+      "id": "article-psychology-10",
+      "title": "Satisficing Is a Skill",
+      "subtitle": "Knowing when good enough is good enough takes practice.",
+      "body": [
+        "'Good enough' sounds like settling. It's actually strategic.",
+        "Define your threshold in advance. Stop when you hit it. The discipline is in the stopping."
+      ],
+      "takeaway": "Satisficing is learnable and usually rational."
+    },
+    {
+      "id": "article-psychology-11",
+      "title": "Reduce Options Deliberately",
+      "subtitle": "Curation is kindness. Fewer options = better experience.",
+      "body": [
+        "• Restaurants with shorter menus\n• Stores with curated selections\n• Human recommendations over infinite catalogs",
+        "Someone already did the filtering. That's a service, not a limitation."
+      ],
+      "takeaway": "Curation adds value by removing options."
+    },
+    {
+      "id": "article-psychology-12",
+      "title": "The Paradox Is Solvable",
+      "subtitle": "Choice overload is a design problem with design solutions.",
+      "body": [
+        "The paradox isn't an argument against freedom—it's for thoughtful choice architecture.",
+        "Defaults, recommendations, filters—these make abundant choice navigable."
+      ],
+      "takeaway": "Smart design can preserve choice while reducing its costs."
+    }
+  ]
+}

@@ -1,0 +1,138 @@
+{
+  "version": "3.0",
+  "description": "Article-based learning cards with subtitle, body paragraphs, and takeaway.",
+  "card_format": {
+    "fields": ["id", "title", "subtitle", "body", "takeaway"]
+  },
+  "interest_id": "science",
+  "article": {
+    "title": "The Relativity of Wrong",
+    "author": "Isaac Asimov",
+    "publication": "The Skeptical Inquirer",
+    "url": "https://chem.tufts.edu/answersinscience/relativityofwrong.htm",
+    "image_url": null,
+    "published_date": "1989-01-01"
+  },
+  "cards": [
+    {
+      "id": "article-science-01",
+      "title": "Wrong Has Degrees",
+      "subtitle": "Flat Earth vs perfect sphere—both wrong, but one is MORE wrong.",
+      "body": [
+        "The flat Earth theory is wrong by a lot. The spherical Earth theory is wrong by a tiny amount.",
+        "Progress isn't replacing wrong with right—it's replacing very wrong with slightly less wrong."
+      ],
+      "takeaway": "Scientific progress is measured in degrees of wrongness, not binary truth."
+    },
+    {
+      "id": "article-science-02",
+      "title": "Flat Earth Was Reasonable",
+      "subtitle": "Stand anywhere. Look around. It looks flat.",
+      "body": [
+        "For most of history, flat Earth wasn't ignorance—it was observation.",
+        "The Greeks noticed ships disappearing hull-first. They calculated Earth's circumference within 10%."
+      ],
+      "takeaway": "Local observations can be misleading. Scale reveals what proximity hides."
+    },
+    {
+      "id": "article-science-03",
+      "title": "The Sphere Was an Improvement",
+      "subtitle": "Earth bulges at the equator and flattens at the poles.",
+      "body": [
+        "Newton predicted Earth would be slightly squashed. The equatorial diameter is 27 miles longer than the polar.",
+        "On an 8,000-mile planet, that's only 0.3% deviation. Refined, not replaced."
+      ],
+      "takeaway": "Better measurements don't overthrow old theories—they refine them."
+    },
+    {
+      "id": "article-science-04",
+      "title": "Even the Oblate Spheroid Is Wrong",
+      "subtitle": "Earth is lumpy. Mountains, trenches, tectonic plates.",
+      "body": [
+        "• Everest sticks up 5 miles\n• Mariana Trench drops 7 miles\n• The geoid looks like a lumpy potato",
+        "Each refinement captures more detail. None captures everything."
+      ],
+      "takeaway": "Reality is always more complicated than our models. Models are still useful."
+    },
+    {
+      "id": "article-science-05",
+      "title": "Newton Wasn't Wrong—Just Incomplete",
+      "subtitle": "Einstein showed where Newton's equations stop being accurate.",
+      "body": [
+        "Newtonian physics works perfectly for everyday speeds. We still use it to land rockets.",
+        "At very high speeds or strong gravity, Newton drifts from reality. Einstein accounts for the drift."
+      ],
+      "takeaway": "Superseded theories often remain useful within their domain of accuracy."
+    },
+    {
+      "id": "article-science-06",
+      "title": "Einstein Will Also Be Refined",
+      "subtitle": "General relativity breaks down inside black holes.",
+      "body": [
+        "Einstein's equations predict singularities—points where the math stops working.",
+        "When someone combines quantum mechanics and gravity, Einstein becomes a special case."
+      ],
+      "takeaway": "Every theory eventually reveals its boundaries. That's how science advances."
+    },
+    {
+      "id": "article-science-07",
+      "title": "Refinement, Not Revolution",
+      "subtitle": "Copernicus didn't prove Ptolemy stupid—he provided a simpler model.",
+      "body": [
+        "Ptolemy's geocentric model worked. The math was just ugly.",
+        "Copernicus noticed math got simpler with Sun at center. Kepler refined it with ellipses."
+      ],
+      "takeaway": "Scientific revolutions usually simplify rather than overthrow."
+    },
+    {
+      "id": "article-science-08",
+      "title": "Wrongness Is Asymptotic",
+      "subtitle": "We keep getting closer to truth without quite reaching it.",
+      "body": [
+        "Each generation inherits slightly-less-wrong theories and makes them less wrong still.",
+        "The improvements get smaller as we get closer. Always toward accuracy, never arriving at perfection."
+      ],
+      "takeaway": "Science approaches truth asymptotically—ever closer, never complete."
+    },
+    {
+      "id": "article-science-09",
+      "title": "Context Determines Acceptable Wrong",
+      "subtitle": "Walking to the store? Flat Earth is fine. Launching satellites? You need the geoid.",
+      "body": [
+        "A carpenter doesn't need relativity. A GPS satellite does.",
+        "The 'wrong' theory that's accurate enough for your purpose is effectively right."
+      ],
+      "takeaway": "Practical truth depends on the precision your application requires."
+    },
+    {
+      "id": "article-science-10",
+      "title": "Cynicism Misses the Point",
+      "subtitle": "'Science is always changing' describes how knowledge improves.",
+      "body": [
+        "The cynic says: scientists were wrong before. The answer: they're less wrong now.",
+        "The alternative to imperfect knowledge isn't perfect knowledge—it's ignorance."
+      ],
+      "takeaway": "Acknowledging uncertainty is a feature, not a bug."
+    },
+    {
+      "id": "article-science-11",
+      "title": "Error Bars Shrink Over Time",
+      "subtitle": "Light speed measurements: 27% off in 1676. Exact by definition now.",
+      "body": [
+        "Each generation of instruments tightened the bounds. Values didn't jump randomly—they converged.",
+        "That convergence is the signature of getting less wrong."
+      ],
+      "takeaway": "Shrinking error bars prove theories are converging on something real."
+    },
+    {
+      "id": "article-science-12",
+      "title": "Being Wrong Is Required",
+      "subtitle": "If you're never wrong, you're not learning anything new.",
+      "body": [
+        "Every useful theory started as a guess. The partially wrong ones got refined.",
+        "The goal isn't to be right—it's to become less wrong faster than everyone else."
+      ],
+      "takeaway": "Science progresses by being wrong in increasingly precise ways."
+    }
+  ]
+}

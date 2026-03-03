@@ -1,0 +1,214 @@
+{
+  "version": "3.0",
+  "description": "Learning cards with subtitle, body paragraphs, and takeaway per card.",
+  "card_format": {
+    "fields": ["id", "title", "subtitle", "body", "takeaway"]
+  },
+  "interest_id": "self-development",
+  "book": {
+    "title": "Atomic Habits",
+    "author": "James Clear"
+  },
+  "cards": [
+    {
+      "id": "self-development-01",
+      "title": "The Valley of Disappointment Is Where Most People Quit",
+      "subtitle": "You've meditated for 30 days straight. You still feel exactly the same.",
+      "body": [
+        "Day 30 feels identical to day 1. That's because you're standing on the flat part of an exponential curve—the part where all the work happens and none of the results show.",
+        "• 1% better daily is invisible today\n• But it's 37x better in a year\n• The work is banking even when you can't see the payoff"
+      ],
+      "takeaway": "Most people quit in the valley of disappointment—right before the curve bends."
+    },
+    {
+      "id": "self-development-02",
+      "title": "Systems Beat Goals",
+      "subtitle": "Every Olympic athlete wanted gold. Only one has it. They all had the same goal.",
+      "body": [
+        "The person who finished eighth wanted it just as badly as the person on the podium. Same dream, same ambition, different daily system.",
+        "The winner wasn't more motivated—they had a better process for showing up when motivation ran out."
+      ],
+      "takeaway": "You don't rise to your goals—you fall to your systems."
+    },
+    {
+      "id": "self-development-03",
+      "title": "Identity Drives Behavior",
+      "subtitle": "Someone offers you a cigarette. You say 'I'm trying to quit' and take it anyway.",
+      "body": [
+        "'I'm trying to quit' is a behavior. 'I'm not a smoker' is an identity. The first requires constant willpower. The second is just describing who you are.",
+        "Every action is a vote for who you're becoming. 'Trying to' leaves the door open. 'I am' shuts it."
+      ],
+      "takeaway": "Behavior change is hard. Identity change is self-reinforcing."
+    },
+    {
+      "id": "self-development-04",
+      "title": "Make It Obvious",
+      "subtitle": "You checked your phone 137 times yesterday. You don't remember opening it once.",
+      "body": [
+        "The habit runs on autopilot. No decision, no awareness. You can't change what you don't notice.",
+        "• Put the book on the pillow\n• Put the shoes by the door\n• Write the trigger: 'I will [behavior] at [time] in [location]'"
+      ],
+      "takeaway": "You don't lack discipline. You lack a visible cue."
+    },
+    {
+      "id": "self-development-05",
+      "title": "Make It Attractive",
+      "subtitle": "You want to watch the show. You need to exercise. You do neither because they're separate.",
+      "body": [
+        "The show lives on the couch. The bike lives in the corner. They never meet, so you pick one or feel guilty.",
+        "Temptation bundling: you only watch the show while pedaling. Now the thing you want pulls you toward the thing you need."
+      ],
+      "takeaway": "The habit drafts behind the desire."
+    },
+    {
+      "id": "self-development-06",
+      "title": "Make It Easy",
+      "subtitle": "You planned to meditate for 20 minutes. You did zero because 20 felt impossible at 6am.",
+      "body": [
+        "The plan was perfect. The execution was nothing. Two minutes of meditation beats zero. Thirty seconds of writing beats a blank page.",
+        "Frequency matters more than duration. Scale the habit down to two minutes."
+      ],
+      "takeaway": "You don't need more discipline. You need less friction."
+    },
+    {
+      "id": "self-development-07",
+      "title": "Make It Satisfying",
+      "subtitle": "You worked out for 30 days. The scale didn't move. You quit on day 31.",
+      "body": [
+        "The payoff is months away, but your brain wants satisfaction now. That's why bad habits stick—the reward is instant.",
+        "Good habits need an immediate signal: a checkmark, a streak, a small win that closes the feedback loop today."
+      ],
+      "takeaway": "What gets rewarded now gets repeated tomorrow."
+    },
+    {
+      "id": "self-development-08",
+      "title": "Environment Is Stronger Than Willpower",
+      "subtitle": "You resisted the cookies for three hours. At 11pm you ate four standing at the counter.",
+      "body": [
+        "Willpower ran out. It always does. The people who look disciplined aren't fighting harder—they removed the cookies from the house.",
+        "• The fridge has no junk food\n• The phone isn't in the bedroom\n• The path of least resistance leads to the right choice"
+      ],
+      "takeaway": "Self-control isn't about resisting temptation—it's about avoiding it."
+    },
+    {
+      "id": "self-development-09",
+      "title": "The Two-Minute Rule",
+      "subtitle": "'Run three miles' sits on your to-do list for a week. You run zero miles.",
+      "body": [
+        "The bar was too high to clear. 'Run three miles' becomes 'put on running shoes.' 'Read before bed' becomes 'read one page.'",
+        "The point isn't the two-minute version—it's that showing up beats skipping. Once you start, you usually continue."
+      ],
+      "takeaway": "Scale it down until saying no feels harder than saying yes."
+    },
+    {
+      "id": "self-development-10",
+      "title": "Never Miss Twice",
+      "subtitle": "You missed Monday's workout. Then Tuesday. By Friday the habit is gone.",
+      "body": [
+        "Missing once is an accident. Missing twice is the start of a new pattern. Everyone skips a day—the difference is what happens next.",
+        "Get back to it tomorrow and you've lost nothing. Miss again and the break becomes the habit."
+      ],
+      "takeaway": "Bad days don't kill habits—bad days after bad days do."
+    },
+    {
+      "id": "self-development-11",
+      "title": "Habit Stacking Reduces Friction",
+      "subtitle": "You forget to meditate every morning until you don't. Because now it happens after coffee.",
+      "body": [
+        "'After I pour my morning coffee, I will meditate for one minute.' The coffee habit is locked in—it happens automatically.",
+        "The new habit drafts behind it. The formula: 'After I [current habit], I will [new habit].'"
+      ],
+      "takeaway": "You're not building from scratch. You're attaching to what already works."
+    },
+    {
+      "id": "self-development-12",
+      "title": "Motion Is Not Action",
+      "subtitle": "You've read five books on writing. You've written zero pages.",
+      "body": [
+        "Reading about it feels like progress. Researching feels productive. Outlining feels like you're almost there.",
+        "• Motion is just a way to avoid the risk of actually doing it\n• At some point you have to stop planning and ship\n• Action produces outcomes, motion produces comfort"
+      ],
+      "takeaway": "Reading about exercise doesn't make you fit."
+    },
+    {
+      "id": "self-development-13",
+      "title": "Boredom Is the Real Enemy",
+      "subtitle": "Week 12 of the same workout. You skip it. Not because it's hard—because it's boring.",
+      "body": [
+        "Anyone can show up when it's new and exciting. Professionals show up when the work is monotonous.",
+        "Most habits die not from difficulty but from boredom. Novelty fades. Routine is what remains."
+      ],
+      "takeaway": "The work doesn't get more exciting. You get more patient."
+    },
+    {
+      "id": "self-development-14",
+      "title": "Pointing and Calling Makes the Invisible Visible",
+      "subtitle": "You eat the cookie before you realize you picked it up. Again.",
+      "body": [
+        "Japanese train conductors point at signals and say them aloud. It reduces errors by 85%. The physical act breaks the autopilot.",
+        "Point at the cookie and say 'I'm about to eat this and I'm not hungry.' Now it's a choice, not a reflex."
+      ],
+      "takeaway": "You can't change what you don't notice."
+    },
+    {
+      "id": "self-development-15",
+      "title": "Temptation Bundling Uses Desire as Fuel",
+      "subtitle": "You skip the gym and binge the show on the couch. Both happen—just not together.",
+      "body": [
+        "The gym feels like work. The show feels like a reward. They live in separate worlds, so discipline loses.",
+        "• Only watch the show while on the treadmill\n• The craving for the show pulls you to the gym\n• Desire is more reliable than discipline"
+      ],
+      "takeaway": "Let the thing you crave drag the thing you need behind it."
+    },
+    {
+      "id": "self-development-16",
+      "title": "The Goldilocks Rule Keeps You Engaged",
+      "subtitle": "The workout was too easy, so you quit from boredom. The next one was too hard, so you quit from anxiety.",
+      "body": [
+        "Too easy and your brain checks out. Too hard and your brain shuts down. The sweet spot is about 4% beyond your current ability.",
+        "That's where flow lives and habits stick. Boredom kills from below. Anxiety kills from above."
+      ],
+      "takeaway": "Design the challenge at the edge of what you can do."
+    },
+    {
+      "id": "self-development-17",
+      "title": "The Cost of Good Habits Is in the Present",
+      "subtitle": "The workout hurts now. The benefit arrives in five years. The donut tastes good now. The damage shows up in five years.",
+      "body": [
+        "Good habits cost you today and pay you later. Bad habits pay you today and cost you later.",
+        "Your brain weighs immediate pain heavier than future gain. Bad habits win because the reward is instant."
+      ],
+      "takeaway": "Add immediate satisfaction to delayed-reward habits or they won't stick."
+    },
+    {
+      "id": "self-development-18",
+      "title": "Measurement Shifts What You Optimize For",
+      "subtitle": "You tracked word count. You hit 2,000 words a day. All of it was garbage.",
+      "body": [
+        "The metric became the goal, so you gamed it. Tracking creates accountability—until the measure replaces the outcome.",
+        "• A writer chasing word count writes filler\n• A runner chasing mileage runs injured\n• Goodhart's Law: metrics become useless once they're goals"
+      ],
+      "takeaway": "Use measurements as guides, not gods."
+    },
+    {
+      "id": "self-development-19",
+      "title": "Breaking Bad Habits Requires Reversing the Loop",
+      "subtitle": "You reach for your phone every time you're bored. The habit isn't the phone—it's escaping boredom.",
+      "body": [
+        "Good habits follow: cue, craving, response, reward. Bad habits follow the same loop. To break them, address the craving.",
+        "Make the cue invisible—leave the phone in another room. Or replace it: when bored, take three deep breaths instead."
+      ],
+      "takeaway": "You can't eliminate bad habits—you can only substitute them."
+    },
+    {
+      "id": "self-development-20",
+      "title": "You Don't Rise to Your Goals, You Fall to Your Systems",
+      "subtitle": "You set the goal. You hit it. Six months later you're back where you started.",
+      "body": [
+        "Goals create a temporary spike. Systems create a permanent shift. You don't rise to the level of your ambitions—you fall to the level of your daily process.",
+        "The people who build great lives don't dream bigger—they show up more."
+      ],
+      "takeaway": "The process is the point. The outcome is just the scoreboard."
+    }
+  ]
+}

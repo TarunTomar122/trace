@@ -1,0 +1,157 @@
+{
+  "version": "3.0",
+  "description": "Conversational learning cards with subtitle, body paragraphs, and takeaway per card.",
+  "card_format": {
+    "fields": ["id", "title", "subtitle", "body", "takeaway"]
+  },
+  "interest_id": "self-development",
+  "article": {
+    "title": "Grit Is Overrated: When Persistence Becomes Self-Sabotage",
+    "author": "Dr. Marcus Stone",
+    "publication": "The Guardian",
+    "url": "https://theguardian.com/self-development/grit-persistence-sabotage",
+    "image_url": "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=1200&q=80"
+  },
+  "cards": [
+    {
+      "id": "self-development-article-01",
+      "title": "Grit Keeps You in Wrong Places",
+      "subtitle": "Persistence can be why you're still miserable after eight years.",
+      "body": [
+        "Grit is celebrated. But persistence in the wrong direction is slow failure.",
+        "Knowing when to stop is as valuable as knowing when to push."
+      ],
+      "takeaway": "Sometimes quitting is the right call."
+    },
+    {
+      "id": "self-development-article-02",
+      "title": "Growth Mindset Has Limits",
+      "subtitle": "Effort matters, but so do resources and connections.",
+      "body": [
+        "Growth mindset says ability is malleable through effort. Partly true.",
+        "Your competitor might have capital and credentials. Mindset is necessary, not sufficient."
+      ],
+      "takeaway": "Effort matters, but structural factors constrain what effort achieves."
+    },
+    {
+      "id": "self-development-article-03",
+      "title": "Positive Thinking vs Realistic Planning",
+      "subtitle": "Visualizing success feels good; planning for obstacles actually helps.",
+      "body": [
+        "Positive visualization doesn't prepare you for what goes wrong.",
+        "Mental contrasting—imagining success AND obstacles—outperforms pure optimism."
+      ],
+      "takeaway": "Combine positive vision with realistic planning."
+    },
+    {
+      "id": "self-development-article-04",
+      "title": "Morning Routines Are Survivorship Bias",
+      "subtitle": "Successful people wake at 5am—so do plenty who aren't.",
+      "body": [
+        "CEOs share routines. You rarely hear from 5am people who still struggle.",
+        "We're copying correlation, not cause. The routine didn't create success."
+      ],
+      "takeaway": "Success routines are often survivorship bias; copy with caution."
+    },
+    {
+      "id": "self-development-article-05",
+      "title": "Goals Create Binary Failure",
+      "subtitle": "Lost 15 pounds but wanted 20—feels like failure.",
+      "body": [
+        "Goals create pass/fail judgments. Real progress can feel like failure.",
+        "• Systems produce continuous improvement\n• No arbitrary endpoints\n• Good systems compound"
+      ],
+      "takeaway": "Systems often serve you better than all-or-nothing goals."
+    },
+    {
+      "id": "self-development-article-06",
+      "title": "Self-Help Is Context-Dependent",
+      "subtitle": "'Be assertive' helps the timid; it can make the aggressive worse.",
+      "body": [
+        "Same advice can help one person and harm another.",
+        "Know your starting point. Your problem might be the opposite of what advice assumes."
+      ],
+      "takeaway": "Advice depends on context; apply it to your specific situation."
+    },
+    {
+      "id": "self-development-article-07",
+      "title": "Productivity Porn Feels Like Progress",
+      "subtitle": "Three hours optimizing your task manager. Zero tasks completed.",
+      "body": [
+        "Reading about productivity can be procrastination in disguise.",
+        "Meta-work isn't real work. At some point, you have to do the thing."
+      ],
+      "takeaway": "Optimization can be avoidance; execution matters more."
+    },
+    {
+      "id": "self-development-article-08",
+      "title": "Failure Only Teaches If You Reflect",
+      "subtitle": "You failed, moved on, learned nothing.",
+      "body": [
+        "Failure doesn't automatically teach. Most people fail and repeat mistakes.",
+        "• What went wrong?\n• What would you do differently?\n• Extract lessons deliberately"
+      ],
+      "takeaway": "Reflection converts failure into useful information."
+    },
+    {
+      "id": "self-development-article-09",
+      "title": "Habits Form Through Repetition",
+      "subtitle": "Waiting to feel motivated often means waiting forever.",
+      "body": [
+        "Motivation is unreliable. Discipline builds habits. Once formed, they run automatically.",
+        "Action often precedes motivation, not the reverse."
+      ],
+      "takeaway": "Don't wait for motivation; start small and let repetition build the habit."
+    },
+    {
+      "id": "self-development-article-10",
+      "title": "Identity Change Beats Behavior Change",
+      "subtitle": "'I am a runner' works better than 'I will run 3x/week.'",
+      "body": [
+        "Behavior goals are external. Identity goals are internal. Runners run.",
+        "Becoming someone is easier than forcing yourself to do something."
+      ],
+      "takeaway": "Identity-based goals sustain behavior better."
+    },
+    {
+      "id": "self-development-article-11",
+      "title": "Environment Beats Willpower",
+      "subtitle": "Cookies on the counter beat willpower most of the time.",
+      "body": [
+        "Behavior follows the path of least resistance. Willpower is finite.",
+        "Design the space: make desired behavior easier, undesired harder."
+      ],
+      "takeaway": "Environment design often beats personal discipline."
+    },
+    {
+      "id": "self-development-article-12",
+      "title": "Rest Is Productive",
+      "subtitle": "Working through the weekend leaves you sluggish Monday.",
+      "body": [
+        "Recovery enables performance. Chronic work without rest reduces quality.",
+        "Rest isn't laziness—it's strategic restoration."
+      ],
+      "takeaway": "Rest compounds future performance; it's not indulgence."
+    },
+    {
+      "id": "self-development-article-13",
+      "title": "Comparison Is Inevitable",
+      "subtitle": "'Don't compare yourself' is unrealistic—it's hardwired.",
+      "body": [
+        "Social comparison provides feedback. The problem is comparing without learning.",
+        "Compare to improve, not to despair. Use it strategically."
+      ],
+      "takeaway": "Comparison is information; use it to learn, not to spiral."
+    },
+    {
+      "id": "self-development-article-14",
+      "title": "Peak Experiences Don't Sustain Change",
+      "subtitle": "The seminar was transformative. Two weeks later, back to old patterns.",
+      "body": [
+        "Intense experiences create temporary motivation. The high fades.",
+        "Peak moments inspire; routines sustain. Build structure around change."
+      ],
+      "takeaway": "Peak experiences inspire; systems sustain change."
+    }
+  ]
+}

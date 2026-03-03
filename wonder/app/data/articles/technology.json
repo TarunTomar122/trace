@@ -1,0 +1,138 @@
+{
+  "version": "3.0",
+  "description": "Article-based learning cards with subtitle, body paragraphs, and takeaway.",
+  "card_format": {
+    "fields": ["id", "title", "subtitle", "body", "takeaway"]
+  },
+  "interest_id": "technology",
+  "article": {
+    "title": "Software Is Eating the World",
+    "author": "Marc Andreessen",
+    "publication": "The Wall Street Journal",
+    "url": "https://a16z.com/why-software-is-eating-the-world/",
+    "image_url": "https://a16z.com/wp-content/uploads/2021/08/Software-is-Eating-the-World.jpg",
+    "published_date": "2011-08-20"
+  },
+  "cards": [
+    {
+      "id": "article-technology-01",
+      "title": "Every Company Is Now a Software Company",
+      "subtitle": "The bookstore became a cloud giant. The taxi company doesn't own cars.",
+      "body": [
+        "Amazon started selling books. Now it runs a third of the internet. Uber disrupted transportation without owning a single vehicle.",
+        "The winners aren't those with the most physical assets—they're the ones with the best software."
+      ],
+      "takeaway": "Software transforms industries by replacing physical assets with code."
+    },
+    {
+      "id": "article-technology-02",
+      "title": "Why Now? The Infrastructure Exists",
+      "subtitle": "Six decades of progress created the foundation.",
+      "body": [
+        "• Broadband reaches billions\n• Smartphones in every pocket\n• Cloud computing for pennies",
+        "None of this existed twenty years ago. The pieces had to come together first."
+      ],
+      "takeaway": "Software is eating the world now because the infrastructure finally supports it."
+    },
+    {
+      "id": "article-technology-03",
+      "title": "Retail Was the First Meal",
+      "subtitle": "Borders went bankrupt. Amazon is worth over a trillion.",
+      "body": [
+        "Physical retail required real estate and staff in every location. E-commerce required a website and a warehouse.",
+        "One scaled linearly with geography. The other scaled with servers."
+      ],
+      "takeaway": "Software-based businesses have fundamentally different—and better—economics."
+    },
+    {
+      "id": "article-technology-04",
+      "title": "Entertainment Got Eaten Next",
+      "subtitle": "Blockbuster had 9,000 stores. Netflix has an algorithm.",
+      "body": [
+        "Video rental required physical locations and inventory. Streaming requires bandwidth and a monthly fee.",
+        "Netflix didn't just replace Blockbuster—it redefined what's possible."
+      ],
+      "takeaway": "Software doesn't just compete with incumbents—it redefines the industry."
+    },
+    {
+      "id": "article-technology-05",
+      "title": "Music Was Disrupted Twice",
+      "subtitle": "Napster broke it. Apple rebuilt it. Spotify ate Apple's model.",
+      "body": [
+        "The music industry fought piracy while software companies figured out how to monetize convenience.",
+        "People didn't want to own songs—they wanted access to everything for $10/month."
+      ],
+      "takeaway": "Incumbents rarely disrupt themselves—software companies do it for them."
+    },
+    {
+      "id": "article-technology-06",
+      "title": "Gaming Became Bigger Than Movies",
+      "subtitle": "Video games now generate more revenue than film and music combined.",
+      "body": [
+        "Games went from arcades to consoles to phones. Each transition expanded the market exponentially.",
+        "Fortnite generates billions with no physical distribution, no inventory, no retail."
+      ],
+      "takeaway": "Software-native entertainment formats outgrew traditional media."
+    },
+    {
+      "id": "article-technology-07",
+      "title": "Telecom Is Becoming Software",
+      "subtitle": "Skype let you call anyone for free. Phone companies never recovered.",
+      "body": [
+        "Voice calls used to require massive infrastructure. Then software turned voice into data packets.",
+        "WhatsApp: acquired for $19B with 55 employees. Traditional telecoms: hundreds of thousands."
+      ],
+      "takeaway": "When communication becomes software, old infrastructure becomes a liability."
+    },
+    {
+      "id": "article-technology-08",
+      "title": "Cars Are Computers on Wheels",
+      "subtitle": "Tesla's value isn't in the factory. It's in the code.",
+      "body": [
+        "A modern car runs on millions of lines of code—braking, entertainment, autonomous driving.",
+        "• Tesla ships updates overnight\n• Traditional automakers ship new models every few years"
+      ],
+      "takeaway": "Even hardware-heavy industries are being redefined by software."
+    },
+    {
+      "id": "article-technology-09",
+      "title": "Healthcare Is Next",
+      "subtitle": "Your medical records are still faxed. That's about to change.",
+      "body": [
+        "Healthcare resisted software transformation—regulation and entrenched interests slowed adoption.",
+        "But telemedicine, AI diagnostics, and digital records are creating cracks in the old system."
+      ],
+      "takeaway": "Regulation can delay software disruption but not prevent it."
+    },
+    {
+      "id": "article-technology-10",
+      "title": "Education Is Overdue",
+      "subtitle": "The lecture format hasn't changed in 500 years.",
+      "body": [
+        "Universities operate on scarcity—limited seats, limited professors, geographic constraints.",
+        "Online courses reach millions. AI tutors personalize at scale. The economics favor software."
+      ],
+      "takeaway": "Education's business model is vulnerable; only credentialing has protected it."
+    },
+    {
+      "id": "article-technology-11",
+      "title": "The Talent War Is Real",
+      "subtitle": "Every company needs engineers. There aren't enough.",
+      "body": [
+        "If software is eating every industry, software talent is the scarcest resource.",
+        "The best engineers choose where they work. This is why tech compensation has diverged."
+      ],
+      "takeaway": "The people who build software have leverage because everyone needs them."
+    },
+    {
+      "id": "article-technology-12",
+      "title": "Investors Finally Understand",
+      "subtitle": "Software companies are now the most valuable on earth.",
+      "body": [
+        "In 2011, people doubted software could build durable businesses. Now the top 5 companies are all software-driven.",
+        "The thesis wasn't wrong—it was early."
+      ],
+      "takeaway": "Software's dominance is no longer a prediction. It's the observable reality."
+    }
+  ]
+}

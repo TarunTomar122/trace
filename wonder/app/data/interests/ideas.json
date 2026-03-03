@@ -1,0 +1,214 @@
+{
+  "version": "3.0",
+  "description": "Learning cards with subtitle, body paragraphs, and takeaway per card.",
+  "card_format": {
+    "fields": ["id", "title", "subtitle", "body", "takeaway"]
+  },
+  "interest_id": "ideas",
+  "book": {
+    "title": "Sapiens",
+    "author": "Yuval Noah Harari"
+  },
+  "cards": [
+    {
+      "id": "ideas-01",
+      "title": "Fiction Is the Strongest Force in History",
+      "subtitle": "You'll never meet the 200,000 people who work for your company. Yet you all show up for the same imaginary thing.",
+      "body": [
+        "Chimpanzees can't coordinate past 150 individuals. Humans built cities of millions by inventing shared stories—gods, nations, corporations, human rights.",
+        "The story doesn't need to be true. It needs to be believed by strangers simultaneously."
+      ],
+      "takeaway": "Shared myths are the technology that scales human collaboration."
+    },
+    {
+      "id": "ideas-02",
+      "title": "The Agricultural Revolution Was a Trap",
+      "subtitle": "Your ancestors worked 20 hours a week foraging. Then they planted wheat. Now they work dawn to dusk and their backs hurt.",
+      "body": [
+        "Hunter-gatherers ate dozens of food sources and moved when resources ran low. Farmers bet everything on one crop.",
+        "• The species exploded in numbers\n• Individual lives got shorter, sicker, harder\n• Once population grew, there was no way back"
+      ],
+      "takeaway": "Wheat spread across continents. Humans became its distribution system."
+    },
+    {
+      "id": "ideas-03",
+      "title": "Gossip Built Civilization",
+      "subtitle": "You trust the new trader because someone you trust said he's honest. You've never met him. That's the entire trick.",
+      "body": [
+        "Language didn't evolve for hunting plans or tool instructions. It evolved to track who's reliable, who cheats, who's sleeping with whom.",
+        "Social information scaled trust beyond personal relationships. Reputation traveled faster than people did."
+      ],
+      "takeaway": "Gossip was the first distributed database of human behavior."
+    },
+    {
+      "id": "ideas-04",
+      "title": "Strangers Cooperate Because of Shared Myths",
+      "subtitle": "Two lawyers from different continents close a deal in twenty minutes. They've never met. They both believe in contracts.",
+      "body": [
+        "You hand money to a stranger for a product you'll receive next week. This works because you both believe in payment systems, legal enforcement, and property rights.",
+        "The fiction isn't a lie—it's an agreement. It exists because enough people act like it does."
+      ],
+      "takeaway": "Coordination at scale requires shared belief in imaginary things."
+    },
+    {
+      "id": "ideas-05",
+      "title": "Money and Credit Are Belief Systems",
+      "subtitle": "You trade forty hours of your life for numbers in a database. A bank lends money it doesn't have. Both work because everyone believes.",
+      "body": [
+        "A dollar bill is cotton and ink. A bank balance is electricity arranged in patterns. None of these have intrinsic value.",
+        "• Credit didn't exist in pre-modern economies—they assumed a fixed pie\n• Capitalism assumes infinite growth\n• Credit is monetized belief in a future that doesn't exist yet"
+      ],
+      "takeaway": "The second mass belief breaks, the paper is just paper."
+    },
+    {
+      "id": "ideas-06",
+      "title": "Empires Spread by Absorbing, Not Destroying",
+      "subtitle": "Rome conquers your city. Then it offers you roads, citizenship, and their gods. Three generations later, your grandson fights for Rome.",
+      "body": [
+        "Burning cities is expensive. Occupying them forever is exhausting. Rome offered the conquered a deal: adopt our language, use our law, worship our gods.",
+        "Cultural absorption is cheaper than military control and lasts longer. Latin outlived the empire by a thousand years."
+      ],
+      "takeaway": "Hybrid cultures are more durable than pure ones enforced by force."
+    },
+    {
+      "id": "ideas-07",
+      "title": "Science Began With Admitting Ignorance",
+      "subtitle": "The priest says he knows why the crops failed. The scientist says she doesn't know yet. Guess which one builds an irrigation system.",
+      "body": [
+        "Before modern science, knowledge systems claimed completeness. The Bible explained everything. So did the Quran, so did Confucius.",
+        "Science started by saying 'we don't know'. Then it built a method to reduce ignorance systematically."
+      ],
+      "takeaway": "Progress requires acknowledging what you don't yet understand."
+    },
+    {
+      "id": "ideas-08",
+      "title": "Biology Allows, Culture Decides",
+      "subtitle": "Someone tells you women can't lead because it's biology. Then you find a dozen societies where they always have.",
+      "body": [
+        "Gender roles, family structures, sexual norms—they feel hardwired. Then you read about another culture that does the exact opposite.",
+        "Nature determines what's possible. Culture determines what's permitted. 'Unnatural' usually means 'uncommon here recently.'"
+      ],
+      "takeaway": "Biology is permissive; culture is selective."
+    },
+    {
+      "id": "ideas-09",
+      "title": "Happiness Didn't Scale With Progress",
+      "subtitle": "You have antibiotics, air conditioning, and unlimited entertainment. The medieval peasant had none of those. You're both equally stressed.",
+      "body": [
+        "Progress raised material conditions dramatically. Happiness seems roughly flat. Well-being tracks expectations and social bonds more than comfort.",
+        "The peasant had community and no comparison points. You have options and constant benchmarking."
+      ],
+      "takeaway": "Happiness is relative to what you expect, not what you have."
+    },
+    {
+      "id": "ideas-10",
+      "title": "Writing Was Invented for Taxes, Not Poetry",
+      "subtitle": "The first sentence ever written wasn't philosophy. It was '5 bushels of barley owed by Kushim.'",
+      "body": [
+        "Writing emerged in Sumer around 3,000 BC because grain stores got too large to remember. Debts, property, taxes—bureaucracy forced record-keeping.",
+        "Poetry came a thousand years later. Surplus creates complexity; complexity demands documentation."
+      ],
+      "takeaway": "Every transformative cultural tool starts with a boring logistical problem."
+    },
+    {
+      "id": "ideas-11",
+      "title": "Wheat Domesticated Humans",
+      "subtitle": "You spend all day clearing rocks, hauling water, and pulling weeds. The wheat is thriving. Your back is ruined.",
+      "body": [
+        "Humans settled in one place, cleared forests, and devoted their lives to a single plant's reproductive cycle.",
+        "• Wheat spread across continents\n• Individual human lives got harder, shorter, sicker\n• Humans traded mobility and variety for dependence on one crop"
+      ],
+      "takeaway": "From the plant's perspective, agriculture was a massive win."
+    },
+    {
+      "id": "ideas-12",
+      "title": "There Were Other Human Species",
+      "subtitle": "Neanderthals were here for 300,000 years. Homo sapiens showed up. Within 10,000 years, Neanderthals were gone.",
+      "body": [
+        "The planet had Neanderthals, Denisovans, Homo erectus, Homo floresiensis—all human, none of them us. Then sapiens spread out of Africa.",
+        "We carry 2% Neanderthal DNA, so some mixing happened. Then they vanished."
+      ],
+      "takeaway": "Our uniqueness isn't inherent—it's the result of everyone else disappearing."
+    },
+    {
+      "id": "ideas-13",
+      "title": "Religion Is a Contract With the Invisible",
+      "subtitle": "You don't eat pork. Neither does the stranger. You both follow the same invisible rules. Now you can do business.",
+      "body": [
+        "Polytheism, monotheism, Buddhism—each is a deal with forces you can't see. Follow these rules, get rewards you can't measure.",
+        "The deals didn't work because the gods were real. They worked because millions of believers coordinated their behavior."
+      ],
+      "takeaway": "The practical power of belief is independent of its truth."
+    },
+    {
+      "id": "ideas-14",
+      "title": "The Cognitive Revolution Made Us Different",
+      "subtitle": "70,000 years ago something changed in the sapiens brain. We started telling stories. Then we conquered the planet.",
+      "body": [
+        "For 2 million years humans existed without dominating. Then Homo sapiens developed the ability to talk about things that don't exist.",
+        "We didn't get smarter about rocks and plants. We got better at coordinating around collective fictions."
+      ],
+      "takeaway": "Language sophisticated enough to create shared myths made us unstoppable."
+    },
+    {
+      "id": "ideas-15",
+      "title": "The Individual Is a Recent Invention",
+      "subtitle": "Your great-great-grandfather didn't ask what he wanted to be. He was a Miller. His father was a Miller. So was his son.",
+      "body": [
+        "For 95% of human history, identity came from lineage. You were your family, your village, your guild.",
+        "• The idea that you have personal rights is shockingly recent\n• Communities, not individuals, were the unit of society\n• Modern loneliness is the cost of individualism"
+      ],
+      "takeaway": "Personal identity as we know it is a modern experiment."
+    },
+    {
+      "id": "ideas-16",
+      "title": "Technology Is What Makes Us Human",
+      "subtitle": "Every species has biology. Only humans have nuclear reactors, vaccines, and space telescopes.",
+      "body": [
+        "Biology gave us opposable thumbs and big brains. Technology is what we did with them. Fire let us cook food and gain calories that fueled bigger brains.",
+        "A chimpanzee today is as capable as a chimpanzee 100,000 years ago. A human today carries the accumulated technology of millennia."
+      ],
+      "takeaway": "Technology isn't separate from being human—it's the defining trait."
+    },
+    {
+      "id": "ideas-17",
+      "title": "Justice Is a Story Groups Agree On",
+      "subtitle": "You say everyone has rights. Someone asks you to show them the 'equality molecule.' You can't. It's a story. It works anyway.",
+      "body": [
+        "Human rights have no biological foundation. There's no liberty gene or justice particle. Rights exist because groups wrote them into shared stories.",
+        "Justice is an imagined order, not a natural law. This doesn't make rights less valuable—it makes them more fragile."
+      ],
+      "takeaway": "The stories we believe together shape what's possible."
+    },
+    {
+      "id": "ideas-18",
+      "title": "War Declined Because It Stopped Paying",
+      "subtitle": "You invade Silicon Valley. You seize the office buildings. The engineers leave. You now own empty offices and worthless servers.",
+      "body": [
+        "In an agricultural economy, you could seize a wheat field and immediately profit. In a knowledge economy, wealth is in people's heads.",
+        "You can't loot intellectual property or kidnap human capital at scale. Conquest stopped making economic sense."
+      ],
+      "takeaway": "Peace is partly maintained by economics, not just morality."
+    },
+    {
+      "id": "ideas-19",
+      "title": "We Are the Most Dangerous Animal That Ever Lived",
+      "subtitle": "Humans arrive in Australia 50,000 years ago. Within 2,000 years, 90% of large animals are extinct.",
+      "body": [
+        "Everywhere sapiens migrated—Australia, the Americas, Pacific islands—megafauna disappeared within centuries.",
+        "• Giant sloths, woolly mammoths, cave lions—we showed up, they vanished\n• The correlation is overwhelming\n• No asteroid required"
+      ],
+      "takeaway": "Ecological destruction isn't a modern problem—it's a species trait."
+    },
+    {
+      "id": "ideas-20",
+      "title": "No One Chose This Future",
+      "subtitle": "Your ancestor planted extra wheat to feed his family. Now his descendant works in a cubicle and pays taxes. Nobody planned that.",
+      "body": [
+        "The agricultural revolution wasn't a decision anyone made. Neither was capitalism, the nation-state, or the internet. Each step felt local and logical.",
+        "Small choices compound into massive unintended outcomes. The gap between intention and result is where history happens."
+      ],
+      "takeaway": "The aggregate result is a world nobody designed and nobody controls."
+    }
+  ]
+}

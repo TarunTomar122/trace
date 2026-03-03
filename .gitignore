@@ -15,6 +15,10 @@ anybrew-7c6c1-firebase-adminsdk-fbsvc-fe164fd73a.json
 !wonder/data/articles/*.json
 !wonder/data/videos/*.json
 !wonder/data/interests/*.json
+!wonder/app/data/*.json
+!wonder/app/data/articles/*.json
+!wonder/app/data/videos/*.json
+!wonder/app/data/interests/*.json
 !wonder/app/package.json
 !wonder/app/package-lock.json
 !wonder/app/app.json

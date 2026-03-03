@@ -1,0 +1,214 @@
+{
+  "version": "3.0",
+  "description": "Learning cards with subtitle, body paragraphs, and takeaway per card.",
+  "card_format": {
+    "fields": ["id", "title", "subtitle", "body", "takeaway"]
+  },
+  "interest_id": "science",
+  "book": {
+    "title": "A Brief History of Time",
+    "author": "Stephen Hawking"
+  },
+  "cards": [
+    {
+      "id": "science-01",
+      "title": "The Universe Doesn't Need a Beginning",
+      "subtitle": "What happened before the Big Bang? The question itself might be broken.",
+      "body": [
+        "Hawking said time could be like a sphere—finite but boundless. No first moment. No 'before.'",
+        "Asking what's north of the North Pole makes the same mistake."
+      ],
+      "takeaway": "Some questions are malformed, not unanswered."
+    },
+    {
+      "id": "science-02",
+      "title": "There's No Universal Now",
+      "subtitle": "Your GPS would be off by miles if engineers hadn't corrected for time running differently in orbit.",
+      "body": [
+        "Satellites tick faster than ground clocks. Gravity slows time. An astronaut near light speed ages slower than her twin.",
+        "Simultaneity depends on where you're standing and how fast you're moving."
+      ],
+      "takeaway": "Time is local, not universal."
+    },
+    {
+      "id": "science-03",
+      "title": "Gravity Is Geometry",
+      "subtitle": "The sun doesn't pull you. It bends space, and you fall through the curve.",
+      "body": [
+        "Newton called gravity a force. Einstein called it geometry.",
+        "Earth doesn't orbit because it's pulled—it follows the straightest path through curved spacetime."
+      ],
+      "takeaway": "Mass tells space how to curve. Space tells mass how to move."
+    },
+    {
+      "id": "science-04",
+      "title": "Black Holes Break Physics",
+      "subtitle": "Cross the event horizon and escape requires moving faster than light.",
+      "body": [
+        "We've photographed a black hole (M87, 2019). What's at the center remains unknown.",
+        "The equations predict infinite density and break down. Singularities mean we need a deeper theory."
+      ],
+      "takeaway": "General relativity admits its own failure at singularities."
+    },
+    {
+      "id": "science-05",
+      "title": "The Uncertainty Principle Is Fundamental",
+      "subtitle": "Better instruments won't help. Nature forbids knowing both position and momentum precisely.",
+      "body": [
+        "The electron doesn't have a location before measurement. It has probabilities.",
+        "This isn't a bug—it's a feature of reality."
+      ],
+      "takeaway": "The universe at its smallest is fundamentally fuzzy."
+    },
+    {
+      "id": "science-06",
+      "title": "Light Speed Is the Limit",
+      "subtitle": "Approach it and time dilates, mass increases, length contracts.",
+      "body": [
+        "The speed of light is the maximum for information, energy, matter.",
+        "Reach it and time stops entirely. Particle accelerators confirm this."
+      ],
+      "takeaway": "Every theory in modern physics respects this limit or fails."
+    },
+    {
+      "id": "science-07",
+      "title": "The Big Bang Wasn't an Explosion Into Space",
+      "subtitle": "Space itself was born and started stretching. There was no 'outside.'",
+      "body": [
+        "Every point in the universe was the same point 13.8 billion years ago.",
+        "Galaxies aren't flying apart—the fabric between them is stretching."
+      ],
+      "takeaway": "Space and time started together—there is no 'outside.'"
+    },
+    {
+      "id": "science-08",
+      "title": "Space Expands Faster Than Light",
+      "subtitle": "Distant galaxies recede faster than light. Space itself has no speed limit.",
+      "body": [
+        "The expansion is accelerating, driven by dark energy we don't understand.",
+        "Some galaxies have already crossed our cosmic horizon. We'll never see them."
+      ],
+      "takeaway": "Objects can't exceed light speed, but space itself can."
+    },
+    {
+      "id": "science-09",
+      "title": "Black Holes Evaporate",
+      "subtitle": "Hawking proved they leak energy and eventually disappear.",
+      "body": [
+        "Quantum particle pairs near the event horizon—one falls in, one escapes.",
+        "This raises the information paradox: what happens to everything that fell in?"
+      ],
+      "takeaway": "The paradox remains unsolved."
+    },
+    {
+      "id": "science-10",
+      "title": "The Arrow of Time Is Statistical",
+      "subtitle": "Physics equations work forward and backward. Entropy picks the direction.",
+      "body": [
+        "A broken egg could reassemble—physics allows it—but the odds are astronomically small.",
+        "The second law of thermodynamics creates the arrow we experience."
+      ],
+      "takeaway": "The arrow of time is probability, not law."
+    },
+    {
+      "id": "science-11",
+      "title": "Relativity and Quantum Don't Talk",
+      "subtitle": "Both work perfectly. Apply both at once and the math explodes.",
+      "body": [
+        "Inside a black hole, at the Big Bang—the equations break.",
+        "String theory and loop quantum gravity are candidates. Neither proven."
+      ],
+      "takeaway": "The gap is the deepest unsolved problem in physics."
+    },
+    {
+      "id": "science-12",
+      "title": "Observation Collapses the Wave Function",
+      "subtitle": "The electron is a wave until you measure it. Then it's a particle.",
+      "body": [
+        "Particles exist in superposition until measured. Not metaphor—experimentally confirmed.",
+        "The double-slit experiment: electrons act as waves until observed."
+      ],
+      "takeaway": "Measurement changes reality."
+    },
+    {
+      "id": "science-13",
+      "title": "Entropy Always Wins",
+      "subtitle": "The star burns out. The ice melts. Order doesn't hold.",
+      "body": [
+        "Every pocket of order is temporary, fighting an inevitable tide.",
+        "Heat death: a universe at maximum entropy, no energy differences left."
+      ],
+      "takeaway": "Order is expensive, temporary, and borrowed."
+    },
+    {
+      "id": "science-14",
+      "title": "95% of the Universe Is Unknown",
+      "subtitle": "Dark matter and dark energy. We named the gaps.",
+      "body": [
+        "• Galaxies spin too fast for visible matter\n• Dark energy accelerates expansion\n• We can't see or explain either",
+        "95% of the universe is made of things we don't understand."
+      ],
+      "takeaway": "We named the gaps and kept calculating."
+    },
+    {
+      "id": "science-15",
+      "title": "Quantum Entanglement Is Real",
+      "subtitle": "Measure one particle; instantly a particle light-years away changes state.",
+      "body": [
+        "Einstein called it 'spooky action at a distance' and hated it.",
+        "Bell's theorem proved it: the universe is fundamentally non-local."
+      ],
+      "takeaway": "Particles that interacted once remain connected."
+    },
+    {
+      "id": "science-16",
+      "title": "We Hear Gravitational Waves",
+      "subtitle": "Two black holes collided 1.3 billion years ago. LIGO detected the ripple in 2015.",
+      "body": [
+        "Einstein predicted waves in spacetime. He thought they'd be too weak to detect.",
+        "We can now observe the universe through spacetime ripples, not just light."
+      ],
+      "takeaway": "We're listening to collisions from billions of years ago."
+    },
+    {
+      "id": "science-17",
+      "title": "The Higgs Completes the Standard Model",
+      "subtitle": "Particles shouldn't have mass. CERN found the field that gives it to them.",
+      "body": [
+        "Photons don't interact with the Higgs field—massless. Electrons do—mass.",
+        "The Standard Model is complete but doesn't include gravity or dark matter."
+      ],
+      "takeaway": "It's the best incomplete theory we have."
+    },
+    {
+      "id": "science-18",
+      "title": "The Anthropic Principle",
+      "subtitle": "The constants are tuned for life. 'If they weren't, we wouldn't exist to ask.'",
+      "body": [
+        "Change gravity slightly and stars don't form. The constants seem finely tuned.",
+        "Some invoke the multiverse: infinite universes, we're in one that permits life."
+      ],
+      "takeaway": "Either profound or circular, depending on who you ask."
+    },
+    {
+      "id": "science-19",
+      "title": "Progress Happens Where Theories Break",
+      "subtitle": "Newton broke Aristotle. Einstein broke Newton.",
+      "body": [
+        "Science replaces incomplete theories with more complete ones.",
+        "Relativity and quantum both work—except where they overlap. That's the frontier."
+      ],
+      "takeaway": "Better theories reveal limits, not destroy predecessors."
+    },
+    {
+      "id": "science-20",
+      "title": "We Are Insignificant, and We Figured It Out",
+      "subtitle": "Small planet. Average star. One galaxy among trillions.",
+      "body": [
+        "We've measured the cosmic microwave background, detected gravitational waves, photographed a black hole.",
+        "Ants on a speck figured out the age and fate of the cosmos."
+      ],
+      "takeaway": "The audacity is the point."
+    }
+  ]
+}

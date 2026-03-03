@@ -1,0 +1,138 @@
+{
+  "version": "3.0",
+  "description": "Article-based learning cards with subtitle, body paragraphs, and takeaway.",
+  "card_format": {
+    "fields": ["id", "title", "subtitle", "body", "takeaway"]
+  },
+  "interest_id": "society",
+  "article": {
+    "title": "Bowling Alone",
+    "author": "Robert Putnam",
+    "publication": "Journal of Democracy / Harvard Research",
+    "url": "https://www.journalofdemocracy.org/article/bowling-alone",
+    "image_url": null,
+    "published_date": "1995-01-01"
+  },
+  "cards": [
+    {
+      "id": "article-society-01",
+      "title": "Americans Stopped Joining Things",
+      "subtitle": "Bowling leagues used to fill evenings. Now people bowl alone.",
+      "body": [
+        "More Americans bowl than ever—but they don't join leagues. They go alone and leave.",
+        "Church groups, PTAs, bowling leagues—membership declined across the board."
+      ],
+      "takeaway": "Participation stayed; social connection collapsed."
+    },
+    {
+      "id": "article-society-02",
+      "title": "Social Capital Is Hidden Infrastructure",
+      "subtitle": "Trust and reciprocity make everything else work.",
+      "body": [
+        "Social capital is why you can ask a neighbor to watch your house, why communities solve problems collectively.",
+        "When it erodes, institutions do more work with less trust."
+      ],
+      "takeaway": "Social capital makes societies function; its decline has consequences."
+    },
+    {
+      "id": "article-society-03",
+      "title": "Generational Shifts Drove Decline",
+      "subtitle": "The civic generation is dying. Their grandchildren barely join at all.",
+      "body": [
+        "People born before 1945 joined things. Each generation joined less.",
+        "A 60-year-old in 1970 was more engaged than a 60-year-old in 1990."
+      ],
+      "takeaway": "Each generation joined organizations less than the one before."
+    },
+    {
+      "id": "article-society-04",
+      "title": "Television Changed How We Spend Time",
+      "subtitle": "Every hour watching TV is an hour not spent with neighbors.",
+      "body": [
+        "TV privatized leisure. Entertainment moved from public spaces to living rooms.",
+        "Heavy TV watchers are less likely to attend meetings or trust their neighbors."
+      ],
+      "takeaway": "Television filled hours that used to be social."
+    },
+    {
+      "id": "article-society-05",
+      "title": "Suburbs Spread People Out",
+      "subtitle": "The commute added an hour. That hour came from somewhere.",
+      "body": [
+        "• Long drives replaced walks\n• Garages replaced front porches\n• Every 10 min of commuting = 10% less civic participation",
+        "Physical design shapes social behavior."
+      ],
+      "takeaway": "Sprawl and commuting reduced time for community engagement."
+    },
+    {
+      "id": "article-society-06",
+      "title": "Women Entered the Workforce",
+      "subtitle": "Women used to run civic infrastructure. Then they got jobs.",
+      "body": [
+        "Women did the civic labor—PTAs, neighborhood networks. When they entered the workforce, that labor didn't redistribute.",
+        "It's not that women shouldn't work—it's that society didn't adapt."
+      ],
+      "takeaway": "Women's civic labor decreased without being replaced."
+    },
+    {
+      "id": "article-society-07",
+      "title": "Trust in Institutions Collapsed",
+      "subtitle": "1964: 77% trusted government. 1994: 19%.",
+      "body": [
+        "Trust in government, media, and corporations all declined.",
+        "Low trust creates a vicious cycle. People don't participate in what they don't trust."
+      ],
+      "takeaway": "Institutional trust collapsed, reducing incentives to participate."
+    },
+    {
+      "id": "article-society-08",
+      "title": "Informal Connection Declined Too",
+      "subtitle": "Not just meetings—picnics, card games, dinner parties all dropped.",
+      "body": [
+        "Informal socializing declined even faster than formal membership.",
+        "Americans are less likely to know their neighbors' names than a generation ago."
+      ],
+      "takeaway": "Both formal and informal social connections weakened."
+    },
+    {
+      "id": "article-society-09",
+      "title": "Democracy Requires Civic Practice",
+      "subtitle": "You learn to participate by participating.",
+      "body": [
+        "Civic groups are training grounds for running meetings and organizing collective action.",
+        "Without practice, citizens become passive. Democracy is a skill that requires exercise."
+      ],
+      "takeaway": "Civic participation builds democratic capacity."
+    },
+    {
+      "id": "article-society-10",
+      "title": "The Internet Didn't Fix It",
+      "subtitle": "Online connection substitutes for some things—not the ones that matter most.",
+      "body": [
+        "Early optimists thought the internet would rebuild social capital. It didn't.",
+        "Online connections are thin—they lack the trust-building of face-to-face interaction."
+      ],
+      "takeaway": "Online connection doesn't fully substitute for in-person community."
+    },
+    {
+      "id": "article-society-11",
+      "title": "Inequality Matters",
+      "subtitle": "Civic participation correlates with income. The connected get more connected.",
+      "body": [
+        "Wealthy people participate more—voting, volunteering, joining. The poor participate less.",
+        "Policies reflect the preferences of participants. Social capital inequality reinforces other inequalities."
+      ],
+      "takeaway": "Civic engagement is unequally distributed by class."
+    },
+    {
+      "id": "article-society-12",
+      "title": "Rebuilding Takes Intentionality",
+      "subtitle": "Social capital doesn't return automatically.",
+      "body": [
+        "Reversal requires intentional effort—redesigning communities and institutions to foster connection.",
+        "The question isn't whether we can rebuild. It's whether we'll choose to."
+      ],
+      "takeaway": "Social capital must be deliberately rebuilt."
+    }
+  ]
+}
