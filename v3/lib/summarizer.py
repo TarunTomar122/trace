@@ -434,6 +434,31 @@ QUALITY GATE (VERY IMPORTANT):
 - If accepted, set "rejected": false and produce the full summary fields.
 """
 
+FOR_YOU_FIT_GATE_PROMPT = """You are a strict relevance gate for a personalized learning feed.
+
+Decide if this article is a good fit for the intended learning lane.
+Reject if it is mostly politics, legal/government drama, macro geopolitics,
+consumer shopping/deals, celebrity/news gossip, or generally off-lane content.
+
+TARGET LANE:
+- interest_id: {interest_id}
+- subinterest_id: {subinterest_id}
+- source_name: {source_name}
+
+ARTICLE:
+Title: {title}
+URL: {url}
+Content excerpt:
+{content}
+
+Return JSON ONLY:
+{{
+  "is_fit": <true|false>,
+  "reason": "short reason",
+  "primary_topic": "short topic label"
+}}
+"""
+
 
 def _rejection_payload(reason: str) -> dict[str, Any]:
     return {
@@ -488,6 +513,64 @@ def _cache_bucket(feed_type: str, technical_depth: str = "", output_format: str 
     if technical_depth == "accessible":
         return "for_you_v6_accessible"
     return "for_you_v5"  # legacy
+
+
+def _fit_cache_bucket() -> str:
+    return "for_you_fit_v1"
+
+
+def evaluate_for_you_fit(
+    title: str,
+    url: str,
+    content: str,
+    interest_id: str,
+    subinterest_id: str,
+    source_name: str,
+) -> tuple[bool, str]:
+    """
+    LLM relevance gate for for_you lane fit.
+
+    Returns (is_fit, reason).
+    """
+    client = _get_client()
+    if client is None:
+        # Fail-open if key is missing; hard filters still run upstream.
+        return True, "openai_not_configured"
+    if not content:
+        return False, "no_content"
+
+    prompt = FOR_YOU_FIT_GATE_PROMPT.format(
+        interest_id=interest_id or "",
+        subinterest_id=subinterest_id or "",
+        source_name=source_name or "",
+        title=title or "",
+        url=url or "",
+        content=(content or "")[:4000],
+    )
+    try:
+        resp = client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Return valid JSON only. No markdown fences.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.0,
+            response_format={"type": "json_object"},
+            timeout=30,
+        )
+    except Exception as exc:
+        # Fail-open on transient errors to avoid blocking feed generation.
+        return True, f"fit_gate_error:{exc}"
+
+    parsed = _parse_summary_json((resp.choices[0].message.content or "").strip()) or {}
+    is_fit = bool(parsed.get("is_fit"))
+    reason = str(parsed.get("reason", "")).strip()[:200]
+    if is_fit:
+        return True, reason or "fit"
+    return False, reason or "off_topic_for_lane"
 
 
 def summary_lookup_key(url: str, feed_type: str = "default", technical_depth: str = "", output_format: str = "") -> tuple[str, str]:
@@ -723,6 +806,14 @@ def batch_presummarize(
     already_cached = 0
     cache_bucket = _cache_bucket(feed_type, technical_depth, output_format)
     summary_map: dict[str, dict[str, Any] | None] = {}
+    stats: dict[str, Any] = {
+        "to_generate": 0,
+        "already_cached": 0,
+        "generated": 0,
+        "rejected": 0,
+        "failed": 0,
+        "summary_map": summary_map,
+    }
 
     for item in pool_items:
         url = item.get("url", "")
@@ -730,6 +821,43 @@ def batch_presummarize(
         content = item.get("content", "")
         if not url or not content:
             continue
+
+        # For For You, run a semantic lane-fit gate before summary generation.
+        if feed_type in ("default", "for_you"):
+            fit_bucket = _fit_cache_bucket()
+            cached_fit = store.get_cached_summary_v2(url, fit_bucket)
+            fit_payload = cached_fit.get("summary") if cached_fit else None
+            fit_ok = None
+            if isinstance(fit_payload, dict):
+                fit_ok = bool(fit_payload.get("is_fit", False))
+                if not fit_ok:
+                    summary_map[url] = None
+                    stats["rejected"] += 1
+                    continue
+            if fit_ok is None:
+                fit_ok, fit_reason = evaluate_for_you_fit(
+                    title=title,
+                    url=url,
+                    content=content,
+                    interest_id=str(item.get("interest_id", "")),
+                    subinterest_id=str(item.get("subinterest_id", "")),
+                    source_name=str(item.get("source_name", "")),
+                )
+                store.save_cached_summary_v2(
+                    url,
+                    fit_bucket,
+                    {
+                        "is_fit": fit_ok,
+                        "reason": fit_reason,
+                        "interest_id": str(item.get("interest_id", "")),
+                        "subinterest_id": str(item.get("subinterest_id", "")),
+                    },
+                    MODEL,
+                )
+                if not fit_ok:
+                    summary_map[url] = None
+                    stats["rejected"] += 1
+                    continue
 
         cached = store.get_cached_summary_v2(url, cache_bucket)
         if cached:
@@ -739,14 +867,8 @@ def batch_presummarize(
             continue
         tasks.append((url, title, content))
 
-    stats: dict[str, Any] = {
-        "to_generate": len(tasks),
-        "already_cached": already_cached,
-        "generated": 0,
-        "rejected": 0,
-        "failed": 0,
-        "summary_map": summary_map,
-    }
+    stats["to_generate"] = len(tasks)
+    stats["already_cached"] = already_cached
 
     if not tasks:
         _log_presummary(f"All {already_cached} summaries already cached — nothing to do")

@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -66,6 +67,30 @@ MEDICAL_TOPIC_KEYWORDS = {
     "diagnostic",
     "disease",
     "hospital",
+}
+COMMERCE_TITLE_PATTERNS = (
+    r"\$\s?\d+\s*off",
+    r"\b\d+%\s*off\b",
+)
+COMMERCE_TITLE_KEYWORDS = {
+    "deal",
+    "deals",
+    "sale",
+    "discount",
+    "coupon",
+    "buy",
+    "shop",
+    "gift guide",
+    "black friday",
+    "prime day",
+    "best ",
+}
+COMMERCE_CONTENT_KEYWORDS = {
+    "affiliate",
+    "sponsored",
+    "we may earn a commission",
+    "buy now",
+    "shop now",
 }
 
 ROLE_PRIMARY_INTERESTS: dict[str, list[str]] = {
@@ -174,6 +199,19 @@ def _is_medical_topic(item: dict[str, Any]) -> bool:
     return any(kw in text for kw in MEDICAL_TOPIC_KEYWORDS)
 
 
+def _is_commerce_or_deal_content(title: str, content: str = "") -> bool:
+    """Block shopping/deals/affiliate content from For You."""
+    tl = (title or "").lower()
+    cl = (content or "").lower()[:2000]
+    if any(re.search(p, tl) for p in COMMERCE_TITLE_PATTERNS):
+        return True
+    if any(k in tl for k in COMMERCE_TITLE_KEYWORDS):
+        return True
+    if any(k in cl for k in COMMERCE_CONTENT_KEYWORDS):
+        return True
+    return False
+
+
 def _apply_role_quota(
     ranked: list[dict[str, Any]],
     role_primary: set[str],
@@ -251,6 +289,10 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
             if exclude_title_keywords and _title_has_excluded_keywords(
                 title, exclude_title_keywords
             ):
+                with stats_lock:
+                    stats["filtered"] += 1
+                continue
+            if _is_commerce_or_deal_content(title):
                 with stats_lock:
                     stats["filtered"] += 1
                 continue
@@ -446,6 +488,13 @@ def build_user_feeds(
                 c for c in candidates
                 if not _is_medical_topic(c)
             ]
+        candidates = [
+            c for c in candidates
+            if not _is_commerce_or_deal_content(
+                str(c.get("title", "")),
+                str(c.get("content", "")),
+            )
+        ]
 
         for c in candidates:
             sn = c.get("source_name", "")
@@ -505,7 +554,7 @@ def build_user_feeds(
         _log(f"Batch summarize {len(items)} articles for depth={depth} (cards format)")
         presummary = batch_presummarize(
             store, items,
-            feed_type="default", max_workers=8,
+            feed_type="for_you", max_workers=8,
             technical_depth=depth,
             output_format="cards",  # Generate learning cards for swipeable mobile UX
         )
@@ -545,7 +594,7 @@ def build_user_feeds(
                     url=url,
                     title=item.get("title", ""),
                     content=item.get("content", ""),
-                    feed_type="default",
+                    feed_type="for_you",
                     technical_depth=depth,
                     output_format="cards",  # Learning cards for swipeable mobile UX
                 )

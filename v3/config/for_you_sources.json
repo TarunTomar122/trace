@@ -103,16 +103,6 @@
       "source_weight": 1.1
     },
     {
-      "interest_id": "engineering",
-      "subinterest_id": "wired-tech",
-      "name": "Wired",
-      "url": "https://www.wired.com/feed/rss",
-      "type": "rss",
-      "source_weight": 1.0,
-      "exclude_title_keywords": ["review", "deal", "buy", "best "]
-    },
-
-    {
       "interest_id": "startups",
       "subinterest_id": "startups",
       "name": "TechCrunch Startups",
