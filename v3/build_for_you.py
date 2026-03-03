@@ -48,6 +48,25 @@ CONFIG_PATH = "v3/config/for_you_sources.json"
 DEFAULT_ITEMS = 0
 DEFAULT_LIMIT_PER_SOURCE = 5
 DEFAULT_MAX_AGE = 14
+HEALTH_INTEREST_IDS = {"health", "biotech", "medicine", "health-tech"}
+MEDICAL_TOPIC_KEYWORDS = {
+    "cancer",
+    "immune system",
+    "immunity",
+    "tumor",
+    "tumour",
+    "vaccine",
+    "antibody",
+    "clinical trial",
+    "drug discovery",
+    "molecule",
+    "genome",
+    "protein",
+    "diagnosis",
+    "diagnostic",
+    "disease",
+    "hospital",
+}
 
 ROLE_PRIMARY_INTERESTS: dict[str, list[str]] = {
     "designer":  ["experience"],
@@ -145,6 +164,14 @@ def _build_source_weight_map(
         if name:
             out[name] = src.get("source_weight", 1.0)
     return out
+
+
+def _is_medical_topic(item: dict[str, Any]) -> bool:
+    """Detect medical-heavy stories for health/biotech lanes only."""
+    title = str(item.get("title", "")).lower()
+    content = str(item.get("content", "")).lower()[:2500]
+    text = f"{title} {content}"
+    return any(kw in text for kw in MEDICAL_TOPIC_KEYWORDS)
 
 
 def _apply_role_quota(
@@ -413,6 +440,12 @@ def build_user_feeds(
             if c.get("interest_id", "") in eligible
             and c.get("url", "") not in seen_urls
         ]
+        allow_medical = bool(eligible & HEALTH_INTEREST_IDS)
+        if not allow_medical:
+            candidates = [
+                c for c in candidates
+                if not _is_medical_topic(c)
+            ]
 
         for c in candidates:
             sn = c.get("source_name", "")

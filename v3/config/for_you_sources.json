@@ -14,8 +14,16 @@
     {
       "interest_id": "technology",
       "subinterest_id": "future-tech",
-      "name": "MIT Technology Review",
-      "url": "https://www.technologyreview.com/feed",
+      "name": "OpenAI News",
+      "url": "https://openai.com/news/rss.xml",
+      "type": "rss",
+      "source_weight": 1.25
+    },
+    {
+      "interest_id": "technology",
+      "subinterest_id": "future-tech-google",
+      "name": "Google AI Blog",
+      "url": "https://blog.google/technology/ai/rss/",
       "type": "rss",
       "source_weight": 1.2
     },
@@ -71,11 +79,11 @@
 
     {
       "interest_id": "engineering",
-      "subinterest_id": "css-frontend",
-      "name": "CSS-Tricks",
-      "url": "https://css-tricks.com/feed/",
+      "subinterest_id": "news-aggregation",
+      "name": "Techmeme",
+      "url": "https://www.techmeme.com/feed.xml",
       "type": "rss",
-      "source_weight": 1.1
+      "source_weight": 0.95
     },
     {
       "interest_id": "engineering",
@@ -251,14 +259,6 @@
       "url": "https://cleantechnica.com/feed/",
       "type": "rss",
       "source_weight": 1.0
-    },
-    {
-      "interest_id": "climate",
-      "subinterest_id": "climate-tech",
-      "name": "MIT Climate",
-      "url": "https://www.technologyreview.com/topic/climate-change-and-energy/feed",
-      "type": "rss",
-      "source_weight": 1.1
     }
   ]
 }

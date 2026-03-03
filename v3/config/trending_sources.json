@@ -1,6 +1,14 @@
 {
   "description": "Sources for the 'Trending' feed - BREAKING NEWS only. Fast-moving news sources covering tech, AI, startups, and business. No feature articles or long-form content.",
   "max_age_hours": 24,
+  "discovery": {
+    "enabled": true,
+    "include_hn": false,
+    "include_youtube": true,
+    "topics": ["openai", "google ai", "nvidia", "startup funding", "cybersecurity"],
+    "hn_limit_per_topic": 4,
+    "youtube_limit_per_topic": 3
+  },
   "items_per_user": 0,
   "sources": [
     {
@@ -94,13 +102,6 @@
       "url": "https://techcrunch.com/category/startups/feed/",
       "type": "rss",
       "source_weight": 1.1
-    },
-    {
-      "interest_id": "technology",
-      "name": "Hacker News Best",
-      "url": "https://hnrss.org/best",
-      "type": "rss",
-      "source_weight": 1.0
     }
   ]
 }
