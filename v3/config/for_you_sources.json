@@ -251,15 +251,6 @@
       "exclude_title_keywords": ["deal", "buy", "coupon", "review", "best "]
     },
     {
-      "interest_id": "business-market",
-      "subinterest_id": "business-strategy",
-      "name": "Harvard Business Review",
-      "url": "https://hbr.org/feed",
-      "type": "rss",
-      "source_weight": 1.2
-    },
-
-    {
       "interest_id": "leadership",
       "subinterest_id": "management",
       "name": "Fast Company Work Life",
@@ -268,15 +259,6 @@
       "source_weight": 1.0,
       "exclude_title_keywords": ["deal", "buy", "coupon", "review", "best "]
     },
-    {
-      "interest_id": "leadership",
-      "subinterest_id": "leadership-hbr",
-      "name": "HBR Leadership",
-      "url": "https://hbr.org/topic/leadership/feed",
-      "type": "rss",
-      "source_weight": 1.2
-    },
-
     {
       "interest_id": "marketing",
       "subinterest_id": "growth",

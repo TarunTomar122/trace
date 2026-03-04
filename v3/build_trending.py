@@ -17,7 +17,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
-from collections import Counter
+from collections import Counter, defaultdict
 import hashlib
 import json
 import os
@@ -140,6 +140,28 @@ STRONG_TECH_TERMS = (
     "claude",
     "developer",
 )
+
+# Entity tokens used only for topic diversity/capping.
+# This prevents one company (e.g., Apple) from taking too many topic slots.
+ENTITY_TOPIC_TOKENS = {
+    "apple",
+    "openai",
+    "google",
+    "meta",
+    "microsoft",
+    "amazon",
+    "nvidia",
+    "tesla",
+    "xai",
+    "anthropic",
+    "alibaba",
+    "bytedance",
+    "tiktok",
+    "uber",
+    "netflix",
+    "spacex",
+    "samsung",
+}
 
 TOPIC_STOPWORDS = set(DIVERSITY_STOPWORDS) | {
     # Generic news language
@@ -802,6 +824,33 @@ def _build_topic_articles(
     return out
 
 
+def _cluster_primary_entity(cluster: dict[str, Any]) -> str:
+    counts: Counter[str] = Counter()
+    for item in cluster.get("items", []) or []:
+        title = str(item.get("title", "") or "").lower()
+        if not title:
+            continue
+        words = re.findall(r"[a-z0-9]+", title)
+        for w in words:
+            if w in ENTITY_TOPIC_TOKENS:
+                counts[w] += 1
+    if not counts:
+        return "other"
+    return counts.most_common(1)[0][0]
+
+
+def _dedupe_items_by_url(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[str] = set()
+    out: list[dict[str, Any]] = []
+    for item in items:
+        url = str(item.get("url", "")).strip()
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        out.append(item)
+    return out
+
+
 def _build_trending_topics_payload(
     store: V3Store,
     ranked_items: list[dict[str, Any]],
@@ -814,14 +863,15 @@ def _build_trending_topics_payload(
     if not clusters:
         return [], {"topics": 0, "overview_generated": 0, "overview_cached": 0}
 
-    # Only keep clusters with 2+ genuinely related articles.
-    # Orphan articles (single-item clusters) are simply not interesting enough
-    # to be a "topic" — they don't get dumped into a misc bucket.
+    # Split into strong clusters and singletons.
     strong_clusters: list[dict[str, Any]] = []
+    singleton_items: list[dict[str, Any]] = []
     for cluster in clusters:
         items = cluster.get("items", []) or []
         if len(items) >= 2:
             strong_clusters.append(cluster)
+        elif len(items) == 1:
+            singleton_items.append(items[0])
 
     for cluster in strong_clusters:
         cluster["popularity_score"] = _cluster_popularity_score(cluster)
@@ -831,7 +881,42 @@ def _build_trending_topics_payload(
         reverse=True,
     )
 
-    selected = strong_clusters[:max_topics]
+    # Option 4:
+    # 1) cap per-entity topic dominance (e.g., Apple <= 2 topic slots)
+    # 2) append a final "More updates" topic containing leftovers/singletons
+    max_topics_per_entity = 2
+    entity_counts: defaultdict[str, int] = defaultdict(int)
+    capped_clusters: list[dict[str, Any]] = []
+    overflow_items: list[dict[str, Any]] = []
+    for cluster in strong_clusters:
+        entity = _cluster_primary_entity(cluster)
+        if entity_counts[entity] < max_topics_per_entity:
+            capped_clusters.append(cluster)
+            entity_counts[entity] += 1
+        else:
+            overflow_items.extend(cluster.get("items", []) or [])
+
+    leftover_items = _dedupe_items_by_url(overflow_items + singleton_items)
+    if leftover_items:
+        leftover_items = sorted(
+            leftover_items,
+            key=lambda x: float(x.get("_trend_score", 0.0)),
+            reverse=True,
+        )[:10]
+
+    reserved_misc_slot = 1 if leftover_items and max_topics > 0 else 0
+    selected = capped_clusters[: max(0, max_topics - reserved_misc_slot)]
+    if leftover_items and len(selected) < max_topics:
+        selected.append(
+            {
+                "items": leftover_items,
+                "tokens": set(),
+                "token_counts": Counter(),
+                "consensus_tokens": set(),
+                "popularity_score": -1.0,
+                "is_misc": True,
+            }
+        )
 
     # Pre-compute per-cluster data (timelines, IDs, fallback titles) — all CPU-bound
     cluster_data: list[dict[str, Any]] = []
@@ -849,7 +934,7 @@ def _build_trending_topics_payload(
         )
         digest = hashlib.sha256(signature.encode("utf-8")).hexdigest()[:16] if signature else f"misc{idx}"
         topic_id = f"tt_{digest}"
-        fallback_title = "Hot Right Now" if cluster.get("is_misc") else _topic_title(cluster)
+        fallback_title = "More updates" if cluster.get("is_misc") else _topic_title(cluster)
         timeline = _build_topic_timeline(topic_id, items, summary_map)
 
         cluster_data.append({
@@ -876,6 +961,9 @@ def _build_trending_topics_payload(
             timeline=cd["timeline"],
         )
         return tid, title, overview, key_points, from_cache
+
+    if not cluster_data:
+        return [], {"topics": 0, "overview_generated": 0, "overview_cached": 0}
 
     with ThreadPoolExecutor(max_workers=min(8, len(cluster_data))) as executor:
         futures = {executor.submit(_gen_overview, cd): cd for cd in cluster_data}
