@@ -92,9 +92,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(firebaseUser);
       if (firebaseUser) {
         setProfileResolved(false);
-        // Startup should never block on profile creation/network.
-        // Hydrate from cache/server in the background.
-        void loadProfile(firebaseUser, { allowCreate: false });
+        // Startup should never create/overwrite profiles.
+        // We retry read-only once if the first fetch misses.
+        void loadProfile(firebaseUser, { allowCreate: false }).then(async (p) => {
+          if (!p) {
+            setProfileResolved(false);
+            await new Promise((r) => setTimeout(r, 600));
+            await loadProfile(firebaseUser, { allowCreate: false });
+          }
+        });
       } else {
         setProfile(null);
         setProfileResolved(true);

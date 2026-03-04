@@ -123,6 +123,7 @@ type PageProps = {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
   const article = await getArticle(id);
+  const canonicalUrl = `https://www.yourtrace.online/articles/${id}`;
 
   if (!article) {
     return {
@@ -138,10 +139,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: `${article.title} | Trace`,
     description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title: article.title,
       description,
       type: 'article',
+      url: canonicalUrl,
       images: article.thumbnail ? [{ url: article.thumbnail }] : [],
       siteName: 'Trace',
     },
@@ -162,5 +167,46 @@ export default async function PublicArticlePage({ params }: PageProps) {
     notFound();
   }
 
-  return <ArticleContent article={article} />;
+  const canonicalUrl = `https://www.yourtrace.online/articles/${id}`;
+  const publishedIso = (() => {
+    if (!article.published_date) return undefined;
+    const parsed = new Date(article.published_date);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+  })();
+  const articleStructuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: article.title,
+    description:
+      article.summary?.short_article?.subtitle ||
+      article.summary?.short_article?.key_takeaways?.[0] ||
+      `Read this article from ${article.source_name || 'Trace'}`,
+    mainEntityOfPage: canonicalUrl,
+    datePublished: publishedIso,
+    dateModified: publishedIso,
+    author: {
+      '@type': 'Organization',
+      name: article.source_name || article.source || 'Trace',
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Trace',
+      logo: {
+        '@type': 'ImageObject',
+        url: 'https://www.yourtrace.online/trace.png',
+      },
+    },
+    image: article.thumbnail ? [article.thumbnail] : undefined,
+    url: canonicalUrl,
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleStructuredData) }}
+      />
+      <ArticleContent article={article} />
+    </>
+  );
 }

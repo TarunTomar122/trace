@@ -55,8 +55,40 @@ export default async function ResearchPostPage({ params }: PageProps) {
     notFound();
   }
 
+  const canonicalUrl = `https://www.yourtrace.online/research/${post.slug}`;
+  const publishedIso = (() => {
+    const parsed = new Date(post.date);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+  })();
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": post.title,
+    "description": post.excerpt,
+    "datePublished": publishedIso,
+    "dateModified": publishedIso,
+    "author": {
+      "@type": "Organization",
+      "name": post.author,
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Trace",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://www.yourtrace.online/trace.png",
+      },
+    },
+    "mainEntityOfPage": canonicalUrl,
+    "url": canonicalUrl,
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground px-2 selection:bg-primary/20 selection:text-primary">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <MainNav showBanner={false} />
       <article className="relative pt-32 md:pt-36 lg:pt-40 pb-16 md:pb-24 overflow-hidden z-10">
         <div className="container mx-auto px-4 sm:px-6 max-w-3xl">

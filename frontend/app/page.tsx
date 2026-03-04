@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Youtube,
   Github,
@@ -303,7 +303,15 @@ const Nav = () => {
 
             {/* Logo - Centered */}
             <Link href="/" className="flex items-center gap-2 md:absolute md:left-1/2 md:-translate-x-1/2">
-              <img src="/trace.webp" alt="Trace" width={120} height={32} className="h-6 w-auto md:h-7" />
+              <Image
+                src="/trace.webp"
+                alt="Trace"
+                width={120}
+                height={32}
+                priority
+                sizes="120px"
+                className="h-6 w-auto md:h-7"
+              />
               <span className="text-sm md:text-base font-semibold tracking-[0.12em] text-foreground">TRACE</span>
             </Link>
 
@@ -2925,23 +2933,13 @@ const SEOContentSection = () => {
 // --- Main Landing Page ---
 export default function LandingPage() {
   const { user, profile, loading } = useAuth();
-  const router = useRouter();
 
-  // Redirect logged-in users to feed
+  // Redirect onboarded users away from marketing page.
   useEffect(() => {
     if (!loading && user && profile?.onboarded) {
-      router.replace('/feed');
+      window.location.replace('/feed');
     }
-  }, [user, profile, loading, router]);
-
-  // Show loading while checking auth
-  if (loading || (user && profile?.onboarded)) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
-      </div>
-    );
-  }
+  }, [user, profile, loading]);
 
   return (
     <div className="min-h-screen bg-background text-foreground px-2 selection:bg-primary/20 selection:text-primary font-serif antialiased">

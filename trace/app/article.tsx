@@ -40,6 +40,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { isBookmarked as checkBookmarked, toggleBookmark, addSnippet } from '@/lib/bookmarks';
 import { getCurrentArticle } from '@/lib/article-store';
 import { logReadingEvent } from '@/lib/reading-analytics';
+import { updateStreak } from '@/lib/streaks';
 import { getArticleImage } from '@/lib/fallback-images';
 
 const ACCENT = '#F59E0B';
@@ -1021,6 +1022,7 @@ export default function ArticleScreen() {
       itemType: item.type || item.source,
       feedCategory: item.metadata?.feed_category || item.feed_type,
     });
+    updateStreak();
   }, [item, router]);
 
   if (!item) return null;

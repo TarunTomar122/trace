@@ -82,13 +82,24 @@ function ForceUpdateGate({ children }: { children: ReactNode }) {
 
 function AuthGate({ children }: { children: ReactNode }) {
   const { user, profile, loading, profileResolved } = useAuth();
-  const { isProUser, loading: revenueCatLoading } = useRevenueCat();
+  const { loading: revenueCatLoading } = useRevenueCat();
   const segments = useSegments();
   const router = useRouter();
   const colorScheme = useColorScheme();
 
   const [appReady, setAppReady] = useState(false);
-  const hasNavigated = useRef(false);
+  // Delays showing the welcome screen briefly so Firebase has time to restore
+  // a persisted session from AsyncStorage (avoids flash for returning users).
+  const noUserTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (noUserTimer.current) {
+        clearTimeout(noUserTimer.current);
+        noUserTimer.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (loading) return;
@@ -101,12 +112,27 @@ function AuthGate({ children }: { children: ReactNode }) {
 
     if (!user) {
       if (!inAuthGroup) {
-        hasNavigated.current = true;
+        if (noUserTimer.current) {
+          clearTimeout(noUserTimer.current);
+          noUserTimer.current = null;
+        }
         router.replace('/(auth)/welcome');
-      } else {
-        setAppReady(true);
+      } else if (!noUserTimer.current) {
+        // Wait briefly before showing the welcome screen — Firebase on React Native
+        // reads the persisted session from AsyncStorage asynchronously, so the first
+        // onAuthStateChanged call can be null even for logged-in users.
+        noUserTimer.current = setTimeout(() => {
+          noUserTimer.current = null;
+          setAppReady(true);
+        }, 350);
       }
       return;
+    }
+
+    // User is present — cancel any pending no-user timer
+    if (noUserTimer.current) {
+      clearTimeout(noUserTimer.current);
+      noUserTimer.current = null;
     }
 
     if (!profile?.onboarded) {
@@ -116,33 +142,31 @@ function AuthGate({ children }: { children: ReactNode }) {
         return;
       }
 
+      // Profile is null means it failed to load (network error / cache miss).
+      // Don't route anywhere — keep the splash up. The AuthContext retry will
+      // re-resolve profileResolved and re-trigger this effect once it succeeds.
+      if (!profile) return;
+
       // If not an early adopter yet, show the offer screen first
-      if (!profile?.isEarlyAdopter) {
-        hasNavigated.current = true;
+      if (!profile.isEarlyAdopter) {
         router.replace('/early-adopter');
         return;
       }
 
       // Already claimed early adopter, go to onboarding
-      hasNavigated.current = true;
       router.replace('/onboarding');
       return;
     }
 
     // User is onboarded + RC done - redirect away from auth/onboarding/early-adopter screens
     if (inAuthGroup || inOnboarding || inEarlyAdopter) {
-      hasNavigated.current = true;
       router.replace('/(tabs)');
       return;
     }
 
-    // On correct screen — wait an extra frame so the screen is painted
-    if (hasNavigated.current) {
-      const timer = setTimeout(() => setAppReady(true), 50);
-      return () => clearTimeout(timer);
-    }
+    // On a valid screen; release the splash.
     setAppReady(true);
-  }, [loading, user, profile, profileResolved, isProUser, revenueCatLoading, segments, router]);
+  }, [loading, user, profile, profileResolved, revenueCatLoading, segments, router]);
 
   // Hide native splash + branded overlay together
   useEffect(() => {

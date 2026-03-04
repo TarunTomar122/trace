@@ -5,9 +5,9 @@ import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
-  Settings,
   Shield,
   FileText,
+  Check,
   ChevronRight,
   ExternalLink,
   LogOut,
@@ -29,13 +29,12 @@ import { useRevenueCat } from '@/contexts/RevenueCatContext';
 
 import {
   updateUserProfile,
-  getReadingStreak,
-  ReadingStreak,
   ROLES,
   SENIORITY_LEVELS,
   ONBOARDING_INTERESTS,
   CAREER_GOALS,
 } from '@/lib/firestore';
+import { getStreakData, StreakData } from '@/lib/streaks';
 
 function lookupLabel(items: readonly { id: string; label: string }[], id: string): string {
   return items.find((i) => i.id === id)?.label || id.replace(/-/g, ' ');
@@ -54,15 +53,21 @@ export default function ProfileScreen() {
 
   const isOnboarded = profile?.onboarded === true;
   const [newsletterOptIn, setNewsletterOptIn] = useState(profile?.newsletterOptIn !== false);
-  const [streak, setStreak] = useState<ReadingStreak | null>(null);
+  const [streak, setStreak] = useState<StreakData | null>(null);
+  const [summaryStyle, setSummaryStyle] = useState<string>(profile?.summaryStyle || 'balanced');
+  const [savingSummaryStyle, setSavingSummaryStyle] = useState(false);
 
   useEffect(() => {
     setNewsletterOptIn(profile?.newsletterOptIn !== false);
   }, [profile?.newsletterOptIn]);
 
   useEffect(() => {
-    if (user) getReadingStreak(user.uid).then(setStreak);
-  }, [user]);
+    setSummaryStyle(profile?.summaryStyle || 'balanced');
+  }, [profile?.summaryStyle]);
+
+  useEffect(() => {
+    getStreakData().then(setStreak);
+  }, []);
 
   const handleNewsletterToggle = async (value: boolean) => {
     setNewsletterOptIn(value);
@@ -74,6 +79,22 @@ export default function ProfileScreen() {
         console.error('Error updating newsletter preference:', error);
         setNewsletterOptIn(!value);
       }
+    }
+  };
+
+  const handleSummaryStyleChange = async (value: string) => {
+    if (!user || savingSummaryStyle || value === summaryStyle) return;
+    const previous = summaryStyle;
+    setSummaryStyle(value);
+    setSavingSummaryStyle(true);
+    try {
+      await updateUserProfile(user.uid, { summaryStyle: value } as any);
+      await refreshProfile();
+    } catch (error) {
+      console.error('Error updating summary style:', error);
+      setSummaryStyle(previous);
+    } finally {
+      setSavingSummaryStyle(false);
     }
   };
 
@@ -155,13 +176,13 @@ export default function ProfileScreen() {
         </View>
 
         {/* ─── Activity / Streak ─── */}
-        {streak && isOnboarded && (
+        {isOnboarded && streak !== null && (
           <View style={[s.card, { backgroundColor: cardBg }]}>
             <View style={s.statsRow}>
               <View style={s.stat}>
                 <Flame size={18} color={ACCENT} strokeWidth={2} />
                 <Text style={[s.statValue, { color: Colors[colorScheme].text }]}>
-                  {streak.current_streak}
+                  {streak.currentStreak}
                 </Text>
                 <Text style={[s.statLabel, { color: Colors[colorScheme].muted }]}>
                   Current
@@ -171,7 +192,7 @@ export default function ProfileScreen() {
               <View style={s.stat}>
                 <Trophy size={18} color={ACCENT} strokeWidth={2} />
                 <Text style={[s.statValue, { color: Colors[colorScheme].text }]}>
-                  {streak.longest_streak}
+                  {streak.longestStreak}
                 </Text>
                 <Text style={[s.statLabel, { color: Colors[colorScheme].muted }]}>
                   Best
@@ -181,7 +202,7 @@ export default function ProfileScreen() {
               <View style={s.stat}>
                 <Calendar size={18} color={ACCENT} strokeWidth={2} />
                 <Text style={[s.statValue, { color: Colors[colorScheme].text }]}>
-                  {streak.total_days_read}
+                  {streak.streakHistory.length}
                 </Text>
                 <Text style={[s.statLabel, { color: Colors[colorScheme].muted }]}>
                   Days
@@ -238,6 +259,56 @@ export default function ProfileScreen() {
               <Text style={s.upgradeBtnText}>Start Free Trial</Text>
               <ArrowRight size={16} color="#fff" strokeWidth={2.5} />
             </Pressable>
+          </View>
+        )}
+
+        {/* ─── Summary Style ─── */}
+        {isOnboarded && (
+          <View style={[s.card, { backgroundColor: cardBg }]}>
+            <View style={s.summaryHeader}>
+              <FileText size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+              <Text style={[s.summaryTitle, { color: Colors[colorScheme].text }]}>
+                Summary style
+              </Text>
+            </View>
+            <View style={s.summaryOptions}>
+              {[
+                { id: 'accessible', label: 'Accessible' },
+                { id: 'technical', label: 'Technical' },
+                { id: 'balanced', label: 'Balanced' },
+              ].map((option) => {
+                const selected = summaryStyle === option.id;
+                return (
+                  <Pressable
+                    key={option.id}
+                    onPress={() => handleSummaryStyleChange(option.id)}
+                    disabled={savingSummaryStyle}
+                    style={[
+                      s.summaryOption,
+                      {
+                        backgroundColor: selected ? ACCENT : (isDark ? '#2a2a2a' : '#ebebeb'),
+                        borderColor: selected ? ACCENT : 'transparent',
+                        borderWidth: selected ? 2 : 1,
+                        opacity: savingSummaryStyle ? 0.75 : 1,
+                      },
+                    ]}
+                  >
+                    <View style={s.summaryOptionInner}>
+                      {selected && <Check size={13} color="#fff" strokeWidth={3} />}
+                      <Text style={[s.summaryOptionText, { color: selected ? '#fff' : Colors[colorScheme].text }]}>
+                        {option.label}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={[s.summaryCurrent, { color: Colors[colorScheme].text }]}>
+              Current: {summaryStyle === 'accessible' ? 'Accessible' : summaryStyle === 'technical' ? 'Technical' : 'Balanced'}
+            </Text>
+            <Text style={[s.summaryHint, { color: Colors[colorScheme].muted }]}>
+              Applies to tomorrow&apos;s feed.
+            </Text>
           </View>
         )}
 
@@ -304,16 +375,6 @@ export default function ProfileScreen() {
               <Text style={[s.menuText, { color: Colors[colorScheme].text }]}>Saved Articles</Text>
               <ChevronRight size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
             </Pressable>
-          )}
-          {isOnboarded && (
-            <>
-              <View style={[s.menuDivider, { backgroundColor: isDark ? '#333' : '#e5e5e5' }]} />
-              <Pressable style={s.menuRow} onPress={() => router.push('/preferences')}>
-                <Settings size={20} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-                <Text style={[s.menuText, { color: Colors[colorScheme].text }]}>Edit Preferences</Text>
-                <ChevronRight size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-              </Pressable>
-            </>
           )}
           {isOnboarded && (
             <View style={[s.menuDivider, { backgroundColor: isDark ? '#333' : '#e5e5e5' }]} />
@@ -519,6 +580,47 @@ const s = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '700',
+  },
+
+  // Summary style
+  summaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  summaryTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  summaryOptions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  summaryOption: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  summaryOptionInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  summaryOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  summaryCurrent: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 10,
+  },
+  summaryHint: {
+    fontSize: 12,
+    marginTop: 4,
   },
 
   // Pills

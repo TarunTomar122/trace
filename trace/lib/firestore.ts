@@ -525,28 +525,42 @@ export async function markEarlyAdopterOfferSeen(uid: string): Promise<void> {
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
+  let cachedProfile: UserProfile | null = null;
 
-  // Cache-first: this returns immediately when local persistence has data.
+  // Read cache first for fast startup, but don't trust it as the final truth.
+  // Cached onboarding/subscription flags can be stale across sessions/devices.
   try {
     const cached = await getDocFromCache(docRef);
     if (cached.exists()) {
-      return cached.data() as UserProfile;
+      cachedProfile = cached.data() as UserProfile;
     }
   } catch {
-    // No cached profile yet; continue to server.
+    // No cached profile yet; continue to server fetch below.
   }
 
   try {
-    // Server fetch is explicit here; if offline, this fails fast instead of
-    // hanging app bootstrap.
-    const docSnap = await getDocFromServer(docRef);
+    // Always try server as source-of-truth. Use a timeout so startup
+    // doesn't hang on poor networks.
+    const serverTimeoutMs = cachedProfile?.onboarded ? 1500 : 4500;
+    const docSnap = await Promise.race([
+      getDocFromServer(docRef),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), serverTimeoutMs)),
+    ]);
+    if (!docSnap) {
+      return cachedProfile;
+    }
     if (docSnap.exists()) {
       return docSnap.data() as UserProfile;
     }
+    // Doc does not exist on server; fall back to cache if present.
+    if (cachedProfile) {
+      return cachedProfile;
+    }
     return null;
   } catch (error) {
-    console.error('Error getting user profile:', error);
-    return null;
+    console.error('Error getting user profile from server:', error);
+    // Network/server failure: cached data is better than null.
+    return cachedProfile;
   }
 }
 
