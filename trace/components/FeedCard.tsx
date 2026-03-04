@@ -82,6 +82,8 @@ function splitParagraphs(text?: string): string[] {
   return normalized.split(/\n\s*\n/).filter(Boolean);
 }
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 /* ─── Types ───────────────────────────────────────────────── */
 
 type CardProps = {
@@ -92,11 +94,122 @@ type CardProps = {
 };
 
 /* ═══════════════════════════════════════════════════════════
+   0. TrendingStoryCard — compact card for horizontal carousel
+   ═══════════════════════════════════════════════════════════ */
+
+export const CAROUSEL_CARD_WIDTH = SCREEN_WIDTH * 0.75;
+const CAROUSEL_CARD_HEIGHT = 300;
+
+export function TrendingStoryCard({ item, colorScheme, onPress }: CardProps) {
+  const sourceName = item.source_name || item.source || '';
+  const initials = getSourceInitials(sourceName);
+  const avatarBg = hashColor(sourceName);
+  const timeAgo = getTimeAgo(item.published_date);
+  const fallbackUrl = getArticleImage(null, item.title);
+  const [imageUrl, setImageUrl] = useState(getArticleImage(item.thumbnail, item.title));
+
+  return (
+    <Pressable onPress={onPress} style={csStyles.card}>
+      <Image
+        source={{ uri: imageUrl }}
+        style={csStyles.image}
+        resizeMode="cover"
+        onError={() => setImageUrl(fallbackUrl)}
+      />
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.85)']}
+        style={csStyles.gradient}
+      />
+      <View style={csStyles.overlay}>
+        <View style={csStyles.sourceRow}>
+          <View style={[csStyles.avatar, { backgroundColor: avatarBg }]}>
+            <Text style={csStyles.avatarText}>{initials}</Text>
+          </View>
+          <Text style={csStyles.sourceName} numberOfLines={1}>
+            {sourceName}
+          </Text>
+          {timeAgo !== '' && (
+            <>
+              <Text style={csStyles.dot}>·</Text>
+              <Text style={csStyles.time}>{timeAgo}</Text>
+            </>
+          )}
+        </View>
+        <Text style={csStyles.title} numberOfLines={3}>
+          {item.title}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+const csStyles = StyleSheet.create({
+  card: {
+    width: CAROUSEL_CARD_WIDTH,
+    height: CAROUSEL_CARD_HEIGHT,
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginRight: 12,
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  gradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '65%',
+  },
+  overlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: 16,
+  },
+  sourceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  avatar: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.5,
+  },
+  sourceName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)',
+    flexShrink: 1,
+  },
+  dot: { fontSize: 10, color: 'rgba(255,255,255,0.5)' },
+  time: { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    lineHeight: 24,
+    letterSpacing: -0.3,
+  },
+});
+
+/* ═══════════════════════════════════════════════════════════
    1. TrendingCard — Instagram-style carousel with swipe
    ═══════════════════════════════════════════════════════════ */
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH - 40; // 20px padding on each side
+const CARD_WIDTH = SCREEN_WIDTH - 40;
 const CARD_HEIGHT = 420;
 
 export function TrendingCard({ item, colorScheme, onPress, accentColor = '#F97316' }: CardProps) {

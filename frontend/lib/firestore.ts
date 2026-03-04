@@ -269,16 +269,47 @@ export interface UserFeed {
   };
 }
 
+export interface TopicTimelineEvent {
+  id: string;
+  timestamp: string;
+  title: string;
+  summary: string;
+  source_name?: string;
+  source_url?: string;
+  article_url?: string;
+}
+
+export interface TrendingTopic {
+  id: string;
+  topic_key: string;
+  title: string;
+  summary: string;
+  key_points?: string[];
+  is_featured?: boolean;
+  popularity_score?: number;
+  article_count?: number;
+  source_count?: number;
+  interest_id?: string;
+  thumbnail?: string | null;
+  first_seen_at?: string;
+  last_updated_at?: string;
+  tags?: string[];
+  timeline?: TopicTimelineEvent[];
+  articles?: FeedItem[];
+}
+
 export interface V3UserFeed {
   date: string;
   for_you: FeedItem[];
   deep_dives: FeedItem[];
   trending: FeedItem[];
+  trending_topics?: TrendingTopic[];
   assembled_at?: string;
   metadata?: {
     for_you_count?: number;
     deep_dives_count?: number;
     trending_count?: number;
+    trending_topics_count?: number;
     total_items?: number;
     pipeline?: string;
   };
@@ -629,6 +660,7 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
     let forYou: FeedItem[] = [];
     let deepDives: FeedItem[] = [];
     let trending: FeedItem[] = [];
+    let trendingTopics: TrendingTopic[] = [];
     let feedDate = '';
     let assembledAt: string | undefined;
     let metadata: V3UserFeed['metadata'];
@@ -649,6 +681,7 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
       const sortedGlobal = globalSnapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
       const globalData = sortedGlobal[0].data();
       trending = Array.isArray(globalData.trending) ? globalData.trending : [];
+      trendingTopics = Array.isArray(globalData.trending_topics) ? globalData.trending_topics : [];
     }
 
     // Fallback: if no global trending, try user's own trending (legacy)
@@ -658,7 +691,7 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
       trending = Array.isArray(data.trending) ? data.trending : [];
     }
 
-    if (forYou.length === 0 && deepDives.length === 0 && trending.length === 0) {
+    if (forYou.length === 0 && deepDives.length === 0 && trending.length === 0 && trendingTopics.length === 0) {
       return null;
     }
 
@@ -667,6 +700,7 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
       for_you: forYou as FeedItem[],
       deep_dives: deepDives as FeedItem[],
       trending: trending as FeedItem[],
+      trending_topics: trendingTopics,
       assembled_at: assembledAt,
       metadata,
     };

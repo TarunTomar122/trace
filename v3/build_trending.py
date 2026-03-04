@@ -17,9 +17,11 @@ Usage:
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -40,8 +42,11 @@ load_dotenv(REPO_ROOT / ".env")
 from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
 from v3.lib.store import V3Store, TRENDING_POOL, _today_ist  # noqa: E402
 from v3.lib.content import fetch_content, fetch_og_image  # noqa: E402
-from v3.lib.summarizer import batch_presummarize  # noqa: E402
-from v3.lib.diversity import dedupe_trending_latest_story  # noqa: E402
+from v3.lib.summarizer import batch_presummarize, generate_summary  # noqa: E402
+from v3.lib.diversity import (  # noqa: E402
+    STOPWORDS as DIVERSITY_STOPWORDS,
+    dedupe_trending_latest_story,
+)
 
 CONFIG_PATH = "v3/config/trending_sources.json"
 DEFAULT_LIMIT_PER_SOURCE = 10
@@ -58,7 +63,7 @@ DEFAULT_HN_LIMIT_PER_TOPIC = 4
 DEFAULT_YT_LIMIT_PER_TOPIC = 3
 HN_SEARCH_URL = "https://hn.algolia.com/api/v1/search_by_date"
 HN_TIMEOUT = 20
-YT_TIMEOUT = 120
+YT_TIMEOUT = 15
 PROMO_TITLE_KEYWORDS = (
     "deal",
     "deals",
@@ -135,6 +140,45 @@ STRONG_TECH_TERMS = (
     "claude",
     "developer",
 )
+
+TOPIC_STOPWORDS = set(DIVERSITY_STOPWORDS) | {
+    # Generic news language
+    "news", "update", "updates", "latest", "today", "report", "reports",
+    "says", "say", "said", "amid", "after", "before", "over", "under",
+    "from", "about", "through", "here", "set", "hit", "top", "big",
+    "first", "new", "one", "two", "three", "four", "five", "six",
+    "could", "would", "will", "can", "may", "has", "have", "had",
+    "year", "month", "week", "day", "quarter",
+    # Generic domain words that appear in almost every article
+    "technology", "tech", "business", "company", "companies", "firm",
+    "market", "markets", "stock", "stocks", "share", "shares", "price",
+    "prices", "growth", "revenue", "earnings", "profit", "loss", "deal",
+    "app", "platform", "product", "products", "service", "services",
+    "data", "tool", "tools", "feature", "features", "system", "systems",
+    "global", "world", "industry", "sector", "billion", "million",
+    "startup", "startups", "venture", "fund", "funding", "investor",
+    "launch", "launches", "launched", "release", "released", "announce",
+    "announced", "announcement", "unveil", "unveiled", "introduces",
+    "introduced", "plan", "plans", "according", "percent",
+}
+
+# Only canonicalize TRUE synonyms — keep brand names specific so they cluster tightly
+TOPIC_TOKEN_CANONICAL = {
+    "ceasefire": "war",
+    "warfare": "war",
+    "gpt4": "openai",
+    "gpt3": "openai",
+    "chatgpt": "openai",
+}
+
+TOKEN_DISPLAY = {
+    "ai": "AI",
+    "us": "US",
+    "uk": "UK",
+    "eu": "EU",
+    "china": "China",
+    "war": "War",
+}
 
 
 def _log(msg: str) -> None:
@@ -349,6 +393,568 @@ def _story_key(title: str) -> str:
     if not tokens:
         return ""
     return " ".join(sorted(set(tokens[:8]))[:4])
+
+
+def _topic_tokens(text: str) -> set[str]:
+    cleaned = re.sub(r"[^a-z0-9\s]", " ", (text or "").lower())
+    out: set[str] = set()
+    for raw in cleaned.split():
+        tok = raw.strip()
+        if len(tok) < 3:
+            continue
+        if tok in TOPIC_STOPWORDS:
+            continue
+        if tok.isdigit():
+            continue
+        tok = TOPIC_TOKEN_CANONICAL.get(tok, tok)
+        out.add(tok)
+    return out
+
+
+def _topic_tokens_for_item(item: dict[str, Any]) -> set[str]:
+    # Only use the title — NOT interest_id (which is "technology"/"business" for
+    # nearly every article and causes everything to cluster together).
+    # discovery_topic is kept only if it's specific (not a generic domain word).
+    md = item.get("metadata", {}) or {}
+    title_tokens = _topic_tokens(str(item.get("title", "") or ""))
+    disc = str(md.get("discovery_topic", "") or "").strip().lower()
+    if disc and disc not in TOPIC_STOPWORDS and len(disc) >= 4:
+        title_tokens.add(TOPIC_TOKEN_CANONICAL.get(disc, disc))
+    return title_tokens
+
+
+def _cluster_topic_candidates(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Cluster ranked candidates into tighter topics via token overlap.
+
+    Key design decisions:
+    - Only match on tokens the CURRENT article and cluster actually share
+      (don't blindly add all new tokens to cluster — prevents snowballing).
+    - Require overlap >= 2 tokens AND those tokens must be meaningful
+      (not just high-frequency generic words).
+    - Each item's tokens are tracked separately so consensus can be
+      recalculated rather than just accumulating.
+    """
+    # Words that are too common across articles to be useful cluster signals
+    # even after the main TOPIC_STOPWORDS pass (shorter words, common verbs, etc.)
+    SOFT_STOP = {
+        "using", "used", "make", "made", "made", "take", "taken", "comes",
+        "coming", "going", "gets", "get", "got", "back", "just", "more",
+        "less", "like", "also", "even", "still", "already", "now", "soon",
+        "next", "last", "both", "each", "into", "with", "that", "this",
+        "they", "their", "there", "been", "being", "work", "works", "call",
+        "called", "called", "show", "shows", "showing", "become", "becomes",
+    }
+
+    clusters: list[dict[str, Any]] = []
+
+    for item in items:
+        tokens = _topic_tokens_for_item(item)
+        if not tokens:
+            continue
+
+        best_idx = -1
+        best_score = 0.0
+
+        for idx, cluster in enumerate(clusters):
+            # Score against the consensus tokens (tokens seen in 2+ items)
+            consensus: set[str] = cluster.get("consensus_tokens", set())
+            if not consensus:
+                # Fall back to all tokens for single-item clusters
+                consensus = cluster.get("tokens", set())
+
+            shared = tokens & consensus - SOFT_STOP
+            if len(shared) < 1:
+                continue
+            # Require at least 2 overlapping specific tokens OR 1 very specific one
+            # A token is "specific" if it's not a common English word (length >= 4 helps)
+            specific_shared = {t for t in shared if len(t) >= 4}
+            if len(specific_shared) < 2 and len(shared) < 2:
+                continue
+
+            score = float(len(shared)) + len(shared) / max(1, len(tokens | consensus))
+            if score > best_score:
+                best_score = score
+                best_idx = idx
+
+        if best_idx < 0:
+            clusters.append({
+                "items": [item],
+                "tokens": set(tokens),
+                "token_counts": Counter(tokens),
+                "consensus_tokens": set(),
+            })
+            continue
+
+        cluster = clusters[best_idx]
+        cluster["items"].append(item)
+        cluster["tokens"].update(tokens)
+        # Track per-token frequency and update consensus (tokens in >= 2 items)
+        tc: Counter = cluster["token_counts"]
+        for t in tokens:
+            tc[t] = tc.get(t, 0) + 1
+        cluster["consensus_tokens"] = {t for t, cnt in tc.items() if cnt >= 2}
+
+    return clusters
+
+
+def _cluster_popularity_score(cluster: dict[str, Any]) -> float:
+    """Score a topic cluster. Source diversity is the strongest signal —
+    a story covered by 4 different outlets is more important than
+    6 articles from the same source."""
+    items: list[dict[str, Any]] = cluster.get("items", []) or []
+    if not items:
+        return 0.0
+    article_count = len(items)
+    source_count = len(
+        {
+            str(i.get("source_name", "")).strip()
+            for i in items
+            if str(i.get("source_name", "")).strip()
+        }
+    )
+    avg_signal = sum(float(i.get("_trend_score", 0.0)) for i in items) / max(1, article_count)
+    latest_dt = None
+    for i in items:
+        dt = _parse_dt(str(i.get("published_date", "") or i.get("fetched_at", "")))
+        if dt and (latest_dt is None or dt > latest_dt):
+            latest_dt = dt
+    recency = 0.0
+    if latest_dt:
+        age_hours = max(0.0, (datetime.now(timezone.utc) - latest_dt).total_seconds() / 3600)
+        recency = max(0.0, (24.0 - age_hours) / 24.0) * 2.0
+    # Source diversity is king — a story from 4 outlets beats 6 articles from 1
+    return round(source_count * 3.5 + article_count * 0.8 + avg_signal * 0.4 + recency, 3)
+
+
+def _pretty_topic_token(token: str) -> str:
+    return TOKEN_DISPLAY.get(token, token.capitalize())
+
+
+def _topic_title(cluster: dict[str, Any]) -> str:
+    """Generate a specific topic title using consensus tokens.
+
+    Prefers tokens seen in multiple articles (consensus). Longer/more specific
+    tokens are ranked higher to avoid generic titles like 'Technology and Business'.
+    """
+    # Use the pre-computed consensus tokens (in >=2 articles) if available,
+    # otherwise fall back to counting from scratch.
+    consensus: set[str] = cluster.get("consensus_tokens", set())
+    if consensus:
+        token_counts: Counter[str] = Counter()
+        for item in cluster.get("items", []) or []:
+            for tok in _topic_tokens_for_item(item):
+                if tok in consensus:
+                    token_counts[tok] += 1
+        # Prefer longer tokens (more specific) — break ties by frequency
+        top = sorted(token_counts.keys(), key=lambda t: (token_counts[t], len(t)), reverse=True)
+    else:
+        token_counts = Counter()
+        for item in cluster.get("items", []) or []:
+            token_counts.update(_topic_tokens_for_item(item))
+        top = [tok for tok, cnt in token_counts.most_common(6) if cnt >= 2]
+
+    if len(top) >= 2:
+        return f"{_pretty_topic_token(top[0])} and {_pretty_topic_token(top[1])}"
+    if len(top) == 1:
+        return f"{_pretty_topic_token(top[0])} updates"
+
+    # Fall back to the top article's title
+    items: list[dict[str, Any]] = cluster.get("items", []) or []
+    if not items:
+        return "Trending now"
+    top_item = sorted(
+        items,
+        key=lambda x: float(x.get("_trend_score", 0.0)),
+        reverse=True,
+    )[0]
+    return str(top_item.get("title", "Trending now"))[:80]
+
+
+def _event_summary_for_item(
+    item: dict[str, Any],
+    summary_map: dict[str, dict[str, Any] | None],
+) -> str:
+    url = str(item.get("url", "")).strip()
+    summary = summary_map.get(url) if url else None
+    if isinstance(summary, dict):
+        short = summary.get("short_article", {}) or {}
+        subtitle = str(short.get("subtitle", "")).strip()
+        if subtitle:
+            return subtitle
+        slides = short.get("slides")
+        if isinstance(slides, list) and slides:
+            first = str(slides[0]).strip()
+            return re.sub(r"^\s*Slide\s*\d+\s*:\s*", "", first, flags=re.IGNORECASE).strip()
+        body = str(short.get("body", "")).strip()
+        if body:
+            para = body.split("\n\n", 1)[0].strip()
+            if para:
+                return para[:260]
+    content = str(item.get("content", "")).strip()
+    if content:
+        return re.sub(r"\s+", " ", content)[:260]
+    return str(item.get("title", "")).strip()
+
+
+def _build_topic_timeline(
+    topic_id: str,
+    items: list[dict[str, Any]],
+    summary_map: dict[str, dict[str, Any] | None],
+    max_events: int = 14,
+) -> list[dict[str, Any]]:
+    def _sort_key(it: dict[str, Any]) -> datetime:
+        dt = _parse_dt(str(it.get("published_date", "") or it.get("fetched_at", "")))
+        if dt:
+            return dt
+        return datetime.fromtimestamp(0, tz=timezone.utc)
+
+    ordered = sorted(items, key=_sort_key)[:max_events]
+    events: list[dict[str, Any]] = []
+    for idx, item in enumerate(ordered):
+        ts = str(item.get("published_date", "") or item.get("fetched_at", "")).strip()
+        if not ts:
+            ts = datetime.now(timezone.utc).isoformat()
+        article_url = str(item.get("url", "")).strip()
+        event_id = hashlib.sha256(f"{topic_id}:{article_url}:{idx}".encode("utf-8")).hexdigest()[:16]
+        events.append(
+            {
+                "id": event_id,
+                "timestamp": ts,
+                "title": str(item.get("title", "")).strip()[:180],
+                "summary": _event_summary_for_item(item, summary_map),
+                "source_name": str(item.get("source_name", "")).strip(),
+                "source_url": str(item.get("source_url", "")).strip(),
+                "article_url": article_url,
+            }
+        )
+    return events
+
+
+def _deterministic_topic_overview(topic_title: str, timeline: list[dict[str, Any]]) -> tuple[str, list[str]]:
+    if not timeline:
+        return (
+            f"{topic_title} is active in the last 24 hours with fresh reporting across sources.",
+            [],
+        )
+    first = timeline[0]
+    last = timeline[-1]
+    source_count = len(
+        {
+            str(e.get("source_name", "")).strip()
+            for e in timeline
+            if str(e.get("source_name", "")).strip()
+        }
+    )
+    overview = (
+        f"{topic_title} saw {len(timeline)} notable updates in the last 24 hours "
+        f"across {source_count} sources. The story moved from "
+        f"{first.get('title', 'an initial report')} to "
+        f"{last.get('title', 'the latest development')}."
+    )
+    points = [str(e.get("title", "")).strip() for e in timeline[:3] if str(e.get("title", "")).strip()]
+    return overview, points
+
+
+def _topic_cache_key(items: list[dict[str, Any]]) -> str:
+    signature = "|".join(
+        sorted(
+            f"{str(i.get('url', '')).strip()}#{str(i.get('published_date', '')).strip()}"
+            for i in items
+            if str(i.get("url", "")).strip()
+        )
+    )
+    digest = hashlib.sha256(signature.encode("utf-8")).hexdigest()[:40] if signature else "empty"
+    return f"trending_topic_v3:{digest}"
+
+
+TOPIC_OVERVIEW_PROMPT = """You are a news editor writing a concise brief for a trending topic.
+
+Given these timeline events, produce:
+1. A short natural headline
+2. A 1-2 sentence overview — just what happened, nothing more
+3. 2-4 bullet points covering all the key details (names, numbers, specifics)
+
+TIMELINE:
+{timeline}
+
+Return JSON:
+{{
+  "title": "Short natural headline (e.g. 'US-Iran Strikes Escalate', 'Apple Launches M5 Lineup')",
+  "overview": "1-2 sentences max. What happened and who was involved. No commentary, no 'what this means'.",
+  "key_points": ["Specific fact with number or name", "Another concrete detail", "..."]
+}}
+
+RULES:
+- Title reads like a real news headline — NOT "X and Y" style
+- Overview is 1-2 sentences ONLY — the bullet points carry all the details
+- Use **bold** for key names, numbers, and prices in bullet points
+- Bullet points should be specific and scannable — no vague statements
+- No commentary, predictions, or "what this means for the industry" fluff
+"""
+
+
+def _build_topic_overview(
+    store: V3Store,
+    topic_id: str,
+    fallback_title: str,
+    items: list[dict[str, Any]],
+    timeline: list[dict[str, Any]],
+) -> tuple[str, str, list[str], bool]:
+    """Generate topic overview via LLM. Returns (title, overview, key_points, from_cache)."""
+    cache_key = _topic_cache_key(items)
+    cached = store.get_cached_synthesis(cache_key)
+    if isinstance(cached, dict):
+        cached_overview = str(cached.get("overview", "")).strip()
+        cached_title = str(cached.get("title", "")).strip()
+        cached_points = cached.get("key_points")
+        if cached_overview:
+            return (
+                cached_title or fallback_title,
+                cached_overview,
+                cached_points if isinstance(cached_points, list) else [],
+                True,
+            )
+
+    deterministic_overview, deterministic_points = _deterministic_topic_overview(
+        fallback_title, timeline
+    )
+    if not timeline:
+        store.cache_synthesis(
+            cache_key,
+            {
+                "topic_id": topic_id,
+                "title": fallback_title,
+                "overview": deterministic_overview,
+                "key_points": deterministic_points,
+                "article_count": len(items),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+        return fallback_title, deterministic_overview, deterministic_points, False
+
+    lines = []
+    for e in timeline[:12]:
+        lines.append(
+            f"{e.get('timestamp', '')} | {e.get('source_name', 'Source')} | "
+            f"{e.get('title', '')} | {e.get('summary', '')}"
+        )
+    timeline_text = "\n".join(lines)[:14000]
+
+    from openai import OpenAI as _OpenAI
+    client = _OpenAI(api_key=os.getenv("OPENAI_API_KEY", "").strip())
+    import time as _time
+
+    title = fallback_title
+    overview = deterministic_overview
+    key_points = deterministic_points
+
+    try:
+        t0 = _time.time()
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Return valid JSON only."},
+                {"role": "user", "content": TOPIC_OVERVIEW_PROMPT.format(timeline=timeline_text)},
+            ],
+            temperature=0.3,
+            response_format={"type": "json_object"},
+            timeout=45,
+        )
+        elapsed = _time.time() - t0
+        tokens = getattr(resp.usage, "total_tokens", 0) if resp.usage else 0
+        result = json.loads(resp.choices[0].message.content or "{}")
+        print(f"      [topic-overview] {elapsed:.1f}s, {tokens} tokens — {result.get('title', '?')[:60]}")
+
+        maybe_title = str(result.get("title", "")).strip()
+        if maybe_title:
+            title = maybe_title
+        maybe_overview = str(result.get("overview", "")).strip()
+        if maybe_overview:
+            overview = maybe_overview
+        maybe_points = result.get("key_points")
+        if isinstance(maybe_points, list) and maybe_points:
+            key_points = [str(p).strip() for p in maybe_points if str(p).strip()][:5]
+    except Exception as exc:
+        _log(f"  Topic overview LLM failed for {topic_id}: {exc}")
+
+    store.cache_synthesis(
+        cache_key,
+        {
+            "topic_id": topic_id,
+            "title": title,
+            "overview": overview,
+            "key_points": key_points,
+            "article_count": len(items),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+    return title, overview, key_points, False
+
+
+def _build_topic_articles(
+    items: list[dict[str, Any]],
+    summary_map: dict[str, dict[str, Any] | None],
+) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for item in items:
+        summary = summary_map.get(str(item.get("url", "")).strip(), None)
+        out.append(_build_feed_item(item, summary))
+    return out
+
+
+def _build_trending_topics_payload(
+    store: V3Store,
+    ranked_items: list[dict[str, Any]],
+    summary_map: dict[str, dict[str, Any] | None],
+    max_topics: int = 8,
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    clusters = _cluster_topic_candidates(ranked_items)
+    if not clusters:
+        return [], {"topics": 0, "overview_generated": 0, "overview_cached": 0}
+
+    # Only keep clusters with 2+ genuinely related articles.
+    # Orphan articles (single-item clusters) are simply not interesting enough
+    # to be a "topic" — they don't get dumped into a misc bucket.
+    strong_clusters: list[dict[str, Any]] = []
+    for cluster in clusters:
+        items = cluster.get("items", []) or []
+        if len(items) >= 2:
+            strong_clusters.append(cluster)
+
+    for cluster in strong_clusters:
+        cluster["popularity_score"] = _cluster_popularity_score(cluster)
+
+    strong_clusters.sort(
+        key=lambda c: float(c.get("popularity_score", 0.0)),
+        reverse=True,
+    )
+
+    selected = strong_clusters[:max_topics]
+
+    # Pre-compute per-cluster data (timelines, IDs, fallback titles) — all CPU-bound
+    cluster_data: list[dict[str, Any]] = []
+    for idx, cluster in enumerate(selected):
+        items = sorted(
+            cluster.get("items", []) or [],
+            key=lambda x: float(x.get("_trend_score", 0.0)),
+            reverse=True,
+        )
+        if not items:
+            continue
+
+        signature = "|".join(
+            sorted(str(i.get("url", "")).strip() for i in items if str(i.get("url", "")).strip())
+        )
+        digest = hashlib.sha256(signature.encode("utf-8")).hexdigest()[:16] if signature else f"misc{idx}"
+        topic_id = f"tt_{digest}"
+        fallback_title = "Hot Right Now" if cluster.get("is_misc") else _topic_title(cluster)
+        timeline = _build_topic_timeline(topic_id, items, summary_map)
+
+        cluster_data.append({
+            "idx": idx,
+            "cluster": cluster,
+            "items": items,
+            "topic_id": topic_id,
+            "fallback_title": fallback_title,
+            "timeline": timeline,
+        })
+
+    # Generate all topic overviews IN PARALLEL
+    overview_generated = 0
+    overview_cached = 0
+    overview_results: dict[str, tuple[str, str, list[str]]] = {}  # topic_id → (title, overview, key_points)
+
+    def _gen_overview(cd: dict[str, Any]) -> tuple[str, str, str, list[str], bool]:
+        tid = cd["topic_id"]
+        title, overview, key_points, from_cache = _build_topic_overview(
+            store=store,
+            topic_id=tid,
+            fallback_title=cd["fallback_title"],
+            items=cd["items"],
+            timeline=cd["timeline"],
+        )
+        return tid, title, overview, key_points, from_cache
+
+    with ThreadPoolExecutor(max_workers=min(8, len(cluster_data))) as executor:
+        futures = {executor.submit(_gen_overview, cd): cd for cd in cluster_data}
+        for future in as_completed(futures):
+            try:
+                tid, title, overview, key_points, from_cache = future.result()
+                overview_results[tid] = (title, overview, key_points)
+                if from_cache:
+                    overview_cached += 1
+                else:
+                    overview_generated += 1
+            except Exception as exc:
+                cd = futures[future]
+                _log(f"  Overview generation failed for {cd['topic_id']}: {exc}")
+
+    # Assemble final topics list (preserving popularity order)
+    topics: list[dict[str, Any]] = []
+    for cd in cluster_data:
+        items = cd["items"]
+        topic_id = cd["topic_id"]
+        cluster = cd["cluster"]
+        timeline = cd["timeline"]
+        idx = cd["idx"]
+
+        if topic_id not in overview_results:
+            continue
+        topic_title, overview, key_points = overview_results[topic_id]
+
+        token_counts: Counter[str] = Counter()
+        for item in items:
+            token_counts.update(_topic_tokens_for_item(item))
+        tags = [tok for tok, _ in token_counts.most_common(4)]
+
+        source_names = {
+            str(i.get("source_name", "")).strip()
+            for i in items
+            if str(i.get("source_name", "")).strip()
+        }
+        interest_counts: Counter[str] = Counter(
+            str(i.get("interest_id", "")).strip()
+            for i in items
+            if str(i.get("interest_id", "")).strip()
+        )
+
+        dts = [
+            _parse_dt(str(i.get("published_date", "") or i.get("fetched_at", "")))
+            for i in items
+        ]
+        dts = [dt for dt in dts if dt]
+        first_seen_at = min(dts).isoformat() if dts else ""
+        last_updated_at = max(dts).isoformat() if dts else ""
+
+        hero = items[0]
+        topics.append(
+            {
+                "id": topic_id,
+                "topic_key": tags[0] if tags else topic_id,
+                "title": topic_title,
+                "summary": overview,
+                "key_points": key_points,
+                "is_featured": idx == 0,
+                "popularity_score": float(cluster.get("popularity_score", 0.0)),
+                "article_count": len(items),
+                "source_count": len(source_names),
+                "interest_id": interest_counts.most_common(1)[0][0] if interest_counts else "",
+                "thumbnail": hero.get("og_image", "") or "",
+                "first_seen_at": first_seen_at,
+                "last_updated_at": last_updated_at,
+                "tags": tags,
+                "timeline": timeline,
+                "articles": _build_topic_articles(items, summary_map),
+            }
+        )
+
+    return topics, {
+        "topics": len(topics),
+        "overview_generated": overview_generated,
+        "overview_cached": overview_cached,
+    }
 
 
 def _iso_from_hn_date(value: str) -> str:
@@ -770,6 +1376,19 @@ def build_global_feed(
 
     # Filter low-quality/promos and sort by recency (latest first)
     ranked = _rank_candidates(all_candidates, source_weights)
+
+    # For topic clustering, keep the full ranked set (before story-dedup)
+    # but strictly filter to 24h so topics only contain today's news.
+    cutoff = datetime.now(timezone.utc).timestamp() - (max_age_hours * 3600)
+    ranked_for_topics = [
+        item for item in ranked
+        if (
+            _parse_dt(str(item.get("published_date", "") or item.get("fetched_at", "")))
+            or datetime.fromtimestamp(0, tz=timezone.utc)
+        ).timestamp() >= cutoff
+    ]
+    _log(f"Topic clustering input: {len(ranked_for_topics)} articles (strict {max_age_hours}h window)")
+
     # Story-level dedupe (latest wins) + per-source cap.
     ranked, dedupe_stats = dedupe_trending_latest_story(
         ranked,
@@ -794,7 +1413,16 @@ def build_global_feed(
     if not ranked:
         _log("No articles to process")
         store.write_global_feed_section(target_date, "trending", [])
-        return {"items": 0, "summaries_generated": 0, "summaries_cached": 0, "rejected": 0}
+        store.write_global_feed_section(target_date, "trending_topics", [])
+        return {
+            "items": 0,
+            "topics": 0,
+            "summaries_generated": 0,
+            "summaries_cached": 0,
+            "topic_overview_generated": 0,
+            "topic_overview_cached": 0,
+            "rejected": 0,
+        }
 
     # ------------------------------------------------------------------
     # PHASE 2b: Batch summarize all articles (parallel)
@@ -803,8 +1431,15 @@ def build_global_feed(
     _log("PHASE 2b: Summarize articles (parallel)")
     _log("-" * 40)
 
+    # Summarize both deduped feed items and the broader topic-clustering pool.
+    # Most URLs overlap so the extra calls will be cache hits.
+    all_urls_to_summarize = {str(i.get("url", "")).strip() for i in ranked}
+    topic_only = [
+        i for i in ranked_for_topics
+        if str(i.get("url", "")).strip() not in all_urls_to_summarize
+    ]
     presummary = batch_presummarize(
-        store, ranked,
+        store, ranked + topic_only,
         feed_type="trending", max_workers=8,
     )
     summary_map = presummary.get("summary_map", {}) or {}
@@ -818,8 +1453,11 @@ def build_global_feed(
 
     stats = {
         "items": 0,
+        "topics": 0,
         "summaries_generated": presummary.get("generated", 0),
         "summaries_cached": presummary.get("already_cached", 0),
+        "topic_overview_generated": 0,
+        "topic_overview_cached": 0,
         "rejected": presummary.get("rejected", 0) + presummary.get("failed", 0),
     }
 
@@ -833,9 +1471,27 @@ def build_global_feed(
 
     _log(f"Built {len(feed_items)} feed items")
 
+    # Build grouped topics from the pre-dedup set (multiple articles per story
+    # are needed for clustering) but filtered to strict 24h window.
+    trending_topics, topic_stats = _build_trending_topics_payload(
+        store=store,
+        ranked_items=ranked_for_topics,
+        summary_map=summary_map,
+        max_topics=8,
+    )
+    _log(
+        f"Built {len(trending_topics)} grouped topics "
+        f"(overview_generated={topic_stats.get('overview_generated', 0)} "
+        f"overview_cached={topic_stats.get('overview_cached', 0)})"
+    )
+
     # Write to global feed location
     store.write_global_feed_section(target_date, "trending", feed_items)
+    store.write_global_feed_section(target_date, "trending_topics", trending_topics)
     stats["items"] = len(feed_items)
+    stats["topics"] = int(topic_stats.get("topics", 0))
+    stats["topic_overview_generated"] = int(topic_stats.get("overview_generated", 0))
+    stats["topic_overview_cached"] = int(topic_stats.get("overview_cached", 0))
 
     store.record_run("trending", {"date": target_date, "global": True, **stats})
     _log(f"Global trending feed done: {stats}")

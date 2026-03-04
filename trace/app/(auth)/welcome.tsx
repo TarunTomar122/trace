@@ -37,7 +37,7 @@ const PRIVACY_URL = 'https://www.yourtrace.online/privacy-policy';
 // Demo data for preview cards
 const DEMO_TRENDING = {
   source: 'The Verge',
-  title: 'OpenAI announces GPT-5 with breakthrough reasoning capabilities',
+  title: 'Apple unveils M5 chip lineup with breakthrough AI performance',
   time: '2h ago',
   image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&q=80',
 };
@@ -45,7 +45,7 @@ const DEMO_TRENDING = {
 const DEMO_FOR_YOU = {
   source: 'Lenny\'s Newsletter',
   title: 'The art of saying no: How top PMs protect their roadmap',
-  subtitle: 'Why the best product managers are ruthless prioritizers',
+  subtitle: '4 learning cards · Matched to your interests',
   time: '5 min read',
   image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&q=80',
 };
@@ -53,7 +53,7 @@ const DEMO_FOR_YOU = {
 const DEMO_DEEP_DIVE = {
   source: 'Stratechery',
   title: 'The end of the subscription era',
-  subtitle: 'How AI is reshaping software business models',
+  subtitle: 'TL;DR · 5 chapters · Key takeaways',
   chapters: ['The subscription peak', 'AI changes everything', 'What comes next'],
   time: '12 min read',
   image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&q=80',
@@ -66,8 +66,8 @@ const INTRO_PAGES = [
     iconColor: '#F97316',
     badge: 'TRENDING',
     badgeColor: '#F97316',
-    title: 'See what\'s buzzing',
-    body: 'Every morning, catch up on the stories everyone\'s talking about.',
+    title: 'Topics, not just headlines',
+    body: 'Stories grouped into topics with AI overviews and real-time timelines.',
     demo: 'trending',
   },
   {
@@ -75,8 +75,8 @@ const INTRO_PAGES = [
     iconColor: '#F59E0B',
     badge: 'FOR YOU',
     badgeColor: '#F59E0B',
-    title: 'Matched to your interests',
-    body: 'AI finds articles you\'ll actually want to read based on your role and interests.',
+    title: 'Built around you',
+    body: 'Personalized articles with learning cards matched to your role and interests.',
     demo: 'for_you',
   },
   {
@@ -84,8 +84,8 @@ const INTRO_PAGES = [
     iconColor: '#0EA5E9',
     badge: 'DEEP DIVES',
     badgeColor: '#0EA5E9',
-    title: 'Go deeper with experts',
-    body: 'Long-form reads from sources you trust, with chapter summaries.',
+    title: 'Go deeper, faster',
+    body: 'Expert-sourced reads broken into chapters with TL;DRs and key takeaways.',
     demo: 'deep_dive',
   },
 ];
@@ -309,12 +309,12 @@ export default function WelcomeScreen() {
             <AppLogo style={styles.landingLogo} />
 
             <ThemedText style={styles.landingTitle}>
-              Your Personalized Daily Digest
+              Stay sharp, effortlessly
             </ThemedText>
 
             <ThemedText style={[styles.landingSubtitle, { color: Colors[colorScheme].muted }]}>
-              10 minutes a day. Three curated feeds.{'\n'}
-              Everything worth reading, nothing else.
+              Trending topics. Personalized reads.{'\n'}
+              Expert deep dives. All in one place.
             </ThemedText>
 
             {/* Feature pills */}

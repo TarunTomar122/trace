@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 const PRODUCT_LINKS = [
   { href: '/', label: 'Home' },
-  { href: '/trending', label: 'Trending Today' },
+  { href: '/trending', label: 'Trending Topics' },
   { href: '/#pricing', label: 'Pricing' },
   { href: '/#get-started', label: 'Get Started' },
 ];
@@ -27,10 +27,10 @@ const SOCIAL_LINKS = [
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-50 dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800">
+    <footer className="bg-surface-secondary border-t border-border/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 md:py-16">
         {/* Main footer grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-12 mb-12">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 lg:gap-12 mb-12">
           {/* Product */}
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground mb-4">
@@ -88,7 +88,7 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Social */}
+          {/* Connect */}
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground mb-4">
               Connect
@@ -108,10 +108,25 @@ export default function Footer() {
               ))}
             </ul>
           </div>
+
+          {/* Mobile App */}
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground mb-4">
+              Mobile App
+            </h4>
+            <ul className="space-y-3">
+              <li className="text-sm text-secondary">
+                Swipeable cards, topic timelines, and chapter navigation — designed for your phone.
+              </li>
+              <li className="text-sm text-secondary/60">
+                Coming soon to iOS & Android
+              </li>
+            </ul>
+          </div>
         </div>
 
         {/* Bottom section */}
-        <div className="pt-8 border-t border-gray-200 dark:border-gray-800">
+        <div className="pt-8 border-t border-border/50">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             {/* Brand */}
             <div className="flex items-center gap-3">
@@ -129,29 +144,29 @@ export default function Footer() {
 
             {/* Tagline + Copyright */}
             <div className="text-sm text-secondary">
-              <p className="mb-1">Your daily brief — curated, summarized, personalized.</p>
-              <p className="text-xs text-secondary/70">© {new Date().getFullYear()} Trace. All rights reserved.</p>
+              <p className="mb-1">Trending topics. Personalized reads. Expert deep dives.</p>
+              <p className="text-xs text-secondary/50">© {new Date().getFullYear()} Trace. All rights reserved.</p>
             </div>
           </div>
 
           {/* SEO keyword links */}
-          <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-900">
-            <p className="text-xs text-secondary/50 leading-relaxed">
+          <div className="mt-8 pt-6 border-t border-border/30">
+            <p className="text-xs text-secondary/40 leading-relaxed">
               <Link href="/trending" className="hover:text-secondary transition-colors">AI news</Link>
               {' · '}
               <Link href="/trending" className="hover:text-secondary transition-colors">Tech articles</Link>
               {' · '}
-              <Link href="/trending" className="hover:text-secondary transition-colors">Curated content</Link>
+              <Link href="/trending" className="hover:text-secondary transition-colors">Trending topics</Link>
               {' · '}
               <Link href="/research" className="hover:text-secondary transition-colors">Research articles</Link>
               {' · '}
               <Link href="/tools" className="hover:text-secondary transition-colors">Free tools</Link>
               {' · '}
-              <Link href="/" className="hover:text-secondary transition-colors">AI summaries</Link>
+              <Link href="/" className="hover:text-secondary transition-colors">AI overviews</Link>
               {' · '}
-              <Link href="/" className="hover:text-secondary transition-colors">Content curation</Link>
+              <Link href="/" className="hover:text-secondary transition-colors">Learning cards</Link>
               {' · '}
-              <Link href="/" className="hover:text-secondary transition-colors">Daily digest</Link>
+              <Link href="/" className="hover:text-secondary transition-colors">Deep dives</Link>
               {' · '}
               <Link href="/" className="hover:text-secondary transition-colors">RSS alternative</Link>
               {' · '}

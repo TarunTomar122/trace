@@ -32,14 +32,13 @@ export default function Header({
   };
 
   return (
-    <header className="sticky top-0 bg-white/95 dark:bg-[#101014]/95 backdrop-blur-md z-50">
+    <header className="sticky top-0 bg-background/95 backdrop-blur-md z-50 border-b border-border/10">
       <div className="container mx-auto px-4 max-w-3xl">
-        <div className="flex items-center justify-between h-16">
-          {/* Left - Logo or Back */}
+        <div className="flex items-center justify-between h-14">
           {backHref ? (
             <Link
               href={backHref}
-              className="flex items-center gap-2 -ml-2 px-2 py-1.5 rounded-lg text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+              className="flex items-center gap-1.5 -ml-2 px-2 py-1.5 rounded-lg text-sm font-medium text-secondary/60 hover:text-foreground transition-colors"
             >
               <ArrowLeft size={16} />
               <span>{backLabel}</span>
@@ -47,24 +46,23 @@ export default function Header({
           ) : showBackToFeed ? (
             <Link
               href="/feed"
-              className="flex items-center gap-2 -ml-2 px-2 py-1.5 rounded-lg text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+              className="flex items-center gap-1.5 -ml-2 px-2 py-1.5 rounded-lg text-sm font-medium text-secondary/60 hover:text-foreground transition-colors"
             >
               <ArrowLeft size={16} />
               <span>Feed</span>
             </Link>
           ) : (
             <Link href="/feed" className="flex items-center gap-2.5">
-              <img src="/trace.webp" alt="Trace" width={120} height={32} className="h-8 w-auto" />
-              <span className="text-lg font-semibold tracking-[0.12em] text-foreground">TRACE</span>
+              <img src="/trace.webp" alt="Trace" width={120} height={32} className="h-7 w-auto" />
+              <span className="text-base font-semibold tracking-[0.12em] text-foreground">TRACE</span>
             </Link>
           )}
 
-          {/* Right */}
           <div className="flex items-center gap-1">
             {showBackToFeed ? (
               <button
                 onClick={handleSignOut}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-secondary/50 hover:text-foreground transition-colors"
               >
                 Sign Out
                 <LogOut size={15} />
@@ -74,18 +72,18 @@ export default function Header({
                 {showBookmarks && user && (
                   <Link
                     href="/bookmarks"
-                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-secondary hover:text-foreground"
+                    className="p-2 rounded-lg text-secondary/40 hover:text-foreground transition-colors"
                     title="Bookmarks"
                   >
                     <Bookmark size={18} strokeWidth={1.5} />
                   </Link>
                 )}
-                <Link href="/profile" className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <Link href="/profile" className="p-1 rounded-lg transition-colors">
                   {user?.photoURL ? (
                     <img src={user.photoURL} alt="Profile" width={32} height={32} className="w-8 h-8 rounded-full" />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                      <User size={16} className="text-secondary" />
+                    <div className="w-8 h-8 rounded-full bg-surface-secondary flex items-center justify-center">
+                      <User size={16} className="text-secondary/40" />
                     </div>
                   )}
                 </Link>

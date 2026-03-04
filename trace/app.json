@@ -62,11 +62,14 @@
           "icon": "./assets/images/icon.png",
           "color": "#F59E0B"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": true
+      "reactCompiler": false
     },
     "extra": {
       "eas": {

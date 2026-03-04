@@ -4,11 +4,14 @@ import React, { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ExternalLink, Clock, Bookmark, GraduationCap, Quote } from "lucide-react";
+import {
+  ArrowLeft, ExternalLink, Clock, Bookmark, GraduationCap,
+  ChevronLeft, ChevronRight, Loader2,
+} from "lucide-react";
 import Header from "@/components/Header";
 import { FeedItem } from "@/lib/firestore";
+import { getArticleImage } from "@/lib/fallback-images";
 
-const ACCENT = "#F59E0B";
 
 const CARD_TYPE_LABELS: Record<string, string> = {
   hook: "The Story",
@@ -26,82 +29,58 @@ type LearningCard = {
 type Chapter = {
   title: string;
   content: string;
-  quote?: {
-    text: string;
-    source: string;
-  };
+  quote?: { text: string; source: string };
 };
 
 type DeepDiveContent = {
   subtitle?: string;
   tldr?: string;
   chapters?: Chapter[];
-  bottom_line?: {
-    title: string;
-    content: string;
-  };
+  bottom_line?: { title: string; content: string };
   images?: string[];
 };
 
-type SourceRef = {
-  name: string;
-  title: string;
-  url: string;
-};
+type SourceRef = { name: string; title: string; url: string };
 
-// Strip "Slide N:" prefix from slides
 function cleanSlides(slides: string[]): string[] {
   return slides.map(s => s.replace(/^Slide\s*\d+:\s*/i, ''));
 }
 
-// Saved snippets (localStorage for web)
-type SavedSnippet = {
-  key: string;
-  content: string;
-  label: string;
-  savedAt: string;
-};
+type SavedSnippet = { key: string; content: string; label: string; savedAt: string };
 
 function getSavedSnippets(): SavedSnippet[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem('trace_saved_snippets');
     return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 }
 
 function saveSnippet(key: string, content: string, label: string) {
   if (typeof window === 'undefined') return;
   try {
     const snippets = getSavedSnippets();
-    const exists = snippets.some((s) => s.key === key);
-    if (exists) return;
+    if (snippets.some((s) => s.key === key)) return;
     snippets.push({ key, content, label, savedAt: new Date().toISOString() });
     localStorage.setItem('trace_saved_snippets', JSON.stringify(snippets));
-  } catch {
-    // ignore
-  }
+  } catch { /* */ }
 }
 
 function isSnippetSaved(key: string): boolean {
   return getSavedSnippets().some((s) => s.key === key);
 }
 
-// Toast component
 function Toast({ message, visible }: { message: string; visible: boolean }) {
   if (!visible) return null;
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-full shadow-lg flex items-center gap-2">
-      <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
-      </div>
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 bg-foreground text-background text-sm font-medium rounded-full shadow-lg">
       {message}
     </div>
   );
+}
+
+function splitParagraphs(text: string): string[] {
+  return text.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
 }
 
 export default function ArticlePage() {
@@ -109,21 +88,16 @@ export default function ArticlePage() {
   const [item, setItem] = useState<FeedItem | null>(null);
   const [savedSections, setSavedSections] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
+  const [openChapter, setOpenChapter] = useState<number | null>(null);
 
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("trace_article");
-      if (raw) {
-        setItem(JSON.parse(raw));
-      } else {
-        router.replace("/feed");
-      }
-    } catch {
-      router.replace("/feed");
-    }
+      if (raw) setItem(JSON.parse(raw));
+      else router.replace("/feed");
+    } catch { router.replace("/feed"); }
   }, [router]);
 
-  // Load saved state
   useEffect(() => {
     if (!item) return;
     const saved = new Set<string>();
@@ -144,10 +118,7 @@ export default function ArticlePage() {
   if (!item) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div
-          className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
-          style={{ borderColor: ACCENT, borderTopColor: "transparent" }}
-        />
+        <Loader2 size={24} className="animate-spin text-secondary/40" />
       </div>
     );
   }
@@ -162,141 +133,228 @@ export default function ArticlePage() {
   const learningCards = item.summary?.short_article?.learning_cards as LearningCard[] | undefined;
   const hasLearningCards = learningCards && learningCards.length > 0;
 
-  // Deep dive content
   const deepDive = item.summary?.deep_dive as DeepDiveContent | undefined;
   const isChapterDeepDive = deepDive?.chapters && deepDive.chapters.length > 0;
   const sources = item.sources as SourceRef[] | undefined;
-
   const readingTime = item.summary?.reading_time_minutes || 3;
   const hasImage = item.thumbnail && typeof item.thumbnail === 'string' && item.thumbnail.length > 10;
+  const imageUrl = hasImage ? item.thumbnail! : getArticleImage(null, item.title);
 
-  // Chapter-style Deep Dive
-  if (isChapterDeepDive) {
+  /* ═══════════════════════════════════════════════════════
+     Deep Dive — Chapter detail view
+     ═══════════════════════════════════════════════════════ */
+  if (isChapterDeepDive && openChapter !== null && deepDive!.chapters![openChapter]) {
+    const chapters = deepDive!.chapters!;
+    const chapter = chapters[openChapter];
+    const idx = openChapter;
+    const chapterKey = `chapter_${idx}`;
+    const chapterContent = chapter.quote
+      ? `${chapter.content}\n\n"${chapter.quote.text}" — ${chapter.quote.source}`
+      : chapter.content;
+    const paragraphs = splitParagraphs(chapter.content);
+
     return (
       <div className="min-h-screen bg-background text-foreground">
-        <Header />
         <Toast message={toast || ""} visible={!!toast} />
 
-        <main className="container mx-auto px-4 max-w-2xl py-6">
-          {/* Header badge */}
-          <div className="flex items-center gap-2 mb-4">
-            <GraduationCap size={16} style={{ color: ACCENT }} />
-            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: ACCENT }}>
-              Deep Dive
+        {/* Minimal top bar */}
+        <div className="sticky top-0 bg-background/95 backdrop-blur-md z-50 border-b border-border/10">
+          <div className="container mx-auto px-4 max-w-3xl flex items-center justify-between h-14">
+            <button
+              onClick={() => setOpenChapter(null)}
+              className="flex items-center gap-1.5 text-sm text-secondary hover:text-foreground transition-colors"
+            >
+              <ChevronLeft size={18} />
+              <span>Chapters</span>
+            </button>
+            <span className="text-xs text-secondary/50 font-medium">
+              {idx + 1} of {chapters.length}
             </span>
+            <button
+              onClick={() => handleSave(chapterKey, chapterContent, `${item.title} - ${chapter.title}`)}
+              className="p-1.5 hover:opacity-70 transition-opacity"
+            >
+              <Bookmark
+                size={18}
+                className={savedSections.has(chapterKey) ? 'text-foreground fill-current' : 'text-secondary/40'}
+              />
+            </button>
+          </div>
+        </div>
+
+        <main className="container mx-auto px-4 max-w-3xl py-8">
+          <h2 className="text-2xl font-bold leading-tight mb-6">{chapter.title}</h2>
+
+          <div className="space-y-4">
+            {paragraphs.map((para, pi) => (
+              <div key={pi} className="prose prose-base dark:prose-invert max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{para}</ReactMarkdown>
+              </div>
+            ))}
           </div>
 
-          {/* Title */}
-          <h1 className="text-2xl font-bold leading-tight mb-2">{item.title}</h1>
-
-          {/* Subtitle */}
-          {deepDive.subtitle && (
-            <p className="text-base text-secondary/60 italic mb-4">{deepDive.subtitle}</p>
+          {chapter.quote && (
+            <div className="border-l-2 border-border/30 pl-5 py-2 mt-8">
+              <p className="text-base italic text-secondary/70 leading-relaxed">
+                &ldquo;{chapter.quote.text}&rdquo;
+              </p>
+              <p className="text-sm font-medium text-secondary/50 mt-2">
+                — {chapter.quote.source}
+              </p>
+            </div>
           )}
 
-          {/* Meta */}
-          <div className="flex items-center gap-4 text-sm text-secondary/50 mb-6">
-            <span className="flex items-center gap-1.5">
-              <Clock size={14} />
-              {readingTime} min read
-            </span>
-            {sources && sources.length > 0 && (
-              <span>{sources.length} sources</span>
+          {/* Prev / Next */}
+          <div className="flex gap-3 mt-12">
+            {idx > 0 ? (
+              <button
+                onClick={() => { setOpenChapter(idx - 1); window.scrollTo(0, 0); }}
+                className="flex-1 flex items-center gap-3 p-4 rounded-2xl bg-surface-secondary hover:bg-surface-secondary/80 transition-colors text-left"
+              >
+                <ChevronLeft size={18} className="text-secondary/40 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold text-secondary/40 mb-0.5">Previous</p>
+                  <p className="text-sm font-medium truncate">{chapters[idx - 1].title}</p>
+                </div>
+              </button>
+            ) : <div className="flex-1" />}
+            {idx < chapters.length - 1 ? (
+              <button
+                onClick={() => { setOpenChapter(idx + 1); window.scrollTo(0, 0); }}
+                className="flex-1 flex items-center justify-end gap-3 p-4 rounded-2xl bg-surface-secondary hover:bg-surface-secondary/80 transition-colors text-right"
+              >
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold text-secondary/40 mb-0.5">Next</p>
+                  <p className="text-sm font-medium truncate">{chapters[idx + 1].title}</p>
+                </div>
+                <ChevronRight size={18} className="text-secondary/40 shrink-0" />
+              </button>
+            ) : (
+              <button
+                onClick={() => setOpenChapter(null)}
+                className="flex-1 flex items-center justify-end gap-3 p-4 rounded-2xl bg-surface-secondary hover:bg-surface-secondary/80 transition-colors text-right"
+              >
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold text-secondary/40 mb-0.5">Done</p>
+                  <p className="text-sm font-medium">Back to overview</p>
+                </div>
+                <ChevronRight size={18} className="text-secondary/40 shrink-0" />
+              </button>
             )}
           </div>
+        </main>
+      </div>
+    );
+  }
 
+  /* ═══════════════════════════════════════════════════════
+     Deep Dive — Overview page
+     ═══════════════════════════════════════════════════════ */
+  if (isChapterDeepDive) {
+    const chapters = deepDive!.chapters!;
+
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <Toast message={toast || ""} visible={!!toast} />
+
+        <div className="container mx-auto px-4 max-w-3xl pt-6">
           {/* Hero image */}
-          {hasImage && (
-            <div className="relative aspect-[16/9] rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 mb-8">
-              <img src={item.thumbnail!} alt="" className="w-full h-full object-cover" />
-            </div>
-          )}
+          <div className="relative aspect-[2.2/1] sm:aspect-[2.4/1] rounded-2xl overflow-hidden bg-surface-secondary">
+            <img src={imageUrl} alt="" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
 
+            {/* Back button */}
+            <div className="absolute top-4 left-4">
+              <button
+                onClick={() => router.back()}
+                className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:bg-black/60 transition-colors"
+              >
+                <ArrowLeft size={18} className="text-white" />
+              </button>
+            </div>
+
+            {/* Overlay content */}
+            <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-7">
+              <div className="flex items-center gap-2 mb-3">
+                <GraduationCap size={13} className="text-white/70" />
+                <span className="text-[11px] font-semibold text-white/70 tracking-wide">Deep Dive</span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold text-white leading-snug mb-2">{item.title}</h1>
+              <div className="flex items-center gap-3 text-xs text-white/50">
+                <span>{readingTime} min read</span>
+                <span>· {chapters.length} chapters</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <main className="container mx-auto px-4 max-w-3xl py-6">
           {/* TL;DR */}
-          {deepDive.tldr && (
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-5 mb-8">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: ACCENT }}>TL;DR</p>
+          {deepDive!.tldr && (
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-secondary/50 tracking-wide">TL;DR</p>
                 <button
-                  onClick={() => handleSave('tldr', deepDive.tldr!, `${item.title} - TL;DR`)}
+                  onClick={() => handleSave('tldr', deepDive!.tldr!, `${item.title} - TL;DR`)}
                   className="p-1 hover:opacity-70 transition-opacity"
                 >
                   <Bookmark
                     size={16}
-                    className={savedSections.has('tldr') ? 'fill-current' : ''}
-                    style={{ color: savedSections.has('tldr') ? ACCENT : '#9ca3af' }}
-                  />
-                </button>
-              </div>
-              <p className="text-sm leading-relaxed">{deepDive.tldr}</p>
-            </div>
-          )}
-
-          {/* Chapters */}
-          {deepDive.chapters!.map((chapter, idx) => {
-            const chapterKey = `chapter_${idx}`;
-            const chapterContent = chapter.quote
-              ? `${chapter.content}\n\n"${chapter.quote.text}" — ${chapter.quote.source}`
-              : chapter.content;
-
-            return (
-              <div key={idx} className="mb-10">
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-                      <span className="text-xs font-semibold text-secondary/60">{idx + 1}</span>
-                    </div>
-                    <h2 className="text-lg font-semibold">{chapter.title}</h2>
-                  </div>
-                  <button
-                    onClick={() => handleSave(chapterKey, chapterContent, `${item.title} - ${chapter.title}`)}
-                    className="p-1 hover:opacity-70 transition-opacity flex-shrink-0 mt-1"
-                  >
-                    <Bookmark
-                      size={16}
-                      className={savedSections.has(chapterKey) ? 'fill-current' : ''}
-                      style={{ color: savedSections.has(chapterKey) ? ACCENT : '#9ca3af' }}
-                    />
-                  </button>
-                </div>
-
-                <div className="prose prose-sm dark:prose-invert max-w-none mb-4">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{chapter.content}</ReactMarkdown>
-                </div>
-
-                {chapter.quote && (
-                  <div className="border-l-2 pl-4 py-1" style={{ borderColor: ACCENT }}>
-                    <p className="text-sm italic text-secondary/80">"{chapter.quote.text}"</p>
-                    <p className="text-xs font-medium text-secondary/50 mt-2">— {chapter.quote.source}</p>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Bottom Line */}
-          {deepDive.bottom_line && (
-            <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl p-5 mb-8">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Quote size={14} style={{ color: ACCENT }} />
-                  <p className="text-xs font-bold uppercase tracking-wider" style={{ color: ACCENT }}>
-                    {deepDive.bottom_line.title || "The Bottom Line"}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleSave('bottom_line', deepDive.bottom_line!.content, `${item.title} - Bottom Line`)}
-                  className="p-1 hover:opacity-70 transition-opacity"
-                >
-                  <Bookmark
-                    size={16}
-                    className={savedSections.has('bottom_line') ? 'fill-current' : ''}
-                    style={{ color: savedSections.has('bottom_line') ? ACCENT : '#9ca3af' }}
+                    className={savedSections.has('tldr') ? 'text-foreground fill-current' : 'text-secondary/40'}
                   />
                 </button>
               </div>
               <div className="prose prose-sm dark:prose-invert max-w-none">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{deepDive.bottom_line.content}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{deepDive!.tldr}</ReactMarkdown>
+              </div>
+            </div>
+          )}
+
+          {deepDive!.subtitle && (
+            <p className="text-base text-secondary/50 italic mb-6">{deepDive!.subtitle}</p>
+          )}
+
+          {/* Chapter list */}
+          <div className="mb-8">
+            <p className="text-xs font-semibold text-secondary/50 tracking-wide mb-3">Chapters</p>
+            <div className="flex flex-col gap-2">
+              {chapters.map((ch, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setOpenChapter(i); window.scrollTo(0, 0); }}
+                  className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-surface-secondary hover:bg-surface-secondary/70 transition-colors text-left group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-background flex items-center justify-center shrink-0">
+                    <span className="text-sm font-bold text-secondary/60">{i + 1}</span>
+                  </div>
+                  <span className="flex-1 text-[15px] font-semibold leading-snug line-clamp-2 group-hover:text-foreground">
+                    {ch.title}
+                  </span>
+                  <ChevronRight size={16} className="text-secondary/30 shrink-0" />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Bottom line */}
+          {deepDive!.bottom_line && (
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-secondary/50 tracking-wide">
+                  {deepDive!.bottom_line.title || "The Bottom Line"}
+                </p>
+                <button
+                  onClick={() => handleSave('bottom_line', deepDive!.bottom_line!.content, `${item.title} - Bottom Line`)}
+                  className="p-1 hover:opacity-70 transition-opacity"
+                >
+                  <Bookmark
+                    size={16}
+                    className={savedSections.has('bottom_line') ? 'text-foreground fill-current' : 'text-secondary/40'}
+                  />
+                </button>
+              </div>
+              <div className="prose prose-sm dark:prose-invert max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{deepDive!.bottom_line.content}</ReactMarkdown>
               </div>
             </div>
           )}
@@ -304,80 +362,74 @@ export default function ArticlePage() {
           {/* Sources */}
           {sources && sources.length > 0 && (
             <div className="mb-8">
-              <p className="text-xs font-semibold uppercase tracking-wider text-secondary/50 mb-3">Sources</p>
-              <div className="space-y-2">
+              <p className="text-xs font-semibold text-secondary/50 tracking-wide mb-3">Sources</p>
+              <div className="flex flex-col gap-2">
                 {sources.map((src, i) => (
                   <a
                     key={i}
                     href={src.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
+                    className="flex items-center gap-3 p-3.5 rounded-xl bg-surface-secondary hover:bg-surface-secondary/70 transition-colors group"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{src.name}</p>
-                      <p className="text-xs text-secondary/50 truncate">{src.title}</p>
+                      <p className="text-xs text-secondary/40 truncate">{src.title}</p>
                     </div>
-                    <ExternalLink size={14} className="text-secondary/40 group-hover:text-secondary/60 flex-shrink-0" />
+                    <ExternalLink size={14} className="text-secondary/30 group-hover:text-secondary/50 shrink-0" />
                   </a>
                 ))}
               </div>
             </div>
           )}
-
-          {/* Footer */}
-          <div className="border-t border-gray-100 dark:border-gray-800 pt-5">
-            <button
-              onClick={() => router.back()}
-              className="text-sm text-secondary/60 hover:text-foreground transition-colors flex items-center gap-1.5"
-            >
-              <ArrowLeft size={14} />
-              Back to feed
-            </button>
-          </div>
         </main>
       </div>
     );
   }
 
-  // Learning Cards (For You) or Traditional Article
+  /* ═══════════════════════════════════════════════════════
+     For You / Traditional article
+     ═══════════════════════════════════════════════════════ */
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Header />
       <Toast message={toast || ""} visible={!!toast} />
 
-      <main className="container mx-auto px-4 max-w-2xl py-6">
-        <h1 className="text-2xl font-bold leading-tight mb-3">{item.title}</h1>
+      <div className="container mx-auto px-4 max-w-3xl pt-6">
+        {/* Hero image */}
+        <div className="relative aspect-[2.2/1] sm:aspect-[2.4/1] rounded-2xl overflow-hidden bg-surface-secondary">
+          <img src={imageUrl} alt="" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
 
-        <div className="flex items-center gap-3 text-sm text-secondary/60 mb-6">
-          {item.source_name && <span>{item.source_name}</span>}
-          <span className="flex items-center gap-1">
-            <Clock size={13} />
-            {readingTime} min read
-          </span>
-        </div>
-
-        {/* Thumbnail */}
-        {hasImage && (
-          <div className="relative aspect-[16/9] rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 mb-6">
-            <img src={item.thumbnail!} alt="" className="w-full h-full object-cover" />
+          <div className="absolute top-4 left-4">
+            <button
+              onClick={() => router.back()}
+              className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:bg-black/60 transition-colors"
+            >
+              <ArrowLeft size={18} className="text-white" />
+            </button>
           </div>
-        )}
 
+          <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-7">
+            <h1 className="text-xl sm:text-2xl font-bold text-white leading-snug mb-2">{item.title}</h1>
+            <div className="flex items-center gap-3 text-xs text-white/50">
+              {item.source_name && <span>{item.source_name}</span>}
+              <span>· {readingTime} min read</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <main className="container mx-auto px-4 max-w-3xl py-6">
         {hasLearningCards ? (
-          /* Learning Cards as Article Sections */
-          <div className="space-y-8 mb-6">
+          <div className="flex flex-col gap-4 mb-8">
             {learningCards!.map((card, i) => {
               const label = CARD_TYPE_LABELS[card.type] || card.type;
               return (
-                <div key={i}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg">{card.emoji}</span>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-secondary/50">
-                      {label}
-                    </p>
-                  </div>
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                <div key={i} className="p-6 rounded-2xl bg-surface-secondary">
+                  <p className="text-xs font-semibold text-secondary/50 tracking-wide mb-3">
+                    {card.emoji} {label}
+                  </p>
+                  <div className="prose prose-base dark:prose-invert max-w-none">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{card.content}</ReactMarkdown>
                   </div>
                 </div>
@@ -385,20 +437,16 @@ export default function ArticlePage() {
             })}
           </div>
         ) : (
-          /* Traditional Article Format */
           <>
             {!isTrending && keyTakeaways && keyTakeaways.length > 0 && (
-              <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl p-5 mb-6">
-                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-3">
+              <div className="p-5 rounded-2xl bg-surface-secondary mb-6">
+                <p className="text-xs font-semibold text-secondary/50 tracking-wide mb-3">
                   Key Takeaways
                 </p>
                 <ul className="space-y-2">
                   {keyTakeaways.map((t: string, i: number) => (
                     <li key={i} className="flex gap-2.5 items-start text-sm">
-                      <span
-                        className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
-                        style={{ backgroundColor: ACCENT }}
-                      />
+                      <span className="w-1.5 h-1.5 rounded-full mt-2 shrink-0 bg-secondary/30" />
                       <span className="prose prose-sm dark:prose-invert [&>p]:m-0 [&>p]:inline">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{t}</ReactMarkdown>
                       </span>
@@ -409,21 +457,21 @@ export default function ArticlePage() {
             )}
 
             {body ? (
-              <div className="prose prose-sm dark:prose-invert max-w-none mb-6">
+              <div className="prose prose-base dark:prose-invert max-w-none mb-6">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{body}</ReactMarkdown>
               </div>
             ) : (
-              <p className="text-sm text-secondary/60 mb-6">
+              <p className="text-sm text-secondary/50 mb-6">
                 No summary available. Read the original article.
               </p>
             )}
 
             {!isTrending && whyItMatters && (
-              <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-5 mb-6">
-                <p className="text-xs font-semibold text-secondary/60 uppercase tracking-wider mb-1.5">
+              <div className="p-5 rounded-2xl bg-surface-secondary mb-6">
+                <p className="text-xs font-semibold text-secondary/50 tracking-wide mb-2">
                   Why it matters
                 </p>
-                <div className="prose prose-sm dark:prose-invert max-w-none italic text-secondary/70">
+                <div className="prose prose-sm dark:prose-invert max-w-none text-secondary/70">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{whyItMatters}</ReactMarkdown>
                 </div>
               </div>
@@ -431,10 +479,10 @@ export default function ArticlePage() {
           </>
         )}
 
-        <div className="border-t border-gray-100 dark:border-gray-800 pt-5 mt-2 flex items-center justify-between">
+        <div className="border-t border-border/10 pt-5 mt-2 flex items-center justify-between">
           <button
             onClick={() => router.back()}
-            className="text-sm text-secondary/60 hover:text-foreground transition-colors flex items-center gap-1.5"
+            className="text-sm text-secondary/50 hover:text-foreground transition-colors flex items-center gap-1.5"
           >
             <ArrowLeft size={14} />
             Back to feed
@@ -443,8 +491,7 @@ export default function ArticlePage() {
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: ACCENT }}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold bg-foreground text-background hover:bg-foreground/90 transition-colors"
           >
             Read Original <ExternalLink size={14} />
           </a>

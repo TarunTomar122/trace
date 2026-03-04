@@ -314,7 +314,7 @@ export default function OnboardingScreen() {
             <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)}>
               <ThemedText style={styles.title}>What's your role?</ThemedText>
               <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
-                This shapes how we frame your summaries.
+                We'll tailor articles and learning cards to your perspective.
               </ThemedText>
 
               <View style={styles.gridTwo}>
@@ -334,7 +334,7 @@ export default function OnboardingScreen() {
 
               <ThemedText style={[styles.title, { marginTop: 32 }]}>Experience level</ThemedText>
               <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
-                Helps calibrate depth and jargon.
+                Helps us calibrate depth, detail, and terminology.
               </ThemedText>
 
               <View style={styles.gridTwo}>
@@ -359,7 +359,7 @@ export default function OnboardingScreen() {
             <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)}>
               <ThemedText style={styles.title}>What fires you up?</ThemedText>
               <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
-                Pick 3+ topics. This powers your <ThemedText style={{ fontWeight: '700', color: ACCENT }}>For You</ThemedText> feed.
+                Pick 3+ topics. This powers your <ThemedText style={{ fontWeight: '700', color: ACCENT }}>For You</ThemedText> articles and learning cards.
               </ThemedText>
 
               <View style={styles.gridTwo}>
@@ -392,7 +392,7 @@ export default function OnboardingScreen() {
             <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)}>
               <ThemedText style={styles.title}>Your Deep Dive sources</ThemedText>
               <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
-                Pick the voices you trust. We'll show you a taste of each.
+                Pick the voices you trust. We'll turn their best content into chapters.
               </ThemedText>
 
               <View style={styles.sourceList}>
@@ -498,7 +498,7 @@ export default function OnboardingScreen() {
             <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)}>
               <ThemedText style={styles.title}>What's your next move?</ThemedText>
               <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
-                Pick 1-2 goals. We'll prioritize content that gets you there faster.
+                Pick 1-2 goals. We'll surface articles and deep dives that help you get there.
               </ThemedText>
 
               <View style={styles.goalList}>

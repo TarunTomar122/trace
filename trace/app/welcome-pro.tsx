@@ -17,17 +17,17 @@ export default function WelcomeProScreen() {
     {
       icon: InfinityIcon,
       title: 'Unlimited content',
-      description: 'Full access to For You articles and Deep Dives every day',
+      description: 'Full access to personalized articles, learning cards, and deep dives',
     },
     {
       icon: Wand2,
-      title: 'Tailored summaries',
-      description: 'Summaries adapted to your role, seniority, and reading style',
+      title: 'Tailored to you',
+      description: 'Articles and deep dive chapters shaped by your role, interests, and goals',
     },
     {
       icon: Sparkles,
       title: 'Smarter every day',
-      description: 'Your feed keeps improving as you read and interact',
+      description: 'Your feed improves as you read — better topics, better matches',
     },
   ];
 
@@ -48,7 +48,7 @@ export default function WelcomeProScreen() {
           </View>
           <ThemedText style={styles.title}>You're Pro now!</ThemedText>
           <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
-            Your full personalized feed is being built right now. This usually takes about a minute.
+            Your personalized feed is being built. Trending topics, For You articles, and deep dives — all tailored to you.
           </ThemedText>
         </View>
 

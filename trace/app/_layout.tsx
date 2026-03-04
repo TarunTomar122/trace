@@ -81,7 +81,7 @@ function ForceUpdateGate({ children }: { children: ReactNode }) {
 }
 
 function AuthGate({ children }: { children: ReactNode }) {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, profileResolved } = useAuth();
   const { isProUser, loading: revenueCatLoading } = useRevenueCat();
   const segments = useSegments();
   const router = useRouter();
@@ -92,11 +92,12 @@ function AuthGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (loading) return;
-    if (user && profile === null) return;
+    if (user && !profileResolved) return;
     if (user && profile?.onboarded && revenueCatLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboarding = segments[0] === 'onboarding';
+    const inEarlyAdopter = segments[0] === 'early-adopter';
 
     if (!user) {
       if (!inAuthGroup) {
@@ -109,8 +110,6 @@ function AuthGate({ children }: { children: ReactNode }) {
     }
 
     if (!profile?.onboarded) {
-      const inEarlyAdopter = segments[0] === 'early-adopter';
-
       // If already on early-adopter or onboarding, let those screens handle navigation
       if (inEarlyAdopter || inOnboarding) {
         setAppReady(true);
@@ -130,8 +129,8 @@ function AuthGate({ children }: { children: ReactNode }) {
       return;
     }
 
-    // User is onboarded + RC done
-    if (inAuthGroup || inOnboarding) {
+    // User is onboarded + RC done - redirect away from auth/onboarding/early-adopter screens
+    if (inAuthGroup || inOnboarding || inEarlyAdopter) {
       hasNavigated.current = true;
       router.replace('/(tabs)');
       return;
@@ -143,7 +142,7 @@ function AuthGate({ children }: { children: ReactNode }) {
       return () => clearTimeout(timer);
     }
     setAppReady(true);
-  }, [loading, user, profile, isProUser, revenueCatLoading, segments, router]);
+  }, [loading, user, profile, profileResolved, isProUser, revenueCatLoading, segments, router]);
 
   // Hide native splash + branded overlay together
   useEffect(() => {
@@ -195,6 +194,7 @@ function RootLayoutNav() {
         <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal', animation: 'none' }} />
         <Stack.Screen name="preferences" options={{ presentation: 'card', animation: 'default' }} />
         <Stack.Screen name="article" options={{ presentation: 'card', animation: 'default' }} />
+        <Stack.Screen name="topic" options={{ presentation: 'card', animation: 'default' }} />
         <Stack.Screen name="paywall" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>

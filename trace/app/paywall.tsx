@@ -25,21 +25,21 @@ const TRIAL_DAYS = 4;
 const REMINDER_DAY = 3;
 
 const FREE_FEATURES = [
-  'Daily trending stories everyone is talking about',
-  'Preview of personalized & expert content',
-  'Save articles to read later',
+  'Trending topics with AI overviews and timelines',
+  'Preview of personalized articles and deep dives',
+  'Save articles and snippets to read later',
 ];
 
 const PRO_FEATURES = [
-  'AI finds the 5 articles you need to read today',
-  'Expert deep dives broken into digestible chapters',
-  'TL;DR summaries that actually get to the point',
+  'Unlimited personalized articles with learning cards',
+  'Full deep dives with chapters, TL;DRs, and sources',
+  'Content matched to your role, interests, and goals',
 ];
 
 const BENEFITS = [
-  'Stop doom-scrolling. Get the 5 articles that matter.',
-  'Expert insights in 10 minutes, not 10 tabs.',
-  'AI summaries that cut through the noise.',
+  'Trending topics with AI overviews — not just headlines.',
+  'Personalized articles matched to your interests.',
+  'Expert deep dives broken into digestible chapters.',
 ];
 
 type PlanId = 'weekly' | 'monthly' | 'yearly';
@@ -268,7 +268,7 @@ function StepReminder({
           icon={<Gift size={18} color="#F59E0B" strokeWidth={2} />}
           label="Today"
           title="Try everything free"
-          desc="Full access to all feeds, deep dives, and AI summaries."
+          desc="Full access to trending topics, personalized articles, and deep dives."
           colorScheme={colorScheme}
         />
         <TimelineItem
@@ -341,7 +341,7 @@ function StepPaywall({
         <ThemedText style={[styles.heroSub, { color: Colors[colorScheme].muted }]}>
           {fromOnboarding
             ? `All plans include your ${TRIAL_DAYS}-day free trial.`
-            : '10 minutes a day. Zero information overload.'}
+            : 'Trending topics. Personalized reads. Expert deep dives.'}
         </ThemedText>
       </View>
 

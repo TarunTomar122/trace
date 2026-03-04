@@ -119,7 +119,7 @@ export default function EarlyAdopterOfferScreen() {
               <Zap size={16} color="#F97316" strokeWidth={2} />
             </View>
             <Text style={[styles.perkText, { color: Colors[colorScheme].text }]}>
-              Unlimited access to all 3 feeds
+              Trending topics, For You articles, and deep dives
             </Text>
           </View>
 
@@ -128,7 +128,7 @@ export default function EarlyAdopterOfferScreen() {
               <BookOpen size={16} color="#0EA5E9" strokeWidth={2} />
             </View>
             <Text style={[styles.perkText, { color: Colors[colorScheme].text }]}>
-              AI summaries & deep dive chapters
+              AI overviews, learning cards, and chapter breakdowns
             </Text>
           </View>
 
@@ -137,7 +137,7 @@ export default function EarlyAdopterOfferScreen() {
               <Bookmark size={16} color="#8B5CF6" strokeWidth={2} />
             </View>
             <Text style={[styles.perkText, { color: Colors[colorScheme].text }]}>
-              Save articles & snippets
+              Save articles and snippets
             </Text>
           </View>
         </Animated.View>

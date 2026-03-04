@@ -224,7 +224,7 @@ const WaitlistBanner = () => {
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6 }}
-      className="fixed top-0 left-0 right-0 z-60 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800"
+      className="fixed top-0 left-0 right-0 z-60 bg-surface-secondary border-b border-border/50"
     >
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-center gap-3 text-sm">
@@ -265,14 +265,14 @@ const Nav = () => {
           className={cn(
             "bg-background/95 backdrop-blur-md w-full transition-all duration-500 rounded-2xl mt-4",
             scrolled
-              ? "border border-gray-200 dark:border-gray-800 shadow-sm px-4 py-3"
+              ? "border border-border/50 shadow-sm px-4 py-3"
               : "border-transparent px-4 py-5"
           )}
         >
           <div className="flex items-center justify-between w-full">
             {/* Mobile Menu Button */}
             <button
-              className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-foreground transition-colors"
+              className="md:hidden p-2 rounded-lg hover:bg-surface-secondary text-foreground transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -281,21 +281,21 @@ const Nav = () => {
             {/* Desktop Left Nav */}
             <div className="hidden md:flex items-center gap-1 flex-1">
               {!user && (
-                <Link href="#what-trace-replaces" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+                <Link href="#what-trace-replaces" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-surface-secondary">
                   How it works
                 </Link>
               )}
               {user ? (
                 <>
-                  <a href="/feed" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+                  <a href="/feed" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-surface-secondary">
                     Your Feed
                   </a>
-                  <Link href="/trending" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+                  <Link href="/trending" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-surface-secondary">
                     Trending
                   </Link>
                 </>
               ) : (
-                <Link href="/trending" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+                <Link href="/trending" className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-surface-secondary">
                   Trending
                 </Link>
               )}
@@ -311,7 +311,7 @@ const Nav = () => {
             <div className="hidden md:flex items-center gap-3 flex-1 justify-end">
               {user ? (
                 <div className="flex items-center gap-3">
-                  <Link href="/profile" className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                  <Link href="/profile" className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-surface-secondary transition-colors">
                     {user.photoURL && (
                       <img src={user.photoURL} alt="Profile" width={32} height={32} className="w-8 h-8 rounded-full" loading="lazy" />
                     )}
@@ -363,7 +363,7 @@ const Nav = () => {
                   {!user && (
                     <a
                       href="#what-trace-replaces"
-                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-surface-secondary rounded-lg transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       How it works
@@ -372,7 +372,7 @@ const Nav = () => {
                   {user ? (
                     <a
                       href="/feed"
-                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-surface-secondary rounded-lg transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Your Feed
@@ -380,7 +380,7 @@ const Nav = () => {
                   ) : (
                     <a
                       href="/trending"
-                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-surface-secondary rounded-lg transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Trending
@@ -389,7 +389,7 @@ const Nav = () => {
                   {user ? (
                     <button
                       onClick={() => { signOut(); setMobileMenuOpen(false); }}
-                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-left flex items-center gap-2"
+                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-surface-secondary rounded-lg transition-colors text-left flex items-center gap-2"
                     >
                       <LogOut size={14} />
                       Sign Out
@@ -397,7 +397,7 @@ const Nav = () => {
                   ) : (
                     <button
                       onClick={() => { signInWithGoogle(); setMobileMenuOpen(false); }}
-                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-left"
+                      className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-surface-secondary rounded-lg transition-colors text-left"
                     >
                       Sign In with Google
                     </button>
@@ -458,7 +458,7 @@ const Hero = () => {
                   transition={{ duration: 0.6, delay: 0.3 }}
                   className="text-base md:text-lg text-secondary leading-relaxed mb-4 max-w-lg"
                 >
-                  Trending news, personalized articles, and expert deep dives — refreshed daily just for you.
+                  Trending topics with AI overviews, personalized articles, and expert deep dives — refreshed daily.
                 </motion.p>
 
                 <motion.div
@@ -468,16 +468,16 @@ const Hero = () => {
                   className="flex flex-wrap gap-2 mb-6 md:mb-8"
                 >
                   {[
-                    { label: "Trending", desc: "What's hot today" },
-                    { label: "For You", desc: "Matched to your interests" },
-                    { label: "Deep Dives", desc: "Worth your time" },
+                    { label: "Trending", desc: "Topics with AI overviews" },
+                    { label: "For You", desc: "Learning cards for you" },
+                    { label: "Deep Dives", desc: "Chapters & takeaways" },
                   ].map((item) => (
                     <div
                       key={item.label}
-                      className="px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/50 dark:border-amber-800/30"
+                      className="px-3 py-2 rounded-xl bg-surface-secondary"
                     >
-                      <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">{item.label}</span>
-                      <span className="text-xs text-secondary/60 ml-1.5">{item.desc}</span>
+                      <span className="text-xs font-semibold text-foreground">{item.label}</span>
+                      <span className="text-xs text-secondary/50 ml-1.5">{item.desc}</span>
                     </div>
                   ))}
                 </motion.div>
@@ -489,7 +489,7 @@ const Hero = () => {
                   className="flex flex-col sm:flex-row gap-3 mb-6"
                 >
                   <a href="/feed" className="w-full sm:w-auto">
-                    <button className="inline-flex items-center justify-center gap-2 bg-accent text-accent-foreground px-6 py-3.5 rounded-full text-sm font-medium hover:bg-accent/90 transition-colors w-full sm:w-auto">
+                    <button className="inline-flex items-center justify-center gap-2 bg-foreground text-background px-6 py-3.5 rounded-full text-sm font-medium hover:bg-foreground/90 transition-colors w-full sm:w-auto">
                       View Your Feed
                       <ChevronRight size={16} />
                     </button>
@@ -519,7 +519,7 @@ const Hero = () => {
                   transition={{ duration: 0.6, delay: 0.1 }}
                   className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-tight font-serif tracking-tight text-foreground mb-4 md:mb-6"
                 >
-                  Stop checking 10 apps every morning.
+                  Stay sharp, effortlessly.
                 </motion.h1>
 
                 <motion.p
@@ -528,10 +528,7 @@ const Hero = () => {
                   transition={{ duration: 0.6, delay: 0.2 }}
                   className="text-base md:text-lg text-secondary leading-relaxed mb-4 max-w-md"
                 >
-                  {isAlphaMode()
-                    ? "Three feeds. Trending, personalized, deep dives. AI picks what's worth your time so you don't have to."
-                    : "Three feeds. Trending, personalized, deep dives. AI picks what's worth your time so you don't have to."
-                  }
+                  Trending topics with AI overviews. Personalized articles with learning cards. Expert deep dives broken into chapters. All in one place.
                 </motion.p>
 
                 <motion.div
@@ -541,14 +538,14 @@ const Hero = () => {
                   className="flex flex-wrap gap-2 mb-6 md:mb-8"
                 >
                   {[
-                    "Swipeable stories",
+                    "AI topic overviews",
                     "Learning cards",
                     "Chapter deep dives",
-                    "Smart summaries",
+                    "Personalized feeds",
                   ].map((item) => (
                     <div
                       key={item}
-                      className="px-3 py-1.5 rounded-full border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-xs font-medium"
+                      className="px-3 py-1.5 rounded-full border border-border text-secondary text-xs font-medium"
                     >
                       {item}
                     </div>
@@ -563,7 +560,7 @@ const Hero = () => {
                 >
                   {heroCtaHref ? (
                     <a href={heroCtaHref}>
-                      <button className="inline-flex items-center gap-2 bg-accent text-accent-foreground px-6 py-3.5 rounded-full text-sm font-medium hover:bg-accent/90 transition-colors">
+                      <button className="inline-flex items-center gap-2 bg-foreground text-background px-6 py-3.5 rounded-full text-sm font-medium hover:bg-foreground/90 transition-colors">
                         {heroCtaText}
                         <ChevronRight size={16} />
                       </button>
@@ -571,7 +568,7 @@ const Hero = () => {
                   ) : (
                     <button
                       onClick={signInWithGoogle}
-                      className="inline-flex items-center gap-2 bg-accent text-accent-foreground px-6 py-3.5 rounded-full text-sm font-medium hover:bg-accent/90 transition-colors"
+                      className="inline-flex items-center gap-2 bg-foreground text-background px-6 py-3.5 rounded-full text-sm font-medium hover:bg-foreground/90 transition-colors"
                     >
                       {heroCtaText}
                       <ChevronRight size={16} />
@@ -594,7 +591,7 @@ const Hero = () => {
                   className="flex items-center gap-4"
                 >
                   <div className="flex items-center gap-1.5">
-                    <div className="flex text-amber-400">
+                    <div className="flex text-foreground/60">
                       {[1, 2, 3, 4, 5].map(i => (
                         <svg key={i} className="w-4 h-4 fill-current" viewBox="0 0 20 20">
                           <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
@@ -607,6 +604,22 @@ const Hero = () => {
                   </div>
                 </motion.div>
                 <BadgeMarquee />
+
+                {/* Mobile app callout */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.6, delay: 0.6 }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-secondary mt-2"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center shrink-0">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-secondary/60"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Trace is best on mobile</p>
+                    <p className="text-xs text-secondary/50">Swipeable cards, topic timelines, and chapter navigation — designed for your phone. Coming soon to app stores.</p>
+                  </div>
+                </motion.div>
               </>
             )}
           </div>
@@ -642,7 +655,7 @@ const DemoVideo = () => {
             See Trace in action
           </h2>
           <p className="text-secondary text-base md:text-lg max-w-xl mx-auto">
-            Three personalized feeds — Trending, For You, and Deep Dives — refreshed daily
+            Trending topics, personalized articles, and expert deep dives — refreshed daily
           </p>
         </motion.div>
 
@@ -674,32 +687,32 @@ const HowItWorks = () => {
       icon: User,
       title: "Tell us about you",
       description: "Pick your role, interests, and career goals. Choose expert sources you trust for deep dives.",
-      color: "text-blue-500",
-      bgColor: "bg-blue-50 dark:bg-blue-950"
+      color: "text-secondary",
+      bgColor: "bg-surface-secondary"
     },
     {
       number: "02",
       icon: Search,
-      title: "We build three feeds",
-      description: "Trending news across tech, For You articles matched to your interests, and Deep Dives from expert sources you pick.",
-      color: "text-purple-500",
-      bgColor: "bg-purple-50 dark:bg-purple-950"
+      title: "We build your feeds",
+      description: "Trending topics with AI overviews and timelines. Personalized articles with learning cards. Deep dives broken into chapters.",
+      color: "text-secondary",
+      bgColor: "bg-surface-secondary"
     },
     {
       number: "03",
       icon: Brain,
-      title: "AI-powered summaries",
-      description: "Every article gets an AI summary in your preferred style — executive brief, practitioner deep-dive, or casual talking points.",
-      color: "text-green-500",
-      bgColor: "bg-green-50 dark:bg-green-950"
+      title: "AI does the heavy lifting",
+      description: "Topics are clustered and summarized. Articles get learning cards. Deep dives are split into chapters with TL;DRs and takeaways.",
+      color: "text-secondary",
+      bgColor: "bg-surface-secondary"
     },
     {
       number: "04",
       icon: TrendingUp,
-      title: "Stay ahead, every day",
-      description: "Your feeds refresh daily with fresh content. Bookmark what matters, and your feed gets smarter over time.",
-      color: "text-orange-500",
-      bgColor: "bg-orange-50 dark:bg-orange-950"
+      title: "Stay sharp, every day",
+      description: "Fresh content every morning. Save what matters. Your feed gets smarter as you read.",
+      color: "text-secondary",
+      bgColor: "bg-surface-secondary"
     },
   ];
 
@@ -730,7 +743,7 @@ const HowItWorks = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="relative p-6 md:p-8 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:shadow-lg dark:hover:shadow-gray-900/50 transition-all"
+                className="relative p-6 md:p-8 rounded-2xl border border-border/50 bg-surface-secondary hover:border-border transition-all"
               >
                 {/* Step number */}
                 <div className="absolute top-4 right-4 text-2xl font-bold text-secondary/10">
@@ -772,7 +785,7 @@ const HowItWorks = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: (index + 3) * 0.1 }}
-                className="relative p-6 md:p-8 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:shadow-lg dark:hover:shadow-gray-900/50 transition-all flex-1"
+                className="relative p-6 md:p-8 rounded-2xl border border-border/50 bg-surface-secondary hover:border-border transition-all flex-1"
               >
                 {/* Step number */}
                 <div className="absolute top-4 right-4 text-2xl font-bold text-secondary/10">
@@ -818,7 +831,7 @@ const HowItWorks = () => {
             Ready to never miss what matters?
           </p>
           <a href="#get-started">
-            <button className="inline-flex items-center gap-2 bg-accent text-accent-foreground px-6 py-3 rounded-full text-sm font-medium hover:bg-accent/90 transition-colors">
+            <button className="inline-flex items-center gap-2 bg-foreground text-background px-6 py-3 rounded-full text-sm font-medium hover:bg-foreground/90 transition-colors">
               Get Started
               <ChevronRight size={16} />
             </button>
@@ -834,44 +847,44 @@ const WhatTraceReplaces = () => {
   const habits = [
     {
       icon: "🔥",
-      title: "Trending Stories",
-      description: "Swipe through breaking news like Instagram stories. Each story gives you the facts in 2-3 slides — what happened, why it matters.",
-      badge: "Story format"
+      title: "Trending Topics",
+      description: "News grouped into topics with AI-generated overviews and real-time timelines. Tap any topic to see the full picture.",
+      badge: "AI overviews"
     },
     {
       icon: "🎯",
       title: "Learning Cards",
-      description: "Your personalized articles, reimagined as swipeable cards. Each insight on its own screen — perfect for learning on the go.",
+      description: "Personalized articles reimagined as swipeable cards. The story, key insight, why it matters, and the bottom line — each on its own card.",
       badge: "Swipeable"
     },
     {
       icon: "🎓",
       title: "Chapter Deep Dives",
-      description: "Magazine-quality synthesis from multiple sources. Chapters, key quotes, and actionable takeaways — like having a personal research assistant.",
+      description: "Expert-sourced reads broken into chapters with TL;DRs, key quotes, and takeaways. Navigate like a book, not a scroll.",
       badge: "Multi-source"
     },
     {
       icon: "✨",
-      title: "AI That Knows You",
-      description: "Technical user? Get jargon-friendly summaries. Learning something new? Get plain-language explanations. It adapts to you.",
+      title: "Tailored to You",
+      description: "Your role, interests, and goals shape everything — which articles surface, how summaries are framed, and what deep dives appear.",
       badge: "Adaptive"
     },
     {
       icon: "🔖",
       title: "Save Snippets",
-      description: "Found a golden quote? Save specific passages with one tap. Build your personal knowledge library, not just a list of links.",
+      description: "Save specific passages from deep dives and articles. Build a personal knowledge library, not just a list of links.",
       badge: "Smart saves"
     },
     {
-      icon: "⚙️",
-      title: "Role-Based Feeds",
-      description: "Designer, developer, PM, marketer, or founder — your feed prioritizes content that matches your role and career goals.",
-      badge: "Personalized"
+      icon: "📱",
+      title: "Best on Mobile",
+      description: "Swipeable cards, topic timelines, and chapter navigation are designed for your phone. The full experience, in your pocket.",
+      badge: "Mobile-first"
     }
   ];
 
   return (
-    <section id="what-trace-replaces" className="py-16 md:py-24 lg:py-32 bg-gray-50 dark:bg-gray-900 relative overflow-hidden z-10">
+    <section id="what-trace-replaces" className="py-16 md:py-24 lg:py-32 bg-surface-secondary relative overflow-hidden z-10">
       <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
         <div className="text-center mb-12 md:mb-16">
           <motion.h2
@@ -889,7 +902,7 @@ const WhatTraceReplaces = () => {
             transition={{ delay: 0.1 }}
             className="text-secondary text-base md:text-lg leading-relaxed max-w-2xl mx-auto"
           >
-            Not just another feed. Swipeable stories, learning cards, and magazine-style deep dives — content designed for how you actually read.
+            Topic overviews, learning cards, chapter deep dives — content designed for how you actually read.
           </motion.p>
         </div>
 
@@ -901,12 +914,12 @@ const WhatTraceReplaces = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-sm transition-all group"
+              className="bg-background rounded-2xl border border-border/50 p-5 md:p-6 hover:border-border hover:shadow-sm transition-all group"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="text-3xl">{habit.icon}</div>
                 {habit.badge && (
-                  <span className="px-2 py-1 text-[10px] font-medium uppercase tracking-wider bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full">
+                  <span className="px-2 py-1 text-[10px] font-medium uppercase tracking-wider bg-surface-secondary text-secondary rounded-full">
                     {habit.badge}
                   </span>
                 )}
@@ -932,11 +945,11 @@ const ExperienceShowcase = () => {
   const experiences = [
     {
       id: 'trending',
-      title: 'Trending Stories',
-      subtitle: 'Swipe through breaking news',
-      color: 'from-orange-500 to-red-500',
-      bgColor: 'bg-orange-50 dark:bg-orange-950/20',
-      borderColor: 'border-orange-200 dark:border-orange-800',
+      title: 'Trending Topics',
+      subtitle: 'AI overviews & timelines',
+      color: 'from-foreground/10 to-foreground/5',
+      bgColor: 'bg-surface-secondary',
+      borderColor: 'border-border/50',
       preview: (
         <div className="bg-gray-900 rounded-2xl p-4 shadow-2xl max-w-[280px] mx-auto">
           {/* Phone mockup */}
@@ -955,13 +968,13 @@ const ExperienceShowcase = () => {
                   <span className="text-white/60 text-xs">2h ago</span>
                 </div>
                 <h3 className="text-white text-lg font-bold leading-tight mb-2">
-                  OpenAI Announces GPT-5 with Real-Time Learning
+                  AI Chip Wars Heat Up
                 </h3>
                 <p className="text-white/80 text-sm">
-                  The new model can adapt to user feedback in real-time...
+                  AI overview of the topic with a real-time timeline of events...
                 </p>
                 <div className="flex items-center gap-2 mt-4 text-white/60 text-xs">
-                  <span>Swipe for more</span>
+                  <span>View timeline</span>
                   <ChevronRight size={14} />
                 </div>
               </div>
@@ -974,16 +987,16 @@ const ExperienceShowcase = () => {
       id: 'foryou',
       title: 'Learning Cards',
       subtitle: 'Bite-sized insights you can swipe',
-      color: 'from-amber-500 to-yellow-500',
-      bgColor: 'bg-amber-50 dark:bg-amber-950/20',
-      borderColor: 'border-amber-200 dark:border-amber-800',
+      color: 'from-foreground/10 to-foreground/5',
+      bgColor: 'bg-surface-secondary',
+      borderColor: 'border-border/50',
       preview: (
         <div className="bg-gray-900 rounded-2xl p-4 shadow-2xl max-w-[280px] mx-auto">
           <div className="aspect-[9/16] bg-gradient-to-br from-amber-50 to-orange-50 dark:from-gray-800 dark:to-gray-900 rounded-xl overflow-hidden relative">
             <div className="absolute inset-0 p-4 flex flex-col">
               {/* Card type label */}
               <div className="flex items-center justify-between mb-6">
-                <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-xs font-bold rounded-full uppercase tracking-wide">
+                <span className="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs font-bold rounded-full uppercase tracking-wide">
                   Key Insight
                 </span>
                 <span className="text-gray-400 text-xs">2/5</span>
@@ -992,9 +1005,9 @@ const ExperienceShowcase = () => {
               <div className="text-4xl mb-4">💡</div>
               {/* Content */}
               <div className="flex-1">
-                <p className="text-gray-800 dark:text-gray-100 text-base leading-relaxed">
-                  The key innovation is <span className="font-bold">memory persistence</span> — the model remembers context across sessions, enabling truly personalized AI assistants.
-                </p>
+                  <p className="text-gray-800 dark:text-gray-100 text-base leading-relaxed">
+                    The key innovation is <span className="font-bold">inference-time compute</span> — models that reason longer before answering, producing significantly better results on complex tasks.
+                  </p>
               </div>
               {/* Progress dots */}
               <div className="flex justify-center gap-2 mt-4">
@@ -1003,7 +1016,7 @@ const ExperienceShowcase = () => {
                     key={i}
                     className={cn(
                       "h-2 rounded-full transition-all",
-                      i === 1 ? "w-5 bg-amber-500" : "w-2 bg-gray-300 dark:bg-gray-600"
+                      i === 1 ? "w-5 bg-foreground" : "w-2 bg-gray-300 dark:bg-gray-600"
                     )}
                   />
                 ))}
@@ -1017,9 +1030,9 @@ const ExperienceShowcase = () => {
       id: 'deepdives',
       title: 'Chapter Deep Dives',
       subtitle: 'Magazine-quality synthesis',
-      color: 'from-blue-500 to-indigo-500',
-      bgColor: 'bg-blue-50 dark:bg-blue-950/20',
-      borderColor: 'border-blue-200 dark:border-blue-800',
+      color: 'from-foreground/10 to-foreground/5',
+      bgColor: 'bg-surface-secondary',
+      borderColor: 'border-border/50',
       preview: (
         <div className="bg-gray-900 rounded-2xl p-4 shadow-2xl max-w-[280px] mx-auto">
           <div className="aspect-[9/16] bg-white dark:bg-gray-900 rounded-xl overflow-hidden relative">
@@ -1028,17 +1041,17 @@ const ExperienceShowcase = () => {
               <div className="h-28 bg-gradient-to-br from-blue-600 to-indigo-600 relative">
                 <div className="absolute bottom-3 left-3">
                   <span className="px-2 py-1 bg-white/20 backdrop-blur text-white text-[10px] font-medium rounded">
-                    3 sources synthesized
+                    5 chapters · TL;DR
                   </span>
                 </div>
               </div>
               {/* Content */}
               <div className="flex-1 p-4">
                 <h3 className="text-gray-900 dark:text-white font-bold text-sm mb-2">
-                  The State of AI Infrastructure in 2024
+                  The State of AI Infrastructure
                 </h3>
                 <p className="text-gray-500 dark:text-gray-400 text-xs mb-4">
-                  A deep dive into how companies are building for the AI era
+                  Expert-sourced deep dive with chapters and key takeaways
                 </p>
                 {/* Chapters */}
                 <div className="space-y-2">
@@ -1075,7 +1088,7 @@ const ExperienceShowcase = () => {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-amber-600 dark:text-amber-400 text-sm font-medium uppercase tracking-wider mb-3"
+            className="text-secondary text-sm font-medium uppercase tracking-wider mb-3"
           >
             See it in action
           </motion.p>
@@ -1107,8 +1120,8 @@ const ExperienceShowcase = () => {
               className={cn(
                 "px-4 py-2 rounded-full text-sm font-medium transition-all",
                 activeTab === i
-                  ? `bg-gradient-to-r ${exp.color} text-white shadow-lg`
-                  : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  ? "bg-foreground text-background"
+                  : "bg-surface-secondary text-secondary hover:text-foreground"
               )}
             >
               {exp.title}
@@ -1149,9 +1162,9 @@ const ExperienceShowcase = () => {
               experiences[activeTab].borderColor
             )}>
               <p className="text-sm text-foreground/80">
-                {activeTab === 0 && "Breaking news distilled into story-format slides. Swipe through the facts, context, and implications — all in under 30 seconds."}
-                {activeTab === 1 && "Each article becomes a deck of insight cards. One idea per screen, designed for mobile-first learning. Save any card to your collection."}
-                {activeTab === 2 && "AI synthesizes multiple articles into a single, well-structured piece. Chapters, quotes, and a clear narrative — like a mini research report."}
+                {activeTab === 0 && "News articles are grouped into trending topics. Each topic gets an AI-generated overview with bullet points and a real-time timeline of events."}
+                {activeTab === 1 && "Personalized articles are broken into learning cards — the story, key insight, why it matters, and the bottom line. Swipe through on mobile."}
+                {activeTab === 2 && "Expert sources are synthesized into chapters with TL;DRs, key quotes, and takeaways. Navigate like a book with dedicated chapter views."}
               </p>
             </div>
           </motion.div>
@@ -1663,7 +1676,7 @@ const HeroDemo = () => {
             </div>
             <Link
               href="/trending"
-              className="text-[10px] font-medium text-amber-600 hover:text-amber-700 transition-colors flex items-center gap-0.5"
+              className="text-[10px] font-medium text-secondary hover:text-foreground transition-colors flex items-center gap-0.5"
             >
               View all
               <ChevronRight size={12} />
@@ -1720,7 +1733,7 @@ const HeroDemo = () => {
                       )}
                     </div>
                     {/* Title */}
-                    <h4 className="text-[11px] font-semibold leading-snug text-foreground line-clamp-2 group-hover:text-amber-600 transition-colors">
+                    <h4 className="text-[11px] font-semibold leading-snug text-foreground line-clamp-2 group-hover:text-secondary transition-colors">
                       {item.title}
                     </h4>
                     {/* Summary */}
@@ -1739,9 +1752,9 @@ const HeroDemo = () => {
         </div>
 
         {/* CTA footer */}
-        <div className="px-4 py-3 bg-amber-50/50 dark:bg-amber-950/20 border-t border-amber-200/30 dark:border-amber-800/20">
+        <div className="px-4 py-3 bg-surface-secondary border-t border-border/30">
           <p className="text-[10px] text-center text-secondary/70">
-            <span className="font-medium text-amber-700 dark:text-amber-400">Sign up free</span> to get personalized For You & Deep Dive feeds
+            <span className="font-medium text-foreground">Sign up free</span> to get personalized articles & deep dives
           </p>
         </div>
       </div>
@@ -1827,17 +1840,17 @@ const Testimonials = () => {
     {
       value: "200+",
       label: "readers onboarded",
-      detail: "Engineers, designers, founders",
+      detail: "Engineers, designers, PMs, founders",
     },
     {
       value: "60+",
       label: "sources tracked daily",
-      detail: "TechCrunch, HN, arXiv, Lenny's & more",
+      detail: "TechCrunch, HN, arXiv, Stratechery & more",
     },
     {
-      value: "3",
-      label: "feeds, refreshed every morning",
-      detail: "Trending, For You, Deep Dives",
+      value: "∞",
+      label: "topics, articles & deep dives",
+      detail: "AI overviews, learning cards, chapter breakdowns",
     },
   ];
 
@@ -1872,7 +1885,7 @@ const Testimonials = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 md:p-8 text-center hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-sm transition-all"
+              className="bg-surface-secondary rounded-2xl border border-border/50 p-6 md:p-8 text-center hover:border-border transition-all"
             >
               <p className="text-4xl md:text-5xl font-bold text-foreground mb-2 tracking-tight">{metric.value}</p>
               <p className="text-sm md:text-base font-medium text-foreground mb-2">{metric.label}</p>
@@ -1968,20 +1981,20 @@ const LivingFeed = () => {
 
         <div className="flex flex-wrap justify-center gap-4 md:gap-6 lg:gap-8 items-center">
           <div className="flex items-center gap-2 md:gap-3">
-            <Newspaper size={16} className="md:hidden text-amber-500" />
-            <Newspaper size={20} className="hidden md:block text-amber-500" />
+            <Newspaper size={16} className="md:hidden text-secondary" />
+            <Newspaper size={20} className="hidden md:block text-secondary" />
             <span className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary">Trending</span>
           </div>
           <div className="w-px h-4 md:h-6 bg-border"></div>
           <div className="flex items-center gap-2 md:gap-3">
-            <Sparkles size={16} className="md:hidden text-blue-500" />
-            <Sparkles size={20} className="hidden md:block text-blue-500" />
+            <Sparkles size={16} className="md:hidden text-secondary" />
+            <Sparkles size={20} className="hidden md:block text-secondary" />
             <span className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary">For You</span>
           </div>
           <div className="w-px h-4 md:h-6 bg-border"></div>
           <div className="flex items-center gap-2 md:gap-3">
-            <BookOpen size={16} className="md:hidden text-purple-500" />
-            <BookOpen size={20} className="hidden md:block text-purple-500" />
+            <BookOpen size={16} className="md:hidden text-secondary" />
+            <BookOpen size={20} className="hidden md:block text-secondary" />
             <span className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary">Deep Dives</span>
           </div>
           <div className="w-px h-4 md:h-6 bg-border"></div>
@@ -2665,7 +2678,7 @@ const Pricing = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.1 }}
-          className="bg-white dark:bg-gray-950 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl dark:shadow-gray-900/50 p-6 md:p-10 lg:p-12 mb-8"
+          className="bg-surface-secondary rounded-3xl border border-border/50 p-6 md:p-10 lg:p-12 mb-8"
         >
           <div className="text-center mb-8 md:mb-10">
             <div className="text-5xl md:text-6xl font-semibold text-foreground mb-2">
@@ -2674,42 +2687,42 @@ const Pricing = () => {
             <p className="text-sm text-secondary mb-2">
               after 3-day free trial
             </p>
-            <p className="text-xs text-primary font-medium">
-              ☕ Less than a single coffee for a whole month
+            <p className="text-xs text-secondary/60 font-medium">
+              Less than a single coffee for a whole month
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-8 md:mb-10">
-            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl">
+            <div className="flex items-center gap-3 p-3 bg-surface-secondary rounded-xl">
               <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center shrink-0">
                 <span className="text-green-600 dark:text-green-400 text-xs">✓</span>
               </div>
               <div className="text-sm text-foreground">
-                Three daily feeds: Trending, For You, Deep Dives
+                Trending topics with AI overviews & timelines
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl">
+            <div className="flex items-center gap-3 p-3 bg-surface-secondary rounded-xl">
               <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center shrink-0">
                 <span className="text-green-600 dark:text-green-400 text-xs">✓</span>
               </div>
               <div className="text-sm text-foreground">
-                AI summaries in your preferred reading style
+                Personalized articles with learning cards
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl">
+            <div className="flex items-center gap-3 p-3 bg-surface-secondary rounded-xl">
               <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center shrink-0">
                 <span className="text-green-600 dark:text-green-400 text-xs">✓</span>
               </div>
               <div className="text-sm text-foreground">
-                Expert deep dives from sources you trust
+                Deep dives with chapters, TL;DRs & sources
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl">
+            <div className="flex items-center gap-3 p-3 bg-surface-secondary rounded-xl">
               <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center shrink-0">
                 <span className="text-green-600 dark:text-green-400 text-xs">✓</span>
               </div>
               <div className="text-sm text-foreground">
-                Unlimited articles, bookmarks &amp; daily refreshes
+                Unlimited content, bookmarks & daily refreshes
               </div>
             </div>
           </div>
@@ -2717,14 +2730,14 @@ const Pricing = () => {
           <div className="text-center">
             {pricingCtaHref ? (
               <a href={pricingCtaHref}>
-                <button className="bg-accent text-accent-foreground px-10 py-4 rounded-full text-sm font-medium hover:bg-accent/90 transition-all active:scale-[0.98] w-full md:w-auto">
+                <button className="bg-foreground text-background px-10 py-4 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all active:scale-[0.98] w-full md:w-auto">
                   {pricingCtaText}
                 </button>
               </a>
             ) : (
               <button
                 onClick={signInWithGoogle}
-                className="bg-accent text-accent-foreground px-10 py-4 rounded-full text-sm font-medium hover:bg-accent/90 transition-all active:scale-[0.98] w-full md:w-auto"
+                className="bg-foreground text-background px-10 py-4 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all active:scale-[0.98] w-full md:w-auto"
               >
                 {pricingCtaText}
               </button>
@@ -2793,9 +2806,9 @@ const GetStarted = () => {
             <p className="text-secondary text-base md:text-lg leading-relaxed max-w-xl mx-auto">
               {user
                 ? profile?.onboarded
-                  ? "Your three feeds are waiting — Trending, For You, and Deep Dives."
+                  ? "Trending topics, personalized articles, and deep dives — all waiting for you."
                   : "Pick your role, interests, and sources. Your feeds build in under a minute."
-                : "Sign in → Set your preferences → Get three personalized feeds."
+                : "Sign in → Set your preferences → Get trending topics, personalized articles, and deep dives."
               }
             </p>
           </motion.div>
@@ -2805,7 +2818,7 @@ const GetStarted = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
-            className="bg-white dark:bg-gray-950 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-lg dark:shadow-gray-900/50 p-6 md:p-10 lg:p-12"
+            className="bg-surface-secondary rounded-3xl border border-border/50 p-6 md:p-10 lg:p-12"
           >
             {user ? (
               <div className="space-y-6 md:space-y-8">
@@ -2818,11 +2831,11 @@ const GetStarted = () => {
                     <p className="text-sm text-secondary">{user.email}</p>
                   </div>
                 </div>
-                <div className={`py-4 md:py-5 rounded-xl text-sm font-medium ${profile?.onboarded ? 'bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400' : 'bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400'}`}>
+                <div className={`py-4 md:py-5 rounded-xl text-sm font-medium ${profile?.onboarded ? 'bg-green-50 dark:bg-green-950/50 text-green-600 dark:text-green-400' : 'bg-surface text-secondary'}`}>
                   {getStatusText()}
                 </div>
                 <a href={getCtaLink()}>
-                  <button className="w-full bg-accent text-accent-foreground py-4 md:py-5 rounded-full text-sm font-medium hover:bg-accent/90 transition-all active:scale-[0.98]">
+                  <button className="w-full bg-foreground text-background py-4 md:py-5 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all active:scale-[0.98]">
                     {getCtaText()}
                   </button>
                 </a>
@@ -2840,7 +2853,7 @@ const GetStarted = () => {
                 </div>
                 <button
                   onClick={signInWithGoogle}
-                  className="w-full bg-accent text-accent-foreground py-4 md:py-5 rounded-full text-sm font-medium hover:bg-accent/90 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+                  className="w-full bg-foreground text-background py-4 md:py-5 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -2863,23 +2876,27 @@ const SEOContentSection = () => {
   const faqItems = [
     {
       q: "How is this different from Apple News or Feedly?",
-      a: "Those apps show you everything and let you sort through it. Trace does the opposite: we surface 10-15 things worth reading each day, organized into three feeds with different purposes. Less scrolling, more signal.",
+      a: "Those apps show you everything and let you sort through it. Trace groups news into topics with AI overviews, turns articles into learning cards, and breaks deep dives into chapters. Less scrolling, more understanding.",
     },
     {
       q: "Will I just get clickbait and endless content?",
-      a: "No. We deliberately limit what we show you. The Trending feed covers what everyone's talking about. For You matches your interests. Deep Dives give you one long-form piece to think about. That's it for the day.",
+      a: "No. Trending shows topics everyone's talking about, with AI overviews so you get the full picture. For You matches articles to your interests with learning cards. Deep Dives give you expert-sourced chapters on one topic. That's it.",
     },
     {
       q: "How do you know what I'll want to read?",
-      a: "During onboarding, you pick your role, interests, and sources you trust. Our AI uses those to filter the noise. Over time, it learns from what you actually read and bookmark.",
+      a: "During onboarding, you pick your role, interests, and sources you trust. Our AI uses those to personalize your articles and deep dives. Over time, it learns from what you read and bookmark.",
     },
     {
       q: "What sources do you pull from?",
-      a: "We index hundreds of publications across tech, business, culture, and more. You'll see names you recognize. No random blogs or AI-generated spam.",
+      a: "We index hundreds of publications across tech, business, culture, and more. You'll see names you recognize — TechCrunch, Stratechery, Hacker News, arXiv, and more. No random blogs or AI-generated spam.",
+    },
+    {
+      q: "Is there a mobile app?",
+      a: "Yes — Trace is designed mobile-first. Swipeable learning cards, topic timelines, and chapter navigation are built for your phone. The mobile app is coming soon to app stores.",
     },
     {
       q: "Why should I pay when Google News is free?",
-      a: "Free apps make money by keeping you scrolling. We make money by saving you time. $2.99/month gets you a curated reading list instead of an infinite feed. There's a free trial to try it first.",
+      a: "Free apps make money by keeping you scrolling. We make money by saving you time. $2.99/month gets you AI topic overviews, personalized learning cards, and expert deep dives. There's a free trial to try it first.",
     },
   ];
 
@@ -2921,7 +2938,7 @@ export default function LandingPage() {
   if (loading || (user && profile?.onboarded)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
       </div>
     );
   }

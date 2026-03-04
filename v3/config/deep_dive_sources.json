@@ -1,7 +1,7 @@
 {
   "description": "Sources for the 'Deep Dives' feed. Users select these by name during onboarding step 3. Matched via selectedLearningSources field. Evergreen content with 60-day window.",
   "max_age_days": 60,
-  "items_per_user": 3,
+  "items_per_user": 2,
   "sources": [
     {
       "category_id": "design-ux",

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, View, Pressable, ScrollView, Alert, Switch } from 'react-native';
+import { StyleSheet, View, Pressable, ScrollView, Alert, Switch, Text } from 'react-native';
 import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,19 +11,18 @@ import {
   ChevronRight,
   ExternalLink,
   LogOut,
-  Sparkles,
   ArrowRight,
   Trash2,
   Crown,
   Mail,
-  Circle,
   Flame,
   Calendar,
   Trophy,
+  BookMarked,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors, Fonts } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
@@ -37,7 +36,6 @@ import {
   ONBOARDING_INTERESTS,
   CAREER_GOALS,
 } from '@/lib/firestore';
-import { ILLUS_PALETTE } from '@/app/(auth)/welcome';
 
 function lookupLabel(items: readonly { id: string; label: string }[], id: string): string {
   return items.find((i) => i.id === id)?.label || id.replace(/-/g, ' ');
@@ -45,13 +43,14 @@ function lookupLabel(items: readonly { id: string; label: string }[], id: string
 
 const PRIVACY_URL = 'https://www.yourtrace.online/privacy-policy';
 const TERMS_URL = 'https://www.yourtrace.online/terms';
-
+const ACCENT = '#F59E0B';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, profile, signOut, deleteAccount, refreshProfile } = useAuth();
   const { isProUser, presentPaywall, presentCustomerCenter } = useRevenueCat();
   const colorScheme = useColorScheme() ?? 'light';
+  const isDark = colorScheme === 'dark';
 
   const isOnboarded = profile?.onboarded === true;
   const [newsletterOptIn, setNewsletterOptIn] = useState(profile?.newsletterOptIn !== false);
@@ -73,7 +72,7 @@ export default function ProfileScreen() {
         await refreshProfile();
       } catch (error) {
         console.error('Error updating newsletter preference:', error);
-        setNewsletterOptIn(!value); // Revert on error
+        setNewsletterOptIn(!value);
       }
     }
   };
@@ -103,54 +102,52 @@ export default function ProfileScreen() {
     );
   };
 
+  const cardBg = isDark ? '#1a1a1a' : '#f7f7f5';
+
   return (
     <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
+      style={[s.root, { backgroundColor: Colors[colorScheme].background }]}
       edges={['top']}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={s.scroll}
         showsVerticalScrollIndicator={false}>
 
         {/* ─── Profile header ─── */}
-        <View style={styles.profileHeader}>
+        <View style={s.header}>
           {user?.photoURL ? (
-            <Image 
-              source={{ uri: user.photoURL }} 
-              style={styles.avatar}
+            <Image
+              source={{ uri: user.photoURL }}
+              style={s.avatar}
               cachePolicy="memory-disk"
               priority="high"
             />
           ) : (
-            <View
-              style={[
-                styles.avatarPlaceholder,
-                { backgroundColor: Colors[colorScheme].border },
-              ]}>
-              <ThemedText style={styles.avatarInitial}>
+            <View style={[s.avatarFallback, { backgroundColor: isDark ? '#2a2a2a' : '#e5e5e5' }]}>
+              <Text style={[s.avatarInitial, { color: Colors[colorScheme].text }]}>
                 {user?.displayName?.charAt(0) || '?'}
-              </ThemedText>
+              </Text>
             </View>
           )}
-          <ThemedText style={styles.profileName}>
+          <Text style={[s.name, { color: Colors[colorScheme].text }]}>
             {profile?.name || user?.displayName || 'User'}
-          </ThemedText>
-          <ThemedText style={[styles.profileEmail, { color: Colors[colorScheme].muted }]}>
+          </Text>
+          <Text style={[s.email, { color: Colors[colorScheme].muted }]}>
             {user?.email || 'No email'}
-          </ThemedText>
+          </Text>
           {(profile?.role || profile?.seniority) && (
-            <View style={styles.badgeRow}>
+            <View style={s.badgeRow}>
               {profile?.role && (
-                <View style={[styles.roleBadge, { backgroundColor: Colors[colorScheme].foreground + '0D' }]}>
-                  <ThemedText style={[styles.roleText, { color: Colors[colorScheme].foreground }]}>
+                <View style={[s.badge, { backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0' }]}>
+                  <Text style={[s.badgeText, { color: Colors[colorScheme].text }]}>
                     {lookupLabel(ROLES as unknown as { id: string; label: string }[], profile.role)}
-                  </ThemedText>
+                  </Text>
                 </View>
               )}
               {profile?.seniority && (
-                <View style={[styles.roleBadge, { backgroundColor: '#F59E0B18' }]}>
-                  <ThemedText style={[styles.roleText, { color: '#D97706' }]}>
+                <View style={[s.badge, { backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0' }]}>
+                  <Text style={[s.badgeText, { color: Colors[colorScheme].text }]}>
                     {lookupLabel(SENIORITY_LEVELS as unknown as { id: string; label: string }[], profile.seniority)}
-                  </ThemedText>
+                  </Text>
                 </View>
               )}
             </View>
@@ -159,45 +156,36 @@ export default function ProfileScreen() {
 
         {/* ─── Activity / Streak ─── */}
         {streak && isOnboarded && (
-          <View style={[
-            activityStyles.card,
-            {
-              backgroundColor: colorScheme === 'dark' ? '#1a1408' : '#fffbeb',
-              borderColor: colorScheme === 'dark' ? '#2d2010' : '#fef3c7',
-            },
-          ]}>
-            <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted, marginBottom: 16 }]}>
-              Activity
-            </ThemedText>
-            <View style={activityStyles.statsRow}>
-              <View style={activityStyles.stat}>
-                <Flame size={18} color="#f97316" strokeWidth={2} />
-                <ThemedText style={activityStyles.statValue}>
+          <View style={[s.card, { backgroundColor: cardBg }]}>
+            <View style={s.statsRow}>
+              <View style={s.stat}>
+                <Flame size={18} color={ACCENT} strokeWidth={2} />
+                <Text style={[s.statValue, { color: Colors[colorScheme].text }]}>
                   {streak.current_streak}
-                </ThemedText>
-                <ThemedText style={[activityStyles.statLabel, { color: Colors[colorScheme].muted }]}>
-                  Current streak
-                </ThemedText>
+                </Text>
+                <Text style={[s.statLabel, { color: Colors[colorScheme].muted }]}>
+                  Current
+                </Text>
               </View>
-              <View style={[activityStyles.statDivider, { backgroundColor: Colors[colorScheme].border }]} />
-              <View style={activityStyles.stat}>
-                <Trophy size={18} color="#eab308" strokeWidth={2} />
-                <ThemedText style={activityStyles.statValue}>
+              <View style={[s.statDivider, { backgroundColor: isDark ? '#333' : '#e5e5e5' }]} />
+              <View style={s.stat}>
+                <Trophy size={18} color={ACCENT} strokeWidth={2} />
+                <Text style={[s.statValue, { color: Colors[colorScheme].text }]}>
                   {streak.longest_streak}
-                </ThemedText>
-                <ThemedText style={[activityStyles.statLabel, { color: Colors[colorScheme].muted }]}>
-                  Best streak
-                </ThemedText>
+                </Text>
+                <Text style={[s.statLabel, { color: Colors[colorScheme].muted }]}>
+                  Best
+                </Text>
               </View>
-              <View style={[activityStyles.statDivider, { backgroundColor: Colors[colorScheme].border }]} />
-              <View style={activityStyles.stat}>
-                <Calendar size={18} color="#f97316" strokeWidth={2} />
-                <ThemedText style={activityStyles.statValue}>
+              <View style={[s.statDivider, { backgroundColor: isDark ? '#333' : '#e5e5e5' }]} />
+              <View style={s.stat}>
+                <Calendar size={18} color={ACCENT} strokeWidth={2} />
+                <Text style={[s.statValue, { color: Colors[colorScheme].text }]}>
                   {streak.total_days_read}
-                </ThemedText>
-                <ThemedText style={[activityStyles.statLabel, { color: Colors[colorScheme].muted }]}>
-                  Days active
-                </ThemedText>
+                </Text>
+                <Text style={[s.statLabel, { color: Colors[colorScheme].muted }]}>
+                  Days
+                </Text>
               </View>
             </View>
           </View>
@@ -207,523 +195,253 @@ export default function ProfileScreen() {
         {!isOnboarded && (
           <Pressable
             onPress={() => router.push('/onboarding')}
-            style={[
-              styles.nudge,
-              {
-                borderColor: Colors[colorScheme].border,
-                backgroundColor: ILLUS_PALETTE.olive[colorScheme],
-              },
-            ]}>
-            <Sparkles size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+            style={[s.card, s.nudge, { backgroundColor: cardBg }]}>
             <View style={{ flex: 1 }}>
-              <ThemedText style={styles.nudgeTitle}>Make every morning count</ThemedText>
-              <ThemedText style={[styles.nudgeSub, { color: Colors[colorScheme].muted }]}>
+              <Text style={[s.nudgeTitle, { color: Colors[colorScheme].text }]}>
+                Make every morning count
+              </Text>
+              <Text style={[s.nudgeDesc, { color: Colors[colorScheme].muted }]}>
                 2 minutes to set up, smarter mornings forever.
-              </ThemedText>
+              </Text>
             </View>
-            <ArrowRight size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-          </Pressable>
-        )}
-
-        {/* ─── Interests ─── */}
-        {isOnboarded && profile?.interests && profile.interests.length > 0 && (
-          <Pressable style={styles.section} onPress={() => router.push('/preferences/interests')}>
-            <View style={styles.sectionHeader}>
-              <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
-                Interests
-              </ThemedText>
-              <ChevronRight size={14} color={Colors[colorScheme].border} strokeWidth={1.5} />
-            </View>
-            <View style={styles.pillsWrap}>
-              {profile.interests.map((interest: string, index: number) => (
-                <View
-                  key={index}
-                  style={[styles.pill, { backgroundColor: Colors[colorScheme].foreground + '0A' }]}>
-                  <ThemedText style={[styles.pillText, { color: Colors[colorScheme].text }]}>
-                    {lookupLabel(ONBOARDING_INTERESTS as unknown as { id: string; label: string }[], interest)}
-                  </ThemedText>
-                </View>
-              ))}
-            </View>
-          </Pressable>
-        )}
-
-        {/* ─── Deep Dive Sources ─── */}
-        {isOnboarded && profile?.selectedLearningSources && profile.selectedLearningSources.length > 0 && (
-          <Pressable style={styles.section} onPress={() => router.push('/preferences/sources')}>
-            <View style={styles.sectionHeader}>
-              <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
-                Deep Dive Sources
-              </ThemedText>
-              <ChevronRight size={14} color={Colors[colorScheme].border} strokeWidth={1.5} />
-            </View>
-            <View style={styles.pillsWrap}>
-              {profile.selectedLearningSources.map((source: string, index: number) => (
-                <View
-                  key={index}
-                  style={[styles.pill, { backgroundColor: colorScheme === 'dark' ? '#1a1408' : '#fffbeb' }]}>
-                  <ThemedText style={[styles.pillText, { color: '#D97706' }]}>
-                    {source}
-                  </ThemedText>
-                </View>
-              ))}
-            </View>
-          </Pressable>
-        )}
-
-        {/* ─── Career Goals ─── */}
-        {isOnboarded && profile?.careerGoals && profile.careerGoals.length > 0 && (
-          <Pressable style={styles.section} onPress={() => router.push('/preferences/goals')}>
-            <View style={styles.sectionHeader}>
-              <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
-                Career Goals
-              </ThemedText>
-              <ChevronRight size={14} color={Colors[colorScheme].border} strokeWidth={1.5} />
-            </View>
-            <View style={styles.pillsWrap}>
-              {profile.careerGoals.map((goal: string, index: number) => (
-                <View
-                  key={index}
-                  style={[styles.pill, { backgroundColor: colorScheme === 'dark' ? '#1a1408' : '#fffbeb' }]}>
-                  <ThemedText style={[styles.pillText, { color: '#d97706' }]}>
-                    {lookupLabel(CAREER_GOALS as unknown as { id: string; label: string }[], goal)}
-                  </ThemedText>
-                </View>
-              ))}
-            </View>
+            <ArrowRight size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
           </Pressable>
         )}
 
         {/* ─── Subscription ─── */}
-        {(() => {
-          if (isProUser) {
-            // Subscribed - show manage card with Customer Center
-            return (
-              <Pressable
-                onPress={() => presentCustomerCenter()}
-                style={[styles.subscriptionCard, { backgroundColor: colorScheme === 'dark' ? '#1a1408' : '#fffbeb' }]}>
-                <View style={styles.subscriptionTop}>
-                  <View style={styles.subscriptionBadge}>
-                    <Crown size={16} color="#F59E0B" strokeWidth={2} />
-                    <ThemedText style={[styles.subscriptionLabel, { color: '#F59E0B' }]}>
-                      Pro
-                    </ThemedText>
-                  </View>
-                  <ChevronRight size={18} color="#F59E0B" strokeWidth={1.5} />
-                </View>
-                <ThemedText style={[styles.subscriptionDesc, { color: Colors[colorScheme].secondary }]}>
-                  Full access - enjoy smarter mornings!
-                </ThemedText>
-                <ThemedText style={[styles.manageText, { color: '#F59E0B' }]}>
-                  Manage subscription →
-                </ThemedText>
-              </Pressable>
-            );
-          }
-
-          // Not subscribed - show upgrade card
-          return (
-            <View
-              style={[styles.subscriptionCard, { backgroundColor: colorScheme === 'dark' ? '#1a1408' : '#fffbeb', borderColor: colorScheme === 'dark' ? '#92400e' : '#fde68a' }]}>
-              <View style={styles.subscriptionTop}>
-                <ThemedText style={styles.subscriptionTitle}>
-                  Unlock the full Trace experience
-                </ThemedText>
+        {isProUser ? (
+          <Pressable
+            onPress={() => presentCustomerCenter()}
+            style={[s.card, { backgroundColor: cardBg }]}>
+            <View style={s.subRow}>
+              <View style={s.subBadge}>
+                <Crown size={16} color={ACCENT} strokeWidth={2} />
+                <Text style={[s.subLabel, { color: Colors[colorScheme].text }]}>Pro</Text>
               </View>
-              
-              <View style={styles.bulletList}>
-                <View style={styles.bulletItem}>
-                  <Circle size={6} color="#F59E0B" fill="#F59E0B" style={styles.bulletDot} />
-                  <ThemedText style={[styles.bulletText, { color: Colors[colorScheme].secondary }]}>
-                    Unlimited For You articles & Deep Dives
-                  </ThemedText>
-                </View>
-                <View style={styles.bulletItem}>
-                  <Circle size={6} color="#F59E0B" fill="#F59E0B" style={styles.bulletDot} />
-                  <ThemedText style={[styles.bulletText, { color: Colors[colorScheme].secondary }]}>
-                    Summaries tailored to your reading style
-                  </ThemedText>
-                </View>
-                <View style={styles.bulletItem}>
-                  <Circle size={6} color="#F59E0B" fill="#F59E0B" style={styles.bulletDot} />
-                  <ThemedText style={[styles.bulletText, { color: Colors[colorScheme].secondary }]}>
-                    Start with a 4-day free trial
-                  </ThemedText>
-                </View>
-              </View>
-
-              <Pressable
-                onPress={() => presentPaywall()}
-                style={[styles.upgradeButton, { backgroundColor: '#F59E0B' }]}>
-                <ThemedText style={[styles.upgradeButtonText, { color: 'white' }]}>
-                  Start Free Trial
-                </ThemedText>
-                <ArrowRight size={16} color="white" strokeWidth={2.5} />
-              </Pressable>
+              <ChevronRight size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
             </View>
-          );
-        })()}
-
-        {/* ─── Divider ─── */}
-        <View style={[styles.divider, { backgroundColor: Colors[colorScheme].border }]} />
-
-        {/* ─── Menu rows ─── */}
-        <View style={styles.menuSection}>
-          {isOnboarded && (
+            <Text style={[s.subDesc, { color: Colors[colorScheme].muted }]}>
+              Full access · Manage subscription
+            </Text>
+          </Pressable>
+        ) : (
+          <View style={[s.card, { backgroundColor: cardBg }]}>
+            <Text style={[s.subTitle, { color: Colors[colorScheme].text }]}>
+              Unlock the full experience
+            </Text>
+            <Text style={[s.subDesc, { color: Colors[colorScheme].muted, marginTop: 4 }]}>
+              Unlimited articles, deep dives, and personalized summaries. Start with a free trial.
+            </Text>
             <Pressable
-              style={styles.menuRow}
-              onPress={() => router.push('/preferences')}>
-              <Settings size={20} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-              <ThemedText style={[styles.menuText, { color: Colors[colorScheme].text }]}>
-                Edit preferences
-              </ThemedText>
-              <ChevronRight size={18} color={Colors[colorScheme].border} strokeWidth={1.5} />
+              onPress={() => presentPaywall()}
+              style={s.upgradeBtn}>
+              <Text style={s.upgradeBtnText}>Start Free Trial</Text>
+              <ArrowRight size={16} color="#fff" strokeWidth={2.5} />
+            </Pressable>
+          </View>
+        )}
+
+        {/* ─── Interests / Sources / Goals pills ─── */}
+        {isOnboarded && profile?.interests && profile.interests.length > 0 && (
+          <Pressable style={[s.card, { backgroundColor: cardBg }]} onPress={() => router.push('/preferences/interests')}>
+            <View style={s.pillHeader}>
+              <Text style={[s.pillLabel, { color: Colors[colorScheme].muted }]}>Interests</Text>
+              <ChevronRight size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+            </View>
+            <View style={s.pillWrap}>
+              {profile.interests.map((interest: string, i: number) => (
+                <View key={i} style={[s.pill, { backgroundColor: isDark ? '#2a2a2a' : '#ebebeb' }]}>
+                  <Text style={[s.pillText, { color: Colors[colorScheme].text }]}>
+                    {lookupLabel(ONBOARDING_INTERESTS as unknown as { id: string; label: string }[], interest)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </Pressable>
+        )}
+
+        {isOnboarded && profile?.selectedLearningSources && profile.selectedLearningSources.length > 0 && (
+          <Pressable style={[s.card, { backgroundColor: cardBg }]} onPress={() => router.push('/preferences/sources')}>
+            <View style={s.pillHeader}>
+              <Text style={[s.pillLabel, { color: Colors[colorScheme].muted }]}>Deep Dive Sources</Text>
+              <ChevronRight size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+            </View>
+            <View style={s.pillWrap}>
+              {profile.selectedLearningSources.map((source: string, i: number) => (
+                <View key={i} style={[s.pill, { backgroundColor: isDark ? '#2a2a2a' : '#ebebeb' }]}>
+                  <Text style={[s.pillText, { color: Colors[colorScheme].text }]}>
+                    {source}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </Pressable>
+        )}
+
+        {isOnboarded && profile?.careerGoals && profile.careerGoals.length > 0 && (
+          <Pressable style={[s.card, { backgroundColor: cardBg }]} onPress={() => router.push('/preferences/goals')}>
+            <View style={s.pillHeader}>
+              <Text style={[s.pillLabel, { color: Colors[colorScheme].muted }]}>Career Goals</Text>
+              <ChevronRight size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+            </View>
+            <View style={s.pillWrap}>
+              {profile.careerGoals.map((goal: string, i: number) => (
+                <View key={i} style={[s.pill, { backgroundColor: isDark ? '#2a2a2a' : '#ebebeb' }]}>
+                  <Text style={[s.pillText, { color: Colors[colorScheme].text }]}>
+                    {lookupLabel(CAREER_GOALS as unknown as { id: string; label: string }[], goal)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </Pressable>
+        )}
+
+        {/* ─── Menu ─── */}
+        <View style={[s.card, { backgroundColor: cardBg, paddingVertical: 4 }]}>
+          {isOnboarded && (
+            <Pressable style={s.menuRow} onPress={() => router.push('/(tabs)/bookmarks')}>
+              <BookMarked size={20} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+              <Text style={[s.menuText, { color: Colors[colorScheme].text }]}>Saved Articles</Text>
+              <ChevronRight size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
             </Pressable>
           )}
+          {isOnboarded && (
+            <>
+              <View style={[s.menuDivider, { backgroundColor: isDark ? '#333' : '#e5e5e5' }]} />
+              <Pressable style={s.menuRow} onPress={() => router.push('/preferences')}>
+                <Settings size={20} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+                <Text style={[s.menuText, { color: Colors[colorScheme].text }]}>Edit Preferences</Text>
+                <ChevronRight size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+              </Pressable>
+            </>
+          )}
+          {isOnboarded && (
+            <View style={[s.menuDivider, { backgroundColor: isDark ? '#333' : '#e5e5e5' }]} />
+          )}
           <Pressable
-            style={styles.menuRow}
+            style={s.menuRow}
             onPress={() => WebBrowser.openBrowserAsync(PRIVACY_URL)}>
             <Shield size={20} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-            <ThemedText style={[styles.menuText, { color: Colors[colorScheme].text }]}>
-              Privacy policy
-            </ThemedText>
-            <ExternalLink size={16} color={Colors[colorScheme].border} strokeWidth={1.5} />
+            <Text style={[s.menuText, { color: Colors[colorScheme].text }]}>Privacy Policy</Text>
+            <ExternalLink size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
           </Pressable>
+          <View style={[s.menuDivider, { backgroundColor: isDark ? '#333' : '#e5e5e5' }]} />
           <Pressable
-            style={styles.menuRow}
+            style={s.menuRow}
             onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)}>
             <FileText size={20} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-            <ThemedText style={[styles.menuText, { color: Colors[colorScheme].text }]}>
-              Terms of service
-            </ThemedText>
-            <ExternalLink size={16} color={Colors[colorScheme].border} strokeWidth={1.5} />
+            <Text style={[s.menuText, { color: Colors[colorScheme].text }]}>Terms of Service</Text>
+            <ExternalLink size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
           </Pressable>
         </View>
 
-        {/* ─── Newsletter Toggle ─── */}
+        {/* ─── Newsletter ─── */}
         {isOnboarded && (
-          <View style={styles.newsletterSection}>
-            <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
-              Daily newsletter
-            </ThemedText>
-            <View style={styles.newsletterRow}>
-              <View style={styles.newsletterLeft}>
-                <Mail size={20} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-                <View style={{ flex: 1 }}>
-                  <ThemedText style={[styles.newsletterTitle, { color: Colors[colorScheme].text }]}>
-                    Receive daily newsletter
-                  </ThemedText>
-                  <ThemedText style={[styles.newsletterDesc, { color: Colors[colorScheme].muted }]}>
-                    {isProUser 
-                      ? 'Your personalized summary lands at 10:00 AM IST.'
-                      : 'A curated digest lands in your inbox every morning.'}
-                  </ThemedText>
-                </View>
+          <View style={[s.card, { backgroundColor: cardBg }]}>
+            <View style={s.newsletterRow}>
+              <Mail size={20} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+              <View style={{ flex: 1 }}>
+                <Text style={[s.newsletterTitle, { color: Colors[colorScheme].text }]}>
+                  Daily Newsletter
+                </Text>
+                <Text style={[s.newsletterDesc, { color: Colors[colorScheme].muted }]}>
+                  {isProUser
+                    ? 'Your personalized summary at 10:00 AM IST.'
+                    : 'Curated digest, every morning.'}
+                </Text>
               </View>
               <Switch
                 value={newsletterOptIn}
                 onValueChange={handleNewsletterToggle}
-                trackColor={{ false: Colors[colorScheme].border, true: '#F59E0B' }}
+                trackColor={{ false: isDark ? '#333' : '#d4d4d4', true: ACCENT }}
                 thumbColor="#fff"
-                ios_backgroundColor={Colors[colorScheme].border}
+                ios_backgroundColor={isDark ? '#333' : '#d4d4d4'}
               />
             </View>
           </View>
         )}
 
-        {/* Dark mode toggle hidden — forced light mode for now */}
+        {/* ─── Sign out / Delete ─── */}
+        <View style={s.bottomActions}>
+          <Pressable style={s.bottomRow} onPress={handleSignOut}>
+            <LogOut size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+            <Text style={[s.bottomRowText, { color: Colors[colorScheme].text }]}>Sign out</Text>
+          </Pressable>
+          <Pressable style={s.bottomRow} onPress={handleDeleteAccount}>
+            <Trash2 size={18} color="#b91c1c" strokeWidth={1.5} />
+            <Text style={[s.bottomRowText, { color: '#b91c1c' }]}>Delete account</Text>
+          </Pressable>
+        </View>
 
-        {/* ─── Sign out ─── */}
-        <Pressable style={styles.actionRow} onPress={handleSignOut}>
-          <LogOut size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-          <ThemedText style={[styles.actionRowText, { color: Colors[colorScheme].text }]}>
-            Sign out
-          </ThemedText>
-        </Pressable>
-
-        {/* ─── Delete account ─── */}
-        <Pressable style={styles.actionRow} onPress={handleDeleteAccount}>
-          <Trash2 size={18} color="#b91c1c" strokeWidth={1.5} />
-          <ThemedText style={[styles.actionRowText, { color: '#b91c1c' }]}>
-            Delete account
-          </ThemedText>
-        </Pressable>
-
-        {/* ─── Footer ─── */}
-        <ThemedText style={[styles.footer, { color: Colors[colorScheme].muted }]}>
+        <Text style={[s.footer, { color: Colors[colorScheme].muted }]}>
           Trace v1.0.0
-        </ThemedText>
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  scrollContent: {
+const s = StyleSheet.create({
+  root: { flex: 1 },
+  scroll: {
     paddingHorizontal: 20,
-    paddingTop: 32,
-    paddingBottom: 40,
+    paddingTop: 24,
+    paddingBottom: 48,
   },
 
-  // ─── Profile header ───
-  profileHeader: {
+  header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
   },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    marginBottom: 16,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 14,
   },
-  avatarPlaceholder: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+  avatarFallback: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   avatarInitial: {
-    fontSize: 28,
-    fontWeight: '600',
+    fontSize: 30,
+    fontWeight: '700',
   },
-  profileName: {
+  name: {
     fontSize: 22,
     fontWeight: '700',
     letterSpacing: -0.3,
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  profileEmail: {
+  email: {
     fontSize: 14,
-    marginBottom: 8,
   },
   badgeRow: {
     flexDirection: 'row',
     gap: 8,
-    marginTop: 8,
+    marginTop: 10,
   },
-  roleBadge: {
+  badge: {
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 999,
   },
-  roleText: {
+  badgeText: {
     fontSize: 12,
-    fontWeight: '500',
-  },
-
-  // ─── Onboarding nudge ───
-  nudge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 28,
-  },
-  nudgeTitle: {
-    fontSize: 15,
     fontWeight: '600',
-    marginBottom: 2,
-  },
-  nudgeSub: {
-    fontSize: 13,
-    lineHeight: 18,
   },
 
-  // ─── Sections ───
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionLabel: {
-    fontFamily: Fonts.mono,
-    fontSize: 11,
-    fontWeight: '500',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    marginBottom: 12,
-  },
-  pillsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  pill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-  },
-  pillText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  summaryStyleCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 16,
-  },
-  summaryStyleLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  summaryStyleDesc: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-
-  // ─── Subscription ───
-  subscriptionCard: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    gap: 16,
-    borderWidth: 1,
-  },
-  subscriptionTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  subscriptionBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  subscriptionLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  subscriptionDesc: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  subscriptionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-  },
-  bulletList: {
-    gap: 12,
-  },
-  bulletItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  bulletDot: {
-    marginTop: 7,
-  },
-  bulletText: {
-    flex: 1,
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  upgradeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  upgradeButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  manageText: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-
-  // ─── Divider ───
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    marginBottom: 8,
-  },
-
-  // ─── Menu ───
-  menuSection: {
-    gap: 0,
-  },
-  menuRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 16,
-  },
-  menuText: {
-    flex: 1,
-    fontSize: 16,
-  },
-
-  // ─── Newsletter ───
-  newsletterSection: {
-    marginTop: 24,
-    marginBottom: 16,
-  },
-  newsletterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  newsletterLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 14,
-  },
-  newsletterTitle: {
-    fontSize: 15,
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  newsletterDesc: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-
-  // ─── Action rows ───
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 16,
-  },
-  actionRowText: {
-    fontSize: 16,
-  },
-
-  // ─── Footer ───
-  footer: {
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 32,
-  },
-});
-
-const activityStyles = StyleSheet.create({
   card: {
     borderRadius: 16,
-    borderWidth: 1,
-    padding: 20,
-    marginBottom: 28,
+    padding: 18,
+    marginBottom: 12,
   },
+
+  // Stats
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -731,7 +449,7 @@ const activityStyles = StyleSheet.create({
   stat: {
     flex: 1,
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   statValue: {
     fontSize: 24,
@@ -744,6 +462,143 @@ const activityStyles = StyleSheet.create({
   },
   statDivider: {
     width: StyleSheet.hairlineWidth,
-    height: 48,
+    height: 44,
+  },
+
+  // Nudge
+  nudge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  nudgeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  nudgeDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+
+  // Subscription
+  subRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  subBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  subLabel: {
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  subTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  subDesc: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  upgradeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: ACCENT,
+    paddingVertical: 13,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  upgradeBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  // Pills
+  pillHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  pillLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  pillWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  pill: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  pillText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+
+  // Menu
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 14,
+  },
+  menuText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  menuDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 34,
+  },
+
+  // Newsletter
+  newsletterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  newsletterTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  newsletterDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+
+  // Bottom actions
+  bottomActions: {
+    marginTop: 8,
+    paddingHorizontal: 4,
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 14,
+  },
+  bottomRowText: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+
+  footer: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 24,
   },
 });

@@ -17,6 +17,7 @@ interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
+  profileResolved: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
@@ -27,6 +28,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   loading: true,
+  profileResolved: false,
   signInWithGoogle: async () => {},
   signOut: async () => {},
   deleteAccount: async () => {},
@@ -39,16 +41,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileResolved, setProfileResolved] = useState(false);
   const signInInFlightRef = useRef(false);
 
-  const loadProfile = async (firebaseUser: User) => {
+  const loadProfile = async (firebaseUser: User, options?: { allowCreate?: boolean }) => {
+    const allowCreate = options?.allowCreate ?? true;
     try {
-      const userProfile = await getOrCreateUserProfile(
-        firebaseUser.uid,
-        firebaseUser.email || '',
-        firebaseUser.displayName || '',
-        firebaseUser.photoURL
-      );
+      const userProfile = allowCreate
+        ? await getOrCreateUserProfile(
+            firebaseUser.uid,
+            firebaseUser.email || '',
+            firebaseUser.displayName || '',
+            firebaseUser.photoURL
+          )
+        : await getUserProfile(firebaseUser.uid);
       setProfile(userProfile);
       
       // Prefetch profile photo for instant loading
@@ -61,6 +67,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return userProfile;
     } catch (error) {
       console.error('Error loading profile:', error);
+    } finally {
+      setProfileResolved(true);
     }
     return null;
   };
@@ -80,12 +88,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     // Listen to Firebase auth state changes
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
-        await loadProfile(firebaseUser);
+        setProfileResolved(false);
+        // Startup should never block on profile creation/network.
+        // Hydrate from cache/server in the background.
+        void loadProfile(firebaseUser, { allowCreate: false });
       } else {
         setProfile(null);
+        setProfileResolved(true);
       }
       setLoading(false);
     });
@@ -264,7 +276,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, signOut, deleteAccount, refreshProfile }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        profile,
+        loading,
+        profileResolved,
+        signInWithGoogle,
+        signOut,
+        deleteAccount,
+        refreshProfile,
+      }}>
       {children}
     </AuthContext.Provider>
   );

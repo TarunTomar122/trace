@@ -6,8 +6,9 @@ import {
   RefreshControl,
   Text,
   ActivityIndicator,
+  ScrollView,
+  Image,
 } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,31 +21,30 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Flame, Zap, Sparkles, BookOpen, Cpu, User, Crosshair, GraduationCap } from 'lucide-react-native';
+import {
+  Flame,
+  Sparkles,
+  BookOpen,
+  Cpu,
+  ChevronRight,
+} from 'lucide-react-native';
 
 import DigestIllus from '@/components/illustrations/DigestIllus';
-import { MilestoneCelebration } from '@/components/MilestoneCelebration';
 import { EarlyAdopterBanner } from '@/components/EarlyAdopterBanner';
 
 import { ThemedText } from '@/components/themed-text';
-import { TrendingCard, ForYouCard, DeepDiveCard } from '@/components/FeedCard';
 import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  FeedItem,
+  TrendingTopic,
   V3UserFeed,
   getV3UserFeed,
   recordLastActive,
 } from '@/lib/firestore';
-import { logReadingEvent, getReadingAnalytics } from '@/lib/reading-analytics';
-import { setCurrentArticle } from '@/lib/article-store';
+import { logReadingEvent } from '@/lib/reading-analytics';
+import { setCurrentTopic } from '@/lib/topic-store';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
-import { updateStreak, getStreakStatus } from '@/lib/streaks';
-// TODO: Re-enable when EAS project is configured
-// import { initializeNotifications, onArticleRead } from '@/lib/notifications';
-
-// Using FlashList for virtualized rendering of 60+ items
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -53,74 +53,33 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
-type FeedTab = 'trending' | 'for_you' | 'deep_dives';
-
-const TAB_CONFIG: { key: FeedTab; label: string; Icon: typeof Flame; color: string }[] = [
-  { key: 'trending', label: 'Trending', Icon: Flame, color: '#F97316' },
-  { key: 'for_you', label: 'For You', Icon: Crosshair, color: '#F59E0B' },
-  { key: 'deep_dives', label: 'Deep Dives', Icon: GraduationCap, color: '#0EA5E9' },
-];
-
-function getActiveTabColor(tab: FeedTab): string {
-  return TAB_CONFIG.find((t) => t.key === tab)?.color ?? '#F59E0B';
+function rankTrendingTopics(topics: TrendingTopic[]): TrendingTopic[] {
+  const scored = [...topics];
+  scored.sort((a, b) => {
+    if (!!a.is_featured !== !!b.is_featured) return a.is_featured ? -1 : 1;
+    const ap = a.popularity_score ?? 0;
+    const bp = b.popularity_score ?? 0;
+    if (ap !== bp) return bp - ap;
+    const ac = a.article_count ?? 0;
+    const bc = b.article_count ?? 0;
+    if (ac !== bc) return bc - ac;
+    return (b.source_count ?? 0) - (a.source_count ?? 0);
+  });
+  return scored;
 }
 
-export default function FeedScreen() {
+export default function TrendingScreen() {
   const router = useRouter();
   const { user, profile, refreshProfile } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
 
-  const [activeTab, setActiveTab] = useState<FeedTab>('for_you');
   const [v3Feed, setV3Feed] = useState<V3UserFeed | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [todayReads, setTodayReads] = useState(0);
-  const [milestoneToShow, setMilestoneToShow] = useState<number | null>(null);
-  const [currentStreak, setCurrentStreak] = useState(0);
-
-  // Load today's reading count & init notifications
-  useEffect(() => {
-    getReadingAnalytics(1).then((stats) => {
-      setTodayReads(stats.totalInteractions);
-    });
-    // Check streak on mount
-    updateStreak().then(({ newMilestone, data }) => {
-      if (newMilestone) {
-        setMilestoneToShow(newMilestone);
-      }
-      setCurrentStreak(data.currentStreak);
-    });
-    // Also get latest streak status
-    getStreakStatus().then((status) => {
-      setCurrentStreak(status.currentStreak);
-    });
-    // TODO: Re-enable when EAS project is configured
-    // initializeNotifications().catch(() => {});
-  }, []);
-
-  const scrollY = useSharedValue(0);
 
   const { isProUser: isSubscribed, isEarlyAdopter, loading: rcLoading } = useRevenueCat();
   const isOnboarded = profile?.onboarded ?? false;
 
-  const FREE_LIMITS = { for_you: 2, deep_dives: 1 };
-
-  // ─── Feed items for current tab ───
-  const currentItems: FeedItem[] = (() => {
-    if (!v3Feed) return [];
-    const all =
-      activeTab === 'trending' ? v3Feed.trending :
-      activeTab === 'for_you' ? v3Feed.for_you :
-      activeTab === 'deep_dives' ? v3Feed.deep_dives : [];
-    // Free users get all trending, limited for_you and deep_dives
-    if (isSubscribed || activeTab === 'trending') return all;
-    const limit = FREE_LIMITS[activeTab as 'for_you' | 'deep_dives'] ?? 2;
-    return all.slice(0, limit);
-  })();
-
-  const isTabLimited = !isSubscribed && activeTab !== 'trending' && v3Feed != null;
-
-  // ─── Load v3 feed for ALL users (free + pro) ───
   const loadFeed = useCallback(async (): Promise<boolean> => {
     if (!user || !isOnboarded) return false;
     try {
@@ -138,18 +97,21 @@ export default function FeedScreen() {
 
   const isFeedBuilding = (() => {
     if (profile?.feedBuildStatus !== 'building') return false;
-    const requestedAt = profile?.feedBuildRequestedAt;
+    const requestedAt = profile?.feedBuildRequestedAt as any;
     if (!requestedAt) return false;
-    const ts = typeof requestedAt === 'string' ? new Date(requestedAt).getTime()
-      : requestedAt?.toDate ? requestedAt.toDate().getTime()
-      : requestedAt?.seconds ? requestedAt.seconds * 1000
-      : 0;
+    const ts =
+      typeof requestedAt === 'string'
+        ? new Date(requestedAt).getTime()
+        : requestedAt?.toDate
+          ? requestedAt.toDate().getTime()
+          : requestedAt?.seconds
+            ? requestedAt.seconds * 1000
+            : 0;
     if (!ts) return false;
     return Date.now() - ts < 5 * 60 * 1000;
   })();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Initial feed load + record activity
   useEffect(() => {
     if (!isOnboarded) {
       setIsLoading(false);
@@ -164,18 +126,13 @@ export default function FeedScreen() {
     if (user?.uid) recordLastActive(user.uid);
   }, [loadFeed, isOnboarded, user?.uid]);
 
-  // Poll for feed when build is in progress
   useEffect(() => {
     if (!isFeedBuilding || !user) return;
-
     pollRef.current = setInterval(async () => {
       await refreshProfile();
       const found = await loadFeed();
-      if (found) {
-        if (pollRef.current) clearInterval(pollRef.current);
-      }
+      if (found && pollRef.current) clearInterval(pollRef.current);
     }, 15_000);
-
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
@@ -188,290 +145,199 @@ export default function FeedScreen() {
     setIsRefreshing(false);
   }, [loadFeed, refreshProfile]);
 
-  const handleFeedItemPress = async (item: FeedItem) => {
+  const handleTopicPress = async (topic: TrendingTopic) => {
+    const firstEvent = topic.timeline?.[0];
+    const firstArticle = topic.articles?.[0];
+    const url = firstEvent?.article_url || firstArticle?.url || '';
     logReadingEvent({
       eventType: 'feed_open',
-      itemId: item.id,
-      title: item.title,
-      url: item.url,
-      tags: item.tags,
-      itemType: item.type || item.source,
-      feedCategory: item.metadata?.feed_category || item.feed_type,
+      itemId: topic.id,
+      title: topic.title,
+      url,
+      tags: topic.tags,
+      itemType: 'topic',
+      feedCategory: 'trending_topic',
     });
-
-    // Update streak and check for milestone
-    const { newMilestone, data } = await updateStreak();
-    if (newMilestone) {
-      setMilestoneToShow(newMilestone);
-    }
-    setCurrentStreak(data.currentStreak);
-    setTodayReads((r) => r + 1);
-
-    // TODO: Re-enable when EAS project is configured
-    // onArticleRead().catch(() => {});
-
-    setCurrentArticle(item);
-    router.push('/article');
+    setCurrentTopic(topic);
+    router.push('/topic');
   };
 
-  const accentColor = getActiveTabColor(activeTab);
+  const topicGroups = useMemo(
+    () => rankTrendingTopics(v3Feed?.trending_topics || []),
+    [v3Feed?.trending_topics]
+  );
+  const featuredTopic = topicGroups.length > 0
+    ? (topicGroups.find((t) => t.is_featured) || topicGroups[0])
+    : null;
+  const remainingTopics = featuredTopic
+    ? topicGroups.filter(
+        (t) => t.id !== featuredTopic.id && t.title !== featuredTopic.title
+      )
+    : [];
 
-  // Render item for FlashList
-  const renderItem = useCallback(({ item, index }: { item: FeedItem; index: number }) => {
-    const showDivider = index < currentItems.length - 1;
+  const totalItems = topicGroups.length;
+  const isEmpty = totalItems === 0;
 
-    if (activeTab === 'trending') {
-      return (
-        <View style={styles.itemContainer}>
-          <TrendingCard
-            item={item}
-            colorScheme={colorScheme}
-            accentColor={accentColor}
-          />
-          {showDivider && <View style={[styles.divider, { backgroundColor: Colors[colorScheme].border }]} />}
-        </View>
-      );
-    }
-    if (activeTab === 'for_you') {
-      return (
-        <View style={styles.itemContainer}>
-          <ForYouCard
-            item={item}
-            colorScheme={colorScheme}
-            onPress={() => handleFeedItemPress(item)}
-            accentColor={accentColor}
-          />
-          {showDivider && <View style={[styles.divider, { backgroundColor: Colors[colorScheme].border }]} />}
-        </View>
-      );
-    }
-    return (
-      <View style={styles.itemContainer}>
-        <DeepDiveCard
-          item={item}
-          colorScheme={colorScheme}
-          onPress={() => handleFeedItemPress(item)}
-          accentColor={accentColor}
-        />
-        {showDivider && <View style={[styles.divider, { backgroundColor: Colors[colorScheme].border }]} />}
-      </View>
-    );
-  }, [activeTab, colorScheme, accentColor, currentItems.length, handleFeedItemPress]);
-
-  // Header component for FlashList
-  const ListHeader = useMemo(() => (
-    <View style={styles.listHeader}>
-      {/* ─── Header ─── */}
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <ThemedText
-            style={styles.headerTitle}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.7}>
-            {profile?.name ? `Hey, ${profile.name.split(' ')[0]}` : 'Hey there'}
-          </ThemedText>
-          <View style={styles.headerMetaRow}>
-            <ThemedText style={[styles.headerSubtitle, { color: Colors[colorScheme].muted }]}>
-              {getGreeting()}
-            </ThemedText>
-            {todayReads > 0 && (
-              <View style={[styles.readsBadge, { backgroundColor: accentColor + '18' }]}>
-                <BookOpen size={12} color={accentColor} strokeWidth={2} />
-                <Text style={[styles.readsBadgeText, { color: accentColor }]}>
-                  {todayReads} read today
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-        <Pressable
-          onPress={() => router.push('/preferences')}
-          style={[styles.profileBtn, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-          <User size={18} color={Colors[colorScheme].foreground} strokeWidth={2} />
-          {currentStreak > 0 && (
-            <View style={styles.streakBadge}>
-              <Flame size={10} color="#fff" fill="#fff" strokeWidth={2} />
-              <Text style={styles.streakBadgeText}>{currentStreak}</Text>
-            </View>
-          )}
-        </Pressable>
-      </View>
-
-      {/* ─── Early Adopter Banner ─── */}
-      <EarlyAdopterBanner
-        colorScheme={colorScheme}
-        isEarlyAdopter={isEarlyAdopter}
-        isSubscribed={isSubscribed}
-        onPress={() => router.push('/paywall')}
-      />
-
-      {/* ─── Tab bar (all users) ─── */}
-      <View style={styles.tabBar}>
-        {TAB_CONFIG.map((tab) => {
-          const isActive = activeTab === tab.key;
-          const tabColor = isActive ? tab.color : Colors[colorScheme].muted;
-          return (
-            <Pressable
-              key={tab.key}
-              onPress={() => setActiveTab(tab.key)}
-              style={[
-                styles.tab,
-                isActive && {
-                  backgroundColor: tab.color + '15',
-                  borderColor: tab.color + '30',
-                },
-              ]}>
-              <View style={styles.tabInner}>
-                <tab.Icon size={15} color={tabColor} strokeWidth={isActive ? 2.5 : 1.8} />
-                <ThemedText
-                  style={[
-                    styles.tabLabel,
-                    { color: tabColor },
-                    isActive && { fontWeight: '700' },
-                  ]}>
-                  {tab.label}
-                </ThemedText>
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {/* ─── Loading / Building states ─── */}
-      {(isLoading || rcLoading) ? (
-        <SkeletonLoader colorScheme={colorScheme} />
-      ) : (isFeedBuilding && currentItems.length === 0) ? (
-        <FeedBuildingLoader colorScheme={colorScheme} />
-      ) : currentItems.length > 0 ? (
-        <>
-          {isFeedBuilding && (
-            <View style={[styles.upgradingBanner, { backgroundColor: accentColor + '12' }]}>
-              <ActivityIndicator size="small" color={accentColor} />
-              <ThemedText style={[styles.upgradingText, { color: Colors[colorScheme].muted }]}>
-                Your full feed is building — pull to refresh in a minute
-              </ThemedText>
-            </View>
-          )}
-          <ThemedText style={[styles.sectionHeader, { color: Colors[colorScheme].muted }]}>
-            {activeTab === 'trending'
-              ? `${currentItems.length} stories buzzing right now`
-              : activeTab === 'for_you'
-                ? 'Based on your interests'
-                : isSubscribed
-                  ? 'From your trusted sources'
-                  : 'Popular deep dive · Subscribe for personalized picks'}
-          </ThemedText>
-        </>
-      ) : (
-        <View style={styles.emptyState}>
-          <View
-            style={[styles.emptyIllus, { backgroundColor: colorScheme === 'dark' ? '#1a1a2e' : '#f5f3ff' }]}
-          >
-            <DigestIllus width={44} height={44} color={Colors[colorScheme].text} />
-          </View>
-          <ThemedText style={[styles.emptyText, { color: Colors[colorScheme].muted }]}>
-            {activeTab === 'for_you'
-              ? 'No articles for you yet. Pull to refresh.'
-              : activeTab === 'deep_dives'
-                ? 'No deep dives yet. Your sources are being indexed.'
-                : 'No trending stories right now. Pull to refresh.'}
-          </ThemedText>
-        </View>
-      )}
-    </View>
-  ), [profile?.name, colorScheme, todayReads, accentColor, currentStreak, isEarlyAdopter, isSubscribed, activeTab, isLoading, rcLoading, isFeedBuilding, currentItems.length, router]);
-
-  // Footer component for FlashList
-  const ListFooter = useMemo(() => {
-    if (currentItems.length === 0) return null;
-
-    return (
-      <View style={styles.listFooter}>
-        {/* Upgrade CTA for free users on limited tabs */}
-        {isTabLimited && (
-          <View style={[
-            ctaStyles.banner,
-            {
-              backgroundColor: accentColor + '10',
-              borderColor: accentColor + '30',
-            },
-          ]}>
-            <Text style={[ctaStyles.bannerTitle, { color: Colors[colorScheme].text }]}>
-              {activeTab === 'for_you'
-                ? 'Unlock all personalized stories'
-                : 'Get personalized deep dives'}
-            </Text>
-            <Text style={[ctaStyles.bannerBody, { color: Colors[colorScheme].muted }]}>
-              {activeTab === 'for_you'
-                ? 'You\'re seeing a preview. Go Pro for unlimited articles matched to your interests.'
-                : 'This is a popular deep dive for everyone. Go Pro to get deep dives from your trusted sources.'}
-            </Text>
-            <Pressable
-              onPress={() => router.push('/paywall')}
-              style={[ctaStyles.ctaButton, { backgroundColor: accentColor }]}
-            >
-              <Zap size={16} color="#fff" />
-              <Text style={[ctaStyles.ctaText, { color: '#fff' }]}>
-                Start Free Trial
-              </Text>
-            </Pressable>
-            <Text style={[ctaStyles.bannerLegal, { color: Colors[colorScheme].muted }]}>
-              4-day free trial · Cancel anytime
-            </Text>
-          </View>
-        )}
-
-        {isSubscribed && (
-          <ThemedText style={[styles.endText, { color: Colors[colorScheme].muted }]}>
-            You{"'"}re all caught up
-          </ThemedText>
-        )}
-      </View>
-    );
-  }, [currentItems.length, isTabLimited, accentColor, colorScheme, activeTab, isSubscribed, router]);
-
-  // Key extractor for FlashList
-  const keyExtractor = useCallback((item: FeedItem, index: number) => {
-    return `${activeTab}-${item.id}-${index}`;
-  }, [activeTab]);
-
-  // Early return AFTER all hooks
   if (!isOnboarded) return null;
 
   return (
-    <>
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
       edges={['top']}>
-
-      <FlashList
-        data={currentItems}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        ListHeaderComponent={ListHeader}
-        ListFooterComponent={ListFooter}
+      <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.flashListContent}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
             tintColor={Colors[colorScheme].foreground}
           />
-        }
-      />
-    </SafeAreaView>
+        }>
 
-    {/* Milestone Celebration Modal */}
-    <MilestoneCelebration
-      visible={milestoneToShow !== null}
-      milestone={milestoneToShow ?? 0}
-      onClose={() => setMilestoneToShow(null)}
-    />
-    </>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={{ flex: 1 }}>
+            <ThemedText
+              style={styles.headerTitle}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}>
+              {profile?.name ? `Hey, ${profile.name.split(' ')[0]}` : 'Hey there'}
+            </ThemedText>
+            <ThemedText style={[styles.headerSubtitle, { color: Colors[colorScheme].muted }]}>
+              {getGreeting()}
+            </ThemedText>
+          </View>
+        </View>
+
+        {/* Early Adopter Banner */}
+        <View style={styles.padded}>
+          <EarlyAdopterBanner
+            colorScheme={colorScheme}
+            isEarlyAdopter={isEarlyAdopter}
+            isSubscribed={isSubscribed}
+            onPress={() => router.push('/paywall')}
+          />
+        </View>
+
+        {/* Loading / Building states */}
+        {(isLoading || rcLoading) ? (
+          <View style={styles.padded}>
+            <SkeletonLoader colorScheme={colorScheme} />
+          </View>
+        ) : isFeedBuilding && isEmpty ? (
+          <View style={styles.padded}>
+            <FeedBuildingLoader colorScheme={colorScheme} />
+          </View>
+        ) : isEmpty ? (
+          <View style={styles.padded}>
+            <View style={styles.emptyState}>
+              <View style={[styles.emptyIllus, { backgroundColor: colorScheme === 'dark' ? '#1a1a2e' : '#f5f3ff' }]}>
+                <DigestIllus width={44} height={44} color={Colors[colorScheme].text} />
+              </View>
+              <ThemedText style={[styles.emptyText, { color: Colors[colorScheme].muted }]}>
+                No trending articles yet. Pull to refresh.
+              </ThemedText>
+            </View>
+          </View>
+        ) : (
+          <>
+            {isFeedBuilding && (
+              <View style={[styles.upgradingBanner, styles.padded, { backgroundColor: '#F59E0B12' }]}>
+                <ActivityIndicator size="small" color="#F59E0B" />
+                <ThemedText style={[styles.upgradingText, { color: Colors[colorScheme].muted }]}>
+                  Your full feed is building — pull to refresh in a minute
+                </ThemedText>
+              </View>
+            )}
+
+            {/* Grouped-topics layout */}
+            <>
+              {featuredTopic && (
+                <View style={[styles.section, styles.padded]}>
+                  <View style={styles.sectionHeaderRow}>
+                    <Flame size={16} color="#F97316" strokeWidth={2.5} />
+                    <Text style={[styles.sectionTitle, { color: Colors[colorScheme].text }]}>
+                      Featured
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => handleTopicPress(featuredTopic)}
+                    style={styles.featuredCard}>
+                    {featuredTopic.thumbnail ? (
+                      <Image source={{ uri: featuredTopic.thumbnail }} style={styles.featuredImage} resizeMode="cover" />
+                    ) : (
+                      <View style={[styles.featuredImage, { backgroundColor: Colors[colorScheme].border }]} />
+                    )}
+                    <View style={styles.featuredContent}>
+                      <Text style={[styles.featuredTitle, { color: Colors[colorScheme].text }]}>
+                        {featuredTopic.title}
+                      </Text>
+                      <Text
+                        numberOfLines={3}
+                        style={[styles.featuredSummary, { color: Colors[colorScheme].muted }]}>
+                        {(featuredTopic.summary || '').replace(/\*\*/g, '')}
+                      </Text>
+                      <Text style={[styles.featuredMeta, { color: Colors[colorScheme].muted }]}>
+                        {featuredTopic.source_count ?? 0} sources · {featuredTopic.article_count ?? 0} updates
+                      </Text>
+                    </View>
+                  </Pressable>
+                </View>
+              )}
+
+              {remainingTopics.length > 0 && (
+                <View style={[styles.section, styles.padded]}>
+                  <View style={styles.sectionHeaderRow}>
+                    <Text style={[styles.sectionTitle, { color: Colors[colorScheme].text }]}>
+                      More stories
+                    </Text>
+                  </View>
+                  <View style={styles.topicList}>
+                    {remainingTopics.map((topic) => (
+                      <Pressable
+                        key={topic.id}
+                        onPress={() => handleTopicPress(topic)}
+                        style={[
+                          styles.topicRow,
+                          { backgroundColor: Colors[colorScheme].card },
+                        ]}>
+                        {topic.thumbnail ? (
+                          <Image source={{ uri: topic.thumbnail }} style={styles.topicThumb} resizeMode="cover" />
+                        ) : (
+                          <View style={[styles.topicThumb, { backgroundColor: Colors[colorScheme].border }]} />
+                        )}
+                        <View style={styles.topicBody}>
+                          <Text numberOfLines={2} style={[styles.topicTitle, { color: Colors[colorScheme].text }]}>
+                            {topic.title}
+                          </Text>
+                          <Text style={[styles.topicMeta, { color: Colors[colorScheme].muted }]}>
+                            {topic.source_count ?? 0} sources · {topic.article_count ?? 0} updates
+                          </Text>
+                        </View>
+                        <ChevronRight size={15} color={Colors[colorScheme].muted} strokeWidth={2} />
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </>
+
+            {/* Footer */}
+            <View style={styles.padded}>
+              <ThemedText style={[styles.endText, { color: Colors[colorScheme].muted }]}>
+                You{"'"}re all caught up
+              </ThemedText>
+            </View>
+          </>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+/* ─── Sub-components ─── */
 
 const BUILD_STEPS = [
   { icon: 'sparkles', text: 'Analyzing your interests...' },
@@ -497,11 +363,10 @@ function PulsingDot({ delay, colorScheme }: { delay: number; colorScheme: 'light
   }, [delay, opacity]);
 
   const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
-  const bg = colorScheme === 'dark' ? '#F59E0B' : '#F59E0B';
 
   return (
     <Animated.View
-      style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: bg }, animStyle]}
+      style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#F59E0B' }, animStyle]}
     />
   );
 }
@@ -519,7 +384,6 @@ function FeedBuildingLoader({ colorScheme }: { colorScheme: 'light' | 'dark' }) 
   const step = BUILD_STEPS[stepIdx];
   const iconColor = colorScheme === 'dark' ? '#F59E0B' : '#D97706';
   const cardBg = colorScheme === 'dark' ? '#1a1a2e' : '#fffbeb';
-
   const StepIcon = step.icon === 'sparkles' ? Sparkles : step.icon === 'cpu' ? Cpu : BookOpen;
 
   return (
@@ -528,21 +392,17 @@ function FeedBuildingLoader({ colorScheme }: { colorScheme: 'light' | 'dark' }) 
         <View style={buildStyles.iconRow}>
           <StepIcon size={28} color={iconColor} strokeWidth={1.5} />
         </View>
-
         <Text style={[buildStyles.title, { color: Colors[colorScheme].text }]}>
           Building your feed
         </Text>
-
         <Text style={[buildStyles.subtitle, { color: Colors[colorScheme].muted }]}>
           {step.text}
         </Text>
-
         <View style={buildStyles.dots}>
           <PulsingDot delay={0} colorScheme={colorScheme} />
           <PulsingDot delay={200} colorScheme={colorScheme} />
           <PulsingDot delay={400} colorScheme={colorScheme} />
         </View>
-
         <Text style={[buildStyles.hint, { color: Colors[colorScheme].muted }]}>
           This usually takes 2-3 minutes. We{"'"}ll have{'\n'}your personalized feed ready soon.
         </Text>
@@ -556,14 +416,11 @@ function SkeletonLoader({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
     <View style={styles.skeletonContainer}>
       {[1, 2, 3].map((i) => (
         <View key={i} style={styles.skeletonItem}>
-          {/* Hero image skeleton */}
           <View style={[styles.skeletonHero, { backgroundColor: Colors[colorScheme].border }]} />
-          {/* Source row skeleton */}
           <View style={styles.skeletonSourceRow}>
             <View style={[styles.skeletonAvatar, { backgroundColor: Colors[colorScheme].border }]} />
             <View style={[styles.skeletonMeta, { backgroundColor: Colors[colorScheme].border }]} />
           </View>
-          {/* Title skeleton */}
           <View style={[styles.skeletonTitle, { backgroundColor: Colors[colorScheme].border }]} />
           <View style={[styles.skeletonSub, { backgroundColor: Colors[colorScheme].border }]} />
         </View>
@@ -572,19 +429,19 @@ function SkeletonLoader({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
   );
 }
 
+/* ─── Styles ─── */
+
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
-  flashListContent: { paddingHorizontal: 20, paddingBottom: 40 },
-  listHeader: { paddingTop: 0 },
-  listFooter: { paddingBottom: 20 },
-  itemContainer: {},
+  scrollContent: { paddingBottom: 40 },
+  padded: { paddingHorizontal: 20 },
 
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: 12,
+    paddingHorizontal: 20,
     marginBottom: 4,
   },
   headerTitle: {
@@ -593,87 +450,88 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     lineHeight: 32,
   },
-  headerMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-  },
-  readsBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  readsBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  profileBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  streakBadge: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    backgroundColor: '#F97316',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-    gap: 1,
-  },
-  streakBadgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '800',
-  },
+  headerSubtitle: { fontSize: 14, marginTop: 4 },
 
-  // Tab bar
-  tabBar: {
+  section: { marginTop: 28 },
+  sectionHeaderRow: {
     flexDirection: 'row',
-    marginTop: 16,
+    alignItems: 'center',
+    gap: 8,
     marginBottom: 4,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  featuredCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  featuredImage: {
+    width: '100%',
+    height: 180,
+  },
+  featuredContent: {
+    padding: 16,
     gap: 8,
   },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'transparent',
+  featuredTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    lineHeight: 26,
   },
-  tabInner: {
+  featuredSummary: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  featuredMeta: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  topicList: {
+    marginTop: 8,
+    gap: 8,
+  },
+  topicRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 14,
+    padding: 14,
+    borderRadius: 16,
   },
-  tabLabel: {
-    fontSize: 13,
+  topicThumb: {
+    width: 76,
+    height: 76,
+    borderRadius: 12,
+    flexShrink: 0,
+  },
+  topicBody: {
+    flex: 1,
+    gap: 4,
+  },
+  topicTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    lineHeight: 21,
+  },
+  topicSummary: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  topicMeta: {
+    fontSize: 11,
     fontWeight: '500',
+    opacity: 0.6,
+  },
+  carousel: {
+    paddingLeft: 20,
+    paddingRight: 8,
+    paddingTop: 8,
   },
 
-  // Section header
-  sectionHeader: {
-    fontSize: 13,
-    fontWeight: '500',
-    marginTop: 14,
-    marginBottom: 6,
-  },
   upgradingBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -682,28 +540,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 10,
     marginTop: 8,
-    marginBottom: 4,
   },
-  upgradingText: {
-    fontSize: 13,
-    fontWeight: '500',
-    flex: 1,
-  },
+  upgradingText: { fontSize: 13, fontWeight: '500', flex: 1 },
 
-  // Feed
-  feedList: { marginTop: 8 },
-  divider: {
-    height: 1,
-    marginVertical: 16,
-    opacity: 0.4,
-  },
-
-  // Empty state
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 48,
-    gap: 12,
-  },
+  emptyState: { alignItems: 'center', paddingVertical: 48, gap: 12 },
   emptyIllus: {
     width: 80,
     height: 70,
@@ -712,11 +552,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  emptyText: {
-    textAlign: 'center',
-    fontSize: 15,
-    paddingHorizontal: 20,
-  },
+  emptyText: { textAlign: 'center', fontSize: 15, paddingHorizontal: 20 },
+
   endText: {
     textAlign: 'center',
     fontSize: 13,
@@ -726,7 +563,6 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
   },
 
-  // Skeleton
   skeletonContainer: { gap: 20, paddingTop: 16 },
   skeletonItem: { marginBottom: 8 },
   skeletonHero: { width: '100%', height: 180, borderRadius: 16, opacity: 0.2, marginBottom: 12 },
@@ -738,82 +574,11 @@ const styles = StyleSheet.create({
 });
 
 const buildStyles = StyleSheet.create({
-  container: {
-    paddingTop: 48,
-    paddingBottom: 24,
-    alignItems: 'center',
-  },
-  card: {
-    width: '100%',
-    borderRadius: 20,
-    padding: 32,
-    alignItems: 'center',
-  },
-  iconRow: {
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 15,
-    lineHeight: 22,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  dots: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 24,
-  },
-  hint: {
-    fontSize: 13,
-    lineHeight: 19,
-    textAlign: 'center',
-  },
-});
-
-const ctaStyles = StyleSheet.create({
-  banner: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 24,
-    marginTop: 24,
-    marginBottom: 8,
-    alignItems: 'center',
-  },
-  bannerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  bannerBody: {
-    fontSize: 14,
-    lineHeight: 21,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  ctaButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    width: '100%',
-    paddingVertical: 15,
-    borderRadius: 999,
-    marginBottom: 10,
-  },
-  ctaText: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  bannerLegal: {
-    fontSize: 12,
-    textAlign: 'center',
-  },
+  container: { paddingTop: 48, paddingBottom: 24, alignItems: 'center' },
+  card: { width: '100%', borderRadius: 20, padding: 32, alignItems: 'center' },
+  iconRow: { marginBottom: 20 },
+  title: { fontSize: 22, fontWeight: '700', letterSpacing: -0.3, marginBottom: 8 },
+  subtitle: { fontSize: 15, lineHeight: 22, textAlign: 'center', marginBottom: 24 },
+  dots: { flexDirection: 'row', gap: 8, marginBottom: 24 },
+  hint: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
 });

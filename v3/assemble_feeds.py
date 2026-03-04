@@ -89,7 +89,9 @@ def assemble(args: argparse.Namespace) -> dict[str, int]:
     # Load global trending feed (shared across all users)
     global_feed = store.load_global_feed(target_date)
     global_trending = global_feed.get("trending", [])
+    global_trending_topics = global_feed.get("trending_topics", [])
     _log(f"Global trending: {len(global_trending)} items")
+    _log(f"Global trending topics: {len(global_trending_topics)} groups")
 
     for profile in users:
         uid = profile.get("uid", "")
@@ -101,9 +103,12 @@ def assemble(args: argparse.Namespace) -> dict[str, int]:
         deep_dives = feed.get("deep_dives", [])
         # Always use global trending (it's fresher news, refreshed every 2 hours)
         trending = global_trending
+        trending_topics = global_trending_topics
         # Write global trending to user's feed
         if trending:
             store.write_feed_section(uid, target_date, "trending", trending)
+        # Always write grouped topics (empty list clears stale content on re-runs).
+        store.write_feed_section(uid, target_date, "trending_topics", trending_topics)
         total = len(for_you) + len(deep_dives) + len(trending)
 
         # Promote today's AND yesterday's feed URLs to seen
@@ -122,6 +127,7 @@ def assemble(args: argparse.Namespace) -> dict[str, int]:
             "for_you_count": len(for_you),
             "deep_dives_count": len(deep_dives),
             "trending_count": len(trending),
+            "trending_topics_count": len(trending_topics),
             "total_items": total,
             "pipeline": "v3",
             "interests": sorted(profile.get("interests", [])),

@@ -5,7 +5,7 @@ Build "Deep Dives" feed — synthesized original content from multiple sources.
 Each deep dive combines 2-3 related articles from user's selected sources
 into one cohesive, original piece with our own title and narrative.
 
-Users get 2 deep dives per day, personalized to their source selections.
+Users get up to 2 deep dives per day, personalized to their source selections.
 
 Usage:
   python3 -m v3.build_deep_dives
@@ -39,7 +39,7 @@ from v3.lib.store import V3Store, DEEP_DIVE_POOL, FREE_TIER_LIMITS, _today_ist  
 from v3.lib.content import fetch_content, fetch_og_image  # noqa: E402
 
 CONFIG_PATH = "v3/config/deep_dive_sources.json"
-DEFAULT_DEEP_DIVES_PER_USER = 2
+MAX_DEEP_DIVES_PER_USER = 2
 DEFAULT_LIMIT_PER_SOURCE = 5
 DEFAULT_MAX_AGE = 60
 
@@ -332,7 +332,7 @@ Create a chapter-style deep dive. Return JSON:
   "chapters": [
     {{
       "title": "Chapter title (e.g., 'The Shift Everyone Missed')",
-      "content": "150-200 words of original analysis weaving source insights together. Write in an engaging, editorial style. Use **bold** for key phrases.",
+      "content": "200-250 words split into 3-4 SHORT paragraphs separated by \\n\\n. Each paragraph is 2-3 sentences max. Write in an engaging, editorial style. Use **bold** for key phrases.",
       "quote": {{
         "text": "An actual quote or key insight extracted from one of the sources",
         "source": "Author/Source name"
@@ -340,7 +340,7 @@ Create a chapter-style deep dive. Return JSON:
     }},
     {{
       "title": "Second chapter title",
-      "content": "150-200 words continuing the narrative...",
+      "content": "200-250 words, again 3-4 paragraphs separated by \\n\\n...",
       "quote": {{
         "text": "Another powerful quote from the sources",
         "source": "Author name"
@@ -348,7 +348,7 @@ Create a chapter-style deep dive. Return JSON:
     }},
     {{
       "title": "Third chapter title",
-      "content": "150-200 words...",
+      "content": "200-250 words, 3-4 paragraphs...",
       "quote": null
     }}
   ],
@@ -360,7 +360,8 @@ Create a chapter-style deep dive. Return JSON:
 }}
 
 RULES:
-- 3-4 chapters, each 150-200 words (total ~800 words of content)
+- 3-4 chapters, each 200-250 words (total ~900 words of content)
+- CRITICAL: Each chapter's content MUST have 3-4 short paragraphs separated by \\n\\n. NEVER write a single block of text. Each paragraph should be 2-3 sentences.
 - Weave sources together naturally, don't treat them separately
 - Include 2-3 actual quotes extracted from the source content (not made up)
 - Write in engaging editorial style, not dry summary
@@ -446,7 +447,7 @@ def synthesize_deep_dive(
         return None
 
     # Check cache first (use different key for chapter format)
-    cache_key = _synthesis_cache_key(articles) + "_v2"
+    cache_key = _synthesis_cache_key(articles) + "_v3"
     cached = store.get_cached_synthesis(cache_key)
     if cached:
         _log(f"  Using cached synthesis: {cached.get('title', '')[:50]}")
@@ -806,7 +807,7 @@ def build_user_feeds(
             _log(f"  user={uid} FREE → assigned global deep dive")
             continue
 
-        target_deep_dives = DEFAULT_DEEP_DIVES_PER_USER
+        target_deep_dives = MAX_DEEP_DIVES_PER_USER
 
         if not selected_sources:
             _log(f"  user={uid} no sources, skipping")
@@ -822,7 +823,7 @@ def build_user_feeds(
         seen_urls = store.get_seen_urls(uid)
         candidates = [c for c in candidates if c.get("url", "") not in seen_urls]
 
-        if len(candidates) < 2:
+        if len(candidates) < 1:
             # Fallback to global deep dive for pro users with no personalized content
             if global_deep_dives:
                 store.write_feed_section(uid, target_date, "deep_dives", global_deep_dives)
@@ -838,6 +839,7 @@ def build_user_feeds(
         # Cluster articles into topic groups
         clusters = cluster_articles(candidates)
         _log(f"  Found {len(clusters)} clusters")
+        target_deep_dives = min(target_deep_dives, max(1, len(clusters)))
 
         # Generate synthesized deep dives
         feed_items = []

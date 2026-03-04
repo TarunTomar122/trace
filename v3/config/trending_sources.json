@@ -4,7 +4,7 @@
   "discovery": {
     "enabled": true,
     "include_hn": false,
-    "include_youtube": true,
+    "include_youtube": false,
     "topics": ["openai", "google ai", "nvidia", "startup funding", "cybersecurity"],
     "hn_limit_per_topic": 4,
     "youtube_limit_per_topic": 3

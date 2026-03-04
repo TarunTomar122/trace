@@ -1,6 +1,8 @@
 import {
   doc,
   getDoc,
+  getDocFromCache,
+  getDocFromServer,
   setDoc,
   serverTimestamp,
   Timestamp,
@@ -154,6 +156,35 @@ export interface FeedItem {
   _seen?: boolean;
 }
 
+export interface TopicTimelineEvent {
+  id: string;
+  timestamp: string;
+  title: string;
+  summary: string;
+  source_name?: string;
+  source_url?: string;
+  article_url?: string;
+}
+
+export interface TrendingTopic {
+  id: string;
+  topic_key: string;
+  title: string;
+  summary: string;
+  key_points?: string[];
+  is_featured?: boolean;
+  popularity_score?: number;
+  article_count?: number;
+  source_count?: number;
+  interest_id?: string;
+  thumbnail?: string | null;
+  first_seen_at?: string;
+  last_updated_at?: string;
+  tags?: string[];
+  timeline?: TopicTimelineEvent[];
+  articles?: FeedItem[];
+}
+
 export interface UserFeed {
   date: string;
   items: FeedItem[];
@@ -175,11 +206,13 @@ export interface V3UserFeed {
   for_you: FeedItem[];
   deep_dives: FeedItem[];
   trending: FeedItem[];
+  trending_topics?: TrendingTopic[];
   assembled_at?: string;
   metadata?: {
     for_you_count?: number;
     deep_dives_count?: number;
     trending_count?: number;
+    trending_topics_count?: number;
     total_items?: number;
     pipeline?: string;
   };
@@ -491,10 +524,22 @@ export async function markEarlyAdopterOfferSeen(uid: string): Promise<void> {
 }
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+  const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
+
+  // Cache-first: this returns immediately when local persistence has data.
   try {
-    const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
-    const docSnap = await getDoc(docRef);
-    
+    const cached = await getDocFromCache(docRef);
+    if (cached.exists()) {
+      return cached.data() as UserProfile;
+    }
+  } catch {
+    // No cached profile yet; continue to server.
+  }
+
+  try {
+    // Server fetch is explicit here; if offline, this fails fast instead of
+    // hanging app bootstrap.
+    const docSnap = await getDocFromServer(docRef);
     if (docSnap.exists()) {
       return docSnap.data() as UserProfile;
     }
@@ -805,6 +850,7 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
     let forYou: FeedItem[] = [];
     let deepDives: FeedItem[] = [];
     let trending: FeedItem[] = [];
+    let trendingTopics: TrendingTopic[] = [];
     let feedDate = '';
     let assembledAt: string | undefined;
     let metadata: V3UserFeed['metadata'];
@@ -821,24 +867,31 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
       console.log('[Feed] User feed doc:', latestDoc.id, 'for_you:', forYou.length, 'deep_dives:', deepDives.length);
     }
 
-    // Get trending from global feed (new system) or fallback to user feed (legacy)
+    // Get trending from global feed only.
     if (!globalSnapshot.empty) {
       const globalDoc = globalSnapshot.docs[0];
       const globalData = globalDoc.data();
-      trending = Array.isArray(globalData.trending) ? globalData.trending : [];
-      console.log('[Feed] Global trending doc:', globalDoc.id, 'items:', trending.length);
-    }
-
-    // Fallback: if no global trending, try user's own trending (legacy per-user feeds)
-    if (trending.length === 0 && !snapshot.empty) {
-      const data = snapshot.docs[0].data();
-      trending = Array.isArray(data.trending) ? data.trending : [];
-      if (trending.length > 0) {
-        console.log('[Feed] Using legacy user trending:', trending.length);
+      if (!feedDate) {
+        feedDate = globalData.date || globalDoc.id;
       }
+      trending = Array.isArray(globalData.trending) ? globalData.trending : [];
+      trendingTopics = Array.isArray(globalData.trending_topics) ? globalData.trending_topics : [];
+      console.log(
+        '[Feed] Global trending doc:',
+        globalDoc.id,
+        'items:',
+        trending.length,
+        'topics:',
+        trendingTopics.length
+      );
     }
 
-    if (forYou.length === 0 && deepDives.length === 0 && trending.length === 0) {
+    if (
+      forYou.length === 0 &&
+      deepDives.length === 0 &&
+      trending.length === 0 &&
+      trendingTopics.length === 0
+    ) {
       console.log('[Feed] All sections empty');
       return null;
     }
@@ -848,6 +901,7 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
       for_you: forYou as FeedItem[],
       deep_dives: deepDives as FeedItem[],
       trending: trending as FeedItem[],
+      trending_topics: trendingTopics as TrendingTopic[],
       assembled_at: assembledAt,
       metadata,
     };
@@ -1207,24 +1261,16 @@ function _compareVersions(current: string, minimum: string): boolean {
  */
 export async function checkMinAppVersion(currentVersion: string): Promise<boolean> {
   try {
-    console.log('[ForceUpdate] Checking version, current:', currentVersion);
     const ref = doc(firestore, 'app_config', 'version');
-    const snap = await getDoc(ref);
-    if (!snap.exists()) {
-      console.log('[ForceUpdate] No app_config/version doc found');
-      return true;
-    }
+    const snap = await Promise.race([
+      getDoc(ref),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+    ]);
+    if (!snap || !snap.exists()) return true;
     const data = snap.data() as { min_version?: string };
-    console.log('[ForceUpdate] Firestore data:', data);
-    if (!data.min_version) {
-      console.log('[ForceUpdate] No min_version field');
-      return true;
-    }
-    const result = _compareVersions(currentVersion, data.min_version);
-    console.log('[ForceUpdate] Compare result:', result, '(false = needs update)');
-    return result;
-  } catch (error) {
-    console.error('[ForceUpdate] Error:', error);
+    if (!data.min_version) return true;
+    return _compareVersions(currentVersion, data.min_version);
+  } catch {
     return true;
   }
 }

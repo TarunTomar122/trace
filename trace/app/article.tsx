@@ -7,14 +7,14 @@ import {
   Text,
   Image,
   Dimensions,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   ChevronLeft,
+  ChevronRight,
   Youtube,
   Github,
   BookOpen,
@@ -28,6 +28,7 @@ import {
   Crown,
   Lock,
   GraduationCap,
+  Zap,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -39,40 +40,48 @@ import { useToast } from '@/contexts/ToastContext';
 import { isBookmarked as checkBookmarked, toggleBookmark, addSnippet } from '@/lib/bookmarks';
 import { getCurrentArticle } from '@/lib/article-store';
 import { logReadingEvent } from '@/lib/reading-analytics';
+import { getArticleImage } from '@/lib/fallback-images';
 
 const ACCENT = '#F59E0B';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH;
-const FULL_CARD_HEIGHT = SCREEN_HEIGHT - 120; // Full screen minus safe areas
+const HERO_HEIGHT = SCREEN_HEIGHT * 0.42;
 
-const CARD_TYPE_LABELS: Record<string, string> = {
-  hook: 'THE STORY',
-  insight: 'KEY INSIGHT',
-  why: 'WHY IT MATTERS',
-  bottom_line: 'THE BOTTOM LINE',
-};
+const AVATAR_PALETTE = [
+  '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6',
+  '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#d946ef',
+];
 
-const CARD_COLORS: Record<string, { bg: string; accent: string }> = {
-  hook: { bg: '#FFF7ED', accent: '#F97316' },
-  insight: { bg: '#EFF6FF', accent: '#3B82F6' },
-  why: { bg: '#F0FDF4', accent: '#22C55E' },
-  bottom_line: { bg: '#FEF3C7', accent: '#F59E0B' },
-};
+function hashColor(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+}
 
-const SOURCE_CONFIG: Record<
-  string,
-  { icon: typeof Youtube; color: string; bgColor: { light: string; dark: string }; label: string }
-> = {
-  video: { icon: Youtube, color: '#ef4444', bgColor: { light: '#fef2f2', dark: '#2a1515' }, label: 'Video' },
-  repo: { icon: Github, color: '#8b5cf6', bgColor: { light: '#f5f3ff', dark: '#1f1a2e' }, label: 'Repo' },
-  paper: { icon: BookOpen, color: '#3b82f6', bgColor: { light: '#eff6ff', dark: '#1a2332' }, label: 'Paper' },
-  blog: { icon: BookOpen, color: '#10b981', bgColor: { light: '#ecfdf5', dark: '#1a2e23' }, label: 'Article' },
-  discussion: { icon: MessageCircle, color: '#f59e0b', bgColor: { light: '#fffbeb', dark: '#2e2416' }, label: 'Discussion' },
-  tweet: { icon: MessageCircle, color: '#0ea5e9', bgColor: { light: '#f0f9ff', dark: '#1a272e' }, label: 'Thread' },
-  launch: { icon: Sparkles, color: '#d946ef', bgColor: { light: '#fdf4ff', dark: '#2a1a2e' }, label: 'Launch' },
-  model: { icon: Sparkles, color: '#6366f1', bgColor: { light: '#eef2ff', dark: '#1f1f2e' }, label: 'Model' },
-  news: { icon: Newspaper, color: '#f97316', bgColor: { light: '#fff7ed', dark: '#2e2216' }, label: 'News' },
-};
+function getSourceInitials(name: string): string {
+  if (!name) return '??';
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
+
+function getTimeAgo(dateStr?: string): string {
+  if (!dateStr) return '';
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  if (isNaN(then)) return '';
+  const diffMs = now - then;
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
 
 function isLikelyRealImageUrl(url?: string | null): boolean {
   if (!url) return false;
@@ -83,7 +92,6 @@ function isLikelyRealImageUrl(url?: string | null): boolean {
   return true;
 }
 
-/** Renders inline markdown: **bold** and *italic* */
 function RichText({ children, style }: { children: string; style?: any }) {
   const parts = children.split(/(\*\*.*?\*\*|\*.*?\*)/g);
   return (
@@ -141,12 +149,39 @@ type DeepDiveContent = {
   images?: string[];
 };
 
-/** Full-screen immersive learning cards view */
-function FullScreenLearningCards({
+const FY_TAB_CONFIG: Record<string, { label: string; Icon: typeof Clock }> = {
+  hook: { label: 'Highlights', Icon: Clock },
+  insight: { label: 'Key Insight', Icon: Sparkles },
+  why: { label: 'Why it Matters', Icon: Flame },
+  bottom_line: { label: 'Bottom Line', Icon: Zap },
+};
+
+function buildTabLabels(cards: LearningCard[]): string[] {
+  const typeCounts = new Map<string, number>();
+  for (const c of cards) {
+    typeCounts.set(c.type, (typeCounts.get(c.type) || 0) + 1);
+  }
+  const typeIdx = new Map<string, number>();
+  return cards.map((card) => {
+    const base = FY_TAB_CONFIG[card.type]?.label || card.type;
+    const count = typeCounts.get(card.type) || 1;
+    if (count <= 1) return base;
+    const idx = (typeIdx.get(card.type) || 0) + 1;
+    typeIdx.set(card.type, idx);
+    return `${base} ${idx}`;
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ForYouArticleView — swipeable cards with tab bar
+   ═══════════════════════════════════════════════════════════ */
+
+function ForYouArticleView({
   cards,
   title,
   sourceName,
-  sources,
+  thumbnail,
+  readingTime,
   colorScheme,
   onBack,
   onReadOriginal,
@@ -156,6 +191,8 @@ function FullScreenLearningCards({
   cards: LearningCard[];
   title: string;
   sourceName: string;
+  thumbnail?: string;
+  readingTime?: number;
   sources?: SourceRef[];
   colorScheme: 'light' | 'dark';
   onBack: () => void;
@@ -163,136 +200,259 @@ function FullScreenLearningCards({
   onBookmark: () => void;
   isBookmarked: boolean;
 }) {
-  const isSynthesized = sources && sources.length > 0;
   const [currentCard, setCurrentCard] = useState(0);
-  const totalCards = cards.length;
-
-  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const x = e.nativeEvent.contentOffset.x;
-    const idx = Math.round(x / CARD_WIDTH);
-    setCurrentCard(idx);
-  };
-
-  const currentType = cards[currentCard]?.type || 'hook';
-  const colors = CARD_COLORS[currentType] || CARD_COLORS.hook;
   const isDark = colorScheme === 'dark';
+  const showHero = isLikelyRealImageUrl(thumbnail);
+  const tabLabels = buildTabLabels(cards);
+  const cardWidth = SCREEN_WIDTH - 40;
 
   return (
-    <SafeAreaView style={[lcStyles.fullScreen, { backgroundColor: isDark ? '#0a0a0a' : colors.bg }]} edges={['top', 'bottom']}>
-      {/* Minimal top bar */}
-      <View style={lcStyles.topBar}>
-        <Pressable onPress={onBack} hitSlop={12} style={lcStyles.backBtn}>
-          <ChevronLeft size={24} color={isDark ? '#fff' : '#000'} strokeWidth={2} />
-        </Pressable>
-        <View style={lcStyles.progressDots}>
-          {cards.map((_, i) => (
-            <View
-              key={i}
-              style={[
-                lcStyles.dot,
-                {
-                  backgroundColor: i === currentCard ? colors.accent : (isDark ? '#333' : '#ddd'),
-                  width: i === currentCard ? 20 : 8,
-                },
-              ]}
-            />
-          ))}
-        </View>
-        <Pressable onPress={onBookmark} hitSlop={12} style={lcStyles.bookmarkBtn}>
-          <Bookmark
-            size={22}
-            color={isBookmarked ? colors.accent : (isDark ? '#666' : '#999')}
-            strokeWidth={isBookmarked ? 2.5 : 1.5}
-          />
-        </Pressable>
-      </View>
-
-      {/* Cards */}
+    <View style={[fyStyles.root, { backgroundColor: Colors[colorScheme].background }]}>
       <ScrollView
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        decelerationRate="fast"
-        snapToInterval={CARD_WIDTH}
-      >
-        {cards.map((card, idx) => {
-          const cardColors = CARD_COLORS[card.type] || CARD_COLORS.hook;
-          return (
-            <View key={idx} style={[lcStyles.card, { width: CARD_WIDTH }]}>
-              {/* Main content area - everything centered */}
-              <View style={lcStyles.contentArea}>
-                {/* Card type label */}
-                <View style={lcStyles.typeRow}>
-                  <Text style={lcStyles.emoji}>{card.emoji}</Text>
-                  <Text style={[lcStyles.typeLabel, { color: cardColors.accent }]}>
-                    {CARD_TYPE_LABELS[card.type] || card.type.toUpperCase()}
-                  </Text>
-                </View>
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 80 }}>
 
-                {/* Show title on first card */}
-                {idx === 0 && (
-                  <View style={lcStyles.titleSection}>
-                    <Text style={[lcStyles.sourceLabel, { color: isDark ? '#888' : '#666' }]}>
-                      {isSynthesized
-                        ? `Synthesized from ${sources!.map(s => s.name).join(', ')}`
-                        : sourceName}
-                    </Text>
-                    <Text style={[lcStyles.articleTitle, { color: isDark ? '#fff' : '#000' }]}>
-                      {title}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Card content */}
-                <RichText style={[lcStyles.cardText, { color: isDark ? '#e5e5e5' : '#1a1a1a' }]}>
-                  {card.content}
-                </RichText>
-              </View>
-
-              {/* Bottom section */}
-              <View style={lcStyles.bottomSection}>
-                {idx === totalCards - 1 ? (
-                  isSynthesized ? (
-                    <View style={lcStyles.sourcesSection}>
-                      <Text style={[lcStyles.sourcesLabel, { color: isDark ? '#666' : '#999' }]}>
-                        Sources
-                      </Text>
-                      {sources!.map((src, i) => (
-                        <Pressable
-                          key={i}
-                          onPress={() => WebBrowser.openBrowserAsync(src.url)}
-                          style={lcStyles.sourceLink}
-                        >
-                          <Text style={[lcStyles.sourceLinkText, { color: cardColors.accent }]} numberOfLines={1}>
-                            {src.name}: {src.title}
-                          </Text>
-                          <ExternalLink size={12} color={cardColors.accent} strokeWidth={2} />
-                        </Pressable>
-                      ))}
-                    </View>
-                  ) : (
-                    <Pressable style={[lcStyles.readOriginalBtn, { backgroundColor: cardColors.accent }]} onPress={onReadOriginal}>
-                      <ExternalLink size={18} color="#fff" strokeWidth={2} />
-                      <Text style={lcStyles.readOriginalText}>Read Full Article</Text>
-                    </Pressable>
-                  )
-                ) : (
-                  <Text style={[lcStyles.swipeHint, { color: isDark ? '#555' : '#999' }]}>
-                    Swipe to continue →
-                  </Text>
-                )}
-              </View>
+        {/* Hero image — full bleed to top */}
+        <View style={fyStyles.heroWrap}>
+          {showHero ? (
+            <Image source={{ uri: thumbnail }} style={fyStyles.heroImage} resizeMode="cover" />
+          ) : (
+            <View style={[fyStyles.heroImage, { backgroundColor: isDark ? '#1c1c1c' : '#222' }]} />
+          )}
+          <LinearGradient
+            colors={['rgba(0,0,0,0.45)', 'transparent']}
+            style={fyStyles.heroGradientTop}
+          />
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.35)', Colors[colorScheme].background]}
+            locations={[0, 0.5, 1]}
+            style={fyStyles.heroGradientBottom}
+          />
+          <View style={fyStyles.heroOverlay}>
+            <Text style={fyStyles.heroTitle}>{title}</Text>
+            <View style={fyStyles.heroMeta}>
+              <Text style={fyStyles.heroSource}>{sourceName}</Text>
+              {readingTime != null && (
+                <Text style={fyStyles.heroReadTime}>· {readingTime} min read</Text>
+              )}
             </View>
-          );
-        })}
+          </View>
+        </View>
+
+        {/* Counter */}
+        {cards.length > 1 && (
+          <Text style={[fyStyles.counter, { color: Colors[colorScheme].muted }]}>
+            {currentCard + 1} / {cards.length}
+          </Text>
+        )}
+
+        {/* Horizontally swipeable learning cards */}
+        <ScrollView
+          horizontal
+          pagingEnabled={false}
+          showsHorizontalScrollIndicator={false}
+          decelerationRate="fast"
+          snapToInterval={cardWidth + 12}
+          snapToAlignment="start"
+          contentInset={{ left: 0, right: 20 }}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
+          onScroll={(e) => {
+            const idx = Math.round(e.nativeEvent.contentOffset.x / (cardWidth + 12));
+            if (idx >= 0 && idx < cards.length && idx !== currentCard) setCurrentCard(idx);
+          }}
+          scrollEventThrottle={16}>
+          {cards.map((card, idx) => (
+            <View
+              key={idx}
+              style={[
+                fyStyles.card,
+                {
+                  backgroundColor: isDark ? '#1a1a1a' : '#f7f7f5',
+                  width: cardWidth,
+                },
+              ]}>
+              <Text style={[fyStyles.cardLabel, { color: Colors[colorScheme].muted }]}>
+                {tabLabels[idx]}
+              </Text>
+              {card.content.split(/\.\s+/).filter(Boolean).map((sentence, si, arr) => (
+                <RichText
+                  key={si}
+                  style={[fyStyles.cardContent, { color: Colors[colorScheme].text }]}>
+                  {sentence.trim() + (si < arr.length - 1 && !sentence.endsWith('.') ? '.' : '')}
+                </RichText>
+              ))}
+            </View>
+          ))}
+        </ScrollView>
+
+        {cards.length > 1 && currentCard < cards.length - 1 && (
+          <Text style={[fyStyles.swipeHint, { color: Colors[colorScheme].muted }]}>
+            Swipe for more →
+          </Text>
+        )}
+
       </ScrollView>
-    </SafeAreaView>
+
+      {/* Floating header */}
+      <SafeAreaView edges={['top']} style={fyStyles.floatingHeader} pointerEvents="box-none">
+        <View style={fyStyles.headerRow}>
+          <Pressable onPress={onBack} hitSlop={12} style={fyStyles.headerBtn}>
+            <ChevronLeft size={24} color="#fff" strokeWidth={2.5} />
+          </Pressable>
+          <View style={fyStyles.headerRight}>
+            <Pressable onPress={onBookmark} hitSlop={12} style={fyStyles.headerBtn}>
+              <Bookmark
+                size={20}
+                color="#fff"
+                strokeWidth={isBookmarked ? 2.5 : 1.5}
+                fill={isBookmarked ? '#fff' : 'transparent'}
+              />
+            </Pressable>
+            <Pressable onPress={onReadOriginal} hitSlop={12} style={fyStyles.headerBtn}>
+              <ExternalLink size={20} color="#fff" strokeWidth={2} />
+            </Pressable>
+          </View>
+        </View>
+      </SafeAreaView>
+    </View>
   );
 }
 
-/** Ebook-style deep dive with paginated chapters */
+const fyStyles = StyleSheet.create({
+  root: { flex: 1 },
+
+  // Floating header
+  floatingHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  headerBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    marginHorizontal: 4,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  // Hero
+  heroWrap: {
+    position: 'relative',
+  },
+  heroImage: {
+    width: '100%',
+    height: 320,
+  },
+  heroGradientTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    zIndex: 1,
+  },
+  heroGradientBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 180,
+  },
+  heroOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    gap: 6,
+  },
+  heroTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    lineHeight: 31,
+    letterSpacing: -0.4,
+    color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  heroMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  heroSource: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.8)',
+  },
+  heroReadTime: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.6)',
+  },
+
+  // Counter
+  counter: {
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+    paddingVertical: 10,
+    letterSpacing: 0.5,
+  },
+
+  // Learning cards
+  card: {
+    borderRadius: 22,
+    padding: 32,
+    paddingTop: 28,
+    gap: 14,
+    minHeight: 260,
+  },
+  cardLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  cardContent: {
+    fontSize: 20,
+    lineHeight: 32,
+    letterSpacing: -0.2,
+  },
+  swipeHint: {
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+});
+
+/* ═══════════════════════════════════════════════════════════
+   ChapterDeepDive — overview page + chapter detail views
+   ═══════════════════════════════════════════════════════════ */
+
+function splitParagraphs(text: string): string[] {
+  return text.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+}
+
 function ChapterDeepDive({
   title,
   thumbnail,
@@ -312,453 +472,466 @@ function ChapterDeepDive({
   onBack: () => void;
   onSaveSnippet: (content: string, label: string) => void;
 }) {
-  const [currentPage, setCurrentPage] = useState(0);
-  const [imgError, setImgError] = useState(false);
   const [savedSections, setSavedSections] = useState<Set<string>>(new Set());
-  const scrollViewRef = useRef<ScrollView>(null);
+  const [openChapter, setOpenChapter] = useState<number | null>(null);
   const isDark = colorScheme === 'dark';
-  const showHeroImage = isLikelyRealImageUrl(thumbnail) && !imgError;
+  const showHero = isLikelyRealImageUrl(thumbnail);
+  const chapters = deepDive.chapters || [];
+  const cardBg = isDark ? '#1a1a1a' : '#f7f7f5';
 
   const handleSave = (key: string, content: string, label: string) => {
-    // Prevent double-saving
     if (savedSections.has(key)) return;
     setSavedSections(prev => new Set(prev).add(key));
     onSaveSnippet(content, label);
   };
 
-  const chapters = deepDive.chapters || [];
-  // Pages: Cover (0), Chapters (1 to n), Bottom Line + Sources (n+1)
-  const totalPages = 1 + chapters.length + 1;
+  /* ── Chapter detail view ── */
+  if (openChapter !== null && chapters[openChapter]) {
+    const chapter = chapters[openChapter];
+    const idx = openChapter;
+    const chapterKey = `chapter_${idx}`;
+    const chapterContent = chapter.quote
+      ? `${chapter.content}\n\n"${chapter.quote.text}" — ${chapter.quote.source}`
+      : chapter.content;
+    const paragraphs = splitParagraphs(chapter.content);
 
-  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const x = e.nativeEvent.contentOffset.x;
-    const idx = Math.round(x / CARD_WIDTH);
-    setCurrentPage(idx);
-  };
-
-  const goToPage = (page: number) => {
-    scrollViewRef.current?.scrollTo({ x: page * CARD_WIDTH, animated: true });
-  };
-
-  return (
-    <SafeAreaView style={[ddStyles.container, { backgroundColor: isDark ? '#0a0a0a' : '#fff' }]} edges={['top', 'bottom']}>
-      {/* Top bar */}
-      <View style={ddStyles.topBar}>
-        <Pressable onPress={onBack} hitSlop={12} style={ddStyles.backBtn}>
-          <ChevronLeft size={24} color={Colors[colorScheme].foreground} strokeWidth={2} />
-        </Pressable>
-        <View style={ddStyles.topBarLabel}>
-          <GraduationCap size={16} color={ACCENT} strokeWidth={2} />
-          <Text style={[ddStyles.topBarLabelText, { color: ACCENT }]}>Deep Dive</Text>
-        </View>
-        <View style={{ width: 40 }} />
-      </View>
-
-      {/* Page indicator */}
-      <View style={ddStyles.pageIndicator}>
-        {Array.from({ length: totalPages }).map((_, i) => (
-          <Pressable key={i} onPress={() => goToPage(i)} hitSlop={8}>
-            <View
-              style={[
-                ddStyles.pageIndicatorDot,
-                {
-                  backgroundColor: i === currentPage ? ACCENT : (isDark ? '#333' : '#ddd'),
-                  width: i === currentPage ? 20 : 8,
-                },
-              ]}
-            />
-          </Pressable>
-        ))}
-      </View>
-
-      {/* Paginated content */}
-      <ScrollView
-        ref={scrollViewRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        decelerationRate="fast"
-        snapToInterval={CARD_WIDTH}
-      >
-        {/* Page 0: Cover */}
-        <View style={[ddStyles.page, { width: CARD_WIDTH }]}>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={ddStyles.pageContent}>
-            {showHeroImage && (
-              <Image
-                source={{ uri: thumbnail! }}
-                style={ddStyles.coverImage}
-                resizeMode="cover"
-                onError={() => setImgError(true)}
-              />
-            )}
-            <Text style={[ddStyles.coverTitle, { color: Colors[colorScheme].text }]}>{title}</Text>
-            {deepDive.subtitle && (
-              <Text style={[ddStyles.coverSubtitle, { color: Colors[colorScheme].secondary }]}>
-                {deepDive.subtitle}
+    return (
+      <View style={[dd.root, { backgroundColor: Colors[colorScheme].background }]}>
+        {/* Top bar */}
+        <SafeAreaView edges={['top']} style={{ backgroundColor: Colors[colorScheme].background }}>
+          <View style={dd.chDetailBar}>
+            <Pressable onPress={() => setOpenChapter(null)} hitSlop={12} style={dd.chDetailBackBtn}>
+              <ChevronLeft size={22} color={Colors[colorScheme].text} strokeWidth={2} />
+            </Pressable>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={[dd.chDetailBarLabel, { color: Colors[colorScheme].muted }]}>
+                Chapter {idx + 1} of {chapters.length}
               </Text>
-            )}
-            <View style={ddStyles.coverMeta}>
-              {readingTime && (
-                <View style={ddStyles.coverMetaItem}>
-                  <Clock size={14} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-                  <Text style={[ddStyles.coverMetaText, { color: Colors[colorScheme].muted }]}>
-                    {readingTime} min
+            </View>
+            <Pressable
+              onPress={() => handleSave(chapterKey, chapterContent, `${title} - ${chapter.title}`)}
+              hitSlop={8}
+              style={dd.chDetailBackBtn}>
+              <Bookmark
+                size={20}
+                color={savedSections.has(chapterKey) ? ACCENT : Colors[colorScheme].muted}
+                strokeWidth={savedSections.has(chapterKey) ? 2.5 : 1.5}
+              />
+            </Pressable>
+          </View>
+        </SafeAreaView>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={dd.chDetailScroll}>
+          <Text style={[dd.chDetailTitle, { color: Colors[colorScheme].text }]}>
+            {chapter.title}
+          </Text>
+
+          {paragraphs.map((para, pi) => (
+            <RichText
+              key={pi}
+              style={[
+                dd.chDetailPara,
+                { color: Colors[colorScheme].text },
+              ]}>
+              {para}
+            </RichText>
+          ))}
+
+          {chapter.quote && (
+            <View style={[dd.quoteBlock, { borderLeftColor: isDark ? '#444' : '#d4d4d4' }]}>
+              <Text style={[dd.quoteText, { color: Colors[colorScheme].text }]}>
+                "{chapter.quote.text}"
+              </Text>
+              <Text style={[dd.quoteSource, { color: Colors[colorScheme].muted }]}>
+                — {chapter.quote.source}
+              </Text>
+            </View>
+          )}
+
+          {/* Prev / Next navigation */}
+          <View style={dd.chNav}>
+            {idx > 0 ? (
+              <Pressable
+                style={[dd.chNavBtn, { backgroundColor: cardBg }]}
+                onPress={() => setOpenChapter(idx - 1)}>
+                <ChevronLeft size={18} color={Colors[colorScheme].muted} strokeWidth={2} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[dd.chNavHint, { color: Colors[colorScheme].muted }]}>Previous</Text>
+                  <Text style={[dd.chNavLabel, { color: Colors[colorScheme].text }]} numberOfLines={1}>
+                    {chapters[idx - 1].title}
                   </Text>
                 </View>
+              </Pressable>
+            ) : <View style={{ flex: 1 }} />}
+            {idx < chapters.length - 1 ? (
+              <Pressable
+                style={[dd.chNavBtn, dd.chNavBtnRight, { backgroundColor: cardBg }]}
+                onPress={() => setOpenChapter(idx + 1)}>
+                <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                  <Text style={[dd.chNavHint, { color: Colors[colorScheme].muted }]}>Next</Text>
+                  <Text style={[dd.chNavLabel, { color: Colors[colorScheme].text }]} numberOfLines={1}>
+                    {chapters[idx + 1].title}
+                  </Text>
+                </View>
+                <ChevronRight size={18} color={Colors[colorScheme].muted} strokeWidth={2} />
+              </Pressable>
+            ) : (
+              <Pressable
+                style={[dd.chNavBtn, dd.chNavBtnRight, { backgroundColor: cardBg }]}
+                onPress={() => setOpenChapter(null)}>
+                <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                  <Text style={[dd.chNavHint, { color: Colors[colorScheme].muted }]}>Done</Text>
+                  <Text style={[dd.chNavLabel, { color: Colors[colorScheme].text }]} numberOfLines={1}>
+                    Back to overview
+                  </Text>
+                </View>
+                <ChevronRight size={18} color={Colors[colorScheme].muted} strokeWidth={2} />
+              </Pressable>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  /* ── Overview page ── */
+  return (
+    <View style={[dd.root, { backgroundColor: Colors[colorScheme].background }]}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+
+        {/* Hero */}
+        <View style={dd.heroWrap}>
+          {showHero ? (
+            <Image source={{ uri: thumbnail }} style={dd.heroImage} resizeMode="cover" />
+          ) : (
+            <View style={[dd.heroImage, { backgroundColor: isDark ? '#1c1c1c' : '#222' }]} />
+          )}
+          <LinearGradient
+            colors={['rgba(0,0,0,0.45)', 'transparent']}
+            style={dd.heroGradientTop}
+          />
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.4)', Colors[colorScheme].background]}
+            locations={[0, 0.5, 1]}
+            style={dd.heroGradientBottom}
+          />
+          <View style={dd.heroOverlay}>
+            <View style={dd.heroBadge}>
+              <GraduationCap size={12} color="#fff" strokeWidth={2.5} />
+              <Text style={dd.heroBadgeText}>Deep Dive</Text>
+            </View>
+            <Text style={dd.heroTitle}>{title}</Text>
+            <View style={dd.heroMeta}>
+              {readingTime != null && (
+                <Text style={dd.heroMetaText}>{readingTime} min read</Text>
               )}
               {chapters.length > 0 && (
-                <View style={ddStyles.coverMetaItem}>
-                  <BookOpen size={14} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-                  <Text style={[ddStyles.coverMetaText, { color: Colors[colorScheme].muted }]}>
-                    {chapters.length} chapters
-                  </Text>
-                </View>
+                <Text style={dd.heroMetaText}>· {chapters.length} chapters</Text>
               )}
             </View>
-
-            {/* TL;DR */}
-            {deepDive.tldr && (
-              <View style={[ddStyles.tldrCard, { backgroundColor: isDark ? '#1a1a1a' : '#f9fafb' }]}>
-                <View style={ddStyles.sectionHeader}>
-                  <Text style={[ddStyles.tldrLabel, { color: ACCENT }]}>TL;DR</Text>
-                  <Pressable
-                    onPress={() => handleSave('tldr', deepDive.tldr!, `${title} - TL;DR`)}
-                    hitSlop={8}
-                    style={ddStyles.saveBtn}
-                  >
-                    <Bookmark
-                      size={18}
-                      color={savedSections.has('tldr') ? ACCENT : Colors[colorScheme].muted}
-                      strokeWidth={savedSections.has('tldr') ? 2.5 : 1.5}
-                    />
-                  </Pressable>
-                </View>
-                <RichText style={[ddStyles.tldrText, { color: Colors[colorScheme].text }]}>
-                  {deepDive.tldr}
-                </RichText>
-              </View>
-            )}
-
-            {/* Table of contents */}
-            <View style={ddStyles.toc}>
-              <Text style={[ddStyles.tocTitle, { color: Colors[colorScheme].muted }]}>Chapters</Text>
-              {chapters.map((ch, i) => (
-                <Pressable key={i} onPress={() => goToPage(i + 1)} style={ddStyles.tocItem}>
-                  <View style={[ddStyles.tocNumber, { backgroundColor: isDark ? '#262626' : '#f3f4f6' }]}>
-                    <Text style={[ddStyles.tocNumberText, { color: Colors[colorScheme].muted }]}>{i + 1}</Text>
-                  </View>
-                  <Text style={[ddStyles.tocItemText, { color: Colors[colorScheme].text }]} numberOfLines={1}>
-                    {ch.title}
-                  </Text>
-                  <ChevronLeft size={16} color={Colors[colorScheme].muted} style={{ transform: [{ rotate: '180deg' }] }} />
-                </Pressable>
-              ))}
-            </View>
-
-            <Text style={[ddStyles.swipeHint, { color: Colors[colorScheme].muted }]}>
-              Swipe to start reading →
-            </Text>
-          </ScrollView>
+          </View>
         </View>
 
-        {/* Chapter pages */}
-        {chapters.map((chapter, idx) => {
-          const chapterKey = `chapter_${idx}`;
-          const chapterContent = chapter.quote
-            ? `${chapter.content}\n\n"${chapter.quote.text}" — ${chapter.quote.source}`
-            : chapter.content;
-          return (
-            <View key={idx} style={[ddStyles.page, { width: CARD_WIDTH }]}>
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={ddStyles.pageContent}>
-                <View style={ddStyles.chapterHeaderRow}>
-                  <View style={ddStyles.chapterHeader}>
-                    <Text style={[ddStyles.chapterLabel, { color: ACCENT }]}>Chapter {idx + 1}</Text>
-                    <Text style={[ddStyles.chapterTitle, { color: Colors[colorScheme].text }]}>
-                      {chapter.title}
-                    </Text>
-                  </View>
-                  <Pressable
-                    onPress={() => handleSave(chapterKey, chapterContent, `${title} - ${chapter.title}`)}
-                    hitSlop={8}
-                    style={ddStyles.saveBtn}
-                  >
-                    <Bookmark
-                      size={20}
-                      color={savedSections.has(chapterKey) ? ACCENT : Colors[colorScheme].muted}
-                      strokeWidth={savedSections.has(chapterKey) ? 2.5 : 1.5}
-                    />
-                  </Pressable>
-                </View>
-                <RichText style={[ddStyles.chapterContent, { color: Colors[colorScheme].text }]}>
-                  {chapter.content}
-                </RichText>
-                {chapter.quote && (
-                  <View style={[ddStyles.quoteCard, { borderLeftColor: ACCENT }]}>
-                    <Text style={[ddStyles.quoteText, { color: Colors[colorScheme].text }]}>
-                      "{chapter.quote.text}"
-                    </Text>
-                    <Text style={[ddStyles.quoteSource, { color: Colors[colorScheme].muted }]}>
-                      — {chapter.quote.source}
-                    </Text>
-                  </View>
-                )}
-                <Text style={[ddStyles.swipeHint, { color: Colors[colorScheme].muted }]}>
-                  {idx < chapters.length - 1 ? 'Swipe for next chapter →' : 'Swipe to finish →'}
-                </Text>
-              </ScrollView>
-            </View>
-          );
-        })}
-
-        {/* Final page: Bottom line + Sources */}
-        <View style={[ddStyles.page, { width: CARD_WIDTH }]}>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={ddStyles.pageContent}>
-            {deepDive.bottom_line && (
-              <View style={[ddStyles.bottomLine, { backgroundColor: isDark ? '#1c1917' : '#fffbeb' }]}>
-                <View style={ddStyles.sectionHeader}>
-                  <View style={ddStyles.bottomLineHeader}>
-                    <Sparkles size={18} color={ACCENT} strokeWidth={2} />
-                    <Text style={[ddStyles.bottomLineLabel, { color: ACCENT }]}>
-                      {deepDive.bottom_line.title || 'The Bottom Line'}
-                    </Text>
-                  </View>
-                  <Pressable
-                    onPress={() => handleSave('bottom_line', deepDive.bottom_line!.content, `${title} - Bottom Line`)}
-                    hitSlop={8}
-                    style={ddStyles.saveBtn}
-                  >
-                    <Bookmark
-                      size={18}
-                      color={savedSections.has('bottom_line') ? ACCENT : Colors[colorScheme].muted}
-                      strokeWidth={savedSections.has('bottom_line') ? 2.5 : 1.5}
-                    />
-                  </Pressable>
-                </View>
-                <RichText style={[ddStyles.bottomLineText, { color: Colors[colorScheme].text }]}>
-                  {deepDive.bottom_line.content}
-                </RichText>
-              </View>
-            )}
-
-            {sources && sources.length > 0 && (
-              <View style={ddStyles.sourcesSection}>
-                <Text style={[ddStyles.sourcesLabel, { color: Colors[colorScheme].muted }]}>Sources</Text>
-                {sources.map((src, i) => (
-                  <Pressable
-                    key={i}
-                    onPress={() => WebBrowser.openBrowserAsync(src.url)}
-                    style={[ddStyles.sourceCard, { backgroundColor: isDark ? '#1a1a1a' : '#f9fafb' }]}
-                  >
-                    <View style={ddStyles.sourceInfo}>
-                      <Text style={[ddStyles.sourceName, { color: Colors[colorScheme].text }]} numberOfLines={1}>
-                        {src.name}
-                      </Text>
-                      <Text style={[ddStyles.sourceTitle, { color: Colors[colorScheme].secondary }]} numberOfLines={2}>
-                        {src.title}
-                      </Text>
-                    </View>
-                    <ExternalLink size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-                  </Pressable>
-                ))}
-              </View>
-            )}
-
-            <View style={ddStyles.finishSection}>
-              <Text style={[ddStyles.finishText, { color: Colors[colorScheme].text }]}>
-                You've completed this deep dive
-              </Text>
-              <Pressable style={ddStyles.finishBtn} onPress={onBack}>
-                <Text style={ddStyles.finishBtnText}>Done</Text>
+        {/* TL;DR */}
+        {deepDive.tldr && (
+          <View style={dd.section}>
+            <View style={dd.sectionHeaderRow}>
+              <Text style={[dd.sectionLabel, { color: Colors[colorScheme].muted }]}>TL;DR</Text>
+              <Pressable
+                onPress={() => handleSave('tldr', deepDive.tldr!, `${title} - TL;DR`)}
+                hitSlop={8}>
+                <Bookmark
+                  size={18}
+                  color={savedSections.has('tldr') ? ACCENT : Colors[colorScheme].muted}
+                  strokeWidth={savedSections.has('tldr') ? 2.5 : 1.5}
+                />
               </Pressable>
             </View>
-          </ScrollView>
-        </View>
+            <RichText style={[dd.sectionBody, { color: Colors[colorScheme].text }]}>
+              {deepDive.tldr}
+            </RichText>
+          </View>
+        )}
+
+        {deepDive.subtitle && (
+          <View style={dd.section}>
+            <Text style={[dd.subtitleText, { color: Colors[colorScheme].muted }]}>
+              {deepDive.subtitle}
+            </Text>
+          </View>
+        )}
+
+        {/* Chapter list */}
+        {chapters.length > 0 && (
+          <View style={dd.section}>
+            <Text style={[dd.sectionLabel, { color: Colors[colorScheme].muted, marginBottom: 14 }]}>
+              Chapters
+            </Text>
+            {chapters.map((ch, i) => (
+              <Pressable
+                key={i}
+                onPress={() => setOpenChapter(i)}
+                style={[dd.tocRow, { backgroundColor: cardBg }]}>
+                <View style={[dd.tocNum, { backgroundColor: isDark ? '#2a2a2a' : '#e8e8e6' }]}>
+                  <Text style={[dd.tocNumText, { color: Colors[colorScheme].text }]}>{i + 1}</Text>
+                </View>
+                <Text style={[dd.tocTitle, { color: Colors[colorScheme].text }]} numberOfLines={2}>
+                  {ch.title}
+                </Text>
+                <ChevronRight size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        {/* Bottom line */}
+        {deepDive.bottom_line && (
+          <View style={dd.section}>
+            <View style={dd.sectionHeaderRow}>
+              <Text style={[dd.sectionLabel, { color: Colors[colorScheme].muted }]}>
+                {deepDive.bottom_line.title || 'The Bottom Line'}
+              </Text>
+              <Pressable
+                onPress={() => handleSave('bottom_line', deepDive.bottom_line!.content, `${title} - Bottom Line`)}
+                hitSlop={8}>
+                <Bookmark
+                  size={18}
+                  color={savedSections.has('bottom_line') ? ACCENT : Colors[colorScheme].muted}
+                  strokeWidth={savedSections.has('bottom_line') ? 2.5 : 1.5}
+                />
+              </Pressable>
+            </View>
+            <RichText style={[dd.sectionBody, { color: Colors[colorScheme].text }]}>
+              {deepDive.bottom_line.content}
+            </RichText>
+          </View>
+        )}
+
+        {/* Sources */}
+        {sources && sources.length > 0 && (
+          <View style={dd.section}>
+            <Text style={[dd.sectionLabel, { color: Colors[colorScheme].muted, marginBottom: 12 }]}>
+              Sources
+            </Text>
+            {sources.map((src, i) => (
+              <Pressable
+                key={i}
+                onPress={() => WebBrowser.openBrowserAsync(src.url)}
+                style={[dd.sourceRow, { backgroundColor: cardBg }]}>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={[dd.sourceName, { color: Colors[colorScheme].text }]} numberOfLines={1}>
+                    {src.name}
+                  </Text>
+                  <Text style={[dd.sourceTitle, { color: Colors[colorScheme].muted }]} numberOfLines={2}>
+                    {src.title}
+                  </Text>
+                </View>
+                <ExternalLink size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+              </Pressable>
+            ))}
+          </View>
+        )}
       </ScrollView>
-    </SafeAreaView>
+
+      {/* Floating back button */}
+      <SafeAreaView edges={['top']} style={dd.floatingHeader} pointerEvents="box-none">
+        <View style={dd.floatingHeaderRow}>
+          <Pressable onPress={onBack} hitSlop={12} style={dd.floatingBtn}>
+            <ChevronLeft size={24} color="#fff" strokeWidth={2.5} />
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    </View>
   );
 }
 
-const ddStyles = StyleSheet.create({
-  container: { flex: 1 },
-  topBar: {
+const dd = StyleSheet.create({
+  root: { flex: 1 },
+
+  // Floating header (overview)
+  floatingHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  floatingHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
+  floatingBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    marginHorizontal: 4,
   },
-  topBarLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+
+  // Hero
+  heroWrap: { position: 'relative' },
+  heroImage: { width: '100%', height: 320 },
+  heroGradientTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    zIndex: 1,
   },
-  topBarLabelText: {
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  bookmarkBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pageIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-  },
-  pageIndicatorDot: {
-    height: 6,
-    borderRadius: 3,
-  },
-  page: {
-    flex: 1,
-  },
-  pageContent: {
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-    minHeight: FULL_CARD_HEIGHT - 60,
-  },
-  coverImage: {
-    width: '100%',
+  heroGradientBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     height: 180,
-    borderRadius: 16,
-    marginBottom: 24,
   },
-  coverTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    lineHeight: 36,
-    letterSpacing: -0.5,
-    marginBottom: 8,
-  },
-  coverSubtitle: {
-    fontSize: 17,
-    lineHeight: 24,
-    fontStyle: 'italic',
-    marginBottom: 16,
-  },
-  coverMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-    marginBottom: 24,
-  },
-  coverMetaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  coverMetaText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  tldrCard: {
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  saveBtn: {
-    padding: 4,
-  },
-  tldrLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-  },
-  tldrText: {
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  toc: {
+  heroOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
     gap: 8,
-    marginBottom: 24,
   },
-  tocTitle: {
+  heroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  heroBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
+    color: '#fff',
+    letterSpacing: 0.5,
   },
-  tocItem: {
+  heroTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    lineHeight: 31,
+    letterSpacing: -0.4,
+    color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  heroMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
+    gap: 4,
   },
-  tocNumber: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  heroMetaText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.7)',
+  },
+
+  // Sections
+  section: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
-  tocNumberText: {
+  sectionLabel: {
     fontSize: 13,
     fontWeight: '700',
+    letterSpacing: 0.5,
   },
-  tocItemText: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  swipeHint: {
-    fontSize: 14,
-    fontWeight: '500',
-    textAlign: 'center',
-    marginTop: 'auto',
-    paddingTop: 24,
-  },
-  chapterHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  chapterHeader: {
-    flex: 1,
-  },
-  chapterLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
-  chapterTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    lineHeight: 32,
-  },
-  chapterContent: {
+  sectionBody: {
     fontSize: 17,
     lineHeight: 28,
+  },
+  subtitleText: {
+    fontSize: 16,
+    lineHeight: 24,
+    fontStyle: 'italic',
+  },
+
+  // TOC rows
+  tocRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 14,
+    borderRadius: 16,
+    marginBottom: 8,
+  },
+  tocNum: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tocNumText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  tocTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 21,
+  },
+
+  // Chapter detail
+  chDetailBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  chDetailBackBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chDetailBarLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  chDetailScroll: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 60,
+  },
+  chDetailTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    lineHeight: 34,
+    letterSpacing: -0.4,
     marginBottom: 24,
   },
-  quoteCard: {
+  chDetailPara: {
+    fontSize: 17,
+    lineHeight: 28,
+    marginBottom: 16,
+  },
+
+  // Quote
+  quoteBlock: {
     borderLeftWidth: 3,
     paddingLeft: 16,
     paddingVertical: 8,
+    marginTop: 8,
     marginBottom: 16,
   },
   quoteText: {
@@ -769,50 +942,44 @@ const ddStyles = StyleSheet.create({
   quoteSource: {
     fontSize: 13,
     fontWeight: '600',
-    marginTop: 10,
+    marginTop: 8,
   },
-  bottomLine: {
+
+  // Chapter prev/next nav
+  chNav: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 32,
+  },
+  chNavBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 14,
     borderRadius: 16,
-    padding: 20,
-    marginBottom: 32,
   },
-  bottomLineHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  bottomLineLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  bottomLineText: {
-    fontSize: 17,
-    lineHeight: 28,
-  },
-  sourcesSection: {
-    gap: 12,
-    marginBottom: 32,
-  },
-  sourcesLabel: {
+  chNavBtnRight: {},
+  chNavHint: {
     fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 4,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+    marginBottom: 2,
   },
-  sourceCard: {
+  chNavLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 19,
+  },
+
+  // Sources
+  sourceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 14,
     gap: 12,
-  },
-  sourceInfo: {
-    flex: 1,
-    gap: 2,
+    marginBottom: 8,
   },
   sourceName: {
     fontSize: 14,
@@ -821,153 +988,15 @@ const ddStyles = StyleSheet.create({
   sourceTitle: {
     fontSize: 13,
   },
-  finishSection: {
-    alignItems: 'center',
-    gap: 16,
-    marginTop: 'auto',
-    paddingTop: 24,
-  },
-  finishText: {
-    fontSize: 16,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  finishBtn: {
-    backgroundColor: ACCENT,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 999,
-  },
-  finishBtnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
 });
 
-const lcStyles = StyleSheet.create({
-  fullScreen: {
-    flex: 1,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  progressDots: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  dot: {
-    height: 6,
-    borderRadius: 3,
-  },
-  bookmarkBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  card: {
-    flex: 1,
-    paddingHorizontal: 32,
-    paddingBottom: 24,
-  },
-  typeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 20,
-  },
-  emoji: {
-    fontSize: 28,
-  },
-  typeLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-  },
-  contentArea: {
-    flex: 1,
-    justifyContent: 'center',
-    textAlign: 'center',
-    padding: 8,
-  },
-  titleSection: {
-    marginBottom: 32,
-  },
-  sourceLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  articleTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    lineHeight: 32,
-    letterSpacing: -0.5,
-  },
-  cardText: {
-    fontSize: 20,
-    lineHeight: 32,
-    fontWeight: '400',
-  },
-  bottomSection: {
-    paddingTop: 96,
-  },
-  readOriginalBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 16,
-    borderRadius: 14,
-  },
-  readOriginalText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  sourcesSection: {
-    gap: 8,
-  },
-  sourcesLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  sourceLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  sourceLinkText: {
-    fontSize: 14,
-    fontWeight: '500',
-    flex: 1,
-  },
-  swipeHint: {
-    textAlign: 'center',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-});
+/* ═══════════════════════════════════════════════════════════
+   ArticleScreen — main routing + immersive news view
+   ═══════════════════════════════════════════════════════════ */
 
 export default function ArticleScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { showToast } = useToast();
   const colorScheme = useColorScheme() ?? 'light';
   const { isProUser, presentPaywall } = useRevenueCat();
@@ -1006,26 +1035,44 @@ export default function ArticleScreen() {
     showToast(nowBookmarked ? 'Saved' : 'Removed', 'success');
   };
 
-  const itemType = item.type || item.source || 'blog';
-  const config = SOURCE_CONFIG[itemType] || SOURCE_CONFIG.blog;
-  const Icon = config.icon;
-  const isHot = item.metadata?.is_hot;
-  const readingTime = item.summary?.reading_time_minutes;
-  const showHeroImage = isLikelyRealImageUrl(item.thumbnail) && !imgError;
+  const handleReadOriginal = () => {
+    if (!item.url) return;
+    logReadingEvent({
+      eventType: 'external_open',
+      itemId: item.id,
+      title: item.title,
+      url: item.url,
+      itemType: item.type || item.source || 'blog',
+    });
+    WebBrowser.openBrowserAsync(item.url);
+  };
 
-  const body = item.summary?.short_article?.body || '';
+  const readingTime = item.summary?.reading_time_minutes;
+  const rawSlides = item.summary?.short_article?.slides as string[] | undefined;
+  const slides = rawSlides?.length
+    ? rawSlides.map((s: string) => s.replace(/^Slide\s*\d+:\s*/i, ''))
+    : [];
+  const rawBody = item.summary?.short_article?.body || '';
+  const isTrending = item.feed_type === 'trending' || item.metadata?.feed_type === 'trending';
+  const body = (isTrending && slides.length)
+    ? slides.join('\n\n')
+    : (rawBody.length > 100 ? rawBody : (slides.length ? slides.join('\n\n') : rawBody));
   const subtitle = item.summary?.short_article?.subtitle;
   const keyTakeaways = item.summary?.short_article?.key_takeaways;
   const whyItMatters = item.summary?.short_article?.why_it_matters;
   const learningCards = item.summary?.short_article?.learning_cards;
   const hasLearningCards = learningCards && learningCards.length > 0;
-  const isTrending = item.feed_type === 'trending' || item.metadata?.feed_type === 'trending';
-  const isForYou = item.feed_type === 'for_you' || item.metadata?.feed_type === 'for_you';
   const deepDiveContent = item.summary?.deep_dive as DeepDiveContent | undefined;
   const isChapterDeepDive = deepDiveContent?.chapters && deepDiveContent.chapters.length > 0;
+  const hasAccess = isProUser || item.feed_type === 'trending';
 
-  // Split on double newlines first, then split each block on single newlines
-  // so that headings on their own line don't merge with body text.
+  const imageUrl = getArticleImage(item.thumbnail ?? null, item.title);
+  const sourceName = item.source_name || item.source || '';
+  const timeAgo = getTimeAgo(item.published_date);
+  const initials = getSourceInitials(sourceName);
+  const avatarBg = hashColor(sourceName);
+  const isDark = colorScheme === 'dark';
+
   const bodyLines: string[] = [];
   for (const block of body.split(/\n\n+/)) {
     const lines = block.split(/\n/);
@@ -1035,53 +1082,40 @@ export default function ArticleScreen() {
     }
   }
 
+  const textColor = Colors[colorScheme].text;
+  const mutedColor = Colors[colorScheme].muted;
+
   const renderLine = (line: string, index: number) => {
     if (line.startsWith('### ')) {
       return (
-        <RichText key={index} style={[styles.bodyH3, { color: Colors[colorScheme].text }]}>
-          {line.replace(/^###\s*/, '')}
-        </RichText>
+        <RichText key={index} style={[nStyles.bodyH3, { color: textColor }]}>{line.replace(/^###\s*/, '')}</RichText>
       );
     }
     if (line.startsWith('## ')) {
       return (
-        <RichText key={index} style={[styles.bodyH2, { color: Colors[colorScheme].text }]}>
-          {line.replace(/^##\s*/, '')}
-        </RichText>
+        <RichText key={index} style={[nStyles.bodyH2, { color: textColor }]}>{line.replace(/^##\s*/, '')}</RichText>
       );
     }
     if (line.startsWith('- ') || line.startsWith('* ')) {
       return (
-        <View key={index} style={styles.listItem}>
-          <ThemedText style={[styles.listBullet, { color: Colors[colorScheme].muted }]}>•</ThemedText>
-          <RichText style={[styles.bodyText, { color: Colors[colorScheme].text }]}>
-            {line.replace(/^[-*]\s*/, '')}
-          </RichText>
+        <View key={index} style={nStyles.bulletRow}>
+          <View style={nStyles.bulletDot} />
+          <RichText style={[nStyles.bulletText, { color: textColor }]}>{line.replace(/^[-*]\s*/, '')}</RichText>
         </View>
       );
     }
     if (/^\d+\.\s/.test(line)) {
       return (
-        <View key={index} style={styles.listItem}>
-          <ThemedText style={[styles.listBullet, { color: Colors[colorScheme].muted }]}>
-            {line.match(/^(\d+)\./)?.[1]}.
-          </ThemedText>
-          <RichText style={[styles.bodyText, { color: Colors[colorScheme].text }]}>
-            {line.replace(/^\d+\.\s*/, '')}
-          </RichText>
+        <View key={index} style={nStyles.bulletRow}>
+          <Text style={[nStyles.bulletNum, { color: mutedColor }]}>{line.match(/^(\d+)\./)?.[1]}.</Text>
+          <RichText style={[nStyles.bulletText, { color: textColor }]}>{line.replace(/^\d+\.\s*/, '')}</RichText>
         </View>
       );
     }
-    return (
-      <RichText key={index} style={[styles.bodyText, { color: Colors[colorScheme].text }]}>
-        {line}
-      </RichText>
-    );
+    return <RichText key={index} style={[nStyles.bodyText, { color: textColor }]}>{line}</RichText>;
   };
 
-  const hasAccess = isProUser || item.feed_type === 'trending';
-
-  // Chapter-style deep dive view
+  // Route: deep dive
   if (hasAccess && isChapterDeepDive) {
     return (
       <ChapterDeepDive
@@ -1100,131 +1134,122 @@ export default function ArticleScreen() {
     );
   }
 
-  // Full-screen learning cards view for For You articles
-  if (hasAccess && hasLearningCards) {
+  // Route: for-you with learning cards (not trending)
+  if (hasAccess && hasLearningCards && !isTrending) {
     return (
-      <FullScreenLearningCards
+      <ForYouArticleView
         cards={learningCards as LearningCard[]}
         title={item.title}
-        sourceName={item.source_name || item.source || ''}
+        sourceName={sourceName}
+        thumbnail={item.thumbnail ?? undefined}
+        readingTime={readingTime}
         sources={item.sources}
         colorScheme={colorScheme}
         onBack={() => router.back()}
-        onReadOriginal={() => {
-          if (!item.url) return;
-          logReadingEvent({
-            eventType: 'external_open',
-            itemId: item.id,
-            title: item.title,
-            url: item.url,
-            itemType: item.type || item.source || 'blog',
-          });
-          WebBrowser.openBrowserAsync(item.url);
-        }}
+        onReadOriginal={handleReadOriginal}
         onBookmark={handleToggleBookmark}
         isBookmarked={bookmarked}
       />
     );
   }
 
+  // Route: immersive news/trending view (also serves as default + paywall)
   return (
-    <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
-      edges={['top', 'bottom']}>
-      {/* Top bar */}
-      <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
-          <ChevronLeft size={24} color={Colors[colorScheme].foreground} strokeWidth={2} />
-        </Pressable>
-        <View style={{ flex: 1 }} />
-        <Pressable onPress={handleToggleBookmark} hitSlop={12} style={styles.topAction}>
-          <Bookmark
-            size={20}
-            color={bookmarked ? Colors[colorScheme].foreground : Colors[colorScheme].muted}
-            strokeWidth={bookmarked ? 2.5 : 1.5}
-          />
-        </Pressable>
-        <Pressable
-          onPress={() => {
-            if (!item.url) return;
-            logReadingEvent({
-              eventType: 'external_open',
-              itemId: item.id,
-              title: item.title,
-              url: item.url,
-              itemType: item.type || item.source || 'blog',
-            });
-            WebBrowser.openBrowserAsync(item.url);
-          }}
-          hitSlop={12}
-          style={styles.topAction}>
-          <ExternalLink size={20} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-        </Pressable>
-      </View>
+    <View style={[nStyles.container, { backgroundColor: isDark ? '#0a0a0a' : '#fff' }]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        bounces
+        contentContainerStyle={{ paddingBottom: 100 }}>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.articleHeader}>
-          <View style={styles.metaRow}>
-            <View style={[styles.typeBadge, { backgroundColor: config.bgColor[colorScheme] }]}>
-              <Icon size={14} color={config.color} strokeWidth={2} />
-              <ThemedText style={[styles.typeLabel, { color: config.color }]}>
-                {config.label}
-              </ThemedText>
+        {/* Full-bleed hero */}
+        <View style={nStyles.heroSection}>
+          <Image
+            source={{ uri: imageUrl }}
+            style={nStyles.heroImg}
+            resizeMode="cover"
+            onError={() => setImgError(true)}
+          />
+          <LinearGradient
+            colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.75)']}
+            locations={[0, 0.3, 1]}
+            style={nStyles.heroGradient}
+          />
+
+          {/* Overlay controls */}
+          <View style={[nStyles.heroTopBar, { paddingTop: insets.top + 8 }]}>
+            <Pressable onPress={() => router.back()} hitSlop={12} style={nStyles.heroBtn}>
+              <ChevronLeft size={24} color="#fff" strokeWidth={2.5} />
+            </Pressable>
+            <View style={nStyles.heroTopRight}>
+              <Pressable onPress={handleToggleBookmark} hitSlop={12} style={nStyles.heroBtn}>
+                <Bookmark
+                  size={20}
+                  color={bookmarked ? '#fff' : 'rgba(255,255,255,0.8)'}
+                  strokeWidth={bookmarked ? 2.5 : 1.5}
+                />
+              </Pressable>
+              <Pressable onPress={handleReadOriginal} hitSlop={12} style={nStyles.heroBtn}>
+                <ExternalLink size={20} color="rgba(255,255,255,0.8)" strokeWidth={1.5} />
+              </Pressable>
             </View>
-            {isHot && itemType !== 'news' && (
-              <View style={[styles.hotBadge, { backgroundColor: colorScheme === 'dark' ? '#2e2216' : '#fff7ed' }]}>
-                <Flame size={11} color="#ea580c" strokeWidth={2.5} />
-                <ThemedText style={styles.hotText}>Hot</ThemedText>
-              </View>
-            )}
-            {readingTime && (
-              <View style={styles.readingTime}>
-                <Clock size={12} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-                <ThemedText style={[styles.readingTimeText, { color: Colors[colorScheme].muted }]}>
-                  {readingTime} min read
-                </ThemedText>
+          </View>
+
+          {/* Time badge on hero */}
+          <View style={nStyles.heroBottom}>
+            {timeAgo !== '' && (
+              <View style={nStyles.timeBadge}>
+                <Zap size={12} color="#F59E0B" strokeWidth={2.5} />
+                <Text style={nStyles.timeBadgeText}>{timeAgo}</Text>
               </View>
             )}
           </View>
-
-          <ThemedText style={styles.articleTitle}>{item.title}</ThemedText>
-
-          {subtitle ? (
-            <ThemedText style={[styles.articleSubtitle, { color: Colors[colorScheme].secondary }]}>
-              {subtitle}
-            </ThemedText>
-          ) : null}
-
-          {showHeroImage && (
-            <Image
-              source={{ uri: item.thumbnail! }}
-              style={styles.heroImage}
-              resizeMode="cover"
-              onError={() => setImgError(true)}
-            />
-          )}
-
-          {item.source_name ? (
-            <ThemedText style={[styles.sourceName, { color: Colors[colorScheme].muted }]}>
-              {item.source_name}
-            </ThemedText>
-          ) : null}
         </View>
 
-        <View style={[styles.divider, { backgroundColor: Colors[colorScheme].border }]} />
+        {/* Content */}
+        <View style={nStyles.content}>
+          <Text style={[nStyles.title, { color: Colors[colorScheme].text }]}>
+            {item.title}
+          </Text>
 
-        {hasAccess ? (
-            /* Traditional prose view */
-            <View style={styles.articleBody}>
-              {/* Key Takeaways */}
-              {!isTrending && keyTakeaways && keyTakeaways.length > 0 && (
-                <View style={[styles.takeawaysCard, { backgroundColor: '#fffbeb' }]}>
-                  <ThemedText style={styles.takeawaysLabel}>Key Takeaways</ThemedText>
+          {subtitle && (
+            <Text style={[nStyles.subtitle, { color: Colors[colorScheme].muted }]}>
+              {subtitle}
+            </Text>
+          )}
+
+          {/* Source row */}
+          <View style={nStyles.sourceRow}>
+            <View style={[nStyles.sourceAvatar, { backgroundColor: avatarBg }]}>
+              <Text style={nStyles.sourceAvatarText}>{initials}</Text>
+            </View>
+            <Text style={[nStyles.sourceName, { color: Colors[colorScheme].muted }]} numberOfLines={1}>
+              {sourceName}
+            </Text>
+            {readingTime != null && (
+              <>
+                <Text style={[nStyles.sourceDot, { color: Colors[colorScheme].border }]}>·</Text>
+                <Clock size={12} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+                <Text style={[nStyles.readTime, { color: Colors[colorScheme].muted }]}>{readingTime} min</Text>
+              </>
+            )}
+          </View>
+
+          {/* Overview tab indicator */}
+          <View style={nStyles.tabBar}>
+            <View style={[nStyles.activeTab, { borderBottomColor: ACCENT }]}>
+              <Text style={[nStyles.activeTabText, { color: Colors[colorScheme].text }]}>Overview</Text>
+            </View>
+          </View>
+
+          {hasAccess ? (
+            <View style={nStyles.body}>
+              {keyTakeaways && keyTakeaways.length > 0 && (
+                <View style={[nStyles.takeawaysCard, { backgroundColor: isDark ? '#1a1a1a' : '#fffbeb' }]}>
+                  <Text style={nStyles.takeawaysLabel}>KEY TAKEAWAYS</Text>
                   {keyTakeaways.map((t: string, i: number) => (
-                    <View key={i} style={styles.takeawayRow}>
-                      <View style={styles.takeawayDot} />
-                      <RichText style={[styles.takeawayText, { color: Colors[colorScheme].text }]}>
+                    <View key={i} style={nStyles.bulletRow}>
+                      <View style={[nStyles.bulletDot, { backgroundColor: ACCENT }]} />
+                      <RichText style={[nStyles.bulletText, { color: Colors[colorScheme].text }]}>
                         {t}
                       </RichText>
                     </View>
@@ -1232,208 +1257,304 @@ export default function ArticleScreen() {
                 </View>
               )}
 
-              {/* Body */}
-              {bodyLines.map((line: string, index: number) => renderLine(line, index))}
+              {bodyLines.map((line, i) => renderLine(line, i))}
 
-              {/* Why it matters */}
-              {!isTrending && whyItMatters ? (
-                <View style={[styles.whyItMattersCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-                  <ThemedText style={[styles.whyItMattersLabel, { color: Colors[colorScheme].muted }]}>
-                    Why it matters
-                  </ThemedText>
-                  <RichText style={[styles.whyItMattersText, { color: Colors[colorScheme].secondary }]}>
+              {whyItMatters && (
+                <View style={[nStyles.whyCard, { backgroundColor: isDark ? '#1a1a1a' : '#f9fafb' }]}>
+                  <Text style={[nStyles.whyLabel, { color: ACCENT }]}>WHY IT MATTERS</Text>
+                  <RichText style={[nStyles.whyText, { color: Colors[colorScheme].text }]}>
                     {whyItMatters}
                   </RichText>
                 </View>
-              ) : null}
-            </View>
-        ) : (
-          <>
-            <View style={styles.articleBody}>
-              {bodyLines.length > 0 ? (
-                renderLine(bodyLines[0], 0)
-              ) : (
-                <ThemedText style={[styles.bodyText, { color: Colors[colorScheme].muted }]}>
-                  The full breakdown is just a tap away for subscribers.
-                </ThemedText>
               )}
             </View>
-
-            <View style={styles.blurredSection}>
-              <View style={{ opacity: 0.12 }}>
-                <View style={[styles.fakeLine, { width: '100%', backgroundColor: Colors[colorScheme].foreground }]} />
-                <View style={[styles.fakeLine, { width: '88%', backgroundColor: Colors[colorScheme].foreground }]} />
-                <View style={[styles.fakeLine, { width: '55%', backgroundColor: Colors[colorScheme].foreground }]} />
+          ) : (
+            <>
+              <View style={nStyles.body}>
+                {bodyLines.length > 0 && renderLine(bodyLines[0], 0)}
               </View>
-              <View style={styles.gradientOverlay}>
-                <View style={[styles.gradientStep, { backgroundColor: Colors[colorScheme].background, opacity: 0.3 }]} />
-                <View style={[styles.gradientStep, { backgroundColor: Colors[colorScheme].background, opacity: 0.7 }]} />
-                <View style={[styles.gradientStep, { backgroundColor: Colors[colorScheme].background, opacity: 1 }]} />
-              </View>
-            </View>
 
-            <View style={styles.paywallContainer}>
-              <View style={[styles.paywallCard, { backgroundColor: '#f8f9fa' }]}>
-                <View style={[styles.paywallIconCircle, { backgroundColor: '#fffbeb' }]}>
-                  <Lock size={22} color={ACCENT} strokeWidth={2} />
+              <View style={nStyles.blurredSection}>
+                <View style={{ opacity: 0.12 }}>
+                  <View style={[nStyles.fakeLine, { width: '100%', backgroundColor: Colors[colorScheme].foreground }]} />
+                  <View style={[nStyles.fakeLine, { width: '88%', backgroundColor: Colors[colorScheme].foreground }]} />
+                  <View style={[nStyles.fakeLine, { width: '55%', backgroundColor: Colors[colorScheme].foreground }]} />
                 </View>
-                <ThemedText style={styles.paywallTitle}>
-                  Read the key takeaways in 2 minutes
-                </ThemedText>
-                <ThemedText style={[styles.paywallDesc, { color: Colors[colorScheme].muted }]}>
-                  Every article, distilled to what matters most — so you learn more, faster.
-                </ThemedText>
-                <Pressable style={styles.subscribeButton} onPress={() => presentPaywall()}>
-                  <Crown size={16} color="#fff" strokeWidth={2} />
-                  <Text style={styles.subscribeButtonText}>Unlock full access</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.openOriginalLink}
-                  onPress={() => {
-                    if (!item.url) return;
-                    WebBrowser.openBrowserAsync(item.url);
-                  }}>
-                  <ExternalLink size={14} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-                  <ThemedText style={[styles.openOriginalLinkText, { color: Colors[colorScheme].muted }]}>
-                    Read original article instead
-                  </ThemedText>
-                </Pressable>
               </View>
-            </View>
-          </>
-        )}
+
+              <View style={nStyles.paywallContainer}>
+                <View style={[nStyles.paywallCard, { backgroundColor: isDark ? '#1a1a1a' : '#f8f9fa' }]}>
+                  <View style={[nStyles.paywallIcon, { backgroundColor: isDark ? '#2e2216' : '#fffbeb' }]}>
+                    <Lock size={22} color={ACCENT} strokeWidth={2} />
+                  </View>
+                  <Text style={[nStyles.paywallTitle, { color: Colors[colorScheme].text }]}>
+                    Read the key takeaways in 2 minutes
+                  </Text>
+                  <Text style={[nStyles.paywallDesc, { color: Colors[colorScheme].muted }]}>
+                    Every article, distilled to what matters most — so you learn more, faster.
+                  </Text>
+                  <Pressable style={nStyles.paywallBtn} onPress={() => presentPaywall()}>
+                    <Crown size={16} color="#fff" strokeWidth={2} />
+                    <Text style={nStyles.paywallBtnText}>Unlock full access</Text>
+                  </Pressable>
+                  <Pressable style={nStyles.readOriginalLink} onPress={handleReadOriginal}>
+                    <ExternalLink size={14} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+                    <Text style={[nStyles.readOriginalLinkText, { color: Colors[colorScheme].muted }]}>
+                      Read original article instead
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            </>
+          )}
+        </View>
       </ScrollView>
-    </SafeAreaView>
+
+      {/* Bottom action bar */}
+      {hasAccess && (
+        <View
+          style={[
+            nStyles.bottomBar,
+            {
+              backgroundColor: isDark ? '#0a0a0a' : '#fff',
+              borderTopColor: Colors[colorScheme].border,
+              paddingBottom: Math.max(insets.bottom, 16),
+            },
+          ]}>
+          <Pressable onPress={handleReadOriginal} style={nStyles.bottomBarBtn}>
+            <ExternalLink size={18} color={Colors[colorScheme].text} strokeWidth={1.5} />
+            <Text style={[nStyles.bottomBarText, { color: Colors[colorScheme].text }]}>Read Original</Text>
+          </Pressable>
+        </View>
+      )}
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  topBar: {
+const nStyles = StyleSheet.create({
+  container: { flex: 1 },
+
+  heroSection: {
+    height: HERO_HEIGHT,
+    position: 'relative',
+  },
+  heroImg: {
+    width: '100%',
+    height: '100%',
+  },
+  heroGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  heroTopBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 12,
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
   },
-  backButton: {
-    width: 40, height: 40,
-    alignItems: 'center', justifyContent: 'center',
-    borderRadius: 20,
+  heroTopRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
-  topAction: {
-    width: 40, height: 40,
-    alignItems: 'center', justifyContent: 'center',
+  heroBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
-  heroImage: {
-    width: '100%', height: 220,
-    borderRadius: 16, marginBottom: 4,
+  heroBottom: {
+    position: 'absolute',
+    bottom: 16,
+    left: 20,
   },
-  articleHeader: { gap: 12, marginBottom: 24 },
-  metaRow: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: 8, flexWrap: 'wrap',
+  timeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
-  typeBadge: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: 6, paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 999,
+  timeBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
-  typeLabel: { fontSize: 12, fontWeight: '600' },
-  hotBadge: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: 3, paddingHorizontal: 8, paddingVertical: 4,
-    borderRadius: 999,
-  },
-  hotText: { fontSize: 11, fontWeight: '600', color: '#ea580c' },
-  readingTime: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  readingTimeText: { fontSize: 12, fontWeight: '500' },
-  articleTitle: {
-    fontSize: 26, fontWeight: '700',
-    lineHeight: 34, letterSpacing: -0.3,
-  },
-  articleSubtitle: {
-    fontSize: 17, lineHeight: 24, fontStyle: 'italic',
-  },
-  sourceName: { fontSize: 13, fontWeight: '500' },
-  divider: { height: 1, marginBottom: 24 },
-  articleBody: { gap: 16, marginBottom: 32 },
 
-  // Key Takeaways
-  takeawaysCard: {
-    borderRadius: 16, padding: 18, gap: 10,
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '700',
+    lineHeight: 34,
+    letterSpacing: -0.3,
     marginBottom: 8,
   },
-  takeawaysLabel: {
-    fontSize: 11, fontWeight: '700',
-    textTransform: 'uppercase', letterSpacing: 1,
-    color: '#b45309', marginBottom: 2,
+  subtitle: {
+    fontSize: 16,
+    lineHeight: 23,
+    marginBottom: 12,
   },
-  takeawayRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  takeawayDot: {
-    width: 6, height: 6, borderRadius: 3,
-    backgroundColor: '#F59E0B', marginTop: 8,
+  sourceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
   },
-  takeawayText: { fontSize: 15, lineHeight: 22, flex: 1 },
+  sourceAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sourceAvatarText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  sourceName: { fontSize: 13, fontWeight: '600', flexShrink: 1 },
+  sourceDot: { fontSize: 12 },
+  readTime: { fontSize: 12, fontWeight: '500' },
 
-  // Why it matters
-  whyItMattersCard: {
-    borderRadius: 16, padding: 18,
-    borderWidth: 1, marginTop: 8,
+  tabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.06)',
+    marginBottom: 20,
   },
-  whyItMattersLabel: {
-    fontSize: 11, fontWeight: '700',
-    textTransform: 'uppercase', letterSpacing: 1,
-    marginBottom: 6,
+  activeTab: {
+    borderBottomWidth: 2,
+    paddingBottom: 10,
+    marginBottom: -1,
   },
-  whyItMattersText: {
-    fontSize: 15, lineHeight: 23, fontStyle: 'italic',
+  activeTabText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 
-  // Body text
+  body: { gap: 14, marginBottom: 24 },
   bodyH2: { fontSize: 20, fontWeight: '700', lineHeight: 28, marginTop: 8 },
   bodyH3: { fontSize: 17, fontWeight: '600', lineHeight: 24, marginTop: 4 },
   bodyText: { fontSize: 16, lineHeight: 26 },
-  listContainer: { gap: 6, paddingLeft: 4 },
-  listItem: { flexDirection: 'row', gap: 8 },
-  listBullet: { fontSize: 16, lineHeight: 26, width: 16 },
+  bulletRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  bulletDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#F97316',
+    marginTop: 10,
+  },
+  bulletNum: { fontSize: 16, lineHeight: 26, width: 20, fontWeight: '600' },
+  bulletText: { fontSize: 16, lineHeight: 26, flex: 1 },
 
-  // Paywall
+  takeawaysCard: {
+    borderRadius: 16,
+    padding: 18,
+    gap: 10,
+    marginBottom: 8,
+  },
+  takeawaysLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    color: '#b45309',
+    marginBottom: 2,
+  },
+  whyCard: {
+    borderRadius: 16,
+    padding: 18,
+    marginTop: 8,
+  },
+  whyLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    marginBottom: 8,
+  },
+  whyText: {
+    fontSize: 16,
+    lineHeight: 24,
+    fontStyle: 'italic',
+  },
+
   blurredSection: { position: 'relative', marginBottom: 0 },
   fakeLine: { height: 14, borderRadius: 7, marginBottom: 10 },
-  gradientOverlay: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    height: 120, flexDirection: 'column',
-  },
-  gradientStep: { flex: 1 },
-  paywallContainer: { marginTop: -20, marginBottom: 32 },
+
+  paywallContainer: { marginTop: 8, marginBottom: 32 },
   paywallCard: {
-    borderRadius: 20, padding: 28,
-    alignItems: 'center', gap: 14,
+    borderRadius: 20,
+    padding: 28,
+    alignItems: 'center',
+    gap: 14,
   },
-  paywallIconCircle: {
-    width: 52, height: 52, borderRadius: 26,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+  paywallIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
   paywallTitle: {
-    fontSize: 20, fontWeight: '700',
-    textAlign: 'center', letterSpacing: -0.3,
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: -0.3,
   },
   paywallDesc: {
-    fontSize: 14, lineHeight: 21,
-    textAlign: 'center', paddingHorizontal: 8,
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+    paddingHorizontal: 8,
   },
-  subscribeButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, backgroundColor: '#F59E0B',
-    paddingHorizontal: 28, paddingVertical: 14,
-    borderRadius: 999, marginTop: 6, width: '100%',
+  paywallBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 999,
+    marginTop: 6,
+    width: '100%',
   },
-  subscribeButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  openOriginalLink: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: 6, paddingVertical: 8, marginTop: 4,
+  paywallBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  readOriginalLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    marginTop: 4,
   },
-  openOriginalLinkText: { fontSize: 14, fontWeight: '500' },
+  readOriginalLinkText: { fontSize: 14, fontWeight: '500' },
+
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopWidth: 1,
+    paddingTop: 12,
+    paddingHorizontal: 20,
+  },
+  bottomBarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+  },
+  bottomBarText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
 });
