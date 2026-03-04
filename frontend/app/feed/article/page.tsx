@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft, ExternalLink, Clock, Bookmark, GraduationCap,
+  ArrowLeft, ExternalLink, Bookmark, GraduationCap,
   ChevronLeft, ChevronRight, Loader2,
 } from "lucide-react";
 import Header from "@/components/Header";
@@ -83,6 +83,108 @@ function splitParagraphs(text: string): string[] {
   return text.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
 }
 
+/* ─── Horizontal swipeable learning cards ─── */
+function SwipeableCards({ cards, savedSections, onSave }: {
+  cards: LearningCard[];
+  savedSections: Set<string>;
+  onSave: (i: number, content: string, label: string) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  const onScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const idx = Math.round(el.scrollLeft / el.clientWidth);
+    setActiveIdx(idx);
+  };
+
+  const scrollTo = (idx: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ left: idx * el.clientWidth, behavior: 'smooth' });
+  };
+
+  return (
+    <div className="mb-8 relative">
+      {/* scroll container */}
+      <div
+        ref={scrollRef}
+        onScroll={onScroll}
+        className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-0 pb-1"
+        style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+      >
+        {cards.map((card, i) => {
+          const label = CARD_TYPE_LABELS[card.type] || card.type;
+          const key = `card_${i}`;
+          return (
+            <div
+              key={i}
+              className="snap-start shrink-0 w-full px-0 flex"
+            >
+              <div className="flex-1 p-6 rounded-2xl bg-surface-secondary flex flex-col mx-1">
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <p className="text-xs font-semibold text-secondary/50 tracking-wide">
+                    {card.emoji} {label}
+                  </p>
+                  <button
+                    onClick={() => onSave(i, card.content, label)}
+                    className="p-1 -m-1 hover:opacity-70 transition-opacity shrink-0"
+                  >
+                    <Bookmark
+                      size={16}
+                      className={savedSections.has(key) ? 'text-foreground fill-current' : 'text-secondary/30'}
+                    />
+                  </button>
+                </div>
+                <div className="prose prose-base dark:prose-invert max-w-none flex-1">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{card.content}</ReactMarkdown>
+                </div>
+                <p className="text-xs text-secondary/30 text-right mt-4 select-none">{i + 1} / {cards.length}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Arrow buttons (web) */}
+      {cards.length > 1 && (
+        <>
+          <button
+            onClick={() => scrollTo(activeIdx - 1)}
+            disabled={activeIdx === 0}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 w-8 h-8 rounded-full bg-background border border-border/20 shadow-sm flex items-center justify-center transition-opacity disabled:opacity-0 hover:bg-surface-secondary"
+          >
+            <ChevronLeft size={16} className="text-secondary/60" />
+          </button>
+          <button
+            onClick={() => scrollTo(activeIdx + 1)}
+            disabled={activeIdx === cards.length - 1}
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 w-8 h-8 rounded-full bg-background border border-border/20 shadow-sm flex items-center justify-center transition-opacity disabled:opacity-0 hover:bg-surface-secondary"
+          >
+            <ChevronRight size={16} className="text-secondary/60" />
+          </button>
+        </>
+      )}
+
+      {/* Dot indicators */}
+      {cards.length > 1 && (
+        <div className="flex justify-center gap-1.5 mt-4">
+          {cards.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => scrollTo(i)}
+              className={`rounded-full transition-all duration-200 ${
+                i === activeIdx ? 'w-4 h-1.5 bg-foreground/60' : 'w-1.5 h-1.5 bg-foreground/20 hover:bg-foreground/40'
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ArticlePage() {
   const router = useRouter();
   const [item, setItem] = useState<FeedItem | null>(null);
@@ -91,6 +193,8 @@ export default function ArticlePage() {
   const [openChapter, setOpenChapter] = useState<number | null>(null);
 
   useEffect(() => {
+    // always start from the top when this page loads
+    window.scrollTo(0, 0);
     try {
       const raw = sessionStorage.getItem("trace_article");
       if (raw) setItem(JSON.parse(raw));
@@ -101,11 +205,16 @@ export default function ArticlePage() {
   useEffect(() => {
     if (!item) return;
     const saved = new Set<string>();
-    ['tldr', 'bottom_line', ...Array.from({ length: 10 }, (_, i) => `chapter_${i}`)].forEach(key => {
+    ['tldr', 'bottom_line', ...Array.from({ length: 10 }, (_, i) => `chapter_${i}`), ...Array.from({ length: 10 }, (_, i) => `card_${i}`)].forEach(key => {
       if (isSnippetSaved(`${item.id}_${key}`)) saved.add(key);
     });
     setSavedSections(saved);
   }, [item]);
+
+  // scroll to top whenever we switch chapters
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [openChapter]);
 
   const handleSave = (key: string, content: string, label: string) => {
     if (savedSections.has(key)) return;
@@ -155,11 +264,12 @@ export default function ArticlePage() {
 
     return (
       <div className="min-h-screen bg-background text-foreground">
+        <Header />
         <Toast message={toast || ""} visible={!!toast} />
 
-        {/* Minimal top bar */}
-        <div className="sticky top-0 bg-background/95 backdrop-blur-md z-50 border-b border-border/10">
-          <div className="container mx-auto px-4 max-w-3xl flex items-center justify-between h-14">
+        {/* Chapter breadcrumb bar */}
+        <div className="sticky top-14 bg-background/95 backdrop-blur-md z-40 border-b border-border/10">
+          <div className="container mx-auto px-4 max-w-3xl flex items-center justify-between h-11">
             <button
               onClick={() => setOpenChapter(null)}
               className="flex items-center gap-1.5 text-sm text-secondary hover:text-foreground transition-colors"
@@ -208,7 +318,7 @@ export default function ArticlePage() {
           <div className="flex gap-3 mt-12">
             {idx > 0 ? (
               <button
-                onClick={() => { setOpenChapter(idx - 1); window.scrollTo(0, 0); }}
+                onClick={() => setOpenChapter(idx - 1)}
                 className="flex-1 flex items-center gap-3 p-4 rounded-2xl bg-surface-secondary hover:bg-surface-secondary/80 transition-colors text-left"
               >
                 <ChevronLeft size={18} className="text-secondary/40 shrink-0" />
@@ -220,7 +330,7 @@ export default function ArticlePage() {
             ) : <div className="flex-1" />}
             {idx < chapters.length - 1 ? (
               <button
-                onClick={() => { setOpenChapter(idx + 1); window.scrollTo(0, 0); }}
+                onClick={() => setOpenChapter(idx + 1)}
                 className="flex-1 flex items-center justify-end gap-3 p-4 rounded-2xl bg-surface-secondary hover:bg-surface-secondary/80 transition-colors text-right"
               >
                 <div className="min-w-0">
@@ -255,6 +365,7 @@ export default function ArticlePage() {
 
     return (
       <div className="min-h-screen bg-background text-foreground">
+        <Header />
         <Toast message={toast || ""} visible={!!toast} />
 
         <div className="container mx-auto px-4 max-w-3xl pt-6">
@@ -263,7 +374,7 @@ export default function ArticlePage() {
             <img src={imageUrl} alt="" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
 
-            {/* Back button */}
+            {/* Floating back */}
             <div className="absolute top-4 left-4">
               <button
                 onClick={() => router.back()}
@@ -321,7 +432,7 @@ export default function ArticlePage() {
               {chapters.map((ch, i) => (
                 <button
                   key={i}
-                  onClick={() => { setOpenChapter(i); window.scrollTo(0, 0); }}
+                  onClick={() => setOpenChapter(i)}
                   className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-surface-secondary hover:bg-surface-secondary/70 transition-colors text-left group"
                 >
                   <div className="w-8 h-8 rounded-lg bg-background flex items-center justify-center shrink-0">
@@ -392,13 +503,15 @@ export default function ArticlePage() {
      ═══════════════════════════════════════════════════════ */
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <Header />
       <Toast message={toast || ""} visible={!!toast} />
 
-      <div className="container mx-auto px-4 max-w-3xl pt-6">
-        {/* Hero image */}
-        <div className="relative aspect-[2.2/1] sm:aspect-[2.4/1] rounded-2xl overflow-hidden bg-surface-secondary">
+      {/* Hero — no top padding, no bottom radius so cards can attach flush */}
+      <div className="container mx-auto px-4 max-w-3xl pt-4">
+        <div className="relative aspect-[2.2/1] sm:aspect-[2.4/1] rounded-t-2xl overflow-hidden bg-surface-secondary">
           <img src={imageUrl} alt="" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
+          {/* darken top for back button, fade bottom to page bg for seamless card attachment */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-black/20 to-black/30" />
 
           <div className="absolute top-4 left-4">
             <button
@@ -409,9 +522,9 @@ export default function ArticlePage() {
             </button>
           </div>
 
-          <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-7">
-            <h1 className="text-xl sm:text-2xl font-bold text-white leading-snug mb-2">{item.title}</h1>
-            <div className="flex items-center gap-3 text-xs text-white/50">
+          <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6">
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-snug mb-1.5">{item.title}</h1>
+            <div className="flex items-center gap-3 text-xs text-secondary/50">
               {item.source_name && <span>{item.source_name}</span>}
               <span>· {readingTime} min read</span>
             </div>
@@ -419,23 +532,14 @@ export default function ArticlePage() {
         </div>
       </div>
 
-      <main className="container mx-auto px-4 max-w-3xl py-6">
+      {/* Cards start immediately below hero, no gap */}
+      <main className="container mx-auto px-4 max-w-3xl pt-3 pb-8">
         {hasLearningCards ? (
-          <div className="flex flex-col gap-4 mb-8">
-            {learningCards!.map((card, i) => {
-              const label = CARD_TYPE_LABELS[card.type] || card.type;
-              return (
-                <div key={i} className="p-6 rounded-2xl bg-surface-secondary">
-                  <p className="text-xs font-semibold text-secondary/50 tracking-wide mb-3">
-                    {card.emoji} {label}
-                  </p>
-                  <div className="prose prose-base dark:prose-invert max-w-none">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{card.content}</ReactMarkdown>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <SwipeableCards
+            cards={learningCards!}
+            savedSections={savedSections}
+            onSave={(i, content, label) => handleSave(`card_${i}`, content, label)}
+          />
         ) : (
           <>
             {!isTrending && keyTakeaways && keyTakeaways.length > 0 && (
@@ -500,3 +604,4 @@ export default function ArticlePage() {
     </div>
   );
 }
+

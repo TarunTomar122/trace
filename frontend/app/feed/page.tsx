@@ -693,11 +693,19 @@ function FeedPageContent() {
   }, [v3Feed?.trending_topics]);
 
   const featuredTopic = trendingTopics[0] || null;
-  const restTopics = trendingTopics.slice(1).filter(
-    t => t.id !== featuredTopic?.id
-      && t.title !== featuredTopic?.title
-      && t.topic_key !== featuredTopic?.topic_key
-  );
+  const restTopics = trendingTopics.slice(1).filter(t => {
+    if (!featuredTopic) return true;
+    if (t.id === featuredTopic.id) return false;
+    if (t.topic_key === featuredTopic.topic_key) return false;
+    // fuzzy title dedup: if >50% of significant words overlap, treat as same topic
+    const stopWords = new Set(['the','a','an','and','or','in','on','at','to','of','for','is','are','was','its','with','as']);
+    const words = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g,'').split(' ').filter(w => w.length > 2 && !stopWords.has(w));
+    const wa = new Set(words(featuredTopic.title));
+    const wb = words(t.title);
+    if (wa.size === 0 || wb.length === 0) return true;
+    const overlap = wb.filter(w => wa.has(w)).length;
+    return overlap / Math.max(wa.size, wb.length) < 0.5;
+  });
 
   // For You sections
   const forYouFeatured = useMemo(() => {
