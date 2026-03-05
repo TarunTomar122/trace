@@ -116,10 +116,17 @@ export default function Footer() {
             </h4>
             <ul className="space-y-3">
               <li className="text-sm text-secondary">
-                Swipeable cards, topic timelines, and chapter navigation — designed for your phone.
+                Grouped topics, timelines, and For You cards built for quick catch-up on your phone.
               </li>
-              <li className="text-sm text-secondary/60">
-                Coming soon to iOS & Android
+              <li>
+                <a
+                  href="https://play.google.com/store/apps/details?id=online.yourtrace.app"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-secondary hover:text-foreground transition-colors underline underline-offset-4"
+                >
+                  Get it on Google Play
+                </a>
               </li>
             </ul>
           </div>
@@ -144,7 +151,7 @@ export default function Footer() {
 
             {/* Tagline + Copyright */}
             <div className="text-sm text-secondary">
-              <p className="mb-1">Trending topics. Personalized reads. Expert deep dives.</p>
+              <p className="mb-1">Many sources. One story view. Better decisions.</p>
               <p className="text-xs text-secondary/50">© {new Date().getFullYear()} Trace. All rights reserved.</p>
             </div>
           </div>

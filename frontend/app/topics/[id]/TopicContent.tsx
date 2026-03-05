@@ -102,19 +102,6 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
 
   const handleShare = async () => {
     const shareUrl = window.location.href;
-
-    // Only use native share on actual mobile devices
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile && navigator.share) {
-      try {
-        await navigator.share({ title: topic.title, url: shareUrl });
-        return;
-      } catch (err) {
-        if ((err as Error).name === 'AbortError') return;
-      }
-    }
-
-    // Desktop: just copy to clipboard
     try {
       await navigator.clipboard.writeText(shareUrl);
       setToast("Link copied!");
@@ -126,7 +113,6 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
   };
 
   const openArticle = (article: TopicArticle) => {
-    // Store article data and navigate to article page
     const feedItem = {
       id: article.id,
       url: article.url,
@@ -137,6 +123,7 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
       feed_type: 'trending',
     };
     sessionStorage.setItem("trace_article", JSON.stringify(feedItem));
+    sessionStorage.setItem("trace_article_returnTo", window.location.pathname);
     router.push("/feed/article");
   };
 
@@ -157,10 +144,10 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
           </Link>
           <button
             onClick={handleShare}
-            className="p-2.5 rounded-full border border-border/20 text-secondary/60 hover:text-foreground hover:border-border/40 transition-colors"
-            title="Share"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-border/30 text-sm font-medium text-secondary/70 hover:text-foreground hover:border-border/60 transition-colors"
           >
-            <Share2 size={16} />
+            <Share2 size={15} />
+            Share
           </button>
         </div>
 

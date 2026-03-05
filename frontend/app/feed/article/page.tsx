@@ -6,7 +6,7 @@ import remarkGfm from "remark-gfm";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, ExternalLink, Bookmark, GraduationCap,
-  ChevronLeft, ChevronRight, Loader2,
+  ChevronLeft, ChevronRight, Loader2, Share2, Check,
 } from "lucide-react";
 import Header from "@/components/Header";
 import { FeedItem } from "@/lib/firestore";
@@ -41,6 +41,7 @@ type DeepDiveContent = {
 };
 
 type SourceRef = { name: string; title: string; url: string };
+const ARTICLE_RETURN_TO_KEY = "trace_article_returnTo";
 
 function cleanSlides(slides: string[]): string[] {
   return slides.map(s => s.replace(/^Slide\s*\d+:\s*/i, ''));
@@ -83,106 +84,51 @@ function splitParagraphs(text: string): string[] {
   return text.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
 }
 
-/* ─── Horizontal swipeable learning cards ─── */
-function SwipeableCards({ cards, savedSections, onSave }: {
-  cards: LearningCard[];
-  savedSections: Set<string>;
-  onSave: (i: number, content: string, label: string) => void;
-}) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [activeIdx, setActiveIdx] = useState(0);
+function getSafeReturnTo(value: string | null): string | null {
+  if (!value) return null;
+  if (!value.startsWith("/feed")) return null;
+  return value;
+}
 
-  const onScroll = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const idx = Math.round(el.scrollLeft / el.clientWidth);
-    setActiveIdx(idx);
-  };
-
-  const scrollTo = (idx: number) => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTo({ left: idx * el.clientWidth, behavior: 'smooth' });
-  };
-
+/* ─── Inline article sections ─── */
+function ArticleSections({ cards }: { cards: LearningCard[] }) {
+  const typeCount: Record<string, number> = {};
   return (
-    <div className="mb-8 relative">
-      {/* scroll container */}
-      <div
-        ref={scrollRef}
-        onScroll={onScroll}
-        className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-0 pb-1"
-        style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
-      >
-        {cards.map((card, i) => {
-          const label = CARD_TYPE_LABELS[card.type] || card.type;
-          const key = `card_${i}`;
-          return (
-            <div
-              key={i}
-              className="snap-start shrink-0 w-full px-0 flex"
-            >
-              <div className="flex-1 p-6 rounded-2xl bg-surface-secondary flex flex-col mx-1">
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <p className="text-xs font-semibold text-secondary/50 tracking-wide">
-                    {card.emoji} {label}
-                  </p>
-                  <button
-                    onClick={() => onSave(i, card.content, label)}
-                    className="p-1 -m-1 hover:opacity-70 transition-opacity shrink-0"
-                  >
-                    <Bookmark
-                      size={16}
-                      className={savedSections.has(key) ? 'text-foreground fill-current' : 'text-secondary/30'}
-                    />
-                  </button>
-                </div>
-                <div className="prose prose-base dark:prose-invert max-w-none flex-1">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{card.content}</ReactMarkdown>
-                </div>
-                <p className="text-xs text-secondary/30 text-right mt-4 select-none">{i + 1} / {cards.length}</p>
-              </div>
+    <div className="mb-8 flex flex-col gap-6">
+      {cards.map((card, i) => {
+        const baseLabel = CARD_TYPE_LABELS[card.type] || card.type;
+        typeCount[card.type] = (typeCount[card.type] || 0) + 1;
+        const count = typeCount[card.type];
+        const label = count > 1 ? `${baseLabel} ${count}` : baseLabel;
+        return (
+          <div key={i}>
+            <p className="text-[11px] font-semibold text-secondary/40 uppercase tracking-[0.12em] mb-2">
+              {card.emoji} {label}
+            </p>
+            <div className="prose prose-base dark:prose-invert max-w-none leading-relaxed">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{card.content}</ReactMarkdown>
             </div>
-          );
-        })}
-      </div>
-
-      {/* Arrow buttons (web) */}
-      {cards.length > 1 && (
-        <>
-          <button
-            onClick={() => scrollTo(activeIdx - 1)}
-            disabled={activeIdx === 0}
-            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 w-8 h-8 rounded-full bg-background border border-border/20 shadow-sm flex items-center justify-center transition-opacity disabled:opacity-0 hover:bg-surface-secondary"
-          >
-            <ChevronLeft size={16} className="text-secondary/60" />
-          </button>
-          <button
-            onClick={() => scrollTo(activeIdx + 1)}
-            disabled={activeIdx === cards.length - 1}
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 w-8 h-8 rounded-full bg-background border border-border/20 shadow-sm flex items-center justify-center transition-opacity disabled:opacity-0 hover:bg-surface-secondary"
-          >
-            <ChevronRight size={16} className="text-secondary/60" />
-          </button>
-        </>
-      )}
-
-      {/* Dot indicators */}
-      {cards.length > 1 && (
-        <div className="flex justify-center gap-1.5 mt-4">
-          {cards.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => scrollTo(i)}
-              className={`rounded-full transition-all duration-200 ${
-                i === activeIdx ? 'w-4 h-1.5 bg-foreground/60' : 'w-1.5 h-1.5 bg-foreground/20 hover:bg-foreground/40'
-              }`}
-            />
-          ))}
-        </div>
-      )}
+            {i < cards.length - 1 && (
+              <div className="mt-6 border-b border-border/10" />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
+}
+
+const FEED_TYPE_PREFIX: Record<string, string> = {
+  for_you: 'fy',
+  deep_dives: 'dd',
+  trending: 'tr',
+};
+
+function buildShareUrl(item: FeedItem): string | null {
+  const feedType = item.feed_type || item.metadata?.feed_type;
+  const prefix = feedType ? FEED_TYPE_PREFIX[feedType] : null;
+  if (!prefix || !item.id) return null;
+  return `https://www.yourtrace.online/articles/${prefix}_${item.id}`;
 }
 
 export default function ArticlePage() {
@@ -191,15 +137,19 @@ export default function ArticlePage() {
   const [savedSections, setSavedSections] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const [openChapter, setOpenChapter] = useState<number | null>(null);
+  const [shareCopied, setShareCopied] = useState(false);
 
   useEffect(() => {
     // always start from the top when this page loads
     window.scrollTo(0, 0);
+    const returnToFromUrl = getSafeReturnTo(
+      new URLSearchParams(window.location.search).get("returnTo")
+    );
     try {
       const raw = sessionStorage.getItem("trace_article");
       if (raw) setItem(JSON.parse(raw));
-      else router.replace("/feed");
-    } catch { router.replace("/feed"); }
+      else router.replace(returnToFromUrl || "/feed");
+    } catch { router.replace(returnToFromUrl || "/feed"); }
   }, [router]);
 
   useEffect(() => {
@@ -222,6 +172,30 @@ export default function ArticlePage() {
     setSavedSections(prev => new Set(prev).add(key));
     setToast("Saved");
     setTimeout(() => setToast(null), 2000);
+  };
+
+  const handleBack = () => {
+    const returnToFromUrl = getSafeReturnTo(
+      new URLSearchParams(window.location.search).get("returnTo")
+    );
+    const storedReturnTo = getSafeReturnTo(sessionStorage.getItem(ARTICLE_RETURN_TO_KEY));
+    const returnTo = storedReturnTo || returnToFromUrl;
+    if (returnTo) {
+      sessionStorage.removeItem(ARTICLE_RETURN_TO_KEY);
+      router.replace(returnTo);
+    } else {
+      router.back();
+    }
+  };
+
+  const handleShare = async () => {
+    if (!item) return;
+    const shareUrl = buildShareUrl(item) || item.url;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch { /* nothing */ }
   };
 
   if (!item) {
@@ -370,17 +344,24 @@ export default function ArticlePage() {
 
         <div className="container mx-auto px-4 max-w-3xl pt-6">
           {/* Hero image */}
-          <div className="relative aspect-[2.2/1] sm:aspect-[2.4/1] rounded-2xl overflow-hidden bg-surface-secondary">
+          <div className="relative aspect-[1.6/1] sm:aspect-[1.8/1] rounded-2xl overflow-hidden bg-surface-secondary">
             <img src={imageUrl} alt="" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
 
-            {/* Floating back */}
-            <div className="absolute top-4 left-4">
+            {/* Floating back + share */}
+            <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
               <button
-                onClick={() => router.back()}
+                onClick={handleBack}
                 className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:bg-black/60 transition-colors"
               >
                 <ArrowLeft size={18} className="text-white" />
+              </button>
+              <button
+                onClick={handleShare}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 transition-colors text-white text-xs font-medium"
+              >
+                {shareCopied ? <Check size={14} className="text-green-400" /> : <Share2 size={14} />}
+                {shareCopied ? 'Copied!' : 'Share'}
               </button>
             </div>
 
@@ -506,40 +487,43 @@ export default function ArticlePage() {
       <Header />
       <Toast message={toast || ""} visible={!!toast} />
 
-      {/* Hero — no top padding, no bottom radius so cards can attach flush */}
+      {/* Hero image */}
       <div className="container mx-auto px-4 max-w-3xl pt-4">
-        <div className="relative aspect-[2.2/1] sm:aspect-[2.4/1] rounded-t-2xl overflow-hidden bg-surface-secondary">
+        <div className="relative aspect-[1.6/1] sm:aspect-[1.8/1] rounded-2xl overflow-hidden bg-surface-secondary">
           <img src={imageUrl} alt="" className="w-full h-full object-cover" />
-          {/* darken top for back button, fade bottom to page bg for seamless card attachment */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-black/20 to-black/30" />
+          <div className="absolute inset-0 bg-black/20" />
 
-          <div className="absolute top-4 left-4">
+          <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
             <button
-              onClick={() => router.back()}
+              onClick={handleBack}
               className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:bg-black/60 transition-colors"
             >
               <ArrowLeft size={18} className="text-white" />
             </button>
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 transition-colors text-white text-xs font-medium"
+            >
+              {shareCopied ? <Check size={14} className="text-green-400" /> : <Share2 size={14} />}
+              {shareCopied ? 'Copied!' : 'Share'}
+            </button>
           </div>
+        </div>
 
-          <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6">
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-snug mb-1.5">{item.title}</h1>
-            <div className="flex items-center gap-3 text-xs text-secondary/50">
-              {item.source_name && <span>{item.source_name}</span>}
-              <span>· {readingTime} min read</span>
-            </div>
+        {/* Title + meta below image */}
+        <div className="pt-4 pb-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-snug mb-2">{item.title}</h1>
+          <div className="flex items-center gap-2 text-xs text-secondary/50">
+            {item.source_name && <span>{item.source_name}</span>}
+            {item.source_name && <span>·</span>}
+            <span>{readingTime} min read</span>
           </div>
         </div>
       </div>
 
-      {/* Cards start immediately below hero, no gap */}
-      <main className="container mx-auto px-4 max-w-3xl pt-3 pb-8">
+      <main className="container mx-auto px-4 max-w-3xl pt-5 pb-8">
         {hasLearningCards ? (
-          <SwipeableCards
-            cards={learningCards!}
-            savedSections={savedSections}
-            onSave={(i, content, label) => handleSave(`card_${i}`, content, label)}
-          />
+          <ArticleSections cards={learningCards!} />
         ) : (
           <>
             {!isTrending && keyTakeaways && keyTakeaways.length > 0 && (
@@ -585,23 +569,31 @@ export default function ArticlePage() {
 
         <div className="border-t border-border/10 pt-5 mt-2 flex items-center justify-between">
           <button
-            onClick={() => router.back()}
+            onClick={handleBack}
             className="text-sm text-secondary/50 hover:text-foreground transition-colors flex items-center gap-1.5"
           >
             <ArrowLeft size={14} />
             Back to feed
           </button>
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold bg-foreground text-background hover:bg-foreground/90 transition-colors"
-          >
-            Read Original <ExternalLink size={14} />
-          </a>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleShare}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium border border-border hover:bg-surface-secondary transition-colors"
+            >
+              {shareCopied ? <Check size={14} className="text-green-500" /> : <Share2 size={14} />}
+              {shareCopied ? 'Copied!' : 'Share'}
+            </button>
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold bg-foreground text-background hover:bg-foreground/90 transition-colors"
+            >
+              Read Original <ExternalLink size={14} />
+            </a>
+          </div>
         </div>
       </main>
     </div>
   );
 }
-

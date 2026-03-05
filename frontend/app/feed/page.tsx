@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense, useRef, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback, Suspense, useMemo, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
   Loader2, Lock, ArrowRight, ChevronRight, ArrowLeft,
-  Flame, Compass, GraduationCap,
+  Flame, Compass, GraduationCap, Share2, Check,
 } from 'lucide-react';
 import Link from 'next/link';
 import useSWR from 'swr';
@@ -27,6 +27,8 @@ const TAB_CONFIG: { key: FeedTab; label: string; icon: React.ElementType }[] = [
 ];
 
 const FREE_LIMITS = { for_you: 2, deep_dives: 1 };
+const FEED_TOPIC_CACHE_KEY = 'trace_feed_selected_topic';
+const ARTICLE_RETURN_TO_KEY = 'trace_article_returnTo';
 
 const INTEREST_LABELS: Record<string, string> = {
   technology: 'Tech & Gadgets',
@@ -46,6 +48,11 @@ const INTEREST_LABELS: Record<string, string> = {
 };
 
 const feedFetcher = (uid: string) => getV3UserFeed(uid);
+
+function parseFeedTab(value: string | null): FeedTab | null {
+  if (value === 'trending' || value === 'for_you') return value;
+  return null;
+}
 
 const trendingFetcher = async () => {
   const res = await fetch('/api/public/trending');
@@ -136,7 +143,7 @@ function TopicFeaturedCard({
 
   return (
     <button onClick={onPress} className="w-full text-left group mb-6">
-      <div className="relative aspect-[2/1] sm:aspect-[2.4/1] rounded-2xl overflow-hidden bg-surface-secondary">
+      <div className="relative aspect-[1.3/1] sm:aspect-[1.6/1] rounded-2xl overflow-hidden bg-surface-secondary">
         <img src={fallbackUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
         {!showFallback && (
           <img
@@ -217,11 +224,22 @@ function TopicDetailView({
 }: {
   topic: TrendingTopic;
   onBack: () => void;
-  onOpenArticle: (item: FeedItem) => void;
+  onOpenArticle: (item: FeedItem, options?: { returnTo?: string }) => void;
 }) {
   const imageUrl = getArticleImage(topic.thumbnail, topic.title);
   const fallbackUrl = getArticleImage(null, topic.title);
   const [showFallback, setShowFallback] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+
+  const handleShare = async () => {
+    const slug = topic.topic_key || topic.id;
+    const shareUrl = `https://www.yourtrace.online/topics/${slug}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch { /* nothing */ }
+  };
 
   const sortedTimeline = useMemo(() => {
     if (!topic.timeline) return [];
@@ -240,18 +258,27 @@ function TopicDetailView({
   return (
     <div>
       {/* Hero */}
-      <div className="relative aspect-[2.2/1] sm:aspect-[2.8/1] rounded-2xl overflow-hidden bg-surface-secondary mb-6">
+      <div className="relative aspect-[1.2/1] sm:aspect-[1.4/1] rounded-2xl overflow-hidden bg-surface-secondary mb-6">
         <img src={fallbackUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
         {!showFallback && (
           <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" onError={() => setShowFallback(true)} />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-        <button
-          onClick={onBack}
-          className="absolute top-4 left-4 w-9 h-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center hover:bg-black/70 transition-colors"
-        >
-          <ArrowLeft size={18} className="text-white" />
-        </button>
+        <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
+          <button
+            onClick={onBack}
+            className="w-9 h-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center hover:bg-black/70 transition-colors"
+          >
+            <ArrowLeft size={18} className="text-white" />
+          </button>
+          <button
+            onClick={handleShare}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur hover:bg-black/70 transition-colors text-white text-xs font-medium"
+          >
+            {shareCopied ? <Check size={14} className="text-green-400" /> : <Share2 size={14} />}
+            {shareCopied ? 'Copied!' : 'Share'}
+          </button>
+        </div>
         <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-7">
           <h1 className="text-xl sm:text-2xl font-bold text-white leading-snug mb-1">
             {topic.title}
@@ -304,7 +331,11 @@ function TopicDetailView({
                   }`} />
                   {isClickable ? (
                     <button
-                      onClick={() => onOpenArticle(article!)}
+                      onClick={() => {
+                        const slug = topic.topic_key || topic.id;
+                        sessionStorage.setItem(FEED_TOPIC_CACHE_KEY, JSON.stringify(topic));
+                        onOpenArticle(article!, { returnTo: `/feed?topic=${encodeURIComponent(slug)}` });
+                      }}
                       className="w-full text-left group hover:bg-surface-secondary rounded-xl p-3 -m-3 transition-colors"
                     >
                       <div className="flex items-center gap-2 mb-1">
@@ -506,7 +537,7 @@ function ForYouFeaturedCard({
       }}
       className="w-full text-left group mb-6"
     >
-      <div className="relative aspect-[2/1] sm:aspect-[2.4/1] rounded-2xl overflow-hidden bg-surface-secondary">
+      <div className="relative aspect-[1.3/1] sm:aspect-[1.6/1] rounded-2xl overflow-hidden bg-surface-secondary">
         <img src={fallbackUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
         {!showFallback && (
           <img
@@ -605,22 +636,52 @@ function buildForYouSections(
 
 function FeedPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, profile, loading } = useAuth();
+  const tabParam = parseFeedTab(searchParams.get('tab'));
+  const topicParam = searchParams.get('topic');
 
   const [activeTab, setActiveTab] = useState<FeedTab>(() => {
     if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const topic = params.get('topic');
+      if (topic) return 'trending';
+      const tabFromUrl = parseFeedTab(params.get('tab'));
+      if (tabFromUrl) return tabFromUrl;
       const saved = sessionStorage.getItem('trace_feed_tab');
       if (saved === 'for_you' || saved === 'trending') return saved;
     }
     return 'trending';
   });
 
-  const [selectedTopic, setSelectedTopic] = useState<TrendingTopic | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<TrendingTopic | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const topic = new URLSearchParams(window.location.search).get('topic');
+    if (!topic) return null;
+    const raw = sessionStorage.getItem(FEED_TOPIC_CACHE_KEY);
+    if (!raw) return null;
+    try {
+      const cached = JSON.parse(raw) as TrendingTopic;
+      return (cached.topic_key === topic || cached.id === topic) ? cached : null;
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
     sessionStorage.setItem('trace_feed_tab', activeTab);
-    setSelectedTopic(null);
   }, [activeTab]);
+
+  useEffect(() => {
+    const nextTab: FeedTab = topicParam ? 'trending' : (tabParam || 'trending');
+    if (activeTab !== nextTab) {
+      setActiveTab(nextTab);
+    }
+    if (!topicParam && selectedTopic) {
+      setSelectedTopic(null);
+      sessionStorage.removeItem(FEED_TOPIC_CACHE_KEY);
+    }
+  }, [activeTab, tabParam, topicParam, selectedTopic]);
 
   const { data: v3Feed, isLoading: feedLoading, mutate: mutateFeed } = useSWR<V3UserFeed | null>(
     user?.uid ? `feed-${user.uid}` : null,
@@ -638,23 +699,64 @@ function FeedPageContent() {
     sessionStorage.setItem(`trace_article_${item.id}`, JSON.stringify(item));
   }, []);
 
-  const openArticle = useCallback((item: FeedItem) => {
-    sessionStorage.setItem('trace_feed_scroll', String(window.scrollY));
+  const openArticle = useCallback((item: FeedItem, options?: { returnTo?: string }) => {
     sessionStorage.setItem("trace_article", JSON.stringify(item));
-    router.push("/feed/article");
+    const params = new URLSearchParams();
+    if (activeTab === 'for_you') params.set('tab', 'for_you');
+    if (activeTab === 'trending' && topicParam) params.set('topic', topicParam);
+    const defaultReturnTo = params.toString() ? `/feed?${params.toString()}` : '/feed';
+    const returnTo = options?.returnTo || defaultReturnTo;
+    sessionStorage.setItem(ARTICLE_RETURN_TO_KEY, returnTo);
+
+    const articleParams = new URLSearchParams();
+    articleParams.set('returnTo', returnTo);
+    router.push(`/feed/article?${articleParams.toString()}`);
+  }, [activeTab, topicParam, router]);
+
+  const navigateFeedState = useCallback((
+    nextTab: FeedTab,
+    options?: { topic?: string | null; replace?: boolean; scroll?: boolean }
+  ) => {
+    const params = new URLSearchParams();
+    if (nextTab === 'for_you') params.set('tab', 'for_you');
+    if (nextTab === 'trending' && options?.topic) params.set('topic', options.topic);
+    const query = params.toString();
+    const href = query ? `/feed?${query}` : '/feed';
+    const shouldScroll = options?.scroll ?? false;
+    if (options?.replace) router.replace(href, { scroll: shouldScroll });
+    else router.push(href, { scroll: shouldScroll });
   }, [router]);
 
-  useEffect(() => {
-    if (v3Feed && !feedLoading) {
-      const savedScroll = sessionStorage.getItem('trace_feed_scroll');
-      if (savedScroll) {
-        requestAnimationFrame(() => {
-          window.scrollTo(0, parseInt(savedScroll, 10));
-          sessionStorage.removeItem('trace_feed_scroll');
-        });
-      }
+  const openTopic = useCallback((topic: TrendingTopic) => {
+    const slug = topic.topic_key || topic.id;
+    sessionStorage.setItem(FEED_TOPIC_CACHE_KEY, JSON.stringify(topic));
+    navigateFeedState('trending', { topic: slug, scroll: true });
+  }, [navigateFeedState]);
+
+  const closeTopic = useCallback(() => {
+    setSelectedTopic(null);
+    sessionStorage.removeItem(FEED_TOPIC_CACHE_KEY);
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
     }
-  }, [v3Feed, feedLoading]);
+    navigateFeedState('trending', { replace: true });
+  }, [navigateFeedState, router]);
+
+  const handleTabChange = useCallback((tab: FeedTab) => {
+    if (tab === 'for_you') {
+      if (activeTab === 'for_you' && !topicParam) return;
+      setSelectedTopic(null);
+      sessionStorage.removeItem(FEED_TOPIC_CACHE_KEY);
+      setActiveTab('for_you');
+      navigateFeedState('for_you');
+      return;
+    }
+
+    if (activeTab === 'trending' && !topicParam) return;
+    setActiveTab('trending');
+    navigateFeedState('trending');
+  }, [activeTab, navigateFeedState, topicParam]);
 
   const isSubscribed = profile?.subscriptionStatus === 'active' || profile?.subscriptionStatus === 'trial'
     || profile?.appSubscriptionStatus === 'active' || profile?.appSubscriptionStatus === 'trial';
@@ -691,6 +793,29 @@ function FeedPageContent() {
       return (b.popularity_score || 0) - (a.popularity_score || 0);
     });
   }, [v3Feed?.trending_topics]);
+
+  useEffect(() => {
+    if (!topicParam) return;
+    const decoded = decodeURIComponent(topicParam);
+    const match = trendingTopics.find((t) => t.topic_key === decoded || t.id === decoded);
+    if (match) {
+      setSelectedTopic(match);
+      sessionStorage.setItem(FEED_TOPIC_CACHE_KEY, JSON.stringify(match));
+      if (activeTab !== 'trending') setActiveTab('trending');
+      return;
+    }
+    const raw = sessionStorage.getItem(FEED_TOPIC_CACHE_KEY);
+    if (!raw) return;
+    try {
+      const cached = JSON.parse(raw) as TrendingTopic;
+      if (cached.topic_key === decoded || cached.id === decoded) {
+        setSelectedTopic(cached);
+        if (activeTab !== 'trending') setActiveTab('trending');
+      }
+    } catch {
+      // no-op: malformed cache
+    }
+  }, [topicParam, trendingTopics, activeTab]);
 
   const featuredTopic = trendingTopics[0] || null;
   const restTopics = trendingTopics.slice(1).filter(t => {
@@ -751,7 +876,7 @@ function FeedPageContent() {
               return (
                 <button
                   key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
+                  onClick={() => handleTabChange(tab.key)}
                   className={`px-4 py-2 text-sm font-medium rounded-full transition-all ${
                     active
                       ? 'bg-surface text-foreground shadow-sm'
@@ -784,7 +909,7 @@ function FeedPageContent() {
           /* Topic Detail View */
           <TopicDetailView
             topic={selectedTopic}
-            onBack={() => setSelectedTopic(null)}
+            onBack={closeTopic}
             onOpenArticle={openArticle}
           />
         ) : hasContent ? (
@@ -795,7 +920,7 @@ function FeedPageContent() {
                 {featuredTopic && (
                   <TopicFeaturedCard
                     topic={featuredTopic}
-                    onPress={() => setSelectedTopic(featuredTopic)}
+                    onPress={() => openTopic(featuredTopic)}
                   />
                 )}
                 {restTopics.length > 0 && (
@@ -808,7 +933,7 @@ function FeedPageContent() {
                         <TopicListRow
                           key={topic.id}
                           topic={topic}
-                          onPress={() => setSelectedTopic(topic)}
+                          onPress={() => openTopic(topic)}
                         />
                       ))}
                     </div>

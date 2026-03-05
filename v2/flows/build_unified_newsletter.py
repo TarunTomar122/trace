@@ -21,6 +21,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
+from google.cloud import firestore
 from openai import OpenAI
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -32,6 +33,8 @@ from v1.storage import FirestoreStore  # noqa: E402
 from v3.lib.store import V3Store  # noqa: E402
 
 MAX_ITEMS_DEFAULT = 6
+TOP_TOPICS_DEFAULT = 5
+TOPIC_KEY_POINTS = 4
 TOPIC_PRIORITY = [
     "technology",
     "business-market",
@@ -162,6 +165,72 @@ def _collect_v3_feed_trending(store: FirestoreStore, date: str) -> list[dict[str
     return rows
 
 
+def _collect_v3_trending_topics(
+    store: FirestoreStore,
+    date: str,
+) -> list[dict[str, Any]]:
+    """Load the same topic payload used by the frontend topic page."""
+    global_daily = (
+        store.db.collection("v3_user_feeds")
+        .document("_global")
+        .collection("daily")
+    )
+    doc = global_daily.document(date).get()
+    data: dict[str, Any] = {}
+    if doc.exists:
+        data = doc.to_dict() or {}
+    else:
+        latest = global_daily.order_by("__name__", direction=firestore.Query.DESCENDING).limit(1).stream()
+        for row in latest:
+            data = row.to_dict() or {}
+            break
+
+    raw_topics = data.get("trending_topics", [])
+    if not isinstance(raw_topics, list):
+        return []
+
+    topics: list[dict[str, Any]] = []
+    for topic in raw_topics:
+        if not isinstance(topic, dict):
+            continue
+        title = str(topic.get("title", "")).strip()
+        overview = str(topic.get("summary", "")).strip()
+        if not title or not overview:
+            continue
+
+        points_raw = topic.get("key_points", [])
+        key_points: list[str] = []
+        if isinstance(points_raw, list):
+            key_points = [
+                str(p).strip()
+                for p in points_raw
+                if str(p).strip()
+            ][:6]
+
+        topics.append(
+            {
+                "topic_id": str(topic.get("id", "")).strip() or str(topic.get("topic_key", "")).strip() or title.lower().replace(" ", "-"),
+                "topic_name": title,
+                "overview": overview,
+                "key_points": key_points,
+                "article_count": int(topic.get("article_count", 0) or 0),
+                "source_count": int(topic.get("source_count", 0) or 0),
+                "popularity_score": float(topic.get("popularity_score", 0.0) or 0.0),
+                "latest_published_date": str(topic.get("last_updated_at", "")).strip(),
+                "image_url": str(topic.get("thumbnail", "")).strip(),
+            }
+        )
+
+    topics.sort(
+        key=lambda t: (
+            float(t.get("popularity_score", 0.0)),
+            int(t.get("article_count", 0)),
+        ),
+        reverse=True,
+    )
+    return topics
+
+
 def _select_diverse(
     articles: list[dict[str, Any]],
     max_items: int,
@@ -196,6 +265,97 @@ def _build_item_summary(item: dict[str, Any]) -> str:
     if details:
         return details
     return subtitle
+
+
+def _display_topic_name(topic_id: str, topic_name: str) -> str:
+    if topic_name:
+        return topic_name.strip()
+    if not topic_id:
+        return "General"
+    return " ".join(part.capitalize() for part in topic_id.replace("_", "-").split("-") if part)
+
+
+def _source_name(item: dict[str, Any]) -> str:
+    explicit = str(item.get("source_name", "")).strip()
+    if explicit:
+        return explicit
+    host = (urlparse(str(item.get("url", "")).strip()).hostname or "").lower().replace("www.", "")
+    return host or "Source"
+
+
+def _build_topic_overview(topic_label: str, rows: list[dict[str, Any]]) -> str:
+    if not rows:
+        return f"{topic_label} is trending today."
+    latest = rows[0]
+    base = str(latest.get("details", "")).strip() or str(latest.get("subtitle", "")).strip()
+    if base:
+        return base
+    count = len(rows)
+    if count == 1:
+        return f"{topic_label} is seeing fresh attention with one key update."
+    return f"{topic_label} is seeing sustained momentum with {count} notable updates."
+
+
+def _build_top_topics(
+    articles: list[dict[str, Any]],
+    *,
+    limit: int = TOP_TOPICS_DEFAULT,
+) -> list[dict[str, Any]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for article in articles:
+        topic_id = str(article.get("topic_id", "")).strip() or "general"
+        grouped.setdefault(topic_id, []).append(article)
+
+    for topic_id in grouped:
+        grouped[topic_id].sort(
+            key=lambda x: _parse_iso(str(x.get("published_date", "")).strip()),
+            reverse=True,
+        )
+
+    ranked = sorted(
+        grouped.items(),
+        key=lambda item: (
+            len(item[1]),
+            _parse_iso(str(item[1][0].get("published_date", "")).strip()) if item[1] else datetime.min.replace(tzinfo=timezone.utc),
+        ),
+        reverse=True,
+    )
+
+    top_topics: list[dict[str, Any]] = []
+    for topic_id, rows in ranked[:limit]:
+        if not rows:
+            continue
+        top = rows[0]
+        topic_label = _display_topic_name(topic_id, str(top.get("topic_name", "")).strip())
+        key_points: list[str] = []
+        for row in rows[:TOPIC_KEY_POINTS]:
+            title = str(row.get("title", "")).strip()
+            if not title:
+                continue
+            source = _source_name(row)
+            key_points.append(f"{title} ({source})")
+
+        image_url = str(top.get("thumbnail", "")).strip()
+        if not image_url:
+            for row in rows[1:]:
+                candidate = str(row.get("thumbnail", "")).strip()
+                if candidate:
+                    image_url = candidate
+                    break
+
+        topic_row: dict[str, Any] = {
+            "topic_id": topic_id,
+            "topic_name": topic_label,
+            "overview": _build_topic_overview(topic_label, rows),
+            "article_count": len(rows),
+            "latest_published_date": str(top.get("published_date", "")).strip(),
+            "key_points": key_points,
+        }
+        if image_url:
+            topic_row["image_url"] = image_url
+        top_topics.append(topic_row)
+
+    return top_topics
 
 
 def _generate_editorial(
@@ -302,6 +462,7 @@ def _rewrite_item_blurbs(
 def build_unified_newsletter(
     date: str | None = None,
     max_items: int = MAX_ITEMS_DEFAULT,
+    top_topics_count: int = TOP_TOPICS_DEFAULT,
     force: bool = False,
 ) -> dict[str, Any]:
     store = FirestoreStore()
@@ -318,31 +479,35 @@ def build_unified_newsletter(
         }
 
     source = "trending_news"
+    source_parts: list[str] = []
     articles = _collect_trending_articles(store, target_date)
+    if articles:
+        source_parts.append("trending_news")
     if not articles:
         articles = _collect_v3_feed_trending(store, target_date)
         source = "v3_user_feed"
-    if not articles:
+        if articles:
+            source_parts.append("v3_user_feed")
+    selected = _select_diverse(articles, max_items=max_items) if articles else []
+
+    top_topics = _collect_v3_trending_topics(store, target_date)[: max(1, top_topics_count)]
+    if top_topics:
+        source_parts.append("v3_global_trending_topics")
+    else:
+        top_topics = _build_top_topics(articles, limit=max(1, top_topics_count)) if articles else []
+    if not top_topics:
         return {
             "success": False,
-            "error": "no trending articles found",
+            "error": "no top topics found",
             "date": target_date,
         }
 
-    selected = _select_diverse(articles, max_items=max_items)
-    if not selected:
-        return {
-            "success": False,
-            "error": "no selectable trending articles",
-            "date": target_date,
-        }
-
-    subject = f"Trace Daily: AI, Product & Design picks for {target_date}"
+    subject = f"Trace Trends: Top {len(top_topics)} topics for {target_date}"
     intro_html = (
         '<p style="margin: 0; font-size: 15px; color: #52525b; '
         "line-height: 1.7; font-family: -apple-system, BlinkMacSystemFont, "
         f"'Segoe UI', sans-serif;\">"
-        "Here are today's top trending picks across AI, product development, and design."
+        f"Here are today's top {len(top_topics)} trending topics with concise overviews and key points."
         "</p>"
     )
     rewritten_blurbs: dict[str, str] = {}
@@ -373,19 +538,23 @@ def build_unified_newsletter(
         "date": target_date,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "status": "draft",
+        "format_version": "top_topics_v1",
         "item_count": len(newsletter_items),
+        "top_topic_count": len(top_topics),
         "items": newsletter_items,
+        "top_topics": top_topics,
         "email_subject": subject,
         "intro_html": intro_html,
-        "source": f"v2_unified_trending:{source}",
+        "source": f"v2_unified_trending:{','.join(source_parts) if source_parts else source}",
     }
     doc_ref.set(payload, merge=True)
     return {
         "success": True,
         "date": target_date,
         "item_count": len(newsletter_items),
+        "top_topic_count": len(top_topics),
         "subject": subject,
-        "topics": sorted({i.get("topic_id", "") for i in newsletter_items}),
+        "topics": [t.get("topic_id", "") for t in top_topics],
     }
 
 
@@ -401,6 +570,12 @@ def _parse_args() -> argparse.Namespace:
         help="Target number of items.",
     )
     parser.add_argument(
+        "--top-topics",
+        type=int,
+        default=TOP_TOPICS_DEFAULT,
+        help="Number of top topics to include.",
+    )
+    parser.add_argument(
         "--force",
         action="store_true",
         help="Rebuild even if draft exists.",
@@ -413,6 +588,7 @@ def main() -> None:
     result = build_unified_newsletter(
         date=args.date,
         max_items=args.max_items,
+        top_topics_count=args.top_topics,
         force=args.force,
     )
     print(json.dumps(result, indent=2))
