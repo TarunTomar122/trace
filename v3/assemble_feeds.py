@@ -59,6 +59,37 @@ def _yesterday(date_str: str) -> str:
     return (dt - timedelta(days=1)).strftime("%Y-%m-%d")
 
 
+def _recent_dates(start_date: str, days: int) -> list[str]:
+    dt = datetime.strptime(start_date, "%Y-%m-%d")
+    return [
+        (dt - timedelta(days=offset)).strftime("%Y-%m-%d")
+        for offset in range(max(1, days))
+    ]
+
+
+def _load_recent_global_trending(
+    store: V3Store, target_date: str, lookback_days: int = 5
+) -> tuple[list, list, str]:
+    """
+    Load global trending with fallback to recent non-empty days.
+    Returns (trending_items, trending_topics, source_date).
+    """
+    for date_key in _recent_dates(target_date, lookback_days):
+        global_feed = store.load_global_feed(date_key)
+        trending = global_feed.get("trending", [])
+        trending_topics = global_feed.get("trending_topics", [])
+        if trending or trending_topics:
+            return trending, trending_topics, date_key
+
+    # Fall back to exact target date if no recent non-empty snapshot exists.
+    global_feed = store.load_global_feed(target_date)
+    return (
+        global_feed.get("trending", []),
+        global_feed.get("trending_topics", []),
+        target_date,
+    )
+
+
 def _load_users(store: V3Store, args: argparse.Namespace) -> list[dict]:
     if args.users_file:
         try:
@@ -86,12 +117,16 @@ def assemble(args: argparse.Namespace) -> dict[str, int]:
     _log(f"Assembling feeds for {len(users)} users, date={target_date}")
     stats = {"users": 0, "total_items": 0, "seen_promoted": 0}
 
-    # Load global trending feed (shared across all users)
-    global_feed = store.load_global_feed(target_date)
-    global_trending = global_feed.get("trending", [])
-    global_trending_topics = global_feed.get("trending_topics", [])
-    _log(f"Global trending: {len(global_trending)} items")
-    _log(f"Global trending topics: {len(global_trending_topics)} groups")
+    # Load global trending feed (shared across all users).
+    # If today's global doc is partial, fall back to recent non-empty snapshot.
+    global_trending, global_trending_topics, global_source_date = _load_recent_global_trending(
+        store, target_date
+    )
+    _log(f"Global trending: {len(global_trending)} items (source_date={global_source_date})")
+    _log(
+        f"Global trending topics: {len(global_trending_topics)} groups "
+        f"(source_date={global_source_date})"
+    )
 
     for profile in users:
         uid = profile.get("uid", "")

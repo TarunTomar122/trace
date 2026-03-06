@@ -661,6 +661,8 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
     let deepDives: FeedItem[] = [];
     let trending: FeedItem[] = [];
     let trendingTopics: TrendingTopic[] = [];
+    let userTrending: FeedItem[] = [];
+    let userTrendingTopics: TrendingTopic[] = [];
     let feedDate = '';
     let assembledAt: string | undefined;
     let metadata: V3UserFeed['metadata'];
@@ -674,22 +676,36 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
       metadata = data.metadata;
       forYou = Array.isArray(data.for_you) ? data.for_you : [];
       deepDives = Array.isArray(data.deep_dives) ? data.deep_dives : [];
+      userTrending = Array.isArray(data.trending) ? data.trending : [];
+      userTrendingTopics = Array.isArray(data.trending_topics) ? data.trending_topics : [];
     }
 
-    // Get trending from global feed (shared by all users)
+    // Get trending from global feed (shared by all users).
+    // Prefer the newest global doc that has trending content.
     if (!globalSnapshot.empty) {
       const sortedGlobal = globalSnapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
-      const globalData = sortedGlobal[0].data();
-      trending = Array.isArray(globalData.trending) ? globalData.trending : [];
-      trendingTopics = Array.isArray(globalData.trending_topics) ? globalData.trending_topics : [];
+      for (const globalDoc of sortedGlobal) {
+        const globalData = globalDoc.data();
+        const candidateTrending = Array.isArray(globalData.trending) ? globalData.trending : [];
+        const candidateTopics = Array.isArray(globalData.trending_topics) ? globalData.trending_topics : [];
+        if (candidateTrending.length > 0 || candidateTopics.length > 0) {
+          trending = candidateTrending;
+          trendingTopics = candidateTopics;
+          break;
+        }
+      }
+
+      // If all global docs inspected are empty, keep latest as baseline.
+      if (trending.length === 0 && trendingTopics.length === 0) {
+        const latestGlobalData = sortedGlobal[0].data();
+        trending = Array.isArray(latestGlobalData.trending) ? latestGlobalData.trending : [];
+        trendingTopics = Array.isArray(latestGlobalData.trending_topics) ? latestGlobalData.trending_topics : [];
+      }
     }
 
-    // Fallback: if no global trending, try user's own trending (legacy)
-    if (trending.length === 0 && !snapshot.empty) {
-      const sortedDocs = snapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
-      const data = sortedDocs[0].data();
-      trending = Array.isArray(data.trending) ? data.trending : [];
-    }
+    // Fallback: if global data is missing/lagging, use user doc sections assembled for that date.
+    if (trending.length === 0) trending = userTrending;
+    if (trendingTopics.length === 0) trendingTopics = userTrendingTopics;
 
     if (forYou.length === 0 && deepDives.length === 0 && trending.length === 0 && trendingTopics.length === 0) {
       return null;

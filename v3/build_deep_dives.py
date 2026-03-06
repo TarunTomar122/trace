@@ -685,6 +685,8 @@ def _build_global_deep_dive(
     config: dict[str, Any],
     target_date: str,
     max_age: int,
+    *,
+    write_global: bool = True,
 ) -> list[dict[str, Any]]:
     """Build a single global deep dive to share with all free users."""
     _log("Building GLOBAL deep dive for free users...")
@@ -723,9 +725,13 @@ def _build_global_deep_dive(
     feed_item = _build_feed_item(synthesis, 0)
     feed_item["metadata"]["is_global"] = True  # Mark as global/shared
 
-    # Store global deep dive
-    store.write_feed_section("_global", target_date, "deep_dives", [feed_item])
-    _log(f"  Global deep dive created: {feed_item.get('title', '')[:50]}")
+    # Store global deep dive only for full/global runs.
+    # User-scoped onboarding builds should not mutate shared global docs.
+    if write_global:
+        store.write_feed_section("_global", target_date, "deep_dives", [feed_item])
+        _log(f"  Global deep dive created: {feed_item.get('title', '')[:50]}")
+    else:
+        _log(f"  Global deep dive prepared (skip global write): {feed_item.get('title', '')[:50]}")
 
     return [feed_item]
 
@@ -780,7 +786,13 @@ def build_user_feeds(
 
     # Build global deep dive once per run.
     # Used for free users and as a fallback for subscribed users with sparse matches.
-    global_deep_dives = _build_global_deep_dive(store, config, target_date, max_age)
+    global_deep_dives = _build_global_deep_dive(
+        store,
+        config,
+        target_date,
+        max_age,
+        write_global=not bool(args.user_id),
+    )
 
     # Load subscribed candidates once and filter in memory per user.
     subscribed_candidates: list[dict[str, Any]] = []

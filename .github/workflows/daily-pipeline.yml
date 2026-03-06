@@ -6,14 +6,8 @@ on:
     # Morning pipeline at 8:00 AM IST (2:30 AM UTC) - full build
     - cron: '30 2 * * *'
 
-    # Trending refreshes every 2 hours (10 AM - 10 PM IST)
-    - cron: '30 4 * * *'   # 10:00 AM IST
-    - cron: '30 6 * * *'   # 12:00 PM IST
-    - cron: '30 8 * * *'   # 2:00 PM IST
-    - cron: '30 10 * * *'  # 4:00 PM IST
-    - cron: '30 12 * * *'  # 6:00 PM IST
-    - cron: '30 14 * * *'  # 8:00 PM IST
-    - cron: '30 16 * * *'  # 10:00 PM IST
+    # Trending refreshes every 3 hours, 24x7 (offset from other jobs)
+    - cron: '20 */3 * * *'
 
     # Push notifications (morning & evening)
     - cron: '30 3 * * *'   # 9:00 AM IST - morning notification
@@ -80,8 +74,8 @@ jobs:
           fi
 
   trending-refresh:
-    # Run for all non-morning schedules (every 2 hours from 10 AM - 10 PM IST)
-    if: github.event.schedule != '30 2 * * *' && github.event_name == 'schedule'
+    # Run only on the 24x7 trending refresh cadence
+    if: github.event.schedule == '20 */3 * * *' && github.event_name == 'schedule'
     runs-on: ubuntu-latest
 
     steps:

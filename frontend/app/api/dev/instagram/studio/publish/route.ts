@@ -15,6 +15,20 @@ type PublishBody = {
   pageId?: string;
 };
 
+type PublishConfigStatus = {
+  hasAccessToken: boolean;
+  hasIgUserId: boolean;
+  hasPageId: boolean;
+};
+
+function normalizeSecret(value?: string | null): string {
+  if (!value) return '';
+  return value
+    .replace(/^["']|["']$/g, '')
+    .replace(/\s+/g, '')
+    .trim();
+}
+
 function baseUrlFromRequest(request: NextRequest): string {
   const forcedBaseUrl = (process.env.INSTAGRAM_RENDER_BASE_URL || '').trim();
   if (forcedBaseUrl) return forcedBaseUrl.replace(/\/+$/, '');
@@ -137,23 +151,29 @@ export async function POST(request: NextRequest) {
     }
 
     const body = (await request.json()) as PublishBody;
-    const headline = (body.headline || '').trim();
-    const caption = (body.caption || '').trim();
+    const rawHeadline = (body.headline || '').trim();
+    const rawCaption = (body.caption || '').trim();
     const tag = (body.tag || 'AI NEWS').trim().toUpperCase();
+    const headline = rawHeadline || `${tag}: Top story today`;
+    const caption = rawCaption || `${headline}\n\nRead more such stories at yourtrace.online`;
     const sourceImageUrl = (body.imageUrl || '').trim();
     const format = (body.format || 'square').trim().toLowerCase();
-    const fallbackAccessToken = (process.env.INSTAGRAM_ACCESS_TOKEN_DEV || '').trim();
-    const fallbackIgUserId = (process.env.INSTAGRAM_IG_USER_ID_DEV || '').trim();
-    const fallbackPageId = (process.env.INSTAGRAM_PAGE_ID_DEV || '').trim();
-    const accessToken = (body.accessToken || fallbackAccessToken).trim();
-    const providedIgUserId = (body.igUserId || fallbackIgUserId).trim();
-    const providedPageId = (body.pageId || fallbackPageId).trim();
+    const fallbackAccessToken = normalizeSecret(
+      process.env.INSTAGRAM_ACCESS_TOKEN_DEV ||
+      process.env.INSTAGRAM_ACCESS_TOKEN ||
+      ''
+    );
+    const fallbackIgUserId = normalizeSecret(process.env.INSTAGRAM_IG_USER_ID_DEV || '');
+    const fallbackPageId = normalizeSecret(process.env.INSTAGRAM_PAGE_ID_DEV || '');
+    const accessToken = normalizeSecret(body.accessToken || fallbackAccessToken);
+    const providedIgUserId = normalizeSecret(body.igUserId || fallbackIgUserId);
+    const providedPageId = normalizeSecret(body.pageId || fallbackPageId);
 
-    if (!headline || !caption || !accessToken) {
+    if (!accessToken) {
       return NextResponse.json(
         {
           error:
-            'headline and caption are required, plus access token. Set INSTAGRAM_ACCESS_TOKEN_DEV in env (or pass accessToken explicitly).',
+            'Access token required. Set INSTAGRAM_ACCESS_TOKEN_DEV or INSTAGRAM_ACCESS_TOKEN in env.',
         },
         { status: 400 }
       );
@@ -191,9 +211,38 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('instagram studio publish error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to publish to Instagram';
+    const normalized = message.toLowerCase();
+    if (normalized.includes('cannot parse access token') || normalized.includes('invalid oauth access token')) {
+      return NextResponse.json(
+        {
+          error:
+            'Instagram rejected the token format. Remove quotes/whitespace/newlines in INSTAGRAM_ACCESS_TOKEN(_DEV), then restart the dev server. You may also need a fresh long-lived Page token.',
+        },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to publish to Instagram' },
+      { error: message },
       { status: 500 }
     );
   }
+}
+
+export async function GET() {
+  if (process.env.NODE_ENV !== 'development') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
+  const status: PublishConfigStatus = {
+    hasAccessToken: !!normalizeSecret(
+      process.env.INSTAGRAM_ACCESS_TOKEN_DEV ||
+      process.env.INSTAGRAM_ACCESS_TOKEN ||
+      ''
+    ),
+    hasIgUserId: !!normalizeSecret(process.env.INSTAGRAM_IG_USER_ID_DEV || ''),
+    hasPageId: !!normalizeSecret(process.env.INSTAGRAM_PAGE_ID_DEV || ''),
+  };
+
+  return NextResponse.json(status);
 }

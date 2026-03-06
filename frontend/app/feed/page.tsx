@@ -232,7 +232,7 @@ function TopicDetailView({
   const [shareCopied, setShareCopied] = useState(false);
 
   const handleShare = async () => {
-    const slug = topic.topic_key || topic.id;
+    const slug = topic.id;
     const shareUrl = `https://www.yourtrace.online/topics/${slug}`;
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -332,7 +332,7 @@ function TopicDetailView({
                   {isClickable ? (
                     <button
                       onClick={() => {
-                        const slug = topic.topic_key || topic.id;
+                        const slug = topic.id;
                         sessionStorage.setItem(FEED_TOPIC_CACHE_KEY, JSON.stringify(topic));
                         onOpenArticle(article!, { returnTo: `/feed?topic=${encodeURIComponent(slug)}` });
                       }}
@@ -662,11 +662,18 @@ function FeedPageContent() {
     if (!raw) return null;
     try {
       const cached = JSON.parse(raw) as TrendingTopic;
-      return (cached.topic_key === topic || cached.id === topic) ? cached : null;
+      return (cached.id === topic || cached.topic_key === topic) ? cached : null;
     } catch {
       return null;
     }
   });
+
+  const findTopicFromParam = useCallback((value: string, topics: TrendingTopic[]) => {
+    const byId = topics.find((t) => t.id === value);
+    if (byId) return byId;
+    const byKey = topics.filter((t) => t.topic_key === value);
+    return byKey.length === 1 ? byKey[0] : null;
+  }, []);
 
   useEffect(() => {
     sessionStorage.setItem('trace_feed_tab', activeTab);
@@ -728,7 +735,7 @@ function FeedPageContent() {
   }, [router]);
 
   const openTopic = useCallback((topic: TrendingTopic) => {
-    const slug = topic.topic_key || topic.id;
+    const slug = topic.id;
     sessionStorage.setItem(FEED_TOPIC_CACHE_KEY, JSON.stringify(topic));
     navigateFeedState('trending', { topic: slug, scroll: true });
   }, [navigateFeedState]);
@@ -797,7 +804,7 @@ function FeedPageContent() {
   useEffect(() => {
     if (!topicParam) return;
     const decoded = decodeURIComponent(topicParam);
-    const match = trendingTopics.find((t) => t.topic_key === decoded || t.id === decoded);
+    const match = findTopicFromParam(decoded, trendingTopics);
     if (match) {
       setSelectedTopic(match);
       sessionStorage.setItem(FEED_TOPIC_CACHE_KEY, JSON.stringify(match));
@@ -808,20 +815,19 @@ function FeedPageContent() {
     if (!raw) return;
     try {
       const cached = JSON.parse(raw) as TrendingTopic;
-      if (cached.topic_key === decoded || cached.id === decoded) {
+      if (cached.id === decoded || cached.topic_key === decoded) {
         setSelectedTopic(cached);
         if (activeTab !== 'trending') setActiveTab('trending');
       }
     } catch {
       // no-op: malformed cache
     }
-  }, [topicParam, trendingTopics, activeTab]);
+  }, [topicParam, trendingTopics, activeTab, findTopicFromParam]);
 
   const featuredTopic = trendingTopics[0] || null;
   const restTopics = trendingTopics.slice(1).filter(t => {
     if (!featuredTopic) return true;
     if (t.id === featuredTopic.id) return false;
-    if (t.topic_key === featuredTopic.topic_key) return false;
     // fuzzy title dedup: if >50% of significant words overlap, treat as same topic
     const stopWords = new Set(['the','a','an','and','or','in','on','at','to','of','for','is','are','was','its','with','as']);
     const words = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g,'').split(' ').filter(w => w.length > 2 && !stopWords.has(w));

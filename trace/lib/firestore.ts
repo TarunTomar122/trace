@@ -856,15 +856,18 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
     const latestQuery = query(feedRef, orderBy(documentId(), 'desc'), limit(1));
     const snapshot = await getDocs(latestQuery);
 
-    // Fetch GLOBAL trending feed (shared by all users)
+    // Fetch GLOBAL trending feed (shared by all users).
+    // Read a few days so we can recover from partial latest docs.
     const globalFeedRef = collection(firestore, 'v3_user_feeds', '_global', 'daily');
-    const globalQuery = query(globalFeedRef, orderBy(documentId(), 'desc'), limit(1));
+    const globalQuery = query(globalFeedRef, orderBy(documentId(), 'desc'), limit(5));
     const globalSnapshot = await getDocs(globalQuery);
 
     let forYou: FeedItem[] = [];
     let deepDives: FeedItem[] = [];
     let trending: FeedItem[] = [];
     let trendingTopics: TrendingTopic[] = [];
+    let userTrending: FeedItem[] = [];
+    let userTrendingTopics: TrendingTopic[] = [];
     let feedDate = '';
     let assembledAt: string | undefined;
     let metadata: V3UserFeed['metadata'];
@@ -878,27 +881,51 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
       metadata = data.metadata;
       forYou = Array.isArray(data.for_you) ? data.for_you : [];
       deepDives = Array.isArray(data.deep_dives) ? data.deep_dives : [];
+      userTrending = Array.isArray(data.trending) ? data.trending : [];
+      userTrendingTopics = Array.isArray(data.trending_topics) ? data.trending_topics : [];
       console.log('[Feed] User feed doc:', latestDoc.id, 'for_you:', forYou.length, 'deep_dives:', deepDives.length);
     }
 
-    // Get trending from global feed only.
+    // Get trending from global feed.
+    // Prefer the newest doc that actually has trending content.
     if (!globalSnapshot.empty) {
-      const globalDoc = globalSnapshot.docs[0];
-      const globalData = globalDoc.data();
-      if (!feedDate) {
-        feedDate = globalData.date || globalDoc.id;
+      const globalDocs = globalSnapshot.docs;
+      let selectedGlobalDocId = globalDocs[0].id;
+      for (const globalDoc of globalDocs) {
+        const globalData = globalDoc.data();
+        const candidateTrending = Array.isArray(globalData.trending) ? globalData.trending : [];
+        const candidateTopics = Array.isArray(globalData.trending_topics) ? globalData.trending_topics : [];
+        if (candidateTrending.length > 0 || candidateTopics.length > 0) {
+          trending = candidateTrending;
+          trendingTopics = candidateTopics;
+          selectedGlobalDocId = globalDoc.id;
+          if (!feedDate) {
+            feedDate = globalData.date || globalDoc.id;
+          }
+          break;
+        }
       }
-      trending = Array.isArray(globalData.trending) ? globalData.trending : [];
-      trendingTopics = Array.isArray(globalData.trending_topics) ? globalData.trending_topics : [];
+
+      // If every recent global doc is empty, still use latest as baseline.
+      if (trending.length === 0 && trendingTopics.length === 0) {
+        const latestGlobalData = globalDocs[0].data();
+        trending = Array.isArray(latestGlobalData.trending) ? latestGlobalData.trending : [];
+        trendingTopics = Array.isArray(latestGlobalData.trending_topics) ? latestGlobalData.trending_topics : [];
+      }
+
       console.log(
         '[Feed] Global trending doc:',
-        globalDoc.id,
+        selectedGlobalDocId,
         'items:',
         trending.length,
         'topics:',
         trendingTopics.length
       );
     }
+
+    // Fallback: if global data is missing/lagging, use user doc sections assembled for that date.
+    if (trending.length === 0) trending = userTrending;
+    if (trendingTopics.length === 0) trendingTopics = userTrendingTopics;
 
     if (
       forYou.length === 0 &&
