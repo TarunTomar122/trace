@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isInstagramStudioAuthorized } from '@/lib/instagram-studio-auth';
 
 type Candidate = {
   url: string;
@@ -75,10 +76,9 @@ async function fetchCommonsCandidates(query: string): Promise<Candidate[]> {
 
 export async function GET(request: NextRequest) {
   try {
-    if (process.env.NODE_ENV !== 'development') {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!isInstagramStudioAuthorized(request)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
     const { searchParams } = new URL(request.url);
     const query = (searchParams.get('query') || '').trim();
     if (!query) {
@@ -102,4 +102,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

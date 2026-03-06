@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { isInstagramStudioAuthorized } from '@/lib/instagram-studio-auth';
 
 function normalizeInterest(value: string): string {
   return value.trim().replace(/\s+/g, ' ');
@@ -57,8 +58,8 @@ async function loadRecentDailyDocsFromAllUsers(maxDays: number = 2) {
 
 export async function GET(request: NextRequest) {
   try {
-    if (process.env.NODE_ENV !== 'development') {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!isInstagramStudioAuthorized(request)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     if (!adminDb) {
       return NextResponse.json({ error: 'Server Firebase Admin not configured' }, { status: 500 });

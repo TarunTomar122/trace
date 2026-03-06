@@ -1,9 +1,10 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type Story = {
+  id?: string;
   tag: string;
   headline: string;
   caption: string;
@@ -39,6 +40,7 @@ const FORMAT_OPTIONS: Array<{ value: PostFormat; label: string; ratioClass: stri
   { value: 'portrait', label: 'Portrait (4:5)', ratioClass: 'aspect-[4/5]' },
   { value: 'story', label: 'Story (9:16)', ratioClass: 'aspect-[9/16]' },
 ];
+const STUDIO_KEY_STORAGE_KEY = 'trace_instagram_studio_key';
 
 export default function InstagramStudioPage() {
   const [uid, setUid] = useState('TTK4PNFSO2PxTBrSCvvXBmHsCIE2');
@@ -47,6 +49,8 @@ export default function InstagramStudioPage() {
   const [selectedInterest, setSelectedInterest] = useState('all');
   const [selectedFeedType, setSelectedFeedType] = useState<(typeof FEED_TYPES)[number]['value']>('news');
   const [story, setStory] = useState<Story | null>(null);
+  const [stories, setStories] = useState<Story[]>([]);
+  const [loadingStories, setLoadingStories] = useState(false);
   const [loadingGenerate, setLoadingGenerate] = useState(false);
   const [loadingPublish, setLoadingPublish] = useState(false);
   const [loadingImages, setLoadingImages] = useState(false);
@@ -54,19 +58,43 @@ export default function InstagramStudioPage() {
   const [imageCandidates, setImageCandidates] = useState<ImageCandidate[]>([]);
   const [selectedFormat, setSelectedFormat] = useState<PostFormat>('square');
   const [error, setError] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
   const [success, setSuccess] = useState<PublishResult | null>(null);
+  const [studioKeyInput, setStudioKeyInput] = useState('');
+  const [studioKey, setStudioKey] = useState('');
 
-  const isDev = process.env.NODE_ENV === 'development';
+  const canPublishDirectly = process.env.NODE_ENV === 'development';
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = window.sessionStorage.getItem(STUDIO_KEY_STORAGE_KEY) || '';
+    if (saved) {
+      setStudioKey(saved);
+      setStudioKeyInput(saved);
+    }
+  }, []);
+
+  const withStudioAuth = useCallback((init?: RequestInit): RequestInit => {
+    const headers = new Headers(init?.headers || {});
+    if (studioKey) headers.set('x-studio-key', studioKey);
+    return { ...init, headers };
+  }, [studioKey]);
 
   useEffect(() => {
     const run = async () => {
+      if (!studioKey) return;
       if (scope === 'user' && !uid.trim()) return;
       try {
         const params = new URLSearchParams({ scope });
         if (uid.trim()) params.set('uid', uid.trim());
-        const res = await fetch(`/api/dev/instagram/studio/options?${params.toString()}`, { cache: 'no-store' });
+        const res = await fetch(`/api/dev/instagram/studio/options?${params.toString()}`, withStudioAuth({ cache: 'no-store' }));
         const data = await res.json();
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (res.status === 401) {
+            setError('Invalid studio access key.');
+          }
+          return;
+        }
         const values = ['all', ...(Array.isArray(data.interests) ? data.interests : [])];
         setInterestOptions(values);
         setSelectedInterest((prev) => (values.includes(prev) ? prev : 'all'));
@@ -75,7 +103,7 @@ export default function InstagramStudioPage() {
       }
     };
     run();
-  }, [uid, scope]);
+  }, [uid, scope, studioKey, withStudioAuth]);
 
   const previewUrls = useMemo<Record<PostFormat, string> | null>(() => {
     if (!story) return null;
@@ -89,14 +117,19 @@ export default function InstagramStudioPage() {
           format: option.value,
           t: seed,
         });
+        if (studioKey) params.set('key', studioKey);
         acc[option.value] = `/api/dev/instagram/studio/render?${params.toString()}`;
         return acc;
       },
       {} as Record<PostFormat, string>
     );
-  }, [story]);
+  }, [story, studioKey]);
 
   const generateRandom = async () => {
+    if (!studioKey) {
+      setError('Enter studio access key first.');
+      return;
+    }
     setError('');
     setSuccess(null);
     setLoadingGenerate(true);
@@ -105,8 +138,9 @@ export default function InstagramStudioPage() {
       if (uid.trim()) params.set('uid', uid);
       params.set('interest', selectedInterest);
       params.set('feedType', selectedFeedType);
-      const res = await fetch(`/api/dev/instagram/studio/random?${params.toString()}`, { cache: 'no-store' });
+      const res = await fetch(`/api/dev/instagram/studio/random?${params.toString()}`, withStudioAuth({ cache: 'no-store' }));
       const data = await res.json();
+      if (res.status === 401) throw new Error('Invalid studio access key');
       if (!res.ok) throw new Error(data?.error || 'Failed to generate story');
       setStory(data.story);
       setImageQuery(data.story?.headline || '');
@@ -118,15 +152,94 @@ export default function InstagramStudioPage() {
     }
   };
 
+  const loadStories = async () => {
+    if (!studioKey) return;
+    setLoadingStories(true);
+    setError('');
+    try {
+      const params = new URLSearchParams({ scope });
+      if (uid.trim()) params.set('uid', uid);
+      params.set('interest', selectedInterest);
+      params.set('feedType', selectedFeedType);
+      params.set('limit', '30');
+      const res = await fetch(`/api/dev/instagram/studio/list?${params.toString()}`, withStudioAuth({ cache: 'no-store' }));
+      const data = await res.json();
+      if (res.status === 401) throw new Error('Invalid studio access key');
+      if (!res.ok) throw new Error(data?.error || 'Failed to load stories');
+      const list = Array.isArray(data.stories) ? (data.stories as Story[]) : [];
+      setStories(list);
+      if (list.length > 0) {
+        setStory((prev) => {
+          if (prev?.id) {
+            const matched = list.find((s) => s.id === prev.id);
+            if (matched) return matched;
+          }
+          return list[0];
+        });
+        setImageQuery(list[0].headline || '');
+      } else {
+        setStory(null);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load stories');
+    } finally {
+      setLoadingStories(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!studioKey) return;
+    loadStories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope, uid, selectedInterest, selectedFeedType, studioKey]);
+
+  const copyCaption = async () => {
+    if (!story) return;
+    setActionMessage('');
+    try {
+      await navigator.clipboard.writeText(story.caption || story.headline);
+      setActionMessage('Caption copied.');
+    } catch {
+      setActionMessage('Could not copy caption.');
+    }
+  };
+
+  const shareStory = async () => {
+    if (!story) return;
+    setActionMessage('');
+    const url = story.sourceUrl || 'https://www.yourtrace.online/trending';
+    const text = (story.caption || story.headline).trim();
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: story.headline,
+          text,
+          url,
+        });
+        setActionMessage('Share sheet opened. Pick Instagram.');
+        return;
+      }
+      await navigator.clipboard.writeText(`${text}\n\n${url}`);
+      setActionMessage('Sharing unavailable here. Copied caption + link instead.');
+    } catch {
+      setActionMessage('Share canceled.');
+    }
+  };
+
   const searchRelatedImages = async () => {
+    if (!studioKey) {
+      setError('Enter studio access key first.');
+      return;
+    }
     const query = (imageQuery || story?.headline || '').trim();
     if (!query) return;
     setLoadingImages(true);
     setError('');
     try {
       const params = new URLSearchParams({ query });
-      const res = await fetch(`/api/dev/instagram/studio/image-search?${params.toString()}`, { cache: 'no-store' });
+      const res = await fetch(`/api/dev/instagram/studio/image-search?${params.toString()}`, withStudioAuth({ cache: 'no-store' }));
       const data = await res.json();
+      if (res.status === 401) throw new Error('Invalid studio access key');
       if (!res.ok) throw new Error(data?.error || 'Failed to search images');
       setImageCandidates(Array.isArray(data.images) ? data.images : []);
     } catch (e) {
@@ -137,12 +250,16 @@ export default function InstagramStudioPage() {
   };
 
   const publishToInstagram = async () => {
+    if (!studioKey) {
+      setError('Enter studio access key first.');
+      return;
+    }
     if (!story) return;
     setError('');
     setSuccess(null);
     setLoadingPublish(true);
     try {
-      const res = await fetch('/api/dev/instagram/studio/publish', {
+      const res = await fetch('/api/dev/instagram/studio/publish', withStudioAuth({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -152,8 +269,9 @@ export default function InstagramStudioPage() {
           imageUrl: story.imageUrl,
           format: selectedFormat,
         }),
-      });
+      }));
       const data = await res.json();
+      if (res.status === 401) throw new Error('Invalid studio access key');
       if (!res.ok) throw new Error(data?.error || 'Failed to publish');
       setSuccess(data);
     } catch (e) {
@@ -163,11 +281,52 @@ export default function InstagramStudioPage() {
     }
   };
 
-  if (!isDev) {
+  const unlockStudio = () => {
+    const key = studioKeyInput.trim();
+    if (!key) {
+      setError('Enter a studio access key.');
+      return;
+    }
+    setError('');
+    setStudioKey(key);
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem(STUDIO_KEY_STORAGE_KEY, key);
+    }
+  };
+
+  const clearStudioKey = () => {
+    setStudioKey('');
+    setStudioKeyInput('');
+    setStories([]);
+    setStory(null);
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.removeItem(STUDIO_KEY_STORAGE_KEY);
+    }
+  };
+
+  if (!studioKey) {
     return (
-      <main className="min-h-screen bg-black text-white p-8">
-        <h1 className="text-2xl font-bold">Instagram Studio</h1>
-        <p className="text-white/70 mt-2">This page is disabled outside local development.</p>
+      <main className="min-h-screen bg-slate-50 text-slate-900 p-6 md:p-8">
+        <div className="max-w-xl mx-auto mt-20 border border-slate-200 rounded-xl bg-white p-6 shadow-sm">
+          <h1 className="text-2xl font-bold">Instagram Studio</h1>
+          <p className="text-sm text-slate-600 mt-2">
+            Enter studio access key to unlock.
+          </p>
+          <input
+            type="password"
+            value={studioKeyInput}
+            onChange={(e) => setStudioKeyInput(e.target.value)}
+            className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-sm mt-4"
+            placeholder="Studio access key"
+          />
+          <button
+            onClick={unlockStudio}
+            className="mt-3 w-full rounded-lg bg-slate-900 text-white px-4 py-2 font-semibold"
+          >
+            Unlock Studio
+          </button>
+          {error ? <p className="text-red-600 text-sm mt-3">{error}</p> : null}
+        </div>
       </main>
     );
   }
@@ -175,8 +334,16 @@ export default function InstagramStudioPage() {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900 p-6 md:p-8">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-2xl md:text-3xl font-bold">Instagram Studio (Dev)</h1>
-        <p className="text-slate-600 mt-2">Generate, edit, preview, and publish one post.</p>
+        <h1 className="text-2xl md:text-3xl font-bold">Instagram Studio</h1>
+        <p className="text-slate-600 mt-2">Generate, edit, preview, share, and copy one post.</p>
+        <div className="mt-3">
+          <button
+            onClick={clearStudioKey}
+            className="text-xs rounded-md border border-slate-300 px-2.5 py-1 text-slate-700 hover:bg-slate-100"
+          >
+            Lock Studio
+          </button>
+        </div>
 
         <div className="grid xl:grid-cols-[320px_minmax(480px,1fr)_360px] gap-6 mt-6 items-start">
           <section className="border border-slate-200 rounded-xl p-5 bg-white shadow-sm">
@@ -243,8 +410,42 @@ export default function InstagramStudioPage() {
             >
               {loadingGenerate ? 'Generating...' : 'Generate Random Story'}
             </button>
+            <button
+              onClick={loadStories}
+              disabled={loadingStories || (scope === 'user' && !uid.trim())}
+              className="mt-2 w-full rounded-lg bg-slate-200 text-slate-900 px-4 py-2 font-semibold disabled:opacity-50"
+            >
+              {loadingStories ? 'Loading Stories...' : 'Load Trending Stories'}
+            </button>
 
-            <p className="text-xs text-slate-500 mt-3">Generate first, then edit and publish from the right panel.</p>
+            <p className="text-xs text-slate-500 mt-3">Load all matching stories, then pick one to share/copy.</p>
+
+            {stories.length > 0 ? (
+              <div className="mt-4 border border-slate-200 rounded-lg max-h-[360px] overflow-y-auto divide-y divide-slate-100">
+                {stories.map((entry, idx) => {
+                  const selected = (story?.id && story.id === entry.id) || (!story?.id && idx === 0);
+                  return (
+                    <button
+                      key={entry.id || `${entry.headline}-${idx}`}
+                      onClick={() => {
+                        setStory(entry);
+                        setImageQuery(entry.headline || '');
+                        setActionMessage('');
+                      }}
+                      className={`w-full text-left px-3 py-2.5 hover:bg-slate-50 ${
+                        selected ? 'bg-slate-100' : ''
+                      }`}
+                    >
+                      <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">{entry.tag}</div>
+                      <div className="text-sm font-medium text-slate-900 line-clamp-2 mt-1">{entry.headline}</div>
+                      {entry.sourceName ? (
+                        <div className="text-xs text-slate-500 mt-1">{entry.sourceName}</div>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
 
             {error ? <p className="text-red-600 text-sm mt-4">{error}</p> : null}
             {success ? (
@@ -301,7 +502,7 @@ export default function InstagramStudioPage() {
           </section>
 
           <section className="border border-slate-200 rounded-xl p-5 bg-white shadow-sm">
-            <h2 className="text-base font-semibold text-slate-800 mb-4">Edit & Publish</h2>
+            <h2 className="text-base font-semibold text-slate-800 mb-4">Edit, Share & Copy</h2>
             {story ? (
               <>
                 <label className="block text-sm text-slate-700 mb-2">Tag</label>
@@ -370,13 +571,37 @@ export default function InstagramStudioPage() {
                   </span>
                 </div>
 
-                <button
-                  onClick={publishToInstagram}
-                  disabled={loadingPublish}
-                  className="mt-4 w-full rounded-lg bg-emerald-500 text-white px-4 py-2 font-semibold disabled:opacity-50"
-                >
-                  {loadingPublish ? 'Uploading...' : 'Upload to Instagram'}
-                </button>
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    onClick={shareStory}
+                    className="rounded-lg bg-blue-600 text-white px-4 py-2 font-semibold"
+                  >
+                    Share to Instagram
+                  </button>
+                  <button
+                    onClick={copyCaption}
+                    className="rounded-lg bg-slate-200 text-slate-900 px-4 py-2 font-semibold"
+                  >
+                    Copy Caption
+                  </button>
+                </div>
+                {actionMessage ? (
+                  <p className="text-xs text-slate-600 mt-2">{actionMessage}</p>
+                ) : null}
+
+                {canPublishDirectly ? (
+                  <button
+                    onClick={publishToInstagram}
+                    disabled={loadingPublish}
+                    className="mt-4 w-full rounded-lg bg-emerald-500 text-white px-4 py-2 font-semibold disabled:opacity-50"
+                  >
+                    {loadingPublish ? 'Uploading...' : 'Upload to Instagram'}
+                  </button>
+                ) : (
+                  <p className="text-xs text-slate-500 mt-4">
+                    Direct token publish is disabled in production. Use Share + Copy Caption.
+                  </p>
+                )}
               </>
             ) : (
               <div className="text-sm text-slate-500">Generate a story to unlock editing and publish controls.</div>

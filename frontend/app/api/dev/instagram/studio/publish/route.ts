@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminStorage } from '@/lib/firebase-admin';
+import { isInstagramStudioAuthorized } from '@/lib/instagram-studio-auth';
 
 const DEFAULT_GRAPH_VERSION = 'v23.0';
 
@@ -146,6 +147,9 @@ async function publishContainer(igUserId: string, accessToken: string, creationI
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isInstagramStudioAuthorized(request)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     if (process.env.NODE_ENV !== 'development') {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
@@ -190,9 +194,9 @@ export async function POST(request: NextRequest) {
       format,
       t: String(Date.now()),
     });
-    const renderSecret = (process.env.INSTAGRAM_RENDER_SECRET || '').trim();
-    if (renderSecret) {
-      renderParams.set('key', renderSecret);
+    const studioAccessKey = (process.env.INSTAGRAM_STUDIO_ACCESS_KEY || '').trim();
+    if (studioAccessKey) {
+      renderParams.set('key', studioAccessKey);
     }
 
     const renderUrl = `${baseUrl}/api/dev/instagram/studio/render?${renderParams.toString()}`;
@@ -229,7 +233,10 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!isInstagramStudioAuthorized(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   if (process.env.NODE_ENV !== 'development') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }

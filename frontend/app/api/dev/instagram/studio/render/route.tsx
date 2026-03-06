@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
+import { isInstagramStudioAuthorized } from '@/lib/instagram-studio-auth';
 
 export const runtime = 'edge';
 
@@ -11,14 +12,10 @@ const FORMATS = {
 } as const;
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const renderSecret = process.env.INSTAGRAM_RENDER_SECRET || '';
-  const providedKey = (searchParams.get('key') || '').trim();
-  const isAuthorizedProdAccess = !!renderSecret && providedKey === renderSecret;
-  if (process.env.NODE_ENV !== 'development' && !isAuthorizedProdAccess) {
-    return new Response('Not found', { status: 404 });
+  if (!isInstagramStudioAuthorized(request)) {
+    return new Response('Unauthorized', { status: 401 });
   }
-
+  const { searchParams } = new URL(request.url);
   const { origin } = new URL(request.url);
   const headline = (searchParams.get('headline') || 'Top story today').slice(0, 180);
   const imageUrl = searchParams.get('imageUrl') || `${origin}/feed.webp`;
