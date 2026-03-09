@@ -8,7 +8,13 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  useAnimatedScrollHandler,
+} from 'react-native-reanimated';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft, ChevronRight, MoreHorizontal, Share2, Zap } from 'lucide-react-native';
@@ -52,9 +58,30 @@ function formatAge(value?: string): string {
   if (diffMin < 1) return 'Just now';
   if (diffMin < 60) return `${diffMin} min ago`;
   const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr} hr ago`;
+  if (diffHr < 24) return `${diffHr} hours ago`;
   const diffDay = Math.floor(diffHr / 24);
   return `${diffDay}d ago`;
+}
+
+function getSourceInitials(name: string): string {
+  if (!name) return '??';
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
+
+function hashColor(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const palette = ['#6366f1', '#8b5cf6', '#ec4899', '#f97316', '#0ea5e9', '#10b981', '#f59e0b'];
+  return palette[Math.abs(hash) % palette.length];
+}
+
+function truncateText(text: string, maxLength: number): { text: string; truncated: boolean } {
+  if (!text || text.length <= maxLength) return { text: text || '', truncated: false };
+  return { text: text.substring(0, maxLength).trim() + '...', truncated: true };
 }
 
 export default function TopicScreen() {
@@ -102,7 +129,9 @@ export default function TopicScreen() {
   const isDark = colorScheme === 'dark';
 
   const handleShare = () => {
-    Share.share({ message: topic.title });
+    const content = topic.summary || topic.title;
+    const message = `${content}\n\n— via Trace\nyourtrace.online`;
+    Share.share({ message });
   };
 
   return (
@@ -188,49 +217,56 @@ export default function TopicScreen() {
 
           {timeline.length > 0 && (
             <View style={styles.timelineSection}>
-              <Text style={[styles.timelineLabel, { color: Colors[colorScheme].muted }]}>
-                TIMELINE
-              </Text>
+              <Text style={styles.timelineLabel}>Timeline</Text>
               {timeline.map((event, idx) => {
                 const hasArticle =
                   !!event.article_url && articlesByUrl.has(event.article_url) &&
                   Object.keys(articlesByUrl.get(event.article_url)?.summary ?? {}).length > 0;
+                const sourceName = event.source_name || 'Source';
+                const initials = getSourceInitials(sourceName);
+                const summaryData = truncateText(event.summary || '', 100);
+
                 return (
                   <Pressable
                     key={event.id || `ev-${idx}`}
                     onPress={() => handleTimelinePress(event)}
                     disabled={!hasArticle}
-                    style={[
-                      styles.timelineRow,
-                      { borderLeftColor: Colors[colorScheme].border },
-                    ]}>
-                    <View style={styles.timelineDotWrap}>
-                      <View
-                        style={[
-                          styles.timelineDot,
-                          { backgroundColor: idx === 0 ? '#F97316' : Colors[colorScheme].muted },
-                        ]}
-                      />
-                    </View>
-                    <View style={styles.timelineBody}>
-                      <Text style={[styles.timelineTime, { color: Colors[colorScheme].muted }]}>
-                        {formatAge(event.timestamp)} · {event.source_name || 'Source'}
-                      </Text>
+                    style={styles.timelineRow}>
+                    {/* Yellow left border */}
+                    <View style={styles.timelineAccent} />
+
+                    {/* Content */}
+                    <View style={styles.timelineContent}>
+                      {/* Source row with avatar */}
+                      <View style={styles.timelineSourceRow}>
+                        <View style={[styles.timelineAvatar, { backgroundColor: isDark ? '#333' : '#1a1a1a' }]}>
+                          <Text style={styles.timelineAvatarText}>{initials}</Text>
+                        </View>
+                        <Text style={[styles.timelineSource, { color: Colors[colorScheme].muted }]}>
+                          {sourceName} <Text style={styles.timelineDot}>•</Text> {formatAge(event.timestamp)}
+                        </Text>
+                      </View>
+
+                      {/* Title */}
                       <Text style={[styles.timelineTitle, { color: Colors[colorScheme].text }]}>
                         {event.title}
                       </Text>
-                    {event.summary ? (
-                      <RichText
-                        style={[styles.timelineSummary, { color: Colors[colorScheme].muted }]}>
-                        {event.summary}
-                      </RichText>
-                    ) : null}
+
+                      {/* Summary */}
+                      {summaryData.text ? (
+                        <Text style={[styles.timelineSummary, { color: Colors[colorScheme].muted }]}>
+                          {summaryData.text}
+                          {summaryData.truncated && hasArticle && (
+                            <Text style={styles.readMore}>read more...</Text>
+                          )}
+                        </Text>
+                      ) : null}
                     </View>
-                    {hasArticle && (
-                      <View style={styles.timelineChevron}>
-                        <ChevronRight size={16} color={Colors[colorScheme].muted} strokeWidth={2} />
-                      </View>
-                    )}
+
+                    {/* Chevron */}
+                    <View style={styles.timelineChevron}>
+                      <ChevronRight size={16} color={Colors[colorScheme].muted} strokeWidth={2} />
+                    </View>
                   </Pressable>
                 );
               })}
@@ -395,51 +431,68 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 28,
     paddingBottom: 8,
-    gap: 0,
   },
   timelineLabel: {
-    fontSize: 11,
+    fontSize: 20,
     fontWeight: '700',
-    letterSpacing: 1.2,
-    marginBottom: 20,
+    color: '#F59E0B',
+    marginBottom: 16,
   },
   timelineRow: {
     flexDirection: 'row',
-    marginBottom: 24,
-    borderLeftWidth: 1.5,
-    marginLeft: 6,
-    paddingLeft: 16,
+    marginBottom: 20,
   },
-  timelineDotWrap: {
-    position: 'absolute',
-    left: -5,
-    top: 4,
+  timelineAccent: {
+    width: 2,
+    backgroundColor: '#F59E0B',
+    borderRadius: 1,
+    marginRight: 12,
+  },
+  timelineContent: {
+    flex: 1,
+  },
+  timelineSourceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 8,
+  },
+  timelineAvatar: {
+    width: 22,
+    height: 22,
+    borderRadius: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timelineAvatarText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  timelineSource: {
+    fontSize: 13,
+    fontWeight: '500',
   },
   timelineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  timelineBody: {
-    flex: 1,
-    gap: 4,
-  },
-  timelineTime: {
-    fontSize: 11,
-    fontWeight: '600',
+    color: '#9ca3af',
   },
   timelineTitle: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '700',
-    lineHeight: 21,
+    lineHeight: 23,
+    marginBottom: 4,
   },
   timelineSummary: {
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  readMore: {
+    color: '#F59E0B',
+    fontWeight: '600',
   },
   timelineChevron: {
     justifyContent: 'center',
-    paddingLeft: 4,
+    paddingLeft: 8,
   },
 
 });

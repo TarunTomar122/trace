@@ -637,7 +637,7 @@ function buildForYouSections(
 function FeedPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, profileResolved } = useAuth();
   const tabParam = parseFeedTab(searchParams.get('tab'));
   const topicParam = searchParams.get('topic');
 
@@ -781,9 +781,10 @@ function FeedPageContent() {
   useEffect(() => {
     if (!isAlphaMode()) { router.push(user ? '/waitlist' : '/'); return; }
     if (!loading && !user) { router.push('/'); return; }
+    if (user && !profileResolved) return;
     if (user && profile?.onboarded) recordLastActive(user.uid);
     else if (user && !loading && !profile?.onboarded) router.push('/onboarding');
-  }, [user, profile, loading, router]);
+  }, [user, profile, loading, router, profileResolved]);
 
   useEffect(() => {
     if (!isFeedBuilding || !user) return;

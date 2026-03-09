@@ -383,13 +383,13 @@ const Nav = () => {
                       Your Feed
                     </a>
                   ) : (
-                    <a
+                    <Link
                       href="/trending"
                       className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-surface-secondary rounded-lg transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Trending
-                    </a>
+                    </Link>
                   )}
                   {user ? (
                     <button
@@ -431,11 +431,13 @@ const GridBackground = () => (
 
 // --- Hero Component ---
 const Hero = () => {
-  const { user, profile, signInWithGoogle } = useAuth();
+  const { user, profile, profileResolved, signInWithGoogle } = useAuth();
   const isLoggedIn = !!user;
   const isOnboarded = !!user && !!profile?.onboarded;
-  const heroCtaHref = isLoggedIn && !isOnboarded ? '/onboarding' : null;
-  const heroCtaText = isLoggedIn && !isOnboarded ? 'Personalize my feed' : 'Start reading for free';
+  const showOnboardingState = isLoggedIn && profileResolved && !isOnboarded;
+  const heroCtaHref = showOnboardingState ? '/onboarding' : null;
+  const heroCtaText = showOnboardingState ? 'Personalize my feed' : 'Start reading for free';
+  const sampleTopicHref = '/trending';
 
   return (
     <section className="relative pt-32 pb-16 md:pt-36 lg:pt-60 md:pb-24 lg:pb-40 overflow-hidden z-10">
@@ -499,11 +501,11 @@ const Hero = () => {
                       <ChevronRight size={16} />
                     </button>
                   </a>
-                  <a href="/trending" className="w-full sm:w-auto">
+                  <Link href="/trending" className="w-full sm:w-auto">
                     <button className="inline-flex items-center justify-center gap-2 bg-transparent border border-border text-foreground px-6 py-3.5 rounded-full text-sm font-medium hover:bg-secondary/5 transition-colors w-full sm:w-auto">
                       Open Trending Topics
                     </button>
-                  </a>
+                  </Link>
                 </motion.div>
 
                 <motion.p
@@ -533,7 +535,7 @@ const Hero = () => {
                   transition={{ duration: 0.6, delay: 0.2 }}
                   className="text-base md:text-lg text-secondary leading-relaxed mb-4 max-w-md"
                 >
-                  Trace reads 100+ sources, understands the information and gives you a personalized overview of the most important stories.
+                  Replace scattered Reddit, HN, blogs, and videos with one topic page, one timeline, and a feed built around what matters to you.
                 </motion.p>
 
                 <motion.div
@@ -579,10 +581,10 @@ const Hero = () => {
                     </button>
                   )}
                   <Link
-                    href="/tools/digest-preview"
+                    href={sampleTopicHref}
                     className="inline-flex items-center gap-1.5 px-4 py-3.5 text-sm font-medium text-secondary/70 hover:text-foreground transition-colors"
                   >
-                    or preview a sample brief
+                    or browse live topic pages
                     <ArrowUpRight size={14} />
                   </Link>
                 </motion.div>
@@ -2847,12 +2849,13 @@ const Pricing = () => {
 
 // --- Get Started Section ---
 const GetStarted = () => {
-  const { user, profile, signInWithGoogle } = useAuth();
+  const { user, profile, profileResolved, signInWithGoogle } = useAuth();
   const alphaMode = isAlphaMode();
 
   const getCtaLink = () => {
     if (!user) return '#';
     if (!alphaMode) return '/waitlist';
+    if (!profileResolved) return '#';
     if (!profile?.onboarded) return '/onboarding';
     return '/feed';
   };
@@ -2860,6 +2863,7 @@ const GetStarted = () => {
   const getCtaText = () => {
     if (!user) return 'Start reading for free';
     if (!alphaMode) return 'View Waitlist Status';
+    if (!profileResolved) return 'Checking your account';
     if (!profile?.onboarded) return 'Personalize my feed';
     return 'Go To Your Feed';
   };
@@ -2867,6 +2871,7 @@ const GetStarted = () => {
   const getStatusText = () => {
     if (!user) return '';
     if (!alphaMode) return "✓ You're on the waitlist";
+    if (!profileResolved) return 'Checking your latest profile';
     if (!profile?.onboarded) return 'Pick 3 topics and we will build your first feed';
     return '✓ Your feed is ready';
   };
@@ -3009,14 +3014,14 @@ const SEOContentSection = () => {
 
 // --- Main Landing Page ---
 export default function LandingPage() {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, profileResolved } = useAuth();
 
   // Redirect onboarded users away from marketing page.
   useEffect(() => {
-    if (!loading && user && profile?.onboarded) {
+    if (!loading && user && profileResolved && profile?.onboarded) {
       window.location.replace('/feed');
     }
-  }, [user, profile, loading]);
+  }, [user, profile, loading, profileResolved]);
 
   return (
     <div className="min-h-screen bg-background text-foreground px-2 selection:bg-primary/20 selection:text-primary font-serif antialiased">

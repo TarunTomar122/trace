@@ -6,7 +6,6 @@ import { Check, ChevronRight, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   completeOnboarding,
-  getUserProfile,
   ROLES,
   SENIORITY_LEVELS,
   ONBOARDING_INTERESTS,
@@ -21,7 +20,7 @@ const TOTAL_STEPS = 4;
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user, loading, refreshProfile } = useAuth();
+  const { user, profile, loading, profileResolved, refreshProfile } = useAuth();
 
   const [step, setStep] = useState(1);
   const [role, setRole] = useState('');
@@ -41,17 +40,14 @@ export default function OnboardingPage() {
       router.push('/');
       return;
     }
-    if (user) {
-      getUserProfile(user.uid).then((profile) => {
-        if (profile?.onboarded) {
-          router.push('/feed');
-        } else if (!hasTracked) {
-          trackOnboardingStarted();
-          setHasTracked(true);
-        }
-      });
+    if (!user || !profileResolved) return;
+    if (profile?.onboarded) {
+      router.push('/feed');
+    } else if (!hasTracked) {
+      trackOnboardingStarted();
+      setHasTracked(true);
     }
-  }, [user, loading, router, hasTracked]);
+  }, [user, loading, router, hasTracked, profile, profileResolved]);
 
   const canContinue = (() => {
     if (step === 1) return !!role;

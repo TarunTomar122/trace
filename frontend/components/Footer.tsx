@@ -159,9 +159,7 @@ export default function Footer() {
           {/* SEO keyword links */}
           <div className="mt-8 pt-6 border-t border-border/30">
             <p className="text-xs text-secondary/40 leading-relaxed">
-              <Link href="/trending" className="hover:text-secondary transition-colors">AI news</Link>
-              {' · '}
-              <Link href="/trending" className="hover:text-secondary transition-colors">Tech articles</Link>
+              <Link href="/trending" className="hover:text-secondary transition-colors">Live topic pages</Link>
               {' · '}
               <Link href="/trending" className="hover:text-secondary transition-colors">Trending topics</Link>
               {' · '}
@@ -169,15 +167,13 @@ export default function Footer() {
               {' · '}
               <Link href="/tools" className="hover:text-secondary transition-colors">Free tools</Link>
               {' · '}
-              <Link href="/" className="hover:text-secondary transition-colors">AI overviews</Link>
+              <Link href="/tools/digest-preview" className="hover:text-secondary transition-colors">Digest preview</Link>
               {' · '}
-              <Link href="/" className="hover:text-secondary transition-colors">Learning cards</Link>
+              <Link href="/" className="hover:text-secondary transition-colors">AI overviews</Link>
               {' · '}
               <Link href="/" className="hover:text-secondary transition-colors">Deep dives</Link>
               {' · '}
               <Link href="/" className="hover:text-secondary transition-colors">RSS alternative</Link>
-              {' · '}
-              <Link href="/tools/digest-preview" className="hover:text-secondary transition-colors">Newsletter preview</Link>
             </p>
           </div>
         </div>

@@ -42,7 +42,7 @@ import {
   getV3UserFeed,
 } from '@/lib/firestore';
 import { logReadingEvent } from '@/lib/reading-analytics';
-import { setCurrentArticle } from '@/lib/article-store';
+import { setCurrentArticle, setArticleList } from '@/lib/article-store';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 
 const INTEREST_LABELS: Record<string, string> = {
@@ -240,7 +240,7 @@ export default function ForYouScreen() {
     setIsRefreshing(false);
   }, [loadFeed, refreshProfile]);
 
-  const handleItemPress = async (item: FeedItem) => {
+  const handleItemPress = async (item: FeedItem, index?: number) => {
     logReadingEvent({
       eventType: 'feed_open',
       itemId: item.id,
@@ -250,6 +250,9 @@ export default function ForYouScreen() {
       itemType: item.type || item.source,
       feedCategory: item.metadata?.feed_category || item.feed_type,
     });
+    // Set article list for "next article" navigation
+    const idx = index ?? allForYouItems.findIndex((i) => i.id === item.id);
+    setArticleList(allForYouItems, idx >= 0 ? idx : 0);
     setCurrentArticle(item);
     router.push('/article');
   };

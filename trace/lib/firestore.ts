@@ -853,7 +853,7 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
   try {
     // Fetch user-specific feed (for_you, deep_dives)
     const feedRef = collection(firestore, 'v3_user_feeds', uid, 'daily');
-    const latestQuery = query(feedRef, orderBy(documentId(), 'desc'), limit(1));
+    const latestQuery = query(feedRef, orderBy(documentId(), 'desc'), limit(5));
     const snapshot = await getDocs(latestQuery);
 
     // Fetch GLOBAL trending feed (shared by all users).
@@ -872,17 +872,43 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
     let assembledAt: string | undefined;
     let metadata: V3UserFeed['metadata'];
 
-    // Get user's for_you and deep_dives
+    // Get the latest available user content per section instead of assuming
+    // the newest daily doc already has every lane populated.
     if (!snapshot.empty) {
-      const latestDoc = snapshot.docs[0];
-      const data = latestDoc.data();
-      feedDate = data.date || latestDoc.id;
-      assembledAt = data.assembled_at;
-      metadata = data.metadata;
-      forYou = Array.isArray(data.for_you) ? data.for_you : [];
-      deepDives = Array.isArray(data.deep_dives) ? data.deep_dives : [];
-      userTrending = Array.isArray(data.trending) ? data.trending : [];
-      userTrendingTopics = Array.isArray(data.trending_topics) ? data.trending_topics : [];
+      const userDocs = snapshot.docs;
+      const latestDoc = userDocs[0];
+      const latestData = latestDoc.data();
+      feedDate = latestData.date || latestDoc.id;
+      assembledAt = latestData.assembled_at;
+      metadata = latestData.metadata;
+
+      for (const docSnap of userDocs) {
+        const data = docSnap.data();
+        if (forYou.length === 0 && Array.isArray(data.for_you) && data.for_you.length > 0) {
+          forYou = data.for_you;
+        }
+        if (deepDives.length === 0 && Array.isArray(data.deep_dives) && data.deep_dives.length > 0) {
+          deepDives = data.deep_dives;
+        }
+        if (userTrending.length === 0 && Array.isArray(data.trending) && data.trending.length > 0) {
+          userTrending = data.trending;
+        }
+        if (
+          userTrendingTopics.length === 0 &&
+          Array.isArray(data.trending_topics) &&
+          data.trending_topics.length > 0
+        ) {
+          userTrendingTopics = data.trending_topics;
+        }
+        if (
+          forYou.length > 0 &&
+          deepDives.length > 0 &&
+          userTrending.length > 0 &&
+          userTrendingTopics.length > 0
+        ) {
+          break;
+        }
+      }
       console.log('[Feed] User feed doc:', latestDoc.id, 'for_you:', forYou.length, 'deep_dives:', deepDives.length);
     }
 

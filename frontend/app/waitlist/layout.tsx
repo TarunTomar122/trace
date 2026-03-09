@@ -3,6 +3,10 @@ import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Join the Waitlist | Trace",
   description: "Join Trace and get early access to your personalized intelligence feed. Be the first to experience adaptive content curation.",
+  robots: {
+    index: false,
+    follow: true,
+  },
   openGraph: {
     title: "Join the Waitlist | Trace",
     description: "Join Trace and get early access to your personalized intelligence feed. Be the first to experience adaptive content curation.",
@@ -21,4 +25,3 @@ export default function WaitlistLayout({
 }) {
   return children;
 }
-

@@ -182,6 +182,13 @@ TOPIC_STOPWORDS = set(DIVERSITY_STOPWORDS) | {
     "launch", "launches", "launched", "release", "released", "announce",
     "announced", "announcement", "unveil", "unveiled", "introduces",
     "introduced", "plan", "plans", "according", "percent",
+    # Broad event / logistics / politics words that create false topic merges
+    "travel", "traveler", "travelers", "airport", "airports", "flight",
+    "flights", "airline", "airlines", "route", "routes", "shipping",
+    "delays", "delay", "shortage", "shortages", "staff", "workers",
+    "strike", "strikes", "war", "talks", "tariffs", "trade", "prices",
+    "policy", "policies", "official", "officials", "government",
+    "governments", "minister", "ministers",
 }
 
 # Only canonicalize TRUE synonyms — keep brand names specific so they cluster tightly
@@ -487,10 +494,21 @@ def _cluster_topic_candidates(items: list[dict[str, Any]]) -> list[dict[str, Any
             shared = tokens & consensus - SOFT_STOP
             if len(shared) < 1:
                 continue
-            # Require at least 2 overlapping specific tokens OR 1 very specific one
-            # A token is "specific" if it's not a common English word (length >= 4 helps)
+
+            # Brand / entity overlap is the strongest signal that two titles are
+            # about the same story. Without it, require a much tighter token match
+            # so broad themes like travel, markets, or policy do not snowball.
+            entity_overlap = shared & ENTITY_TOPIC_TOKENS
+
+            # Require at least 2 overlapping specific tokens.
             specific_shared = {t for t in shared if len(t) >= 4}
             if len(specific_shared) < 2 and len(shared) < 2:
+                continue
+
+            # If there is no named entity/brand overlap, force a tighter match.
+            # This keeps unrelated "airport delays", "trade policy", etc. from
+            # ending up in one topic just because they share generic nouns.
+            if not entity_overlap and len(specific_shared) < 3:
                 continue
 
             score = float(len(shared)) + len(shared) / max(1, len(tokens | consensus))
@@ -694,7 +712,7 @@ TOPIC_OVERVIEW_PROMPT = """You are a news editor writing a concise brief for a t
 Given these timeline events, produce:
 1. A short natural headline
 2. A 1-2 sentence overview — just what happened, nothing more
-3. 2-4 bullet points covering all the key details (names, numbers, specifics)
+3. 2-4 bullet points covering the key concrete details from the source material
 
 TIMELINE:
 {timeline}
@@ -709,10 +727,113 @@ Return JSON:
 RULES:
 - Title reads like a real news headline — NOT "X and Y" style
 - Overview is 1-2 sentences ONLY — the bullet points carry all the details
+- Overview must name the main entities involved when they are present in the timeline: companies, products, people, countries, places, agencies, or other specific nouns central to the story
 - Use **bold** for key names, numbers, and prices in bullet points
-- Bullet points should be specific and scannable — no vague statements
+- Bullet points should be specific and scannable — include the actual names, products, places, dates, prices, counts, or other concrete facts when they appear in the timeline
+- Do not collapse concrete details into vague labels like "key assets", "major companies", "analysts", "markets", or "officials" if the timeline names the exact thing
 - No commentary, predictions, or "what this means for the industry" fluff
 """
+
+
+GENERIC_TOPIC_PHRASES = {
+    "key stocks",
+    "major companies",
+    "leading companies",
+    "major stocks",
+    "market volatility",
+    "latest developments",
+    "recent developments",
+    "notable updates",
+    "key updates",
+    "industry players",
+}
+
+
+def _extract_capitalized_mentions(text: str) -> list[str]:
+    if not text:
+        return []
+    pattern = re.compile(r"\b(?:[A-Z][A-Za-z0-9&.'-]+(?:\s+[A-Z][A-Za-z0-9&.'-]+){0,3}|[A-Z]{2,6})\b")
+    raw = [m.group(0).strip(" .,:;") for m in pattern.finditer(text)]
+    out: list[str] = []
+    seen: set[str] = set()
+    skip = {
+        "The", "A", "An", "And", "But", "For", "With", "From", "After", "Before",
+        "Latest", "Major", "Market", "Markets", "Stocks", "Stock", "Analysts",
+        "Wall Street", "Reuters", "Bloomberg", "Financial Times", "TechCrunch",
+        "The Verge", "CNBC", "Yahoo Finance",
+    }
+    for value in raw:
+        if value in skip:
+            continue
+        if len(value) <= 2 and not value.isupper():
+            continue
+        key = value.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(value)
+    return out
+
+
+def _timeline_salient_mentions(timeline: list[dict[str, Any]], limit: int = 8) -> list[str]:
+    counts: Counter[str] = Counter()
+    for event in timeline[:8]:
+        for field in ("title", "summary"):
+            text = str(event.get(field, "")).strip()
+            for mention in _extract_capitalized_mentions(text):
+                counts[mention] += 1
+    ordered = sorted(counts.keys(), key=lambda m: (counts[m], len(m)), reverse=True)
+    return ordered[:limit]
+
+
+def _line_has_concrete_detail(text: str, salient_mentions: list[str]) -> bool:
+    value = str(text or "").strip()
+    if not value:
+        return False
+    lower = value.lower()
+    if any(phrase in lower for phrase in GENERIC_TOPIC_PHRASES):
+        return False
+    if re.search(r"\*\*.+?\*\*", value):
+        return True
+    if re.search(r"\b\d[\d,.%:$-]*\b", value):
+        return True
+    return any(mention.lower() in lower for mention in salient_mentions)
+
+
+def _timeline_fallback_points(timeline: list[dict[str, Any]], limit: int = 4) -> list[str]:
+    points: list[str] = []
+    for event in timeline[:limit]:
+        title = str(event.get("title", "")).strip()
+        if title:
+            points.append(title)
+    return points
+
+
+def _normalize_topic_overview_output(
+    overview: str,
+    key_points: list[str],
+    deterministic_overview: str,
+    deterministic_points: list[str],
+    timeline: list[dict[str, Any]],
+) -> tuple[str, list[str]]:
+    salient_mentions = _timeline_salient_mentions(timeline)
+    normalized_overview = overview.strip()
+    normalized_points = [str(point).strip() for point in key_points if str(point).strip()]
+
+    if not _line_has_concrete_detail(normalized_overview, salient_mentions):
+        normalized_overview = deterministic_overview
+
+    concrete_points = [
+        point for point in normalized_points
+        if _line_has_concrete_detail(point, salient_mentions)
+    ]
+    if len(concrete_points) < min(2, max(1, len(normalized_points))):
+        fallback_points = _timeline_fallback_points(timeline)
+        normalized_points = fallback_points or deterministic_points
+    else:
+        normalized_points = concrete_points
+
+    return normalized_overview, normalized_points[:5]
 
 
 def _build_topic_overview(
@@ -799,6 +920,14 @@ def _build_topic_overview(
     except Exception as exc:
         _log(f"  Topic overview LLM failed for {topic_id}: {exc}")
 
+    overview, key_points = _normalize_topic_overview_output(
+        overview=overview,
+        key_points=key_points,
+        deterministic_overview=deterministic_overview,
+        deterministic_points=deterministic_points,
+        timeline=timeline,
+    )
+
     store.cache_synthesis(
         cache_key,
         {
@@ -855,7 +984,7 @@ def _build_trending_topics_payload(
     store: V3Store,
     ranked_items: list[dict[str, Any]],
     summary_map: dict[str, dict[str, Any] | None],
-    max_topics: int = 8,
+    max_topics: int = 14,
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -863,60 +992,35 @@ def _build_trending_topics_payload(
     if not clusters:
         return [], {"topics": 0, "overview_generated": 0, "overview_cached": 0}
 
-    # Split into strong clusters and singletons.
-    strong_clusters: list[dict[str, Any]] = []
-    singleton_items: list[dict[str, Any]] = []
+    # Score all clusters, including singletons. Single-article stories should
+    # stay isolated instead of being folded into a synthetic catch-all topic.
+    scored_clusters: list[dict[str, Any]] = []
     for cluster in clusters:
         items = cluster.get("items", []) or []
-        if len(items) >= 2:
-            strong_clusters.append(cluster)
-        elif len(items) == 1:
-            singleton_items.append(items[0])
-
-    for cluster in strong_clusters:
+        if not items:
+            continue
         cluster["popularity_score"] = _cluster_popularity_score(cluster)
+        scored_clusters.append(cluster)
 
-    strong_clusters.sort(
+    scored_clusters.sort(
         key=lambda c: float(c.get("popularity_score", 0.0)),
         reverse=True,
     )
 
-    # Option 4:
-    # 1) cap per-entity topic dominance (e.g., Apple <= 2 topic slots)
-    # 2) append a final "More updates" topic containing leftovers/singletons
+    # Cap per-entity topic dominance (e.g., Apple <= 2 topic slots) while
+    # preserving isolated stories as standalone topics when they rank high
+    # enough to deserve a slot.
     max_topics_per_entity = 2
     entity_counts: defaultdict[str, int] = defaultdict(int)
-    capped_clusters: list[dict[str, Any]] = []
-    overflow_items: list[dict[str, Any]] = []
-    for cluster in strong_clusters:
+    selected: list[dict[str, Any]] = []
+    for cluster in scored_clusters:
         entity = _cluster_primary_entity(cluster)
-        if entity_counts[entity] < max_topics_per_entity:
-            capped_clusters.append(cluster)
-            entity_counts[entity] += 1
-        else:
-            overflow_items.extend(cluster.get("items", []) or [])
-
-    leftover_items = _dedupe_items_by_url(overflow_items + singleton_items)
-    if leftover_items:
-        leftover_items = sorted(
-            leftover_items,
-            key=lambda x: float(x.get("_trend_score", 0.0)),
-            reverse=True,
-        )[:10]
-
-    reserved_misc_slot = 1 if leftover_items and max_topics > 0 else 0
-    selected = capped_clusters[: max(0, max_topics - reserved_misc_slot)]
-    if leftover_items and len(selected) < max_topics:
-        selected.append(
-            {
-                "items": leftover_items,
-                "tokens": set(),
-                "token_counts": Counter(),
-                "consensus_tokens": set(),
-                "popularity_score": -1.0,
-                "is_misc": True,
-            }
-        )
+        if entity_counts[entity] >= max_topics_per_entity:
+            continue
+        selected.append(cluster)
+        entity_counts[entity] += 1
+        if len(selected) >= max_topics:
+            break
 
     # Pre-compute per-cluster data (timelines, IDs, fallback titles) — all CPU-bound
     cluster_data: list[dict[str, Any]] = []
@@ -1565,7 +1669,7 @@ def build_global_feed(
         store=store,
         ranked_items=ranked_for_topics,
         summary_map=summary_map,
-        max_topics=8,
+        max_topics=14,
     )
     _log(
         f"Built {len(trending_topics)} grouped topics "

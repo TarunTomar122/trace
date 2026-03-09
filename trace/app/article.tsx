@@ -8,6 +8,12 @@ import {
   Image,
   Dimensions,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  useAnimatedScrollHandler,
+} from 'react-native-reanimated';
 import * as WebBrowser from 'expo-web-browser';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,7 +44,7 @@ import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { isBookmarked as checkBookmarked, toggleBookmark, addSnippet } from '@/lib/bookmarks';
-import { getCurrentArticle } from '@/lib/article-store';
+import { getCurrentArticle, getNextArticle, navigateToNext, getArticleList, getCurrentIndex } from '@/lib/article-store';
 import { logReadingEvent } from '@/lib/reading-analytics';
 import { updateStreak } from '@/lib/streaks';
 import { getArticleImage } from '@/lib/fallback-images';
@@ -174,7 +180,7 @@ function buildTabLabels(cards: LearningCard[]): string[] {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   ForYouArticleView — swipeable cards with tab bar
+   ForYouArticleView — clean card-based reader with next article
    ═══════════════════════════════════════════════════════════ */
 
 function ForYouArticleView({
@@ -182,139 +188,219 @@ function ForYouArticleView({
   title,
   sourceName,
   thumbnail,
-  readingTime,
   colorScheme,
   onBack,
   onReadOriginal,
   onBookmark,
   isBookmarked,
+  nextArticle,
+  onNextArticle,
 }: {
   cards: LearningCard[];
   title: string;
   sourceName: string;
   thumbnail?: string;
-  readingTime?: number;
-  sources?: SourceRef[];
   colorScheme: 'light' | 'dark';
   onBack: () => void;
   onReadOriginal: () => void;
   onBookmark: () => void;
   isBookmarked: boolean;
+  nextArticle?: { title: string; sourceName: string; thumbnail?: string } | null;
+  onNextArticle?: () => void;
 }) {
+  const insets = useSafeAreaInsets();
   const [currentCard, setCurrentCard] = useState(0);
   const isDark = colorScheme === 'dark';
   const showHero = isLikelyRealImageUrl(thumbnail);
   const tabLabels = buildTabLabels(cards);
-  const cardWidth = SCREEN_WIDTH - 40;
+  const isLastCard = currentCard === cards.length - 1;
+
+  // Scroll-hide header animation
+  const scrollY = useSharedValue(0);
+  const lastScrollY = useSharedValue(0);
+  const headerTranslateY = useSharedValue(0);
+  const HEADER_HEIGHT = 60 + insets.top;
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      const currentY = event.contentOffset.y;
+      const diff = currentY - lastScrollY.value;
+
+      // Only hide after scrolling past the header area
+      if (currentY > HEADER_HEIGHT) {
+        if (diff > 0) {
+          // Scrolling up (reading) - hide header
+          headerTranslateY.value = withTiming(-HEADER_HEIGHT, { duration: 200 });
+        } else if (diff < -5) {
+          // Scrolling down - show header
+          headerTranslateY.value = withTiming(0, { duration: 200 });
+        }
+      } else {
+        // Near top - always show
+        headerTranslateY.value = withTiming(0, { duration: 200 });
+      }
+
+      lastScrollY.value = currentY;
+      scrollY.value = currentY;
+    },
+  });
+
+  const headerAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: headerTranslateY.value }],
+  }));
 
   return (
     <View style={[fyStyles.root, { backgroundColor: Colors[colorScheme].background }]}>
-      <ScrollView
+      <Animated.ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 80 }}>
+        contentContainerStyle={{ paddingBottom: 40 }}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}>
 
-        {/* Hero image — full bleed to top */}
+        {/* Hero image — with gradient blend into background */}
         <View style={fyStyles.heroWrap}>
           {showHero ? (
             <Image source={{ uri: thumbnail }} style={fyStyles.heroImage} resizeMode="cover" />
           ) : (
-            <View style={[fyStyles.heroImage, { backgroundColor: isDark ? '#1c1c1c' : '#222' }]} />
+            <View style={[fyStyles.heroImage, { backgroundColor: isDark ? '#1c1c1c' : '#e5e5e5' }]} />
           )}
+          {/* Gradient at top for header buttons visibility */}
           <LinearGradient
-            colors={['rgba(0,0,0,0.45)', 'transparent']}
-            style={fyStyles.heroGradientTop}
+            colors={['rgba(0,0,0,0.25)', 'transparent']}
+            style={[fyStyles.heroGradientTop, { paddingTop: insets.top }]}
           />
+          {/* Gradient at bottom to blend into background */}
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.35)', Colors[colorScheme].background]}
-            locations={[0, 0.5, 1]}
+            colors={['transparent', Colors[colorScheme].background]}
+            locations={[0, 1]}
             style={fyStyles.heroGradientBottom}
           />
-          <View style={fyStyles.heroOverlay}>
-            <Text style={fyStyles.heroTitle}>{title}</Text>
-            <View style={fyStyles.heroMeta}>
-              <Text style={fyStyles.heroSource}>{sourceName}</Text>
-              {readingTime != null && (
-                <Text style={fyStyles.heroReadTime}>· {readingTime} min read</Text>
-              )}
-            </View>
+          {/* Source badge at blend intersection */}
+          <View style={[fyStyles.sourceBadge, { backgroundColor: isDark ? '#2a2a2a' : '#1a1a1a' }]}>
+            <Text style={fyStyles.sourceBadgeText}>{sourceName}</Text>
           </View>
         </View>
 
-        {/* Counter */}
-        {cards.length > 1 && (
-          <Text style={[fyStyles.counter, { color: Colors[colorScheme].muted }]}>
-            {currentCard + 1} / {cards.length}
+        {/* Title below image */}
+        <View style={fyStyles.titleSection}>
+          <Text style={[fyStyles.heroTitle, { color: Colors[colorScheme].text }]}>
+            {title}
           </Text>
-        )}
+        </View>
 
-        {/* Horizontally swipeable learning cards */}
-        <ScrollView
-          horizontal
-          pagingEnabled={false}
-          showsHorizontalScrollIndicator={false}
-          decelerationRate="fast"
-          snapToInterval={cardWidth + 12}
-          snapToAlignment="start"
-          contentInset={{ left: 0, right: 20 }}
-          contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
-          onScroll={(e) => {
-            const idx = Math.round(e.nativeEvent.contentOffset.x / (cardWidth + 12));
-            if (idx >= 0 && idx < cards.length && idx !== currentCard) setCurrentCard(idx);
-          }}
-          scrollEventThrottle={16}>
-          {cards.map((card, idx) => (
-            <View
-              key={idx}
-              style={[
-                fyStyles.card,
-                {
-                  backgroundColor: isDark ? '#1a1a1a' : '#f7f7f5',
-                  width: cardWidth,
-                },
-              ]}>
-              <Text style={[fyStyles.cardLabel, { color: Colors[colorScheme].muted }]}>
-                {tabLabels[idx]}
-              </Text>
-              {card.content.split(/\.\s+/).filter(Boolean).map((sentence, si, arr) => (
-                <RichText
-                  key={si}
-                  style={[fyStyles.cardContent, { color: Colors[colorScheme].text }]}>
-                  {sentence.trim() + (si < arr.length - 1 && !sentence.endsWith('.') ? '.' : '')}
-                </RichText>
+        {/* Highlights cards */}
+        <View style={fyStyles.cardsSection}>
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            directionalLockEnabled
+            scrollEventThrottle={16}
+            onScroll={(e) => {
+              const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+              if (idx >= 0 && idx < cards.length && idx !== currentCard) setCurrentCard(idx);
+            }}>
+            {cards.map((card, idx) => (
+              <View key={idx} style={[fyStyles.cardPage, { width: SCREEN_WIDTH }]}>
+                <View
+                  style={[
+                    fyStyles.card,
+                    {
+                      backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+                      minHeight: 180,
+                    },
+                  ]}>
+                  <Text style={[fyStyles.cardLabel, { color: isDark ? '#888' : '#4b5563' }]}>
+                    {tabLabels[idx]}
+                  </Text>
+                  <RichText style={[fyStyles.cardContent, { color: Colors[colorScheme].text }]}>
+                    {card.content}
+                  </RichText>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+
+          {/* Pagination dots */}
+          {cards.length > 1 && (
+            <View style={fyStyles.dotsRow}>
+              {cards.map((_, idx) => (
+                <View
+                  key={idx}
+                  style={[
+                    fyStyles.dot,
+                    {
+                      backgroundColor: idx === currentCard
+                        ? (isDark ? '#fff' : '#1a1a1a')
+                        : (isDark ? '#444' : '#d1d5db'),
+                    },
+                  ]}
+                />
               ))}
             </View>
-          ))}
-        </ScrollView>
+          )}
+        </View>
 
-        {cards.length > 1 && currentCard < cards.length - 1 && (
-          <Text style={[fyStyles.swipeHint, { color: Colors[colorScheme].muted }]}>
-            Swipe for more →
-          </Text>
+        {/* Next article teaser - only show on last card */}
+        {nextArticle && onNextArticle && isLastCard && (
+          <Pressable
+            onPress={onNextArticle}
+            style={[
+              fyStyles.nextArticle,
+              {
+                backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+                borderWidth: isDark ? 0 : 1,
+                borderColor: '#e5e7eb',
+              },
+            ]}>
+            <View
+              style={[
+                fyStyles.nextArticleThumb,
+                { backgroundColor: hashColor(nextArticle.sourceName) },
+              ]}>
+              <Text style={fyStyles.nextArticleInitials}>
+                {getSourceInitials(nextArticle.sourceName)}
+              </Text>
+            </View>
+            <View style={fyStyles.nextArticleContent}>
+              <Text style={[fyStyles.nextArticleHint, { color: Colors[colorScheme].muted }]}>
+                Swipe to Next Article
+              </Text>
+              <Text
+                numberOfLines={1}
+                style={[fyStyles.nextArticleTitle, { color: Colors[colorScheme].text }]}>
+                {nextArticle.title}
+              </Text>
+            </View>
+            <ChevronRight size={18} color={Colors[colorScheme].muted} strokeWidth={2} />
+          </Pressable>
         )}
 
-      </ScrollView>
+      </Animated.ScrollView>
 
-      {/* Floating header */}
-      <SafeAreaView edges={['top']} style={fyStyles.floatingHeader} pointerEvents="box-none">
-        <View style={fyStyles.headerRow}>
-          <Pressable onPress={onBack} hitSlop={12} style={fyStyles.headerBtn}>
-            <ChevronLeft size={24} color="#fff" strokeWidth={2.5} />
-          </Pressable>
-          <View style={fyStyles.headerRight}>
-            <Pressable onPress={onBookmark} hitSlop={12} style={fyStyles.headerBtn}>
-              <Bookmark
-                size={20}
-                color="#fff"
-                strokeWidth={isBookmarked ? 2.5 : 1.5}
-                fill={isBookmarked ? '#fff' : 'transparent'}
-              />
+      {/* Floating header - animated hide on scroll */}
+      <Animated.View style={[fyStyles.floatingHeader, headerAnimatedStyle]}>
+        <SafeAreaView edges={['top']} style={{ flex: 1 }} pointerEvents="box-none">
+          <View style={fyStyles.headerRow}>
+            <Pressable onPress={onBack} hitSlop={12} style={[fyStyles.headerBtn, fyStyles.headerBtnOverlay]}>
+              <ChevronLeft size={22} color="#fff" strokeWidth={2.5} />
             </Pressable>
-            <Pressable onPress={onReadOriginal} hitSlop={12} style={fyStyles.headerBtn}>
-              <ExternalLink size={20} color="#fff" strokeWidth={2} />
-            </Pressable>
+            <View style={fyStyles.headerRight}>
+              <Pressable onPress={onBookmark} hitSlop={12} style={[fyStyles.headerBtn, fyStyles.headerBtnOverlay]}>
+                <Bookmark
+                  size={20}
+                  color="#fff"
+                  strokeWidth={isBookmarked ? 2.5 : 1.5}
+                  fill={isBookmarked ? '#fff' : 'transparent'}
+                />
+              </Pressable>
+              <Pressable onPress={onReadOriginal} hitSlop={12} style={[fyStyles.headerBtn, fyStyles.headerBtnOverlay]}>
+                <ExternalLink size={20} color="#fff" strokeWidth={2} />
+              </Pressable>
+            </View>
           </View>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </Animated.View>
     </View>
   );
 }
@@ -334,30 +420,32 @@ const fyStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   headerBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.35)',
     marginHorizontal: 4,
+  },
+  headerBtnOverlay: {
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
   },
 
-  // Hero
+  // Hero with gradient blend
   heroWrap: {
     position: 'relative',
   },
   heroImage: {
     width: '100%',
-    height: 320,
+    height: SCREEN_HEIGHT * 0.36,
   },
   heroGradientTop: {
     position: 'absolute',
@@ -372,77 +460,117 @@ const fyStyles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 180,
+    height: 80,
   },
-  heroOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
+
+  // Title section below image
+  titleSection: {
     paddingHorizontal: 20,
-    paddingBottom: 16,
-    gap: 6,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   heroTitle: {
     fontSize: 24,
-    fontWeight: '800',
-    lineHeight: 31,
-    letterSpacing: -0.4,
+    fontWeight: '700',
+    lineHeight: 30,
+    letterSpacing: -0.5,
+  },
+  // Source badge overlapping at blend
+  sourceBadge: {
+    position: 'absolute',
+    bottom: 16,
+    left: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    zIndex: 2,
+  },
+  sourceBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
     color: '#fff',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  heroMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  heroSource: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.8)',
-  },
-  heroReadTime: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.6)',
   },
 
-  // Counter
-  counter: {
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
-    paddingVertical: 10,
-    letterSpacing: 0.5,
+  // Cards section
+  cardsSection: {
+    marginTop: 12,
   },
-
-  // Learning cards
+  cardPage: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
   card: {
-    borderRadius: 22,
-    padding: 32,
-    paddingTop: 28,
-    gap: 14,
-    minHeight: 260,
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
+    overflow: 'hidden',
   },
   cardLabel: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
-    letterSpacing: 0.5,
-    marginBottom: 6,
+    letterSpacing: -0.2,
+    marginBottom: 16,
   },
   cardContent: {
-    fontSize: 20,
-    lineHeight: 32,
+    fontSize: 16,
+    lineHeight: 26,
     letterSpacing: -0.2,
-  },
-  swipeHint: {
-    fontSize: 13,
-    fontWeight: '500',
-    textAlign: 'center',
-    paddingTop: 16,
     paddingBottom: 8,
+  },
+
+  // Pagination dots
+  dotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    paddingTop: 12,
+    paddingBottom: 20,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+
+  // Next article
+  nextArticle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 24,
+    marginTop: 4,
+    padding: 12,
+    borderRadius: 14,
+    gap: 12,
+  },
+  nextArticleThumb: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nextArticleInitials: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  nextArticleContent: {
+    flex: 1,
+    gap: 2,
+  },
+  nextArticleHint: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  nextArticleTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
   },
 });
 
@@ -473,12 +601,43 @@ function ChapterDeepDive({
   onBack: () => void;
   onSaveSnippet: (content: string, label: string) => void;
 }) {
+  const insets = useSafeAreaInsets();
   const [savedSections, setSavedSections] = useState<Set<string>>(new Set());
   const [openChapter, setOpenChapter] = useState<number | null>(null);
   const isDark = colorScheme === 'dark';
   const showHero = isLikelyRealImageUrl(thumbnail);
   const chapters = deepDive.chapters || [];
   const cardBg = isDark ? '#1a1a1a' : '#f7f7f5';
+
+  // Scroll-hide header animation
+  const scrollY = useSharedValue(0);
+  const lastScrollY = useSharedValue(0);
+  const headerTranslateY = useSharedValue(0);
+  const HEADER_HEIGHT = 60 + insets.top;
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      const currentY = event.contentOffset.y;
+      const diff = currentY - lastScrollY.value;
+
+      if (currentY > HEADER_HEIGHT) {
+        if (diff > 0) {
+          headerTranslateY.value = withTiming(-HEADER_HEIGHT, { duration: 200 });
+        } else if (diff < -5) {
+          headerTranslateY.value = withTiming(0, { duration: 200 });
+        }
+      } else {
+        headerTranslateY.value = withTiming(0, { duration: 200 });
+      }
+
+      lastScrollY.value = currentY;
+      scrollY.value = currentY;
+    },
+  });
+
+  const headerAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: headerTranslateY.value }],
+  }));
 
   const handleSave = (key: string, content: string, label: string) => {
     if (savedSections.has(key)) return;
@@ -600,7 +759,11 @@ function ChapterDeepDive({
   /* ── Overview page ── */
   return (
     <View style={[dd.root, { backgroundColor: Colors[colorScheme].background }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 60 }}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}>
 
         {/* Hero */}
         <View style={dd.heroWrap}>
@@ -734,16 +897,18 @@ function ChapterDeepDive({
             ))}
           </View>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
-      {/* Floating back button */}
-      <SafeAreaView edges={['top']} style={dd.floatingHeader} pointerEvents="box-none">
-        <View style={dd.floatingHeaderRow}>
-          <Pressable onPress={onBack} hitSlop={12} style={dd.floatingBtn}>
-            <ChevronLeft size={24} color="#fff" strokeWidth={2.5} />
-          </Pressable>
-        </View>
-      </SafeAreaView>
+      {/* Floating back button - animated hide on scroll */}
+      <Animated.View style={[dd.floatingHeader, headerAnimatedStyle]}>
+        <SafeAreaView edges={['top']} style={{ flex: 1 }} pointerEvents="box-none">
+          <View style={dd.floatingHeaderRow}>
+            <Pressable onPress={onBack} hitSlop={12} style={dd.floatingBtn}>
+              <ChevronLeft size={24} color="#fff" strokeWidth={2.5} />
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </Animated.View>
     </View>
   );
 }
@@ -1003,10 +1168,28 @@ export default function ArticleScreen() {
   const { isProUser, presentPaywall } = useRevenueCat();
   const { user } = useAuth();
 
-  const item = getCurrentArticle();
-
   const [bookmarked, setBookmarked] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [articleKey, setArticleKey] = useState(0);
+  const [item, setItem] = useState(getCurrentArticle());
+
+  // Get next article for "continue reading" feature
+  const nextItem = getNextArticle();
+  const nextArticleData = nextItem ? {
+    title: nextItem.title,
+    sourceName: nextItem.source_name || nextItem.source || '',
+    thumbnail: nextItem.thumbnail ?? undefined,
+  } : null;
+
+  const handleNextArticle = () => {
+    const next = navigateToNext();
+    if (next) {
+      setItem(next);
+      setArticleKey((k) => k + 1);
+      setBookmarked(false);
+      checkBookmarked(next.id).then(setBookmarked);
+    }
+  };
 
   useEffect(() => {
     if (!item) {
@@ -1140,17 +1323,18 @@ export default function ArticleScreen() {
   if (hasAccess && hasLearningCards && !isTrending) {
     return (
       <ForYouArticleView
+        key={articleKey}
         cards={learningCards as LearningCard[]}
         title={item.title}
         sourceName={sourceName}
         thumbnail={item.thumbnail ?? undefined}
-        readingTime={readingTime}
-        sources={item.sources}
         colorScheme={colorScheme}
         onBack={() => router.back()}
         onReadOriginal={handleReadOriginal}
         onBookmark={handleToggleBookmark}
         isBookmarked={bookmarked}
+        nextArticle={nextArticleData}
+        onNextArticle={handleNextArticle}
       />
     );
   }

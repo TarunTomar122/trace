@@ -32,6 +32,7 @@ interface ArticleData {
   summary: {
     short_article?: {
       subtitle?: string;
+      slides?: string[];
       outline?: string[];
       body?: string;
       key_takeaways?: string[];
@@ -43,6 +44,46 @@ interface ArticleData {
     feed_type: string;
     source_description?: string;
   };
+}
+
+type ArticlePoolDoc = {
+  url?: string;
+  title?: string;
+  type?: string;
+  source?: string;
+  source_name?: string;
+  interest_id?: string;
+  published_date?: string;
+  og_image?: string | null;
+  thumbnail?: string | null;
+  source_description?: string;
+  summary?: ArticleData['summary'];
+};
+
+function normalizeText(value?: string | null): string {
+  return (value || '').replace(/\s+/g, ' ').trim();
+}
+
+function hasMeaningfulArticleContent(article: Pick<ArticleData, 'title' | 'summary'>): boolean {
+  const title = normalizeText(article.title).toLowerCase();
+  const shortArticle = article.summary?.short_article;
+  const subtitle = normalizeText(shortArticle?.subtitle);
+  const body = normalizeText(shortArticle?.body);
+  const whyItMatters = normalizeText(shortArticle?.why_it_matters);
+  const slides = Array.isArray(shortArticle?.slides)
+    ? shortArticle!.slides!.map((slide) => normalizeText(slide)).filter(Boolean)
+    : [];
+  const keyTakeaways = Array.isArray(shortArticle?.key_takeaways)
+    ? shortArticle!.key_takeaways!.map((item) => normalizeText(item)).filter(Boolean)
+    : [];
+
+  const bodyHasSignal = body.length > 80 && body.toLowerCase() !== title;
+  const subtitleHasSignal = subtitle.length > 40 && subtitle.toLowerCase() !== title;
+  const whyHasSignal = whyItMatters.length > 40;
+  const slidesHaveSignal = slides.some((slide) => slide.length > 30 && slide.toLowerCase() !== title);
+  const takeawaysHaveSignal = keyTakeaways.some((item) => item.length > 20 && item.toLowerCase() !== title);
+
+  return bodyHasSignal || subtitleHasSignal || whyHasSignal || slidesHaveSignal || takeawaysHaveSignal;
 }
 
 async function getArticle(id: string): Promise<ArticleData | null> {
@@ -68,7 +109,7 @@ async function getArticle(id: string): Promise<ArticleData | null> {
       return null;
     }
 
-    const data = articleDoc.data();
+    const data = articleDoc.data() as ArticlePoolDoc | undefined;
     if (!data) {
       return null;
     }
@@ -93,7 +134,7 @@ async function getArticle(id: string): Promise<ArticleData | null> {
       }
     }
 
-    return {
+    const article: ArticleData = {
       id,
       url: articleUrl,
       title: data.title || '',
@@ -110,6 +151,8 @@ async function getArticle(id: string): Promise<ArticleData | null> {
         source_description: data.source_description || '',
       },
     };
+
+    return hasMeaningfulArticleContent(article) ? article : null;
   } catch (error) {
     console.error('Error fetching article:', error);
     return null;
@@ -129,6 +172,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return {
       title: 'Article Not Found | Trace',
       description: 'This article could not be found.',
+      robots: {
+        index: false,
+        follow: false,
+      },
     };
   }
 
@@ -155,6 +202,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: article.title,
       description,
       images: article.thumbnail ? [article.thumbnail] : [],
+    },
+    robots: {
+      index: true,
+      follow: true,
     },
   };
 }

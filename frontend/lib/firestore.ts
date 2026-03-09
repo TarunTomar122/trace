@@ -589,17 +589,16 @@ export const CAREER_GOALS = [
 
 // Get user profile from Firestore
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+  const docRef = doc(firestore, 'user_profiles', uid);
   try {
-    const docRef = doc(firestore, 'user_profiles', uid);
     const docSnap = await getDoc(docRef);
-    
     if (docSnap.exists()) {
       return docSnap.data() as UserProfile;
     }
     return null;
   } catch (error) {
     console.error('Error getting user profile:', error);
-    return null;
+    throw error;
   }
 }
 
@@ -667,17 +666,43 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
     let assembledAt: string | undefined;
     let metadata: V3UserFeed['metadata'];
 
-    // Get user's for_you and deep_dives
+    // Get the latest available user content per section instead of assuming
+    // today's doc is complete. This avoids empty mornings before new sections
+    // have been generated for the current date.
     if (!snapshot.empty) {
       const sortedDocs = snapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
-      const data = sortedDocs[0].data();
-      feedDate = data.date || sortedDocs[0].id;
-      assembledAt = data.assembled_at;
-      metadata = data.metadata;
-      forYou = Array.isArray(data.for_you) ? data.for_you : [];
-      deepDives = Array.isArray(data.deep_dives) ? data.deep_dives : [];
-      userTrending = Array.isArray(data.trending) ? data.trending : [];
-      userTrendingTopics = Array.isArray(data.trending_topics) ? data.trending_topics : [];
+      const latestData = sortedDocs[0].data();
+      feedDate = latestData.date || sortedDocs[0].id;
+      assembledAt = latestData.assembled_at;
+      metadata = latestData.metadata;
+
+      for (const docSnap of sortedDocs) {
+        const data = docSnap.data();
+        if (forYou.length === 0 && Array.isArray(data.for_you) && data.for_you.length > 0) {
+          forYou = data.for_you;
+        }
+        if (deepDives.length === 0 && Array.isArray(data.deep_dives) && data.deep_dives.length > 0) {
+          deepDives = data.deep_dives;
+        }
+        if (userTrending.length === 0 && Array.isArray(data.trending) && data.trending.length > 0) {
+          userTrending = data.trending;
+        }
+        if (
+          userTrendingTopics.length === 0 &&
+          Array.isArray(data.trending_topics) &&
+          data.trending_topics.length > 0
+        ) {
+          userTrendingTopics = data.trending_topics;
+        }
+        if (
+          forYou.length > 0 &&
+          deepDives.length > 0 &&
+          userTrending.length > 0 &&
+          userTrendingTopics.length > 0
+        ) {
+          break;
+        }
+      }
     }
 
     // Get trending from global feed (shared by all users).

@@ -2,12 +2,7 @@ import { MetadataRoute } from 'next'
 import { researchPosts } from './research/content'
 import { adminFirestore } from '@/lib/firebase-admin'
 
-const FALLBACK_TOPICS = [
-  'technology',
-  'business-market',
-  'experience',
-  'productivity',
-]
+const FALLBACK_TOPICS: string[] = []
 
 const ARTICLE_POOLS = [
   { collection: 'v3_for_you_pool', prefix: 'fy' },
@@ -15,11 +10,93 @@ const ARTICLE_POOLS = [
   { collection: 'v3_trending_pool', prefix: 'tr' },
 ] as const
 
+type SitemapTopicCandidate = {
+  id?: string
+  topic_key?: string
+  title?: string
+  display_name?: string
+  name?: string
+  article_count?: number
+  source_count?: number
+  timeline?: Array<unknown>
+  key_points?: string[]
+  articles?: Array<unknown>
+}
+
+type SitemapArticleCandidate = {
+  title?: string
+  summary?: {
+    short_article?: {
+      subtitle?: string
+      slides?: string[]
+      body?: string
+      key_takeaways?: string[]
+      why_it_matters?: string
+    }
+  }
+}
+
 function normalizeTopicSlug(value: unknown): string | null {
   if (typeof value !== 'string') return null
   const cleaned = value.trim().toLowerCase()
   if (!cleaned) return null
   return cleaned.replace(/\s+/g, '-')
+}
+
+function looksLikeRawSource(value: string): boolean {
+  return /(^|[-_/])(rss|feed)([-_/]|$)|\.com|\.ai|blog-rss/i.test(value)
+}
+
+function isIndexableTopic(candidate: {
+  slug: string
+  label: string
+  articleCount?: number
+  sourceCount?: number
+  timelineCount?: number
+  keyPointCount?: number
+}): boolean {
+  const hasContent =
+    (candidate.articleCount ?? 0) > 0 ||
+    (candidate.sourceCount ?? 0) > 0 ||
+    (candidate.timelineCount ?? 0) > 0 ||
+    (candidate.keyPointCount ?? 0) > 0
+
+  if (!hasContent) return false
+  if (looksLikeRawSource(candidate.slug) || looksLikeRawSource(candidate.label)) return false
+  return true
+}
+
+function formatTopicLabel(value: string): string {
+  return value
+    .split('-')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function normalizeText(value?: string | null): string {
+  return (value || '').replace(/\s+/g, ' ').trim()
+}
+
+function isIndexableArticle(candidate: SitemapArticleCandidate): boolean {
+  const title = normalizeText(candidate.title).toLowerCase()
+  const shortArticle = candidate.summary?.short_article
+  const subtitle = normalizeText(shortArticle?.subtitle)
+  const body = normalizeText(shortArticle?.body)
+  const whyItMatters = normalizeText(shortArticle?.why_it_matters)
+  const slides = Array.isArray(shortArticle?.slides)
+    ? shortArticle.slides.map((slide) => normalizeText(slide)).filter(Boolean)
+    : []
+  const keyTakeaways = Array.isArray(shortArticle?.key_takeaways)
+    ? shortArticle.key_takeaways.map((item) => normalizeText(item)).filter(Boolean)
+    : []
+
+  return (
+    (body.length > 80 && body.toLowerCase() !== title) ||
+    (subtitle.length > 40 && subtitle.toLowerCase() !== title) ||
+    whyItMatters.length > 40 ||
+    slides.some((slide) => slide.length > 30 && slide.toLowerCase() !== title) ||
+    keyTakeaways.some((item) => item.length > 20 && item.toLowerCase() !== title)
+  )
 }
 
 async function getTopicSlugs(): Promise<string[]> {
@@ -37,10 +114,24 @@ async function getTopicSlugs(): Promise<string[]> {
 
     if (!globalFeed.empty) {
       const data = globalFeed.docs[0].data()
-      const trendingTopics = Array.isArray(data.trending_topics) ? data.trending_topics : []
+      const trendingTopics: SitemapTopicCandidate[] = Array.isArray(data.trending_topics) ? data.trending_topics : []
       for (const topic of trendingTopics) {
         const slug = normalizeTopicSlug(topic?.topic_key ?? topic?.id)
-        if (slug) topics.add(slug)
+        const label = typeof topic?.title === 'string' && topic.title.trim()
+          ? topic.title.trim()
+          : slug
+            ? formatTopicLabel(slug)
+            : ''
+        if (slug && isIndexableTopic({
+          slug,
+          label,
+          articleCount: topic.article_count,
+          sourceCount: topic.source_count,
+          timelineCount: topic.timeline?.length,
+          keyPointCount: topic.key_points?.length,
+        })) {
+          topics.add(slug)
+        }
       }
     }
   } catch (error) {
@@ -56,9 +147,21 @@ async function getTopicSlugs(): Promise<string[]> {
     if (!latestTrending.empty) {
       const topicDocs = await latestTrending.docs[0].ref.collection('topics').get()
       topicDocs.forEach((doc) => {
-        const data = doc.data()
+        const data = doc.data() as SitemapTopicCandidate
         const slug = normalizeTopicSlug(data.topic_key ?? data.id ?? doc.id)
-        if (slug) topics.add(slug)
+        const rawLabel = data.display_name || data.name
+        const label = typeof rawLabel === 'string' && rawLabel.trim()
+          ? rawLabel.trim()
+          : slug
+            ? formatTopicLabel(slug)
+            : ''
+        if (slug && isIndexableTopic({
+          slug,
+          label,
+          articleCount: data.article_count ?? data.articles?.length,
+        })) {
+          topics.add(slug)
+        }
       })
     }
   } catch (error) {
@@ -80,6 +183,8 @@ async function getPublicArticlePages(baseUrl: string): Promise<MetadataRoute.Sit
         .get()
 
       snapshot.forEach((doc) => {
+        const data = doc.data() as SitemapArticleCandidate
+        if (!isIndexableArticle(data)) return
         const id = `${pool.prefix}_${doc.id}`
         pages.push({
           url: `${baseUrl}/articles/${id}`,
@@ -118,12 +223,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
-      url: `${baseUrl}/waitlist`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
       url: `${baseUrl}/privacy-policy`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
@@ -142,26 +241,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/contact`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.6,
-    },
-    {
       url: `${baseUrl}/tools`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.7,
     },
   ];
-
-  // Topic pages - high priority for SEO
-  const trendingPages: MetadataRoute.Sitemap = topics.map((topic) => ({
-    url: `${baseUrl}/trending/${topic}`,
-    lastModified: new Date(),
-    changeFrequency: 'daily' as const,
-    priority: 0.8,
-  }));
 
   const topicPages: MetadataRoute.Sitemap = topics.map((topic) => ({
     url: `${baseUrl}/topics/${topic}`,
@@ -177,5 +262,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticPages, ...trendingPages, ...topicPages, ...researchPages, ...articlePages];
+  return [...staticPages, ...topicPages, ...researchPages, ...articlePages];
 }

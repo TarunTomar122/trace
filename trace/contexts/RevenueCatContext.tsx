@@ -9,7 +9,7 @@ import RevenueCatUI from 'react-native-purchases-ui';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { triggerFeedGeneration, updateUserProfile } from '@/lib/firestore';
+import { getOrCreateUserProfile, triggerFeedGeneration, updateUserProfile } from '@/lib/firestore';
 
 // ─── Config ───
 const RC_API_KEY = 'goog_KNVMTAxIZiOOVXIEZhptsqjFMEU';
@@ -71,7 +71,7 @@ function deriveAppSubStatus(
 
 // ─── Provider ───
 export function RevenueCatProvider({ children }: { children: React.ReactNode }) {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, profileResolved, refreshProfile } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();
   const routerRef = useRef(router);
@@ -103,17 +103,29 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
 
   // - Sync appSubscriptionStatus to Firestore (stable - uses refs) -
   const syncAppSubStatus = useCallback(async (info: CustomerInfo) => {
-    const uid = userRef.current?.uid;
+    const currentUser = userRef.current;
+    const uid = currentUser?.uid;
     if (!uid) return;
+    if (!profileResolved) {
+      console.log('[RevenueCat] Skipping appSubscriptionStatus sync until profile resolves');
+      return;
+    }
     const status = deriveAppSubStatus(info);
     try {
+      // Prevent merge-creating skeletal user_profiles docs when RC sync wins the race.
+      await getOrCreateUserProfile(
+        uid,
+        currentUser?.email || '',
+        currentUser?.displayName || '',
+        currentUser?.photoURL || null
+      );
       await updateUserProfile(uid, { appSubscriptionStatus: status } as any);
       refreshProfileRef.current();
       console.log('[RevenueCat] Synced appSubscriptionStatus =', status);
     } catch (error) {
       console.error('[RevenueCat] Error syncing appSubscriptionStatus:', error);
     }
-  }, []); // stable - no deps, uses refs
+  }, [profileResolved]);
 
   // ─── Initialize SDK (once) ───
   useEffect(() => {

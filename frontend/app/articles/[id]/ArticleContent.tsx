@@ -22,6 +22,7 @@ interface ArticleData {
   summary: {
     short_article?: {
       subtitle?: string;
+      slides?: string[];
       outline?: string[];
       body?: string;
       key_takeaways?: string[];
@@ -42,12 +43,20 @@ interface Props {
 export default function ArticleContent({ article }: Props) {
   const [copied, setCopied] = useState(false);
 
+  const rawSlides = article.summary?.short_article?.slides;
+  const slides = Array.isArray(rawSlides)
+    ? rawSlides
+        .map((slide) => slide.replace(/^Slide\s*\d+:\s*/i, '').trim())
+        .filter(Boolean)
+    : [];
   const body = article.summary?.short_article?.body;
+  const subtitle = article.summary?.short_article?.subtitle;
   const keyTakeaways = article.summary?.short_article?.key_takeaways;
   const whyItMatters = article.summary?.short_article?.why_it_matters;
   const readingTime = article.summary?.reading_time_minutes || 3;
   const isTrending = article.feed_type === "trending";
   const hasImage = article.thumbnail && typeof article.thumbnail === 'string' && article.thumbnail.length > 10;
+  const bodyContent = slides.length > 0 ? slides.join('\n\n') : body;
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -90,6 +99,12 @@ export default function ArticleContent({ article }: Props) {
           </span>
         </div>
 
+        {subtitle && subtitle.trim().toLowerCase() !== article.title.trim().toLowerCase() && (
+          <p className="text-base text-secondary/75 leading-relaxed mb-6">
+            {subtitle}
+          </p>
+        )}
+
         {/* Thumbnail */}
         {hasImage && (
           <div className="relative aspect-[16/9] rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 mb-6">
@@ -122,9 +137,9 @@ export default function ArticleContent({ article }: Props) {
           </div>
         )}
 
-        {body && (
+        {bodyContent && (
           <div className="prose prose-sm dark:prose-invert max-w-none mb-6">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{body}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{bodyContent}</ReactMarkdown>
           </div>
         )}
 

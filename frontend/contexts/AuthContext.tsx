@@ -15,6 +15,7 @@ interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
+  profileResolved: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   loading: true,
+  profileResolved: false,
   signInWithGoogle: async () => {},
   signOut: async () => {},
   refreshProfile: async () => {},
@@ -35,27 +37,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileResolved, setProfileResolved] = useState(false);
 
-  const loadProfile = async (firebaseUser: User) => {
+  const loadProfile = async (firebaseUser: User, options?: { allowCreate?: boolean }) => {
+    const allowCreate = options?.allowCreate ?? true;
     try {
-      const userProfile = await getOrCreateUserProfile(
-        firebaseUser.uid,
-        firebaseUser.email || '',
-        firebaseUser.displayName || '',
-        firebaseUser.photoURL
-      );
+      const userProfile = allowCreate
+        ? await getOrCreateUserProfile(
+            firebaseUser.uid,
+            firebaseUser.email || '',
+            firebaseUser.displayName || '',
+            firebaseUser.photoURL
+          )
+        : await getUserProfile(firebaseUser.uid);
       setProfile(userProfile);
+      setProfileResolved(true);
       return userProfile;
     } catch (error) {
       console.error('Error loading profile:', error);
+      throw error;
     }
-    return null;
   };
 
   const refreshProfile = async () => {
     if (user) {
-      const p = await getUserProfile(user.uid);
-      setProfile(p);
+      try {
+        const p = await getUserProfile(user.uid);
+        setProfile(p);
+      } catch (error) {
+        console.error('Error refreshing profile:', error);
+      }
     }
   };
 
@@ -63,7 +74,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
-        const userProfile = await loadProfile(firebaseUser);
+        setProfileResolved(false);
+        let userProfile: UserProfile | null = null;
+        try {
+          userProfile = await loadProfile(firebaseUser, { allowCreate: false });
+        } catch {
+          await new Promise((resolve) => setTimeout(resolve, 600));
+          try {
+            userProfile = await loadProfile(firebaseUser, { allowCreate: false });
+          } catch {
+            // Leave profile unresolved on startup if we cannot verify state.
+            setProfileResolved(false);
+          }
+        }
         // Identify returning users for PostHog
         identifyUser(firebaseUser.uid, {
           email: firebaseUser.email,
@@ -72,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       } else {
         setProfile(null);
+        setProfileResolved(true);
       }
       setLoading(false);
     });
@@ -83,7 +107,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       if (result.user) {
-        const userProfile = await loadProfile(result.user);
+        setProfileResolved(false);
+        const userProfile = await loadProfile(result.user, { allowCreate: true });
         
         // Track sign in with PostHog
         identifyUser(result.user.uid, {
@@ -118,9 +143,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, profileResolved, signInWithGoogle, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
 }
-
