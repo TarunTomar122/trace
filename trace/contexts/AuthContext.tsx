@@ -18,10 +18,12 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   profileResolved: boolean;
+  profileLoadError: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  retryProfileLoad: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -29,10 +31,12 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   loading: true,
   profileResolved: false,
+  profileLoadError: false,
   signInWithGoogle: async () => {},
   signOut: async () => {},
   deleteAccount: async () => {},
   refreshProfile: async () => {},
+  retryProfileLoad: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -42,10 +46,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileResolved, setProfileResolved] = useState(false);
+  const [profileLoadError, setProfileLoadError] = useState(false);
   const signInInFlightRef = useRef(false);
 
   const loadProfile = async (firebaseUser: User, options?: { allowCreate?: boolean }) => {
     const allowCreate = options?.allowCreate ?? true;
+    setProfileLoadError(false);
     try {
       const userProfile = allowCreate
         ? await getOrCreateUserProfile(
@@ -56,17 +62,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           )
         : await getUserProfile(firebaseUser.uid);
       setProfile(userProfile);
-      
+
       // Prefetch profile photo for instant loading
       if (firebaseUser.photoURL) {
         Image.prefetch(firebaseUser.photoURL).catch(() => {
           // Silent fail - not critical
         });
       }
-      
+
       return userProfile;
     } catch (error) {
       console.error('Error loading profile:', error);
+      setProfileLoadError(true);
     } finally {
       setProfileResolved(true);
     }
@@ -77,6 +84,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user) {
       const p = await getUserProfile(user.uid);
       setProfile(p);
+    }
+  };
+
+  const retryProfileLoad = async () => {
+    if (user && profileLoadError) {
+      setProfileResolved(false);
+      await loadProfile(user, { allowCreate: false });
     }
   };
 
@@ -288,10 +302,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profile,
         loading,
         profileResolved,
+        profileLoadError,
         signInWithGoogle,
         signOut,
         deleteAccount,
         refreshProfile,
+        retryProfileLoad,
       }}>
       {children}
     </AuthContext.Provider>

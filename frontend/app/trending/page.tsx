@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Script from 'next/script';
 import PublicHeader from '@/components/PublicHeader';
 import Footer from '@/components/Footer';
 import { adminFirestore } from '@/lib/firebase-admin';
@@ -10,34 +11,35 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 3600; // cache for 1 hour
 
 export const metadata: Metadata = {
-  title: "Today's Top Reads — Trace",
+  title: 'Trending Topics And Story Overviews | Trace',
   description:
-    "The most interesting articles from hundreds of sources, curated and summarized daily. Free to read.",
+    'Explore grouped trending topics with story overviews, timelines, and source coverage. Trace turns scattered updates into one clear page.',
   keywords: [
-    'daily reads',
-    'curated articles',
-    'content curation',
-    'trending articles',
-    'tech news',
-    'RSS alternative',
+    'trending topics',
+    'story overview',
+    'news timeline',
+    'grouped stories',
+    'topic page',
+    'source coverage',
+    'story tracking',
     'Trace',
   ],
   alternates: {
     canonical: 'https://www.yourtrace.online/trending',
   },
   openGraph: {
-    title: "Today's Top Reads — Trace",
+    title: 'Trending Topics And Story Overviews | Trace',
     description:
-      "The most interesting articles from hundreds of sources, curated daily. Free to read.",
+      'Explore grouped trending topics with overviews, timelines, and source coverage.',
     url: 'https://www.yourtrace.online/trending',
     type: 'website',
     siteName: 'Trace',
   },
   twitter: {
     card: 'summary_large_image',
-    title: "Today's Top Reads — Trace",
+    title: 'Trending Topics And Story Overviews | Trace',
     description:
-      "The most interesting articles from hundreds of sources, curated daily.",
+      'Grouped topics, story overviews, and timelines from across the web.',
   },
 };
 
@@ -173,6 +175,21 @@ function shortHash(value: string): string {
   return Math.abs(hash).toString(36).slice(0, 8);
 }
 
+async function getRecentGlobalFeedDocs(limitCount = 5) {
+  if (!adminFirestore) return [];
+  const globalFeedRef = adminFirestore
+    .collection('v3_user_feeds')
+    .doc('_global')
+    .collection('daily');
+
+  const snapshot = await globalFeedRef
+    .orderBy('__name__', 'desc')
+    .limit(limitCount)
+    .get();
+
+  return snapshot.docs;
+}
+
 // Strip "Slide N:" prefix from slides
 function cleanSlides(slides: string[]): string[] {
   return slides.map(s => s.replace(/^Slide\s*\d+:\s*/i, ''));
@@ -198,28 +215,17 @@ async function getTodaysItems(): Promise<TrendingItem[]> {
 
   const today = getTodayIstDate();
 
-  // Try the new global feed first (v3_user_feeds/_global/daily/{date})
-  const globalFeedRef = adminFirestore
-    .collection('v3_user_feeds')
-    .doc('_global')
-    .collection('daily');
-
-  const globalSnapshot = await globalFeedRef
-    .orderBy('__name__', 'desc')
-    .limit(1)
-    .get();
-
-  if (!globalSnapshot.empty) {
-    const globalData = globalSnapshot.docs[0].data() || {};
+  // Prefer the latest non-empty global feed snapshot.
+  const globalDocs = await getRecentGlobalFeedDocs();
+  for (const doc of globalDocs) {
+    const globalData = doc.data() || {};
     const trending = Array.isArray(globalData.trending) ? globalData.trending : [];
     if (trending.length > 0) {
       const items: TrendingItem[] = trending.map((item: GlobalTrendingItem, idx: number) => {
-        // For slides-based summaries, prefer slides over short body
         const rawSlides = item.summary?.short_article?.slides;
         const slides = rawSlides?.length ? cleanSlides(rawSlides) : [];
         const body = item.summary?.short_article?.body || '';
         const subtitle = item.summary?.short_article?.subtitle || '';
-        // Use slides if available and body is short (likely just subtitle), strip markdown
         const rawSummary = (slides.length ? slides.join(' ') : '') || (body.length > 100 ? body : subtitle) || '';
         const summary = stripMarkdown(rawSummary);
 
@@ -320,16 +326,9 @@ async function getTopicLinks(): Promise<TopicLink[]> {
   const topics = new Map<string, string>();
 
   try {
-    const globalSnapshot = await adminFirestore
-      .collection('v3_user_feeds')
-      .doc('_global')
-      .collection('daily')
-      .orderBy('__name__', 'desc')
-      .limit(1)
-      .get();
-
-    if (!globalSnapshot.empty) {
-      const data = globalSnapshot.docs[0].data() || {};
+    const globalDocs = await getRecentGlobalFeedDocs();
+    for (const doc of globalDocs) {
+      const data = doc.data() || {};
       const trendingTopics: GlobalTopic[] = Array.isArray(data.trending_topics) ? data.trending_topics : [];
       trendingTopics.forEach((topic) => {
         const slug = normalizeTopicSlug(topic?.topic_key ?? topic?.id);
@@ -349,6 +348,7 @@ async function getTopicLinks(): Promise<TopicLink[]> {
         }
         topics.set(slug, label);
       });
+      if (topics.size >= 14) break;
     }
   } catch (error) {
     console.error('[trending] Failed to load global topic links:', error);
@@ -387,23 +387,50 @@ async function getTopicLinks(): Promise<TopicLink[]> {
   }
 
   return Array.from(topics.entries())
-    .slice(0, 8)
+    .slice(0, 14)
     .map(([slug, label]) => ({ slug, label }));
 }
 
 export default async function TrendingPage() {
   const [items, topicLinks] = await Promise.all([getTodaysItems(), getTopicLinks()]);
+  const itemListSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: 'Trending Topics And Story Overviews',
+    description:
+      'Grouped trending topics with story overviews, timelines, and source coverage from Trace.',
+    url: 'https://www.yourtrace.online/trending',
+    mainEntity: {
+      '@type': 'ItemList',
+      itemListElement: items.slice(0, 12).map((item, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        url: item.url,
+        name: item.title,
+      })),
+    },
+    about: topicLinks.slice(0, 10).map((topic) => ({
+      '@type': 'Thing',
+      name: topic.label,
+      url: `https://www.yourtrace.online/topics/${topic.slug}`,
+    })),
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <Script
+        id="trending-collection-schema"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
+      />
       <PublicHeader />
 
       <main className="mx-auto px-6 lg:px-10 max-w-[1600px]">
         {/* Header */}
         <div className="py-6 border-b border-gray-100 dark:border-gray-800 mb-6">
-          <h1 className="text-xl font-bold mb-0.5">Today&apos;s Top Reads</h1>
+          <h1 className="text-xl font-bold mb-0.5">Trending Topics</h1>
           <p className="text-sm text-secondary/50">
-            The best content from hundreds of sources, curated daily
+            Grouped stories with overviews, timelines, and source coverage
           </p>
           {topicLinks.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">

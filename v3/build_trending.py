@@ -709,10 +709,16 @@ def _topic_cache_key(items: list[dict[str, Any]]) -> str:
 
 TOPIC_OVERVIEW_PROMPT = """You are a news editor writing a concise brief for a trending topic.
 
+The reader wants two layers:
+1. A short overview paragraph that reads naturally and tells the story clearly.
+2. A few skim bullets for readers who want only the most important extra details.
+
+The overview and the bullets must do different jobs. Do not make the bullets restate the overview.
+
 Given these timeline events, produce:
 1. A short natural headline
-2. A 1-2 sentence overview — just what happened, nothing more
-3. 2-4 bullet points covering the key concrete details from the source material
+2. A 2-3 sentence overview paragraph — enough detail that the reader understands the story without opening an article
+3. 1-4 bullet points covering only the strongest additional concrete details from the source material
 
 TIMELINE:
 {timeline}
@@ -720,17 +726,25 @@ TIMELINE:
 Return JSON:
 {{
   "title": "Short natural headline (e.g. 'US-Iran Strikes Escalate', 'Apple Launches M5 Lineup')",
-  "overview": "1-2 sentences max. What happened and who was involved. No commentary, no 'what this means'.",
+  "overview": "2-3 sentences. What happened, who was involved, and the most important concrete detail.",
   "key_points": ["Specific fact with number or name", "Another concrete detail", "..."]
 }}
 
 RULES:
 - Title reads like a real news headline — NOT "X and Y" style
-- Overview is 1-2 sentences ONLY — the bullet points carry all the details
+- Overview is 2-3 sentences, should read like a natural paragraph, and should carry the core substance of the story
 - Overview must name the main entities involved when they are present in the timeline: companies, products, people, countries, places, agencies, or other specific nouns central to the story
+- Every sentence in the overview must add new information. Do not write a generic opener plus filler.
 - Use **bold** for key names, numbers, and prices in bullet points
 - Bullet points should be specific and scannable — include the actual names, products, places, dates, prices, counts, or other concrete facts when they appear in the timeline
+- When choosing bullets, prefer exact numbers, named entities, deal terms, rollout details, operational effects, or direct consequences from the timeline before any broader framing
 - Do not collapse concrete details into vague labels like "key assets", "major companies", "analysts", "markets", or "officials" if the timeline names the exact thing
+- Each bullet must add NEW information beyond the overview. Do not restate the overview in different words.
+- Do not include filler bullets such as announcement dates, publication dates, or generic statements like "the update is part of ongoing improvements" unless that is itself the story.
+- Avoid "broader trend" bullets unless the timeline itself provides a concrete comparison or statistic that makes that trend the story.
+- Prefer fewer bullets over weak bullets. If there is only one or two genuinely useful details, return one or two bullets.
+- Write each bullet as one complete sentence with real information, not fragments and not mini-paragraphs.
+- If there are no good additive bullets, return an empty list instead of repeating the overview.
 - No commentary, predictions, or "what this means for the industry" fluff
 """
 
@@ -746,6 +760,24 @@ GENERIC_TOPIC_PHRASES = {
     "notable updates",
     "key updates",
     "industry players",
+    "ongoing improvements",
+    "was announced on",
+    "reported on",
+    "published on",
+    "sale date is",
+    "part of ongoing improvements",
+    "this update is part of",
+    "this move follows",
+    "shared during",
+    "shared in an interview",
+    "during a bloomberg interview",
+    "as the situation evolves",
+    "expect potential",
+    "potential partnerships",
+    "maintaining competitive pricing",
+    "the bigger shift",
+    "this highlights a growing trend",
+    "signals that",
 }
 
 
@@ -800,12 +832,125 @@ def _line_has_concrete_detail(text: str, salient_mentions: list[str]) -> bool:
     return any(mention.lower() in lower for mention in salient_mentions)
 
 
+def _normalize_text_for_overlap(value: str) -> set[str]:
+    words = re.findall(r"[a-z0-9]+", str(value or "").lower())
+    stop = {
+        "the", "a", "an", "and", "or", "for", "with", "from", "into", "that",
+        "this", "these", "those", "after", "before", "amid", "over", "under",
+        "into", "its", "their", "they", "has", "have", "had", "was", "were",
+        "are", "is", "be", "been", "being", "new", "more", "most", "part",
+        "update", "updates", "story", "reported", "announced", "published",
+    }
+    return {w for w in words if len(w) >= 4 and w not in stop}
+
+
+def _split_sentences(text: str) -> list[str]:
+    value = str(text or "").strip()
+    if not value:
+        return []
+    parts = re.split(r"(?<=[.!?])\s+", value)
+    out: list[str] = []
+    for part in parts:
+        cleaned = part.strip()
+        if not cleaned:
+            continue
+        if cleaned[-1] not in ".!?":
+            cleaned += "."
+        out.append(cleaned)
+    return out
+
+
+def _is_date_only_or_filler_point(text: str, salient_mentions: list[str]) -> bool:
+    value = str(text or "").strip()
+    if not value:
+        return True
+    lower = value.lower()
+    if any(phrase in lower for phrase in GENERIC_TOPIC_PHRASES):
+        return True
+
+    has_date = bool(re.search(r"\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}\b", lower))
+    has_numeric_date = bool(re.search(r"\b\d{4}\b", lower))
+    mentions = [m for m in salient_mentions if m.lower() in lower]
+    content_words = _normalize_text_for_overlap(value)
+
+    if ("announced on" in lower or "reported on" in lower or "published on" in lower or "date is" in lower) and (has_date or has_numeric_date):
+        if len(content_words) <= 6 or len(mentions) <= 1:
+            return True
+
+    if len(content_words) < 4 and not mentions:
+        return True
+
+    return False
+
+
+def _is_speculative_point(text: str) -> bool:
+    lower = str(text or "").strip().lower()
+    if not lower:
+        return True
+    speculative_patterns = (
+        "could ",
+        "may ",
+        "might ",
+        "would ",
+        "likely ",
+        "is set to",
+        "expected to",
+        "expect ",
+        "potential ",
+        "could lead to",
+        "may lead to",
+        "may need to",
+        "could reshape",
+        "the future of",
+        "as the situation evolves",
+    )
+    return any(pattern in lower for pattern in speculative_patterns)
+
+
+def _is_redundant_point(point: str, overview: str) -> bool:
+    point_words = _normalize_text_for_overlap(point)
+    overview_words = _normalize_text_for_overlap(overview)
+    if not point_words:
+        return True
+    overlap = len(point_words & overview_words) / max(1, len(point_words))
+    return overlap >= 0.72
+
+
+def _compose_timeline_point(event: dict[str, Any]) -> str:
+    title = str(event.get("title", "")).strip().rstrip(".")
+    summary = str(event.get("summary", "")).strip().rstrip(".")
+    if title and summary and _normalize_text_for_overlap(summary) - _normalize_text_for_overlap(title):
+        return f"{title}. {summary}."
+    if title:
+        return f"{title}."
+    return summary + ("." if summary and not summary.endswith(".") else "")
+
+
+def _compose_overview_from_sentences(sentences: list[str], min_sentences: int = 2, max_sentences: int = 3) -> str:
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for sentence in sentences:
+        sig = " ".join(sorted(_normalize_text_for_overlap(sentence)))
+        if sig and sig in seen:
+            continue
+        if sig:
+            seen.add(sig)
+        cleaned.append(sentence.strip())
+        if len(cleaned) >= max_sentences:
+            break
+    if not cleaned:
+        return ""
+    if len(cleaned) < min_sentences:
+        return " ".join(cleaned)
+    return " ".join(cleaned[:max_sentences])
+
+
 def _timeline_fallback_points(timeline: list[dict[str, Any]], limit: int = 4) -> list[str]:
     points: list[str] = []
     for event in timeline[:limit]:
-        title = str(event.get("title", "")).strip()
-        if title:
-            points.append(title)
+        point = _compose_timeline_point(event).strip()
+        if point:
+            points.append(point)
     return points
 
 
@@ -823,17 +968,65 @@ def _normalize_topic_overview_output(
     if not _line_has_concrete_detail(normalized_overview, salient_mentions):
         normalized_overview = deterministic_overview
 
-    concrete_points = [
-        point for point in normalized_points
-        if _line_has_concrete_detail(point, salient_mentions)
-    ]
-    if len(concrete_points) < min(2, max(1, len(normalized_points))):
-        fallback_points = _timeline_fallback_points(timeline)
-        normalized_points = fallback_points or deterministic_points
+    concrete_points: list[str] = []
+    seen_signatures: set[str] = set()
+    for point in normalized_points:
+        if not _line_has_concrete_detail(point, salient_mentions):
+            continue
+        if _is_date_only_or_filler_point(point, salient_mentions):
+            continue
+        if _is_speculative_point(point):
+            continue
+        if _is_redundant_point(point, normalized_overview):
+            continue
+        signature = " ".join(sorted(_normalize_text_for_overlap(point)))
+        if signature and signature in seen_signatures:
+            continue
+        if signature:
+            seen_signatures.add(signature)
+        concrete_points.append(point.rstrip(".") + ".")
+
+    if not concrete_points:
+        fallback_points = [
+            point for point in _timeline_fallback_points(timeline)
+            if not _is_date_only_or_filler_point(point, salient_mentions)
+            and not _is_speculative_point(point)
+            and not _is_redundant_point(point, normalized_overview)
+        ]
+        normalized_points = fallback_points
     else:
         normalized_points = concrete_points
 
     return normalized_overview, normalized_points[:5]
+
+
+def _build_singleton_topic_overview(
+    item: dict[str, Any],
+    fallback_title: str,
+    summary_map: dict[str, dict[str, Any] | None],
+) -> tuple[str, str, list[str], bool]:
+    url = str(item.get("url", "")).strip()
+    summary = summary_map.get(url) if url else None
+    title = str(item.get("title", "")).strip() or fallback_title
+
+    if not isinstance(summary, dict):
+        overview, key_points = _deterministic_topic_overview(title, [])
+        return title, overview, key_points, False
+
+    short = summary.get("short_article", {}) or {}
+    body = str(short.get("body", "")).strip()
+    takeaways = short.get("key_takeaways") if isinstance(short.get("key_takeaways"), list) else []
+    if body:
+        key_points = [str(point).strip() for point in takeaways if str(point).strip()][:5]
+        return title, body, key_points, True
+
+    subtitle = str(short.get("subtitle", "")).strip()
+    if subtitle:
+        key_points = [str(point).strip() for point in takeaways if str(point).strip()][:5]
+        return title, subtitle, key_points, True
+
+    overview, key_points = _deterministic_topic_overview(title, [])
+    return title, overview, key_points, False
 
 
 def _build_topic_overview(
@@ -1057,6 +1250,13 @@ def _build_trending_topics_payload(
 
     def _gen_overview(cd: dict[str, Any]) -> tuple[str, str, str, list[str], bool]:
         tid = cd["topic_id"]
+        if len(cd["items"]) == 1:
+            title, overview, key_points, from_cache = _build_singleton_topic_overview(
+                item=cd["items"][0],
+                fallback_title=cd["fallback_title"],
+                summary_map=summary_map,
+            )
+            return tid, title, overview, key_points, from_cache
         title, overview, key_points, from_cache = _build_topic_overview(
             store=store,
             topic_id=tid,

@@ -68,14 +68,28 @@ function rankTrendingTopics(topics: TrendingTopic[]): TrendingTopic[] {
   return scored;
 }
 
+function getTopicDisplay(topic: TrendingTopic) {
+  const isSingleton = (topic.source_count ?? 0) <= 1 || (topic.article_count ?? 0) <= 1;
+  const article = isSingleton ? (topic.articles?.[0] ?? null) : null;
+  return {
+    isSingleton,
+    article,
+    title: article?.title || topic.title,
+    summary: article?.summary?.short_article?.subtitle || article?.summary?.short_article?.body || topic.summary || '',
+    thumbnail: article?.thumbnail || topic.thumbnail,
+    readingTime: article?.summary?.reading_time_minutes,
+  };
+}
+
 export default function TrendingScreen() {
   const router = useRouter();
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, profileLoadError, retryProfileLoad } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
 
   const [v3Feed, setV3Feed] = useState<V3UserFeed | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const { isProUser: isSubscribed, isEarlyAdopter, loading: rcLoading } = useRevenueCat();
   const isOnboarded = profile?.onboarded ?? false;
@@ -169,6 +183,7 @@ export default function TrendingScreen() {
   const featuredTopic = topicGroups.length > 0
     ? (topicGroups.find((t) => t.is_featured) || topicGroups[0])
     : null;
+  const featuredDisplay = featuredTopic ? getTopicDisplay(featuredTopic) : null;
   const remainingTopics = featuredTopic
     ? topicGroups.filter(
         (t) => t.id !== featuredTopic.id && t.title !== featuredTopic.title
@@ -177,6 +192,39 @@ export default function TrendingScreen() {
 
   const totalItems = topicGroups.length;
   const isEmpty = totalItems === 0;
+
+  const handleRetry = async () => {
+    setIsRetrying(true);
+    await retryProfileLoad();
+    setIsRetrying(false);
+  };
+
+  // Show error UI if profile failed to load (network issue)
+  if (profileLoadError && !profile) {
+    return (
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
+        edges={['top']}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorEmoji}>📡</Text>
+          <ThemedText style={styles.errorTitle}>Connection Issue</ThemedText>
+          <ThemedText style={[styles.errorText, { color: Colors[colorScheme].muted }]}>
+            Could not load your profile. Please check your internet connection.
+          </ThemedText>
+          <Pressable
+            onPress={handleRetry}
+            disabled={isRetrying}
+            style={[styles.retryButton, { opacity: isRetrying ? 0.6 : 1 }]}>
+            {isRetrying ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            )}
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!isOnboarded) return null;
 
@@ -217,7 +265,7 @@ export default function TrendingScreen() {
             colorScheme={colorScheme}
             isEarlyAdopter={isEarlyAdopter}
             isSubscribed={isSubscribed}
-            onPress={() => router.push('/paywall')}
+            onPress={() => router.push('/early-adopter')}
           />
         </View>
 
@@ -265,23 +313,30 @@ export default function TrendingScreen() {
                   <Pressable
                     onPress={() => handleTopicPress(featuredTopic)}
                     style={styles.featuredCard}>
-                    {featuredTopic.thumbnail ? (
-                      <Image source={{ uri: featuredTopic.thumbnail }} style={styles.featuredImage} resizeMode="cover" />
+                    {featuredDisplay?.thumbnail ? (
+                      <Image source={{ uri: featuredDisplay.thumbnail }} style={styles.featuredImage} resizeMode="cover" />
                     ) : (
                       <View style={[styles.featuredImage, { backgroundColor: Colors[colorScheme].border }]} />
                     )}
                     <View style={styles.featuredContent}>
                       <Text style={[styles.featuredTitle, { color: Colors[colorScheme].text }]}>
-                        {featuredTopic.title}
+                        {featuredDisplay?.title || featuredTopic.title}
                       </Text>
                       <Text
                         numberOfLines={3}
                         style={[styles.featuredSummary, { color: Colors[colorScheme].muted }]}>
-                        {(featuredTopic.summary || '').replace(/\*\*/g, '')}
+                        {((featuredDisplay?.summary) || '').replace(/\*\*/g, '')}
                       </Text>
-                      <Text style={[styles.featuredMeta, { color: Colors[colorScheme].muted }]}>
-                        {featuredTopic.source_count ?? 0} sources · {featuredTopic.article_count ?? 0} updates
-                      </Text>
+                      {featuredDisplay?.isSingleton && featuredDisplay.article ? (
+                        <Text style={[styles.featuredMeta, { color: Colors[colorScheme].muted }]}>
+                          {featuredDisplay.article.source_name || 'Source'}
+                          {featuredDisplay.readingTime ? ` · ${featuredDisplay.readingTime} min read` : ''}
+                        </Text>
+                      ) : (
+                        <Text style={[styles.featuredMeta, { color: Colors[colorScheme].muted }]}>
+                          {featuredTopic.source_count ?? 0} sources · {featuredTopic.article_count ?? 0} updates
+                        </Text>
+                      )}
                     </View>
                   </Pressable>
                 </View>
@@ -295,7 +350,9 @@ export default function TrendingScreen() {
                     </Text>
                   </View>
                   <View style={styles.topicList}>
-                    {remainingTopics.map((topic) => (
+                    {remainingTopics.map((topic) => {
+                      const display = getTopicDisplay(topic);
+                      return (
                       <Pressable
                         key={topic.id}
                         onPress={() => handleTopicPress(topic)}
@@ -303,22 +360,25 @@ export default function TrendingScreen() {
                           styles.topicRow,
                           { backgroundColor: Colors[colorScheme].card },
                         ]}>
-                        {topic.thumbnail ? (
-                          <Image source={{ uri: topic.thumbnail }} style={styles.topicThumb} resizeMode="cover" />
+                        {display.thumbnail ? (
+                          <Image source={{ uri: display.thumbnail }} style={styles.topicThumb} resizeMode="cover" />
                         ) : (
                           <View style={[styles.topicThumb, { backgroundColor: Colors[colorScheme].border }]} />
                         )}
                         <View style={styles.topicBody}>
                           <Text numberOfLines={2} style={[styles.topicTitle, { color: Colors[colorScheme].text }]}>
-                            {topic.title}
+                            {display.title}
                           </Text>
                           <Text style={[styles.topicMeta, { color: Colors[colorScheme].muted }]}>
-                            {topic.source_count ?? 0} sources · {topic.article_count ?? 0} updates
+                            {display.isSingleton && display.article
+                              ? `${display.article.source_name || 'Source'}${display.readingTime ? ` · ${display.readingTime} min read` : ''}`
+                              : `${topic.source_count ?? 0} sources · ${topic.article_count ?? 0} updates`}
                           </Text>
                         </View>
                         <ChevronRight size={15} color={Colors[colorScheme].muted} strokeWidth={2} />
                       </Pressable>
-                    ))}
+                      );
+                    })}
                   </View>
                 </View>
               )}
@@ -553,6 +613,26 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   emptyText: { textAlign: 'center', fontSize: 15, paddingHorizontal: 20 },
+
+  // Error state
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  errorEmoji: { fontSize: 48, marginBottom: 16 },
+  errorTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
+  errorText: { fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 24 },
+  retryButton: {
+    backgroundColor: '#6366F1',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 999,
+    minWidth: 140,
+    alignItems: 'center',
+  },
+  retryButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 
   endText: {
     textAlign: 'center',

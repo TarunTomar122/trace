@@ -163,12 +163,12 @@ const BadgeMarquee = () => {
     // },
   ];
 
-  // Duplicate badges for seamless loop
-  const duplicatedBadges = [...badges, ...badges];
+  // Triple the sequence so the loop never exposes the edge of the track.
+  const duplicatedBadges = [...badges, ...badges, ...badges];
 
   return (
     <div className="overflow-hidden py-6 relative">
-      <div className="flex gap-8 animate-marquee">
+      <div className="flex w-max gap-8 animate-marquee">
         {duplicatedBadges.map((badge, idx) => (
           <a
             key={idx}
@@ -212,6 +212,42 @@ const BadgeMarquee = () => {
   );
 };
 
+const PlayStoreTopBanner = () => {
+  if (!isAlphaMode()) return null;
+
+  return (
+    <a
+      href="https://play.google.com/store/apps/details?id=online.yourtrace.app"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="fixed top-0 left-0 right-0 z-60 block border-b border-emerald-300/60 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/88 transition-colors hover:border-emerald-400/70"
+    >
+      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-background/0 to-cyan-500/10 pointer-events-none" />
+      <div className="relative mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-black text-white">
+            <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+              <path fill="#34A853" d="M3 2.5v19l10.5-9.5z" />
+              <path fill="#4285F4" d="M13.5 11.5L17 8l-11-6z" />
+              <path fill="#FBBC05" d="M17.8 8.8l3.6 2c.8.5.8 1.7 0 2.2l-3.6 2-4.3-3.5z" />
+              <path fill="#EA4335" d="M13.5 12.5L17 16l-11 6z" />
+            </svg>
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-foreground md:text-base">
+              Get Trace on Google Play
+            </p>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2 text-sm font-medium text-foreground">
+          <span className="hidden sm:inline">Open Play Store</span>
+          <ArrowUpRight size={16} />
+        </div>
+      </div>
+    </a>
+  );
+};
+
 // --- Waitlist Banner Component ---
 const WaitlistBanner = () => {
   if (isAlphaMode()) return null;
@@ -239,20 +275,43 @@ const WaitlistBanner = () => {
 const Nav = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [navVisible, setNavVisible] = useState(true);
   const { user, profile, signInWithGoogle, signOut } = useAuth();
+  const alphaMode = isAlphaMode();
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 50);
+    let lastY = window.scrollY;
+
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      setScrolled(currentY > 50);
+
+      if (Math.abs(currentY - lastY) < 6) return;
+      if (currentY <= 10) {
+        setNavVisible(true);
+      } else if (currentY < lastY) {
+        setNavVisible(true);
+      } else {
+        setNavVisible(false);
+      }
+      lastY = currentY;
+    };
+
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const showBanner = !isAlphaMode();
+  useEffect(() => {
+    if (mobileMenuOpen) setNavVisible(true);
+  }, [mobileMenuOpen]);
+
+  const showBanner = true;
 
   return (
     <nav className={cn(
       "fixed left-0 right-0 z-50 transition-all duration-500",
-      showBanner ? "top-[40px]" : "top-0"
+      navVisible ? "translate-y-0 opacity-100" : "-translate-y-[120%] opacity-0",
+      showBanner ? (alphaMode ? "top-[58px]" : "top-[40px]") : "top-0"
     )}>
       <div className="container mx-auto px-4 max-w-7xl">
         <motion.div
@@ -440,9 +499,8 @@ const Hero = () => {
   const sampleTopicHref = '/trending';
 
   return (
-    <section className="relative pt-32 pb-16 md:pt-36 lg:pt-60 md:pb-24 lg:pb-40 overflow-hidden z-10">
+    <section className="relative pt-52 pb-16 md:pt-40 lg:pt-60 md:pb-24 lg:pb-40 overflow-hidden z-10">
       <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Left Side - Content */}
           <div className="flex flex-col">
@@ -526,7 +584,7 @@ const Hero = () => {
                   transition={{ duration: 0.6, delay: 0.1 }}
                   className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-tight font-serif tracking-tight text-foreground mb-4 md:mb-6"
                 >
-                  Fu*K The Algorithms
+                  Stop Checking 10 apps every morning
                 </motion.h1>
 
                 <motion.p
@@ -535,7 +593,7 @@ const Hero = () => {
                   transition={{ duration: 0.6, delay: 0.2 }}
                   className="text-base md:text-lg text-secondary leading-relaxed mb-4 max-w-md"
                 >
-                  Replace scattered Reddit, HN, blogs, and videos with one topic page, one timeline, and a feed built around what matters to you.
+                  Trace saves you time by grouping similar stories into one topic and summarizing them at the depth you prefer.
                 </motion.p>
 
                 <motion.div
@@ -580,13 +638,6 @@ const Hero = () => {
                       <ChevronRight size={16} />
                     </button>
                   )}
-                  <Link
-                    href={sampleTopicHref}
-                    className="inline-flex items-center gap-1.5 px-4 py-3.5 text-sm font-medium text-secondary/70 hover:text-foreground transition-colors"
-                  >
-                    or browse live topic pages
-                    <ArrowUpRight size={14} />
-                  </Link>
                 </motion.div>
 
                 {/* Social Proof */}
@@ -609,46 +660,7 @@ const Hero = () => {
                     </span>
                   </div>
                 </motion.div>
-                <BadgeMarquee />
 
-                {/* Mobile app callout */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.6, delay: 0.6 }}
-                  className="relative mt-2 rounded-2xl"
-                >
-                  <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-emerald-400/20 blur-3xl pointer-events-none" />
-                  <div className="relative">
-                    <p className="text-sm font-semibold text-foreground">Read Trace on Android</p>
-                    <p className="text-xs text-secondary/60 mt-0.5">
-                      Full topic pages with overviews and timelines, built for phone.
-                    </p>
-                  </div>
-
-                  <a
-                    href="https://play.google.com/store/apps/details?id=online.yourtrace.app"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="relative mt-3 inline-flex w-full sm:w-auto items-center gap-3 rounded-xl bg-black px-5 py-3.5 text-white shadow-lg shadow-emerald-500/20 transition-transform hover:-translate-y-0.5 hover:shadow-emerald-500/35"
-                  >
-                    <svg viewBox="0 0 24 24" className="h-7 w-7 shrink-0" aria-hidden="true">
-                      <path fill="#34A853" d="M3 2.5v19l10.5-9.5z" />
-                      <path fill="#4285F4" d="M13.5 11.5L17 8l-11-6z" />
-                      <path fill="#FBBC05" d="M17.8 8.8l3.6 2c.8.5.8 1.7 0 2.2l-3.6 2-4.3-3.5z" />
-                      <path fill="#EA4335" d="M13.5 12.5L17 16l-11 6z" />
-                    </svg>
-                    <span className="text-left leading-tight">
-                      <span className="block text-[10px] uppercase tracking-wide text-white/80">Get it on</span>
-                      <span className="block text-base font-semibold">Google Play</span>
-                    </span>
-                    <ArrowUpRight size={16} className="ml-auto text-white/80" />
-                  </a>
-
-                  <div className="mt-2 text-[11px] text-secondary/55">
-                    Free download
-                  </div>
-                </motion.div>
               </>
             )}
           </div>
@@ -662,6 +674,10 @@ const Hero = () => {
           >
             <HeroDemo />
           </motion.div>
+        </div>
+
+        <div className="mt-18 md:mt-8">
+          <BadgeMarquee />
         </div>
       </div>
     </section>
@@ -1695,40 +1711,40 @@ const InteractiveDemo = () => {
 
 // --- Hero Demo (realistic static topic page mock) ---
 const HERO_TOPIC_DEMO = {
-  title: 'Red Sea Conflict Expands As Shipping Lanes Tighten',
-  summary: 'Naval strikes, insurance repricing, and route diversions are turning a regional war flashpoint into a global trade risk story.',
-  imageUrl: 'https://images.unsplash.com/photo-1521295121783-8a321d551ad2?auto=format&fit=crop&w=1600&q=80',
-  sourceCount: 12,
-  updateCount: 19,
+  title: 'AI Tools Push Teams To Ship Faster Across Design And Engineering',
+  summary: 'Product teams are using AI across design, coding, and workflow automation, with updates from tools like Figma and Cursor showing how faster shipping is becoming a cross-functional advantage.',
+  imageUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1600&q=80',
+  sourceCount: 11,
+  updateCount: 18,
   keyPoints: [
-    'Major carriers are rerouting around the Cape, increasing transit time by 7-14 days.',
-    'Freight and marine insurance costs are rising across energy and consumer goods routes.',
-    'Diplomatic talks continue, but military actions are still driving daily volatility.',
+    'Figma is pushing deeper into prototyping and handoff, with AI features aimed at shortening the path from mockup to shipped UI.',
+    'Cursor and similar coding tools are expanding from autocomplete into repo-wide edits, implementation help, and faster iteration loops.',
+    'The bigger shift is organizational: design, product, and engineering are starting to use the same AI tooling stack to reduce time between idea and release.',
   ],
   timeline: [
     {
-      time: '58m ago',
-      source: 'Reuters',
-      title: 'Two carriers pause Red Sea transits after latest strikes',
-      context: 'Immediate impact: additional reroutes for Europe-bound cargo.',
+      time: '42m ago',
+      source: 'The Verge',
+      title: 'Figma adds new AI workflow tools to speed up prototyping and handoff',
+      context: 'The pitch is fewer back-and-forth cycles between design exploration and implementation.',
     },
     {
-      time: '2h ago',
-      source: 'Financial Times',
-      title: 'Marine insurers widen war-risk premiums for Gulf routes',
-      context: 'Cost pressure spreads from energy cargo to container shipments.',
+      time: '1h ago',
+      source: 'TechCrunch',
+      title: 'Cursor expands repo context and editing workflows for product teams',
+      context: 'AI coding is moving from quick snippets toward features that support real shipping velocity.',
     },
     {
-      time: '5h ago',
-      source: 'Bloomberg',
-      title: 'Brent crude edges higher as traders price shipping disruption',
-      context: 'Energy markets react to logistics uncertainty, not just supply.',
+      time: '3h ago',
+      source: 'Fast Company',
+      title: 'AI copilots are reshaping how teams move from idea to launch',
+      context: 'The value is less about novelty and more about compressing planning, writing, and execution time.',
     },
     {
-      time: '9h ago',
-      source: 'AP',
-      title: 'Back-channel talks continue as regional forces stay on alert',
-      context: 'Negotiation efforts remain active, but de-escalation is unclear.',
+      time: '6h ago',
+      source: 'The Information',
+      title: 'Product teams test shared AI workflows across research, design, and code',
+      context: 'The strongest tools are becoming shared infrastructure instead of isolated point solutions.',
     },
   ],
 };
@@ -1757,15 +1773,15 @@ const HeroDemo = () => {
         {/* Topic Page Mock */}
         <div className="p-3 h-[490px] overflow-y-auto">
           <div className="space-y-3">
-            <div className="rounded-xl border border-border/50 overflow-hidden">
-              <div className="h-40 bg-gradient-to-br from-slate-800 via-zinc-700 to-stone-600 relative">
+            <div className="rounded-2xl overflow-hidden bg-gradient-to-b from-black/[0.03] via-transparent to-transparent">
+              <div className="h-52 bg-gradient-to-br from-slate-800 via-zinc-700 to-stone-600 relative">
                 <img
                   src={HERO_TOPIC_DEMO.imageUrl}
-                  alt="Cargo ship crossing a sea route"
+                  alt="Developer workspace with laptop and code"
                   className="absolute inset-0 h-full w-full object-cover"
                   loading="lazy"
                 />
-                <div className="absolute inset-0 bg-black/45" />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/30 to-background" />
                 <div className="absolute left-3 top-3">
                   <span className="px-2 py-1 rounded-full bg-black/50 text-[10px] font-medium text-white">
                     Topic overview
@@ -1780,26 +1796,26 @@ const HeroDemo = () => {
                   </p>
                 </div>
               </div>
-            </div>
 
-            <div className="rounded-xl border border-border/50 bg-surface-secondary/30 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-secondary/70 mb-1.5">
-                Overview
-              </p>
-              <p className="text-[12px] text-foreground/90 leading-relaxed">
-                {HERO_TOPIC_DEMO.summary}
-              </p>
-              <div className="mt-2.5 space-y-1.5">
-                {HERO_TOPIC_DEMO.keyPoints.map((point) => (
-                  <div key={point} className="flex items-start gap-2">
-                    <div className="w-1.5 h-1.5 mt-[7px] rounded-full bg-foreground/50 shrink-0" />
-                    <p className="text-[11px] text-foreground/85">{point}</p>
-                  </div>
-                ))}
+              <div className="-mt-1 px-3 pb-3 pt-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-secondary/70 mb-1.5">
+                  Overview
+                </p>
+                <p className="text-[12px] text-foreground/90 leading-relaxed">
+                  {HERO_TOPIC_DEMO.summary}
+                </p>
+                <div className="mt-2.5 space-y-1.5">
+                  {HERO_TOPIC_DEMO.keyPoints.map((point) => (
+                    <div key={point} className="flex items-start gap-2">
+                      <div className="w-1.5 h-1.5 mt-[7px] rounded-full bg-foreground/50 shrink-0" />
+                      <p className="text-[11px] text-foreground/85">{point}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div className="rounded-xl border border-border/50 bg-surface-secondary/20 p-3">
+            <div className="rounded-xl bg-surface-secondary/10 p-3">
               <div className="flex items-center justify-between mb-2.5">
                 <div className="flex items-center gap-1.5">
                   <Clock size={13} className="text-secondary/70" />
@@ -2087,6 +2103,7 @@ const LivingFeed = () => {
             <span className="text-[9px] md:text-[10px] font-mono uppercase tracking-wider md:tracking-widest text-secondary">Insights</span>
           </div>
         </div>
+
       </div>
     </section>
   );
@@ -3027,6 +3044,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background text-foreground px-2 selection:bg-primary/20 selection:text-primary font-serif antialiased">
       <GridBackground />
       <WaitlistBanner />
+      <PlayStoreTopBanner />
       <header>
         <Nav />
       </header>

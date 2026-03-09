@@ -14,7 +14,7 @@ import { getEarlyAdopterStatus, claimEarlyAdopterStatus, EarlyAdopterStatus } fr
 export default function EarlyAdopterOfferScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
-  const { user, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const { offerings } = useRevenueCat();
 
   const [status, setStatus] = useState<EarlyAdopterStatus | null>(null);
@@ -29,13 +29,13 @@ export default function EarlyAdopterOfferScreen() {
     getEarlyAdopterStatus()
       .then((s) => {
         setStatus(s);
-        // If no spots left, skip to onboarding
+        // If no spots left, continue to the appropriate next screen
         if (!s.isOpen) {
-          router.replace('/onboarding');
+          router.replace(profile?.onboarded ? '/(tabs)' : '/onboarding');
         }
       })
       .finally(() => setLoading(false));
-  }, [router]);
+  }, [router, profile?.onboarded]);
 
   const handleClaim = async () => {
     if (!user || claiming) return;
@@ -45,10 +45,9 @@ export default function EarlyAdopterOfferScreen() {
 
     if (success) {
       await refreshProfile();
-      router.replace('/onboarding');
+      router.replace(profile?.onboarded ? '/(tabs)' : '/onboarding');
     } else {
-      // No spots left, go to regular onboarding
-      router.replace('/onboarding');
+      router.replace(profile?.onboarded ? '/(tabs)' : '/onboarding');
     }
   };
 
@@ -102,7 +101,7 @@ export default function EarlyAdopterOfferScreen() {
         >
           Trace is normally{' '}
           <Text style={{ color: Colors[colorScheme].text, fontWeight: '700' }}>{monthlyPrice}</Text>
-          {'\n'}but it's free for our first {status?.limit ?? 300} users.
+          {'\n'}but the first {status?.limit ?? 300} users get Pro free for life.
         </Animated.Text>
 
         {/* What you get */}
@@ -111,7 +110,7 @@ export default function EarlyAdopterOfferScreen() {
           style={[styles.perksCard, { backgroundColor: isDark ? '#161616' : '#fafafa', borderColor: Colors[colorScheme].border }]}
         >
           <Text style={[styles.perksTitle, { color: Colors[colorScheme].text }]}>
-            What you'll get — forever free:
+            What you unlock:
           </Text>
 
           <View style={styles.perkRow}>
@@ -165,7 +164,7 @@ export default function EarlyAdopterOfferScreen() {
           ) : (
             <>
               <Gift size={20} color="#fff" strokeWidth={2} />
-              <Text style={styles.claimButtonText}>Claim your free access</Text>
+              <Text style={styles.claimButtonText}>Claim free Pro</Text>
             </>
           )}
         </Pressable>

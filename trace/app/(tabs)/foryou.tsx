@@ -166,12 +166,13 @@ function buildForYouSections(
 
 export default function ForYouScreen() {
   const router = useRouter();
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, profileLoadError, retryProfileLoad } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
 
   const [v3Feed, setV3Feed] = useState<V3UserFeed | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const { isProUser: isSubscribed, loading: rcLoading } = useRevenueCat();
   const isOnboarded = profile?.onboarded ?? false;
@@ -282,6 +283,39 @@ export default function ForYouScreen() {
   }, 0);
   const isEmpty = totalItems === 0;
   const isTabLimited = !isSubscribed && v3Feed != null;
+
+  const handleRetry = async () => {
+    setIsRetrying(true);
+    await retryProfileLoad();
+    setIsRetrying(false);
+  };
+
+  // Show error UI if profile failed to load (network issue)
+  if (profileLoadError && !profile) {
+    return (
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
+        edges={['top']}>
+        <View style={styles.errorContainer}>
+          <Text style={[styles.errorEmoji]}>📡</Text>
+          <ThemedText style={styles.errorTitle}>Connection Issue</ThemedText>
+          <ThemedText style={[styles.errorText, { color: Colors[colorScheme].muted }]}>
+            Could not load your profile. Please check your internet connection.
+          </ThemedText>
+          <Pressable
+            onPress={handleRetry}
+            disabled={isRetrying}
+            style={[styles.retryButton, { opacity: isRetrying ? 0.6 : 1 }]}>
+            {isRetrying ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            )}
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!isOnboarded) return null;
 
@@ -755,6 +789,26 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   emptyText: { textAlign: 'center', fontSize: 15, paddingHorizontal: 20 },
+
+  // Error state
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  errorEmoji: { fontSize: 48, marginBottom: 16 },
+  errorTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
+  errorText: { fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 24 },
+  retryButton: {
+    backgroundColor: '#6366F1',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 999,
+    minWidth: 140,
+    alignItems: 'center',
+  },
+  retryButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 
   endText: {
     textAlign: 'center',

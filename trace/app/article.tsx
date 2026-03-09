@@ -307,15 +307,20 @@ function ForYouArticleView({
                     fyStyles.card,
                     {
                       backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
-                      minHeight: 180,
+                      height: SCREEN_HEIGHT * 0.32,
                     },
                   ]}>
                   <Text style={[fyStyles.cardLabel, { color: isDark ? '#888' : '#4b5563' }]}>
                     {tabLabels[idx]}
                   </Text>
-                  <RichText style={[fyStyles.cardContent, { color: Colors[colorScheme].text }]}>
-                    {card.content}
-                  </RichText>
+                  <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    nestedScrollEnabled
+                    style={fyStyles.cardScrollContent}>
+                    <RichText style={[fyStyles.cardContent, { color: Colors[colorScheme].text }]}>
+                      {card.content}
+                    </RichText>
+                  </ScrollView>
                 </View>
               </View>
             ))}
@@ -513,7 +518,10 @@ const fyStyles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     letterSpacing: -0.2,
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  cardScrollContent: {
+    flex: 1,
   },
   cardContent: {
     fontSize: 16,

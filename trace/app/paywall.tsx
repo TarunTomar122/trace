@@ -25,21 +25,21 @@ const TRIAL_DAYS = 4;
 const REMINDER_DAY = 3;
 
 const FREE_FEATURES = [
-  'Trending topics with AI overviews and timelines',
-  'Preview of personalized articles and deep dives',
-  'Save articles and snippets to read later',
+  'See trending topics and story overviews',
+  'Preview a small part of your For You feed',
+  'Try the app before deciding if it fits your routine',
 ];
 
 const PRO_FEATURES = [
-  'Unlimited personalized articles with learning cards',
-  'Full deep dives with chapters, TL;DRs, and sources',
-  'Content matched to your role, interests, and goals',
+  'Unlock your full For You feed instead of just 2 picks',
+  'Read full Deep Dives with chapters, TL;DRs, and sources',
+  'Save articles and snippets to build your own library',
 ];
 
 const BENEFITS = [
-  'Trending topics with AI overviews — not just headlines.',
-  'Personalized articles matched to your interests.',
-  'Expert deep dives broken into digestible chapters.',
+  'Read the full feed Trace made for you, not just the preview.',
+  'Turn long sources into short chapters you can actually finish.',
+  'Save the best ideas so you can come back to them later.',
 ];
 
 type PlanId = 'weekly' | 'monthly' | 'yearly';
@@ -180,7 +180,7 @@ function StepPrimer({
           {"You're in!"}
         </ThemedText>
         <ThemedText style={[styles.heroSub, { color: Colors[colorScheme].muted }]}>
-          Your personalized feed is ready. Here{"'"}s what{"'"}s included:
+          Your setup is done. Right now you can preview Trace, or unlock the full version and actually use it the way it was meant to work.
         </ThemedText>
       </View>
 
@@ -218,7 +218,7 @@ function StepPrimer({
 
       <Pressable onPress={onNext} style={[styles.ctaButton, { marginTop: 28 }]}>
         <Gift size={18} color="#fff" strokeWidth={2} />
-        <Text style={styles.ctaText}>Try free for {TRIAL_DAYS} days</Text>
+        <Text style={styles.ctaText}>Try the full app free for {TRIAL_DAYS} days</Text>
         <ArrowRight size={18} color="#fff" strokeWidth={2.5} />
       </Pressable>
 
@@ -256,10 +256,10 @@ function StepReminder({
       showsVerticalScrollIndicator={false}>
       <View style={[styles.hero, { marginBottom: 36 }]}>
         <ThemedText style={styles.heroTitle}>
-          {"Cancel anytime.\nNo tricks."}
+          {"Use it for real.\nThen decide."}
         </ThemedText>
         <ThemedText style={[styles.heroSub, { color: Colors[colorScheme].muted }]}>
-          We hate sneaky subscriptions too. Here{"'"}s the deal:
+          Don’t pay because a paywall asked you to. Pay only if the full version genuinely saves you time this week.
         </ThemedText>
       </View>
 
@@ -267,29 +267,29 @@ function StepReminder({
         <TimelineItem
           icon={<Gift size={18} color="#F59E0B" strokeWidth={2} />}
           label="Today"
-          title="Try everything free"
-          desc="Full access to trending topics, personalized articles, and deep dives."
+          title="Unlock the real experience"
+          desc="Read your full For You feed, open full Deep Dives, and save articles and snippets as you go."
           colorScheme={colorScheme}
         />
         <TimelineItem
           icon={<Bell size={18} color="#F59E0B" strokeWidth={2} />}
           label={`Day ${REMINDER_DAY}`}
-          title="Friendly reminder"
-          desc="We'll ping you before your trial ends. No gotchas."
+          title="Get a reminder"
+          desc="We remind you before the trial ends so you have time to decide without guessing."
           colorScheme={colorScheme}
         />
         <TimelineItem
           icon={<Calendar size={18} color="#F59E0B" strokeWidth={2} />}
           label={`Day ${TRIAL_DAYS + 1}`}
-          title="You decide"
-          desc="Love it? Keep going. Not for you? Cancel in 2 taps."
+          title="Keep it only if you want"
+          desc="If Trace becomes part of your daily routine, keep it. If not, cancel in Settings in a couple taps."
           isLast
           colorScheme={colorScheme}
         />
       </View>
 
       <Pressable onPress={onNext} style={styles.ctaButton}>
-        <Text style={styles.ctaText}>Sounds fair, show me plans</Text>
+        <Text style={styles.ctaText}>Show me the plans</Text>
         <ArrowRight size={18} color="#fff" strokeWidth={2.5} />
       </Pressable>
 
@@ -336,12 +336,12 @@ function StepPaywall({
       <View style={styles.hero}>
         <AppLogo style={styles.heroLogo} />
         <ThemedText style={styles.heroTitle}>
-          {fromOnboarding ? 'Choose your plan' : 'Read less.\nKnow more.'}
+          {fromOnboarding ? 'Unlock your full\nTrace feed.' : 'Unlock your full\nTrace feed.'}
         </ThemedText>
         <ThemedText style={[styles.heroSub, { color: Colors[colorScheme].muted }]}>
           {fromOnboarding
-            ? `All plans include your ${TRIAL_DAYS}-day free trial.`
-            : 'Trending topics. Personalized reads. Expert deep dives.'}
+            ? `You already set up your role, interests, goals, and sources. Now unlock the full reading and learning experience with ${TRIAL_DAYS} free days.`
+            : `Get full For You, full Deep Dives, and saved articles in one place.`}
         </ThemedText>
       </View>
 
@@ -428,7 +428,7 @@ function StepPaywall({
           <>
             <Zap size={18} color="#fff" strokeWidth={2} />
             <Text style={styles.ctaText}>
-              {fromOnboarding ? `Start free trial` : 'Upgrade now'}
+              {fromOnboarding ? `Start my free trial` : 'Start free trial'}
             </Text>
           </>
         )}
@@ -442,8 +442,8 @@ function StepPaywall({
 
       <ThemedText style={[styles.legal, { color: Colors[colorScheme].muted }]}>
         {fromOnboarding
-          ? `Free for ${TRIAL_DAYS} days, then your plan kicks in. Cancel anytime in Settings — takes 2 taps.`
-          : 'Billed to your App Store account. Cancel anytime in Settings.'}
+          ? `Nothing charged today. Try the full app for ${TRIAL_DAYS} days, then your plan starts unless you cancel first in Settings.`
+          : `Try the full app for ${TRIAL_DAYS} days. After that, billing goes through your App Store account unless you cancel in Settings.`}
       </ThemedText>
     </ScrollView>
   );

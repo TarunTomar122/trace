@@ -87,7 +87,36 @@ function truncateText(text: string, maxLength: number): { text: string; truncate
 export default function TopicScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
+  const insets = useSafeAreaInsets();
   const topic = getCurrentTopic();
+
+  // Scroll-hide header animation
+  const lastScrollY = useSharedValue(0);
+  const headerTranslateY = useSharedValue(0);
+  const HEADER_HEIGHT = 60 + insets.top;
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      const currentY = event.contentOffset.y;
+      const diff = currentY - lastScrollY.value;
+
+      if (currentY > HEADER_HEIGHT) {
+        if (diff > 0) {
+          headerTranslateY.value = withTiming(-HEADER_HEIGHT, { duration: 200 });
+        } else if (diff < -5) {
+          headerTranslateY.value = withTiming(0, { duration: 200 });
+        }
+      } else {
+        headerTranslateY.value = withTiming(0, { duration: 200 });
+      }
+
+      lastScrollY.value = currentY;
+    },
+  });
+
+  const headerAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: headerTranslateY.value }],
+  }));
 
   const timeline = useMemo(() => {
     const events = Array.isArray(topic?.timeline) ? [...topic.timeline] : [];
@@ -125,26 +154,38 @@ export default function TopicScreen() {
     return null;
   }
 
+  const isSingletonTopic = (topic.source_count ?? 0) <= 1 || (topic.article_count ?? 0) <= 1;
+  const primaryArticle = isSingletonTopic ? (topic.articles?.[0] ?? null) : null;
+  const primaryShort = primaryArticle?.summary?.short_article;
+  const displayTitle = primaryArticle?.title || topic.title;
+  const displayThumbnail = primaryArticle?.thumbnail || topic.thumbnail;
+  const displayBody = primaryShort?.body || topic.summary || '';
+  const displayKeyPoints = isSingletonTopic
+    ? (primaryShort?.key_takeaways || [])
+    : (topic.key_points || []);
+  const readingTime = primaryArticle?.summary?.reading_time_minutes;
   const age = formatAge(topic.first_seen_at || topic.last_updated_at);
   const isDark = colorScheme === 'dark';
 
   const handleShare = () => {
-    const content = topic.summary || topic.title;
+    const content = displayBody || displayTitle;
     const message = `${content}\n\n— via Trace\nyourtrace.online`;
     Share.share({ message });
   };
 
   return (
     <View style={[styles.root, { backgroundColor: Colors[colorScheme].background }]}>
-      <ScrollView
+      <Animated.ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 48 }}>
+        contentContainerStyle={{ paddingBottom: 48 }}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}>
 
         {/* Hero image with overlaid title — extends to screen top */}
         <View style={styles.heroWrap}>
-          {topic.thumbnail ? (
+          {displayThumbnail ? (
             <Image
-              source={{ uri: topic.thumbnail }}
+              source={{ uri: displayThumbnail }}
               style={styles.heroImage}
               resizeMode="cover"
             />
@@ -175,28 +216,35 @@ export default function TopicScreen() {
             ) : null}
 
             <Text style={[styles.title, { color: '#fff' }]}>
-              {topic.title}
+              {displayTitle}
             </Text>
           </View>
         </View>
 
         {/* Summary + meta below image, flush with background */}
         <View style={styles.summaryBlock}>
-          {topic.summary ? (
+          {displayBody ? (
             <RichText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
-              {topic.summary}
+              {displayBody}
             </RichText>
           ) : null}
 
-          <Text style={[styles.meta, { color: Colors[colorScheme].muted }]}>
-            {topic.source_count ?? 0} sources · {topic.article_count ?? 0} updates
-          </Text>
+          {isSingletonTopic && primaryArticle ? (
+            <Text style={[styles.meta, { color: Colors[colorScheme].muted }]}>
+              {primaryArticle.source_name || 'Source'}
+              {readingTime ? ` · ${readingTime} min read` : ''}
+            </Text>
+          ) : (
+            <Text style={[styles.meta, { color: Colors[colorScheme].muted }]}>
+              {topic.source_count ?? 0} sources · {topic.article_count ?? 0} updates
+            </Text>
+          )}
         </View>
 
         {/* Overview content */}
         <View style={styles.tabContent}>
-          {Array.isArray(topic.key_points) && topic.key_points.length > 0 ? (
-            topic.key_points.slice(0, 6).map((point, idx) => (
+          {Array.isArray(displayKeyPoints) && displayKeyPoints.length > 0 ? (
+            displayKeyPoints.slice(0, 6).map((point, idx) => (
               <View
                 key={`kp-${idx}`}
                 style={[
@@ -215,7 +263,7 @@ export default function TopicScreen() {
             </Text>
           )}
 
-          {timeline.length > 0 && (
+          {!isSingletonTopic && timeline.length > 0 && (
             <View style={styles.timelineSection}>
               <Text style={styles.timelineLabel}>Timeline</Text>
               {timeline.map((event, idx) => {
@@ -273,24 +321,26 @@ export default function TopicScreen() {
             </View>
           )}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
-      {/* Floating header over hero image */}
-      <SafeAreaView edges={['top']} style={styles.floatingHeader} pointerEvents="box-none">
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} hitSlop={12} style={styles.headerBtn}>
-            <ChevronLeft size={24} color="#fff" strokeWidth={2.5} />
-          </Pressable>
-          <View style={styles.headerRight}>
-            <Pressable onPress={handleShare} hitSlop={12} style={styles.headerBtn}>
-              <Share2 size={20} color="#fff" strokeWidth={2} />
+      {/* Floating header over hero image - animated hide on scroll */}
+      <Animated.View style={[styles.floatingHeader, headerAnimatedStyle]}>
+        <SafeAreaView edges={['top']} style={{ flex: 1 }} pointerEvents="box-none">
+          <View style={styles.header}>
+            <Pressable onPress={() => router.back()} hitSlop={12} style={styles.headerBtn}>
+              <ChevronLeft size={24} color="#fff" strokeWidth={2.5} />
             </Pressable>
-            <Pressable hitSlop={12} style={styles.headerBtn}>
-              <MoreHorizontal size={20} color="#fff" strokeWidth={2} />
-            </Pressable>
+            <View style={styles.headerRight}>
+              <Pressable onPress={handleShare} hitSlop={12} style={styles.headerBtn}>
+                <Share2 size={20} color="#fff" strokeWidth={2} />
+              </Pressable>
+              <Pressable hitSlop={12} style={styles.headerBtn}>
+                <MoreHorizontal size={20} color="#fff" strokeWidth={2} />
+              </Pressable>
+            </View>
           </View>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </Animated.View>
     </View>
   );
 }
@@ -314,12 +364,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   headerBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
     marginHorizontal: 4,
   },
   headerRight: {

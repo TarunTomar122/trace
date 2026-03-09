@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, View, Pressable, ScrollView, Alert, Switch, Text } from 'react-native';
+import { StyleSheet, View, Pressable, ScrollView, Alert, Switch, Text, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -46,12 +46,13 @@ const ACCENT = '#F59E0B';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, profile, signOut, deleteAccount, refreshProfile } = useAuth();
+  const { user, profile, signOut, deleteAccount, refreshProfile, profileLoadError, retryProfileLoad } = useAuth();
   const { isProUser, presentPaywall, presentCustomerCenter } = useRevenueCat();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
 
   const isOnboarded = profile?.onboarded === true;
+  const showNetworkError = profileLoadError && !profile;
   const [newsletterOptIn, setNewsletterOptIn] = useState(profile?.newsletterOptIn !== false);
   const [streak, setStreak] = useState<StreakData | null>(null);
   const [summaryStyle, setSummaryStyle] = useState<string>(profile?.summaryStyle || 'balanced');
@@ -212,8 +213,25 @@ export default function ProfileScreen() {
           </View>
         )}
 
+        {/* ─── Network error nudge ─── */}
+        {showNetworkError && (
+          <Pressable
+            onPress={retryProfileLoad}
+            style={[s.card, s.nudge, { backgroundColor: cardBg }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.nudgeTitle, { color: Colors[colorScheme].text }]}>
+                📡 Connection Issue
+              </Text>
+              <Text style={[s.nudgeDesc, { color: Colors[colorScheme].muted }]}>
+                Could not load your profile. Tap to retry.
+              </Text>
+            </View>
+            <ArrowRight size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+          </Pressable>
+        )}
+
         {/* ─── Onboarding nudge ─── */}
-        {!isOnboarded && (
+        {!isOnboarded && !showNetworkError && (
           <Pressable
             onPress={() => router.push('/onboarding')}
             style={[s.card, s.nudge, { backgroundColor: cardBg }]}>

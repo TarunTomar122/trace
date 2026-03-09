@@ -158,8 +158,9 @@ function AuthGate({ children }: { children: ReactNode }) {
       return;
     }
 
-    // User is onboarded + RC done - redirect away from auth/onboarding/early-adopter screens
-    if (inAuthGroup || inOnboarding || inEarlyAdopter) {
+    // User is onboarded + RC done - redirect away from auth/onboarding screens.
+    // Keep early-adopter accessible so eligible users can still claim the launch offer.
+    if (inAuthGroup || inOnboarding) {
       router.replace('/(tabs)');
       return;
     }

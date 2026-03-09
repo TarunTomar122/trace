@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import Script from 'next/script';
 import { notFound } from 'next/navigation';
 import { adminFirestore } from '@/lib/firebase-admin';
 import TopicContent from './TopicContent';
@@ -91,20 +92,23 @@ async function getTopicFromGlobalFeed(id: string): Promise<TopicData | null> {
     .doc('_global')
     .collection('daily');
 
-  const snapshot = await globalFeedRef.orderBy('__name__', 'desc').limit(1).get();
+  const snapshot = await globalFeedRef.orderBy('__name__', 'desc').limit(5).get();
   if (snapshot.empty) return null;
 
-  const feedData = snapshot.docs[0].data();
-  const trendingTopics = feedData.trending_topics as TopicData[] | undefined;
-  if (!Array.isArray(trendingTopics)) return null;
+  for (const doc of snapshot.docs) {
+    const feedData = doc.data();
+    const trendingTopics = feedData.trending_topics as TopicData[] | undefined;
+    if (!Array.isArray(trendingTopics) || trendingTopics.length === 0) continue;
 
-  return (
-    trendingTopics.find(
+    const match = trendingTopics.find(
       (topic) =>
         normalizeTopicId(topic.id) === id ||
         normalizeTopicId(topic.topic_key) === id
-    ) || null
-  );
+    );
+    if (match) return match;
+  }
+
+  return null;
 }
 
 async function getTopicFromTrendingNews(id: string): Promise<TopicData | null> {
@@ -145,8 +149,8 @@ async function getTopicFromTrendingNews(id: string): Promise<TopicData | null> {
     .filter((article) => article?.url && article?.title)
     .map((article, index: number) => ({
       id: article.id || `${id}-${index}`,
-      url: article.url,
-      title: article.title,
+      url: article.url || '',
+      title: article.title || '',
       source_name: article.source_domain || article.source_name || undefined,
       thumbnail: article.thumbnail || undefined,
       summary: {
@@ -161,7 +165,7 @@ async function getTopicFromTrendingNews(id: string): Promise<TopicData | null> {
     .filter((article) => article?.url && article?.title)
     .map((article, index: number) => ({
       id: article.id || `${id}-event-${index}`,
-      title: article.title,
+      title: article.title || '',
       summary: article.subtitle || article.details || '',
       timestamp: article.published_date || topicData.generated_at || latestTrendingSnapshot.docs[0].id,
       source_name: article.source_domain || article.source_name || undefined,
@@ -268,5 +272,30 @@ export default async function TopicPage({
     notFound();
   }
 
-  return <TopicContent topic={topic} />;
+  const canonicalUrl = `https://www.yourtrace.online/topics/${topic.topic_key || topic.id}`;
+  const topicSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: topic.title,
+    description: topic.summary,
+    image: topic.thumbnail || undefined,
+    mainEntityOfPage: canonicalUrl,
+    publisher: {
+      '@type': 'Organization',
+      name: 'Trace',
+      url: 'https://www.yourtrace.online',
+    },
+    about: (topic.key_points || []).slice(0, 4),
+  };
+
+  return (
+    <>
+      <Script
+        id="topic-schema"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(topicSchema) }}
+      />
+      <TopicContent topic={topic} />
+    </>
+  );
 }

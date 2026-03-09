@@ -105,6 +105,20 @@ function getSourceInitials(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
+function getTopicDisplay(topic: TrendingTopic) {
+  const isSingleton = (topic.source_count ?? 0) <= 1 || (topic.article_count ?? 0) <= 1;
+  const article = isSingleton ? (topic.articles?.[0] ?? null) : null;
+  return {
+    isSingleton,
+    article,
+    title: article?.title || topic.title,
+    summary: article?.summary?.short_article?.body || topic.summary || '',
+    subtitle: article?.summary?.short_article?.subtitle || topic.summary || '',
+    thumbnail: article?.thumbnail || topic.thumbnail,
+    readingTime: article?.summary?.reading_time_minutes,
+  };
+}
+
 function FeedBuildingLoader() {
   const steps = [
     'Scanning sources for fresh content...',
@@ -137,8 +151,9 @@ function TopicFeaturedCard({
   topic: TrendingTopic;
   onPress: () => void;
 }) {
-  const imageUrl = getArticleImage(topic.thumbnail, topic.title);
-  const fallbackUrl = getArticleImage(null, topic.title);
+  const display = getTopicDisplay(topic);
+  const imageUrl = getArticleImage(display.thumbnail, display.title);
+  const fallbackUrl = getArticleImage(null, display.title);
   const [showFallback, setShowFallback] = useState(false);
 
   return (
@@ -160,14 +175,21 @@ function TopicFeaturedCard({
             <span className="text-[11px] font-semibold text-white/60 uppercase tracking-wide">Featured</span>
           </div>
           <h2 className="text-lg sm:text-xl font-bold text-white leading-snug line-clamp-2 mb-1">
-            {topic.title}
+            {display.title}
           </h2>
           <p className="text-sm text-white/50 line-clamp-2 leading-relaxed max-w-xl">
-            {stripMarkdown(topic.summary || '')}
+            {stripMarkdown(display.subtitle || display.summary || '')}
           </p>
-          <p className="text-xs text-white/40 mt-2">
-            {topic.source_count} sources · {topic.article_count} updates
-          </p>
+          {display.isSingleton && display.article ? (
+            <p className="text-xs text-white/40 mt-2">
+              {display.article.source_name || 'Source'}
+              {display.readingTime ? ` · ${display.readingTime} min read` : ''}
+            </p>
+          ) : (
+            <p className="text-xs text-white/40 mt-2">
+              {topic.source_count} sources · {topic.article_count} updates
+            </p>
+          )}
         </div>
       </div>
     </button>
@@ -181,10 +203,11 @@ function TopicListRow({
   topic: TrendingTopic;
   onPress: () => void;
 }) {
-  const imageUrl = getArticleImage(topic.thumbnail, topic.title);
-  const fallbackUrl = getArticleImage(null, topic.title);
+  const display = getTopicDisplay(topic);
+  const imageUrl = getArticleImage(display.thumbnail, display.title);
+  const fallbackUrl = getArticleImage(null, display.title);
   const [showFallback, setShowFallback] = useState(false);
-  const summary = stripMarkdown(topic.summary || '');
+  const summary = stripMarkdown(display.subtitle || display.summary || '');
 
   return (
     <button
@@ -199,16 +222,23 @@ function TopicListRow({
       </div>
       <div className="flex-1 min-w-0">
         <h3 className="font-semibold text-[15px] leading-snug line-clamp-2 group-hover:text-secondary transition-colors">
-          {topic.title}
+          {display.title}
         </h3>
         {summary && (
           <p className="text-sm text-secondary/50 line-clamp-1 leading-relaxed mt-1">
             {summary}
           </p>
         )}
-        <p className="text-xs text-secondary/40 mt-1">
-          {topic.source_count} sources · {topic.article_count} updates
-        </p>
+        {display.isSingleton && display.article ? (
+          <p className="text-xs text-secondary/40 mt-1">
+            {display.article.source_name || 'Source'}
+            {display.readingTime ? ` · ${display.readingTime} min read` : ''}
+          </p>
+        ) : (
+          <p className="text-xs text-secondary/40 mt-1">
+            {topic.source_count} sources · {topic.article_count} updates
+          </p>
+        )}
       </div>
       <ChevronRight size={16} className="text-secondary/30 shrink-0" />
     </button>
@@ -226,8 +256,18 @@ function TopicDetailView({
   onBack: () => void;
   onOpenArticle: (item: FeedItem, options?: { returnTo?: string }) => void;
 }) {
-  const imageUrl = getArticleImage(topic.thumbnail, topic.title);
-  const fallbackUrl = getArticleImage(null, topic.title);
+  const display = getTopicDisplay(topic);
+  const isSingletonTopic = display.isSingleton;
+  const primaryArticle = display.article;
+  const primaryShort = primaryArticle?.summary?.short_article;
+  const displayTitle = display.title;
+  const displayImage = display.thumbnail;
+  const displayBody = primaryShort?.body || topic.summary || '';
+  const displayKeyPoints = isSingletonTopic
+    ? (primaryShort?.key_takeaways || [])
+    : (topic.key_points || []);
+  const readingTime = display.readingTime;
+  const fallbackUrl = getArticleImage(null, displayTitle);
   const [showFallback, setShowFallback] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
 
@@ -255,13 +295,15 @@ function TopicDetailView({
     ) || null;
   }, [topic.articles]);
 
+  const heroImageUrl = getArticleImage(displayImage, displayTitle);
+
   return (
     <div>
       {/* Hero */}
       <div className="relative aspect-[1.2/1] sm:aspect-[1.4/1] rounded-2xl overflow-hidden bg-surface-secondary mb-6">
         <img src={fallbackUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
         {!showFallback && (
-          <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" onError={() => setShowFallback(true)} />
+          <img src={heroImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" onError={() => setShowFallback(true)} />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
         <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
@@ -281,29 +323,36 @@ function TopicDetailView({
         </div>
         <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-7">
           <h1 className="text-xl sm:text-2xl font-bold text-white leading-snug mb-1">
-            {topic.title}
+            {displayTitle}
           </h1>
-          <p className="text-xs text-white/40">
-            {topic.source_count} sources · {topic.article_count} updates
-          </p>
+          {isSingletonTopic && primaryArticle ? (
+            <p className="text-xs text-white/40">
+              {primaryArticle.source_name || 'Source'}
+              {readingTime ? ` · ${readingTime} min read` : ''}
+            </p>
+          ) : (
+            <p className="text-xs text-white/40">
+              {topic.source_count} sources · {topic.article_count} updates
+            </p>
+          )}
         </div>
       </div>
 
       {/* Overview */}
-      {topic.summary && (
+      {displayBody && (
         <div className="mb-6">
           <div className="prose prose-sm dark:prose-invert max-w-none text-secondary leading-relaxed">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{topic.summary}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayBody}</ReactMarkdown>
           </div>
         </div>
       )}
 
       {/* Key Points */}
-      {topic.key_points && topic.key_points.length > 0 && (
+      {displayKeyPoints && displayKeyPoints.length > 0 && (
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-foreground mb-3">Key Points</h3>
           <div className="space-y-2.5">
-            {topic.key_points.slice(0, 6).map((point, i) => (
+            {displayKeyPoints.slice(0, 6).map((point, i) => (
               <div key={i} className="flex gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-secondary/30 mt-2 shrink-0" />
                 <div className="text-sm text-secondary leading-relaxed prose prose-sm dark:prose-invert max-w-none">
@@ -316,7 +365,7 @@ function TopicDetailView({
       )}
 
       {/* Timeline */}
-      {sortedTimeline.length > 0 && (
+      {!isSingletonTopic && sortedTimeline.length > 0 && (
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-foreground mb-4">Timeline</h3>
           <div className="relative pl-6 border-l-2 border-border/30">

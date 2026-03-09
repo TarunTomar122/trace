@@ -12,12 +12,12 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Flame,
   Crosshair,
   GraduationCap,
-  Clock,
   ChevronRight,
 } from 'lucide-react-native';
 
@@ -39,30 +39,18 @@ const PRIVACY_URL = 'https://www.yourtrace.online/privacy-policy';
 
 const INTRO_PAGES = [
   {
-    icon: Flame,
-    iconColor: '#F97316',
-    badge: 'TRENDING TOPICS',
-    badgeColor: '#F97316',
-    title: 'Understand a story\nin seconds.',
-    body: 'Overview, key points, and a live timeline. One topic page with the context that matters.',
+    title: 'Stay up to date',
+    body: 'Trace groups news from around the world into topics and explain it at your level.',
     demo: 'trending',
   },
   {
-    icon: Crosshair,
-    iconColor: '#F59E0B',
-    badge: 'FOR YOU',
-    badgeColor: '#F59E0B',
-    title: 'Your feed.\nActually personal.',
-    body: 'Matched to your role, seniority, and goals, so the right stories find you first.',
+    title: 'Stop checking 10 apps',
+    body: 'Trace pulls articles, blogs, and videos from 100+ sources, so you can keep up with your interests.',
     demo: 'for_you',
   },
   {
-    icon: GraduationCap,
-    iconColor: '#0EA5E9',
-    badge: 'DEEP DIVES',
-    badgeColor: '#0EA5E9',
-    title: 'Deep context.\nNo time sink.',
-    body: 'Start with a TL;DR, then go chapter by chapter only when you want the full breakdown.',
+    title: 'Daily learning',
+    body: 'Pick your favorite sources and Trace will turn them into simple learning chapters to help you upskill.',
     demo: 'deep_dive',
   },
 ];
@@ -73,63 +61,83 @@ function DemoTrendingCard({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
   const cardBg = isDark ? '#151515' : '#ffffff';
   const dividerColor = isDark ? '#2c2c2c' : '#f0f0f0';
   const bulletColor = '#F97316';
-  const timelineDotBorder = isDark ? '#3a3a3a' : '#e8e8e8';
+  const timelineAccent = '#F59E0B';
 
   return (
     <View style={[demoStyles.card, { backgroundColor: cardBg }]}>
-      <Image
-        source={{ uri: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=500&q=80' }}
-        style={demoStyles.heroImage}
-      />
-      <View style={demoStyles.trendingHeader}>
-        <View style={demoStyles.trendingMetaRow}>
-          <View style={[demoStyles.hotBadge, { backgroundColor: '#F9731618' }]}>
-            <Flame size={10} color="#F97316" fill="#F97316" />
-            <Text style={demoStyles.hotText}>Trending</Text>
+      <View style={demoStyles.heroWrap}>
+        <Image
+          source={{ uri: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=500&q=80' }}
+          style={demoStyles.heroImage}
+        />
+        <LinearGradient
+          colors={['rgba(0,0,0,0.35)', 'transparent']}
+          style={demoStyles.heroGradientTop}
+        />
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.35)', cardBg]}
+          locations={[0, 0.58, 1]}
+          style={demoStyles.heroGradientBottom}
+        />
+        <View style={demoStyles.heroOverlay}>
+          <View style={demoStyles.ageRow}>
+            <Flame size={11} color="#F97316" fill="#F97316" strokeWidth={2} />
+            <Text style={demoStyles.ageText}>19 MIN AGO</Text>
           </View>
-          <Text style={[demoStyles.metaText, { color: Colors[colorScheme].muted }]}>
-            4 sources · 12 updates
+          <Text style={demoStyles.heroTitle} numberOfLines={2}>
+            The AI Race Has a New Frontrunner
           </Text>
         </View>
-        <Text style={[demoStyles.cardTitle, { color: Colors[colorScheme].text }]}>
-          The AI Race Has a{'\n'}New Frontrunner
+      </View>
+
+      <View style={demoStyles.summaryBlock}>
+        <Text style={[demoStyles.summaryText, { color: Colors[colorScheme].muted }]}>
+          A new model lead is shifting investor bets, partner strategy, and the pace of the AI race.
+        </Text>
+        <Text style={[demoStyles.metaText, { color: Colors[colorScheme].muted }]}>
+          12 sources · 19 updates
         </Text>
       </View>
 
-      <View style={[demoStyles.section, { borderTopColor: dividerColor }]}>
-        <Text style={[demoStyles.sectionLabel, { color: Colors[colorScheme].muted }]}>KEY POINTS</Text>
-        <View style={demoStyles.bulletRow}>
-          <View style={[demoStyles.bulletDot, { backgroundColor: bulletColor }]} />
-          <Text style={[demoStyles.bulletText, { color: Colors[colorScheme].text }]} numberOfLines={2}>
-            {"OpenAI's latest model outperforms every rival in reasoning tests"}
-          </Text>
-        </View>
-        <View style={demoStyles.bulletRow}>
-          <View style={[demoStyles.bulletDot, { backgroundColor: bulletColor }]} />
-          <Text style={[demoStyles.bulletText, { color: Colors[colorScheme].text }]} numberOfLines={2}>
-            Microsoft deepens its $13B bet as competitors scramble to respond
-          </Text>
-        </View>
-      </View>
 
       <View style={[demoStyles.section, { borderTopColor: dividerColor }]}>
         <Text style={[demoStyles.sectionLabel, { color: Colors[colorScheme].muted }]}>TIMELINE</Text>
-        <View style={demoStyles.timelineRow}>
-          <View style={[demoStyles.timelineDot, { borderColor: bulletColor, backgroundColor: isDark ? '#1e1e1e' : '#fff' }]} />
-          <View style={demoStyles.timelineContent}>
-            <Text style={[demoStyles.timelineTime, { color: Colors[colorScheme].muted }]}>2h ago</Text>
-            <Text style={[demoStyles.timelineText, { color: Colors[colorScheme].text }]} numberOfLines={1}>
-              Sam Altman confirms GPT-5 launch timeline
-            </Text>
-          </View>
-        </View>
-        <View style={demoStyles.timelineRow}>
-          <View style={[demoStyles.timelineDot, { borderColor: timelineDotBorder, backgroundColor: isDark ? '#1e1e1e' : '#fff' }]} />
-          <View style={demoStyles.timelineContent}>
-            <Text style={[demoStyles.timelineTime, { color: Colors[colorScheme].muted }]}>6h ago</Text>
-            <Text style={[demoStyles.timelineText, { color: Colors[colorScheme].text }]} numberOfLines={1}>
-              Leaked benchmarks surface, rivals react
-            </Text>
+        <View style={demoStyles.timelineBlock}>
+          <View style={[demoStyles.timelineAccent, { backgroundColor: timelineAccent }]} />
+          <View style={demoStyles.timelineList}>
+            <View style={demoStyles.timelineItem}>
+              <View style={demoStyles.timelineSourceRow}>
+                <View style={[demoStyles.timelineAvatar, { backgroundColor: isDark ? '#333' : '#1a1a1a' }]}>
+                  <Text style={demoStyles.timelineAvatarText}>OA</Text>
+                </View>
+                <Text style={[demoStyles.timelineSource, { color: Colors[colorScheme].muted }]}>
+                  OpenAI <Text style={demoStyles.timelineSourceDot}>•</Text> 2h ago
+                </Text>
+              </View>
+              <Text style={[demoStyles.timelineTitle, { color: Colors[colorScheme].text }]} numberOfLines={2}>
+                OpenAI confirms the next launch window
+              </Text>
+              <Text style={[demoStyles.timelineSummary, { color: Colors[colorScheme].muted }]} numberOfLines={2}>
+                New benchmarks put it ahead on reasoning and coding tests.
+              </Text>
+            </View>
+
+            <View style={demoStyles.timelineItem}>
+              <View style={demoStyles.timelineSourceRow}>
+                <View style={[demoStyles.timelineAvatar, { backgroundColor: isDark ? '#2b3445' : '#dbeafe' }]}>
+                  <Text style={[demoStyles.timelineAvatarText, { color: isDark ? '#bfdbfe' : '#1d4ed8' }]}>TC</Text>
+                </View>
+                <Text style={[demoStyles.timelineSource, { color: Colors[colorScheme].muted }]}>
+                  TechCrunch <Text style={demoStyles.timelineSourceDot}>•</Text> 6h ago
+                </Text>
+              </View>
+              <Text style={[demoStyles.timelineTitle, { color: Colors[colorScheme].text }]} numberOfLines={2}>
+                New benchmarks leak and rivals respond
+              </Text>
+              <Text style={[demoStyles.timelineSummary, { color: Colors[colorScheme].muted }]} numberOfLines={2}>
+                Competitors are adjusting launch plans as pressure builds.
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -141,56 +149,57 @@ function DemoTrendingCard({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
 function DemoForYouCard({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
   const isDark = colorScheme === 'dark';
   const cardBg = isDark ? '#151515' : '#ffffff';
-  const dividerColor = isDark ? '#2c2c2c' : '#f0f0f0';
   const accent = '#F59E0B';
-  const insightBg = isDark ? '#1c1a12' : '#FFFBEB';
-  const whyBg = isDark ? '#12141a' : '#F0F9FF';
+  const labelColor = isDark ? '#888' : '#4b5563';
 
   return (
     <View style={[demoStyles.card, { backgroundColor: cardBg }]}>
-      {/* Interest category header */}
-      <View style={[demoStyles.categoryHeader, { backgroundColor: accent + '12', borderBottomColor: dividerColor }]}>
-        <Crosshair size={11} color={accent} strokeWidth={2.5} />
-        <Text style={[demoStyles.categoryText, { color: accent }]}>AI & Machine Learning</Text>
-        <View style={demoStyles.categoryDivider} />
-        <Text style={[demoStyles.matchedText, { color: Colors[colorScheme].muted }]}>Matched to you</Text>
-      </View>
-
-      {/* Article row */}
-      <View style={demoStyles.articleRow}>
+      <View style={demoStyles.heroWrap}>
         <Image
-          source={{ uri: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=200&q=80' }}
-          style={demoStyles.thumbnail}
+          source={{ uri: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=500&q=80' }}
+          style={demoStyles.heroImage}
         />
-        <View style={demoStyles.articleInfo}>
-          <View style={demoStyles.sourceRow}>
-            <View style={[demoStyles.sourceAvatar, { backgroundColor: '#1DA1F2' }]}>
-              <Text style={demoStyles.sourceInitials}>TC</Text>
-            </View>
-            <Text style={[demoStyles.sourceName, { color: Colors[colorScheme].muted }]}>TechCrunch</Text>
-            <Text style={[demoStyles.sourceDot, { color: Colors[colorScheme].muted }]}>·</Text>
-            <Clock size={10} color={Colors[colorScheme].muted} />
-            <Text style={[demoStyles.sourceName, { color: Colors[colorScheme].muted }]}> 5 min</Text>
-          </View>
-          <Text style={[demoStyles.articleTitle, { color: Colors[colorScheme].text }]} numberOfLines={3}>
-            The real reason OpenAI built its own chip division
-          
-          </Text>
+        <LinearGradient
+          colors={['rgba(0,0,0,0.28)', 'transparent']}
+          style={demoStyles.heroGradientTop}
+        />
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.2)', cardBg]}
+          locations={[0, 0.62, 1]}
+          style={demoStyles.heroGradientBottom}
+        />
+        <View style={[demoStyles.sourceBadge, { backgroundColor: isDark ? '#2a2a2a' : '#1a1a1a' }]}>
+          <Text style={demoStyles.sourceBadgeText}>TechCrunch</Text>
         </View>
       </View>
 
-      {/* Learning cards preview */}
-      <View style={[demoStyles.learningDivider, { borderTopColor: dividerColor }]}>
-        <View style={[demoStyles.learningCard, { backgroundColor: insightBg }]}>
-          <Text style={[demoStyles.learningCardLabel, { color: accent }]}>💡  THE INSIGHT</Text>
-          <Text style={[demoStyles.learningCardText, { color: Colors[colorScheme].text }]} numberOfLines={2}>
-            Vertical integration is becoming the new moat in AI infrastructure.
-          </Text>
+      <View style={demoStyles.titleSection}>
+        <Text style={[demoStyles.cardTitleLarge, { color: Colors[colorScheme].text }]} numberOfLines={2}>
+          The real reason AI teams are rebuilding around evals
+        </Text>
+      </View>
+
+      <View style={demoStyles.tabRow}>
+        <View style={[demoStyles.tabPill, { backgroundColor: isDark ? '#2a2a2a' : '#f4f4f5' }]}>
+          <Text style={[demoStyles.tabPillText, { color: Colors[colorScheme].text }]}>Highlights</Text>
         </View>
-        <View style={[demoStyles.learningCard, { backgroundColor: whyBg, marginTop: 6 }]}>
-          <Text style={[demoStyles.learningCardLabel, { color: '#0EA5E9' }]}>🎯  WHY IT MATTERS</Text>
-          <Text style={[demoStyles.learningCardText, { color: Colors[colorScheme].text }]} numberOfLines={2}>
-            Every major player is racing to control their stack from silicon to software.
+        <View style={[demoStyles.tabPill, { backgroundColor: accent, marginLeft: 8 }]}>
+          <Text style={demoStyles.tabPillTextActive}>Key Insight</Text>
+        </View>
+      </View>
+
+      <View style={demoStyles.cardPager}>
+        <View
+          style={[
+            demoStyles.learningCardLarge,
+            { backgroundColor: isDark ? '#1d1d1d' : '#ffffff' },
+          ]}>
+          <Text style={[demoStyles.learningCardLabelSimple, { color: labelColor }]}>Key Insight</Text>
+          <Text style={[demoStyles.learningCardTextLarge, { color: Colors[colorScheme].text }]}>
+            AI spending is moving from demos to reliability, evals, and clear ROI.
+          </Text>
+          <Text style={[demoStyles.learningCardMeta, { color: Colors[colorScheme].muted }]}>
+            Matched for: Product strategy · AI tools
           </Text>
         </View>
       </View>
@@ -202,62 +211,57 @@ function DemoForYouCard({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
 function DemoDeepDiveCard({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
   const isDark = colorScheme === 'dark';
   const cardBg = isDark ? '#151515' : '#ffffff';
-  const dividerColor = isDark ? '#2c2c2c' : '#f0f0f0';
-  const accent = '#0EA5E9';
-  const tldrBg = isDark ? '#0a1520' : '#F0F9FF';
+  const dividerColor = isDark ? '#2c2c2c' : '#ececec';
+  const tldrBg = isDark ? '#111827' : '#f7f7f5';
 
   const chapters = ['The subscription peak', 'AI disrupts the model', 'What comes next'];
 
   return (
     <View style={[demoStyles.card, { backgroundColor: cardBg }]}>
-      <Image
-        source={{ uri: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=500&q=80' }}
-        style={demoStyles.deepDiveImage}
-      />
-
-      <View style={demoStyles.deepDiveHeader}>
-        <View style={demoStyles.sourceRow}>
-          <View style={[demoStyles.sourceAvatar, { backgroundColor: accent }]}>
-            <Text style={demoStyles.sourceInitials}>ST</Text>
+      <View style={demoStyles.heroWrap}>
+        <Image
+          source={{ uri: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=500&q=80' }}
+          style={demoStyles.deepDiveImage}
+        />
+        <LinearGradient
+          colors={['rgba(0,0,0,0.35)', 'transparent']}
+          style={demoStyles.heroGradientTop}
+        />
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.35)', cardBg]}
+          locations={[0, 0.56, 1]}
+          style={demoStyles.heroGradientBottom}
+        />
+        <View style={demoStyles.heroOverlay}>
+          <View style={demoStyles.deepDiveHeroBadge}>
+            <GraduationCap size={11} color="#fff" strokeWidth={2.3} />
+            <Text style={demoStyles.deepDiveHeroBadgeText}>Deep Dive</Text>
           </View>
-          <Text style={[demoStyles.sourceName, { color: Colors[colorScheme].muted }]}>Stratechery</Text>
-          <Text style={[demoStyles.sourceDot, { color: Colors[colorScheme].muted }]}>·</Text>
-          <Clock size={10} color={accent} />
-          <Text style={[demoStyles.sourceName, { color: accent }]}> 12 min deep dive</Text>
-        </View>
-        <Text style={[demoStyles.cardTitle, { color: Colors[colorScheme].text }]} numberOfLines={2}>
-          The end of the subscription era
-        </Text>
-        <View style={demoStyles.deepDiveMetaRow}>
-          <View style={[demoStyles.deepDiveMetaPill, { backgroundColor: accent + '14' }]}>
-            <Text style={[demoStyles.deepDiveMetaText, { color: accent }]}>TL;DR</Text>
-          </View>
-          <View style={[demoStyles.deepDiveMetaPill, { backgroundColor: '#22C55E14' }]}>
-            <Text style={[demoStyles.deepDiveMetaText, { color: '#22C55E' }]}>Key takeaways</Text>
-          </View>
-          <View style={[demoStyles.deepDiveMetaPill, { backgroundColor: '#A78BFA14' }]}>
-            <Text style={[demoStyles.deepDiveMetaText, { color: '#A78BFA' }]}>3 chapters</Text>
-          </View>
+          <Text style={demoStyles.heroTitle} numberOfLines={2}>
+            The end of the subscription era
+          </Text>
+          <Text style={demoStyles.deepDiveHeroMeta}>12 min read · 3 chapters</Text>
         </View>
       </View>
 
-      {/* TL;DR */}
-      <View style={[demoStyles.compactSection, { borderTopColor: dividerColor }]}>
+      <View style={demoStyles.sectionTight}>
         <Text style={[demoStyles.sectionLabel, { color: Colors[colorScheme].muted }]}>TL;DR</Text>
         <View style={[demoStyles.tldrBox, { backgroundColor: tldrBg }]}>
-          <Text style={[demoStyles.tldrText, { color: Colors[colorScheme].text }]} numberOfLines={1}>
-            The $50B subscription market is fracturing. AI agents fundamentally change the economics of every app.
+          <Text style={[demoStyles.tldrText, { color: Colors[colorScheme].text }]} numberOfLines={2}>
+            AI is breaking the old subscription model and changing how software companies make money.
           </Text>
         </View>
       </View>
 
-      {/* Chapters */}
-      <View style={[demoStyles.compactSection, { borderTopColor: dividerColor }]}>
-        <Text style={[demoStyles.sectionLabel, { color: Colors[colorScheme].muted }]}>3 CHAPTERS</Text>
+      <View style={[demoStyles.sectionTight, { borderTopColor: dividerColor, borderTopWidth: StyleSheet.hairlineWidth }]}>
+        <Text style={[demoStyles.sectionLabel, { color: Colors[colorScheme].muted }]}>CHAPTERS</Text>
         {chapters.map((ch, i) => (
-          <View key={i} style={demoStyles.chapterRow}>
-            <Text style={[demoStyles.chapterNum, { color: accent }]}>{i + 1}</Text>
+          <View key={i} style={[demoStyles.chapterRowCard, { backgroundColor: isDark ? '#1f1f1f' : '#f7f7f5' }]}>
+            <View style={[demoStyles.chapterNumberBadge, { backgroundColor: isDark ? '#2a2a2a' : '#e8e8e6' }]}>
+              <Text style={[demoStyles.chapterNumberText, { color: Colors[colorScheme].text }]}>{i + 1}</Text>
+            </View>
             <Text style={[demoStyles.chapterName, { color: Colors[colorScheme].text }]} numberOfLines={1}>{ch}</Text>
+            <ChevronRight size={16} color={Colors[colorScheme].muted} strokeWidth={1.8} />
           </View>
         ))}
       </View>
@@ -365,16 +369,6 @@ export default function WelcomeScreen() {
             showsVerticalScrollIndicator={false}
             bounces={false}
           >
-            <View style={[styles.introBadge, { backgroundColor: introPage.badgeColor + '15' }]}>
-              {(() => {
-                const Icon = introPage.icon;
-                return <Icon size={13} color={introPage.iconColor} strokeWidth={2.5} />;
-              })()}
-              <Text style={[styles.introBadgeText, { color: introPage.badgeColor }]}>
-                {introPage.badge}
-              </Text>
-            </View>
-
             <ThemedText style={styles.introTitle}>{introPage.title}</ThemedText>
 
             <Text style={[styles.introBody, { color: Colors[colorScheme].muted }]}>
@@ -386,15 +380,31 @@ export default function WelcomeScreen() {
               {introPage.demo === 'for_you' && <DemoForYouCard colorScheme={colorScheme} />}
               {introPage.demo === 'deep_dive' && <DemoDeepDiveCard colorScheme={colorScheme} />}
             </View>
+
+            <View style={styles.pageFooter}>
+              <PageDots total={totalPages} current={page} colorScheme={colorScheme} />
+              <Pressable
+                onPress={() => scrollToPage(page + 1)}
+                style={[styles.nextBtn, { backgroundColor: Colors[colorScheme].foreground }]}
+              >
+                <Text style={[styles.nextBtnText, { color: Colors[colorScheme].background }]}>Next</Text>
+                <ChevronRight size={18} color={Colors[colorScheme].background} strokeWidth={2.5} />
+              </Pressable>
+            </View>
           </ScrollView>
         ))}
 
         {/* Landing page */}
-        <View style={{ width: screenWidth, flex: 1 }}>
+        <ScrollView
+          style={{ width: screenWidth }}
+          contentContainerStyle={styles.landingPageContent}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
           <View style={styles.landingContent}>
             <AppLogo style={styles.landingLogo} />
             <ThemedText style={styles.landingTitle}>
-              Fu*k the algorithms.
+              Trace
             </ThemedText>
             <Text style={[styles.landingSubtitle, { color: Colors[colorScheme].muted }]}>
               Build your own feed with the topics that matter to you.
@@ -416,62 +426,49 @@ export default function WelcomeScreen() {
               </View>
             </View>
           </View>
-        </View>
-      </ScrollView>
+          <View style={styles.pageFooter}>
+            <PageDots total={totalPages} current={page} colorScheme={colorScheme} />
+            <View style={styles.ctaStack}>
+              <Pressable
+                style={[
+                  styles.primaryButton,
+                  { backgroundColor: Colors[colorScheme].foreground },
+                  isLoading && styles.buttonDisabled,
+                ]}
+                onPress={handleGoogleSignIn}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={Colors[colorScheme].background} />
+                ) : (
+                  <Text style={[styles.primaryButtonText, { color: Colors[colorScheme].background }]}>
+                    Get started free
+                  </Text>
+                )}
+              </Pressable>
 
-      {/* Fixed footer */}
-      <View style={[styles.footer, { borderTopColor: Colors[colorScheme].border + '40' }]}>
-        <PageDots total={totalPages} current={page} colorScheme={colorScheme} />
+              {error && <Text style={[styles.errorText, { color: '#EF4444' }]}>{error}</Text>}
 
-        {!isLanding ? (
-          <Pressable
-            onPress={() => scrollToPage(page + 1)}
-            style={[styles.nextBtn, { backgroundColor: Colors[colorScheme].foreground }]}
-          >
-            <Text style={[styles.nextBtnText, { color: Colors[colorScheme].background }]}>Next</Text>
-            <ChevronRight size={18} color={Colors[colorScheme].background} strokeWidth={2.5} />
-          </Pressable>
-        ) : (
-          <View style={styles.ctaStack}>
-            <Pressable
-              style={[
-                styles.primaryButton,
-                { backgroundColor: Colors[colorScheme].foreground },
-                isLoading && styles.buttonDisabled,
-              ]}
-              onPress={handleGoogleSignIn}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color={Colors[colorScheme].background} />
-              ) : (
-                <Text style={[styles.primaryButtonText, { color: Colors[colorScheme].background }]}>
-                  Get started free
+              <Text style={[styles.legalFooter, { color: Colors[colorScheme].muted }]}>
+                By continuing you accept our{' '}
+                <Text
+                  style={[styles.legalLink, { color: Colors[colorScheme].muted }]}
+                  onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)}
+                >
+                  Terms
                 </Text>
-              )}
-            </Pressable>
-
-            {error && <Text style={[styles.errorText, { color: '#EF4444' }]}>{error}</Text>}
-
-            <Text style={[styles.legalFooter, { color: Colors[colorScheme].muted }]}>
-              By continuing you accept our{' '}
-              <Text
-                style={[styles.legalLink, { color: Colors[colorScheme].muted }]}
-                onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)}
-              >
-                Terms
+                {' & '}
+                <Text
+                  style={[styles.legalLink, { color: Colors[colorScheme].muted }]}
+                  onPress={() => WebBrowser.openBrowserAsync(PRIVACY_URL)}
+                >
+                  Privacy Policy
+                </Text>
               </Text>
-              {' & '}
-              <Text
-                style={[styles.legalLink, { color: Colors[colorScheme].muted }]}
-                onPress={() => WebBrowser.openBrowserAsync(PRIVACY_URL)}
-              >
-                Privacy Policy
-              </Text>
-            </Text>
+            </View>
           </View>
-        )}
-      </View>
+        </ScrollView>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -499,8 +496,14 @@ const styles = StyleSheet.create({
   },
   pageContent: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 28,
     alignItems: 'center',
+  },
+  landingPageContent: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingTop: 52,
+    paddingBottom: 28,
   },
 
   // Intro page elements
@@ -537,14 +540,12 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 
-  // Footer
-  footer: {
-    paddingHorizontal: 24,
-    paddingTop: 14,
-    paddingBottom: 20,
+  // Scroll footer
+  pageFooter: {
+    width: '100%',
+    paddingTop: 22,
     gap: 14,
     alignItems: 'center',
-    borderTopWidth: StyleSheet.hairlineWidth,
   },
   dotsRow: {
     flexDirection: 'row',
@@ -572,7 +573,7 @@ const styles = StyleSheet.create({
 
   // Landing page
   landingContent: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 28,
@@ -653,67 +654,178 @@ const styles = StyleSheet.create({
 // ─── Demo card styles ────────────────────────────────────────────────────────
 const demoStyles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: 22,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 5,
+  },
+  heroWrap: {
+    position: 'relative',
   },
   heroImage: {
     width: '100%',
-    height: 120,
+    height: 190,
   },
   deepDiveImage: {
     width: '100%',
-    height: 92,
+    height: 210,
   },
-
-  // Trending
-  trendingHeader: {
-    padding: 14,
-    paddingBottom: 10,
+  heroGradientTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 90,
   },
-  trendingMetaRow: {
+  heroGradientBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 150,
+  },
+  heroOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 16,
+    paddingHorizontal: 16,
+  },
+  ageRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 5,
     marginBottom: 8,
   },
-  hotBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  hotText: {
+  ageText: {
     fontSize: 10,
-    fontWeight: '700',
-    color: '#F97316',
+    fontWeight: '800',
+    color: '#FDBA74',
+    letterSpacing: 0.8,
   },
-  metaText: {
+  heroTitle: {
+    fontSize: 21,
+    fontWeight: '700',
+    color: '#fff',
+    lineHeight: 26,
+    letterSpacing: -0.4,
+  },
+  summaryBlock: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 6,
+  },
+  summaryText: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  sourceBadge: {
+    position: 'absolute',
+    left: 16,
+    bottom: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  sourceBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  titleSection: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 6,
+  },
+  cardTitleLarge: {
+    fontSize: 20,
+    fontWeight: '700',
+    lineHeight: 25,
+    letterSpacing: -0.4,
+  },
+  tabRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingTop: 2,
+    paddingBottom: 8,
+  },
+  tabPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  tabPillText: {
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '600',
   },
-  cardTitle: {
-    fontSize: 16,
+  tabPillTextActive: {
+    fontSize: 11,
     fontWeight: '700',
-    lineHeight: 22,
+    color: '#111827',
+  },
+  cardPager: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  learningCardLarge: {
+    borderRadius: 18,
+    padding: 18,
+    minHeight: 132,
+  },
+  learningCardLabelSimple: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 10,
+    letterSpacing: -0.2,
+  },
+  learningCardTextLarge: {
+    fontSize: 18,
+    lineHeight: 27,
+    letterSpacing: -0.3,
+  },
+  learningCardMeta: {
+    fontSize: 12,
+    marginTop: 12,
+  },
+  paginationRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+    paddingBottom: 18,
+  },
+  paginationDot: {
+    height: 7,
+    width: 7,
+    borderRadius: 4,
   },
 
-  // Sections (shared)
+  metaText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+
   section: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: 6,
   },
+  sectionTight: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
   sectionLabel: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
     marginBottom: 2,
   },
 
-  // Bullets
   bulletRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -732,163 +844,107 @@ const demoStyles = StyleSheet.create({
     flex: 1,
   },
 
-  // Timeline
-  timelineRow: {
+  timelineBlock: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
-  },
-  timelineDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    borderWidth: 2,
-    marginTop: 4,
-    flexShrink: 0,
-  },
-  timelineContent: {
-    flex: 1,
-  },
-  timelineTime: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginBottom: 1,
-  },
-  timelineText: {
-    fontSize: 12,
-    lineHeight: 17,
-  },
-
-  // For You
-  categoryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  categoryText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  categoryDivider: {
-    flex: 1,
-  },
-  matchedText: {
-    fontSize: 10,
-    fontWeight: '500',
-  },
-  articleRow: {
-    flexDirection: 'row',
     gap: 12,
-    padding: 14,
   },
-  thumbnail: {
-    width: 72,
-    height: 72,
-    borderRadius: 10,
-    flexShrink: 0,
+  timelineAccent: {
+    width: 2,
+    alignSelf: 'stretch',
+    borderRadius: 2,
   },
-  articleInfo: {
+  timelineList: {
     flex: 1,
-    justifyContent: 'center',
-    gap: 4,
+    gap: 14,
   },
-  articleTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 19,
+  timelineItem: {
+    flex: 1,
   },
-  sourceRow: {
+  timelineSourceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 8,
+    marginBottom: 6,
   },
-  sourceAvatar: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+  timelineAvatar: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sourceInitials: {
-    fontSize: 7,
+  timelineAvatarText: {
+    fontSize: 8,
     fontWeight: '800',
     color: '#fff',
   },
-  sourceName: {
+  timelineSource: {
     fontSize: 11,
     fontWeight: '500',
   },
-  sourceDot: {
-    fontSize: 11,
+  timelineSourceDot: {
+    color: '#9ca3af',
   },
-  learningDivider: {
-    padding: 12,
-    paddingTop: 0,
-    gap: 0,
+  timelineTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
+    marginBottom: 3,
   },
-  learningCard: {
-    borderRadius: 10,
-    padding: 10,
-    gap: 4,
-  },
-  learningCardLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-  },
-  learningCardText: {
+  timelineSummary: {
     fontSize: 12,
     lineHeight: 17,
   },
-
-  // Deep Dive
-  deepDiveHeader: {
-    padding: 12,
-    paddingBottom: 8,
-    gap: 6,
-  },
-  deepDiveMetaRow: {
+  deepDiveHeroBadge: {
     flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
     gap: 6,
-    flexWrap: 'wrap',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    marginBottom: 10,
   },
-  deepDiveMetaPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  deepDiveMetaText: {
+  deepDiveHeroBadgeText: {
     fontSize: 10,
     fontWeight: '700',
+    color: '#fff',
   },
-  compactSection: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    gap: 5,
+  deepDiveHeroMeta: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.82)',
+    marginTop: 8,
   },
   tldrBox: {
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   tldrText: {
-    fontSize: 11,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 19,
   },
-  chapterRow: {
+  chapterRowCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    marginBottom: 8,
   },
-  chapterNum: {
+  chapterNumberBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chapterNumberText: {
     fontSize: 12,
-    fontWeight: '800',
-    width: 14,
-    textAlign: 'center',
+    fontWeight: '700',
   },
   chapterName: {
     fontSize: 12,

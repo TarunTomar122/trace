@@ -134,9 +134,13 @@ WHY_IT_MATTERS:
 - Make the reader feel the significance
 """
 
-TRENDING_BRIEF = """You are an elite news editor creating an Instagram-style news carousel.
+TRENDING_BRIEF = """You are a rigorous editor writing a high-signal brief for a fast-moving story.
 
-The reader swipes through 2-3 slides to get the story. Make each slide punchy and visual.
+The reader wants two layers:
+1. An overview paragraph that reads naturally and tells the story clearly.
+2. A few skim bullets for readers who want only the most important extra facts.
+
+The paragraph and bullets must do different jobs. Do not make the bullets restate the paragraph.
 
 SOURCE:
 Title: {title}
@@ -147,28 +151,57 @@ Content:
 Return JSON with EXACT structure:
 {{
   "short_article": {{
-    "subtitle": "One short line (max 12 words) saying what's new",
-    "headline": "Ultra-short hook for image overlay (6-10 words max)",
-    "slides": [
-      "Slide 1: The news — what happened, who's involved, key numbers (40-50 words)",
-      "Slide 2: The context or why it matters (35-45 words)",
-      "Slide 3 (optional): What's next or deeper insight (30-40 words)"
+    "subtitle": "One short factual line (max 14 words) saying what changed",
+    "headline": "Short factual overlay headline (6-10 words max)",
+    "key_takeaways": [
+      "1-3 one-sentence skim bullets with only the strongest additional details"
     ],
-    "body": "",
+    "slides": [
+      "Slide 1: What happened — who, what, and the most important number/name (30-45 words)",
+      "Slide 2: The strongest supporting detail or concrete consequence (25-40 words)",
+      "Slide 3 (optional): A second concrete detail only if it adds real information (20-35 words)"
+    ],
+    "body": "One short natural paragraph, usually 2-3 sentences, that reads like a concise article lead",
     "outline": []
   }},
   "reading_time_minutes": <estimated int>
 }}
 
 RULES:
-- headline: Like an Instagram caption hook. Short, punchy, makes you want to swipe.
+- Write like a sharp reporter, not a marketer.
+- The body is the main story layer. It must read naturally as a paragraph, not as disguised bullet points.
+- In the body, cover the core development, the main actors, and the most important concrete detail or consequence from the source.
+- Do not write a generic first sentence followed by filler. Every sentence in the body must add real information.
+- Prefer fewer key takeaways over weak ones. If the article only supports 1 strong takeaway, return 1.
+- Key takeaways are the skim layer. Use them for concrete details a reader might miss if they skip the paragraph.
+- Each key takeaway must add information that is not already substantially covered in the body.
+- Key takeaways must be one complete sentence each, not fragments and not mini-paragraphs.
+- When choosing key takeaways, prefer this order:
+  1. Exact numbers, prices, percentages, dates, or counts that matter
+  2. Named companies, products, people, places, or agencies tied to the event
+  3. Concrete deal terms, rollout details, operational effects, or direct consequences stated in the source
+  4. Only then, a broader framing point if the source explicitly supports it with specifics
+- Use actual names, products, places, numbers, prices, dates, or decisions when present.
+- Never write filler like "ongoing improvements", "this highlights a broader trend", "the update is part of...", or "the redesign was announced on...".
+- Do not speculate. No "could", "may", "might", "expected to", or generic future talk unless the source explicitly says it.
+- Do not include publication dates as a key point unless the timing itself is central to the story.
+- Do not create key takeaways by paraphrasing the body sentence by sentence.
+- If the source has no good additive bullets, return an empty list rather than weak repetition.
 - slides: Each is a standalone chunk. No headers or labels. Plain prose.
-- 2 slides minimum, 3 if the story warrants it
+- 2 slides minimum, 3 only if the story genuinely has a third concrete detail.
 - Include ONE bold stat or name per slide using **bold**
-- No fluff, no filler — every word earns its place
-- Slide 1 = the facts (who/what/when/numbers)
-- Slide 2 = the so-what (impact, meaning, stakes)
-- Slide 3 = optional deeper context or what comes next
+- Slide 1 = the core fact
+- Slide 2 = the strongest supporting detail
+- Slide 3 = optional extra concrete detail, not commentary
+
+GOOD KEY TAKEAWAY EXAMPLE:
+- **Google Maps Go** now uses a gradient app icon that matches Google's newer visual system.
+
+BAD KEY TAKEAWAY EXAMPLES:
+- The redesign was announced on March 9, 2026.
+- The update is part of ongoing improvements to the app.
+- This could reshape the future of mapping.
+- The deal is part of a broader trend of investor interest.
 """
 
 # ---------------------------------------------------------------------------
@@ -496,7 +529,7 @@ def _cache_bucket(feed_type: str, technical_depth: str = "", output_format: str 
     output_format: 'cards' for learning cards, '' for prose (default)
     """
     if feed_type == "trending":
-        return "trending_v5"  # trending doesn't vary by depth or format
+        return "trending_v6"  # trending doesn't vary by depth or format
     if feed_type == "deep_dives":
         if technical_depth == "deep":
             return "deep_dive_v6_deep"
@@ -681,6 +714,24 @@ def generate_summary(
         gate_suffix = (
             "\n" + QUALITY_GATE_RULES + "\n"
             "Add rejected/rejection_reason to your JSON response."
+        )
+    elif feed_type == "trending":
+        gate_suffix = (
+            "\n" + QUALITY_GATE_RULES + "\n"
+            "Return JSON with EXACT structure:\n"
+            '{{\n'
+            '  "rejected": <true|false>,\n'
+            '  "rejection_reason": "<short reason when rejected, else empty string>",\n'
+            '  "short_article": {{\n'
+            '    "subtitle": "...",\n'
+            '    "headline": "...",\n'
+            '    "key_takeaways": ["..."],\n'
+            '    "slides": ["Slide 1: ...", "Slide 2: ..."],\n'
+            '    "body": "...",\n'
+            '    "outline": []\n'
+            '  }},\n'
+            '  "reading_time_minutes": <estimated int>\n'
+            '}}\n'
         )
     else:
         gate_suffix = (
