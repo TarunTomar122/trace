@@ -1029,12 +1029,70 @@ def _build_singleton_topic_overview(
     return title, overview, key_points, False
 
 
+def _build_topic_prompt_context(
+    items: list[dict[str, Any]],
+    timeline: list[dict[str, Any]],
+    summary_map: dict[str, dict[str, Any] | None],
+) -> str:
+    timeline_by_url = {
+        str(event.get("article_url", "")).strip(): event
+        for event in timeline
+        if str(event.get("article_url", "")).strip()
+    }
+    sections: list[str] = []
+
+    for item in items[:12]:
+        url = str(item.get("url", "")).strip()
+        event = timeline_by_url.get(url)
+        summary = summary_map.get(url) if url else None
+        short = summary.get("short_article", {}) if isinstance(summary, dict) else {}
+
+        parts = [
+            f"timestamp: {event.get('timestamp', '') if event else item.get('published_date', '')}",
+            f"source: {event.get('source_name', '') if event else item.get('source_name', 'Source')}",
+            f"title: {item.get('title', '')}",
+        ]
+
+        subtitle = str(short.get("subtitle", "")).strip()
+        if subtitle:
+            parts.append(f"subtitle: {subtitle}")
+
+        headline = str(short.get("headline", "")).strip()
+        if headline:
+            parts.append(f"headline: {headline}")
+
+        takeaways = short.get("key_takeaways") if isinstance(short.get("key_takeaways"), list) else []
+        if takeaways:
+            parts.append(
+                "key_takeaways: " + " || ".join(str(point).strip() for point in takeaways if str(point).strip())
+            )
+
+        slides = short.get("slides") if isinstance(short.get("slides"), list) else []
+        if slides:
+            cleaned_slides = [
+                re.sub(r"^\s*Slide\s*\d+\s*:\s*", "", str(slide).strip(), flags=re.IGNORECASE).strip()
+                for slide in slides
+                if str(slide).strip()
+            ]
+            if cleaned_slides:
+                parts.append("slides: " + " || ".join(cleaned_slides))
+
+        event_summary = str(event.get("summary", "")).strip() if event else ""
+        if event_summary:
+            parts.append(f"timeline_summary: {event_summary}")
+
+        sections.append("\n".join(parts))
+
+    return "\n\n".join(sections)[:14000]
+
+
 def _build_topic_overview(
     store: V3Store,
     topic_id: str,
     fallback_title: str,
     items: list[dict[str, Any]],
     timeline: list[dict[str, Any]],
+    summary_map: dict[str, dict[str, Any] | None],
 ) -> tuple[str, str, list[str], bool]:
     """Generate topic overview via LLM. Returns (title, overview, key_points, from_cache)."""
     cache_key = _topic_cache_key(items)
@@ -1068,13 +1126,7 @@ def _build_topic_overview(
         )
         return fallback_title, deterministic_overview, deterministic_points, False
 
-    lines = []
-    for e in timeline[:12]:
-        lines.append(
-            f"{e.get('timestamp', '')} | {e.get('source_name', 'Source')} | "
-            f"{e.get('title', '')} | {e.get('summary', '')}"
-        )
-    timeline_text = "\n".join(lines)[:14000]
+    timeline_text = _build_topic_prompt_context(items, timeline, summary_map)
 
     from openai import OpenAI as _OpenAI
     client = _OpenAI(api_key=os.getenv("OPENAI_API_KEY", "").strip())
@@ -1263,6 +1315,7 @@ def _build_trending_topics_payload(
             fallback_title=cd["fallback_title"],
             items=cd["items"],
             timeline=cd["timeline"],
+            summary_map=summary_map,
         )
         return tid, title, overview, key_points, from_cache
 

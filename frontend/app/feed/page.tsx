@@ -119,6 +119,17 @@ function getTopicDisplay(topic: TrendingTopic) {
   };
 }
 
+function splitSummaryParagraphs(text: string): { first: string; rest: string } {
+  const value = (text || '').trim();
+  if (!value) return { first: '', rest: '' };
+  const parts = value.split(/(?<=[.!?])\s+/).filter(Boolean);
+  if (parts.length < 2) return { first: value, rest: '' };
+  return {
+    first: parts[0].trim(),
+    rest: parts.slice(1).join(' ').trim(),
+  };
+}
+
 function FeedBuildingLoader() {
   const steps = [
     'Scanning sources for fresh content...',
@@ -249,12 +260,16 @@ function TopicListRow({
 
 function TopicDetailView({
   topic,
+  nextTopic,
   onBack,
   onOpenArticle,
+  onOpenNextTopic,
 }: {
   topic: TrendingTopic;
+  nextTopic: TrendingTopic | null;
   onBack: () => void;
   onOpenArticle: (item: FeedItem, options?: { returnTo?: string }) => void;
+  onOpenNextTopic: (topic: TrendingTopic) => void;
 }) {
   const display = getTopicDisplay(topic);
   const isSingletonTopic = display.isSingleton;
@@ -263,6 +278,7 @@ function TopicDetailView({
   const displayTitle = display.title;
   const displayImage = display.thumbnail;
   const displayBody = primaryShort?.body || topic.summary || '';
+  const splitBody = useMemo(() => splitSummaryParagraphs(displayBody), [displayBody]);
   const displayKeyPoints = isSingletonTopic
     ? (primaryShort?.key_takeaways || [])
     : (topic.key_points || []);
@@ -341,8 +357,17 @@ function TopicDetailView({
       {/* Overview */}
       {displayBody && (
         <div className="mb-6">
-          <div className="prose prose-sm dark:prose-invert max-w-none text-secondary leading-relaxed">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayBody}</ReactMarkdown>
+          <div className="space-y-4">
+            {splitBody.first && (
+              <div className="prose prose-sm dark:prose-invert max-w-none text-secondary leading-relaxed">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{splitBody.first}</ReactMarkdown>
+              </div>
+            )}
+            {splitBody.rest && (
+              <div className="prose prose-sm dark:prose-invert max-w-none text-secondary leading-relaxed">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{splitBody.rest}</ReactMarkdown>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -430,6 +455,35 @@ function TopicDetailView({
               );
             })}
           </div>
+        </div>
+      )}
+
+      {nextTopic && (
+        <div className="mt-10 pt-6 border-t border-border/40">
+          <p className="text-[11px] font-semibold text-secondary/40 uppercase tracking-wide mb-3">
+            Next Story
+          </p>
+          <button
+            onClick={() => onOpenNextTopic(nextTopic)}
+            className="w-full text-left flex items-center gap-4 p-4 rounded-2xl bg-surface-secondary hover:bg-surface-secondary/70 transition-colors group"
+          >
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base font-semibold leading-snug text-foreground group-hover:text-secondary transition-colors line-clamp-2">
+                {getTopicDisplay(nextTopic).title}
+              </h3>
+              <p className="text-sm text-secondary/50 mt-1 line-clamp-2 leading-relaxed">
+                {stripMarkdown(getTopicDisplay(nextTopic).subtitle || getTopicDisplay(nextTopic).summary || '')}
+              </p>
+              <p className="text-xs text-secondary/40 mt-2">
+                {getTopicDisplay(nextTopic).isSingleton && getTopicDisplay(nextTopic).article
+                  ? `${getTopicDisplay(nextTopic).article?.source_name || 'Source'}${getTopicDisplay(nextTopic).readingTime ? ` · ${getTopicDisplay(nextTopic).readingTime} min read` : ''}`
+                  : `${nextTopic.source_count} sources · ${nextTopic.article_count} updates`}
+              </p>
+            </div>
+            <div className="shrink-0">
+              <ChevronRight size={18} className="text-secondary/30 group-hover:text-secondary transition-colors" />
+            </div>
+          </button>
         </div>
       )}
     </div>
@@ -792,12 +846,8 @@ function FeedPageContent() {
   const closeTopic = useCallback(() => {
     setSelectedTopic(null);
     sessionStorage.removeItem(FEED_TOPIC_CACHE_KEY);
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back();
-      return;
-    }
     navigateFeedState('trending', { replace: true });
-  }, [navigateFeedState, router]);
+  }, [navigateFeedState]);
 
   const handleTabChange = useCallback((tab: FeedTab) => {
     if (tab === 'for_you') {
@@ -887,6 +937,12 @@ function FeedPageContent() {
     const overlap = wb.filter(w => wa.has(w)).length;
     return overlap / Math.max(wa.size, wb.length) < 0.5;
   });
+  const nextTopic = useMemo(() => {
+    if (!selectedTopic || trendingTopics.length <= 1) return null;
+    const currentIndex = trendingTopics.findIndex((t) => t.id === selectedTopic.id);
+    if (currentIndex === -1) return null;
+    return trendingTopics[(currentIndex + 1) % trendingTopics.length] || null;
+  }, [selectedTopic, trendingTopics]);
 
   // For You sections
   const forYouFeatured = useMemo(() => {
@@ -965,8 +1021,10 @@ function FeedPageContent() {
           /* Topic Detail View */
           <TopicDetailView
             topic={selectedTopic}
+            nextTopic={nextTopic}
             onBack={closeTopic}
             onOpenArticle={openArticle}
+            onOpenNextTopic={openTopic}
           />
         ) : hasContent ? (
           <>

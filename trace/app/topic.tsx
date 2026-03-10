@@ -84,6 +84,17 @@ function truncateText(text: string, maxLength: number): { text: string; truncate
   return { text: text.substring(0, maxLength).trim() + '...', truncated: true };
 }
 
+function splitSummaryParagraphs(text: string): { first: string; rest: string } {
+  const value = (text || '').trim();
+  if (!value) return { first: '', rest: '' };
+  const parts = value.split(/(?<=[.!?])\s+/).filter(Boolean);
+  if (parts.length < 2) return { first: value, rest: '' };
+  return {
+    first: parts[0].trim(),
+    rest: parts.slice(1).join(' ').trim(),
+  };
+}
+
 export default function TopicScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
@@ -160,6 +171,7 @@ export default function TopicScreen() {
   const displayTitle = primaryArticle?.title || topic.title;
   const displayThumbnail = primaryArticle?.thumbnail || topic.thumbnail;
   const displayBody = primaryShort?.body || topic.summary || '';
+  const splitBody = useMemo(() => splitSummaryParagraphs(displayBody), [displayBody]);
   const displayKeyPoints = isSingletonTopic
     ? (primaryShort?.key_takeaways || [])
     : (topic.key_points || []);
@@ -223,9 +235,14 @@ export default function TopicScreen() {
 
         {/* Summary + meta below image, flush with background */}
         <View style={styles.summaryBlock}>
-          {displayBody ? (
+          {splitBody.first ? (
             <RichText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
-              {displayBody}
+              {splitBody.first}
+            </RichText>
+          ) : null}
+          {splitBody.rest ? (
+            <RichText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
+              {splitBody.rest}
             </RichText>
           ) : null}
 
