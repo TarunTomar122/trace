@@ -27,9 +27,8 @@ if str(REPO_ROOT) not in sys.path:
 from v1.storage import FirestoreStore, is_user_subscribed  # noqa: E402
 
 FREE_TIER_LIMITS = {
-    "trending": 5,
-    "for_you": 2,
-    "deep_dives": 1,
+    "trending": 3,
+    "for_you": 1,
 }
 
 FOR_YOU_POOL = "v3_for_you_pool"

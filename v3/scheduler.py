@@ -2,7 +2,7 @@
 """
 V3 pipeline scheduler.
 
-Orchestrates the three feed builders + assembly step.
+Orchestrates the active feed builders + assembly step.
 
 Usage:
   python3 -m v3.scheduler                             # run all (feeds + newsletter)
@@ -33,16 +33,9 @@ if str(REPO_ROOT) not in sys.path:
 JOBS = {
     "for_you": {
         "module": "v3.build_for_you",
-        "pool_cadence_days": 4,
+        "pool_cadence_days": 1,
         "description": (
             "For You (interest-matched articles with career-goal boost)"
-        ),
-    },
-    "deep_dives": {
-        "module": "v3.build_deep_dives",
-        "pool_cadence_days": 4,
-        "description": (
-            "Deep Dives (expert content from user-selected sources)"
         ),
     },
     "trending": {
@@ -84,7 +77,6 @@ def _parse_args() -> argparse.Namespace:
             "pools",
             "feeds",
             "for_you",
-            "deep_dives",
             "trending",
             "assemble",
             "newsletter",
@@ -93,7 +85,7 @@ def _parse_args() -> argparse.Namespace:
         ],
         help=(
             "Jobs to run. 'all' runs everything. "
-            "'pools' runs pool refresh for all 3. "
+            "'pools' runs pool refresh for active feed builders. "
             "'feeds' skips pools."
         ),
     )
@@ -197,11 +189,11 @@ def main() -> None:
 
     # Guardrail: user-scoped "all" should only build that user's feed sections.
     if args.user_id and run_all:
-        requested = {"for_you", "deep_dives", "assemble"}
+        requested = {"for_you", "assemble"}
         run_all = False
         _log(
             "User-scoped run with --jobs all detected; "
-            "limiting to for_you + deep_dives + assemble."
+            "limiting to for_you + assemble."
         )
 
     run_pools = "pools" in requested
@@ -220,7 +212,7 @@ def main() -> None:
     if args.tier:
         extra.extend(["--tier", args.tier])
 
-    build_jobs = ["for_you", "deep_dives", "trending"]
+    build_jobs = ["for_you", "trending"]
     users_file = ""
 
     _log("=== V3 Pipeline Start ===")

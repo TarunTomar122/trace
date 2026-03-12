@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -7,7 +7,10 @@ import {
   Text,
   Image,
   Dimensions,
+  Platform,
 } from 'react-native';
+import ViewShot from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -29,6 +32,7 @@ import {
   Newspaper,
   Bookmark,
   ExternalLink,
+  Share2,
   Flame,
   Clock,
   Crown,
@@ -38,7 +42,7 @@ import {
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,8 +54,7 @@ import { updateStreak } from '@/lib/streaks';
 import { getArticleImage } from '@/lib/fallback-images';
 
 const ACCENT = '#F59E0B';
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const HERO_HEIGHT = SCREEN_HEIGHT * 0.42;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const AVATAR_PALETTE = [
   '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6',
@@ -156,38 +159,31 @@ type DeepDiveContent = {
   images?: string[];
 };
 
-const FY_TAB_CONFIG: Record<string, { label: string; Icon: typeof Clock }> = {
-  hook: { label: 'Highlights', Icon: Clock },
-  insight: { label: 'Key Insight', Icon: Sparkles },
-  why: { label: 'Why it Matters', Icon: Flame },
-  bottom_line: { label: 'Bottom Line', Icon: Zap },
+type WorthReadingContent = {
+  paragraphs?: string[];
 };
 
-function buildTabLabels(cards: LearningCard[]): string[] {
-  const typeCounts = new Map<string, number>();
-  for (const c of cards) {
-    typeCounts.set(c.type, (typeCounts.get(c.type) || 0) + 1);
+function buildWorthReadingParagraphsFromBody(body: string, fallbacks?: string[]): string[] {
+  const normalized = String(body || '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  if (normalized) {
+    const paragraphs = normalized
+      .split(/\n\n+/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (paragraphs.length > 0) return paragraphs.slice(0, 8);
   }
-  const typeIdx = new Map<string, number>();
-  return cards.map((card) => {
-    const base = FY_TAB_CONFIG[card.type]?.label || card.type;
-    const count = typeCounts.get(card.type) || 1;
-    if (count <= 1) return base;
-    const idx = (typeIdx.get(card.type) || 0) + 1;
-    typeIdx.set(card.type, idx);
-    return `${base} ${idx}`;
-  });
+  return (fallbacks || []).filter(Boolean).slice(0, 8);
 }
 
-/* ═══════════════════════════════════════════════════════════
-   ForYouArticleView — clean card-based reader with next article
-   ═══════════════════════════════════════════════════════════ */
 
-function ForYouArticleView({
-  cards,
+function WorthReadingArticleView({
+  content,
   title,
   sourceName,
   thumbnail,
+  publishedDate,
   colorScheme,
   onBack,
   onReadOriginal,
@@ -196,10 +192,11 @@ function ForYouArticleView({
   nextArticle,
   onNextArticle,
 }: {
-  cards: LearningCard[];
+  content: WorthReadingContent;
   title: string;
   sourceName: string;
   thumbnail?: string;
+  publishedDate?: string;
   colorScheme: 'light' | 'dark';
   onBack: () => void;
   onReadOriginal: () => void;
@@ -209,13 +206,13 @@ function ForYouArticleView({
   onNextArticle?: () => void;
 }) {
   const insets = useSafeAreaInsets();
-  const [currentCard, setCurrentCard] = useState(0);
   const isDark = colorScheme === 'dark';
-  const showHero = isLikelyRealImageUrl(thumbnail);
-  const tabLabels = buildTabLabels(cards);
-  const isLastCard = currentCard === cards.length - 1;
+  const imageUrl = getArticleImage(thumbnail ?? null, title);
+  const timeAgo = getTimeAgo(publishedDate);
+  const initials = getSourceInitials(sourceName);
+  const avatarBg = hashColor(sourceName);
 
-  // Scroll-hide header animation
+  // Scroll-hide header
   const scrollY = useSharedValue(0);
   const lastScrollY = useSharedValue(0);
   const headerTranslateY = useSharedValue(0);
@@ -225,21 +222,15 @@ function ForYouArticleView({
     onScroll: (event) => {
       const currentY = event.contentOffset.y;
       const diff = currentY - lastScrollY.value;
-
-      // Only hide after scrolling past the header area
       if (currentY > HEADER_HEIGHT) {
         if (diff > 0) {
-          // Scrolling up (reading) - hide header
           headerTranslateY.value = withTiming(-HEADER_HEIGHT, { duration: 200 });
         } else if (diff < -5) {
-          // Scrolling down - show header
           headerTranslateY.value = withTiming(0, { duration: 200 });
         }
       } else {
-        // Near top - always show
         headerTranslateY.value = withTiming(0, { duration: 200 });
       }
-
       lastScrollY.value = currentY;
       scrollY.value = currentY;
     },
@@ -249,171 +240,227 @@ function ForYouArticleView({
     transform: [{ translateY: headerTranslateY.value }],
   }));
 
+  // Share card capture
+  const shareCardRef = useRef<ViewShot>(null);
+  const [isSharing, setIsSharing] = useState(false);
+
+  const handleShare = useCallback(async () => {
+    if (!shareCardRef.current || isSharing) return;
+    setIsSharing(true);
+    try {
+      const uri = await shareCardRef.current.capture?.();
+      if (uri && await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'image/png',
+          dialogTitle: 'Share this article',
+          UTI: 'public.png',
+        });
+      }
+    } catch (e) {
+      console.warn('Share failed:', e);
+    } finally {
+      setIsSharing(false);
+    }
+  }, [isSharing]);
+
+  const renderWorthReadingLine = (line: string, key: string | number) => {
+    if (line.startsWith('### ')) {
+      return (
+        <RichText key={key} style={[wrStyles.sectionH3, { color: Colors[colorScheme].text }]}>
+          {line.replace(/^###\s*/, '')}
+        </RichText>
+      );
+    }
+    if (line.startsWith('## ')) {
+      return (
+        <RichText key={key} style={[wrStyles.sectionH2, { color: Colors[colorScheme].text }]}>
+          {line.replace(/^##\s*/, '')}
+        </RichText>
+      );
+    }
+    if (line.startsWith('- ') || line.startsWith('* ')) {
+      return (
+        <View key={key} style={wrStyles.listRow}>
+          <View style={[wrStyles.listDot, { backgroundColor: ACCENT }]} />
+          <RichText style={[wrStyles.listText, { color: Colors[colorScheme].text }]}>
+            {line.replace(/^[-*]\s*/, '')}
+          </RichText>
+        </View>
+      );
+    }
+    if (/^\d+\.\s/.test(line)) {
+      return (
+        <View key={key} style={wrStyles.listRow}>
+          <Text style={[wrStyles.listNumber, { color: Colors[colorScheme].muted }]}>
+            {line.match(/^(\d+)\./)?.[1]}.
+          </Text>
+          <RichText style={[wrStyles.listText, { color: Colors[colorScheme].text }]}>
+            {line.replace(/^\d+\.\s*/, '')}
+          </RichText>
+        </View>
+      );
+    }
+    return (
+      <RichText key={key} style={[wrStyles.paragraphText, { color: Colors[colorScheme].text }]}>
+        {line}
+      </RichText>
+    );
+  };
+
   return (
-    <View style={[fyStyles.root, { backgroundColor: Colors[colorScheme].background }]}>
+    <View style={[wrStyles.root, { backgroundColor: Colors[colorScheme].background }]}>
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
         onScroll={scrollHandler}
-        scrollEventThrottle={16}>
-
-        {/* Hero image — with gradient blend into background */}
-        <View style={fyStyles.heroWrap}>
-          {showHero ? (
-            <Image source={{ uri: thumbnail }} style={fyStyles.heroImage} resizeMode="cover" />
-          ) : (
-            <View style={[fyStyles.heroImage, { backgroundColor: isDark ? '#1c1c1c' : '#e5e5e5' }]} />
-          )}
-          {/* Gradient at top for header buttons visibility */}
-          <LinearGradient
-            colors={['rgba(0,0,0,0.25)', 'transparent']}
-            style={[fyStyles.heroGradientTop, { paddingTop: insets.top }]}
-          />
-          {/* Gradient at bottom to blend into background */}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) + 84 }}>
+        {/* Hero image */}
+        <View style={wrStyles.heroWrap}>
+          <Image source={{ uri: imageUrl }} style={wrStyles.heroImage} resizeMode="cover" />
+          {/* Overlay for dimming */}
+          <View style={wrStyles.heroOverlayDim} />
+          {/* Bottom gradient fade to background */}
           <LinearGradient
             colors={['transparent', Colors[colorScheme].background]}
-            locations={[0, 1]}
-            style={fyStyles.heroGradientBottom}
+            style={wrStyles.heroGradient}
           />
-          {/* Source badge at blend intersection */}
-          <View style={[fyStyles.sourceBadge, { backgroundColor: isDark ? '#2a2a2a' : '#1a1a1a' }]}>
-            <Text style={fyStyles.sourceBadgeText}>{sourceName}</Text>
+        </View>
+
+        {/* Title section below hero */}
+        <View style={wrStyles.titleSection}>
+          <Text numberOfLines={4} style={[wrStyles.heroTitle, { color: Colors[colorScheme].text }]}>
+            {title}
+          </Text>
+          <View style={wrStyles.sourceRow}>
+            <View style={[wrStyles.sourceAvatar, { backgroundColor: avatarBg }]}>
+              <Text style={wrStyles.sourceAvatarText}>{initials}</Text>
+            </View>
+            <Text style={[wrStyles.sourceText, { color: Colors[colorScheme].muted }]}>
+              {sourceName || 'Source'}
+              {timeAgo ? ` · ${timeAgo}` : ''}
+            </Text>
           </View>
         </View>
 
-        {/* Title below image */}
-        <View style={fyStyles.titleSection}>
-          <Text style={[fyStyles.heroTitle, { color: Colors[colorScheme].text }]}>
-            {title}
-          </Text>
-        </View>
+        <View style={wrStyles.content}>
 
-        {/* Highlights cards */}
-        <View style={fyStyles.cardsSection}>
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            directionalLockEnabled
-            scrollEventThrottle={16}
-            onScroll={(e) => {
-              const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-              if (idx >= 0 && idx < cards.length && idx !== currentCard) setCurrentCard(idx);
-            }}>
-            {cards.map((card, idx) => (
-              <View key={idx} style={[fyStyles.cardPage, { width: SCREEN_WIDTH }]}>
-                <View
-                  style={[
-                    fyStyles.card,
-                    {
-                      backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
-                      height: SCREEN_HEIGHT * 0.32,
-                    },
-                  ]}>
-                  <Text style={[fyStyles.cardLabel, { color: isDark ? '#888' : '#4b5563' }]}>
-                    {tabLabels[idx]}
-                  </Text>
-                  <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    nestedScrollEnabled
-                    style={fyStyles.cardScrollContent}>
-                    <RichText style={[fyStyles.cardContent, { color: Colors[colorScheme].text }]}>
-                      {card.content}
-                    </RichText>
-                  </ScrollView>
-                </View>
+          {content.paragraphs && content.paragraphs.length > 0 ? (
+            <View style={[wrStyles.sectionCard, { backgroundColor: isDark ? '#111827' : '#f8fafc' }]}>
+              {content.paragraphs.map((paragraph, index) => {
+                const lines = paragraph
+                  .split('\n')
+                  .map((line) => line.trim())
+                  .filter(Boolean);
+                return (
+                  <View
+                    key={index}
+                    style={index < content.paragraphs!.length - 1 ? wrStyles.blockGap : null}>
+                    {lines.map((line, lineIndex) => renderWorthReadingLine(line, `${index}-${lineIndex}`))}
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
+
+          {nextArticle && onNextArticle ? (
+            <Pressable
+              onPress={onNextArticle}
+              style={[wrStyles.nextBtn, { backgroundColor: Colors[colorScheme].card }]}>
+              <View style={wrStyles.nextBtnContent}>
+                <Text style={[wrStyles.nextLabel, { color: Colors[colorScheme].muted }]}>UP NEXT</Text>
+                <Text numberOfLines={1} style={[wrStyles.nextTitle, { color: Colors[colorScheme].text }]}>
+                  {nextArticle.title}
+                </Text>
               </View>
-            ))}
-          </ScrollView>
-
-          {/* Pagination dots */}
-          {cards.length > 1 && (
-            <View style={fyStyles.dotsRow}>
-              {cards.map((_, idx) => (
-                <View
-                  key={idx}
-                  style={[
-                    fyStyles.dot,
-                    {
-                      backgroundColor: idx === currentCard
-                        ? (isDark ? '#fff' : '#1a1a1a')
-                        : (isDark ? '#444' : '#d1d5db'),
-                    },
-                  ]}
-                />
-              ))}
-            </View>
-          )}
+              <ChevronRight size={20} color={Colors[colorScheme].muted} strokeWidth={2} />
+            </Pressable>
+          ) : null}
         </View>
-
-        {/* Next article teaser - only show on last card */}
-        {nextArticle && onNextArticle && isLastCard && (
-          <Pressable
-            onPress={onNextArticle}
-            style={[
-              fyStyles.nextArticle,
-              {
-                backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
-                borderWidth: isDark ? 0 : 1,
-                borderColor: '#e5e7eb',
-              },
-            ]}>
-            <View
-              style={[
-                fyStyles.nextArticleThumb,
-                { backgroundColor: hashColor(nextArticle.sourceName) },
-              ]}>
-              <Text style={fyStyles.nextArticleInitials}>
-                {getSourceInitials(nextArticle.sourceName)}
-              </Text>
-            </View>
-            <View style={fyStyles.nextArticleContent}>
-              <Text style={[fyStyles.nextArticleHint, { color: Colors[colorScheme].muted }]}>
-                Swipe to Next Article
-              </Text>
-              <Text
-                numberOfLines={1}
-                style={[fyStyles.nextArticleTitle, { color: Colors[colorScheme].text }]}>
-                {nextArticle.title}
-              </Text>
-            </View>
-            <ChevronRight size={18} color={Colors[colorScheme].muted} strokeWidth={2} />
-          </Pressable>
-        )}
-
       </Animated.ScrollView>
 
-      {/* Floating header - animated hide on scroll */}
-      <Animated.View style={[fyStyles.floatingHeader, headerAnimatedStyle]}>
-        <SafeAreaView edges={['top']} style={{ flex: 1 }} pointerEvents="box-none">
-          <View style={fyStyles.headerRow}>
-            <Pressable onPress={onBack} hitSlop={12} style={[fyStyles.headerBtn, fyStyles.headerBtnOverlay]}>
-              <ChevronLeft size={22} color="#fff" strokeWidth={2.5} />
+      {/* Floating header */}
+      <Animated.View style={[wrStyles.floatingHeader, headerAnimatedStyle]}>
+        <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+          <View style={wrStyles.floatingHeaderRow}>
+            <Pressable onPress={onBack} hitSlop={12} style={wrStyles.floatingBtn}>
+              <ChevronLeft size={22} color="#000" strokeWidth={2} />
             </Pressable>
-            <View style={fyStyles.headerRight}>
-              <Pressable onPress={onBookmark} hitSlop={12} style={[fyStyles.headerBtn, fyStyles.headerBtnOverlay]}>
+            <View style={wrStyles.floatingHeaderRight}>
+              <Pressable onPress={onBookmark} hitSlop={12} style={wrStyles.floatingBtn}>
                 <Bookmark
                   size={20}
-                  color="#fff"
-                  strokeWidth={isBookmarked ? 2.5 : 1.5}
-                  fill={isBookmarked ? '#fff' : 'transparent'}
+                  color="#000"
+                  strokeWidth={isBookmarked ? 2 : 1.8}
+                  fill={isBookmarked ? '#000' : 'transparent'}
                 />
               </Pressable>
-              <Pressable onPress={onReadOriginal} hitSlop={12} style={[fyStyles.headerBtn, fyStyles.headerBtnOverlay]}>
-                <ExternalLink size={20} color="#fff" strokeWidth={2} />
+              <Pressable onPress={handleShare} hitSlop={12} style={wrStyles.floatingBtn}>
+                <Share2 size={18} color="#000" strokeWidth={1.8} />
+              </Pressable>
+              <Pressable onPress={onReadOriginal} hitSlop={12} style={wrStyles.floatingBtn}>
+                <ExternalLink size={18} color="#000" strokeWidth={1.8} />
               </Pressable>
             </View>
           </View>
         </SafeAreaView>
       </Animated.View>
+
+      {/* Hidden share card for capture */}
+      <View style={wrStyles.shareCardContainer}>
+        <ViewShot ref={shareCardRef} options={{ format: 'png', quality: 1 }}>
+          <View style={wrStyles.shareCard}>
+            {imageUrl ? (
+              <Image source={{ uri: imageUrl }} style={wrStyles.shareCardImage} resizeMode="cover" />
+            ) : (
+              <View style={[wrStyles.shareCardImage, { backgroundColor: avatarBg }]} />
+            )}
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.7)']}
+              style={wrStyles.shareCardGradient}
+            />
+            <View style={wrStyles.shareCardContent}>
+              <Text style={wrStyles.shareCardTitle} numberOfLines={3}>{title}</Text>
+              <View style={wrStyles.shareCardMeta}>
+                <Text style={wrStyles.shareCardSource}>{sourceName}</Text>
+                <Text style={wrStyles.shareCardBrand}>via Trace</Text>
+              </View>
+            </View>
+          </View>
+        </ViewShot>
+      </View>
     </View>
   );
 }
 
-const fyStyles = StyleSheet.create({
+const wrStyles = StyleSheet.create({
   root: { flex: 1 },
-
-  // Floating header
+  heroWrap: {
+    position: 'relative',
+  },
+  heroImage: {
+    width: '100%',
+    height: 260,
+  },
+  heroOverlayDim: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(120,120,120,0.2)',
+  },
+  heroGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 88,
+  },
+  titleSection: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    gap: 12,
+  },
   floatingHeader: {
     position: 'absolute',
     top: 0,
@@ -421,164 +468,204 @@ const fyStyles = StyleSheet.create({
     right: 0,
     zIndex: 10,
   },
-  headerRow: {
+  floatingHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 4,
-  },
-  headerBtnOverlay: {
-    backgroundColor: 'rgba(0,0,0,0.45)',
-  },
-  headerRight: {
+  floatingHeaderRight: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-
-  // Hero with gradient blend
-  heroWrap: {
-    position: 'relative',
+  floatingBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    marginHorizontal: 6,
   },
-  heroImage: {
-    width: '100%',
-    height: SCREEN_HEIGHT * 0.36,
+  heroTitle: {
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    fontFamily: Fonts.serif,
   },
-  heroGradientTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 100,
-    zIndex: 1,
+  content: {
+    paddingHorizontal: 16,
+    gap: 16,
   },
-  heroGradientBottom: {
+  sourceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  sourceAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sourceAvatarText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  sourceText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  sectionCard: {
+    borderRadius: 18,
+    paddingVertical: 18,
+    paddingHorizontal: 6,
+    gap: 10,
+  },
+  sectionH2: {
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 24,
+    letterSpacing: -0.3,
+    marginBottom: 2,
+  },
+  sectionH3: {
+    fontSize: 15,
+    fontWeight: '700',
+    lineHeight: 21,
+    letterSpacing: -0.2,
+    textTransform: 'uppercase',
+    opacity: 0.72,
+    marginBottom: 2,
+  },
+  paragraphText: {
+    fontSize: 15,
+    lineHeight: 25,
+  },
+  blockGap: {
+    marginBottom: 12,
+  },
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginTop: 2,
+  },
+  listDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 9,
+  },
+  listNumber: {
+    width: 18,
+    fontSize: 13,
+    lineHeight: 22,
+    fontWeight: '700',
+    textAlign: 'right',
+  },
+  listText: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 24,
+  },
+  nextBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  nextBtnContent: {
+    flex: 1,
+    gap: 2,
+  },
+  nextLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+  },
+  nextTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  bottomBar: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    height: 80,
+    borderTopWidth: 1,
+    paddingTop: 12,
+    paddingHorizontal: 16,
   },
-
-  // Title section below image
-  titleSection: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 8,
-  },
-  heroTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    lineHeight: 30,
-    letterSpacing: -0.5,
-  },
-  // Source badge overlapping at blend
-  sourceBadge: {
-    position: 'absolute',
-    bottom: 16,
-    left: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    zIndex: 2,
-  },
-  sourceBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-  },
-
-  // Cards section
-  cardsSection: {
-    marginTop: 12,
-  },
-  cardPage: {
-    paddingHorizontal: 24,
+  bottomButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     paddingVertical: 12,
   },
-  card: {
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
-    overflow: 'hidden',
-  },
-  cardLabel: {
+  bottomButtonText: {
     fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-    marginBottom: 12,
+    fontWeight: '600',
   },
-  cardScrollContent: {
-    flex: 1,
+  // Share card styles
+  shareCardContainer: {
+    position: 'absolute',
+    left: -9999,
+    top: -9999,
   },
-  cardContent: {
-    fontSize: 16,
-    lineHeight: 26,
-    letterSpacing: -0.2,
-    paddingBottom: 8,
+  shareCard: {
+    width: 400,
+    height: 500,
+    backgroundColor: '#000',
+    position: 'relative',
   },
-
-  // Pagination dots
-  dotsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
-    paddingTop: 12,
-    paddingBottom: 20,
+  shareCardImage: {
+    width: '100%',
+    height: '100%',
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  shareCardGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 200,
   },
-
-  // Next article
-  nextArticle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 24,
-    marginTop: 4,
-    padding: 12,
-    borderRadius: 14,
-    gap: 12,
+  shareCardContent: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: 24,
   },
-  nextArticleThumb: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  nextArticleInitials: {
-    fontSize: 13,
+  shareCardTitle: {
+    fontSize: 28,
     fontWeight: '700',
     color: '#fff',
+    lineHeight: 36,
+    marginBottom: 16,
+    fontFamily: Fonts.serif,
   },
-  nextArticleContent: {
-    flex: 1,
-    gap: 2,
+  shareCardMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  nextArticleHint: {
-    fontSize: 11,
+  shareCardSource: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
     fontWeight: '500',
   },
-  nextArticleTitle: {
-    fontSize: 13,
+  shareCardBrand: {
+    fontSize: 14,
+    color: '#F59E0B',
     fontWeight: '600',
-    lineHeight: 18,
   },
 });
 
@@ -794,7 +881,7 @@ function ChapterDeepDive({
               <GraduationCap size={12} color="#fff" strokeWidth={2.5} />
               <Text style={dd.heroBadgeText}>Deep Dive</Text>
             </View>
-            <Text style={dd.heroTitle}>{title}</Text>
+            <Text numberOfLines={3} style={dd.heroTitle}>{title}</Text>
             <View style={dd.heroMeta}>
               {readingTime != null && (
                 <Text style={dd.heroMetaText}>{readingTime} min read</Text>
@@ -971,7 +1058,7 @@ const dd = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingBottom: 16,
     gap: 8,
   },
@@ -1014,7 +1101,7 @@ const dd = StyleSheet.create({
 
   // Sections
   section: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 20,
   },
   sectionHeaderRow: {
@@ -1083,7 +1170,7 @@ const dd = StyleSheet.create({
     fontWeight: '600',
   },
   chDetailScroll: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 60,
   },
@@ -1240,6 +1327,29 @@ export default function ArticleScreen() {
     WebBrowser.openBrowserAsync(item.url);
   };
 
+  // Share card capture
+  const shareCardRef = useRef<ViewShot>(null);
+  const [isSharing, setIsSharing] = useState(false);
+
+  const handleShare = useCallback(async () => {
+    if (!shareCardRef.current || isSharing) return;
+    setIsSharing(true);
+    try {
+      const uri = await shareCardRef.current.capture?.();
+      if (uri && await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'image/png',
+          dialogTitle: 'Share this article',
+          UTI: 'public.png',
+        });
+      }
+    } catch (e) {
+      console.warn('Share failed:', e);
+    } finally {
+      setIsSharing(false);
+    }
+  }, [isSharing]);
+
   const readingTime = item.summary?.reading_time_minutes;
   const rawSlides = item.summary?.short_article?.slides as string[] | undefined;
   const slides = rawSlides?.length
@@ -1254,6 +1364,20 @@ export default function ArticleScreen() {
   const keyTakeaways = item.summary?.short_article?.key_takeaways;
   const whyItMatters = item.summary?.short_article?.why_it_matters;
   const learningCards = item.summary?.short_article?.learning_cards;
+  const worthReadingParagraphs = buildWorthReadingParagraphsFromBody(
+    rawBody,
+    keyTakeaways && keyTakeaways.length > 0 ? keyTakeaways : undefined,
+  );
+  const worthReadingSummary = (
+    worthReadingParagraphs.length > 0
+      ? { paragraphs: worthReadingParagraphs }
+      : item.summary?.worth_reading
+  ) as WorthReadingContent | undefined;
+  const hasWorthReadingSummary = Boolean(
+    worthReadingSummary
+    && worthReadingSummary.paragraphs
+    && worthReadingSummary.paragraphs.length > 0
+  );
   const hasLearningCards = learningCards && learningCards.length > 0;
   const deepDiveContent = item.summary?.deep_dive as DeepDiveContent | undefined;
   const isChapterDeepDive = deepDiveContent?.chapters && deepDiveContent.chapters.length > 0;
@@ -1327,15 +1451,17 @@ export default function ArticleScreen() {
     );
   }
 
-  // Route: for-you with learning cards (not trending)
-  if (hasAccess && hasLearningCards && !isTrending) {
+  if (hasAccess && (hasWorthReadingSummary || hasLearningCards) && !isTrending) {
+    // Convert learning cards to paragraphs if no worth_reading content
+    const content: WorthReadingContent = worthReadingSummary
+      || { paragraphs: (learningCards as LearningCard[])?.map(c => c.content) || [] };
     return (
-      <ForYouArticleView
-        key={articleKey}
-        cards={learningCards as LearningCard[]}
+      <WorthReadingArticleView
+        content={content}
         title={item.title}
         sourceName={sourceName}
         thumbnail={item.thumbnail ?? undefined}
+        publishedDate={item.published_date}
         colorScheme={colorScheme}
         onBack={() => router.back()}
         onReadOriginal={handleReadOriginal}
@@ -1349,13 +1475,13 @@ export default function ArticleScreen() {
 
   // Route: immersive news/trending view (also serves as default + paywall)
   return (
-    <View style={[nStyles.container, { backgroundColor: isDark ? '#0a0a0a' : '#fff' }]}>
+    <View style={[nStyles.container, { backgroundColor: Colors[colorScheme].background }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         bounces
         contentContainerStyle={{ paddingBottom: 100 }}>
 
-        {/* Full-bleed hero */}
+        {/* Hero image */}
         <View style={nStyles.heroSection}>
           <Image
             source={{ uri: imageUrl }}
@@ -1363,48 +1489,29 @@ export default function ArticleScreen() {
             resizeMode="cover"
             onError={() => setImgError(true)}
           />
+          {/* Overlay for dimming */}
+          <View style={nStyles.heroOverlayDim} />
+          {/* Bottom gradient fade to background */}
           <LinearGradient
-            colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.75)']}
-            locations={[0, 0.3, 1]}
+            colors={['transparent', Colors[colorScheme].background]}
             style={nStyles.heroGradient}
           />
+        </View>
 
-          {/* Overlay controls */}
-          <View style={[nStyles.heroTopBar, { paddingTop: insets.top + 8 }]}>
-            <Pressable onPress={() => router.back()} hitSlop={12} style={nStyles.heroBtn}>
-              <ChevronLeft size={24} color="#fff" strokeWidth={2.5} />
-            </Pressable>
-            <View style={nStyles.heroTopRight}>
-              <Pressable onPress={handleToggleBookmark} hitSlop={12} style={nStyles.heroBtn}>
-                <Bookmark
-                  size={20}
-                  color={bookmarked ? '#fff' : 'rgba(255,255,255,0.8)'}
-                  strokeWidth={bookmarked ? 2.5 : 1.5}
-                />
-              </Pressable>
-              <Pressable onPress={handleReadOriginal} hitSlop={12} style={nStyles.heroBtn}>
-                <ExternalLink size={20} color="rgba(255,255,255,0.8)" strokeWidth={1.5} />
-              </Pressable>
+        {/* Title section below hero */}
+        <View style={nStyles.titleSection}>
+          <Text numberOfLines={4} style={[nStyles.title, { color: Colors[colorScheme].text }]}>
+            {item.title}
+          </Text>
+          {timeAgo !== '' && (
+            <View style={nStyles.ageBadge}>
+              <Text style={nStyles.ageBadgeText}>{timeAgo}</Text>
             </View>
-          </View>
-
-          {/* Time badge on hero */}
-          <View style={nStyles.heroBottom}>
-            {timeAgo !== '' && (
-              <View style={nStyles.timeBadge}>
-                <Zap size={12} color="#F59E0B" strokeWidth={2.5} />
-                <Text style={nStyles.timeBadgeText}>{timeAgo}</Text>
-              </View>
-            )}
-          </View>
+          )}
         </View>
 
         {/* Content */}
         <View style={nStyles.content}>
-          <Text style={[nStyles.title, { color: Colors[colorScheme].text }]}>
-            {item.title}
-          </Text>
-
           {subtitle && (
             <Text style={[nStyles.subtitle, { color: Colors[colorScheme].muted }]}>
               {subtitle}
@@ -1418,21 +1525,8 @@ export default function ArticleScreen() {
             </View>
             <Text style={[nStyles.sourceName, { color: Colors[colorScheme].muted }]} numberOfLines={1}>
               {sourceName}
+              {readingTime != null ? ` · ${readingTime} min` : ''}
             </Text>
-            {readingTime != null && (
-              <>
-                <Text style={[nStyles.sourceDot, { color: Colors[colorScheme].border }]}>·</Text>
-                <Clock size={12} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-                <Text style={[nStyles.readTime, { color: Colors[colorScheme].muted }]}>{readingTime} min</Text>
-              </>
-            )}
-          </View>
-
-          {/* Overview tab indicator */}
-          <View style={nStyles.tabBar}>
-            <View style={[nStyles.activeTab, { borderBottomColor: ACCENT }]}>
-              <Text style={[nStyles.activeTabText, { color: Colors[colorScheme].text }]}>Overview</Text>
-            </View>
           </View>
 
           {hasAccess ? (
@@ -1504,23 +1598,54 @@ export default function ArticleScreen() {
         </View>
       </ScrollView>
 
-      {/* Bottom action bar */}
-      {hasAccess && (
-        <View
-          style={[
-            nStyles.bottomBar,
-            {
-              backgroundColor: isDark ? '#0a0a0a' : '#fff',
-              borderTopColor: Colors[colorScheme].border,
-              paddingBottom: Math.max(insets.bottom, 16),
-            },
-          ]}>
-          <Pressable onPress={handleReadOriginal} style={nStyles.bottomBarBtn}>
-            <ExternalLink size={18} color={Colors[colorScheme].text} strokeWidth={1.5} />
-            <Text style={[nStyles.bottomBarText, { color: Colors[colorScheme].text }]}>Read Original</Text>
+      {/* Floating header */}
+      <SafeAreaView style={nStyles.floatingHeader} edges={['top']} pointerEvents="box-none">
+        <View style={nStyles.floatingHeaderRow}>
+          <Pressable onPress={() => router.back()} hitSlop={12} style={nStyles.floatingBtn}>
+            <ChevronLeft size={22} color="#000" strokeWidth={2} />
           </Pressable>
+          <View style={nStyles.floatingHeaderRight}>
+            <Pressable onPress={handleToggleBookmark} hitSlop={12} style={nStyles.floatingBtn}>
+              <Bookmark
+                size={20}
+                color="#000"
+                strokeWidth={bookmarked ? 2 : 1.8}
+                fill={bookmarked ? '#000' : 'transparent'}
+              />
+            </Pressable>
+            <Pressable onPress={handleShare} hitSlop={12} style={nStyles.floatingBtn}>
+              <Share2 size={18} color="#000" strokeWidth={1.8} />
+            </Pressable>
+            <Pressable onPress={handleReadOriginal} hitSlop={12} style={nStyles.floatingBtn}>
+              <ExternalLink size={18} color="#000" strokeWidth={1.8} />
+            </Pressable>
+          </View>
         </View>
-      )}
+      </SafeAreaView>
+
+      {/* Hidden share card for capture */}
+      <View style={nStyles.shareCardContainer}>
+        <ViewShot ref={shareCardRef} options={{ format: 'png', quality: 1 }}>
+          <View style={nStyles.shareCard}>
+            {imageUrl ? (
+              <Image source={{ uri: imageUrl }} style={nStyles.shareCardImage} resizeMode="cover" />
+            ) : (
+              <View style={[nStyles.shareCardImage, { backgroundColor: avatarBg }]} />
+            )}
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.7)']}
+              style={nStyles.shareCardGradient}
+            />
+            <View style={nStyles.shareCardContent}>
+              <Text style={nStyles.shareCardTitle} numberOfLines={3}>{item.title}</Text>
+              <View style={nStyles.shareCardMeta}>
+                <Text style={nStyles.shareCardSource}>{sourceName}</Text>
+                <Text style={nStyles.shareCardBrand}>via Trace</Text>
+              </View>
+            </View>
+          </View>
+        </ViewShot>
+      </View>
     </View>
   );
 }
@@ -1528,79 +1653,98 @@ export default function ArticleScreen() {
 const nStyles = StyleSheet.create({
   container: { flex: 1 },
 
-  heroSection: {
-    height: HERO_HEIGHT,
-    position: 'relative',
-  },
-  heroImg: {
-    width: '100%',
-    height: '100%',
-  },
-  heroGradient: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  heroTopBar: {
+  // Floating header
+  floatingHeader: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
+    zIndex: 10,
+  },
+  floatingHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
-  heroTopRight: {
+  floatingHeaderRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
   },
-  heroBtn: {
-    width: 44,
-    height: 44,
+  floatingBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    marginHorizontal: 6,
   },
-  heroBottom: {
+
+  // Hero
+  heroSection: {
+    position: 'relative',
+  },
+  heroImg: {
+    width: '100%',
+    height: 260,
+  },
+  heroOverlayDim: {
     position: 'absolute',
-    bottom: 16,
-    left: 20,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(120,120,120,0.2)',
   },
-  timeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
+  heroGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 88,
   },
-  timeBadgeText: {
+
+  // Title section below hero
+  titleSection: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    gap: 10,
+  },
+  ageBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#ff8d28',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  ageBadgeText: {
+    fontSize: 10,
+    fontWeight: '500',
     color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
   },
 
   content: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    gap: 12,
   },
   title: {
-    fontSize: 26,
+    fontSize: 20,
     fontWeight: '700',
-    lineHeight: 34,
+    lineHeight: 28,
     letterSpacing: -0.3,
-    marginBottom: 8,
+    fontFamily: Fonts.serif,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     lineHeight: 23,
-    marginBottom: 12,
   },
   sourceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
+    gap: 10,
   },
   sourceAvatar: {
     width: 24,
@@ -1738,7 +1882,7 @@ const nStyles = StyleSheet.create({
     right: 0,
     borderTopWidth: 1,
     paddingTop: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   bottomBarBtn: {
     flexDirection: 'row',
@@ -1749,6 +1893,59 @@ const nStyles = StyleSheet.create({
   },
   bottomBarText: {
     fontSize: 15,
+    fontWeight: '600',
+  },
+  // Share card styles
+  shareCardContainer: {
+    position: 'absolute',
+    left: -9999,
+    top: -9999,
+  },
+  shareCard: {
+    width: 400,
+    height: 500,
+    backgroundColor: '#000',
+    position: 'relative',
+  },
+  shareCardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  shareCardGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 200,
+  },
+  shareCardContent: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: 24,
+  },
+  shareCardTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#fff',
+    lineHeight: 36,
+    marginBottom: 16,
+    fontFamily: Fonts.serif,
+  },
+  shareCardMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  shareCardSource: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
+  },
+  shareCardBrand: {
+    fontSize: 14,
+    color: '#F59E0B',
     fontWeight: '600',
   },
 });

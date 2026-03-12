@@ -28,7 +28,7 @@ import {
 import type { LucideIcon } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -44,7 +44,7 @@ import {
 const ACCENT = '#F59E0B';
 const ACCENT_BG_DARK = '#1a1408';
 const ACCENT_BG_LIGHT = '#fffbeb';
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 3;
 
 const ICON_MAP: Record<string, LucideIcon> = {
   'palette': Palette, 'code': Code, 'clipboard-list': ClipboardList,
@@ -135,17 +135,20 @@ function InterestChip({
   selected,
   onPress,
   colorScheme,
+  disabled,
 }: {
   label: string;
   icon: string;
   selected: boolean;
   onPress: () => void;
   colorScheme: 'light' | 'dark';
+  disabled?: boolean;
 }) {
   const iconColor = selected ? ACCENT : Colors[colorScheme].muted;
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       style={[
         styles.chip,
         {
@@ -154,6 +157,7 @@ function InterestChip({
             : Colors[colorScheme].card,
           borderColor: selected ? ACCENT : Colors[colorScheme].border,
           borderWidth: selected ? 2 : 1,
+          opacity: disabled ? 0.4 : 1,
         },
       ]}
     >
@@ -199,9 +203,11 @@ export default function OnboardingScreen() {
 
   // ─── Toggles ───
   const toggleInterest = useCallback((id: string) => {
-    setSelectedInterests(prev =>
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
+    setSelectedInterests(prev => {
+      if (prev.includes(id)) return prev.filter(i => i !== id);
+      if (prev.length >= 5) return prev; // Max 5 interests
+      return [...prev, id];
+    });
   }, []);
 
   const toggleSource = useCallback((name: string) => {
@@ -233,8 +239,8 @@ export default function OnboardingScreen() {
   const canGoNext = (): boolean => {
     if (step === 1) return !!selectedRole && !!selectedSeniority;
     if (step === 2) return selectedInterests.length >= 3;
-    if (step === 3) return selectedSources.length >= 1;
-    if (step === 4) return selectedGoals.length >= 1;
+    // Step 3 (Deep Dive Sources) commented out for now
+    if (step === 3) return selectedGoals.length >= 1;
     return true;
   };
 
@@ -374,6 +380,7 @@ export default function OnboardingScreen() {
                       selected={selectedInterests.includes(interest.id)}
                       onPress={() => toggleInterest(interest.id)}
                       colorScheme={colorScheme}
+                      disabled={selectedInterests.length >= 5 && !selectedInterests.includes(interest.id)}
                     />
                   </Animated.View>
                 ))}
@@ -381,14 +388,14 @@ export default function OnboardingScreen() {
 
               {selectedInterests.length > 0 && (
                 <ThemedText style={[styles.selectionCount, { color: Colors[colorScheme].muted }]}>
-                  {selectedInterests.length} selected{selectedInterests.length < 3 ? ` — pick ${3 - selectedInterests.length} more` : ''}
+                  {selectedInterests.length}/5 selected{selectedInterests.length < 3 ? ` — pick ${3 - selectedInterests.length} more` : selectedInterests.length === 5 ? ' (max)' : ''}
                 </ThemedText>
               )}
             </Animated.View>
           )}
 
-          {/* ═══════ STEP 3: Deep Dive Sources ═══════ */}
-          {step === 3 && (
+          {/* ═══════ STEP 3: Deep Dive Sources (COMMENTED OUT FOR NOW) ═══════ */}
+          {/* {step === 3 && (
             <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)}>
               <ThemedText style={styles.title}>Your Deep Dive sources</ThemedText>
               <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
@@ -491,10 +498,10 @@ export default function OnboardingScreen() {
                 </ThemedText>
               )}
             </Animated.View>
-          )}
+          )} */}
 
-          {/* ═══════ STEP 4: Goals ═══════ */}
-          {step === 4 && (
+          {/* ═══════ STEP 3: Goals ═══════ */}
+          {step === 3 && (
             <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)}>
               <ThemedText style={styles.title}>What's your next move?</ThemedText>
               <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
@@ -587,8 +594,8 @@ const styles = StyleSheet.create({
 
   scrollContent: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 80 },
 
-  title: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5, lineHeight: 34, marginBottom: 8 },
-  subtitle: { fontSize: 15, lineHeight: 22, marginBottom: 28 },
+  title: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5, lineHeight: 34, marginBottom: 8, fontFamily: Fonts.serif },
+  subtitle: { fontSize: 15, lineHeight: 22, marginBottom: 28, fontFamily: Fonts.serif },
 
   // 2-column grid
   gridTwo: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },

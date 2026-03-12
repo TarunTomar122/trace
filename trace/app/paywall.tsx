@@ -340,7 +340,7 @@ function StepPaywall({
         </ThemedText>
         <ThemedText style={[styles.heroSub, { color: Colors[colorScheme].muted }]}>
           {fromOnboarding
-            ? `You already set up your role, interests, goals, and sources. Now unlock the full reading and learning experience with ${TRIAL_DAYS} free days.`
+            ? `You already set up your role, interests, and goals. Now unlock the full reading and learning experience with ${TRIAL_DAYS} free days.`
             : `Get full For You, full Deep Dives, and saved articles in one place.`}
         </ThemedText>
       </View>

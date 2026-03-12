@@ -3,10 +3,9 @@
 Build "For You" feed — role-first, interest-matched articles.
 
 Selection priority:
-  1. Role's primary interest domain (majority of feed)
-  2. User's explicitly chosen interests
-  3. Career-goal keyword boosts within eligible items
-  4. LLM reject-gate drops low-signal content at summary time
+  1. Role's primary interest domain
+  2. Career-goal keyword boosts within eligible items
+  3. LLM reject-gate drops low-signal content at summary time
 
 Phase 1 (pool): Fetch articles from for_you_sources.json → v3_for_you_pool
 Phase 2 (feed): Per-user selection + scoring + summarise → write feed
@@ -47,8 +46,8 @@ from v3.lib.diversity import dedupe_and_cap  # noqa: E402
 
 CONFIG_PATH = "v3/config/for_you_sources.json"
 DEFAULT_ITEMS = 0
-DEFAULT_LIMIT_PER_SOURCE = 5
-DEFAULT_MAX_AGE = 14
+DEFAULT_LIMIT_PER_SOURCE = 15
+DEFAULT_MAX_AGE = 365
 HEALTH_INTEREST_IDS = {"health", "biotech", "medicine", "health-tech"}
 MEDICAL_TOPIC_KEYWORDS = {
     "cancer",
@@ -91,6 +90,16 @@ COMMERCE_CONTENT_KEYWORDS = {
     "we may earn a commission",
     "buy now",
     "shop now",
+}
+GENERIC_SECTION_TITLES = {
+    "product",
+    "products",
+    "engineering",
+    "design",
+    "marketing",
+    "leadership",
+    "startups",
+    "company",
 }
 
 ROLE_PRIMARY_INTERESTS: dict[str, list[str]] = {
@@ -212,6 +221,62 @@ def _is_commerce_or_deal_content(title: str, content: str = "") -> bool:
     return False
 
 
+def _is_low_signal_for_you_item(
+    title: str,
+    url: str = "",
+    source_name: str = "",
+) -> bool:
+    """Reject generic hub pages and thin section pages that slip through source feeds."""
+    title_clean = (title or "").strip()
+    title_lower = title_clean.lower()
+    url_lower = (url or "").strip().lower()
+    source_lower = (source_name or "").strip().lower()
+
+    if title_lower in GENERIC_SECTION_TITLES:
+        return True
+
+    if len(title_clean.split()) <= 2 and title_lower in GENERIC_SECTION_TITLES:
+        return True
+
+    # First Round Review homepage can surface taxonomy pages like /articles/product
+    if source_lower == "first round review" and "/articles/" in url_lower:
+        return True
+
+    return False
+
+
+def _filter_for_you_candidates(
+    candidates: list[dict[str, Any]],
+    eligible: set[str],
+    allow_medical: bool,
+) -> list[dict[str, Any]]:
+    filtered = [
+        c for c in candidates
+        if c.get("interest_id", "") in eligible
+    ]
+    if not allow_medical:
+        filtered = [
+            c for c in filtered
+            if not _is_medical_topic(c)
+        ]
+    filtered = [
+        c for c in filtered
+        if not _is_commerce_or_deal_content(
+            str(c.get("title", "")),
+            str(c.get("content", "")),
+        )
+    ]
+    filtered = [
+        c for c in filtered
+        if not _is_low_signal_for_you_item(
+            str(c.get("title", "")),
+            url=str(c.get("url", "")),
+            source_name=str(c.get("source_name", "")),
+        )
+    ]
+    return filtered
+
+
 def _apply_role_quota(
     ranked: list[dict[str, Any]],
     role_primary: set[str],
@@ -293,6 +358,10 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
                     stats["filtered"] += 1
                 continue
             if _is_commerce_or_deal_content(title):
+                with stats_lock:
+                    stats["filtered"] += 1
+                continue
+            if _is_low_signal_for_you_item(title, url=url, source_name=src_name):
                 with stats_lock:
                     stats["filtered"] += 1
                 continue
@@ -414,7 +483,6 @@ def build_user_feeds(
         if not uid:
             continue
 
-        interests = set(profile.get("interests", []))
         role = profile.get("role", "")
         goals = profile.get("careerGoals", []) or []
         is_sub = is_user_subscribed(profile)
@@ -428,18 +496,14 @@ def build_user_feeds(
             ROLE_PRIMARY_INTERESTS.get(role, [])
         )
 
-        if not interests and not role_primary:
-            _log(f"  user={uid} no interests, skip")
+        if not role_primary:
+            _log(f"  user={uid} role={role or 'unknown'} has no role lane, skip")
             store.write_feed_section(
                 uid, target_date, "for_you", [],
             )
             continue
 
-        eligible = set(interests)
-        if not eligible:
-            eligible = role_primary.copy()
-        elif role_primary - eligible:
-            eligible |= role_primary
+        eligible = role_primary.copy()
 
         eligible_union |= eligible
         user_inputs.append(
@@ -477,24 +541,31 @@ def build_user_feeds(
         if not uid:
             continue
         seen_urls = store.get_seen_urls(uid)
-        candidates = [
+        unseen_candidates = [
             c for c in all_candidates
             if c.get("interest_id", "") in eligible
             and c.get("url", "") not in seen_urls
         ]
-        allow_medical = bool(eligible & HEALTH_INTEREST_IDS)
-        if not allow_medical:
-            candidates = [
-                c for c in candidates
-                if not _is_medical_topic(c)
-            ]
-        candidates = [
-            c for c in candidates
-            if not _is_commerce_or_deal_content(
-                str(c.get("title", "")),
-                str(c.get("content", "")),
-            )
+        seen_candidates = [
+            c for c in all_candidates
+            if c.get("interest_id", "") in eligible
+            and c.get("url", "") in seen_urls
         ]
+        allow_medical = bool(eligible & HEALTH_INTEREST_IDS)
+        unseen_candidates = _filter_for_you_candidates(
+            unseen_candidates, eligible, allow_medical
+        )
+        seen_candidates = _filter_for_you_candidates(
+            seen_candidates, eligible, allow_medical
+        )
+
+        candidates = unseen_candidates
+        if len(candidates) < target and seen_candidates:
+            needed = target - len(candidates)
+            candidates = candidates + seen_candidates[:needed]
+            _log(
+                f"  user={uid} topped up with {min(needed, len(seen_candidates))} seen items"
+            )
 
         for c in candidates:
             sn = c.get("source_name", "")
@@ -544,19 +615,19 @@ def build_user_feeds(
             if url and url not in items_by_depth[depth]:
                 items_by_depth[depth][url] = item
 
-    # Run batch per depth — using learning cards format for mobile
+    # Run batch per depth — generate prose summaries for the article reader
     summary_maps: dict[str, dict[str, dict[str, Any] | None]] = {}
     for depth in ["deep", "accessible"]:
         items = list(items_by_depth[depth].values())
         if not items:
             summary_maps[depth] = {}
             continue
-        _log(f"Batch summarize {len(items)} articles for depth={depth} (cards format)")
+        _log(f"Batch summarize {len(items)} articles for depth={depth} (prose format)")
         presummary = batch_presummarize(
             store, items,
             feed_type="for_you", max_workers=8,
             technical_depth=depth,
-            output_format="cards",  # Generate learning cards for swipeable mobile UX
+            output_format="",
         )
         summary_maps[depth] = presummary.get("summary_map", {}) or {}
 
@@ -596,7 +667,7 @@ def build_user_feeds(
                     content=item.get("content", ""),
                     feed_type="for_you",
                     technical_depth=depth,
-                    output_format="cards",  # Learning cards for swipeable mobile UX
+                    output_format="",
                 )
             if not summary:
                 stats["rejected_items"] += 1

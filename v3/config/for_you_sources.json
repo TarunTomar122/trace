@@ -1,73 +1,8 @@
 {
-  "description": "Sources for the 'For You' feed. Mapped to ONBOARDING_INTERESTS ids. ~2-3 quality sources per interest for balanced coverage.",
-  "max_age_days": 14,
-  "items_per_user": 10,
+  "description": "Sources for the 'For You' feed. Pruned to the currently vetted role-aligned sources only.",
+  "max_age_days": 365,
+  "items_per_user": 4,
   "sources": [
-    {
-      "interest_id": "technology",
-      "subinterest_id": "ai",
-      "name": "VentureBeat",
-      "url": "https://venturebeat.com/feed",
-      "type": "rss",
-      "source_weight": 1.1
-    },
-    {
-      "interest_id": "technology",
-      "subinterest_id": "future-tech",
-      "name": "OpenAI News",
-      "url": "https://openai.com/news/rss.xml",
-      "type": "rss",
-      "source_weight": 1.25
-    },
-    {
-      "interest_id": "technology",
-      "subinterest_id": "future-tech-google",
-      "name": "Google AI Blog",
-      "url": "https://blog.google/technology/ai/rss/",
-      "type": "rss",
-      "source_weight": 1.2
-    },
-    {
-      "interest_id": "technology",
-      "subinterest_id": "deep-tech",
-      "name": "Ars Technica",
-      "url": "https://feeds.arstechnica.com/arstechnica/index",
-      "type": "rss",
-      "source_weight": 1.1
-    },
-    {
-      "interest_id": "technology",
-      "subinterest_id": "ai",
-      "name": "NVIDIA Blog",
-      "url": "https://blogs.nvidia.com/feed/",
-      "type": "rss",
-      "source_weight": 1.15
-    },
-    {
-      "interest_id": "technology",
-      "subinterest_id": "ai",
-      "name": "MIT News AI",
-      "url": "https://news.mit.edu/rss/topic/artificial-intelligence2",
-      "type": "rss",
-      "source_weight": 1.05
-    },
-    {
-      "interest_id": "technology",
-      "subinterest_id": "future-tech",
-      "name": "Wired",
-      "url": "https://www.wired.com/feed/rss",
-      "type": "rss",
-      "source_weight": 1.0
-    },
-
-    {
-      "interest_id": "experience",
-      "subinterest_id": "ux-design",
-      "name": "Smashing Magazine",
-      "url": "https://www.smashingmagazine.com/feed/",
-      "type": "rss",
-      "source_weight": 1.2
-    },
     {
       "interest_id": "experience",
       "subinterest_id": "design-systems",
@@ -78,43 +13,75 @@
     },
     {
       "interest_id": "experience",
-      "subinterest_id": "ux-research",
-      "name": "Nielsen Norman Group",
-      "url": "https://www.nngroup.com/feed/rss/",
-      "type": "rss",
-      "source_weight": 1.3
-    },
-    {
-      "interest_id": "experience",
-      "subinterest_id": "ux-articles",
-      "name": "UX Collective",
-      "url": "https://uxdesign.cc/feed",
-      "type": "rss",
-      "source_weight": 1.2
-    },
-    {
-      "interest_id": "experience",
-      "subinterest_id": "ux-patterns",
-      "name": "UX Planet",
-      "url": "https://uxplanet.org/feed",
-      "type": "rss",
+      "subinterest_id": "workflow-tools",
+      "name": "A List Apart Workflow Tools",
+      "url": "https://alistapart.com/blog/topic/workflow-tools/",
+      "type": "html",
       "source_weight": 1.1
     },
     {
       "interest_id": "experience",
-      "subinterest_id": "design-systems",
-      "name": "Figma Blog",
-      "url": "https://www.figma.com/blog/feed/atom.xml",
-      "type": "atom",
-      "source_weight": 1.3
+      "subinterest_id": "interaction-design",
+      "name": "A List Apart Interaction Design",
+      "url": "https://alistapart.com/blog/topic/interaction-design/",
+      "type": "html",
+      "source_weight": 1.15
     },
     {
       "interest_id": "experience",
-      "subinterest_id": "ux-design",
-      "name": "Webdesigner Depot",
-      "url": "https://www.webdesignerdepot.com/feed/",
-      "type": "rss",
+      "subinterest_id": "user-research",
+      "name": "A List Apart User Research",
+      "url": "https://alistapart.com/blog/topic/user-research/",
+      "type": "html",
       "source_weight": 1.15
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "creativity",
+      "name": "A List Apart Creativity",
+      "url": "https://alistapart.com/blog/topic/creativity/",
+      "type": "html",
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "graphic-design",
+      "name": "A List Apart Graphic Design",
+      "url": "https://alistapart.com/blog/topic/graphic-design/",
+      "type": "html",
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "brand-identity",
+      "name": "A List Apart Brand Identity",
+      "url": "https://alistapart.com/blog/topic/brand-identity/",
+      "type": "html",
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "mobile-multidevice",
+      "name": "A List Apart Mobile Multidevice",
+      "url": "https://alistapart.com/blog/topic/mobile-multidevice/",
+      "type": "html",
+      "source_weight": 0.95
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "responsive-design",
+      "name": "A List Apart Responsive Design",
+      "url": "https://alistapart.com/blog/topic/responsive-design/",
+      "type": "html",
+      "source_weight": 0.95
+    },
+    {
+      "interest_id": "experience",
+      "subinterest_id": "typography-web-fonts",
+      "name": "A List Apart Typography Web Fonts",
+      "url": "https://alistapart.com/blog/topic/typography-web-fonts/",
+      "type": "html",
+      "source_weight": 0.95
     },
     {
       "interest_id": "experience",
@@ -126,146 +93,83 @@
     },
     {
       "interest_id": "experience",
-      "subinterest_id": "ux-articles",
-      "name": "Boxes and Arrows",
-      "url": "https://boxesandarrows.com/feed/",
-      "type": "rss",
+      "subinterest_id": "ux-research",
+      "name": "Maze Blog",
+      "url": "https://maze.co/blog/",
+      "type": "html",
       "source_weight": 1.1
     },
     {
-      "interest_id": "experience",
-      "subinterest_id": "design-trends",
-      "name": "Creative Review",
-      "url": "https://www.creativereview.co.uk/feed/",
+      "interest_id": "engineering",
+      "subinterest_id": "software-career",
+      "name": "The Pragmatic Engineer",
+      "url": "https://newsletter.pragmaticengineer.com/feed",
       "type": "rss",
-      "source_weight": 1.05
+      "source_weight": 1.3
     },
     {
-      "interest_id": "experience",
-      "subinterest_id": "design-inspiration",
-      "name": "designboom",
-      "url": "https://www.designboom.com/feed/",
+      "interest_id": "engineering",
+      "subinterest_id": "software-career",
+      "name": "LeadDev",
+      "url": "https://leaddev.com/rss.xml",
       "type": "rss",
+      "source_weight": 1.25
+    },
+    {
+      "interest_id": "engineering",
+      "subinterest_id": "business",
+      "name": "Stack Overflow Blog Business",
+      "url": "https://stackoverflow.blog/business/",
+      "type": "html",
       "source_weight": 1.0
     },
     {
-      "interest_id": "experience",
-      "subinterest_id": "ux-design",
-      "name": "Creative Bloq",
-      "url": "https://www.creativebloq.com/feed",
-      "type": "rss",
-      "source_weight": 1.0,
-      "exclude_title_keywords": ["deal", "deals", "sale", "discount", "review", "best "]
-    },
-
-    {
       "interest_id": "engineering",
-      "subinterest_id": "news-aggregation",
-      "name": "Techmeme",
-      "url": "https://www.techmeme.com/feed.xml",
-      "type": "rss",
-      "source_weight": 0.95
+      "subinterest_id": "open-source",
+      "name": "Stack Overflow Blog Open Source",
+      "url": "https://stackoverflow.blog/open-source/",
+      "type": "html",
+      "source_weight": 1.0
     },
     {
       "interest_id": "engineering",
-      "subinterest_id": "software",
-      "name": "The Verge",
-      "url": "https://www.theverge.com/rss/index.xml",
-      "type": "atom",
-      "source_weight": 1.0,
-      "exclude_title_keywords": ["review", "deal", "buy", "watch live", "how to watch", "best "]
+      "subinterest_id": "ai",
+      "name": "Stack Overflow Blog AI",
+      "url": "https://stackoverflow.blog/ai/",
+      "type": "html",
+      "source_weight": 1.05
     },
     {
       "interest_id": "engineering",
-      "subinterest_id": "dev-community",
-      "name": "Hacker News Best",
-      "url": "https://hnrss.org/best",
-      "type": "rss",
-      "source_weight": 1.1
-    },
-    {
-      "interest_id": "engineering",
-      "subinterest_id": "software",
-      "name": "GitHub Blog Engineering",
-      "url": "https://github.blog/engineering/feed/",
-      "type": "rss",
-      "source_weight": 1.2
-    },
-    {
-      "interest_id": "engineering",
-      "subinterest_id": "software",
-      "name": "Cloudflare Blog",
-      "url": "https://blog.cloudflare.com/rss/",
-      "type": "rss",
-      "source_weight": 1.15
-    },
-    {
-      "interest_id": "engineering",
-      "subinterest_id": "software",
-      "name": "Microsoft DevBlogs",
-      "url": "https://devblogs.microsoft.com/feed/",
-      "type": "rss",
-      "source_weight": 1.1
-    },
-    {
-      "interest_id": "engineering",
-      "subinterest_id": "cloud",
-      "name": "AWS News Blog",
-      "url": "https://aws.amazon.com/blogs/aws/feed/",
-      "type": "rss",
-      "source_weight": 1.1
-    },
-    {
-      "interest_id": "engineering",
-      "subinterest_id": "cloud",
-      "name": "Google Cloud Blog",
-      "url": "https://cloudblog.withgoogle.com/rss/",
-      "type": "rss",
+      "subinterest_id": "scaling-systems",
+      "name": "High Scalability",
+      "url": "https://highscalability.com/",
+      "type": "html",
       "source_weight": 1.1
     },
     {
       "interest_id": "startups",
       "subinterest_id": "startups",
-      "name": "TechCrunch Startups",
-      "url": "https://techcrunch.com/category/startups/feed/",
-      "type": "rss",
-      "source_weight": 1.1
+      "name": "First Round Review",
+      "url": "https://review.firstround.com/",
+      "type": "html",
+      "source_weight": 1.2
     },
-    {
-      "interest_id": "startups",
-      "subinterest_id": "startups-tech",
-      "name": "TechCrunch",
-      "url": "https://techcrunch.com/feed/",
-      "type": "rss",
-      "source_weight": 1.0,
-      "exclude_title_keywords": ["review", "deal", "how to watch", "watch live"]
-    },
-
     {
       "interest_id": "business-market",
-      "subinterest_id": "market-trends",
-      "name": "Fast Company",
-      "url": "https://www.fastcompany.com/technology/rss",
+      "subinterest_id": "product-strategy",
+      "name": "Stratechery",
+      "url": "https://stratechery.com/feed/",
       "type": "rss",
-      "source_weight": 1.0,
-      "exclude_title_keywords": ["deal", "buy", "coupon", "review", "best "]
+      "source_weight": 1.15
     },
     {
-      "interest_id": "leadership",
-      "subinterest_id": "management",
-      "name": "Fast Company Work Life",
-      "url": "https://www.fastcompany.com/work-life/rss",
-      "type": "rss",
-      "source_weight": 1.0,
-      "exclude_title_keywords": ["deal", "buy", "coupon", "review", "best "]
-    },
-    {
-      "interest_id": "marketing",
-      "subinterest_id": "growth",
-      "name": "Content Marketing Institute",
-      "url": "https://contentmarketinginstitute.com/feed/",
-      "type": "rss",
-      "source_weight": 1.0
+      "interest_id": "business-market",
+      "subinterest_id": "product-strategy",
+      "name": "Mind the Product",
+      "url": "https://www.mindtheproduct.com/",
+      "type": "html",
+      "source_weight": 1.15
     },
     {
       "interest_id": "marketing",
@@ -273,85 +177,15 @@
       "name": "HubSpot Marketing Blog",
       "url": "https://blog.hubspot.com/marketing/rss.xml",
       "type": "rss",
-      "source_weight": 1.0
-    },
-
-    {
-      "interest_id": "productivity",
-      "subinterest_id": "soft-skills",
-      "name": "Fast Company Work Life",
-      "url": "https://www.fastcompany.com/work-life/rss",
-      "type": "rss",
-      "source_weight": 1.0,
-      "exclude_title_keywords": ["deal", "buy", "coupon", "review", "best "]
-    },
-    {
-      "interest_id": "productivity",
-      "subinterest_id": "deep-work",
-      "name": "Farnam Street",
-      "url": "https://fs.blog/feed/",
-      "type": "rss",
-      "source_weight": 1.2
-    },
-
-    {
-      "interest_id": "fintech",
-      "subinterest_id": "fintech-news",
-      "name": "TechCrunch Fintech",
-      "url": "https://techcrunch.com/category/fintech/feed/",
-      "type": "rss",
       "source_weight": 1.1
     },
     {
-      "interest_id": "fintech",
-      "subinterest_id": "fintech-industry",
-      "name": "Finextra",
-      "url": "https://www.finextra.com/rss/headlines.aspx",
-      "type": "rss",
-      "source_weight": 1.0
-    },
-
-    {
-      "interest_id": "health",
-      "subinterest_id": "health-tech",
-      "name": "STAT News",
-      "url": "https://www.statnews.com/feed/",
+      "interest_id": "marketing",
+      "subinterest_id": "seo-growth",
+      "name": "Ahrefs Blog",
+      "url": "https://ahrefs.com/blog/feed/",
       "type": "rss",
       "source_weight": 1.1
-    },
-    {
-      "interest_id": "health",
-      "subinterest_id": "health-science",
-      "name": "Ars Technica Health",
-      "url": "https://arstechnica.com/tag/health/feed/",
-      "type": "rss",
-      "source_weight": 1.0
-    },
-
-    {
-      "interest_id": "web3",
-      "subinterest_id": "crypto-news",
-      "name": "CoinDesk",
-      "url": "https://www.coindesk.com/arc/outboundfeeds/rss/",
-      "type": "rss",
-      "source_weight": 1.1
-    },
-    {
-      "interest_id": "web3",
-      "subinterest_id": "blockchain",
-      "name": "The Block",
-      "url": "https://www.theblock.co/rss.xml",
-      "type": "rss",
-      "source_weight": 1.0
-    },
-
-    {
-      "interest_id": "climate",
-      "subinterest_id": "cleantech",
-      "name": "CleanTechnica",
-      "url": "https://cleantechnica.com/feed/",
-      "type": "rss",
-      "source_weight": 1.0
     }
   ]
 }

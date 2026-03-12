@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
         for_you: data.for_you || [],
         deep_dives: data.deep_dives || [],
         trending: data.trending || [],
+        merged_feed: data.merged_feed || [],
       });
     }
 

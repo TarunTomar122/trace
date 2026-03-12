@@ -18,6 +18,7 @@ from typing import Any
 from openai import OpenAI
 
 MODEL = "gpt-4o-mini"
+FOR_YOU_PROSE_MODEL = "gpt-5-mini"
 TEMPERATURE = 0.3
 TIMEOUT = 45
 
@@ -54,9 +55,10 @@ def compute_technical_depth(profile: dict) -> str:
 # Unified summary prompt — one style for all "For You" content
 # ---------------------------------------------------------------------------
 
-FOR_YOU_SUMMARY = """You are a skilled editor creating a CONCISE summary for a busy professional.
+FOR_YOU_SUMMARY = """Write a concise, source-faithful summary for a For You evergreen feed.
 
-Your goal: distill the article to its essential points. Be brief but complete.
+Goal:
+Help the reader quickly absorb the most useful ideas from the source in a way that is clear, concrete, and easy to read on mobile.
 
 SOURCE:
 Title: {title}
@@ -67,27 +69,46 @@ Content:
 Return JSON with EXACT structure:
 {{
   "short_article": {{
-    "subtitle": "One sentence capturing the main point or news",
-    "key_takeaways": ["3-4 key points — the essential insights"],
+    "subtitle": "One sentence capturing the central idea or tension",
+    "key_takeaways": ["3-4 concrete points with real specifics from the source"],
     "body": "Concise summary in markdown (see rules below)"
   }},
   "reading_time_minutes": <estimated int>
 }}
 
+REQUIREMENTS:
+- Preserve the source's actual ideas, examples, and specific details when they matter.
+- Keep the writing balanced: not too technical, not too abstract.
+- Make it feel informative and readable, not academic, not like a recommendation, and not like commentary on the source.
+- Do not say "this article", "this piece", "the author", or similar.
+- Do not invent facts, labels, or explanations that are not supported by the source.
+- Avoid generic summary language like "highlights", "underscores", "serves as", or "the importance of".
+- Prefer concrete nouns, examples, and distinctions over vague interpretation.
+- If the source contains useful examples, numbers, edge cases, or memorable quirks, keep them.
+- Never use em dashes. Use commas, periods, or colons instead.
+
 BODY RULES:
-- SHORT paragraphs: 2-3 sentences max per paragraph
-- Total length: 2-4 paragraphs for most articles. Only use more for genuinely complex pieces.
-- Use ## headers ONLY if the article has 3+ truly distinct topics
-- Include specific facts and numbers, but don't exhaustively list every detail
-- Bold 1-2 key metrics or claims per summary
-- Prefer density over length — pack more meaning into fewer words
-- NO concluding paragraphs. No "In summary", "Overall", "In conclusion". Ever.
-- If content is thin, write 1-2 paragraphs. Don't pad.
+- This summary will be read on a phone screen. Optimize for mobile reading, not desktop prose.
+- Use a mix of short paragraphs and lightweight structure when it helps scanning.
+- 4-6 short blocks for most articles.
+- Most paragraphs should be 1-2 sentences.
+- Insert a blank line between every paragraph.
+- Do not return one large paragraph. If the body is a single block of text, it is wrong.
+- Each paragraph should carry one idea and should be easy to scan on mobile.
+- You may use short markdown headings like ## Context or ## Why it matters when they improve readability.
+- You may use a short bullet list for steps, examples, named points, or concrete facts, but only when the source naturally supports it.
+- Do not over-format. This should feel clean and readable on a phone, not like a report.
+- Start with the central idea or tension, not throat-clearing.
+- Keep enough specificity that the summary still feels tied to the original source.
+- Optimize for quick understanding and retained value.
+- Plain, strong English.
+- No concluding fluff. No "In summary", "Overall", or "In conclusion".
 
 KEY_TAKEAWAYS RULES:
-- 3-4 takeaways max (not 5)
-- Each should be one sentence with a specific insight
-- Cut any takeaway that's obvious or generic
+- 3-4 takeaways max.
+- Each should be one sentence.
+- Use real specifics from the source when possible.
+- Cut any takeaway that's obvious, generic, or unsupported.
 """
 
 # ---------------------------------------------------------------------------
@@ -542,10 +563,10 @@ def _cache_bucket(feed_type: str, technical_depth: str = "", output_format: str 
             return "for_you_cards_v1_deep"
         return "for_you_cards_v1"
     if technical_depth == "deep":
-        return "for_you_v6_deep"
+        return "for_you_v8_deep"
     if technical_depth == "accessible":
-        return "for_you_v6_accessible"
-    return "for_you_v5"  # legacy
+        return "for_you_v8_accessible"
+    return "for_you_v8"
 
 
 def _fit_cache_bucket() -> str:
@@ -581,8 +602,12 @@ def evaluate_for_you_fit(
         content=(content or "")[:4000],
     )
     try:
+        model_name = MODEL
+        if feed_type not in ("trending", "deep_dives") and output_format != "cards":
+            model_name = FOR_YOU_PROSE_MODEL
+
         resp = client.chat.completions.create(
-            model=MODEL,
+            model=model_name,
             messages=[
                 {
                     "role": "system",
@@ -702,12 +727,10 @@ def generate_summary(
         template = TRENDING_BRIEF  # trending doesn't vary by depth
     else:
         # for_you / default prose
-        if technical_depth == "deep":
-            template = FOR_YOU_DEEP
-        elif technical_depth == "accessible":
-            template = FOR_YOU_ACCESSIBLE
-        else:
-            template = FOR_YOU_SUMMARY
+        # Keep a single source-faithful summary style for For You.
+        # Personalization should come from source selection, not from
+        # dramatically different summary voices.
+        template = FOR_YOU_SUMMARY
 
     # Gate suffix varies based on output format
     if output_format == "cards":
@@ -755,24 +778,31 @@ def generate_summary(
         content=content[:16000],
     )
 
+    model_name = MODEL
+    if feed_type not in ("trending", "deep_dives") and output_format != "cards":
+        model_name = FOR_YOU_PROSE_MODEL
+
     try:
         t0 = time.time()
-        resp = client.chat.completions.create(
-            model=MODEL,
-            messages=[
+        request_kwargs = {
+            "model": model_name,
+            "messages": [
                 {
                     "role": "system",
                     "content": "You return valid JSON only. No markdown fences.",
                 },
                 {"role": "user", "content": prompt},
             ],
-            temperature=TEMPERATURE,
-            response_format={"type": "json_object"},
-            timeout=TIMEOUT,
-        )
+            "response_format": {"type": "json_object"},
+            "timeout": TIMEOUT,
+        }
+        if model_name != FOR_YOU_PROSE_MODEL:
+            request_kwargs["temperature"] = TEMPERATURE
+        resp = client.chat.completions.create(**request_kwargs)
         elapsed = time.time() - t0
         tokens = getattr(resp.usage, "total_tokens", 0) if resp.usage else 0
-        print(f"      [summarizer] OpenAI {MODEL} took {elapsed:.1f}s, {tokens} tokens — {title[:40]}")
+        print(f"      [summarizer] OpenAI {model_name} took {elapsed:.1f}s, {tokens} tokens — {title[:40]}")
+        print(f"      [summarizer] OpenAI {model_name} took {elapsed:.1f}s, {tokens} tokens — {title[:40]}")
     except Exception as exc:
         return None, f"openai_error:{exc}"
 

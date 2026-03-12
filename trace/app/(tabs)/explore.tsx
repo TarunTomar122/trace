@@ -7,7 +7,6 @@ import { useRouter } from 'expo-router';
 import {
   Shield,
   FileText,
-  Check,
   ChevronRight,
   ExternalLink,
   LogOut,
@@ -19,6 +18,7 @@ import {
   Calendar,
   Trophy,
   BookMarked,
+  HelpCircle,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -31,8 +31,6 @@ import {
   updateUserProfile,
   ROLES,
   SENIORITY_LEVELS,
-  ONBOARDING_INTERESTS,
-  CAREER_GOALS,
 } from '@/lib/firestore';
 import { getStreakData, StreakData } from '@/lib/streaks';
 
@@ -42,6 +40,7 @@ function lookupLabel(items: readonly { id: string; label: string }[], id: string
 
 const PRIVACY_URL = 'https://www.yourtrace.online/privacy-policy';
 const TERMS_URL = 'https://www.yourtrace.online/terms';
+const CONTACT_URL = 'https://www.yourtrace.online/contact';
 const ACCENT = '#F59E0B';
 
 export default function ProfileScreen() {
@@ -55,16 +54,10 @@ export default function ProfileScreen() {
   const showNetworkError = profileLoadError && !profile;
   const [newsletterOptIn, setNewsletterOptIn] = useState(profile?.newsletterOptIn !== false);
   const [streak, setStreak] = useState<StreakData | null>(null);
-  const [summaryStyle, setSummaryStyle] = useState<string>(profile?.summaryStyle || 'balanced');
-  const [savingSummaryStyle, setSavingSummaryStyle] = useState(false);
 
   useEffect(() => {
     setNewsletterOptIn(profile?.newsletterOptIn !== false);
   }, [profile?.newsletterOptIn]);
-
-  useEffect(() => {
-    setSummaryStyle(profile?.summaryStyle || 'balanced');
-  }, [profile?.summaryStyle]);
 
   useEffect(() => {
     getStreakData().then(setStreak);
@@ -80,22 +73,6 @@ export default function ProfileScreen() {
         console.error('Error updating newsletter preference:', error);
         setNewsletterOptIn(!value);
       }
-    }
-  };
-
-  const handleSummaryStyleChange = async (value: string) => {
-    if (!user || savingSummaryStyle || value === summaryStyle) return;
-    const previous = summaryStyle;
-    setSummaryStyle(value);
-    setSavingSummaryStyle(true);
-    try {
-      await updateUserProfile(user.uid, { summaryStyle: value } as any);
-      await refreshProfile();
-    } catch (error) {
-      console.error('Error updating summary style:', error);
-      setSummaryStyle(previous);
-    } finally {
-      setSavingSummaryStyle(false);
     }
   };
 
@@ -280,108 +257,19 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* ─── Summary Style ─── */}
+        {/* ─── Edit Preferences ─── */}
         {isOnboarded && (
-          <View style={[s.card, { backgroundColor: cardBg }]}>
-            <View style={s.summaryHeader}>
-              <FileText size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-              <Text style={[s.summaryTitle, { color: Colors[colorScheme].text }]}>
-                Summary style
-              </Text>
+          <Pressable
+            style={[s.card, { backgroundColor: cardBg }]}
+            onPress={() => router.push('/preferences')}>
+            <View style={s.menuRow}>
+              <FileText size={20} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+              <Text style={[s.menuText, { color: Colors[colorScheme].text }]}>Edit Preferences</Text>
+              <ChevronRight size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
             </View>
-            <View style={s.summaryOptions}>
-              {[
-                { id: 'accessible', label: 'Accessible' },
-                { id: 'technical', label: 'Technical' },
-                { id: 'balanced', label: 'Balanced' },
-              ].map((option) => {
-                const selected = summaryStyle === option.id;
-                return (
-                  <Pressable
-                    key={option.id}
-                    onPress={() => handleSummaryStyleChange(option.id)}
-                    disabled={savingSummaryStyle}
-                    style={[
-                      s.summaryOption,
-                      {
-                        backgroundColor: selected ? ACCENT : (isDark ? '#2a2a2a' : '#ebebeb'),
-                        borderColor: selected ? ACCENT : 'transparent',
-                        borderWidth: selected ? 2 : 1,
-                        opacity: savingSummaryStyle ? 0.75 : 1,
-                      },
-                    ]}
-                  >
-                    <View style={s.summaryOptionInner}>
-                      {selected && <Check size={13} color="#fff" strokeWidth={3} />}
-                      <Text style={[s.summaryOptionText, { color: selected ? '#fff' : Colors[colorScheme].text }]}>
-                        {option.label}
-                      </Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <Text style={[s.summaryCurrent, { color: Colors[colorScheme].text }]}>
-              Current: {summaryStyle === 'accessible' ? 'Accessible' : summaryStyle === 'technical' ? 'Technical' : 'Balanced'}
+            <Text style={[s.prefDesc, { color: Colors[colorScheme].muted }]}>
+              Update your interests, goals, and content preferences
             </Text>
-            <Text style={[s.summaryHint, { color: Colors[colorScheme].muted }]}>
-              Applies to tomorrow&apos;s feed.
-            </Text>
-          </View>
-        )}
-
-        {/* ─── Interests / Sources / Goals pills ─── */}
-        {isOnboarded && profile?.interests && profile.interests.length > 0 && (
-          <Pressable style={[s.card, { backgroundColor: cardBg }]} onPress={() => router.push('/preferences/interests')}>
-            <View style={s.pillHeader}>
-              <Text style={[s.pillLabel, { color: Colors[colorScheme].muted }]}>Interests</Text>
-              <ChevronRight size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-            </View>
-            <View style={s.pillWrap}>
-              {profile.interests.map((interest: string, i: number) => (
-                <View key={i} style={[s.pill, { backgroundColor: isDark ? '#2a2a2a' : '#ebebeb' }]}>
-                  <Text style={[s.pillText, { color: Colors[colorScheme].text }]}>
-                    {lookupLabel(ONBOARDING_INTERESTS as unknown as { id: string; label: string }[], interest)}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </Pressable>
-        )}
-
-        {isOnboarded && profile?.selectedLearningSources && profile.selectedLearningSources.length > 0 && (
-          <Pressable style={[s.card, { backgroundColor: cardBg }]} onPress={() => router.push('/preferences/sources')}>
-            <View style={s.pillHeader}>
-              <Text style={[s.pillLabel, { color: Colors[colorScheme].muted }]}>Deep Dive Sources</Text>
-              <ChevronRight size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-            </View>
-            <View style={s.pillWrap}>
-              {profile.selectedLearningSources.map((source: string, i: number) => (
-                <View key={i} style={[s.pill, { backgroundColor: isDark ? '#2a2a2a' : '#ebebeb' }]}>
-                  <Text style={[s.pillText, { color: Colors[colorScheme].text }]}>
-                    {source}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </Pressable>
-        )}
-
-        {isOnboarded && profile?.careerGoals && profile.careerGoals.length > 0 && (
-          <Pressable style={[s.card, { backgroundColor: cardBg }]} onPress={() => router.push('/preferences/goals')}>
-            <View style={s.pillHeader}>
-              <Text style={[s.pillLabel, { color: Colors[colorScheme].muted }]}>Career Goals</Text>
-              <ChevronRight size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-            </View>
-            <View style={s.pillWrap}>
-              {profile.careerGoals.map((goal: string, i: number) => (
-                <View key={i} style={[s.pill, { backgroundColor: isDark ? '#2a2a2a' : '#ebebeb' }]}>
-                  <Text style={[s.pillText, { color: Colors[colorScheme].text }]}>
-                    {lookupLabel(CAREER_GOALS as unknown as { id: string; label: string }[], goal)}
-                  </Text>
-                </View>
-              ))}
-            </View>
           </Pressable>
         )}
 
@@ -410,6 +298,14 @@ export default function ProfileScreen() {
             onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)}>
             <FileText size={20} color={Colors[colorScheme].muted} strokeWidth={1.5} />
             <Text style={[s.menuText, { color: Colors[colorScheme].text }]}>Terms of Service</Text>
+            <ExternalLink size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+          </Pressable>
+          <View style={[s.menuDivider, { backgroundColor: isDark ? '#333' : '#e5e5e5' }]} />
+          <Pressable
+            style={s.menuRow}
+            onPress={() => WebBrowser.openBrowserAsync(CONTACT_URL)}>
+            <HelpCircle size={20} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+            <Text style={[s.menuText, { color: Colors[colorScheme].text }]}>Help & Feedback</Text>
             <ExternalLink size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
           </Pressable>
         </View>
@@ -600,71 +496,13 @@ const s = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Summary style
-  summaryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
-  },
-  summaryTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  summaryOptions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  summaryOption: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  summaryOptionInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  summaryOptionText: {
+  
+  // Preferences
+  prefDesc: {
     fontSize: 13,
-    fontWeight: '600',
-  },
-  summaryCurrent: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 10,
-  },
-  summaryHint: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-
-  // Pills
-  pillHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  pillLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  pillWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  pill: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 999,
-  },
-  pillText: {
-    fontSize: 13,
-    fontWeight: '500',
+    lineHeight: 18,
+    marginLeft: 34,
+    marginTop: -8,
   },
 
   // Menu

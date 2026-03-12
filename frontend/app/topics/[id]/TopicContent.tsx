@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
-  ArrowLeft, ChevronRight, Share2, ExternalLink,
+  ArrowLeft, ChevronRight, Share2, ExternalLink, Loader2, Check,
 } from 'lucide-react';
 import Link from 'next/link';
 import Header from '@/components/Header';
@@ -82,6 +82,8 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
   const router = useRouter();
   const [toast, setToast] = useState<string | null>(null);
   const [showFallback, setShowFallback] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareSuccess, setShareSuccess] = useState(false);
 
   const imageUrl = getArticleImage(topic.thumbnail, topic.title);
   const fallbackUrl = getArticleImage(null, topic.title);
@@ -101,14 +103,59 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
   }, [topic.articles]);
 
   const handleShare = async () => {
+    setShareLoading(true);
     const shareUrl = window.location.href;
+
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setToast("Link copied!");
-      setTimeout(() => setToast(null), 2000);
+      // Generate share image
+      const params = new URLSearchParams({
+        headline: topic.title,
+        imageUrl: topic.thumbnail || '',
+        url: shareUrl,
+      });
+      const imageResponse = await fetch(`/api/share/render?${params.toString()}`);
+
+      if (!imageResponse.ok) {
+        throw new Error('Failed to generate image');
+      }
+
+      const blob = await imageResponse.blob();
+      const file = new File([blob], 'trace-story.png', { type: 'image/png' });
+
+      // Try Web Share API with file
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: topic.title,
+          text: `Read the full story on Trace: ${shareUrl}`,
+        });
+        setShareSuccess(true);
+        setTimeout(() => setShareSuccess(false), 2000);
+      } else {
+        // Fallback: download the image
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'trace-story.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setShareSuccess(true);
+        setTimeout(() => setShareSuccess(false), 2000);
+      }
     } catch {
-      setToast("Couldn't copy link");
-      setTimeout(() => setToast(null), 2000);
+      // Fallback to just copying the URL
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setToast("Link copied!");
+        setTimeout(() => setToast(null), 2000);
+      } catch {
+        setToast("Couldn't copy link");
+        setTimeout(() => setToast(null), 2000);
+      }
+    } finally {
+      setShareLoading(false);
     }
   };
 
@@ -144,10 +191,17 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
           </Link>
           <button
             onClick={handleShare}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-border/30 text-sm font-medium text-secondary/70 hover:text-foreground hover:border-border/60 transition-colors"
+            disabled={shareLoading}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-border/30 text-sm font-medium text-secondary/70 hover:text-foreground hover:border-border/60 transition-colors disabled:opacity-50"
           >
-            <Share2 size={15} />
-            Share
+            {shareLoading ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : shareSuccess ? (
+              <Check size={15} className="text-green-500" />
+            ) : (
+              <Share2 size={15} />
+            )}
+            {shareLoading ? 'Generating...' : shareSuccess ? 'Shared!' : 'Share'}
           </button>
         </div>
 

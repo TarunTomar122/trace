@@ -16,14 +16,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Flame,
-  Crosshair,
   GraduationCap,
   ChevronRight,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { AppLogo } from '@/components/app-logo';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -36,22 +35,18 @@ export const ILLUS_PALETTE = {
 
 const TERMS_URL = 'https://www.yourtrace.online/terms';
 const PRIVACY_URL = 'https://www.yourtrace.online/privacy-policy';
+const SPLASH_BG = '#FEF7F4'; // Matches splash.png background - warm off-white
 
 const INTRO_PAGES = [
   {
-    title: 'Stay up to date',
-    body: 'Trace groups news from around the world into topics and explain it at your level.',
+    title: 'Trending, simplified',
+    body: 'Pick your interests. We fetch the latest news, group it into topics, and update it hourly.',
     demo: 'trending',
   },
   {
-    title: 'Stop checking 10 apps',
-    body: 'Trace pulls articles, blogs, and videos from 100+ sources, so you can keep up with your interests.',
+    title: 'Learn on the go',
+    body: 'Tell us your role and level. We find the best articles, videos, and blogs — then compress them into quick reads. Updated daily.',
     demo: 'for_you',
-  },
-  {
-    title: 'Daily learning',
-    body: 'Pick your favorite sources and Trace will turn them into simple learning chapters to help you upskill.',
-    demo: 'deep_dive',
   },
 ];
 
@@ -337,7 +332,7 @@ export default function WelcomeScreen() {
 
   return (
     <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
+      style={[styles.safeArea, { backgroundColor: isLanding ? SPLASH_BG : Colors[colorScheme].background }]}
       edges={['top', 'bottom']}
     >
       {/* Skip button — floats over the carousel */}
@@ -402,71 +397,69 @@ export default function WelcomeScreen() {
           bounces={false}
         >
           <View style={styles.landingContent}>
-            <AppLogo style={styles.landingLogo} />
+            <Image
+              source={require('@/assets/images/splash.png')}
+              style={styles.splashLogo}
+              resizeMode="contain"
+            />
             <ThemedText style={styles.landingTitle}>
               Trace
             </ThemedText>
-            <Text style={[styles.landingSubtitle, { color: Colors[colorScheme].muted }]}>
-              Build your own feed with the topics that matter to you.
-            </Text>
-            <View style={styles.statsRow}>
-              <View style={[styles.statPill, { backgroundColor: '#F9731612' }]}>
-                <Flame size={13} color="#F97316" strokeWidth={2} />
-                <Text style={[styles.statText, { color: Colors[colorScheme].text }]}>Overview + timeline</Text>
-              </View>
-              <View style={[styles.statPill, { backgroundColor: '#0EA5E912' }]}>
-                <GraduationCap size={13} color="#0EA5E9" strokeWidth={2} />
-                <Text style={[styles.statText, { color: Colors[colorScheme].text }]}>TL;DR + chapters</Text>
-              </View>
-            </View>
-            <View style={styles.statsRow}>
-              <View style={[styles.statPill, { backgroundColor: '#F59E0B12' }]}>
-                <Crosshair size={13} color="#F59E0B" strokeWidth={2} />
-                <Text style={[styles.statText, { color: Colors[colorScheme].text }]}>Personalized by role</Text>
-              </View>
-            </View>
-          </View>
-          <View style={styles.pageFooter}>
-            <PageDots total={totalPages} current={page} colorScheme={colorScheme} />
-            <View style={styles.ctaStack}>
-              <Pressable
-                style={[
-                  styles.primaryButton,
-                  { backgroundColor: Colors[colorScheme].foreground },
-                  isLoading && styles.buttonDisabled,
-                ]}
-                onPress={handleGoogleSignIn}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color={Colors[colorScheme].background} />
-                ) : (
-                  <Text style={[styles.primaryButtonText, { color: Colors[colorScheme].background }]}>
-                    Get started free
-                  </Text>
-                )}
-              </Pressable>
-
-              {error && <Text style={[styles.errorText, { color: '#EF4444' }]}>{error}</Text>}
-
-              <Text style={[styles.legalFooter, { color: Colors[colorScheme].muted }]}>
-                By continuing you accept our{' '}
-                <Text
-                  style={[styles.legalLink, { color: Colors[colorScheme].muted }]}
-                  onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)}
-                >
-                  Terms
-                </Text>
-                {' & '}
-                <Text
-                  style={[styles.legalLink, { color: Colors[colorScheme].muted }]}
-                  onPress={() => WebBrowser.openBrowserAsync(PRIVACY_URL)}
-                >
-                  Privacy Policy
-                </Text>
+              <Text style={[styles.landingSubtitle, { color: Colors[colorScheme].muted }]}>
+                Your interests. Your level.{'\n'}One feed that keeps you sharp.
               </Text>
+              <View style={styles.statsRow}>
+                <View style={[styles.statPill, { backgroundColor: '#F9731612' }]}>
+                  <Flame size={13} color="#F97316" strokeWidth={2} />
+                  <Text style={[styles.statText, { color: Colors[colorScheme].text }]}>Trending · hourly</Text>
+                </View>
+                <View style={[styles.statPill, { backgroundColor: '#0EA5E912' }]}>
+                  <GraduationCap size={13} color="#0EA5E9" strokeWidth={2} />
+                  <Text style={[styles.statText, { color: Colors[colorScheme].text }]}>Articles · daily</Text>
+                </View>
+              </View>
             </View>
-          </View>
+            <View style={styles.pageFooter}>
+              <PageDots total={totalPages} current={page} colorScheme={colorScheme} />
+              <View style={styles.ctaStack}>
+                <Pressable
+                  style={[
+                    styles.primaryButton,
+                    { backgroundColor: Colors[colorScheme].foreground },
+                    isLoading && styles.buttonDisabled,
+                  ]}
+                  onPress={handleGoogleSignIn}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color={Colors[colorScheme].background} />
+                  ) : (
+                    <Text style={[styles.primaryButtonText, { color: Colors[colorScheme].background }]}>
+                      Get started free
+                    </Text>
+                  )}
+                </Pressable>
+
+                {error && <Text style={[styles.errorText, { color: '#EF4444' }]}>{error}</Text>}
+
+                <Text style={[styles.legalFooter, { color: Colors[colorScheme].muted }]}>
+                  By continuing you accept our{' '}
+                  <Text
+                    style={[styles.legalLink, { color: Colors[colorScheme].muted }]}
+                    onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)}
+                  >
+                    Terms
+                  </Text>
+                  {' & '}
+                  <Text
+                    style={[styles.legalLink, { color: Colors[colorScheme].muted }]}
+                    onPress={() => WebBrowser.openBrowserAsync(PRIVACY_URL)}
+                  >
+                    Privacy Policy
+                  </Text>
+                </Text>
+              </View>
+            </View>
         </ScrollView>
       </ScrollView>
     </SafeAreaView>
@@ -528,6 +521,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     lineHeight: 38,
     marginBottom: 10,
+    fontFamily: Fonts.serif,
   },
   introBody: {
     fontSize: 15,
@@ -535,6 +529,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     paddingHorizontal: 8,
     marginBottom: 24,
+    fontFamily: Fonts.serif,
   },
   demoContainer: {
     width: '100%',
@@ -578,10 +573,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 28,
   },
-  landingLogo: {
-    width: 60,
-    height: 60,
-    marginBottom: 28,
+  splashLogo: {
+    width: 260,
+    height: 260,
+    marginBottom: 20,
   },
   landingTitle: {
     fontSize: 38,
@@ -590,6 +585,7 @@ const styles = StyleSheet.create({
     lineHeight: 46,
     letterSpacing: -1.2,
     marginBottom: 18,
+    fontFamily: Fonts.serif,
   },
   landingSubtitle: {
     fontSize: 15,
@@ -597,6 +593,7 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     marginBottom: 28,
     paddingHorizontal: 4,
+    fontFamily: Fonts.serif,
   },
   statsRow: {
     flexDirection: 'row',
@@ -614,6 +611,7 @@ const styles = StyleSheet.create({
   statText: {
     fontSize: 13,
     fontWeight: '600',
+    fontFamily: Fonts.serif,
   },
 
   // CTA (landing page footer)

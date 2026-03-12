@@ -22,7 +22,7 @@ import { RevenueCatProvider, useRevenueCat } from '@/contexts/RevenueCatContext'
 import { ToastProvider } from '@/contexts/ToastContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { Colors } from '@/constants/theme';
-import { checkMinAppVersion } from '@/lib/firestore';
+import { getAppVersionConfig } from '@/lib/firestore';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -42,11 +42,19 @@ const STORE_URL = Platform.select({
 function ForceUpdateGate({ children }: { children: ReactNode }) {
   const colorScheme = useColorScheme();
   const [needsUpdate, setNeedsUpdate] = useState(false);
+  const [latestVersion, setLatestVersion] = useState<string | null>(null);
 
   useEffect(() => {
     const appVersion = Application.nativeApplicationVersion || '1.0.0';
-    checkMinAppVersion(appVersion).then((ok) => {
-      if (!ok) setNeedsUpdate(true);
+    getAppVersionConfig().then((config) => {
+      if (!config) return;
+      if (config.min_version && !checkVersion(appVersion, config.min_version)) {
+        setNeedsUpdate(true);
+        return;
+      }
+      if (config.latest_version && !checkVersion(appVersion, config.latest_version)) {
+        setLatestVersion(config.latest_version);
+      }
     });
   }, []);
 
@@ -77,7 +85,23 @@ function ForceUpdateGate({ children }: { children: ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+    </>
+  );
+}
+
+function checkVersion(current: string, target: string): boolean {
+  const c = current.split('.').map(Number);
+  const t = target.split('.').map(Number);
+  for (let i = 0; i < Math.max(c.length, t.length); i++) {
+    const cv = c[i] || 0;
+    const tv = t[i] || 0;
+    if (cv < tv) return false;
+    if (cv > tv) return true;
+  }
+  return true;
 }
 
 function AuthGate({ children }: { children: ReactNode }) {

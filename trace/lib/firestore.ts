@@ -112,6 +112,7 @@ export interface FeedItem {
       slides?: string[];  // For trending carousel
       outline?: string[];
       body?: string;
+      setup?: string;
       key_takeaways?: string[];
       why_it_matters?: string;
       learning_cards?: Array<{
@@ -120,6 +121,7 @@ export interface FeedItem {
         content: string;
       }>;
     };
+    worth_reading?: WorthReadingSummary;
     deep_dive?: {
       subtitle?: string;
       tldr?: string;
@@ -185,6 +187,26 @@ export interface TrendingTopic {
   articles?: FeedItem[];
 }
 
+export interface WorthReadingSummary {
+  paragraphs: string[];
+}
+
+export interface MergedFeedItem {
+  id: string;
+  item_kind: 'topic_now' | 'article_worth_reading';
+  label: 'Now' | 'Worth Reading' | 'Signal' | 'Explainer';
+  interest_id?: string;
+  topic_id?: string;
+  article_id?: string;
+  published_date?: string;
+  last_updated_at?: string;
+  source_count?: number;
+  article_count?: number;
+  display_summary?: string;
+  display_key_points?: string[];
+  worth_reading?: WorthReadingSummary;
+}
+
 export interface UserFeed {
   date: string;
   items: FeedItem[];
@@ -204,15 +226,15 @@ export interface UserFeed {
 export interface V3UserFeed {
   date: string;
   for_you: FeedItem[];
-  deep_dives: FeedItem[];
   trending: FeedItem[];
   trending_topics?: TrendingTopic[];
+  merged_feed?: MergedFeedItem[];
   assembled_at?: string;
   metadata?: {
     for_you_count?: number;
-    deep_dives_count?: number;
     trending_count?: number;
     trending_topics_count?: number;
+    merged_feed_count?: number;
     total_items?: number;
     pipeline?: string;
   };
@@ -223,7 +245,7 @@ export interface V3UserFeed {
 export const ROLES = [
   { id: 'designer', label: 'Designer', subtitle: 'UI/UX, Product, Visual', icon: 'palette' },
   { id: 'developer', label: 'Developer', subtitle: 'Frontend, Backend, Full-stack', icon: 'code' },
-  { id: 'pm', label: 'Product Manager', subtitle: 'Strategy & Roadmaps', icon: 'clipboard-list' },
+  { id: 'pm', label: 'PM', subtitle: 'Strategy & Roadmaps', icon: 'clipboard-list' },
   { id: 'marketer', label: 'Marketer', subtitle: 'Growth, Content, Brand', icon: 'bar-chart-3' },
   { id: 'founder', label: 'Founder / CEO', subtitle: 'Building & Leading', icon: 'rocket' },
   { id: 'other', label: 'Other', subtitle: 'Tell us your path', icon: 'globe' },
@@ -851,7 +873,7 @@ export async function getLatestUserFeed(uid: string): Promise<UserFeed | null> {
 
 export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
   try {
-    // Fetch user-specific feed (for_you, deep_dives)
+    // Fetch user-specific feed (for_you)
     const feedRef = collection(firestore, 'v3_user_feeds', uid, 'daily');
     const latestQuery = query(feedRef, orderBy(documentId(), 'desc'), limit(5));
     const snapshot = await getDocs(latestQuery);
@@ -863,9 +885,9 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
     const globalSnapshot = await getDocs(globalQuery);
 
     let forYou: FeedItem[] = [];
-    let deepDives: FeedItem[] = [];
     let trending: FeedItem[] = [];
     let trendingTopics: TrendingTopic[] = [];
+    let mergedFeed: MergedFeedItem[] = [];
     let userTrending: FeedItem[] = [];
     let userTrendingTopics: TrendingTopic[] = [];
     let feedDate = '';
@@ -887,11 +909,15 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
         if (forYou.length === 0 && Array.isArray(data.for_you) && data.for_you.length > 0) {
           forYou = data.for_you;
         }
-        if (deepDives.length === 0 && Array.isArray(data.deep_dives) && data.deep_dives.length > 0) {
-          deepDives = data.deep_dives;
-        }
         if (userTrending.length === 0 && Array.isArray(data.trending) && data.trending.length > 0) {
           userTrending = data.trending;
+        }
+        if (
+          mergedFeed.length === 0 &&
+          Array.isArray(data.merged_feed) &&
+          data.merged_feed.length > 0
+        ) {
+          mergedFeed = data.merged_feed;
         }
         if (
           userTrendingTopics.length === 0 &&
@@ -902,14 +928,14 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
         }
         if (
           forYou.length > 0 &&
-          deepDives.length > 0 &&
+          mergedFeed.length > 0 &&
           userTrending.length > 0 &&
           userTrendingTopics.length > 0
         ) {
           break;
         }
       }
-      console.log('[Feed] User feed doc:', latestDoc.id, 'for_you:', forYou.length, 'deep_dives:', deepDives.length);
+      console.log('[Feed] User feed doc:', latestDoc.id, 'for_you:', forYou.length);
     }
 
     // Get trending from global feed.
@@ -955,7 +981,7 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
 
     if (
       forYou.length === 0 &&
-      deepDives.length === 0 &&
+      mergedFeed.length === 0 &&
       trending.length === 0 &&
       trendingTopics.length === 0
     ) {
@@ -966,9 +992,9 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
     return {
       date: feedDate,
       for_you: forYou as FeedItem[],
-      deep_dives: deepDives as FeedItem[],
       trending: trending as FeedItem[],
       trending_topics: trendingTopics as TrendingTopic[],
+      merged_feed: mergedFeed as MergedFeedItem[],
       assembled_at: assembledAt,
       metadata,
     };
@@ -1327,17 +1353,30 @@ function _compareVersions(current: string, minimum: string): boolean {
  * Defaults to true (no blocking) on any error.
  */
 export async function checkMinAppVersion(currentVersion: string): Promise<boolean> {
+  const config = await getAppVersionConfig();
+  if (!config?.min_version) return true;
+  return _compareVersions(currentVersion, config.min_version);
+}
+
+export interface AppVersionConfig {
+  min_version?: string;
+  latest_version?: string;
+}
+
+export async function getAppVersionConfig(): Promise<AppVersionConfig | null> {
   try {
     const ref = doc(firestore, 'app_config', 'version');
     const snap = await Promise.race([
       getDoc(ref),
       new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
     ]);
-    if (!snap || !snap.exists()) return true;
-    const data = snap.data() as { min_version?: string };
-    if (!data.min_version) return true;
-    return _compareVersions(currentVersion, data.min_version);
+    if (!snap || !snap.exists()) return null;
+    const data = snap.data() as AppVersionConfig;
+    return {
+      min_version: data.min_version,
+      latest_version: data.latest_version,
+    };
   } catch {
-    return true;
+    return null;
   }
 }

@@ -209,6 +209,18 @@ TOKEN_DISPLAY = {
     "war": "War",
 }
 
+CANONICAL_TRENDING_INTEREST_MAP = {
+    "ai": "technology",
+    "business": "business-market",
+}
+
+
+def _normalize_trending_interest_id(raw: str) -> str:
+    value = str(raw or "").strip()
+    if not value:
+        return ""
+    return CANONICAL_TRENDING_INTEREST_MAP.get(value, value)
+
 
 def _log(msg: str) -> None:
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
@@ -1360,9 +1372,9 @@ def _build_trending_topics_payload(
             if str(i.get("source_name", "")).strip()
         }
         interest_counts: Counter[str] = Counter(
-            str(i.get("interest_id", "")).strip()
+            _normalize_trending_interest_id(i.get("interest_id", ""))
             for i in items
-            if str(i.get("interest_id", "")).strip()
+            if _normalize_trending_interest_id(i.get("interest_id", ""))
         )
 
         dts = [

@@ -214,6 +214,7 @@ export interface FeedItem {
       outline?: string[];
       body?: string;
       slides?: string[];
+      setup?: string;
       key_takeaways?: string[];
       why_it_matters?: string;
       learning_cards?: Array<{
@@ -222,6 +223,7 @@ export interface FeedItem {
         content: string;
       }>;
     };
+    worth_reading?: WorthReadingSummary;
     deep_dive?: {
       subtitle?: string;
       tldr?: string;
@@ -298,18 +300,40 @@ export interface TrendingTopic {
   articles?: FeedItem[];
 }
 
+export interface WorthReadingSummary {
+  paragraphs: string[];
+}
+
+export interface MergedFeedItem {
+  id: string;
+  item_kind: 'topic_now' | 'article_worth_reading';
+  label: 'Now' | 'Worth Reading' | 'Signal' | 'Explainer';
+  interest_id?: string;
+  topic_id?: string;
+  article_id?: string;
+  published_date?: string;
+  last_updated_at?: string;
+  source_count?: number;
+  article_count?: number;
+  display_summary?: string;
+  display_key_points?: string[];
+  worth_reading?: WorthReadingSummary;
+}
+
 export interface V3UserFeed {
   date: string;
   for_you: FeedItem[];
   deep_dives: FeedItem[];
   trending: FeedItem[];
   trending_topics?: TrendingTopic[];
+  merged_feed?: MergedFeedItem[];
   assembled_at?: string;
   metadata?: {
     for_you_count?: number;
     deep_dives_count?: number;
     trending_count?: number;
     trending_topics_count?: number;
+    merged_feed_count?: number;
     total_items?: number;
     pipeline?: string;
   };
@@ -660,6 +684,7 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
     let deepDives: FeedItem[] = [];
     let trending: FeedItem[] = [];
     let trendingTopics: TrendingTopic[] = [];
+    let mergedFeed: MergedFeedItem[] = [];
     let userTrending: FeedItem[] = [];
     let userTrendingTopics: TrendingTopic[] = [];
     let feedDate = '';
@@ -687,6 +712,9 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
         if (userTrending.length === 0 && Array.isArray(data.trending) && data.trending.length > 0) {
           userTrending = data.trending;
         }
+        if (mergedFeed.length === 0 && Array.isArray(data.merged_feed) && data.merged_feed.length > 0) {
+          mergedFeed = data.merged_feed;
+        }
         if (
           userTrendingTopics.length === 0 &&
           Array.isArray(data.trending_topics) &&
@@ -697,6 +725,7 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
         if (
           forYou.length > 0 &&
           deepDives.length > 0 &&
+          mergedFeed.length > 0 &&
           userTrending.length > 0 &&
           userTrendingTopics.length > 0
         ) {
@@ -732,7 +761,7 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
     if (trending.length === 0) trending = userTrending;
     if (trendingTopics.length === 0) trendingTopics = userTrendingTopics;
 
-    if (forYou.length === 0 && deepDives.length === 0 && trending.length === 0 && trendingTopics.length === 0) {
+    if (forYou.length === 0 && deepDives.length === 0 && mergedFeed.length === 0 && trending.length === 0 && trendingTopics.length === 0) {
       return null;
     }
 
@@ -742,6 +771,7 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
       deep_dives: deepDives as FeedItem[],
       trending: trending as FeedItem[],
       trending_topics: trendingTopics,
+      merged_feed: mergedFeed as MergedFeedItem[],
       assembled_at: assembledAt,
       metadata,
     };

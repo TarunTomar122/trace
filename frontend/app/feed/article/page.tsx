@@ -6,7 +6,7 @@ import remarkGfm from "remark-gfm";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, ExternalLink, Bookmark, GraduationCap,
-  ChevronLeft, ChevronRight, Loader2, Share2, Check,
+  ChevronLeft, ChevronRight, Loader2, Share2, Check, Download,
 } from "lucide-react";
 import Header from "@/components/Header";
 import { FeedItem } from "@/lib/firestore";
@@ -138,6 +138,7 @@ export default function ArticlePage() {
   const [toast, setToast] = useState<string | null>(null);
   const [openChapter, setOpenChapter] = useState<number | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
 
   useEffect(() => {
     // always start from the top when this page loads
@@ -190,12 +191,58 @@ export default function ArticlePage() {
 
   const handleShare = async () => {
     if (!item) return;
+    setShareLoading(true);
     const shareUrl = buildShareUrl(item) || item.url;
+
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setShareCopied(true);
-      setTimeout(() => setShareCopied(false), 2000);
-    } catch { /* nothing */ }
+      // Generate share image
+      const params = new URLSearchParams({
+        headline: item.title,
+        imageUrl: item.thumbnail || '',
+        url: shareUrl,
+        format: 'square',
+      });
+      const imageResponse = await fetch(`/api/share/render?${params.toString()}`);
+
+      if (!imageResponse.ok) {
+        throw new Error('Failed to generate image');
+      }
+
+      const blob = await imageResponse.blob();
+      const file = new File([blob], 'trace-story.png', { type: 'image/png' });
+
+      // Try Web Share API with file
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: item.title,
+          text: `Read the full story on Trace: ${shareUrl}`,
+        });
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2000);
+      } else {
+        // Fallback: download the image
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'trace-story.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2000);
+      }
+    } catch {
+      // Fallback to just copying the URL
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2000);
+      } catch { /* nothing */ }
+    } finally {
+      setShareLoading(false);
+    }
   };
 
   if (!item) {
@@ -358,10 +405,11 @@ export default function ArticlePage() {
               </button>
               <button
                 onClick={handleShare}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 transition-colors text-white text-xs font-medium"
+                disabled={shareLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 transition-colors text-white text-xs font-medium disabled:opacity-50"
               >
-                {shareCopied ? <Check size={14} className="text-green-400" /> : <Share2 size={14} />}
-                {shareCopied ? 'Copied!' : 'Share'}
+                {shareLoading ? <Loader2 size={14} className="animate-spin" /> : shareCopied ? <Check size={14} className="text-green-400" /> : <Share2 size={14} />}
+                {shareLoading ? 'Generating...' : shareCopied ? 'Shared!' : 'Share'}
               </button>
             </div>
 
@@ -502,10 +550,11 @@ export default function ArticlePage() {
             </button>
             <button
               onClick={handleShare}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 transition-colors text-white text-xs font-medium"
+              disabled={shareLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 transition-colors text-white text-xs font-medium disabled:opacity-50"
             >
-              {shareCopied ? <Check size={14} className="text-green-400" /> : <Share2 size={14} />}
-              {shareCopied ? 'Copied!' : 'Share'}
+              {shareLoading ? <Loader2 size={14} className="animate-spin" /> : shareCopied ? <Check size={14} className="text-green-400" /> : <Share2 size={14} />}
+              {shareLoading ? 'Generating...' : shareCopied ? 'Shared!' : 'Share'}
             </button>
           </div>
         </div>
@@ -578,10 +627,11 @@ export default function ArticlePage() {
           <div className="flex items-center gap-2">
             <button
               onClick={handleShare}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium border border-border hover:bg-surface-secondary transition-colors"
+              disabled={shareLoading}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium border border-border hover:bg-surface-secondary transition-colors disabled:opacity-50"
             >
-              {shareCopied ? <Check size={14} className="text-green-500" /> : <Share2 size={14} />}
-              {shareCopied ? 'Copied!' : 'Share'}
+              {shareLoading ? <Loader2 size={14} className="animate-spin" /> : shareCopied ? <Check size={14} className="text-green-500" /> : <Share2 size={14} />}
+              {shareLoading ? 'Generating...' : shareCopied ? 'Shared!' : 'Share'}
             </button>
             <a
               href={item.url}

@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Link from "next/link";
-import { ExternalLink, Clock, Share2, Check, Sparkles } from "lucide-react";
+import { ExternalLink, Clock, Share2, Check, Sparkles, Download, Loader2 } from "lucide-react";
 
 const ACCENT = "#F59E0B";
 
@@ -42,6 +42,7 @@ interface Props {
 
 export default function ArticleContent({ article }: Props) {
   const [copied, setCopied] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   const rawSlides = article.summary?.short_article?.slides;
   const slides = Array.isArray(rawSlides)
@@ -59,12 +60,58 @@ export default function ArticleContent({ article }: Props) {
   const bodyContent = slides.length > 0 ? slides.join('\n\n') : body;
 
   const handleShare = async () => {
-    const url = window.location.href;
+    setSharing(true);
+    const pageUrl = window.location.href;
+
     try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch { /* nothing */ }
+      // Generate share image
+      const params = new URLSearchParams({
+        headline: article.title,
+        imageUrl: article.thumbnail || '',
+        url: pageUrl,
+        format: 'square',
+      });
+      const imageResponse = await fetch(`/api/share/render?${params.toString()}`);
+
+      if (!imageResponse.ok) {
+        throw new Error('Failed to generate image');
+      }
+
+      const blob = await imageResponse.blob();
+      const file = new File([blob], 'trace-story.png', { type: 'image/png' });
+
+      // Try Web Share API with file
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: article.title,
+          text: `Read the full story on Trace: ${pageUrl}`,
+        });
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } else {
+        // Fallback: download the image
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'trace-story.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    } catch (err) {
+      // Fallback to just copying the URL
+      try {
+        await navigator.clipboard.writeText(pageUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch { /* nothing */ }
+    } finally {
+      setSharing(false);
+    }
   };
 
   return (
@@ -157,12 +204,18 @@ export default function ArticleContent({ article }: Props) {
         <div className="border-t border-gray-100 dark:border-gray-800 pt-5 mt-2 flex items-center justify-end gap-2">
           <button
             onClick={handleShare}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            disabled={sharing}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
           >
-            {copied ? (
+            {sharing ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                Generating...
+              </>
+            ) : copied ? (
               <>
                 <Check size={14} className="text-green-500" />
-                Copied!
+                Shared!
               </>
             ) : (
               <>

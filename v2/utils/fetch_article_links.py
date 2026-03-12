@@ -40,6 +40,7 @@ USER_AGENT = "TraceLinkFetcher/1.0 (+https://trace.app)"
 REQUEST_TIMEOUT_SECONDS = 20
 METADATA_TIMEOUT_SECONDS = 12
 DEFAULT_LIMIT = 50
+MAX_HTML_PAGES = 5
 
 _RSS_HINTS = ("<rss", "<channel", "<item")
 _ATOM_HINTS = ("<feed", "<entry")
@@ -139,6 +140,8 @@ def _is_likely_article(
     if not include_external and host != base_host:
         return False
     path = (parsed.path or "").lower()
+    if re.search(r"/page/\d+/?$", path):
+        return False
     if path in _NON_ARTICLE_EXACT_PATHS:
         return False
     if any(h in path for h in _NON_ARTICLE_PATH_HINTS):
@@ -379,6 +382,55 @@ def _extract_from_html(
     return _dedupe_articles_keep_order(articles)
 
 
+def _find_next_html_page(
+    html_text: str,
+    current_url: str,
+) -> str:
+    soup = BeautifulSoup(html_text, "html.parser")
+    parsed_current = urlparse(current_url)
+    current_host = parsed_current.netloc.lower()
+
+    candidates = []
+
+    rel_next = soup.select("a[rel~='next'][href], link[rel~='next'][href]")
+    candidates.extend(rel_next)
+
+    labeled = soup.select(
+        "a[aria-label*='next' i][href], "
+        "a[title*='next' i][href], "
+        "a[class*='next' i][href], "
+        "a[href]"
+    )
+    candidates.extend(labeled)
+
+    text_hints = {"next", "older", "more", "more stories", "next page"}
+    for anchor in soup.find_all("a", href=True):
+        text = anchor.get_text(" ", strip=True).lower()
+        if text in text_hints:
+            candidates.append(anchor)
+
+    seen_urls: set[str] = set()
+    for node in candidates:
+        href = node.get("href", "")
+        normalized = _normalize_url(href, current_url)
+        if not normalized or normalized in seen_urls:
+            continue
+        seen_urls.add(normalized)
+        parsed = urlparse(normalized)
+        if parsed.netloc.lower() != current_host:
+            continue
+        if normalized == current_url:
+            continue
+        path = (parsed.path or "").lower()
+        if (
+            "/page/" in path
+            or "page=" in href.lower()
+            or "p=" in href.lower()
+        ):
+            return normalized
+    return ""
+
+
 def _extract_og_from_soup(soup: BeautifulSoup, base_url: str) -> str:
     candidates = [
         soup.find("meta", attrs={"property": "og:image"}),
@@ -474,17 +526,41 @@ def fetch_article_links(
         headers={"User-Agent": USER_AGENT},
     )
     response.raise_for_status()
+    response_text = response.text or ""
     source_type = _detect_source_type(
-        response.text or "",
+        response_text,
         response.headers.get("content-type", ""),
     )
 
     if source_type in ("rss", "atom"):
-        candidates = _extract_from_rss_or_atom(response.text or "", source_url)
+        candidates = _extract_from_rss_or_atom(response_text, source_url)
     elif source_type == "sitemap":
-        candidates = _extract_from_sitemap(response.text or "", source_url)
+        candidates = _extract_from_sitemap(response_text, source_url)
     else:
-        candidates = _extract_from_html(response.text or "", source_url)
+        candidates = _extract_from_html(response_text, source_url)
+        if len(candidates) < limit:
+            next_url = _find_next_html_page(response_text, source_url)
+            seen_pages = {source_url}
+            pages_visited = 1
+            while next_url and next_url not in seen_pages and pages_visited < MAX_HTML_PAGES:
+                seen_pages.add(next_url)
+                try:
+                    next_response = requests.get(
+                        next_url,
+                        timeout=REQUEST_TIMEOUT_SECONDS,
+                        headers={"User-Agent": USER_AGENT},
+                    )
+                    next_response.raise_for_status()
+                except Exception:
+                    break
+                next_text = next_response.text or ""
+                candidates.extend(_extract_from_html(next_text, next_url))
+                if len(candidates) >= limit:
+                    break
+                next_url = _find_next_html_page(next_text, next_url)
+                pages_visited += 1
+
+        candidates = _dedupe_articles_keep_order(candidates)
 
     base_host = urlparse(source_url).netloc.lower()
     if source_type in ("rss", "atom"):

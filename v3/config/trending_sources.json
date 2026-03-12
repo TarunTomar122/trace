@@ -1,5 +1,5 @@
 {
-  "description": "Sources for the 'Trending' feed - BREAKING NEWS only. Fast-moving news sources covering tech, AI, startups, and business. No feature articles or long-form content.",
+  "description": "Sources for the 'Trending' feed - breaking, high-signal stories mapped to canonical onboarding interests. Use timely editorial and news sources, not evergreen learning sources.",
   "max_age_hours": 24,
   "discovery": {
     "enabled": true,
@@ -52,14 +52,42 @@
       "source_weight": 1.0
     },
     {
-      "interest_id": "ai",
+      "interest_id": "technology",
       "name": "VentureBeat AI",
       "url": "https://venturebeat.com/category/ai/feed/",
       "type": "rss",
       "source_weight": 1.15
     },
     {
-      "interest_id": "business",
+      "interest_id": "technology",
+      "name": "OpenAI News",
+      "url": "https://openai.com/news/rss.xml",
+      "type": "rss",
+      "source_weight": 1.25
+    },
+    {
+      "interest_id": "technology",
+      "name": "Google AI Blog",
+      "url": "https://blog.google/technology/ai/rss/",
+      "type": "rss",
+      "source_weight": 1.2
+    },
+    {
+      "interest_id": "technology",
+      "name": "DeepMind Blog",
+      "url": "https://deepmind.google/blog/rss.xml",
+      "type": "rss",
+      "source_weight": 1.2
+    },
+    {
+      "interest_id": "technology",
+      "name": "Anthropic News",
+      "url": "https://www.anthropic.com/news",
+      "type": "html",
+      "source_weight": 1.1
+    },
+    {
+      "interest_id": "business-market",
       "name": "Yahoo Finance Tech",
       "url": "https://finance.yahoo.com/news/rssindex",
       "type": "rss",
@@ -67,7 +95,7 @@
       "source_weight": 1.2
     },
     {
-      "interest_id": "business",
+      "interest_id": "business-market",
       "name": "CNBC Technology",
       "url": "https://www.cnbc.com/id/19854910/device/rss/rss.html",
       "type": "rss",
@@ -75,7 +103,7 @@
       "source_weight": 1.2
     },
     {
-      "interest_id": "business",
+      "interest_id": "business-market",
       "name": "CNBC Top News",
       "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
       "type": "rss",
@@ -83,14 +111,14 @@
       "source_weight": 1.15
     },
     {
-      "interest_id": "business",
+      "interest_id": "business-market",
       "name": "Bloomberg Technology",
       "url": "https://feeds.bloomberg.com/technology/news.rss",
       "type": "rss",
       "source_weight": 1.25
     },
     {
-      "interest_id": "ai",
+      "interest_id": "technology",
       "name": "AI News",
       "url": "https://www.artificialintelligence-news.com/feed/",
       "type": "rss",

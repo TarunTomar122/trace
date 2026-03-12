@@ -1,42 +1,24 @@
-import { useState, useEffect } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, Text, Alert, Switch } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import {
   ChevronLeft,
   ChevronRight,
   Briefcase,
   Sparkles,
-  BookOpen,
   Target,
-  LogOut,
-  Trash2,
-  Crown,
-  Gift,
-  Mail,
-  Bell,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import {
   ROLES,
   SENIORITY_LEVELS,
   ONBOARDING_INTERESTS,
   CAREER_GOALS,
-  updateUserProfile,
 } from '@/lib/firestore';
-// TODO: Re-enable when EAS project is configured
-// import {
-//   enablePushNotifications,
-//   disablePushNotifications,
-// } from '@/lib/notifications';
-
-const ACCENT = '#F59E0B';
 
 function lookupLabel(items: readonly { id: string; label: string }[], id: string): string {
   return items.find((i) => i.id === id)?.label || id.replace(/-/g, ' ');
@@ -75,100 +57,10 @@ function PrefRow({ icon: Icon, label, value, colorScheme, onPress, danger }: Pre
   );
 }
 
-type ToggleRowProps = {
-  icon: typeof Mail;
-  label: string;
-  subtitle?: string;
-  value: boolean;
-  colorScheme: 'light' | 'dark';
-  onToggle: (value: boolean) => void;
-};
-
-function ToggleRow({ icon: Icon, label, subtitle, value, colorScheme, onToggle }: ToggleRowProps) {
-  return (
-    <View style={styles.row}>
-      <View style={[styles.rowIcon, { backgroundColor: Colors[colorScheme].foreground + '08' }]}>
-        <Icon size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-      </View>
-      <View style={styles.rowText}>
-        <ThemedText style={styles.rowLabel}>{label}</ThemedText>
-        {subtitle && (
-          <ThemedText style={[styles.rowValue, { color: Colors[colorScheme].muted }]}>
-            {subtitle}
-          </ThemedText>
-        )}
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onToggle}
-        trackColor={{ false: Colors[colorScheme].border, true: ACCENT }}
-        thumbColor="#fff"
-      />
-    </View>
-  );
-}
-
 export default function PreferencesHub() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
-  const { user, profile, signOut, deleteAccount, refreshProfile } = useAuth();
-  const { isProUser, isEarlyAdopter, presentPaywall } = useRevenueCat();
-
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [newsletterEnabled, setNewsletterEnabled] = useState(true);
-  // TODO: Re-enable when EAS project is configured
-  // const [pushEnabled, setPushEnabled] = useState(false);
-  // const [pushLoading, setPushLoading] = useState(false);
-
-  useEffect(() => {
-    // Load preferences from profile
-    if (profile) {
-      setNewsletterEnabled(profile.newsletterOptIn !== false);
-      // setPushEnabled(profile.pushNotificationsEnabled === true);
-    }
-  }, [profile]);
-
-  const handleNewsletterToggle = async (enabled: boolean) => {
-    if (!user) return;
-    setNewsletterEnabled(enabled);
-    try {
-      await updateUserProfile(user.uid, { newsletterOptIn: enabled });
-      await refreshProfile();
-    } catch (error) {
-      console.error('Failed to update newsletter preference:', error);
-      setNewsletterEnabled(!enabled); // Revert on error
-    }
-  };
-
-  // TODO: Re-enable when EAS project is configured
-  // const handlePushToggle = async (enabled: boolean) => {
-  //   if (!user) return;
-  //   setPushLoading(true);
-  //   try {
-  //     if (enabled) {
-  //       const success = await enablePushNotifications(user.uid);
-  //       if (success) {
-  //         setPushEnabled(true);
-  //         await refreshProfile();
-  //       } else {
-  //         Alert.alert(
-  //           'Notifications Disabled',
-  //           'Please enable notifications in your device settings to receive updates.',
-  //           [{ text: 'OK' }]
-  //         );
-  //       }
-  //     } else {
-  //       await disablePushNotifications(user.uid);
-  //       setPushEnabled(false);
-  //       await refreshProfile();
-  //     }
-  //   } catch (error) {
-  //     console.error('Failed to update push notification preference:', error);
-  //   } finally {
-  //     setPushLoading(false);
-  //   }
-  // };
+  const { profile } = useAuth();
 
   const roleValue = [
     profile?.role ? lookupLabel(ROLES as any, profile.role) : '',
@@ -179,66 +71,9 @@ export default function PreferencesHub() {
     .map((id: string) => lookupLabel(ONBOARDING_INTERESTS as any, id))
     .join(', ');
 
-  const sourcesValue = (profile?.selectedLearningSources || []).join(', ');
-
   const goalsValue = (profile?.careerGoals || [])
     .map((id: string) => lookupLabel(CAREER_GOALS as any, id))
     .join(', ');
-
-  const handleLogout = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            setIsLoggingOut(true);
-            try {
-              await signOut();
-              router.replace('/(auth)/welcome');
-            } catch (error) {
-              console.error('Logout error:', error);
-            } finally {
-              setIsLoggingOut(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'This will permanently delete your account and all your data. This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            setIsDeleting(true);
-            try {
-              await deleteAccount();
-              router.replace('/(auth)/welcome');
-            } catch (error) {
-              console.error('Delete account error:', error);
-              Alert.alert('Error', 'Could not delete account. Please try again.');
-            } finally {
-              setIsDeleting(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const displayName = profile?.name || user?.displayName || 'User';
-  const email = user?.email || '';
-  const photoURL = user?.photoURL;
 
   return (
     <SafeAreaView
@@ -256,49 +91,6 @@ export default function PreferencesHub() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-
-        {/* Profile Card */}
-        <View style={[styles.profileCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-          {photoURL ? (
-            <Image source={{ uri: photoURL }} style={styles.avatar} contentFit="cover" />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: ACCENT + '20' }]}>
-              <Text style={styles.avatarInitial}>{displayName.charAt(0).toUpperCase()}</Text>
-            </View>
-          )}
-          <View style={styles.profileInfo}>
-            <ThemedText style={styles.profileName}>{displayName}</ThemedText>
-            <ThemedText style={[styles.profileEmail, { color: Colors[colorScheme].muted }]}>{email}</ThemedText>
-          </View>
-          {/* Subscription badge */}
-          {isProUser && (
-            <View style={[styles.proBadge, { backgroundColor: isEarlyAdopter ? '#10B98120' : ACCENT + '20' }]}>
-              {isEarlyAdopter ? (
-                <Gift size={14} color="#10B981" strokeWidth={2} />
-              ) : (
-                <Crown size={14} color={ACCENT} strokeWidth={2} />
-              )}
-              <Text style={[styles.proBadgeText, { color: isEarlyAdopter ? '#10B981' : ACCENT }]}>
-                {isEarlyAdopter ? 'Early Adopter' : 'Pro'}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Upgrade banner for free users */}
-        {!isProUser && (
-          <Pressable
-            onPress={() => presentPaywall()}
-            style={[styles.upgradeBanner, { backgroundColor: ACCENT + '10', borderColor: ACCENT + '30' }]}
-          >
-            <Crown size={20} color={ACCENT} strokeWidth={2} />
-            <View style={styles.upgradeText}>
-              <Text style={[styles.upgradeTitle, { color: Colors[colorScheme].text }]}>Upgrade to Pro</Text>
-              <Text style={[styles.upgradeSubtitle, { color: Colors[colorScheme].muted }]}>Unlock all features</Text>
-            </View>
-            <ChevronRight size={18} color={ACCENT} strokeWidth={2} />
-          </Pressable>
-        )}
 
         <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>
           Feed preferences
@@ -322,14 +114,6 @@ export default function PreferencesHub() {
           />
           <View style={[styles.rowDivider, { backgroundColor: Colors[colorScheme].border }]} />
           <PrefRow
-            icon={BookOpen}
-            label="Deep Dive Sources"
-            value={sourcesValue}
-            colorScheme={colorScheme}
-            onPress={() => router.push('/preferences/sources')}
-          />
-          <View style={[styles.rowDivider, { backgroundColor: Colors[colorScheme].border }]} />
-          <PrefRow
             icon={Target}
             label="Career Goals"
             value={goalsValue}
@@ -338,57 +122,7 @@ export default function PreferencesHub() {
           />
         </View>
 
-        <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted, marginTop: 28 }]}>
-          Notifications
-        </ThemedText>
-
-        <View style={[styles.card, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-          {/* TODO: Re-enable when EAS project is configured
-          <ToggleRow
-            icon={Bell}
-            label="Push Notifications"
-            subtitle="Get notified about trending news"
-            value={pushEnabled}
-            colorScheme={colorScheme}
-            onToggle={handlePushToggle}
-          />
-          <View style={[styles.rowDivider, { backgroundColor: Colors[colorScheme].border }]} />
-          */}
-          <ToggleRow
-            icon={Mail}
-            label="Daily Newsletter"
-            subtitle="Get your daily digest via email"
-            value={newsletterEnabled}
-            colorScheme={colorScheme}
-            onToggle={handleNewsletterToggle}
-          />
-        </View>
-
-        <ThemedText style={[styles.sectionLabel, { color: Colors[colorScheme].muted, marginTop: 28 }]}>
-          Account
-        </ThemedText>
-
-        <View style={[styles.card, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-          <PrefRow
-            icon={LogOut}
-            label={isLoggingOut ? 'Signing out...' : 'Sign Out'}
-            colorScheme={colorScheme}
-            onPress={handleLogout}
-          />
-          <View style={[styles.rowDivider, { backgroundColor: Colors[colorScheme].border }]} />
-          <PrefRow
-            icon={Trash2}
-            label={isDeleting ? 'Deleting...' : 'Delete Account'}
-            colorScheme={colorScheme}
-            onPress={handleDeleteAccount}
-            danger
-          />
-        </View>
-
-        <ThemedText style={[styles.versionText, { color: Colors[colorScheme].muted }]}>
-          Trace v1.0.0
-        </ThemedText>
-      </ScrollView>
+              </ScrollView>
     </SafeAreaView>
   );
 }
@@ -417,76 +151,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 40,
-  },
-
-  // Profile card
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 20,
-    gap: 14,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-  },
-  avatarPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#F59E0B',
-  },
-  profileInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  profileName: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  profileEmail: {
-    fontSize: 14,
-  },
-  proBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  proBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-
-  // Upgrade banner
-  upgradeBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 20,
-    gap: 12,
-  },
-  upgradeText: {
-    flex: 1,
-    gap: 2,
-  },
-  upgradeTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  upgradeSubtitle: {
-    fontSize: 13,
   },
 
   sectionLabel: {
@@ -530,10 +194,5 @@ const styles = StyleSheet.create({
   rowDivider: {
     height: StyleSheet.hairlineWidth,
     marginLeft: 64,
-  },
-  versionText: {
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 32,
   },
 });

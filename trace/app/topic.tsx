@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState, useRef } from 'react';
 import {
   Image,
   Pressable,
@@ -7,7 +7,11 @@ import {
   StyleSheet,
   Text,
   View,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
+import { captureRef } from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -17,9 +21,9 @@ import Animated, {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronLeft, ChevronRight, MoreHorizontal, Share2, Zap } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Share2, Bookmark } from 'lucide-react-native';
 
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getCurrentTopic } from '@/lib/topic-store';
 import { setCurrentArticle } from '@/lib/article-store';
@@ -61,13 +65,6 @@ function formatAge(value?: string): string {
   if (diffHr < 24) return `${diffHr} hours ago`;
   const diffDay = Math.floor(diffHr / 24);
   return `${diffDay}d ago`;
-}
-
-function getSourceInitials(name: string): string {
-  if (!name) return '??';
-  const words = name.trim().split(/\s+/);
-  if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
-  return (words[0][0] + words[1][0]).toUpperCase();
 }
 
 function hashColor(str: string): string {
@@ -179,10 +176,50 @@ export default function TopicScreen() {
   const age = formatAge(topic.first_seen_at || topic.last_updated_at);
   const isDark = colorScheme === 'dark';
 
-  const handleShare = () => {
-    const content = displayBody || displayTitle;
-    const message = `${content}\n\n— via Trace\nyourtrace.online`;
-    Share.share({ message });
+  const [isSharing, setIsSharing] = useState(false);
+  const shareViewRef = useRef<View>(null);
+
+  const handleShare = async () => {
+    const shareMessage = `${displayTitle}\n\nRead more on Trace\nhttps://yourtrace.online`;
+
+    // If no thumbnail, fall back to text sharing
+    if (!displayThumbnail) {
+      await Share.share({ message: shareMessage });
+      return;
+    }
+
+    setIsSharing(true);
+    try {
+      // Capture the share view as an image
+      const uri = await captureRef(shareViewRef, {
+        format: 'png',
+        quality: 1,
+      });
+
+      if (Platform.OS === 'ios') {
+        // iOS supports sharing both file URL and message together
+        await Share.share({
+          url: uri,
+          message: shareMessage,
+        });
+      } else {
+        // Android: expo-sharing for image, then native share for text
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'image/png',
+            dialogTitle: shareMessage,
+          });
+        } else {
+          await Share.share({ message: shareMessage });
+        }
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+      await Share.share({ message: shareMessage });
+    } finally {
+      setIsSharing(false);
+    }
   };
 
   return (
@@ -193,7 +230,7 @@ export default function TopicScreen() {
         onScroll={scrollHandler}
         scrollEventThrottle={16}>
 
-        {/* Hero image with overlaid title — extends to screen top */}
+        {/* Hero image */}
         <View style={styles.heroWrap}>
           {displayThumbnail ? (
             <Image
@@ -205,32 +242,26 @@ export default function TopicScreen() {
             <View style={[styles.heroImage, { backgroundColor: isDark ? '#1c1c1c' : '#222' }]} />
           )}
 
-          {/* Top gradient for button legibility */}
-          <LinearGradient
-            colors={['rgba(0,0,0,0.45)', 'transparent']}
-            style={styles.heroGradientTop}
-          />
+          {/* Overlay for dimming */}
+          <View style={styles.heroOverlayDim} />
 
-          {/* Bottom gradient: transparent → solid background */}
+          {/* Bottom gradient fade to background */}
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.35)', Colors[colorScheme].background]}
-            locations={[0, 0.5, 1]}
+            colors={['transparent', Colors[colorScheme].background]}
             style={styles.heroGradient}
           />
+        </View>
 
-          {/* Title overlaid on image bottom */}
-          <View style={styles.heroOverlay}>
-            {age ? (
-              <View style={styles.ageRow}>
-                <Zap size={11} color="#F97316" strokeWidth={2.5} fill="#F97316" />
-                <Text style={styles.ageText}>{age.toUpperCase()}</Text>
-              </View>
-            ) : null}
-
-            <Text style={[styles.title, { color: '#fff' }]}>
-              {displayTitle}
-            </Text>
-          </View>
+        {/* Title section below hero */}
+        <View style={styles.titleSection}>
+          <Text style={[styles.title, { color: Colors[colorScheme].text }]}>
+            {displayTitle}
+          </Text>
+          {age ? (
+            <View style={styles.ageBadge}>
+              <Text style={styles.ageBadgeText}>{age}</Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Summary + meta below image, flush with background */}
@@ -253,7 +284,7 @@ export default function TopicScreen() {
             </Text>
           ) : (
             <Text style={[styles.meta, { color: Colors[colorScheme].muted }]}>
-              {topic.source_count ?? 0} sources · {topic.article_count ?? 0} updates
+              {topic.source_count ?? 0} SOURCES | {topic.article_count ?? 0} UPDATES
             </Text>
           )}
         </View>
@@ -288,7 +319,6 @@ export default function TopicScreen() {
                   !!event.article_url && articlesByUrl.has(event.article_url) &&
                   Object.keys(articlesByUrl.get(event.article_url)?.summary ?? {}).length > 0;
                 const sourceName = event.source_name || 'Source';
-                const initials = getSourceInitials(sourceName);
                 const summaryData = truncateText(event.summary || '', 100);
 
                 return (
@@ -302,15 +332,9 @@ export default function TopicScreen() {
 
                     {/* Content */}
                     <View style={styles.timelineContent}>
-                      {/* Source row with avatar */}
-                      <View style={styles.timelineSourceRow}>
-                        <View style={[styles.timelineAvatar, { backgroundColor: isDark ? '#333' : '#1a1a1a' }]}>
-                          <Text style={styles.timelineAvatarText}>{initials}</Text>
-                        </View>
-                        <Text style={[styles.timelineSource, { color: Colors[colorScheme].muted }]}>
-                          {sourceName} <Text style={styles.timelineDot}>•</Text> {formatAge(event.timestamp)}
-                        </Text>
-                      </View>
+                      <Text style={[styles.timelineSource, { color: Colors[colorScheme].muted }]}>
+                        {sourceName} <Text style={styles.timelineDot}>•</Text> {formatAge(event.timestamp)}
+                      </Text>
 
                       {/* Title */}
                       <Text style={[styles.timelineTitle, { color: Colors[colorScheme].text }]}>
@@ -345,19 +369,48 @@ export default function TopicScreen() {
         <SafeAreaView edges={['top']} style={{ flex: 1 }} pointerEvents="box-none">
           <View style={styles.header}>
             <Pressable onPress={() => router.back()} hitSlop={12} style={styles.headerBtn}>
-              <ChevronLeft size={24} color="#fff" strokeWidth={2.5} />
+              <ChevronLeft size={22} color="#000" strokeWidth={2} />
             </Pressable>
             <View style={styles.headerRight}>
-              <Pressable onPress={handleShare} hitSlop={12} style={styles.headerBtn}>
-                <Share2 size={20} color="#fff" strokeWidth={2} />
-              </Pressable>
               <Pressable hitSlop={12} style={styles.headerBtn}>
-                <MoreHorizontal size={20} color="#fff" strokeWidth={2} />
+                <Bookmark size={20} color="#000" strokeWidth={1.8} />
+              </Pressable>
+              <Pressable onPress={handleShare} hitSlop={12} style={styles.headerBtn} disabled={isSharing}>
+                {isSharing ? (
+                  <ActivityIndicator size="small" color="#000" />
+                ) : (
+                  <Share2 size={18} color="#000" strokeWidth={1.8} />
+                )}
               </Pressable>
             </View>
           </View>
         </SafeAreaView>
       </Animated.View>
+
+      {/* Hidden share view for capturing */}
+      <View style={styles.shareViewContainer} pointerEvents="none">
+        <View ref={shareViewRef} style={styles.shareView} collapsable={false}>
+          {displayThumbnail ? (
+            <Image
+              source={{ uri: displayThumbnail }}
+              style={styles.shareImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.shareImage, { backgroundColor: '#1a1a1a' }]} />
+          )}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.8)']}
+            style={styles.shareGradient}
+          />
+          <View style={styles.shareTitleContainer}>
+            <Text style={styles.shareTitle} numberOfLines={3}>
+              {displayTitle}
+            </Text>
+            <Text style={styles.shareBranding}>trace</Text>
+          </View>
+        </View>
+      </View>
     </View>
   );
 }
@@ -381,13 +434,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    marginHorizontal: 4,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    marginHorizontal: 6,
   },
   headerRight: {
     flexDirection: 'row',
@@ -400,55 +453,51 @@ const styles = StyleSheet.create({
   },
   heroImage: {
     width: '100%',
-    height: 320,
+    height: 260,
   },
-  heroGradientTop: {
+  heroOverlayDim: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 100,
-    zIndex: 1,
+    bottom: 0,
+    backgroundColor: 'rgba(120,120,120,0.2)',
   },
   heroGradient: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    height: 180,
+    height: 88,
   },
-  heroOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    gap: 8,
-  },
-  ageRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  ageText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#F97316',
-    letterSpacing: 0.8,
+  // Title section below hero
+  titleSection: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    gap: 10,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '800',
-    lineHeight: 31,
-    letterSpacing: -0.4,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    fontSize: 20,
+    fontWeight: '700',
+    lineHeight: 28,
+    letterSpacing: -0.3,
+    fontFamily: Fonts.serif,
+  },
+  ageBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#ff8d28',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  ageBadgeText: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#fff',
   },
   summaryBlock: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingHorizontal: 16,
+    paddingTop: 16,
     paddingBottom: 12,
     gap: 8,
   },
@@ -469,10 +518,10 @@ const styles = StyleSheet.create({
   bulletRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 12,
+    gap: 10,
   },
   bulletDot: {
     width: 6,
@@ -495,8 +544,8 @@ const styles = StyleSheet.create({
 
   // Timeline
   timelineSection: {
-    paddingHorizontal: 20,
-    paddingTop: 28,
+    paddingHorizontal: 16,
+    paddingTop: 24,
     paddingBottom: 8,
   },
   timelineLabel: {
@@ -510,33 +559,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   timelineAccent: {
-    width: 2,
+    width: 1,
     backgroundColor: '#F59E0B',
-    borderRadius: 1,
     marginRight: 12,
   },
   timelineContent: {
     flex: 1,
   },
-  timelineSourceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-    gap: 8,
-  },
-  timelineAvatar: {
-    width: 22,
-    height: 22,
-    borderRadius: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  timelineAvatarText: {
-    fontSize: 8,
-    fontWeight: '700',
-    color: '#fff',
-  },
   timelineSource: {
+    marginBottom: 6,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -544,9 +575,9 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
   },
   timelineTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    lineHeight: 23,
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 22,
     marginBottom: 4,
   },
   timelineSummary: {
@@ -562,4 +593,48 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
   },
 
+  // Share view (hidden, for capturing)
+  shareViewContainer: {
+    position: 'absolute',
+    left: -9999,
+    top: 0,
+  },
+  shareView: {
+    width: 400,
+    height: 500,
+    backgroundColor: '#1a1a1a',
+  },
+  shareImage: {
+    width: '100%',
+    height: '100%',
+  },
+  shareGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 200,
+  },
+  shareTitleContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: 20,
+  },
+  shareTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#fff',
+    lineHeight: 34,
+    fontFamily: Fonts.serif,
+    marginBottom: 12,
+  },
+  shareBranding: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
 });
