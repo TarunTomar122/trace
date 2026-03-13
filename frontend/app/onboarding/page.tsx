@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Check, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   completeOnboarding,
@@ -15,8 +15,14 @@ import {
 import { isAlphaMode } from '@/lib/alpha';
 import { trackOnboardingStarted, trackOnboardingCompleted } from '@/lib/posthog';
 
-const ACCENT = '#F59E0B';
 const TOTAL_STEPS = 4;
+
+const STEP_TITLES = [
+  { title: 'Role', subtitle: 'What do you do?' },
+  { title: 'Interests', subtitle: 'What fires you up?' },
+  { title: 'Sources', subtitle: 'Your deep dive sources' },
+  { title: 'Goals', subtitle: 'What are you working towards?' },
+];
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -114,144 +120,152 @@ export default function OnboardingPage() {
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen text-foreground bg-background">
-      <div className="container mx-auto px-4 max-w-2xl py-8 md:py-12">
+    <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8">
+      {/* Step Tabs */}
+      <div className="flex items-end mb-0">
+        {STEP_TITLES.map((s, i) => (
+          <button
+            key={i}
+            onClick={() => i + 1 < step && setStep(i + 1)}
+            disabled={i + 1 > step}
+            className={`
+              relative px-5 py-2.5 text-sm font-medium transition-colors
+              ${step === i + 1 ? 'text-foreground bg-surface z-10' : 'text-tab-inactive bg-surface-tertiary'}
+              ${i + 1 > step ? 'cursor-not-allowed opacity-50' : 'hover:text-foreground'}
+              ${i === 0 ? 'rounded-tl-lg' : ''}
+            `}
+            style={{
+              clipPath: i === 0
+                ? 'polygon(0 0, calc(100% - 10px) 0, 100% 100%, 0 100%)'
+                : 'polygon(10px 0, calc(100% - 10px) 0, 100% 100%, 0 100%)',
+              marginLeft: i === 0 ? 0 : '-6px',
+            }}
+          >
+            {s.title}
+          </button>
+        ))}
+      </div>
+
+      {/* Main Container */}
+      <div className="bg-surface rounded-tr-lg rounded-b-lg min-h-[calc(100vh-140px)] flex flex-col">
         {/* Header */}
-        <div className="text-center mb-2">
-          <div className="text-base text-foreground uppercase flex items-center justify-center gap-2 tracking-[0.15em] font-semibold mb-4">
-            <img src="/trace.webp" alt="Trace" width={120} height={32} className="h-5 md:h-6 w-auto" />
-            TRACE
+        <div className="px-6 py-5 border-b border-sidebar-border">
+          <div className="flex items-center gap-3 text-xs text-secondary/50 mb-2">
+            <span>Step {step} of {TOTAL_STEPS}</span>
           </div>
+          <h1 className="text-2xl font-semibold text-foreground">
+            {STEP_TITLES[step - 1].subtitle}
+          </h1>
         </div>
 
-        {/* Progress */}
-        <div className="flex gap-1.5 mb-8">
-          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-            <div
-              key={i}
-              className="h-1 flex-1 rounded-full transition-all duration-300"
-              style={{
-                backgroundColor: i < step ? ACCENT : 'var(--color-border, #e5e7eb)',
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Step 1: Role & Seniority */}
-        {step === 1 && (
-          <div className="space-y-8">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-secondary/60 mb-1">Step 1</p>
-              <h2 className="text-xl font-semibold">What do you do?</h2>
-              <p className="text-sm text-secondary/70 mt-1">Pick the role that best describes you.</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {ROLES.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => setRole(r.id)}
-                  className={`relative p-4 rounded-xl border-2 text-left transition-all ${
-                    role === r.id
-                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30'
-                      : 'border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700'
-                  }`}
-                >
-                  {role === r.id && (
-                    <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center">
-                      <Check size={12} className="text-white" />
-                    </div>
-                  )}
-                  <div className="font-medium text-sm">{r.label}</div>
-                  <div className="text-xs text-secondary/60 mt-0.5">{r.subtitle}</div>
-                </button>
-              ))}
-            </div>
-
-            {role && (
+        {/* Content */}
+        <div className="flex-1 p-6 overflow-y-auto">
+          {/* Step 1: Role & Seniority */}
+          {step === 1 && (
+            <div className="space-y-8 max-w-2xl">
               <div>
-                <p className="text-sm font-medium mb-3">Experience level</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {SENIORITY_LEVELS.map((s) => (
+                <p className="text-sm font-medium text-secondary/60 mb-4">Pick your role</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {ROLES.map((r) => (
                     <button
-                      key={s.id}
-                      onClick={() => setSeniority(s.id)}
-                      className={`p-3 rounded-xl border-2 text-left transition-all ${
-                        seniority === s.id
-                          ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30'
-                          : 'border-gray-200 dark:border-gray-800 hover:border-gray-300'
-                      }`}
+                      key={r.id}
+                      onClick={() => setRole(r.id)}
+                      className={`
+                        relative p-4 rounded-lg text-left transition-all border-2
+                        ${role === r.id
+                          ? 'border-foreground bg-surface-secondary'
+                          : 'border-transparent bg-surface-secondary/50 hover:bg-surface-secondary'}
+                      `}
                     >
-                      <div className="font-medium text-sm">{s.label}</div>
-                      <div className="text-xs text-secondary/60">{s.subtitle}</div>
+                      {role === r.id && (
+                        <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-foreground flex items-center justify-center">
+                          <Check size={12} className="text-background" />
+                        </div>
+                      )}
+                      <div className="font-medium text-sm">{r.label}</div>
+                      <div className="text-xs text-secondary/50 mt-0.5">{r.subtitle}</div>
                     </button>
                   ))}
                 </div>
               </div>
-            )}
-          </div>
-        )}
 
-        {/* Step 2: Interests */}
-        {step === 2 && (
-          <div className="space-y-6">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-secondary/60 mb-1">Step 2</p>
-              <h2 className="text-xl font-semibold">What fires you up?</h2>
-              <p className="text-sm text-secondary/70 mt-1">
+              {role && (
+                <div>
+                  <p className="text-sm font-medium text-secondary/60 mb-4">Experience level</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {SENIORITY_LEVELS.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => setSeniority(s.id)}
+                        className={`
+                          p-4 rounded-lg text-left transition-all border-2
+                          ${seniority === s.id
+                            ? 'border-foreground bg-surface-secondary'
+                            : 'border-transparent bg-surface-secondary/50 hover:bg-surface-secondary'}
+                        `}
+                      >
+                        <div className="font-medium text-sm">{s.label}</div>
+                        <div className="text-xs text-secondary/50">{s.subtitle}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 2: Interests */}
+          {step === 2 && (
+            <div className="max-w-2xl">
+              <p className="text-sm text-secondary/60 mb-4">
                 Pick 3-5 topics. These drive your For You feed.
               </p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {ONBOARDING_INTERESTS.map((interest) => {
-                const selected = interests.includes(interest.id);
-                const disabled = !selected && interests.length >= 5;
-                return (
-                  <button
-                    key={interest.id}
-                    onClick={() => toggleInterest(interest.id)}
-                    disabled={disabled}
-                    className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 border ${
-                      selected
-                        ? 'border-amber-500 bg-amber-500 text-white'
-                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-foreground/80 hover:border-amber-300'
-                    } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-                  >
-                    {interest.label}
-                    {selected && <Check size={14} />}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="text-xs text-secondary/60">
-              {interests.length}/5 selected (minimum 3)
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Deep Dive Sources */}
-        {step === 3 && (
-          <div className="space-y-6">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-secondary/60 mb-1">Step 3</p>
-              <h2 className="text-xl font-semibold">Your deep dive sources</h2>
-              <p className="text-sm text-secondary/70 mt-1">
-                Pick blogs and experts you want in-depth summaries from.
+              <div className="flex flex-wrap gap-2">
+                {ONBOARDING_INTERESTS.map((interest) => {
+                  const selected = interests.includes(interest.id);
+                  const disabled = !selected && interests.length >= 5;
+                  return (
+                    <button
+                      key={interest.id}
+                      onClick={() => toggleInterest(interest.id)}
+                      disabled={disabled}
+                      className={`
+                        px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2
+                        ${selected
+                          ? 'bg-foreground text-background'
+                          : 'bg-surface-secondary text-foreground/80 hover:bg-surface-tertiary'}
+                        ${disabled ? 'opacity-30 cursor-not-allowed' : ''}
+                      `}
+                    >
+                      {interest.label}
+                      {selected && <Check size={14} />}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-secondary/50 mt-4">
+                {interests.length}/5 selected (minimum 3)
               </p>
             </div>
+          )}
 
-            <div className="space-y-6">
+          {/* Step 3: Deep Dive Sources */}
+          {step === 3 && (
+            <div className="max-w-2xl space-y-6">
+              <p className="text-sm text-secondary/60">
+                Pick blogs and experts you want in-depth summaries from.
+              </p>
               {LEARNING_SOURCE_CATEGORIES.map((cat) => (
                 <div key={cat.id}>
-                  <h3 className="text-sm font-semibold mb-3 text-secondary/80">{cat.label}</h3>
+                  <h3 className="text-xs font-semibold text-secondary/40 uppercase tracking-wide mb-3">
+                    {cat.label}
+                  </h3>
                   <div className="space-y-2">
                     {cat.sources.map((source) => {
                       const selected = selectedSources.includes(source.name);
@@ -259,19 +273,20 @@ export default function OnboardingPage() {
                         <button
                           key={source.name}
                           onClick={() => toggleSource(source.name)}
-                          className={`w-full p-3 rounded-xl border-2 text-left transition-all flex items-center gap-3 ${
-                            selected
-                              ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30'
-                              : 'border-gray-200 dark:border-gray-800 hover:border-gray-300'
-                          }`}
+                          className={`
+                            w-full p-4 rounded-lg text-left transition-all flex items-center gap-3 border-2
+                            ${selected
+                              ? 'border-foreground bg-surface-secondary'
+                              : 'border-transparent bg-surface-secondary/50 hover:bg-surface-secondary'}
+                          `}
                         >
                           <div className="flex-1 min-w-0">
                             <div className="font-medium text-sm">{source.name}</div>
-                            <div className="text-xs text-secondary/60 truncate">{source.description}</div>
+                            <div className="text-xs text-secondary/50 truncate">{source.description}</div>
                           </div>
                           {selected && (
-                            <div className="w-5 h-5 rounded-full bg-amber-500 flex-shrink-0 flex items-center justify-center">
-                              <Check size={12} className="text-white" />
+                            <div className="w-5 h-5 rounded-full bg-foreground flex-shrink-0 flex items-center justify-center">
+                              <Check size={12} className="text-background" />
                             </div>
                           )}
                         </button>
@@ -281,57 +296,54 @@ export default function OnboardingPage() {
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Step 4: Career Goals */}
-        {step === 4 && (
-          <div className="space-y-6">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-secondary/60 mb-1">Step 4</p>
-              <h2 className="text-xl font-semibold">What are you working towards?</h2>
-              <p className="text-sm text-secondary/70 mt-1">
-                Pick up to 3. We&apos;ll boost content that helps you get there.
+          {/* Step 4: Career Goals */}
+          {step === 4 && (
+            <div className="max-w-2xl">
+              <p className="text-sm text-secondary/60 mb-4">
+                Pick up to 3. We'll boost content that helps you get there.
               </p>
+              <div className="space-y-3">
+                {CAREER_GOALS.map((goal) => {
+                  const selected = careerGoals.includes(goal.id);
+                  const disabled = !selected && careerGoals.length >= 3;
+                  return (
+                    <button
+                      key={goal.id}
+                      onClick={() => toggleGoal(goal.id)}
+                      disabled={disabled}
+                      className={`
+                        relative w-full p-4 rounded-lg text-left transition-all border-2
+                        ${selected
+                          ? 'border-foreground bg-surface-secondary'
+                          : 'border-transparent bg-surface-secondary/50 hover:bg-surface-secondary'}
+                        ${disabled ? 'opacity-30 cursor-not-allowed' : ''}
+                      `}
+                    >
+                      {selected && (
+                        <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-foreground flex items-center justify-center">
+                          <Check size={12} className="text-background" />
+                        </div>
+                      )}
+                      <div className="font-medium text-sm">{goal.label}</div>
+                      <div className="text-xs text-secondary/50 mt-0.5">{goal.subtitle}</div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-
-            <div className="grid gap-3">
-              {CAREER_GOALS.map((goal) => {
-                const selected = careerGoals.includes(goal.id);
-                const disabled = !selected && careerGoals.length >= 3;
-                return (
-                  <button
-                    key={goal.id}
-                    onClick={() => toggleGoal(goal.id)}
-                    disabled={disabled}
-                    className={`relative p-4 rounded-xl border-2 text-left transition-all ${
-                      selected
-                        ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30'
-                        : 'border-gray-200 dark:border-gray-800 hover:border-gray-300'
-                    } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-                  >
-                    {selected && (
-                      <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center">
-                        <Check size={12} className="text-white" />
-                      </div>
-                    )}
-                    <div className="font-medium text-sm">{goal.label}</div>
-                    <div className="text-xs text-secondary/60 mt-0.5">{goal.subtitle}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-8 mt-8 border-t border-gray-100 dark:border-gray-800">
+        <div className="px-6 py-4 border-t border-sidebar-border flex items-center justify-between">
           <button
             onClick={handleBack}
             disabled={step === 1}
-            className="text-sm text-secondary/70 flex items-center gap-1 disabled:opacity-30"
+            className="flex items-center gap-2 text-sm text-secondary/60 hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
-            <ArrowLeft size={14} />
+            <ArrowLeft size={16} />
             Back
           </button>
 
@@ -339,18 +351,16 @@ export default function OnboardingPage() {
             <button
               onClick={handleNext}
               disabled={!canContinue}
-              className="px-6 py-2.5 rounded-lg text-sm font-semibold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
-              style={{ backgroundColor: ACCENT }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium bg-foreground text-background hover:bg-foreground/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             >
               Continue
-              <ChevronRight size={16} />
+              <ArrowRight size={16} />
             </button>
           ) : (
             <button
               onClick={handleComplete}
               disabled={isSubmitting || !canContinue}
-              className="px-6 py-2.5 rounded-lg text-sm font-semibold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ backgroundColor: ACCENT }}
+              className="px-5 py-2.5 rounded-lg text-sm font-medium bg-foreground text-background hover:bg-foreground/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             >
               {isSubmitting ? 'Building your feed...' : 'Build my feed'}
             </button>

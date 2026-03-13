@@ -25,7 +25,6 @@ on:
           - pools
           - feeds
           - for_you
-          - deep_dives
           - trending
           - assemble
       audience:
@@ -70,7 +69,7 @@ jobs:
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             python -u -m v3.scheduler --jobs ${{ inputs.jobs }} --audience ${{ inputs.audience }}
           else
-            python -u -m v3.scheduler --jobs for_you deep_dives trending assemble --audience all
+            python -u -m v3.scheduler --jobs for_you trending assemble --audience all
           fi
 
   trending-refresh:

@@ -1,51 +1,28 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, Suspense, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import {
-  Loader2, Lock, ArrowRight, ChevronRight, ArrowLeft,
-  Flame, Compass, GraduationCap, Share2, Check,
-} from 'lucide-react';
+import { Loader2, Share2, X, Lock, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { useAuth } from '@/contexts/AuthContext';
 import { isAlphaMode } from '@/lib/alpha';
-import Header from '@/components/Header';
 import {
   getV3UserFeed, V3UserFeed, FeedItem, TrendingTopic,
-  TopicTimelineEvent, recordLastActive,
+  recordLastActive,
 } from '@/lib/firestore';
 import { getArticleImage } from '@/lib/fallback-images';
 
 type FeedTab = 'trending' | 'for_you';
 
-const TAB_CONFIG: { key: FeedTab; label: string; icon: React.ElementType }[] = [
-  { key: 'trending', label: 'Trending', icon: Flame },
-  { key: 'for_you', label: 'For You', icon: Compass },
+const TAB_CONFIG: { key: FeedTab; label: string }[] = [
+  { key: 'trending', label: 'Trending' },
+  { key: 'for_you', label: 'For You' },
 ];
 
-const FREE_LIMITS = { for_you: 2, deep_dives: 1 };
-const FEED_TOPIC_CACHE_KEY = 'trace_feed_selected_topic';
-const ARTICLE_RETURN_TO_KEY = 'trace_article_returnTo';
-
-const INTEREST_LABELS: Record<string, string> = {
-  technology: 'Tech & Gadgets',
-  ai: 'AI & Machine Learning',
-  business: 'Business & Markets',
-  startups: 'Startups',
-  experience: 'Design & UX',
-  engineering: 'Engineering',
-  'business-market': 'Business & Markets',
-  leadership: 'Leadership',
-  marketing: 'Marketing & Growth',
-  productivity: 'Productivity',
-  fintech: 'Fintech',
-  health: 'Health & Wellness',
-  web3: 'Web3 & Crypto',
-  climate: 'Climate & Energy',
-};
+const FREE_LIMITS = { trending: 3, for_you: 1 };
 
 const feedFetcher = (uid: string) => getV3UserFeed(uid);
 
@@ -59,13 +36,13 @@ const trendingFetcher = async () => {
   if (!res.ok) return [];
   const data = await res.json();
   if (!Array.isArray(data.items)) return [];
-  return data.items.map((item: any): FeedItem => ({
-    id: item.id,
-    title: item.title,
-    url: item.url,
-    thumbnail: item.thumbnail,
-    source_name: item.source,
-    summary: { short_article: { subtitle: item.summary } },
+  return data.items.map((item: Record<string, unknown>): FeedItem => ({
+    id: String(item.id || ''),
+    title: String(item.title || ''),
+    url: String(item.url || ''),
+    thumbnail: typeof item.thumbnail === 'string' ? item.thumbnail : null,
+    source_name: typeof item.source === 'string' ? item.source : undefined,
+    summary: { short_article: { subtitle: typeof item.summary === 'string' ? item.summary : '' } },
   }));
 };
 
@@ -77,32 +54,28 @@ function stripMarkdown(text: string): string {
     .trim();
 }
 
-function getTimeAgo(dateStr?: string): string {
+function getTimeLabel(dateStr?: string): string {
   if (!dateStr) return '';
   const ts = new Date(dateStr).getTime();
   if (Number.isNaN(ts)) return '';
-  const diffMin = Math.floor((Date.now() - ts) / 60000);
-  if (diffMin < 1) return 'Just now';
+  const now = new Date();
+  const date = new Date(ts);
+  const diffMin = Math.floor((now.getTime() - ts) / 60000);
+
   if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.floor(diffHr / 24);
-  return `${diffDay}d ago`;
-}
 
-function hashColor(str: string): string {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  const isToday = date.toDateString() === now.toDateString();
+  if (isToday) {
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   }
-  const hue = ((hash % 360) + 360) % 360;
-  return `hsl(${hue}, 45%, 55%)`;
-}
 
-function getSourceInitials(name: string): string {
-  const words = name.trim().split(/\s+/);
-  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) {
+    return 'Yesterday';
+  }
+
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function getTopicDisplay(topic: TrendingTopic) {
@@ -114,275 +87,212 @@ function getTopicDisplay(topic: TrendingTopic) {
     title: article?.title || topic.title,
     summary: article?.summary?.short_article?.body || topic.summary || '',
     subtitle: article?.summary?.short_article?.subtitle || topic.summary || '',
-    thumbnail: article?.thumbnail || topic.thumbnail,
     readingTime: article?.summary?.reading_time_minutes,
   };
 }
 
-function splitSummaryParagraphs(text: string): { first: string; rest: string } {
-  const value = (text || '').trim();
-  if (!value) return { first: '', rest: '' };
-  const parts = value.split(/(?<=[.!?])\s+/).filter(Boolean);
-  if (parts.length < 2) return { first: value, rest: '' };
-  return {
-    first: parts[0].trim(),
-    rest: parts.slice(1).join(' ').trim(),
-  };
-}
-
-function FeedBuildingLoader() {
-  const steps = [
-    'Scanning sources for fresh content...',
-    'Matching articles to your interests...',
-    'Generating personalized summaries...',
-    'Almost there, assembling your feed...',
-  ];
-  const [stepIdx, setStepIdx] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => setStepIdx((i) => (i + 1) % steps.length), 3000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <Loader2 size={28} className="animate-spin mb-4 text-secondary/40" />
-      <p className="text-sm text-secondary/70 font-medium">{steps[stepIdx]}</p>
-      <p className="text-xs text-secondary/40 mt-2">This usually takes about a minute</p>
-    </div>
+function getArticleSummary(item: FeedItem): string {
+  return stripMarkdown(
+    item.summary?.short_article?.body ||
+    item.summary?.short_article?.subtitle ||
+    item.description ||
+    ''
   );
 }
 
-/* ─── Trending Topic Cards ─── */
+function getPreview(text: string, maxLen = 100): string {
+  if (!text) return '';
+  const clean = stripMarkdown(text);
+  if (clean.length <= maxLen) return clean;
+  return clean.slice(0, maxLen).trim() + '...';
+}
 
-function TopicFeaturedCard({
-  topic,
-  onPress,
+/* ─── Folder Tab ─── */
+function FolderTab({
+  label,
+  active,
+  onClick,
+  isFirst,
 }: {
-  topic: TrendingTopic;
-  onPress: () => void;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  isFirst?: boolean;
 }) {
-  const display = getTopicDisplay(topic);
-  const imageUrl = getArticleImage(display.thumbnail, display.title);
-  const fallbackUrl = getArticleImage(null, display.title);
-  const [showFallback, setShowFallback] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        relative px-6 py-2.5 text-[0.9375rem] font-medium transition-colors
+        ${active ? 'text-foreground bg-surface z-10' : 'text-tab-inactive bg-surface-tertiary hover:text-foreground'}
+        ${isFirst ? 'rounded-tl-lg' : ''}
+      `}
+      style={{
+        clipPath: isFirst
+          ? 'polygon(0 0, calc(100% - 10px) 0, 100% 100%, 0 100%)'
+          : 'polygon(10px 0, calc(100% - 10px) 0, 100% 100%, 0 100%)',
+        marginLeft: isFirst ? 0 : '-6px',
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+/* ─── Sidebar Article Item ─── */
+function SidebarItem({
+  title,
+  timestamp,
+  source,
+  selected,
+  onClick,
+}: {
+  title: string;
+  preview?: string;
+  timestamp?: string;
+  source?: string;
+  thumbnail?: string | null;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        article-list-item w-full text-left transition-all
+        ${selected ? 'selected' : ''}
+      `}
+    >
+      <div className="flex items-center gap-2 mb-1">
+        {timestamp && (
+          <span className="text-[10px] text-secondary/50 uppercase tracking-wide">
+            {getTimeLabel(timestamp)}
+          </span>
+        )}
+        {source && timestamp && <span className="text-secondary/30 text-[10px]">·</span>}
+        {source && (
+          <span className="text-[10px] text-secondary/50 truncate">{source}</span>
+        )}
+      </div>
+      <h3 className="text-[0.875rem] font-semibold text-foreground leading-snug line-clamp-2">
+        {title}
+      </h3>
+    </button>
+  );
+}
+
+/* ─── Timeline Event Type ─── */
+type TimelineEvent = {
+  id?: string;
+  title: string;
+  summary?: string;
+  timestamp: string;
+  source_name?: string;
+};
+
+const FEED_TYPE_PREFIX: Record<string, string> = {
+  for_you: 'fy',
+  deep_dives: 'dd',
+  trending: 'tr',
+};
+
+function buildShareUrl(itemId: string, feedType?: string): string {
+  const prefix = feedType ? FEED_TYPE_PREFIX[feedType] : 'tr';
+  return `https://www.yourtrace.online/articles/${prefix}_${itemId}`;
+}
+
+/* ─── Main Content Panel ─── */
+function ContentPanel({
+  title,
+  body,
+  source,
+  url,
+  timestamp,
+  keyPoints,
+  thumbnail,
+  timeline,
+  sourceCount,
+  itemId,
+  feedType,
+  onCopyLink,
+}: {
+  title: string;
+  body: string;
+  source?: string;
+  url?: string;
+  timestamp?: string;
+  keyPoints?: string[];
+  thumbnail?: string | null;
+  timeline?: TimelineEvent[];
+  sourceCount?: number;
+  itemId?: string;
+  feedType?: string;
+  onCopyLink?: () => void;
+}) {
+  const imageUrl = thumbnail ? getArticleImage(thumbnail, title) : null;
+  const hasTimeline = timeline && timeline.length > 0;
+  const sortedTimeline = hasTimeline
+    ? [...timeline].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    : [];
 
   return (
-    <button onClick={onPress} className="w-full text-left group mb-6">
-      <div className="relative aspect-[1.3/1] sm:aspect-[1.6/1] rounded-2xl overflow-hidden bg-surface-secondary">
-        <img src={fallbackUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        {!showFallback && (
+    <div className="split-main w-full">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4 w-full">
+        <div className="flex items-center gap-3 text-[12px] text-secondary/50">
+          {timestamp && <span>{getTimeLabel(timestamp)}</span>}
+          {source && <span>· {source}</span>}
+          {sourceCount && sourceCount > 1 && <span>· {sourceCount} sources</span>}
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => {
+              const shareUrl = itemId ? buildShareUrl(itemId, feedType) : url;
+              if (shareUrl) {
+                navigator.clipboard.writeText(shareUrl);
+                onCopyLink?.();
+              }
+            }}
+            className="p-1.5 rounded-lg text-secondary/40 hover:text-foreground hover:bg-surface-secondary transition-colors"
+            title="Copy link"
+          >
+            <Share2 size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Title */}
+      <h1 className="text-[1.75rem] font-semibold text-foreground leading-tight mb-6">
+        {title}
+      </h1>
+
+      {/* Image */}
+      {imageUrl && (
+        <div className="mb-6">
           <img
             src={imageUrl}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-            onError={() => setShowFallback(true)}
+            className="max-h-[300px] object-contain"
           />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-7">
-          <div className="flex items-center gap-2 mb-2">
-            <Flame size={14} className="text-white/60" />
-            <span className="text-[11px] font-semibold text-white/60 uppercase tracking-wide">Featured</span>
-          </div>
-          <h2 className="text-lg sm:text-xl font-bold text-white leading-snug line-clamp-2 mb-1">
-            {display.title}
-          </h2>
-          <p className="text-sm text-white/50 line-clamp-2 leading-relaxed max-w-xl">
-            {stripMarkdown(display.subtitle || display.summary || '')}
-          </p>
-          {display.isSingleton && display.article ? (
-            <p className="text-xs text-white/40 mt-2">
-              {display.article.source_name || 'Source'}
-              {display.readingTime ? ` · ${display.readingTime} min read` : ''}
-            </p>
-          ) : (
-            <p className="text-xs text-white/40 mt-2">
-              {topic.source_count} sources · {topic.article_count} updates
-            </p>
-          )}
-        </div>
-      </div>
-    </button>
-  );
-}
-
-function TopicListRow({
-  topic,
-  onPress,
-}: {
-  topic: TrendingTopic;
-  onPress: () => void;
-}) {
-  const display = getTopicDisplay(topic);
-  const imageUrl = getArticleImage(display.thumbnail, display.title);
-  const fallbackUrl = getArticleImage(null, display.title);
-  const [showFallback, setShowFallback] = useState(false);
-  const summary = stripMarkdown(display.subtitle || display.summary || '');
-
-  return (
-    <button
-      onClick={onPress}
-      className="w-full text-left flex items-center gap-4 p-3.5 rounded-2xl hover:bg-surface-secondary transition-colors group"
-    >
-      <div className="relative w-20 h-20 sm:w-[88px] sm:h-[88px] rounded-xl overflow-hidden bg-surface-secondary shrink-0">
-        <img src={fallbackUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        {!showFallback && (
-          <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" onError={() => setShowFallback(true)} />
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <h3 className="font-semibold text-[15px] leading-snug line-clamp-2 group-hover:text-secondary transition-colors">
-          {display.title}
-        </h3>
-        {summary && (
-          <p className="text-sm text-secondary/50 line-clamp-1 leading-relaxed mt-1">
-            {summary}
-          </p>
-        )}
-        {display.isSingleton && display.article ? (
-          <p className="text-xs text-secondary/40 mt-1">
-            {display.article.source_name || 'Source'}
-            {display.readingTime ? ` · ${display.readingTime} min read` : ''}
-          </p>
-        ) : (
-          <p className="text-xs text-secondary/40 mt-1">
-            {topic.source_count} sources · {topic.article_count} updates
-          </p>
-        )}
-      </div>
-      <ChevronRight size={16} className="text-secondary/30 shrink-0" />
-    </button>
-  );
-}
-
-/* ─── Topic Detail View (overview + key points + timeline) ─── */
-
-function TopicDetailView({
-  topic,
-  nextTopic,
-  onBack,
-  onOpenArticle,
-  onOpenNextTopic,
-}: {
-  topic: TrendingTopic;
-  nextTopic: TrendingTopic | null;
-  onBack: () => void;
-  onOpenArticle: (item: FeedItem, options?: { returnTo?: string }) => void;
-  onOpenNextTopic: (topic: TrendingTopic) => void;
-}) {
-  const display = getTopicDisplay(topic);
-  const isSingletonTopic = display.isSingleton;
-  const primaryArticle = display.article;
-  const primaryShort = primaryArticle?.summary?.short_article;
-  const displayTitle = display.title;
-  const displayImage = display.thumbnail;
-  const displayBody = primaryShort?.body || topic.summary || '';
-  const splitBody = useMemo(() => splitSummaryParagraphs(displayBody), [displayBody]);
-  const displayKeyPoints = isSingletonTopic
-    ? (primaryShort?.key_takeaways || [])
-    : (topic.key_points || []);
-  const readingTime = display.readingTime;
-  const fallbackUrl = getArticleImage(null, displayTitle);
-  const [showFallback, setShowFallback] = useState(false);
-  const [shareCopied, setShareCopied] = useState(false);
-
-  const handleShare = async () => {
-    const slug = topic.id;
-    const shareUrl = `https://www.yourtrace.online/topics/${slug}`;
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setShareCopied(true);
-      setTimeout(() => setShareCopied(false), 2000);
-    } catch { /* nothing */ }
-  };
-
-  const sortedTimeline = useMemo(() => {
-    if (!topic.timeline) return [];
-    return [...topic.timeline].sort((a, b) =>
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-  }, [topic.timeline]);
-
-  const findArticle = useCallback((event: TopicTimelineEvent): FeedItem | null => {
-    if (!event.article_url || !topic.articles) return null;
-    return topic.articles.find(
-      a => a.url === event.article_url && a.summary?.short_article?.body
-    ) || null;
-  }, [topic.articles]);
-
-  const heroImageUrl = getArticleImage(displayImage, displayTitle);
-
-  return (
-    <div>
-      {/* Hero */}
-      <div className="relative aspect-[1.2/1] sm:aspect-[1.4/1] rounded-2xl overflow-hidden bg-surface-secondary mb-6">
-        <img src={fallbackUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        {!showFallback && (
-          <img src={heroImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" onError={() => setShowFallback(true)} />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-        <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
-          <button
-            onClick={onBack}
-            className="w-9 h-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center hover:bg-black/70 transition-colors"
-          >
-            <ArrowLeft size={18} className="text-white" />
-          </button>
-          <button
-            onClick={handleShare}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur hover:bg-black/70 transition-colors text-white text-xs font-medium"
-          >
-            {shareCopied ? <Check size={14} className="text-green-400" /> : <Share2 size={14} />}
-            {shareCopied ? 'Copied!' : 'Share'}
-          </button>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-7">
-          <h1 className="text-xl sm:text-2xl font-bold text-white leading-snug mb-1">
-            {displayTitle}
-          </h1>
-          {isSingletonTopic && primaryArticle ? (
-            <p className="text-xs text-white/40">
-              {primaryArticle.source_name || 'Source'}
-              {readingTime ? ` · ${readingTime} min read` : ''}
-            </p>
-          ) : (
-            <p className="text-xs text-white/40">
-              {topic.source_count} sources · {topic.article_count} updates
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Overview */}
-      {displayBody && (
-        <div className="mb-6">
-          <div className="space-y-4">
-            {splitBody.first && (
-              <div className="prose prose-sm dark:prose-invert max-w-none text-secondary leading-relaxed">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{splitBody.first}</ReactMarkdown>
-              </div>
-            )}
-            {splitBody.rest && (
-              <div className="prose prose-sm dark:prose-invert max-w-none text-secondary leading-relaxed">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{splitBody.rest}</ReactMarkdown>
-              </div>
-            )}
-          </div>
         </div>
       )}
 
+      {/* Body */}
+      <div className="text-secondary leading-relaxed mb-6">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{body}</ReactMarkdown>
+      </div>
+
       {/* Key Points */}
-      {displayKeyPoints && displayKeyPoints.length > 0 && (
-        <div className="mb-8">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Key Points</h3>
-          <div className="space-y-2.5">
-            {displayKeyPoints.slice(0, 6).map((point, i) => (
+      {keyPoints && keyPoints.length > 0 && (
+        <div className="mb-6 p-4 rounded-lg bg-surface-secondary">
+          <h3 className="text-xs font-semibold text-secondary/60 mb-3 uppercase tracking-wide">
+            Key Points
+          </h3>
+          <div className="space-y-2">
+            {keyPoints.map((point, i) => (
               <div key={i} className="flex gap-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-secondary/30 mt-2 shrink-0" />
-                <div className="text-sm text-secondary leading-relaxed prose prose-sm dark:prose-invert max-w-none">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{point}</ReactMarkdown>
-                </div>
+                <span className="text-secondary/30 font-mono text-xs mt-0.5">{i + 1}.</span>
+                <p className="text-sm text-secondary leading-relaxed">{stripMarkdown(point)}</p>
               </div>
             ))}
           </div>
@@ -390,365 +300,129 @@ function TopicDetailView({
       )}
 
       {/* Timeline */}
-      {!isSingletonTopic && sortedTimeline.length > 0 && (
-        <div className="mb-8">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Timeline</h3>
-          <div className="relative pl-6 border-l-2 border-border/30">
-            {sortedTimeline.map((event, i) => {
-              const article = findArticle(event);
-              const isClickable = !!article;
-
-              return (
-                <div key={event.id || i} className="relative pb-6 last:pb-0">
-                  <div className={`absolute -left-[25px] top-1 w-3 h-3 rounded-full border-2 ${
-                    i === 0 ? 'bg-foreground border-foreground' : 'bg-background border-secondary/30'
-                  }`} />
-                  {isClickable ? (
-                    <button
-                      onClick={() => {
-                        const slug = topic.id;
-                        sessionStorage.setItem(FEED_TOPIC_CACHE_KEY, JSON.stringify(topic));
-                        onOpenArticle(article!, { returnTo: `/feed?topic=${encodeURIComponent(slug)}` });
-                      }}
-                      className="w-full text-left group hover:bg-surface-secondary rounded-xl p-3 -m-3 transition-colors"
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[11px] text-secondary/40">{getTimeAgo(event.timestamp)}</span>
-                        {event.source_name && (
-                          <>
-                            <span className="text-secondary/20">·</span>
-                            <span className="text-[11px] text-secondary/40">{event.source_name}</span>
-                          </>
-                        )}
-                      </div>
-                      <h4 className="text-sm font-medium text-foreground leading-snug mb-1 group-hover:text-secondary transition-colors">
-                        {event.title}
-                      </h4>
-                      {event.summary && (
-                        <p className="text-xs text-secondary/50 line-clamp-2 leading-relaxed">{stripMarkdown(event.summary)}</p>
-                      )}
-                      <div className="flex items-center gap-1 mt-1.5 text-secondary/30">
-                        <span className="text-[10px]">Read summary</span>
-                        <ChevronRight size={12} />
-                      </div>
-                    </button>
-                  ) : (
-                    <div className="p-3 -m-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[11px] text-secondary/40">{getTimeAgo(event.timestamp)}</span>
-                        {event.source_name && (
-                          <>
-                            <span className="text-secondary/20">·</span>
-                            <span className="text-[11px] text-secondary/40">{event.source_name}</span>
-                          </>
-                        )}
-                      </div>
-                      <h4 className="text-sm font-medium text-foreground leading-snug mb-1">
-                        {event.title}
-                      </h4>
-                      {event.summary && (
-                        <p className="text-xs text-secondary/50 line-clamp-2 leading-relaxed">{stripMarkdown(event.summary)}</p>
-                      )}
-                    </div>
+      {hasTimeline && (
+        <div className="mb-6 overflow-hidden">
+          <h3 className="text-xs font-semibold text-secondary/60 mb-4 uppercase tracking-wide">
+            Timeline
+          </h3>
+          <div className="space-y-3">
+            {sortedTimeline.slice(0, 8).map((event, i) => (
+              <div key={event.id || i} className="pb-5 last:pb-0 pr-2">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="text-[10px] text-secondary/50">{getTimeLabel(event.timestamp)}</span>
+                  {event.source_name && (
+                    <>
+                      <span className="text-secondary/20 text-[10px]">·</span>
+                      <span className="text-[10px] text-secondary/50 truncate max-w-[120px]">{event.source_name}</span>
+                    </>
                   )}
                 </div>
-              );
-            })}
+                <h4 className="text-sm font-medium text-foreground leading-snug break-words">
+                  {event.title}
+                </h4>
+                {event.summary && (
+                  <p className="text-xs text-secondary/60 line-clamp-2 mt-1 break-words">{stripMarkdown(event.summary)}</p>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      {nextTopic && (
-        <div className="mt-10 pt-6 border-t border-border/40">
-          <p className="text-[11px] font-semibold text-secondary/40 uppercase tracking-wide mb-3">
-            Next Story
-          </p>
-          <button
-            onClick={() => onOpenNextTopic(nextTopic)}
-            className="w-full text-left flex items-center gap-4 p-4 rounded-2xl bg-surface-secondary hover:bg-surface-secondary/70 transition-colors group"
+      {/* Source Link */}
+      {url && (
+        <div className="pt-5 border-t border-sidebar-border">
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-sm text-secondary/60 hover:text-foreground transition-colors"
           >
-            <div className="flex-1 min-w-0">
-              <h3 className="text-base font-semibold leading-snug text-foreground group-hover:text-secondary transition-colors line-clamp-2">
-                {getTopicDisplay(nextTopic).title}
-              </h3>
-              <p className="text-sm text-secondary/50 mt-1 line-clamp-2 leading-relaxed">
-                {stripMarkdown(getTopicDisplay(nextTopic).subtitle || getTopicDisplay(nextTopic).summary || '')}
-              </p>
-              <p className="text-xs text-secondary/40 mt-2">
-                {getTopicDisplay(nextTopic).isSingleton && getTopicDisplay(nextTopic).article
-                  ? `${getTopicDisplay(nextTopic).article?.source_name || 'Source'}${getTopicDisplay(nextTopic).readingTime ? ` · ${getTopicDisplay(nextTopic).readingTime} min read` : ''}`
-                  : `${nextTopic.source_count} sources · ${nextTopic.article_count} updates`}
-              </p>
-            </div>
-            <div className="shrink-0">
-              <ChevronRight size={18} className="text-secondary/30 group-hover:text-secondary transition-colors" />
-            </div>
-          </button>
+            Read original source →
+          </a>
         </div>
       )}
     </div>
   );
 }
 
-/* ─── For You List Row (with source chip) ─── */
+/* ─── Empty State ─── */
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="split-main flex items-center justify-center">
+      <p className="text-secondary/50 text-sm">{message}</p>
+    </div>
+  );
+}
 
-function ForYouListRow({
-  item,
-  onPress,
-  onHover,
-}: {
-  item: FeedItem;
-  onPress: () => void;
-  onHover?: () => void;
-}) {
-  const fallbackUrl = getArticleImage(null, item.title);
-  const [showFallback, setShowFallback] = useState(false);
-  const imageUrl = getArticleImage(item.thumbnail, item.title);
-  const hasHovered = useRef(false);
-  const hasImage = item.thumbnail && !item.thumbnail.includes('placeholder');
-  const subtitle = stripMarkdown(item.summary?.short_article?.subtitle || item.description || '');
+/* ─── Upgrade CTA Card ─── */
+function UpgradeCard({ lockedCount, type }: { lockedCount: number; type: 'trending' | 'for_you' }) {
+  const message = type === 'trending'
+    ? `${lockedCount}+ more trending stories`
+    : `${lockedCount}+ personalized articles`;
 
   return (
-    <button
-      onClick={onPress}
-      onMouseEnter={() => {
-        if (!hasHovered.current && onHover) { hasHovered.current = true; onHover(); }
-      }}
-      className="w-full text-left flex items-center gap-4 p-3.5 rounded-2xl hover:bg-surface-secondary transition-colors group"
-    >
-      <div className="relative w-20 h-20 sm:w-[88px] sm:h-[88px] rounded-xl overflow-hidden bg-surface-secondary shrink-0">
-        {hasImage && !showFallback ? (
-          <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" onError={() => setShowFallback(true)} />
-        ) : item.source_name ? (
-          <div
-            className="w-full h-full flex items-center justify-center text-white font-bold text-sm"
-            style={{ backgroundColor: hashColor(item.source_name) }}
-          >
-            {getSourceInitials(item.source_name)}
-          </div>
-        ) : (
-          <img src={fallbackUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        )}
+    <div className="p-4 mx-4 my-3 rounded-xl bg-gradient-to-br from-foreground/5 to-foreground/10 border border-foreground/10">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-8 h-8 rounded-lg bg-foreground/10 flex items-center justify-center">
+          <Lock size={14} className="text-foreground/60" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-foreground">{message}</p>
+          <p className="text-[11px] text-secondary/60">Unlock with Pro</p>
+        </div>
       </div>
-      <div className="flex-1 min-w-0">
-        <h3 className="font-semibold text-[15px] leading-snug line-clamp-2 group-hover:text-secondary transition-colors">
-          {item.title}
+      <Link
+        href="/profile?tab=subscription"
+        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold bg-foreground text-background hover:bg-foreground/90 transition-colors"
+      >
+        <Sparkles size={14} />
+        Start Free Trial
+      </Link>
+    </div>
+  );
+}
+
+/* ─── Upgrade Banner for Content Area ─── */
+function UpgradeBanner() {
+  return (
+    <div className="split-main flex items-center justify-center">
+      <div className="text-center max-w-sm px-6">
+        <div className="w-14 h-14 rounded-2xl bg-foreground/10 flex items-center justify-center mx-auto mb-4">
+          <Sparkles size={24} className="text-foreground/60" />
+        </div>
+        <h3 className="text-lg font-semibold text-foreground mb-2">
+          Unlock Your Full Feed
         </h3>
-        {subtitle && (
-          <p className="text-sm text-secondary/50 line-clamp-1 leading-relaxed mt-1">
-            {subtitle}
-          </p>
-        )}
-        <div className="flex items-center gap-2 mt-1">
-          {item.source_name && (
-            <span className="text-xs text-secondary/40">{item.source_name}</span>
-          )}
-          {item.source_name && item.published_date && <span className="text-secondary/20">·</span>}
-          {item.published_date && (
-            <span className="text-xs text-secondary/40">{getTimeAgo(item.published_date)}</span>
-          )}
-        </div>
+        <p className="text-sm text-secondary/60 mb-5">
+          Get unlimited access to all trending topics, personalized articles, and AI summaries.
+        </p>
+        <Link
+          href="/profile?tab=subscription"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold bg-foreground text-background hover:bg-foreground/90 transition-colors"
+        >
+          <Sparkles size={16} />
+          Start 7-Day Free Trial
+        </Link>
+        <p className="text-[11px] text-secondary/40 mt-3">
+          Cancel anytime · $2.99/month after trial
+        </p>
       </div>
-      <ChevronRight size={16} className="text-secondary/30 shrink-0" />
-    </button>
+    </div>
   );
-}
-
-/* ─── Deep Dive Row ─── */
-
-function DeepDiveRow({
-  item,
-  onPress,
-  onHover,
-}: {
-  item: FeedItem;
-  onPress: () => void;
-  onHover?: () => void;
-}) {
-  const fallbackUrl = getArticleImage(null, item.title);
-  const [showFallback, setShowFallback] = useState(false);
-  const imageUrl = getArticleImage(item.thumbnail, item.title);
-  const hasHovered = useRef(false);
-  const subtitle = stripMarkdown(item.summary?.deep_dive?.subtitle || item.summary?.short_article?.subtitle || item.description || '');
-  const chapterCount = item.summary?.deep_dive?.chapters?.length || 0;
-
-  return (
-    <button
-      onClick={onPress}
-      onMouseEnter={() => {
-        if (!hasHovered.current && onHover) { hasHovered.current = true; onHover(); }
-      }}
-      className="w-full text-left p-4 rounded-2xl bg-surface-secondary hover:bg-surface-secondary/70 transition-colors group"
-    >
-      <div className="flex items-start gap-4">
-        <div className="relative w-24 h-20 sm:w-28 sm:h-24 rounded-xl overflow-hidden bg-surface shrink-0">
-          {!showFallback ? (
-            <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" onError={() => setShowFallback(true)} />
-          ) : (
-            <img src={fallbackUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <GraduationCap size={12} className="text-secondary/40" />
-            <span className="text-[11px] font-medium text-secondary/50 uppercase tracking-wide">Deep Dive</span>
-          </div>
-          <h3 className="font-semibold text-[15px] leading-snug line-clamp-2 group-hover:text-secondary transition-colors">
-            {item.title}
-          </h3>
-          {subtitle && (
-            <p className="text-xs text-secondary/40 line-clamp-1 mt-1">{subtitle}</p>
-          )}
-          <div className="flex items-center gap-2 mt-1.5 text-xs text-secondary/30">
-            {chapterCount > 0 && <span>{chapterCount} chapters</span>}
-            {item.sources && item.sources.length > 0 && (
-              <>
-                {chapterCount > 0 && <span>·</span>}
-                <span>{item.sources.length} sources</span>
-              </>
-            )}
-          </div>
-        </div>
-        <ChevronRight size={16} className="text-secondary/30 shrink-0 mt-2" />
-      </div>
-    </button>
-  );
-}
-
-/* ─── Featured For You Card ─── */
-
-function ForYouFeaturedCard({
-  item,
-  onPress,
-  onHover,
-}: {
-  item: FeedItem;
-  onPress: () => void;
-  onHover?: () => void;
-}) {
-  const fallbackUrl = getArticleImage(null, item.title);
-  const [showFallback, setShowFallback] = useState(false);
-  const imageUrl = getArticleImage(item.thumbnail, item.title);
-  const subtitle = stripMarkdown(item.summary?.short_article?.subtitle || item.description || '');
-  const hasHovered = useRef(false);
-
-  return (
-    <button
-      onClick={onPress}
-      onMouseEnter={() => {
-        if (!hasHovered.current && onHover) { hasHovered.current = true; onHover(); }
-      }}
-      className="w-full text-left group mb-6"
-    >
-      <div className="relative aspect-[1.3/1] sm:aspect-[1.6/1] rounded-2xl overflow-hidden bg-surface-secondary">
-        <img src={fallbackUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        {!showFallback && (
-          <img
-            src={imageUrl}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-            onError={() => setShowFallback(true)}
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-7">
-          <div className="flex items-center gap-2 mb-2">
-            <Compass size={14} className="text-white/60" />
-            <span className="text-[11px] font-semibold text-white/60 uppercase tracking-wide">Top Pick</span>
-          </div>
-          <h2 className="text-lg sm:text-xl font-bold text-white leading-snug line-clamp-2 mb-1">
-            {item.title}
-          </h2>
-          {subtitle && (
-            <p className="text-sm text-white/50 line-clamp-2 leading-relaxed max-w-xl">{subtitle}</p>
-          )}
-          <div className="flex items-center gap-2 mt-2">
-            {item.source_name && (
-              <span className="text-xs text-white/40">{item.source_name}</span>
-            )}
-            {item.published_date && (
-              <>
-                <span className="text-white/20">·</span>
-                <span className="text-xs text-white/40">{getTimeAgo(item.published_date)}</span>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-    </button>
-  );
-}
-
-/* ─── Interest group types ─── */
-
-type InterestGroup = { id: string; label: string; items: FeedItem[] };
-type ForYouSection =
-  | { type: 'interest'; group: InterestGroup }
-  | { type: 'deep_dive'; item: FeedItem };
-
-function groupByInterest(items: FeedItem[]): InterestGroup[] {
-  const groups = new Map<string, FeedItem[]>();
-  for (const item of items) {
-    const id = item.interest_id || '_general';
-    if (!groups.has(id)) groups.set(id, []);
-    groups.get(id)!.push(item);
-  }
-  return Array.from(groups.entries()).map(([id, list]) => ({
-    id,
-    label: INTEREST_LABELS[id] || 'Picks for You',
-    items: list,
-  }));
-}
-
-function buildForYouSections(
-  feed: V3UserFeed,
-  isSubscribed: boolean,
-  featuredId?: string,
-): ForYouSection[] {
-  const forYouItems = isSubscribed
-    ? feed.for_you
-    : feed.for_you.slice(0, (FREE_LIMITS.for_you ?? 2));
-  const deepDiveItems = isSubscribed
-    ? feed.deep_dives
-    : feed.deep_dives.slice(0, (FREE_LIMITS.deep_dives ?? 1));
-
-  const filtered = featuredId
-    ? forYouItems.filter(i => i.id !== featuredId)
-    : forYouItems;
-
-  const interests = groupByInterest(filtered);
-  const result: ForYouSection[] = [];
-
-  let ddIdx = 0;
-  for (let i = 0; i < interests.length; i++) {
-    result.push({ type: 'interest', group: interests[i] });
-    if (ddIdx < deepDiveItems.length) {
-      result.push({ type: 'deep_dive', item: deepDiveItems[ddIdx] });
-      ddIdx++;
-    }
-  }
-  while (ddIdx < deepDiveItems.length) {
-    result.push({ type: 'deep_dive', item: deepDiveItems[ddIdx] });
-    ddIdx++;
-  }
-
-  return result;
 }
 
 /* ─── Main Feed Page ─── */
-
 function FeedPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, profile, loading, profileResolved } = useAuth();
   const tabParam = parseFeedTab(searchParams.get('tab'));
-  const topicParam = searchParams.get('topic');
+  const [feedBuildNow] = useState(() => Date.now());
 
   const [activeTab, setActiveTab] = useState<FeedTab>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      const topic = params.get('topic');
-      if (topic) return 'trending';
       const tabFromUrl = parseFeedTab(params.get('tab'));
       if (tabFromUrl) return tabFromUrl;
       const saved = sessionStorage.getItem('trace_feed_tab');
@@ -757,41 +431,26 @@ function FeedPageContent() {
     return 'trending';
   });
 
-  const [selectedTopic, setSelectedTopic] = useState<TrendingTopic | null>(() => {
-    if (typeof window === 'undefined') return null;
-    const topic = new URLSearchParams(window.location.search).get('topic');
-    if (!topic) return null;
-    const raw = sessionStorage.getItem(FEED_TOPIC_CACHE_KEY);
-    if (!raw) return null;
-    try {
-      const cached = JSON.parse(raw) as TrendingTopic;
-      return (cached.id === topic || cached.topic_key === topic) ? cached : null;
-    } catch {
-      return null;
-    }
-  });
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showMobileContent, setShowMobileContent] = useState(false);
+  const [showCopiedToast, setShowCopiedToast] = useState(false);
 
-  const findTopicFromParam = useCallback((value: string, topics: TrendingTopic[]) => {
-    const byId = topics.find((t) => t.id === value);
-    if (byId) return byId;
-    const byKey = topics.filter((t) => t.topic_key === value);
-    return byKey.length === 1 ? byKey[0] : null;
+  const handleCopyLink = useCallback(() => {
+    setShowCopiedToast(true);
+    setTimeout(() => setShowCopiedToast(false), 2000);
   }, []);
 
   useEffect(() => {
     sessionStorage.setItem('trace_feed_tab', activeTab);
   }, [activeTab]);
 
+  // Sync tab from URL param (only on initial load or external navigation)
   useEffect(() => {
-    const nextTab: FeedTab = topicParam ? 'trending' : (tabParam || 'trending');
-    if (activeTab !== nextTab) {
-      setActiveTab(nextTab);
+    if (tabParam) {
+      setActiveTab(tabParam);
     }
-    if (!topicParam && selectedTopic) {
-      setSelectedTopic(null);
-      sessionStorage.removeItem(FEED_TOPIC_CACHE_KEY);
-    }
-  }, [activeTab, tabParam, topicParam, selectedTopic]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabParam]);
 
   const { data: v3Feed, isLoading: feedLoading, mutate: mutateFeed } = useSWR<V3UserFeed | null>(
     user?.uid ? `feed-${user.uid}` : null,
@@ -805,65 +464,6 @@ function FeedPageContent() {
     { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
 
-  const prefetchArticle = useCallback((item: FeedItem) => {
-    sessionStorage.setItem(`trace_article_${item.id}`, JSON.stringify(item));
-  }, []);
-
-  const openArticle = useCallback((item: FeedItem, options?: { returnTo?: string }) => {
-    sessionStorage.setItem("trace_article", JSON.stringify(item));
-    const params = new URLSearchParams();
-    if (activeTab === 'for_you') params.set('tab', 'for_you');
-    if (activeTab === 'trending' && topicParam) params.set('topic', topicParam);
-    const defaultReturnTo = params.toString() ? `/feed?${params.toString()}` : '/feed';
-    const returnTo = options?.returnTo || defaultReturnTo;
-    sessionStorage.setItem(ARTICLE_RETURN_TO_KEY, returnTo);
-
-    const articleParams = new URLSearchParams();
-    articleParams.set('returnTo', returnTo);
-    router.push(`/feed/article?${articleParams.toString()}`);
-  }, [activeTab, topicParam, router]);
-
-  const navigateFeedState = useCallback((
-    nextTab: FeedTab,
-    options?: { topic?: string | null; replace?: boolean; scroll?: boolean }
-  ) => {
-    const params = new URLSearchParams();
-    if (nextTab === 'for_you') params.set('tab', 'for_you');
-    if (nextTab === 'trending' && options?.topic) params.set('topic', options.topic);
-    const query = params.toString();
-    const href = query ? `/feed?${query}` : '/feed';
-    const shouldScroll = options?.scroll ?? false;
-    if (options?.replace) router.replace(href, { scroll: shouldScroll });
-    else router.push(href, { scroll: shouldScroll });
-  }, [router]);
-
-  const openTopic = useCallback((topic: TrendingTopic) => {
-    const slug = topic.id;
-    sessionStorage.setItem(FEED_TOPIC_CACHE_KEY, JSON.stringify(topic));
-    navigateFeedState('trending', { topic: slug, scroll: true });
-  }, [navigateFeedState]);
-
-  const closeTopic = useCallback(() => {
-    setSelectedTopic(null);
-    sessionStorage.removeItem(FEED_TOPIC_CACHE_KEY);
-    navigateFeedState('trending', { replace: true });
-  }, [navigateFeedState]);
-
-  const handleTabChange = useCallback((tab: FeedTab) => {
-    if (tab === 'for_you') {
-      if (activeTab === 'for_you' && !topicParam) return;
-      setSelectedTopic(null);
-      sessionStorage.removeItem(FEED_TOPIC_CACHE_KEY);
-      setActiveTab('for_you');
-      navigateFeedState('for_you');
-      return;
-    }
-
-    if (activeTab === 'trending' && !topicParam) return;
-    setActiveTab('trending');
-    navigateFeedState('trending');
-  }, [activeTab, navigateFeedState, topicParam]);
-
   const isSubscribed = profile?.subscriptionStatus === 'active' || profile?.subscriptionStatus === 'trial'
     || profile?.appSubscriptionStatus === 'active' || profile?.appSubscriptionStatus === 'trial';
 
@@ -874,7 +474,7 @@ function FeedPageContent() {
     const ts = typeof raw === 'string' ? new Date(raw).getTime()
       : raw?.toDate ? raw.toDate().getTime()
       : raw?.seconds ? raw.seconds * 1000 : 0;
-    return ts > 0 && Date.now() - ts < 5 * 60 * 1000;
+    return ts > 0 && feedBuildNow - ts < 5 * 60 * 1000;
   })();
 
   useEffect(() => {
@@ -891,7 +491,7 @@ function FeedPageContent() {
     return () => clearInterval(interval);
   }, [isFeedBuilding, user, mutateFeed]);
 
-  // Trending topics (sorted like mobile)
+  // Trending topics
   const trendingTopics = useMemo(() => {
     const topics = v3Feed?.trending_topics || [];
     return [...topics].sort((a, b) => {
@@ -901,67 +501,150 @@ function FeedPageContent() {
     });
   }, [v3Feed?.trending_topics]);
 
-  useEffect(() => {
-    if (!topicParam) return;
-    const decoded = decodeURIComponent(topicParam);
-    const match = findTopicFromParam(decoded, trendingTopics);
-    if (match) {
-      setSelectedTopic(match);
-      sessionStorage.setItem(FEED_TOPIC_CACHE_KEY, JSON.stringify(match));
-      if (activeTab !== 'trending') setActiveTab('trending');
-      return;
-    }
-    const raw = sessionStorage.getItem(FEED_TOPIC_CACHE_KEY);
-    if (!raw) return;
-    try {
-      const cached = JSON.parse(raw) as TrendingTopic;
-      if (cached.id === decoded || cached.topic_key === decoded) {
-        setSelectedTopic(cached);
-        if (activeTab !== 'trending') setActiveTab('trending');
-      }
-    } catch {
-      // no-op: malformed cache
-    }
-  }, [topicParam, trendingTopics, activeTab, findTopicFromParam]);
+  const visibleTrendingTopics = useMemo(() => (
+    isSubscribed ? trendingTopics : trendingTopics.slice(0, FREE_LIMITS.trending)
+  ), [isSubscribed, trendingTopics]);
 
-  const featuredTopic = trendingTopics[0] || null;
-  const restTopics = trendingTopics.slice(1).filter(t => {
-    if (!featuredTopic) return true;
-    if (t.id === featuredTopic.id) return false;
-    // fuzzy title dedup: if >50% of significant words overlap, treat as same topic
-    const stopWords = new Set(['the','a','an','and','or','in','on','at','to','of','for','is','are','was','its','with','as']);
-    const words = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g,'').split(' ').filter(w => w.length > 2 && !stopWords.has(w));
-    const wa = new Set(words(featuredTopic.title));
-    const wb = words(t.title);
-    if (wa.size === 0 || wb.length === 0) return true;
-    const overlap = wb.filter(w => wa.has(w)).length;
-    return overlap / Math.max(wa.size, wb.length) < 0.5;
-  });
-  const nextTopic = useMemo(() => {
-    if (!selectedTopic || trendingTopics.length <= 1) return null;
-    const currentIndex = trendingTopics.findIndex((t) => t.id === selectedTopic.id);
-    if (currentIndex === -1) return null;
-    return trendingTopics[(currentIndex + 1) % trendingTopics.length] || null;
-  }, [selectedTopic, trendingTopics]);
+  // For You items
+  const forYouItems = useMemo(() => {
+    if (!v3Feed?.for_you?.length) return [];
+    return isSubscribed ? v3Feed.for_you : v3Feed.for_you.slice(0, FREE_LIMITS.for_you);
+  }, [v3Feed?.for_you, isSubscribed]);
 
-  // For You sections
-  const forYouFeatured = useMemo(() => {
-    if (!v3Feed?.for_you?.length) return null;
-    return v3Feed.for_you[0];
-  }, [v3Feed?.for_you]);
+  // Locked counts for upgrade prompts
+  const lockedTrendingCount = useMemo(() => {
+    const total = trendingTopics.length || (v3Feed?.trending?.length || 0);
+    return Math.max(0, total - FREE_LIMITS.trending);
+  }, [trendingTopics.length, v3Feed?.trending?.length]);
 
-  const forYouSections = useMemo(() => {
-    if (!v3Feed) return [];
-    return buildForYouSections(v3Feed, !!isSubscribed, forYouFeatured?.id);
-  }, [v3Feed, isSubscribed, forYouFeatured?.id]);
+  const lockedForYouCount = useMemo(() => {
+    const total = v3Feed?.for_you?.length || 0;
+    return Math.max(0, total - FREE_LIMITS.for_you);
+  }, [v3Feed?.for_you?.length]);
 
-  // Fallback: flat trending items if no topics available
+  // Flat trending fallback
   const flatTrendingItems = useMemo(() => {
     if (trendingTopics.length > 0) return [];
-    return v3Feed?.trending || [];
-  }, [v3Feed?.trending, trendingTopics.length]);
+    const items = v3Feed?.trending || [];
+    return isSubscribed ? items : items.slice(0, FREE_LIMITS.trending);
+  }, [v3Feed?.trending, trendingTopics.length, isSubscribed]);
 
-  const isTabLimited = !isSubscribed && activeTab === 'for_you' && v3Feed != null;
+  // Get current list based on active tab
+  const currentList = useMemo(() => {
+    if (activeTab === 'trending') {
+      if (visibleTrendingTopics.length > 0) {
+        return visibleTrendingTopics.map(topic => {
+          const display = getTopicDisplay(topic);
+          return {
+            id: topic.id,
+            type: 'topic' as const,
+            title: display.title,
+            preview: getPreview(display.subtitle || display.summary),
+            timestamp: topic.articles?.[0]?.published_date,
+            source: display.isSingleton ? display.article?.source_name : `${topic.source_count} sources`,
+            thumbnail: display.isSingleton ? display.article?.thumbnail : topic.thumbnail,
+            data: topic,
+          };
+        });
+      }
+      return (flatTrendingItems.length > 0 ? flatTrendingItems : fallbackTrending).map(item => ({
+        id: item.id,
+        type: 'article' as const,
+        title: item.title,
+        preview: getPreview(getArticleSummary(item)),
+        timestamp: item.published_date,
+        source: item.source_name,
+        thumbnail: item.thumbnail,
+        data: item,
+      }));
+    }
+
+    if (activeTab === 'for_you') {
+      return forYouItems.map(item => ({
+        id: item.id,
+        type: 'article' as const,
+        title: item.title,
+        preview: getPreview(getArticleSummary(item)),
+        timestamp: item.published_date,
+        source: item.source_name,
+        thumbnail: item.thumbnail,
+        data: item,
+      }));
+    }
+
+    return [];
+  }, [activeTab, visibleTrendingTopics, flatTrendingItems, fallbackTrending, forYouItems]);
+
+  // Auto-select first item when list changes
+  useEffect(() => {
+    if (currentList.length > 0 && (!selectedId || !currentList.find(item => item.id === selectedId))) {
+      setSelectedId(currentList[0].id);
+    }
+  }, [currentList, selectedId]);
+
+  // Get selected item details
+  const selectedItem = useMemo(() => {
+    if (!selectedId) return null;
+    return currentList.find(item => item.id === selectedId) || null;
+  }, [currentList, selectedId]);
+
+  const selectedContent = useMemo(() => {
+    if (!selectedItem) return null;
+
+    if (selectedItem.type === 'topic') {
+      const topic = selectedItem.data as TrendingTopic;
+      const display = getTopicDisplay(topic);
+      const articleId = display.isSingleton ? display.article?.id : topic.articles?.[0]?.id;
+      const articleUrl = display.isSingleton ? display.article?.url : topic.articles?.[0]?.url;
+      return {
+        title: display.title,
+        body: display.summary || display.subtitle,
+        source: display.isSingleton ? display.article?.source_name : undefined,
+        url: articleUrl,
+        timestamp: topic.articles?.[0]?.published_date,
+        keyPoints: display.isSingleton
+          ? display.article?.summary?.short_article?.key_takeaways
+          : topic.key_points,
+        thumbnail: display.isSingleton ? display.article?.thumbnail : topic.thumbnail,
+        timeline: !display.isSingleton ? topic.timeline : undefined,
+        sourceCount: topic.source_count,
+        itemId: articleId,
+        feedType: 'trending',
+      };
+    }
+
+    const article = selectedItem.data as FeedItem;
+    return {
+      title: article.title,
+      body: getArticleSummary(article),
+      source: article.source_name,
+      url: article.url,
+      timestamp: article.published_date,
+      keyPoints: article.summary?.short_article?.key_takeaways,
+      thumbnail: article.thumbnail,
+      timeline: undefined,
+      sourceCount: undefined,
+      articleCount: undefined,
+      itemId: article.id,
+      feedType: article.feed_type || article.metadata?.feed_type || activeTab,
+    };
+  }, [selectedItem, activeTab]);
+
+  const handleTabChange = useCallback((tab: FeedTab) => {
+    setActiveTab(tab);
+    setSelectedId(null);
+    setShowMobileContent(false);
+    const params = new URLSearchParams();
+    if (tab !== 'trending') params.set('tab', tab);
+    const query = params.toString();
+    router.push(query ? `/feed?${query}` : '/feed', { scroll: false });
+  }, [router]);
+
+  const handleSelectItem = (id: string) => {
+    setSelectedId(id);
+    setShowMobileContent(true);
+  };
+
   const isLoading = loading || (feedLoading && !v3Feed);
 
   if (loading) {
@@ -972,197 +655,297 @@ function FeedPageContent() {
     );
   }
 
-  const hasContent =
-    (activeTab === 'trending' && (trendingTopics.length > 0 || flatTrendingItems.length > 0)) ||
-    (activeTab === 'for_you' && (forYouFeatured || forYouSections.length > 0));
-
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Header />
-      <main className="container mx-auto px-4 max-w-3xl">
-        {/* Tabs */}
-        <div className="pt-6 pb-5">
-          <div className="flex items-center gap-1 bg-surface-secondary rounded-full p-1 self-start w-fit">
-            {TAB_CONFIG.map((tab) => {
-              const active = activeTab === tab.key;
-              return (
-                <button
-                  key={tab.key}
-                  onClick={() => handleTabChange(tab.key)}
-                  className={`px-4 py-2 text-sm font-medium rounded-full transition-all ${
-                    active
-                      ? 'bg-surface text-foreground shadow-sm'
-                      : 'text-secondary/50 hover:text-secondary'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="bg-background border-b border-border/30 px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-14">
+          <Link href="/" className="flex items-center gap-2">
+            <img src="/trace.webp" alt="Trace" className="h-6 w-auto" />
+            <span className="text-sm font-semibold tracking-[0.12em] text-foreground">TRACE</span>
+          </Link>
+          <div className="flex items-center gap-3">
+            {user?.photoURL ? (
+              <Link href="/profile" className="flex items-center gap-2">
+                <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" />
+              </Link>
+            ) : (
+              <Link
+                href="/profile"
+                className="w-8 h-8 rounded-full bg-surface-secondary flex items-center justify-center text-secondary hover:text-foreground transition-colors"
+              >
+                <span className="text-sm font-medium">{user?.email?.[0]?.toUpperCase() || 'U'}</span>
+              </Link>
+            )}
           </div>
         </div>
+      </header>
 
-        {/* Building banner */}
-        {isFeedBuilding && isSubscribed && hasContent && (
-          <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl mb-6 bg-surface-secondary">
-            <Loader2 size={16} className="animate-spin text-secondary/50" />
-            <p className="text-xs text-secondary/60 font-medium">
-              Your full feed is building — refresh in a minute
-            </p>
-          </div>
-        )}
+      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+        {/* Folder Tabs */}
+        <div className="flex items-end">
+          {TAB_CONFIG.map((tab, i) => (
+            <FolderTab
+              key={tab.key}
+              label={tab.label}
+              active={activeTab === tab.key}
+              onClick={() => handleTabChange(tab.key)}
+              isFirst={i === 0}
+            />
+          ))}
+        </div>
 
-        {/* Content */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-24">
-            <Loader2 size={24} className="animate-spin text-secondary/40" />
-          </div>
-        ) : selectedTopic ? (
-          /* Topic Detail View */
-          <TopicDetailView
-            topic={selectedTopic}
-            nextTopic={nextTopic}
-            onBack={closeTopic}
-            onOpenArticle={openArticle}
-            onOpenNextTopic={openTopic}
-          />
-        ) : hasContent ? (
-          <>
-            {/* ─── TRENDING ─── */}
-            {activeTab === 'trending' && trendingTopics.length > 0 && (
-              <>
-                {featuredTopic && (
-                  <TopicFeaturedCard
-                    topic={featuredTopic}
-                    onPress={() => openTopic(featuredTopic)}
-                  />
-                )}
-                {restTopics.length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-semibold text-secondary/40 uppercase tracking-wide px-1 mb-2">
-                      More stories
-                    </h3>
-                    <div className="flex flex-col gap-1">
-                      {restTopics.map((topic) => (
-                        <TopicListRow
-                          key={topic.id}
-                          topic={topic}
-                          onPress={() => openTopic(topic)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+        {/* Desktop Layout */}
+        <div className="hidden md:block">
+          <div className="split-layout">
+          {/* Sidebar */}
+          <div className="split-sidebar">
+            <div className="px-5 py-4 border-b border-sidebar-border">
+              <h2 className="text-[15px] font-semibold text-foreground">
+                {activeTab === 'trending' && 'All Stories'}
+                {activeTab === 'for_you' && 'For You'}
+              </h2>
+            </div>
 
-            {/* Flat trending fallback (if no topics) */}
-            {activeTab === 'trending' && trendingTopics.length === 0 && flatTrendingItems.length > 0 && (
-              <div className="flex flex-col gap-1">
-                {flatTrendingItems.map((item, i) => (
-                  <ForYouListRow
-                    key={`flat-${item.id || i}`}
-                    item={item}
-                    onPress={() => openArticle(item)}
-                    onHover={() => prefetchArticle(item)}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* ─── FOR YOU ─── */}
-            {activeTab === 'for_you' && (
-              <>
-                {forYouFeatured && (
-                  <ForYouFeaturedCard
-                    item={forYouFeatured}
-                    onPress={() => openArticle(forYouFeatured)}
-                    onHover={() => prefetchArticle(forYouFeatured)}
-                  />
-                )}
-                {forYouSections.map((section, si) => {
-                  if (section.type === 'interest') {
-                    return (
-                      <div key={`interest-${section.group.id}`} className="mb-6">
-                        <h3 className="text-xs font-semibold text-secondary/40 uppercase tracking-wide px-1 mb-2">
-                          {section.group.label}
-                        </h3>
-                        <div className="flex flex-col gap-1">
-                          {section.group.items.map((item, ii) => (
-                            <ForYouListRow
-                              key={`fy-${item.id || ii}`}
-                              item={item}
-                              onPress={() => openArticle(item)}
-                              onHover={() => prefetchArticle(item)}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  }
-                  return (
-                    <div key={`dd-${si}`} className="mb-6">
-                      <DeepDiveRow
-                        item={section.item}
-                        onPress={() => openArticle(section.item)}
-                        onHover={() => prefetchArticle(section.item)}
+            <div className="flex-1 overflow-y-auto">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 size={20} className="animate-spin text-secondary/40" />
+                </div>
+              ) : currentList.length === 0 ? (
+                <div className="px-5 py-12 text-center">
+                  <p className="text-sm text-secondary/50">No stories available</p>
+                </div>
+              ) : (
+                <>
+                  <div className="divide-y divide-sidebar-border/50">
+                    {currentList.map((item) => (
+                      <SidebarItem
+                        key={item.id}
+                        title={item.title}
+                        preview={item.preview}
+                        timestamp={item.timestamp}
+                        source={item.source}
+                        thumbnail={item.thumbnail}
+                        selected={selectedId === item.id}
+                        onClick={() => setSelectedId(item.id)}
                       />
-                    </div>
-                  );
-                })}
-              </>
-            )}
+                    ))}
+                  </div>
+                  {!isSubscribed && (
+                    (activeTab === 'trending' && lockedTrendingCount > 0) ||
+                    (activeTab === 'for_you' && lockedForYouCount > 0)
+                  ) && (
+                    <UpgradeCard
+                      lockedCount={activeTab === 'trending' ? lockedTrendingCount : lockedForYouCount}
+                      type={activeTab === 'trending' ? 'trending' : 'for_you'}
+                    />
+                  )}
+                </>
+              )}
+            </div>
 
-            {/* Paywall upsell */}
-            {isTabLimited && (
-              <div className="mt-10 p-6 rounded-2xl bg-surface-secondary text-center">
-                <Lock size={18} className="mx-auto mb-2 text-secondary/40" />
-                <p className="font-semibold text-sm mb-1">
-                  Unlock all personalized stories & deep dives
-                </p>
-                <p className="text-xs text-secondary/50 mb-4 max-w-sm mx-auto">
-                  Start a free trial to get unlimited access to content tailored to your interests.
-                </p>
+            {/* Upgrade prompt for free users */}
+            {!isSubscribed && currentList.length > 0 && (
+              <div className="px-4 py-3 border-t border-sidebar-border bg-surface-secondary/50">
                 <Link
                   href="/profile?tab=subscription"
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold bg-foreground text-background hover:bg-foreground/90 transition-colors"
+                  className="block text-center text-xs text-secondary/60 hover:text-foreground transition-colors"
                 >
-                  Start Free Trial
-                  <ArrowRight size={14} />
+                  Upgrade to unlock all stories →
                 </Link>
               </div>
             )}
-          </>
-        ) : fallbackTrending.length > 0 && activeTab === 'trending' ? (
-          <>
-            {isFeedBuilding && (
-              <div className="flex items-center gap-3 p-4 rounded-xl mb-6 bg-surface-secondary">
-                <Loader2 size={18} className="animate-spin text-secondary/50" />
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Building your personalized feed...</p>
-                  <p className="text-xs text-secondary/50">Meanwhile, here&apos;s what&apos;s trending today</p>
+          </div>
+
+          {/* Content */}
+          {isLoading ? (
+            <div className="split-main flex items-center justify-center">
+              <Loader2 size={24} className="animate-spin text-secondary/40" />
+            </div>
+          ) : selectedContent ? (
+            <ContentPanel
+              title={selectedContent.title}
+              body={selectedContent.body}
+              source={selectedContent.source}
+              url={selectedContent.url}
+              timestamp={selectedContent.timestamp}
+              keyPoints={selectedContent.keyPoints}
+              thumbnail={selectedContent.thumbnail}
+              timeline={selectedContent.timeline}
+              sourceCount={selectedContent.sourceCount}
+              itemId={selectedContent.itemId}
+              feedType={selectedContent.feedType}
+              onCopyLink={handleCopyLink}
+            />
+          ) : (
+            <EmptyState message="Select a story to read" />
+          )}
+          </div>
+        </div>
+
+        {/* Mobile Layout */}
+        <div className="md:hidden bg-surface rounded-tr-lg rounded-b-lg overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-sidebar-border">
+            <h2 className="text-[15px] font-semibold text-foreground">
+              {activeTab === 'trending' && 'All Stories'}
+              {activeTab === 'for_you' && 'For You'}
+            </h2>
+          </div>
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 size={20} className="animate-spin text-secondary/40" />
+            </div>
+          ) : currentList.length === 0 ? (
+            <div className="px-5 py-12 text-center">
+              <p className="text-sm text-secondary/50">No stories available</p>
+            </div>
+          ) : (
+            <>
+              <div className="divide-y divide-sidebar-border/50">
+                {currentList.map((item) => (
+                  <SidebarItem
+                    key={item.id}
+                    title={item.title}
+                    preview={item.preview}
+                    timestamp={item.timestamp}
+                    source={item.source}
+                    thumbnail={item.thumbnail}
+                    selected={false}
+                    onClick={() => handleSelectItem(item.id)}
+                  />
+                ))}
+              </div>
+              {!isSubscribed && (
+                (activeTab === 'trending' && lockedTrendingCount > 0) ||
+                (activeTab === 'for_you' && lockedForYouCount > 0)
+              ) && (
+                <UpgradeCard
+                  lockedCount={activeTab === 'trending' ? lockedTrendingCount : lockedForYouCount}
+                  type={activeTab === 'trending' ? 'trending' : 'for_you'}
+                />
+              )}
+            </>
+          )}
+
+          {/* Upgrade prompt for free users */}
+          {!isSubscribed && currentList.length > 0 && (
+            <div className="px-4 py-3 border-t border-sidebar-border bg-surface-secondary/50">
+              <Link
+                href="/profile?tab=subscription"
+                className="block text-center text-xs text-secondary/60 hover:text-foreground transition-colors"
+              >
+                Upgrade to unlock all stories →
+              </Link>
+            </div>
+          )}
+
+          {/* Mobile Bottom Sheet */}
+          {showMobileContent && selectedContent && (
+            <>
+              {/* Backdrop */}
+              <div
+                className="fixed inset-0 z-40 bg-black/30"
+                onClick={() => setShowMobileContent(false)}
+              />
+              {/* Sheet */}
+              <div className="fixed inset-x-0 bottom-0 z-50 bg-surface rounded-t-2xl max-h-[85vh] flex flex-col animate-slide-up">
+                {/* Handle */}
+                <div className="flex justify-center pt-3 pb-2">
+                  <div className="w-10 h-1 rounded-full bg-secondary/30" />
+                </div>
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 pb-3 border-b border-sidebar-border">
+                  <button
+                    onClick={() => {
+                      const shareUrl = selectedContent.itemId
+                        ? buildShareUrl(selectedContent.itemId, selectedContent.feedType)
+                        : selectedContent.url;
+                      if (shareUrl) {
+                        navigator.clipboard.writeText(shareUrl);
+                        handleCopyLink();
+                      }
+                    }}
+                    className="p-1.5 -ml-1.5 rounded-lg text-secondary hover:text-foreground hover:bg-surface-secondary transition-colors"
+                  >
+                    <Share2 size={18} />
+                  </button>
+                  <button
+                    onClick={() => setShowMobileContent(false)}
+                    className="p-1.5 -mr-1.5 rounded-lg text-secondary hover:text-foreground hover:bg-surface-secondary transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto px-4 py-4">
+                  <h2 className="text-xl font-semibold text-foreground leading-tight mb-4">
+                    {selectedContent.title}
+                  </h2>
+
+                  {/* Body */}
+                  {selectedContent.body && (
+                    <div className="prose prose-sm max-w-none text-secondary leading-relaxed mb-4">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedContent.body}</ReactMarkdown>
+                    </div>
+                  )}
+
+                  {/* Key Points */}
+                  {selectedContent.keyPoints && selectedContent.keyPoints.length > 0 && (
+                    <div className="mb-4 p-3 rounded-lg bg-surface-secondary">
+                      <h3 className="text-xs font-semibold text-secondary/60 mb-2 uppercase tracking-wide">
+                        Key Points
+                      </h3>
+                      <div className="space-y-1.5">
+                        {selectedContent.keyPoints.slice(0, 4).map((point, i) => (
+                          <div key={i} className="flex gap-2">
+                            <span className="text-secondary/30 font-mono text-xs">{i + 1}.</span>
+                            <p className="text-sm text-secondary leading-relaxed">{stripMarkdown(point)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Timeline */}
+                  {selectedContent.timeline && selectedContent.timeline.length > 0 && (
+                    <div className="mt-4">
+                      <h3 className="text-xs font-semibold text-secondary/60 mb-3 uppercase tracking-wide">
+                        Timeline
+                      </h3>
+                      <div className="space-y-3">
+                        {selectedContent.timeline.slice(0, 5).map((event, i) => (
+                          <div key={i}>
+                            <p className="text-xs text-secondary/50 mb-0.5">{getTimeLabel(event.timestamp)}</p>
+                            <p className="text-sm font-medium text-foreground">{event.title}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
-            <div className="flex flex-col gap-1">
-              {fallbackTrending.map((item, i) => (
-                <ForYouListRow
-                  key={`fb-${item.id || i}`}
-                  item={item}
-                  onPress={() => openArticle(item)}
-                  onHover={() => prefetchArticle(item)}
-                />
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="text-center py-24">
-            <p className="text-sm text-secondary/50">No items yet. Check back soon.</p>
+            </>
+          )}
+        </div>
+
+        {/* Building banner */}
+        {isFeedBuilding && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 px-5 py-3 rounded-full bg-surface border border-sidebar-border shadow-lg">
+            <Loader2 size={16} className="animate-spin text-secondary/50" />
+            <p className="text-sm text-secondary/70">Building your personalized feed...</p>
           </div>
         )}
 
-        <div className="h-16" />
-      </main>
+        {/* Link copied toast */}
+        {showCopiedToast && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full bg-foreground text-background text-sm font-medium shadow-lg">
+            Link copied!
+          </div>
+        )}
+      </div>
     </div>
   );
 }

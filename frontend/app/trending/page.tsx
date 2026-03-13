@@ -392,7 +392,8 @@ async function getTopicLinks(): Promise<TopicLink[]> {
 }
 
 export default async function TrendingPage() {
-  const [items, topicLinks] = await Promise.all([getTodaysItems(), getTopicLinks()]);
+  const [allItems, topicLinks] = await Promise.all([getTodaysItems(), getTopicLinks()]);
+  const items = allItems.slice(0, 5);
   const itemListSchema = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
@@ -425,29 +426,28 @@ export default async function TrendingPage() {
       />
       <PublicHeader />
 
-      <main className="mx-auto px-6 lg:px-10 max-w-[1600px]">
-        {/* Header */}
-        <div className="py-6 border-b border-gray-100 dark:border-gray-800 mb-6">
-          <h1 className="text-xl font-bold mb-0.5">Trending Topics</h1>
-          <p className="text-sm text-secondary/50">
-            Grouped stories with overviews, timelines, and source coverage
-          </p>
-          {topicLinks.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {topicLinks.map((topic) => (
-                <Link
-                  key={topic.slug}
-                  href={`/topics/${topic.slug}`}
-                  className="inline-flex items-center rounded-full border border-border/60 px-3 py-1.5 text-xs font-medium text-secondary hover:border-border hover:text-foreground transition-colors"
-                >
-                  {topic.label}
-                </Link>
-              ))}
-            </div>
-          )}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        {/* Folder Tabs */}
+        <div className="flex items-end mb-0">
+          <div
+            className="px-6 py-2.5 text-sm font-medium text-foreground bg-surface rounded-tl-lg"
+            style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 100%, 0 100%)' }}
+          >
+            Trending
+          </div>
+          <Link
+            href="/"
+            className="px-6 py-2.5 text-sm font-medium text-tab-inactive bg-surface-tertiary hover:text-foreground transition-colors"
+            style={{ clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 100%, 0 100%)', marginLeft: '-6px' }}
+          >
+            Sign In
+          </Link>
         </div>
 
-        <TrendingContent items={items} />
+        {/* Main Container */}
+        <div className="bg-surface rounded-tr-lg rounded-b-lg overflow-hidden">
+          <TrendingContent items={items} />
+        </div>
       </main>
       <Footer />
     </div>

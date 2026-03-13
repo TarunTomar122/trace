@@ -258,20 +258,17 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
         {sortedTimeline.length > 0 && (
           <div className="mb-8">
             <h3 className="text-sm font-semibold text-foreground mb-4">Timeline</h3>
-            <div className="relative pl-6 border-l-2 border-border/30">
+            <div className="space-y-3">
               {sortedTimeline.map((event, i) => {
                 const article = findArticle(event);
                 const isClickable = !!article;
 
                 return (
-                  <div key={event.id || i} className="relative pb-6 last:pb-0">
-                    <div className={`absolute -left-[25px] top-1 w-3 h-3 rounded-full border-2 ${
-                      i === 0 ? 'bg-foreground border-foreground' : 'bg-background border-secondary/30'
-                    }`} />
+                  <div key={event.id || i} className="rounded-2xl border border-border/40 bg-white/60 p-4">
                     {isClickable ? (
                       <button
                         onClick={() => openArticle(article!)}
-                        className="w-full text-left group hover:bg-surface-secondary rounded-xl p-3 -m-3 transition-colors"
+                        className="w-full text-left group transition-colors"
                       >
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-[11px] text-secondary/40">{getTimeAgo(event.timestamp)}</span>
@@ -294,7 +291,7 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
                         </div>
                       </button>
                     ) : (
-                      <div className="p-3 -m-3">
+                      <div>
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-[11px] text-secondary/40">{getTimeAgo(event.timestamp)}</span>
                           {event.source_name && (

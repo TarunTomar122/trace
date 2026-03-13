@@ -1,14 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import useSWR, { preload } from "swr";
-import { X, ExternalLink, Sparkles, Loader2, Share2, Check, Download } from "lucide-react";
-import { getArticleImage } from "@/lib/fallback-images";
+import { ExternalLink, Loader2, Share2, X } from "lucide-react";
 
-// SWR fetcher for article summaries
 const summaryFetcher = async (url: string) => {
   const res = await fetch(`/api/public/summary?url=${encodeURIComponent(url)}`);
   if (!res.ok) return null;
@@ -16,14 +14,24 @@ const summaryFetcher = async (url: string) => {
   return data.summary || null;
 };
 
-// Preload summary on hover
 const preloadSummary = (url: string) => {
   preload(`summary-${url}`, () => summaryFetcher(url));
 };
 
-// Strip "Slide N:" prefix from slides
 function cleanSlides(slides: string[]): string[] {
   return slides.map(s => s.replace(/^Slide\s*\d+:\s*/i, ''));
+}
+
+function stripMarkdown(text: string): string {
+  return (text || '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/_(.*?)_/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/#{1,6}\s*/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .trim();
 }
 
 type TrendingItem = {
@@ -47,27 +55,22 @@ type FullSummary = {
   reading_time_minutes?: number;
 };
 
-// Deterministic aspect ratio based on item index
-function getAspectRatio(index: number): 'square' | 'portrait' {
-  // Pattern: portrait, square, square, portrait, square, portrait...
-  const pattern = [1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1];
-  return pattern[index % pattern.length] ? 'portrait' : 'square';
+function getTimeLabel(): string {
+  const now = new Date();
+  return now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-function PinterestCard({
+function SidebarItem({
   item,
-  index,
+  selected,
   onClick,
   onHover,
 }: {
   item: TrendingItem;
-  index: number;
+  selected: boolean;
   onClick: () => void;
-  onHover?: () => void;
+  onHover: () => void;
 }) {
-  const imageUrl = getArticleImage(item.thumbnail, item.title);
-  const aspectRatio = getAspectRatio(index);
-  const hasHovered = useRef(false);
   const host = (() => {
     try {
       return new URL(item.url).hostname.replace("www.", "");
@@ -75,148 +78,126 @@ function PinterestCard({
       return item.source || "";
     }
   })();
-
-  const handleMouseEnter = () => {
-    if (!hasHovered.current && onHover) {
-      hasHovered.current = true;
-      onHover();
-    }
-  };
 
   return (
     <button
       onClick={onClick}
-      onMouseEnter={handleMouseEnter}
-      className="block w-full text-left group relative overflow-hidden rounded-2xl bg-gray-900 break-inside-avoid mb-4"
-      style={{
-        aspectRatio: aspectRatio === 'portrait' ? '4/5' : '1/1',
-      }}
+      onMouseEnter={onHover}
+      className={`article-list-item w-full text-left ${selected ? 'selected' : ''}`}
     >
-      {/* Background Image */}
-      <img
-        src={imageUrl}
-        alt=""
-        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-        loading="lazy"
-      />
-
-      {/* Gradient Overlays */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/10 to-black/70" />
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/90" />
-
-      {/* Headline at bottom - hidden on hover */}
-      <div className="absolute bottom-0 left-0 right-0 p-5 z-10 transition-opacity duration-300 group-hover:opacity-0">
-        <h3
-          className="text-white font-extrabold leading-tight drop-shadow-xl"
-          style={{
-            fontSize: aspectRatio === 'portrait' ? '1.25rem' : '1.1rem',
-            lineHeight: 1.15,
-          }}
-        >
-          {item.title.length > 100 ? item.title.slice(0, 100) + '...' : item.title}
-        </h3>
-      </div>
-
-      {/* Hover Overlay - shows summary */}
-      <div className="absolute inset-0 bg-black/85 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-center p-5 z-20">
-        {/* Source badge */}
-        {host && (
-          <span className="text-amber-400 text-xs font-semibold uppercase tracking-wider mb-3">
-            {host}
-          </span>
-        )}
-
-        {/* Summary */}
-        {item.summary ? (
-          <p className="text-white/90 text-sm leading-relaxed line-clamp-6">
-            {item.summary}
-          </p>
-        ) : (
-          <p className="text-white/60 text-sm italic">
-            Tap to read more
-          </p>
-        )}
-      </div>
+      {host && (
+        <span className="text-[10px] text-secondary/50 truncate block mb-1">{host}</span>
+      )}
+      <h3 className="text-[0.875rem] font-semibold text-foreground leading-snug line-clamp-2">
+        {item.title}
+      </h3>
     </button>
   );
 }
 
-function ArticleModal({
-  item,
-  onClose,
-}: {
-  item: TrendingItem;
-  onClose: () => void;
-}) {
-  const [shareLoading, setShareLoading] = useState(false);
-  const [shareSuccess, setShareSuccess] = useState(false);
-
-  // SWR for summary - uses cache from hover prefetch
+function MobileSheet({ item, onClose, onCopyLink }: { item: TrendingItem; onClose: () => void; onCopyLink: () => void }) {
   const { data: fullSummary, isLoading: loading } = useSWR<FullSummary | null>(
     `summary-${item.url}`,
     () => summaryFetcher(item.url),
-    {
-      revalidateOnFocus: false,
-      dedupingInterval: 300000, // 5 min cache
-    }
+    { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
 
-  const imageUrl = getArticleImage(item.thumbnail, item.title);
+  const rawSlides = fullSummary?.short_article?.slides;
+  const slides = rawSlides?.length ? cleanSlides(rawSlides) : [];
+  const rawBody = fullSummary?.short_article?.body || '';
+  const body = slides.length ? slides.join('\n\n') : (rawBody.length > 100 ? rawBody : '');
+  const keyTakeaways = fullSummary?.short_article?.key_takeaways;
 
-  const handleShare = async () => {
-    setShareLoading(true);
-    const shareUrl = `https://www.yourtrace.online/trending`;
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/30"
+        onClick={onClose}
+      />
+      {/* Sheet */}
+      <div className="fixed inset-x-0 bottom-0 z-50 bg-surface rounded-t-2xl max-h-[85vh] flex flex-col animate-slide-up">
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-2">
+          <div className="w-10 h-1 rounded-full bg-secondary/30" />
+        </div>
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 pb-3 border-b border-sidebar-border">
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(item.url);
+              onCopyLink();
+            }}
+            className="p-1.5 -ml-1.5 rounded-lg text-secondary hover:text-foreground hover:bg-surface-secondary transition-colors"
+          >
+            <Share2 size={18} />
+          </button>
+          <button
+            onClick={onClose}
+            className="p-1.5 -mr-1.5 rounded-lg text-secondary hover:text-foreground hover:bg-surface-secondary transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          <h2 className="text-xl font-semibold text-foreground leading-tight mb-4">
+            {item.title}
+          </h2>
 
-    try {
-      // Generate share image
-      const params = new URLSearchParams({
-        headline: item.title,
-        imageUrl: item.thumbnail || '',
-        url: shareUrl,
-        format: 'square',
-      });
-      const imageResponse = await fetch(`/api/share/render?${params.toString()}`);
+          {loading ? (
+            <div className="flex items-center gap-3 py-8 text-secondary/50">
+              <Loader2 size={18} className="animate-spin" />
+              <span className="text-sm">Loading...</span>
+            </div>
+          ) : (
+            <>
+              {/* Body */}
+              {body ? (
+                <div className="prose prose-sm max-w-none text-secondary leading-relaxed mb-4">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{body}</ReactMarkdown>
+                </div>
+              ) : item.summary ? (
+                <p className="text-sm text-secondary leading-relaxed mb-4">
+                  {item.summary}
+                </p>
+              ) : (
+                <p className="text-secondary/50 text-sm italic mb-4">
+                  Summary not available.
+                </p>
+              )}
 
-      if (!imageResponse.ok) {
-        throw new Error('Failed to generate image');
-      }
+              {/* Key Takeaways */}
+              {keyTakeaways && keyTakeaways.length > 0 && (
+                <div className="p-3 rounded-lg bg-surface-secondary">
+                  <h3 className="text-xs font-semibold text-secondary/60 mb-2 uppercase tracking-wide">
+                    Key Takeaways
+                  </h3>
+                  <div className="space-y-1.5">
+                    {keyTakeaways.slice(0, 4).map((point, i) => (
+                      <div key={i} className="flex gap-2">
+                        <span className="text-secondary/30 font-mono text-xs">{i + 1}.</span>
+                        <p className="text-sm text-secondary leading-relaxed">{stripMarkdown(point)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
 
-      const blob = await imageResponse.blob();
-      const file = new File([blob], 'trace-story.png', { type: 'image/png' });
+function ContentPanel({ item, onCopyLink }: { item: TrendingItem; onCopyLink: () => void }) {
+  const { data: fullSummary, isLoading: loading } = useSWR<FullSummary | null>(
+    `summary-${item.url}`,
+    () => summaryFetcher(item.url),
+    { revalidateOnFocus: false, dedupingInterval: 300000 }
+  );
 
-      // Try Web Share API with file
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: item.title,
-          text: `Read the full story on Trace: ${shareUrl}`,
-        });
-        setShareSuccess(true);
-        setTimeout(() => setShareSuccess(false), 2000);
-      } else {
-        // Fallback: download the image
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'trace-story.png';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        setShareSuccess(true);
-        setTimeout(() => setShareSuccess(false), 2000);
-      }
-    } catch {
-      // Fallback to just copying the URL
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        setShareSuccess(true);
-        setTimeout(() => setShareSuccess(false), 2000);
-      } catch { /* nothing */ }
-    } finally {
-      setShareLoading(false);
-    }
-  };
   const host = (() => {
     try {
       return new URL(item.url).hostname.replace("www.", "");
@@ -225,215 +206,230 @@ function ArticleModal({
     }
   })();
 
-  // Handle both body and slides format - prefer slides for trending
   const rawSlides = fullSummary?.short_article?.slides;
   const slides = rawSlides?.length ? cleanSlides(rawSlides) : [];
   const rawBody = fullSummary?.short_article?.body || '';
-  // Use slides if available, otherwise use body only if it's substantial
   const body = slides.length ? slides.join('\n\n') : (rawBody.length > 100 ? rawBody : '');
   const keyTakeaways = fullSummary?.short_article?.key_takeaways;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
-      onClick={onClose}
-    >
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
-
-      {/* Modal */}
-      <div
-        className="relative bg-background w-full sm:max-w-xl sm:rounded-2xl max-h-[90vh] overflow-y-auto rounded-t-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/40 hover:bg-black/60 transition-colors"
-        >
-          <X size={18} className="text-white" />
-        </button>
-
-        {/* Image */}
-        <div className="relative aspect-[16/9] w-full">
-          <img
-            src={imageUrl}
-            alt=""
-            className="w-full h-full object-cover"
-          />
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+    <div className="split-main">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3 text-[13px] text-secondary/50">
+          {host && <span>{host}</span>}
         </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(item.url);
+              onCopyLink();
+            }}
+            className="p-2 rounded-lg text-secondary/40 hover:text-foreground hover:bg-surface-secondary transition-colors"
+            title="Copy link"
+          >
+            <Share2 size={18} />
+          </button>
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-2 rounded-lg text-secondary/40 hover:text-foreground hover:bg-surface-secondary transition-colors"
+            title="Open original"
+          >
+            <ExternalLink size={18} />
+          </a>
+        </div>
+      </div>
 
-        {/* Content */}
-        <div className="-mt-12 relative p-5">
-          {/* Source */}
-          {host && (
-            <span className="text-xs font-medium text-amber-600 uppercase tracking-wider">
-              {host}
-            </span>
-          )}
+      <h1 className="text-[2rem] font-semibold text-foreground leading-tight mb-6">
+        {item.title}
+      </h1>
 
-          {/* Title */}
-          <h2 className="text-xl font-bold leading-snug mt-1 mb-4">
-            {item.title}
-          </h2>
-
-          {/* Loading state */}
-          {loading && (
-            <div className="flex items-center gap-2 py-8 justify-center text-secondary/60">
-              <Loader2 size={18} className="animate-spin" />
-              <span className="text-sm">Loading summary...</span>
-            </div>
-          )}
-
-          {/* Key Takeaways */}
-          {!loading && keyTakeaways && keyTakeaways.length > 0 && (
-            <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl p-4 mb-4">
-              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-2">
+      {loading ? (
+        <div className="flex items-center gap-3 py-12 text-secondary/50">
+          <Loader2 size={20} className="animate-spin" />
+          <span className="text-sm">Loading summary...</span>
+        </div>
+      ) : (
+        <>
+          {keyTakeaways && keyTakeaways.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wide">
                 Key Takeaways
-              </p>
-              <ul className="space-y-1.5">
-                {keyTakeaways.slice(0, 4).map((t, i) => (
-                  <li key={i} className="flex gap-2 items-start text-sm">
-                    <span className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 bg-amber-500" />
-                    <span className="text-secondary/80">{t}</span>
-                  </li>
+              </h3>
+              <div className="space-y-3">
+                {keyTakeaways.slice(0, 5).map((point, i) => (
+                  <div key={i} className="flex gap-3">
+                    <span className="text-secondary/30 font-mono text-sm">{i + 1}.</span>
+                    <p className="text-[15px] text-secondary leading-relaxed">{stripMarkdown(point)}</p>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
 
-          {/* Full Summary Body */}
-          {!loading && body && (
-            <div className="prose prose-sm dark:prose-invert max-w-none mb-4 text-secondary/80">
+          {body ? (
+            <div className="prose prose-lg max-w-none text-secondary leading-relaxed mb-8">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{body}</ReactMarkdown>
             </div>
-          )}
-
-          {/* Fallback to short summary */}
-          {!loading && !body && item.summary && (
-            <p className="text-secondary/80 leading-relaxed mb-4">
+          ) : item.summary ? (
+            <p className="text-lg text-secondary leading-relaxed mb-8">
               {item.summary}
             </p>
-          )}
-
-          {/* No summary message */}
-          {!loading && !body && !item.summary && (
-            <p className="text-secondary/50 text-sm italic mb-4">
-              Full summary not available for this article.
+          ) : (
+            <p className="text-secondary/50 text-sm italic mb-8">
+              Summary not available for this article.
             </p>
           )}
+        </>
+      )}
 
-          {/* Actions */}
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              onClick={handleShare}
-              disabled={shareLoading}
-              className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold border border-border hover:bg-surface-secondary transition-colors disabled:opacity-50"
-            >
-              {shareLoading ? (
-                <Loader2 size={15} className="animate-spin" />
-              ) : shareSuccess ? (
-                <Check size={15} className="text-green-500" />
-              ) : (
-                <Share2 size={15} />
-              )}
-              {shareLoading ? 'Generating...' : shareSuccess ? 'Shared!' : 'Share'}
-            </button>
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white bg-amber-500 hover:bg-amber-600 transition-colors"
-            >
-              Read Full Article
-              <ExternalLink size={15} />
-            </a>
-          </div>
-        </div>
+      <div className="pt-6 border-t border-sidebar-border">
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium bg-foreground text-background hover:bg-foreground/90 transition-colors"
+        >
+          Read Full Article
+          <ExternalLink size={16} />
+        </a>
       </div>
     </div>
   );
 }
 
 export default function TrendingContent({ items }: { items: TrendingItem[] }) {
-  const [selectedItem, setSelectedItem] = useState<TrendingItem | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showMobileContent, setShowMobileContent] = useState(false);
+  const [showCopiedToast, setShowCopiedToast] = useState(false);
 
-  // Prevent body scroll when modal is open
+  const handleCopyLink = useCallback(() => {
+    setShowCopiedToast(true);
+    setTimeout(() => setShowCopiedToast(false), 2000);
+  }, []);
+
   useEffect(() => {
-    if (selectedItem) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
+    if (items.length > 0 && !selectedId) {
+      setSelectedId(items[0].id);
     }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [selectedItem]);
+  }, [items, selectedId]);
+
+  const selectedItem = items.find(item => item.id === selectedId) || null;
+
+  const handleSelectItem = (id: string) => {
+    setSelectedId(id);
+    setShowMobileContent(true);
+  };
+
+  if (items.length === 0) {
+    return (
+      <div className="bg-surface rounded-lg p-12 text-center">
+        <p className="text-lg font-semibold mb-2">Today's stories are on the way</p>
+        <p className="text-sm text-secondary/50">We pull the best content every morning. Check back soon!</p>
+      </div>
+    );
+  }
 
   return (
     <>
-      {/* Content */}
-      {items.length > 0 ? (
-        <>
-          {/* Pinterest-style Masonry Grid */}
-          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
-            {items.map((item, i) => (
-              <PinterestCard
-                key={item.id || i}
+      {/* Desktop Layout */}
+      <div className="hidden md:block">
+        <div className="split-layout" style={{ height: 'calc(100vh - 200px)', minHeight: '500px' }}>
+        {/* Sidebar */}
+        <div className="split-sidebar">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-sidebar-border">
+            <h2 className="text-[15px] font-semibold text-foreground">
+              {items.length} Stories
+            </h2>
+            <span className="text-xs text-secondary/50">
+              Updated {getTimeLabel()}
+            </span>
+          </div>
+
+          <div className="flex-1 overflow-y-auto divide-y divide-sidebar-border/50">
+            {items.map((item) => (
+              <SidebarItem
+                key={item.id}
                 item={item}
-                index={i}
-                onClick={() => setSelectedItem(item)}
+                selected={selectedId === item.id}
+                onClick={() => setSelectedId(item.id)}
                 onHover={() => preloadSummary(item.url)}
               />
             ))}
           </div>
 
-          {/* CTA */}
-          <div className="mt-12 mb-12 p-6 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40 border border-amber-200/50 dark:border-amber-800/30">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-amber-500 flex items-center justify-center flex-shrink-0">
-                <Sparkles size={22} className="text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg mb-1">
-                  Get your personalized feed
-                </h3>
-                <p className="text-sm text-secondary/70 mb-4">
-                  Sign up for Trace and get content filtered by your interests,
-                  summarized, and delivered daily.
-                </p>
-                <Link
-                  href="/"
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-amber-500 transition-all hover:bg-amber-600"
-                >
-                  Build your feed
-                </Link>
-              </div>
-            </div>
+          <div className="px-4 py-3 border-t border-sidebar-border bg-surface-secondary/50">
+            <Link
+              href="/"
+              className="block text-center text-xs text-secondary/60 hover:text-foreground transition-colors"
+            >
+              Sign in for personalized feed →
+            </Link>
           </div>
-        </>
-      ) : (
-        <div className="py-24 text-center">
-          <div className="w-14 h-14 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Sparkles size={24} className="text-foreground" />
-          </div>
-          <p className="text-lg font-semibold text-foreground mb-2">
-            Today's reads are on the way
-          </p>
-          <p className="text-sm text-secondary/60 max-w-sm mx-auto">
-            We pull the best content every morning. Check back soon!
-          </p>
         </div>
-      )}
 
-      {/* Modal */}
-      {selectedItem && (
-        <ArticleModal
-          item={selectedItem}
-          onClose={() => setSelectedItem(null)}
-        />
+        {/* Content */}
+        {selectedItem ? (
+          <ContentPanel item={selectedItem} onCopyLink={handleCopyLink} />
+        ) : (
+          <div className="split-main flex items-center justify-center">
+            <p className="text-secondary/50 text-sm">Select a story to read</p>
+          </div>
+        )}
+        </div>
+      </div>
+
+      {/* Mobile Layout */}
+      <div className="md:hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-sidebar-border">
+          <h2 className="text-[15px] font-semibold text-foreground">
+            {items.length} Stories
+          </h2>
+          <span className="text-xs text-secondary/50">
+            Updated {getTimeLabel()}
+          </span>
+        </div>
+
+        {/* Mobile List */}
+        <div className="divide-y divide-sidebar-border/50">
+          {items.map((item) => (
+            <SidebarItem
+              key={item.id}
+              item={item}
+              selected={false}
+              onClick={() => handleSelectItem(item.id)}
+              onHover={() => {}}
+            />
+          ))}
+        </div>
+
+        {/* Mobile CTA */}
+        <div className="px-4 py-3 border-t border-sidebar-border bg-surface-secondary/50">
+          <Link
+            href="/"
+            className="block text-center text-xs text-secondary/60 hover:text-foreground transition-colors"
+          >
+            Sign in for personalized feed →
+          </Link>
+        </div>
+
+        {/* Mobile Bottom Sheet */}
+        {showMobileContent && selectedItem && (
+          <MobileSheet
+            item={selectedItem}
+            onClose={() => setShowMobileContent(false)}
+            onCopyLink={handleCopyLink}
+          />
+        )}
+      </div>
+
+      {/* Link copied toast */}
+      {showCopiedToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full bg-foreground text-background text-sm font-medium shadow-lg">
+          Link copied!
+        </div>
       )}
     </>
   );

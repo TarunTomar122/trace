@@ -19,9 +19,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Trace — Trending, For You & Deep Dives with AI Summaries",
-  description: "Three daily feeds built around you — trending news, interest-matched articles, and expert deep dives. All with AI-powered summaries in your preferred style.",
-  keywords: ["personalized feed", "AI summaries", "trending news", "deep dives", "content curation", "daily briefing", "for you feed", "RSS alternative"],
+  title: "Trace — Trending Topics & Personalized Articles with AI Summaries",
+  description: "Two feeds built around you — trending topics grouped from many sources, and personalized articles to help you grow. All with AI-powered summaries.",
+  keywords: ["personalized feed", "AI summaries", "trending news", "content curation", "daily briefing", "for you feed", "RSS alternative"],
   authors: [{ name: "Trace" }],
   metadataBase: new URL('https://www.yourtrace.online'),
   alternates: {
