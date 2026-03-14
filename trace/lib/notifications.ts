@@ -66,16 +66,8 @@ export async function registerForPushNotifications(): Promise<string | null> {
       tokenData = await Notifications.getExpoPushTokenAsync();
     }
 
-    console.log('[notifications] Push token:', tokenData.data);
-
-    // Android needs a notification channel
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#F59E0B',
-      });
+    if (__DEV__) {
+      console.log('[notifications] Push token:', tokenData.data);
     }
 
     return tokenData.data;
@@ -112,6 +104,8 @@ export async function disablePushNotifications(userId: string): Promise<void> {
     const userRef = doc(db, 'user_profiles', userId);
     await updateDoc(userRef, {
       pushNotificationsEnabled: false,
+      pushToken: null,
+      pushTokenUpdatedAt: new Date().toISOString(),
     });
     console.log('[notifications] Push notifications disabled');
   } catch (error) {

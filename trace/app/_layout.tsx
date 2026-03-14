@@ -2,7 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } fro
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   View,
@@ -15,14 +15,28 @@ import {
 } from 'react-native';
 import 'react-native-reanimated';
 import * as Application from 'expo-application';
+import { useFonts } from '@expo-google-fonts/ibm-plex-sans/useFonts';
+import { IBMPlexSans_400Regular } from '@expo-google-fonts/ibm-plex-sans/400Regular';
+import { IBMPlexSans_500Medium } from '@expo-google-fonts/ibm-plex-sans/500Medium';
+import { IBMPlexSans_600SemiBold } from '@expo-google-fonts/ibm-plex-sans/600SemiBold';
+import { IBMPlexSans_700Bold } from '@expo-google-fonts/ibm-plex-sans/700Bold';
+import { IBMPlexSerif_400Regular } from '@expo-google-fonts/ibm-plex-serif/400Regular';
+import { IBMPlexSerif_500Medium } from '@expo-google-fonts/ibm-plex-serif/500Medium';
+import { IBMPlexSerif_600SemiBold } from '@expo-google-fonts/ibm-plex-serif/600SemiBold';
+import { IBMPlexSerif_700Bold } from '@expo-google-fonts/ibm-plex-serif/700Bold';
+import {
+  initializeNotifications,
+  addNotificationResponseListener,
+} from '@/lib/notifications';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { RevenueCatProvider, useRevenueCat } from '@/contexts/RevenueCatContext';
+import { RevenueCatProvider } from '@/contexts/RevenueCatContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
-import { Colors } from '@/constants/theme';
-import { getAppVersionConfig } from '@/lib/firestore';
+import { Colors, FontFamily, Typography } from '@/constants/theme';
+import { getAppVersionConfig, getArticleById } from '@/lib/firestore';
+import { setCurrentArticle } from '@/lib/article-store';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -106,29 +120,16 @@ function checkVersion(current: string, target: string): boolean {
 
 function AuthGate({ children }: { children: ReactNode }) {
   const { user, profile, loading, profileResolved } = useAuth();
-  const { loading: revenueCatLoading } = useRevenueCat();
   const segments = useSegments();
   const router = useRouter();
   const colorScheme = useColorScheme();
 
   const [appReady, setAppReady] = useState(false);
-  // Delays showing the welcome screen briefly so Firebase has time to restore
-  // a persisted session from AsyncStorage (avoids flash for returning users).
-  const noUserTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (noUserTimer.current) {
-        clearTimeout(noUserTimer.current);
-        noUserTimer.current = null;
-      }
-    };
-  }, []);
 
   useEffect(() => {
     if (loading) return;
     if (user && !profileResolved) return;
-    if (user && profile?.onboarded && revenueCatLoading) return;
+    // Don't block on RevenueCat - let feed load while RC initializes in background
 
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboarding = segments[0] === 'onboarding';
@@ -136,30 +137,14 @@ function AuthGate({ children }: { children: ReactNode }) {
 
     if (!user) {
       if (!inAuthGroup) {
-        if (noUserTimer.current) {
-          clearTimeout(noUserTimer.current);
-          noUserTimer.current = null;
-        }
         router.replace('/(auth)/welcome');
-      } else if (!noUserTimer.current) {
-        // Wait briefly before showing the welcome screen — Firebase on React Native
-        // reads the persisted session from AsyncStorage asynchronously, so the first
-        // onAuthStateChanged call can be null even for logged-in users.
-        noUserTimer.current = setTimeout(() => {
-          noUserTimer.current = null;
-          setAppReady(true);
-        }, 350);
+      } else {
+        setAppReady(true);
       }
       return;
     }
 
-    // User is present — cancel any pending no-user timer
-    if (noUserTimer.current) {
-      clearTimeout(noUserTimer.current);
-      noUserTimer.current = null;
-    }
-
-    if (!profile?.onboarded) {
+    if (profile?.onboarded === false) {
       // If already on early-adopter or onboarding, let those screens handle navigation
       if (inEarlyAdopter || inOnboarding) {
         setAppReady(true);
@@ -171,9 +156,14 @@ function AuthGate({ children }: { children: ReactNode }) {
       // re-resolve profileResolved and re-trigger this effect once it succeeds.
       if (!profile) return;
 
-      // If not an early adopter yet, show the offer screen first
-      if (!profile.isEarlyAdopter) {
+      // Only route once the early-adopter state is explicit. Missing/stale values
+      // should keep the splash up until the real profile resolves.
+      if (profile.isEarlyAdopter === false) {
         router.replace('/early-adopter');
+        return;
+      }
+
+      if (profile.isEarlyAdopter !== true) {
         return;
       }
 
@@ -182,7 +172,11 @@ function AuthGate({ children }: { children: ReactNode }) {
       return;
     }
 
-    // User is onboarded + RC done - redirect away from auth/onboarding screens.
+    if (!profile) {
+      return;
+    }
+
+    // User is onboarded - redirect away from auth/onboarding screens.
     // Keep early-adopter accessible so eligible users can still claim the launch offer.
     if (inAuthGroup || inOnboarding) {
       router.replace('/(tabs)');
@@ -191,7 +185,7 @@ function AuthGate({ children }: { children: ReactNode }) {
 
     // On a valid screen; release the splash.
     setAppReady(true);
-  }, [loading, user, profile, profileResolved, revenueCatLoading, segments, router]);
+  }, [loading, user, profile, profileResolved, segments, router]);
 
   // Hide native splash + branded overlay together
   useEffect(() => {
@@ -227,6 +221,27 @@ function AuthGate({ children }: { children: ReactNode }) {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
+
+  // Initialize notifications and set up response listener
+  useEffect(() => {
+    initializeNotifications();
+
+    // Handle notification taps - fetch article and navigate
+    const subscription = addNotificationResponseListener(async (response) => {
+      const data = response.notification.request.content.data;
+
+      if (data?.articleId) {
+        const article = await getArticleById(String(data.articleId));
+        if (article) {
+          setCurrentArticle(article);
+          router.push('/article');
+        }
+      }
+    });
+
+    return () => subscription.remove();
+  }, [router]);
 
   return (
     <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -253,6 +268,39 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    IBMPlexSans_400Regular,
+    IBMPlexSans_500Medium,
+    IBMPlexSans_600SemiBold,
+    IBMPlexSans_700Bold,
+    IBMPlexSerif_400Regular,
+    IBMPlexSerif_500Medium,
+    IBMPlexSerif_600SemiBold,
+    IBMPlexSerif_700Bold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      console.log('[Fonts] Loaded successfully:', Object.keys({
+        IBMPlexSans_400Regular,
+        IBMPlexSans_500Medium,
+        IBMPlexSans_600SemiBold,
+        IBMPlexSans_700Bold,
+        IBMPlexSerif_400Regular,
+        IBMPlexSerif_500Medium,
+        IBMPlexSerif_600SemiBold,
+        IBMPlexSerif_700Bold,
+      }));
+    }
+    if (fontError) {
+      console.error('[Fonts] Error loading fonts:', fontError);
+    }
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
+
   return (
     <ThemeProvider>
       <AuthProvider>
@@ -282,17 +330,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   splashTitle: {
+    fontFamily: FontFamily.semiBold,
     fontSize: 18,
-    fontWeight: '600',
     letterSpacing: 4,
   },
   updateTitle: {
+    fontFamily: FontFamily.bold,
     fontSize: 22,
-    fontWeight: '700',
     marginBottom: 12,
     letterSpacing: -0.3,
   },
   updateBody: {
+    fontFamily: FontFamily.regular,
     fontSize: 15,
     lineHeight: 22,
     textAlign: 'center',
@@ -305,7 +354,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   updateButtonText: {
+    fontFamily: FontFamily.bold,
     fontSize: 16,
-    fontWeight: '700',
   },
 });

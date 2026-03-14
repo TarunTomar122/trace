@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   },
   toastText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: 'IBMPlexSans_500Medium',
     color: '#fff',
   },
 });

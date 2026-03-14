@@ -13,6 +13,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Flame, Trophy, Star, Zap, Crown } from 'lucide-react-native';
 
+import { FontFamily, FontFamilySerif } from '@/constants/theme';
+
 interface Props {
   visible: boolean;
   milestone: number;
@@ -208,19 +210,21 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: '800',
+    fontFamily: FontFamilySerif.bold,
     color: '#0a0a0a',
     textAlign: 'center',
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
+    fontFamily: FontFamily.regular,
     color: '#6b7280',
     textAlign: 'center',
     marginBottom: 12,
   },
   message: {
     fontSize: 14,
+    fontFamily: FontFamily.regular,
     color: '#9ca3af',
     textAlign: 'center',
     marginBottom: 20,
@@ -236,7 +240,7 @@ const styles = StyleSheet.create({
   },
   streakNumber: {
     fontSize: 24,
-    fontWeight: '800',
+    fontFamily: FontFamilySerif.bold,
   },
   closeBtn: {
     backgroundColor: '#F97316',
@@ -248,7 +252,7 @@ const styles = StyleSheet.create({
   closeBtnText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     textAlign: 'center',
   },
 });

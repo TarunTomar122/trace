@@ -3,8 +3,6 @@
  * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
  */
 
-import { Platform } from 'react-native';
-
 const tintColorLight = '#0a0a0a';
 const tintColorDark = '#fafafa';
 
@@ -37,27 +35,59 @@ export const Colors = {
   },
 };
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
+// IBM Plex Sans font family names (as registered by expo-google-fonts)
+export const FontFamily = {
+  regular: 'IBMPlexSans_400Regular',
+  medium: 'IBMPlexSans_500Medium',
+  semiBold: 'IBMPlexSans_600SemiBold',
+  bold: 'IBMPlexSans_700Bold',
+};
+
+// IBM Plex Serif font family names (for titles/headlines)
+export const FontFamilySerif = {
+  regular: 'IBMPlexSerif_400Regular',
+  medium: 'IBMPlexSerif_500Medium',
+  semiBold: 'IBMPlexSerif_600SemiBold',
+  bold: 'IBMPlexSerif_700Bold',
+};
+
+// Typography presets based on design system
+export const Typography = {
+  // Serif styles for titles/headlines
+  h1: {
+    fontFamily: FontFamilySerif.bold,
+    fontSize: 25,
+    lineHeight: 30,
   },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
+  h2: {
+    fontFamily: FontFamilySerif.semiBold,
+    fontSize: 19,
+    lineHeight: 24,
   },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+  h3: {
+    fontFamily: FontFamilySerif.semiBold,
+    fontSize: 15,
+    lineHeight: 20,
   },
-});
+  // Sans-serif styles for body/UI
+  subHeading: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 14,
+    lineHeight: 18,
+  },
+  body1: {
+    fontFamily: FontFamily.regular,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  body2: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  label: {
+    fontFamily: FontFamily.regular,
+    fontSize: 10,
+    lineHeight: 14,
+  },
+} as const;

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors, Fonts } from '@/constants/theme';
+import { Colors, FontFamily } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -154,9 +154,8 @@ const styles = StyleSheet.create({
   },
 
   sectionLabel: {
-    fontFamily: Fonts.mono,
+    fontFamily: FontFamily.semiBold,
     fontSize: 11,
-    fontWeight: '500',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
     marginBottom: 12,
@@ -186,10 +185,11 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
   },
   rowValue: {
     fontSize: 13,
+    fontFamily: FontFamily.regular,
   },
   rowDivider: {
     height: StyleSheet.hairlineWidth,

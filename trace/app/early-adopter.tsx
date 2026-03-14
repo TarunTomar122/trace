@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Gift, Check, Zap, BookOpen, Bookmark } from 'lucide-react-native';
 
-import { Colors } from '@/constants/theme';
+import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
@@ -20,6 +20,12 @@ export default function EarlyAdopterOfferScreen() {
   const [status, setStatus] = useState<EarlyAdopterStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
+
+  useEffect(() => {
+    if (profile?.isEarlyAdopter === true) {
+      router.replace(profile.onboarded ? '/(tabs)' : '/onboarding');
+    }
+  }, [router, profile?.isEarlyAdopter, profile?.onboarded]);
 
   // Get price from RevenueCat
   const monthlyPackage = offerings?.current?.monthly;
@@ -55,8 +61,8 @@ export default function EarlyAdopterOfferScreen() {
   const isDark = colorScheme === 'dark';
   const userNumber = status ? status.currentCount + 1 : '?';
 
-  // Show loading or if no spots left (redirect happens in useEffect)
-  if (loading || (status && !status.isOpen)) {
+  // Show loading while redirecting already-claimed users or if no spots remain.
+  if (profile?.isEarlyAdopter === true || loading || (status && !status.isOpen)) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: Colors[colorScheme].background }]}>
         <View style={styles.loadingContainer}>
@@ -83,7 +89,7 @@ export default function EarlyAdopterOfferScreen() {
           style={[styles.userBadge, { backgroundColor: isDark ? '#1a1a2e' : '#f0f0f5' }]}
         >
           <Text style={[styles.userBadgeText, { color: Colors[colorScheme].muted }]}>
-            You're user #{userNumber}
+            You&apos;re user #{userNumber}
           </Text>
         </Animated.View>
 
@@ -99,9 +105,7 @@ export default function EarlyAdopterOfferScreen() {
           entering={FadeInDown.delay(400).duration(500)}
           style={[styles.subheadline, { color: Colors[colorScheme].muted }]}
         >
-          Trace is normally{' '}
-          <Text style={{ color: Colors[colorScheme].text, fontWeight: '700' }}>{monthlyPrice}</Text>
-          {'\n'}but the first {status?.limit ?? 300} users get Pro free for life.
+          Trace is FREE for the first {status?.limit ?? 300} users.
         </Animated.Text>
 
         {/* What you get */}
@@ -118,7 +122,7 @@ export default function EarlyAdopterOfferScreen() {
               <Zap size={16} color="#F97316" strokeWidth={2} />
             </View>
             <Text style={[styles.perkText, { color: Colors[colorScheme].text }]}>
-              Trending topics, For You articles, and deep dives
+              Trending topics and Personalized learning content
             </Text>
           </View>
 
@@ -127,7 +131,7 @@ export default function EarlyAdopterOfferScreen() {
               <BookOpen size={16} color="#0EA5E9" strokeWidth={2} />
             </View>
             <Text style={[styles.perkText, { color: Colors[colorScheme].text }]}>
-              AI overviews, learning cards, and chapter breakdowns
+              AI overviews of high quality sources
             </Text>
           </View>
 
@@ -136,7 +140,7 @@ export default function EarlyAdopterOfferScreen() {
               <Bookmark size={16} color="#8B5CF6" strokeWidth={2} />
             </View>
             <Text style={[styles.perkText, { color: Colors[colorScheme].text }]}>
-              Save articles and snippets
+              Save articles and AI summaries
             </Text>
           </View>
         </Animated.View>
@@ -204,17 +208,18 @@ const styles = StyleSheet.create({
   },
   userBadgeText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
   },
   headline: {
     fontSize: 32,
-    fontWeight: '900',
+    fontFamily: FontFamilySerif.bold,
     textAlign: 'center',
     letterSpacing: -0.5,
     marginBottom: 12,
   },
   subheadline: {
     fontSize: 17,
+    fontFamily: FontFamily.regular,
     textAlign: 'center',
     lineHeight: 26,
     marginBottom: 28,
@@ -228,7 +233,7 @@ const styles = StyleSheet.create({
   },
   perksTitle: {
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     marginBottom: 4,
   },
   perkRow: {
@@ -245,12 +250,12 @@ const styles = StyleSheet.create({
   },
   perkText: {
     fontSize: 15,
-    fontWeight: '500',
+    fontFamily: FontFamily.semiBold,
     flex: 1,
   },
   spotsText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
     marginTop: 20,
   },
   footer: {
@@ -272,6 +277,6 @@ const styles = StyleSheet.create({
   claimButtonText: {
     color: '#fff',
     fontSize: 17,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
   },
 });

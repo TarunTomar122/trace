@@ -21,9 +21,11 @@ import Animated, {
   withTiming,
   withSequence,
   withDelay,
+  withSpring,
   Easing,
   FadeIn,
   Extrapolation,
+  runOnJS,
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -41,7 +43,7 @@ import {
 import DigestIllus from '@/components/illustrations/DigestIllus';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors, Fonts } from '@/constants/theme';
+import { Colors, FontFamily, Typography, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -57,11 +59,12 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 import { logReadingEvent } from '@/lib/reading-analytics';
 import { setCurrentTopic } from '@/lib/topic-store';
 import { setCurrentArticle, setArticleList } from '@/lib/article-store';
-import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { getStreakData, StreakData } from '@/lib/streaks';
+import { consumePrefetchedFeed, getPrefetchPromise } from '@/lib/feed-cache';
+import { maybeRequestReview } from '@/lib/app-review';
 
 // Figma design colors
-const CARD_COLORS = ['#e8ffc9', '#c9d2ff']; // Just lime green and lavender
+const CARD_COLORS = ['#e8ffc9', '#c9d2ff', '#daf3fa', '#fcdddd'];
 const ACCENT_ORANGE = '#ff8d28';
 const META_GREEN = '#5a6b35'; // Darker olive for better contrast on pastel backgrounds
 
@@ -122,8 +125,13 @@ function getGreeting(): string {
 }
 
 function getFirstName(profile: any): string {
-  if (profile?.displayName) {
-    return profile.displayName.split(' ')[0];
+  const fullName = String(profile?.name || profile?.displayName || '').trim();
+  if (fullName) {
+    return fullName.split(/\s+/)[0];
+  }
+  const email = String(profile?.email || '').trim();
+  if (email) {
+    return email.split('@')[0];
   }
   return 'there';
 }
@@ -161,9 +169,13 @@ function getTimeAgo(dateStr?: string): string {
 }
 
 function getSourceInitials(name: string): string {
-  const words = name.trim().split(/\s+/);
-  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
+  const value = String(name || '').trim();
+  if (!value) return '??';
+  const words = value.split(/\s+/).filter(Boolean);
+  if (words.length >= 2 && words[0] && words[1]) {
+    return `${words[0][0] || ''}${words[1][0] || ''}`.toUpperCase() || '??';
+  }
+  return value.slice(0, 2).toUpperCase() || '??';
 }
 
 function stripMarkdown(text?: string): string {
@@ -241,6 +253,10 @@ function hashColor(str: string): string {
   }
   const hue = ((hash % 360) + 360) % 360;
   return `hsl(${hue}, 55%, 48%)`;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // Interleaved feed item type
@@ -351,8 +367,11 @@ export default function UnifiedFeedScreen() {
   const scrollY = useSharedValue(0);
   const STICKY_THRESHOLD = 80; // When sticky header appears
 
-  const { isProUser: isSubscribed, loading: rcLoading } = useRevenueCat();
-  const isOnboarded = profile?.onboarded ?? false;
+  const isOnboarded = profile?.onboarded === true;
+  const hasRenderableFeed = !!v3Feed && (
+    (v3Feed.trending_topics?.length ?? 0) > 0 ||
+    (v3Feed.for_you?.length ?? 0) > 0
+  );
 
   useEffect(() => {
     const currentVersion = Application.nativeApplicationVersion || '1.0.0';
@@ -378,20 +397,52 @@ export default function UnifiedFeedScreen() {
     getStreakData().then(setStreak);
   }, []);
 
+  // Request app store review for returning users (streak >= 2)
+  useEffect(() => {
+    if (user && profile && streak && streak.currentStreak >= 2) {
+      maybeRequestReview(user.uid, streak.currentStreak, profile.hasRequestedReview);
+    }
+  }, [user, profile, streak]);
+
   const loadFeed = useCallback(async (): Promise<boolean> => {
-    if (!user || !isOnboarded) return false;
+    if (!user) return false;
+    if (!isOnboarded && !hasRenderableFeed) return false;
     try {
-      const v3 = await getV3UserFeed(user.uid);
-      if (v3) {
-        setV3Feed(v3);
+      // Check for prefetched feed first (loaded during splash)
+      const prefetched = consumePrefetchedFeed(user.uid);
+      if (prefetched) {
+        setV3Feed(prefetched);
         return true;
+      }
+
+      // Check if there's a pending prefetch promise
+      const prefetchPromise = getPrefetchPromise();
+      if (prefetchPromise) {
+        const feed = await prefetchPromise;
+        if (feed) {
+          setV3Feed(feed);
+          return true;
+        }
+      }
+
+      // Fallback to fresh fetch, with a couple short retries to smooth
+      // over auth-transition/cache races right after sign-in.
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const v3 = await getV3UserFeed(user.uid);
+        if (v3 && ((v3.trending_topics?.length ?? 0) > 0 || (v3.for_you?.length ?? 0) > 0)) {
+          setV3Feed(v3);
+          return true;
+        }
+        if (attempt < 2) {
+          await sleep(900);
+        }
       }
       return false;
     } catch (error) {
       console.error('Error loading feed:', error);
       return false;
     }
-  }, [user, isOnboarded]);
+  }, [user, isOnboarded, hasRenderableFeed]);
 
   const isFeedBuilding = (() => {
     if (profile?.feedBuildStatus !== 'building') return false;
@@ -411,7 +462,7 @@ export default function UnifiedFeedScreen() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (!isOnboarded) {
+    if (!isOnboarded && !hasRenderableFeed) {
       setIsLoading(false);
       return;
     }
@@ -422,7 +473,7 @@ export default function UnifiedFeedScreen() {
     };
     init();
     if (user?.uid) recordLastActive(user.uid);
-  }, [loadFeed, isOnboarded, user?.uid]);
+  }, [loadFeed, isOnboarded, hasRenderableFeed, user?.uid]);
 
   useEffect(() => {
     if (!isFeedBuilding || !user) return;
@@ -434,7 +485,7 @@ export default function UnifiedFeedScreen() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [isFeedBuilding, user, isSubscribed, loadFeed, refreshProfile]);
+  }, [isFeedBuilding, user, loadFeed, refreshProfile]);
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -478,13 +529,8 @@ export default function UnifiedFeedScreen() {
     return pills;
   }, [availableInterests]);
 
-  const FREE_LIMITS = { trending: 3, for_you: 1 };
-
-  // Trending topics
-  const trendingTopics = useMemo(() => {
-    const items = v3Feed?.trending_topics || [];
-    return isSubscribed ? items : items.slice(0, FREE_LIMITS.trending);
-  }, [v3Feed?.trending_topics, isSubscribed]);
+  // Trending topics are already entitlement-trimmed by backend.
+  const trendingTopics = useMemo(() => v3Feed?.trending_topics || [], [v3Feed?.trending_topics]);
 
   const userInterestIds = useMemo(() => (profile?.interests || []).map((interest) => normalizeInterestId(interest)), [profile?.interests]);
 
@@ -503,8 +549,7 @@ export default function UnifiedFeedScreen() {
   // For You items from feed (shuffled on each app open)
   const forYouItems = useMemo(() => {
     if (!v3Feed) return [];
-    const items = isSubscribed ? v3Feed.for_you : v3Feed.for_you.slice(0, FREE_LIMITS.for_you);
-    const filtered = items.filter((item) => !isNoisyItem(item));
+    const filtered = v3Feed.for_you.filter((item) => !isNoisyItem(item));
     // Fisher-Yates shuffle
     const shuffled = [...filtered];
     for (let i = shuffled.length - 1; i > 0; i--) {
@@ -512,7 +557,7 @@ export default function UnifiedFeedScreen() {
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
     return shuffled;
-  }, [v3Feed, isSubscribed]);
+  }, [v3Feed]);
 
   // Scroll handler for sticky header
   const scrollHandler = useAnimatedScrollHandler({
@@ -622,8 +667,6 @@ export default function UnifiedFeedScreen() {
     );
   }
 
-  if (!isOnboarded) return null;
-
   const firstName = getFirstName(profile);
 
   return (
@@ -726,7 +769,7 @@ export default function UnifiedFeedScreen() {
         )}
 
         {/* For You Section - Horizontal Carousel */}
-        {!isLoading && !rcLoading && forYouItems.length > 0 && (
+        {!isLoading && forYouItems.length > 0 && (
           <View style={styles.forYouSection}>
             <ScrollView
               horizontal
@@ -776,68 +819,96 @@ export default function UnifiedFeedScreen() {
           </View>
         )}
 
-        {/* Filter Pills */}
-        <View style={styles.pillsSection}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.pillsContainer}>
-            {filterPills.map((pill) => {
-              const isActive = activeFilter === pill.id;
-              return (
-                <Pressable
-                  key={pill.id}
-                  onPress={() => setActiveFilter(pill.id)}
-                  style={[
-                    styles.pill,
-                    {
-                      backgroundColor: isActive ? `${ACCENT_ORANGE}28` : Colors[colorScheme].background,
-                      borderColor: isActive ? ACCENT_ORANGE : Colors[colorScheme].border,
-                    },
-                  ]}>
-                  <Text
-                    style={[
-                      styles.pillText,
-                      {
-                        color: Colors[colorScheme].text,
-                        fontWeight: isActive ? '600' : '400',
-                      },
-                    ]}>
-                    {pill.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {/* Ongoing Section Header */}
-        <View style={styles.ongoingHeader}>
-          <Text style={[styles.ongoingTitle, { color: Colors[colorScheme].text }]}>Trending</Text>
-        </View>
-
         {/* Loading / Building states */}
-        {(isLoading || rcLoading) ? (
+        {(isLoading || !hasRenderableFeed) ? (
           <View style={styles.padded}>
             <SkeletonLoader colorScheme={colorScheme} />
           </View>
         ) : isFeedBuilding && isEmpty ? (
-          <View style={styles.padded}>
-            <FeedBuildingLoader colorScheme={colorScheme} />
-          </View>
-        ) : isEmpty ? (
-          <View style={styles.padded}>
-            <View style={styles.emptyState}>
-              <View style={[styles.emptyIllus, { backgroundColor: colorScheme === 'dark' ? '#1a1a2e' : '#f5f3ff' }]}>
-                <DigestIllus width={44} height={44} color={Colors[colorScheme].text} />
-              </View>
-              <ThemedText style={[styles.emptyText, { color: Colors[colorScheme].muted }]}>
-                No articles yet. Pull to refresh.
-              </ThemedText>
+          <>
+            <View style={styles.pillsSection}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsContainer}>
+                {filterPills.map((pill) => {
+                  const isActive = activeFilter === pill.id;
+                  return (
+                    <Pressable key={pill.id} onPress={() => setActiveFilter(pill.id)} style={[styles.pill, { backgroundColor: isActive ? `${ACCENT_ORANGE}28` : Colors[colorScheme].background, borderColor: isActive ? ACCENT_ORANGE : Colors[colorScheme].border }]}>
+                      <Text style={[styles.pillText, { color: Colors[colorScheme].text, fontFamily: isActive ? FontFamily.semiBold : FontFamily.regular }]}>{pill.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
             </View>
-          </View>
+            <View style={styles.padded}>
+              <FeedBuildingLoader colorScheme={colorScheme} />
+            </View>
+          </>
+        ) : isEmpty ? (
+          <>
+            <View style={styles.pillsSection}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsContainer}>
+                {filterPills.map((pill) => {
+                  const isActive = activeFilter === pill.id;
+                  return (
+                    <Pressable key={pill.id} onPress={() => setActiveFilter(pill.id)} style={[styles.pill, { backgroundColor: isActive ? `${ACCENT_ORANGE}28` : Colors[colorScheme].background, borderColor: isActive ? ACCENT_ORANGE : Colors[colorScheme].border }]}>
+                      <Text style={[styles.pillText, { color: Colors[colorScheme].text, fontFamily: isActive ? FontFamily.semiBold : FontFamily.regular }]}>{pill.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+            <View style={styles.padded}>
+              <View style={styles.emptyState}>
+                <View style={[styles.emptyIllus, { backgroundColor: colorScheme === 'dark' ? '#1a1a2e' : '#f5f3ff' }]}>
+                  <DigestIllus width={44} height={44} color={Colors[colorScheme].text} />
+                </View>
+                <ThemedText style={[styles.emptyText, { color: Colors[colorScheme].muted }]}>
+                  No articles yet. Pull to refresh.
+                </ThemedText>
+              </View>
+            </View>
+          </>
         ) : (
           <>
+            {/* Filter Pills */}
+            <View style={styles.pillsSection}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.pillsContainer}>
+                {filterPills.map((pill) => {
+                  const isActive = activeFilter === pill.id;
+                  return (
+                    <Pressable
+                      key={pill.id}
+                      onPress={() => setActiveFilter(pill.id)}
+                      style={[
+                        styles.pill,
+                        {
+                          backgroundColor: isActive ? `${ACCENT_ORANGE}28` : Colors[colorScheme].background,
+                          borderColor: isActive ? ACCENT_ORANGE : Colors[colorScheme].border,
+                        },
+                      ]}>
+                      <Text
+                        style={[
+                          styles.pillText,
+                          {
+                            color: Colors[colorScheme].text,
+                            fontFamily: isActive ? FontFamily.semiBold : FontFamily.regular,
+                          },
+                        ]}>
+                        {pill.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            {/* Ongoing Section Header */}
+            <View style={styles.ongoingHeader}>
+              <Text style={[styles.ongoingTitle, { color: Colors[colorScheme].text }]}>Trending</Text>
+            </View>
+
             {/* Ongoing Article List - Figma style */}
             <View style={styles.ongoingList}>
               {feedSections.map((section) => {
@@ -901,11 +972,7 @@ export default function UnifiedFeedScreen() {
             </View>
 
             {/* Footer */}
-            <View style={styles.padded}>
-              <ThemedText style={[styles.endText, { color: Colors[colorScheme].muted }]}>
-                Time to touch some grass 🌱
-              </ThemedText>
-            </View>
+            <TouchGrassFooter colorScheme={colorScheme} />
           </>
         )}
       </Animated.ScrollView>
@@ -985,6 +1052,153 @@ function FeedBuildingLoader({ colorScheme }: { colorScheme: 'light' | 'dark' }) 
     </Animated.View>
   );
 }
+
+const GRASS_EMOJIS = ['🌱', '🌿', '🍃', '☘️', '🌾', '🪴'];
+
+function FloatingEmoji({ emoji, index, onComplete }: { emoji: string; index: number; onComplete: () => void }) {
+  const translateY = useSharedValue(0);
+  const translateX = useSharedValue(0);
+  const opacity = useSharedValue(1);
+  const scale = useSharedValue(0.5);
+  const rotation = useSharedValue(0);
+
+  useEffect(() => {
+    const randomX = (Math.random() - 0.5) * 120;
+    const delay = index * 80;
+
+    translateY.value = withDelay(
+      delay,
+      withTiming(-180, { duration: 1200, easing: Easing.out(Easing.cubic) })
+    );
+    translateX.value = withDelay(
+      delay,
+      withSequence(
+        withTiming(randomX * 0.5, { duration: 400 }),
+        withTiming(randomX, { duration: 800, easing: Easing.out(Easing.quad) })
+      )
+    );
+    scale.value = withDelay(
+      delay,
+      withSequence(
+        withSpring(1.2, { damping: 8, stiffness: 200 }),
+        withTiming(0.6, { duration: 800 })
+      )
+    );
+    rotation.value = withDelay(
+      delay,
+      withTiming((Math.random() - 0.5) * 60, { duration: 1200 })
+    );
+    opacity.value = withDelay(
+      delay,
+      withSequence(
+        withTiming(1, { duration: 100 }),
+        withDelay(800, withTiming(0, { duration: 400 }))
+      )
+    );
+
+    const timer = setTimeout(() => {
+      runOnJS(onComplete)();
+    }, delay + 1300);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: translateY.value },
+      { translateX: translateX.value },
+      { scale: scale.value },
+      { rotate: `${rotation.value}deg` },
+    ],
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.Text style={[grassStyles.floatingEmoji, animatedStyle]}>
+      {emoji}
+    </Animated.Text>
+  );
+}
+
+function TouchGrassFooter({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
+  const [emojis, setEmojis] = useState<{ id: number; emoji: string }[]>([]);
+  const [celebrating, setCelebrating] = useState(false);
+  const idCounter = useRef(0);
+  const textScale = useSharedValue(1);
+
+  const handlePress = useCallback(() => {
+    if (celebrating) return;
+    setCelebrating(true);
+
+    // Animate text bounce
+    textScale.value = withSequence(
+      withSpring(0.9, { damping: 10, stiffness: 400 }),
+      withSpring(1.1, { damping: 8, stiffness: 300 }),
+      withSpring(1, { damping: 10, stiffness: 200 })
+    );
+
+    // Spawn emojis
+    const newEmojis = Array.from({ length: 8 }, () => ({
+      id: idCounter.current++,
+      emoji: GRASS_EMOJIS[Math.floor(Math.random() * GRASS_EMOJIS.length)],
+    }));
+    setEmojis(newEmojis);
+
+    setTimeout(() => {
+      setCelebrating(false);
+      setEmojis([]);
+    }, 1500);
+  }, [celebrating, textScale]);
+
+  const handleEmojiComplete = useCallback(() => {
+    // Individual emoji animation complete
+  }, []);
+
+  const textAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: textScale.value }],
+  }));
+
+  return (
+    <View style={grassStyles.container}>
+      <Pressable onPress={handlePress} style={grassStyles.pressable}>
+        <View style={grassStyles.emojiContainer}>
+          {emojis.map((item, index) => (
+            <FloatingEmoji
+              key={item.id}
+              emoji={item.emoji}
+              index={index}
+              onComplete={handleEmojiComplete}
+            />
+          ))}
+        </View>
+        <Animated.View style={textAnimatedStyle}>
+          <ThemedText style={[styles.endText, { color: Colors[colorScheme].muted }]}>
+            Time to touch some grass 🌱
+          </ThemedText>
+        </Animated.View>
+      </Pressable>
+    </View>
+  );
+}
+
+const grassStyles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 20,
+  },
+  pressable: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emojiContainer: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  floatingEmoji: {
+    position: 'absolute',
+    fontSize: 28,
+  },
+});
 
 function SkeletonLoader({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
   const shimmerOpacity = useSharedValue(0.3);
@@ -1086,7 +1300,7 @@ const styles = StyleSheet.create({
   },
   stickyHeaderTitle: {
     fontSize: 17,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
     letterSpacing: 0.8,
   },
   stickyHeaderRight: {
@@ -1110,12 +1324,11 @@ const styles = StyleSheet.create({
   },
   headerGreeting: {
     fontSize: 24,
-    fontWeight: '700',
-    fontFamily: Fonts.serif,
+    fontFamily: FontFamilySerif.bold,
   },
   headerSubtitle: {
     fontSize: 14,
-    fontFamily: Fonts.serif,
+    fontFamily: FontFamily.regular,
     lineHeight: 22,
   },
   headerRight: {
@@ -1135,8 +1348,7 @@ const styles = StyleSheet.create({
   streakText: {
     color: '#fff',
     fontSize: 13,
-    fontWeight: '700',
-    fontFamily: Fonts.serif,
+    fontFamily: FontFamily.bold,
   },
   profileButton: {
     width: 36,
@@ -1164,7 +1376,7 @@ const styles = StyleSheet.create({
   profileStreakText: {
     color: '#fff',
     fontSize: 10,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
   },
 
   // Update Banner
@@ -1201,10 +1413,11 @@ const styles = StyleSheet.create({
   },
   updateBannerTitle: {
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
   },
   updateBannerSubtitle: {
     fontSize: 13,
+    fontFamily: FontFamily.regular,
   },
 
   // For You Horizontal Carousel - Figma style
@@ -1243,14 +1456,14 @@ const styles = StyleSheet.create({
   },
   forYouCardTitle: {
     fontSize: 17,
-    fontWeight: '600',
     color: 'rgba(0,0,0,0.95)',
-    fontFamily: Fonts.serif,
+    fontFamily: FontFamilySerif.semiBold,
     lineHeight: 24,
   },
   forYouCardPreview: {
     fontSize: 13,
     color: 'rgba(55,55,55,0.8)',
+    fontFamily: FontFamily.regular,
     lineHeight: 19,
   },
   forYouCardMeta: {
@@ -1262,7 +1475,7 @@ const styles = StyleSheet.create({
   forYouCardMetaText: {
     fontSize: 11,
     color: META_GREEN,
-    fontWeight: '500',
+    fontFamily: FontFamily.semiBold,
   },
   forYouCardMetaDot: {
     width: 4,
@@ -1297,10 +1510,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   ongoingTitle: {
-    fontSize: 21,
-    fontWeight: '700',
-    fontStyle: 'italic',
-    fontFamily: Fonts.serif,
+    fontSize: 19,
+    fontFamily: FontFamilySerif.semiBold,
   },
   ongoingList: {
     paddingHorizontal: 20,
@@ -1318,8 +1529,7 @@ const styles = StyleSheet.create({
   },
   ongoingTitle2: {
     fontSize: 15,
-    fontWeight: '600',
-    fontFamily: Fonts.serif,
+    fontFamily: FontFamilySerif.semiBold,
     lineHeight: 22,
   },
   ongoingMeta: {
@@ -1330,7 +1540,7 @@ const styles = StyleSheet.create({
   ongoingMetaText: {
     fontSize: 11,
     color: META_GREEN,
-    fontWeight: '500',
+    fontFamily: FontFamily.semiBold,
   },
   ongoingMetaDot: {
     width: 4,
@@ -1367,7 +1577,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   errorEmoji: { fontSize: 48, marginBottom: 16 },
-  errorTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
+  errorTitle: { fontSize: 20, fontFamily: FontFamily.bold, marginBottom: 8 },
   errorText: { fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 24 },
   retryButton: {
     backgroundColor: Colors.dark.background,
@@ -1377,12 +1587,12 @@ const styles = StyleSheet.create({
     minWidth: 140,
     alignItems: 'center',
   },
-  retryButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  retryButtonText: { color: '#fff', fontSize: 16, fontFamily: FontFamily.semiBold },
 
   endText: {
     textAlign: 'center',
     fontSize: 13,
-    fontFamily: Fonts.mono,
+    fontFamily: FontFamily.regular,
     letterSpacing: 1,
     textTransform: 'uppercase',
     paddingVertical: 32,
@@ -1459,12 +1669,11 @@ const buildStyles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: '700',
     letterSpacing: -0.3,
     marginBottom: 8,
-    fontFamily: Fonts.serif,
+    fontFamily: FontFamily.bold,
   },
-  subtitle: { fontSize: 15, lineHeight: 22, textAlign: 'center', marginBottom: 28 },
+  subtitle: { fontSize: 15, fontFamily: FontFamily.regular, lineHeight: 22, textAlign: 'center', marginBottom: 28 },
   dots: { flexDirection: 'row', gap: 10, marginBottom: 28 },
-  hint: { fontSize: 13, lineHeight: 20, textAlign: 'center' },
+  hint: { fontSize: 13, fontFamily: FontFamily.regular, lineHeight: 20, textAlign: 'center' },
 });

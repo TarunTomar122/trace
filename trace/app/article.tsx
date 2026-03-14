@@ -8,9 +8,10 @@ import {
   Image,
   Dimensions,
   Platform,
+  Share,
 } from 'react-native';
 import ViewShot from 'react-native-view-shot';
-import * as Sharing from 'expo-sharing';
+import RNShare from 'react-native-share';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -42,7 +43,7 @@ import {
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors, Fonts } from '@/constants/theme';
+import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -70,10 +71,16 @@ function hashColor(str: string): string {
 }
 
 function getSourceInitials(name: string): string {
-  if (!name) return '??';
-  const words = name.trim().split(/\s+/);
-  if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
-  return (words[0][0] + words[1][0]).toUpperCase();
+  const value = String(name || '').trim();
+  if (!value) return '??';
+  const words = value.split(/\s+/).filter(Boolean);
+  if (words.length === 1) return words[0].substring(0, 2).toUpperCase() || '??';
+  return `${words[0]?.[0] || ''}${words[1]?.[0] || ''}`.toUpperCase() || '??';
+}
+
+function isSafeImageUri(uri?: string | null): uri is string {
+  const value = String(uri || '').trim();
+  return value.startsWith('http://') || value.startsWith('https://') || value.startsWith('file://');
 }
 
 function getTimeAgo(dateStr?: string): string {
@@ -109,7 +116,7 @@ function RichText({ children, style }: { children: string; style?: any }) {
       {parts.map((part, i) => {
         if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
           return (
-            <Text key={i} style={[style, { fontWeight: '700' }]}>
+            <Text key={i} style={[style, { fontFamily: FontFamily.bold }]}>
               {part.slice(2, -2)}
             </Text>
           );
@@ -239,29 +246,6 @@ function WorthReadingArticleView({
   const headerAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: headerTranslateY.value }],
   }));
-
-  // Share card capture
-  const shareCardRef = useRef<ViewShot>(null);
-  const [isSharing, setIsSharing] = useState(false);
-
-  const handleShare = useCallback(async () => {
-    if (!shareCardRef.current || isSharing) return;
-    setIsSharing(true);
-    try {
-      const uri = await shareCardRef.current.capture?.();
-      if (uri && await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'image/png',
-          dialogTitle: 'Share this article',
-          UTI: 'public.png',
-        });
-      }
-    } catch (e) {
-      console.warn('Share failed:', e);
-    } finally {
-      setIsSharing(false);
-    }
-  }, [isSharing]);
 
   const renderWorthReadingLine = (line: string, key: string | number) => {
     if (line.startsWith('### ')) {
@@ -394,9 +378,6 @@ function WorthReadingArticleView({
                   fill={isBookmarked ? '#000' : 'transparent'}
                 />
               </Pressable>
-              <Pressable onPress={handleShare} hitSlop={12} style={wrStyles.floatingBtn}>
-                <Share2 size={18} color="#000" strokeWidth={1.8} />
-              </Pressable>
               <Pressable onPress={onReadOriginal} hitSlop={12} style={wrStyles.floatingBtn}>
                 <ExternalLink size={18} color="#000" strokeWidth={1.8} />
               </Pressable>
@@ -405,30 +386,7 @@ function WorthReadingArticleView({
         </SafeAreaView>
       </Animated.View>
 
-      {/* Hidden share card for capture */}
-      <View style={wrStyles.shareCardContainer}>
-        <ViewShot ref={shareCardRef} options={{ format: 'png', quality: 1 }}>
-          <View style={wrStyles.shareCard}>
-            {imageUrl ? (
-              <Image source={{ uri: imageUrl }} style={wrStyles.shareCardImage} resizeMode="cover" />
-            ) : (
-              <View style={[wrStyles.shareCardImage, { backgroundColor: avatarBg }]} />
-            )}
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.7)']}
-              style={wrStyles.shareCardGradient}
-            />
-            <View style={wrStyles.shareCardContent}>
-              <Text style={wrStyles.shareCardTitle} numberOfLines={3}>{title}</Text>
-              <View style={wrStyles.shareCardMeta}>
-                <Text style={wrStyles.shareCardSource}>{sourceName}</Text>
-                <Text style={wrStyles.shareCardBrand}>via Trace</Text>
-              </View>
-            </View>
-          </View>
-        </ViewShot>
       </View>
-    </View>
   );
 }
 
@@ -489,11 +447,10 @@ const wrStyles = StyleSheet.create({
     marginHorizontal: 6,
   },
   heroTitle: {
-    fontSize: 20,
-    lineHeight: 28,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-    fontFamily: Fonts.serif,
+    fontSize: 25,
+    lineHeight: 32,
+    letterSpacing: -0.4,
+    fontFamily: FontFamilySerif.bold,
   },
   content: {
     paddingHorizontal: 16,
@@ -514,11 +471,11 @@ const wrStyles = StyleSheet.create({
   sourceAvatarText: {
     color: '#fff',
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
   },
   sourceText: {
     fontSize: 13,
-    fontWeight: '500',
+    fontFamily: FontFamily.semiBold,
   },
   sectionCard: {
     borderRadius: 18,
@@ -527,23 +484,22 @@ const wrStyles = StyleSheet.create({
     gap: 10,
   },
   sectionH2: {
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 24,
+    fontSize: 19,
+    fontFamily: FontFamilySerif.semiBold,
+    lineHeight: 25,
     letterSpacing: -0.3,
     marginBottom: 2,
   },
   sectionH3: {
     fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 21,
+    fontFamily: FontFamilySerif.semiBold,
+    lineHeight: 20,
     letterSpacing: -0.2,
-    textTransform: 'uppercase',
-    opacity: 0.72,
     marginBottom: 2,
   },
   paragraphText: {
     fontSize: 15,
+    fontFamily: FontFamily.regular,
     lineHeight: 25,
   },
   blockGap: {
@@ -565,12 +521,13 @@ const wrStyles = StyleSheet.create({
     width: 18,
     fontSize: 13,
     lineHeight: 22,
-    fontWeight: '700',
+    fontFamily: FontFamily.regular,
     textAlign: 'right',
   },
   listText: {
     flex: 1,
     fontSize: 15,
+    fontFamily: FontFamily.regular,
     lineHeight: 24,
   },
   nextBtn: {
@@ -587,12 +544,12 @@ const wrStyles = StyleSheet.create({
   },
   nextLabel: {
     fontSize: 10,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     letterSpacing: 1.2,
   },
   nextTitle: {
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: FontFamilySerif.semiBold,
   },
   bottomBar: {
     position: 'absolute',
@@ -612,7 +569,7 @@ const wrStyles = StyleSheet.create({
   },
   bottomButtonText: {
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
   },
   // Share card styles
   shareCardContainer: {
@@ -646,11 +603,10 @@ const wrStyles = StyleSheet.create({
   },
   shareCardTitle: {
     fontSize: 28,
-    fontWeight: '700',
     color: '#fff',
     lineHeight: 36,
     marginBottom: 16,
-    fontFamily: Fonts.serif,
+    fontFamily: FontFamilySerif.bold,
   },
   shareCardMeta: {
     flexDirection: 'row',
@@ -660,12 +616,12 @@ const wrStyles = StyleSheet.create({
   shareCardSource: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
+    fontFamily: FontFamily.semiBold,
   },
   shareCardBrand: {
     fontSize: 14,
     color: '#F59E0B',
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
   },
 });
 
@@ -1074,13 +1030,13 @@ const dd = StyleSheet.create({
   },
   heroBadgeText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: '#fff',
     letterSpacing: 0.5,
   },
   heroTitle: {
     fontSize: 24,
-    fontWeight: '800',
+    fontFamily: FontFamilySerif.bold,
     lineHeight: 31,
     letterSpacing: -0.4,
     color: '#fff',
@@ -1095,7 +1051,7 @@ const dd = StyleSheet.create({
   },
   heroMetaText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: FontFamily.semiBold,
     color: 'rgba(255,255,255,0.7)',
   },
 
@@ -1112,16 +1068,18 @@ const dd = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     letterSpacing: 0.5,
   },
   sectionBody: {
-    fontSize: 17,
-    lineHeight: 28,
+    fontSize: 15,
+    fontFamily: FontFamily.regular,
+    lineHeight: 26,
   },
   subtitleText: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 14,
+    fontFamily: FontFamily.regular,
+    lineHeight: 22,
     fontStyle: 'italic',
   },
 
@@ -1143,13 +1101,13 @@ const dd = StyleSheet.create({
   },
   tocNumText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
   },
   tocTitle: {
     flex: 1,
     fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 21,
+    fontFamily: FontFamilySerif.semiBold,
+    lineHeight: 20,
   },
 
   // Chapter detail
@@ -1167,7 +1125,7 @@ const dd = StyleSheet.create({
   },
   chDetailBarLabel: {
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
   },
   chDetailScroll: {
     paddingHorizontal: 16,
@@ -1176,14 +1134,15 @@ const dd = StyleSheet.create({
   },
   chDetailTitle: {
     fontSize: 26,
-    fontWeight: '800',
+    fontFamily: FontFamilySerif.bold,
     lineHeight: 34,
     letterSpacing: -0.4,
     marginBottom: 24,
   },
   chDetailPara: {
-    fontSize: 17,
-    lineHeight: 28,
+    fontSize: 15,
+    fontFamily: FontFamily.regular,
+    lineHeight: 26,
     marginBottom: 16,
   },
 
@@ -1196,13 +1155,14 @@ const dd = StyleSheet.create({
     marginBottom: 16,
   },
   quoteText: {
-    fontSize: 16,
-    lineHeight: 26,
+    fontSize: 15,
+    fontFamily: FontFamilySerif.regular,
+    lineHeight: 24,
     fontStyle: 'italic',
   },
   quoteSource: {
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
     marginTop: 8,
   },
 
@@ -1223,13 +1183,13 @@ const dd = StyleSheet.create({
   chNavBtnRight: {},
   chNavHint: {
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
     letterSpacing: 0.3,
     marginBottom: 2,
   },
   chNavLabel: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: FontFamilySerif.semiBold,
     lineHeight: 19,
   },
 
@@ -1244,10 +1204,11 @@ const dd = StyleSheet.create({
   },
   sourceName: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
   },
   sourceTitle: {
     fontSize: 13,
+    fontFamily: FontFamily.regular,
   },
 });
 
@@ -1288,7 +1249,6 @@ export default function ArticleScreen() {
 
   useEffect(() => {
     if (!item) {
-      router.back();
       return;
     }
     checkBookmarked(item.id).then(setBookmarked);
@@ -1303,7 +1263,21 @@ export default function ArticleScreen() {
     updateStreak();
   }, [item, router]);
 
-  if (!item) return null;
+  if (!item) {
+    return (
+      <SafeAreaView style={[nStyles.container, { backgroundColor: Colors[colorScheme].background }]}>
+        <View style={[nStyles.emptyState, { paddingTop: Math.max(insets.top, 24) + 24 }]}>
+          <Text style={[nStyles.emptyTitle, { color: Colors[colorScheme].text }]}>Article unavailable</Text>
+          <Text style={[nStyles.emptyBody, { color: Colors[colorScheme].muted }]}>
+            This article is no longer in memory. Go back to the feed and open it again.
+          </Text>
+          <Pressable style={nStyles.emptyButton} onPress={() => router.replace('/(tabs)')}>
+            <Text style={nStyles.emptyButtonText}>Back to feed</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const handleToggleBookmark = async () => {
     if (!isProUser) {
@@ -1334,21 +1308,43 @@ export default function ArticleScreen() {
   const handleShare = useCallback(async () => {
     if (!shareCardRef.current || isSharing) return;
     setIsSharing(true);
+
+    // Build share message with overview text
+    const overview = item.summary?.short_article?.subtitle
+      || item.summary?.short_article?.body?.slice(0, 300)
+      || item.description
+      || '';
+    const shareMessage = `${overview}\n\nRead more such stories at yourtrace.online`;
+
     try {
       const uri = await shareCardRef.current.capture?.();
-      if (uri && await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'image/png',
-          dialogTitle: 'Share this article',
-          UTI: 'public.png',
+      if (!uri) {
+        // Fallback to text only
+        await Share.share({ message: shareMessage });
+        return;
+      }
+
+      if (Platform.OS === 'ios') {
+        await Share.share({
+          url: uri,
+          message: shareMessage,
+        });
+      } else {
+        // Android: Use react-native-share for image + text
+        await RNShare.open({
+          message: shareMessage,
+          url: `file://${uri}`,
+          type: 'image/png',
         });
       }
-    } catch (e) {
-      console.warn('Share failed:', e);
+    } catch (e: any) {
+      if (e?.message !== 'User did not share') {
+        console.warn('Share failed:', e);
+      }
     } finally {
       setIsSharing(false);
     }
-  }, [isSharing]);
+  }, [isSharing, item]);
 
   const readingTime = item.summary?.reading_time_minutes;
   const rawSlides = item.summary?.short_article?.slides as string[] | undefined;
@@ -1483,12 +1479,16 @@ export default function ArticleScreen() {
 
         {/* Hero image */}
         <View style={nStyles.heroSection}>
-          <Image
-            source={{ uri: imageUrl }}
-            style={nStyles.heroImg}
-            resizeMode="cover"
-            onError={() => setImgError(true)}
-          />
+          {isSafeImageUri(imageUrl) ? (
+            <Image
+              source={{ uri: imageUrl }}
+              style={nStyles.heroImg}
+              resizeMode="cover"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <View style={[nStyles.heroImg, { backgroundColor: isDark ? '#1c1c1c' : '#ece7df' }]} />
+          )}
           {/* Overlay for dimming */}
           <View style={nStyles.heroOverlayDim} />
           {/* Bottom gradient fade to background */}
@@ -1613,9 +1613,11 @@ export default function ArticleScreen() {
                 fill={bookmarked ? '#000' : 'transparent'}
               />
             </Pressable>
-            <Pressable onPress={handleShare} hitSlop={12} style={nStyles.floatingBtn}>
-              <Share2 size={18} color="#000" strokeWidth={1.8} />
-            </Pressable>
+            {isTrending && (
+              <Pressable onPress={handleShare} hitSlop={12} style={nStyles.floatingBtn}>
+                <Share2 size={18} color="#000" strokeWidth={1.8} />
+              </Pressable>
+            )}
             <Pressable onPress={handleReadOriginal} hitSlop={12} style={nStyles.floatingBtn}>
               <ExternalLink size={18} color="#000" strokeWidth={1.8} />
             </Pressable>
@@ -1652,6 +1654,38 @@ export default function ArticleScreen() {
 
 const nStyles = StyleSheet.create({
   container: { flex: 1 },
+  emptyState: {
+    flex: 1,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontFamily: FontFamilySerif.bold,
+    lineHeight: 28,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptyBody: {
+    fontSize: 15,
+    fontFamily: FontFamily.regular,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginBottom: 18,
+    maxWidth: 320,
+  },
+  emptyButton: {
+    backgroundColor: '#111111',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 999,
+  },
+  emptyButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontFamily: FontFamily.bold,
+  },
 
   // Floating header
   floatingHeader: {
@@ -1721,7 +1755,7 @@ const nStyles = StyleSheet.create({
   },
   ageBadgeText: {
     fontSize: 10,
-    fontWeight: '500',
+    fontFamily: FontFamily.regular,
     color: '#fff',
   },
 
@@ -1731,15 +1765,15 @@ const nStyles = StyleSheet.create({
     gap: 12,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
-    lineHeight: 28,
-    letterSpacing: -0.3,
-    fontFamily: Fonts.serif,
+    fontSize: 25,
+    lineHeight: 32,
+    letterSpacing: -0.4,
+    fontFamily: FontFamilySerif.bold,
   },
   subtitle: {
-    fontSize: 15,
-    lineHeight: 23,
+    fontSize: 14,
+    lineHeight: 21,
+    fontFamily: FontFamily.semiBold,
   },
   sourceRow: {
     flexDirection: 'row',
@@ -1755,12 +1789,12 @@ const nStyles = StyleSheet.create({
   },
   sourceAvatarText: {
     fontSize: 9,
-    fontWeight: '800',
+    fontFamily: FontFamily.bold,
     color: '#fff',
   },
-  sourceName: { fontSize: 13, fontWeight: '600', flexShrink: 1 },
+  sourceName: { fontSize: 13, fontFamily: FontFamily.semiBold, flexShrink: 1 },
   sourceDot: { fontSize: 12 },
-  readTime: { fontSize: 12, fontWeight: '500' },
+  readTime: { fontSize: 12, fontFamily: FontFamily.semiBold },
 
   tabBar: {
     flexDirection: 'row',
@@ -1775,13 +1809,13 @@ const nStyles = StyleSheet.create({
   },
   activeTabText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
   },
 
   body: { gap: 14, marginBottom: 24 },
-  bodyH2: { fontSize: 20, fontWeight: '700', lineHeight: 28, marginTop: 8 },
-  bodyH3: { fontSize: 17, fontWeight: '600', lineHeight: 24, marginTop: 4 },
-  bodyText: { fontSize: 16, lineHeight: 26 },
+  bodyH2: { fontSize: 19, fontFamily: FontFamilySerif.semiBold, lineHeight: 25, marginTop: 8 },
+  bodyH3: { fontSize: 15, fontFamily: FontFamilySerif.semiBold, lineHeight: 20, marginTop: 4 },
+  bodyText: { fontSize: 15, fontFamily: FontFamily.regular, lineHeight: 24 },
   bulletRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   bulletDot: {
     width: 7,
@@ -1790,8 +1824,8 @@ const nStyles = StyleSheet.create({
     backgroundColor: '#F97316',
     marginTop: 10,
   },
-  bulletNum: { fontSize: 16, lineHeight: 26, width: 20, fontWeight: '600' },
-  bulletText: { fontSize: 16, lineHeight: 26, flex: 1 },
+  bulletNum: { fontSize: 15, lineHeight: 24, width: 20, fontFamily: FontFamily.regular },
+  bulletText: { fontSize: 15, lineHeight: 24, flex: 1, fontFamily: FontFamily.regular },
 
   takeawaysCard: {
     borderRadius: 16,
@@ -1801,7 +1835,7 @@ const nStyles = StyleSheet.create({
   },
   takeawaysLabel: {
     fontSize: 11,
-    fontWeight: '800',
+    fontFamily: FontFamily.bold,
     letterSpacing: 1.5,
     color: '#b45309',
     marginBottom: 2,
@@ -1813,12 +1847,13 @@ const nStyles = StyleSheet.create({
   },
   whyLabel: {
     fontSize: 11,
-    fontWeight: '800',
+    fontFamily: FontFamily.bold,
     letterSpacing: 1.5,
     marginBottom: 8,
   },
   whyText: {
-    fontSize: 16,
+    fontSize: 15,
+    fontFamily: FontFamily.regular,
     lineHeight: 24,
     fontStyle: 'italic',
   },
@@ -1843,12 +1878,13 @@ const nStyles = StyleSheet.create({
   },
   paywallTitle: {
     fontSize: 20,
-    fontWeight: '700',
+    fontFamily: FontFamilySerif.bold,
     textAlign: 'center',
     letterSpacing: -0.3,
   },
   paywallDesc: {
     fontSize: 14,
+    fontFamily: FontFamily.regular,
     lineHeight: 21,
     textAlign: 'center',
     paddingHorizontal: 8,
@@ -1865,7 +1901,7 @@ const nStyles = StyleSheet.create({
     marginTop: 6,
     width: '100%',
   },
-  paywallBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  paywallBtnText: { color: '#fff', fontSize: 16, fontFamily: FontFamily.semiBold },
   readOriginalLink: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1873,7 +1909,7 @@ const nStyles = StyleSheet.create({
     paddingVertical: 8,
     marginTop: 4,
   },
-  readOriginalLinkText: { fontSize: 14, fontWeight: '500' },
+  readOriginalLinkText: { fontSize: 14, fontFamily: FontFamily.semiBold },
 
   bottomBar: {
     position: 'absolute',
@@ -1893,7 +1929,7 @@ const nStyles = StyleSheet.create({
   },
   bottomBarText: {
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
   },
   // Share card styles
   shareCardContainer: {
@@ -1927,11 +1963,10 @@ const nStyles = StyleSheet.create({
   },
   shareCardTitle: {
     fontSize: 28,
-    fontWeight: '700',
     color: '#fff',
     lineHeight: 36,
     marginBottom: 16,
-    fontFamily: Fonts.serif,
+    fontFamily: FontFamilySerif.bold,
   },
   shareCardMeta: {
     flexDirection: 'row',
@@ -1941,11 +1976,11 @@ const nStyles = StyleSheet.create({
   shareCardSource: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
+    fontFamily: FontFamily.semiBold,
   },
   shareCardBrand: {
     fontSize: 14,
     color: '#F59E0B',
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
   },
 });

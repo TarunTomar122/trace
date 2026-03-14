@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Crown, Sparkles, Infinity as InfinityIcon, Wand2, Loader } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors } from '@/constants/theme';
+import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const ACCENT = '#F59E0B';
@@ -115,12 +115,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: '700',
+    fontFamily: FontFamilySerif.bold,
     letterSpacing: -0.5,
     marginBottom: 12,
   },
   subtitle: {
     fontSize: 16,
+    fontFamily: FontFamily.regular,
     textAlign: 'center',
     lineHeight: 22,
     paddingHorizontal: 12,
@@ -147,11 +148,12 @@ const styles = StyleSheet.create({
   },
   featureTitle: {
     fontSize: 17,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
     letterSpacing: -0.2,
   },
   featureDescription: {
     fontSize: 14,
+    fontFamily: FontFamily.regular,
     lineHeight: 20,
   },
   buildingBanner: {
@@ -165,7 +167,7 @@ const styles = StyleSheet.create({
   },
   buildingText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: FontFamily.semiBold,
   },
   continueButton: {
     paddingVertical: 16,
@@ -175,7 +177,7 @@ const styles = StyleSheet.create({
   },
   continueButtonText: {
     fontSize: 17,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
     color: '#fff',
   },
 });

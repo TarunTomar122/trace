@@ -171,6 +171,7 @@ Content:
 
 Return JSON with EXACT structure:
 {{
+  "interest_id": "One canonical interest id from the allowed list below",
   "short_article": {{
     "subtitle": "One short factual line (max 14 words) saying what changed",
     "headline": "Short factual overlay headline (6-10 words max)",
@@ -189,6 +190,22 @@ Return JSON with EXACT structure:
 }}
 
 RULES:
+- Choose exactly one interest_id from this allowed list:
+  technology, business-market, startups, engineering, marketing, fintech, health, web3, climate, experience, productivity, leadership
+- Pick the interest_id based on the actual story itself, not the publisher.
+- Prefer narrower lanes when clearly supported:
+  startup funding/M&A/ecosystem -> startups
+  developer tools/infra/security/platform engineering -> engineering
+  ad platforms/SEO/GTM/distribution -> marketing
+  payments/banking/markets/fintech companies -> fintech
+  biotech/healthcare/medical devices/wellness companies -> health
+  crypto/blockchain/tokens/exchanges -> web3
+  energy/EVs/climate tech/sustainability policy -> climate
+  product/design/UX/interface changes -> experience
+  workplace tools/personal workflow software -> productivity
+  management/org/exec decisions as the story -> leadership
+  use technology for broad AI/consumer tech/platform stories when no narrower lane fits
+- Never return legacy labels like ai or business.
 - Write like a sharp reporter, not a marketer.
 - The body is the main story layer. It must read naturally as a paragraph, not as disguised bullet points.
 - In the body, cover the core development, the main actors, and the most important concrete detail or consequence from the source.
@@ -484,6 +501,11 @@ QUALITY GATE (VERY IMPORTANT):
 - Reject low-signal or junk content such as: pure promos/ads, coupons/deals,
   shopping roundups, affiliate pieces, watch-live filler, thin clickbait,
   or articles with too little substance to summarize well.
+- Reject sponsored or commercial content such as: "Sponsored Post", advertorials,
+  vendor promos, partner content, product marketing disguised as an article,
+  hiring/role-listing posts, or brand/customer success writeups that are mainly promotional.
+- If the title or opening content makes it clear this is sponsored, paid, or promotional,
+  reject it even if the rest of the article is readable.
 - If rejected, set "rejected": true and include a short reason.
 - If accepted, set "rejected": false and produce the full summary fields.
 """
@@ -550,7 +572,7 @@ def _cache_bucket(feed_type: str, technical_depth: str = "", output_format: str 
     output_format: 'cards' for learning cards, '' for prose (default)
     """
     if feed_type == "trending":
-        return "trending_v6"  # trending doesn't vary by depth or format
+        return "trending_v7"  # includes topic interest classification
     if feed_type == "deep_dives":
         if technical_depth == "deep":
             return "deep_dive_v6_deep"
@@ -638,6 +660,20 @@ def summary_lookup_key(url: str, feed_type: str = "default", technical_depth: st
 
 def _normalize_trending_summary(parsed: dict[str, Any]) -> dict[str, Any]:
     """Clean up trending summary - remove markdown formatting but keep full content."""
+    allowed_interest_ids = {
+        "technology",
+        "business-market",
+        "startups",
+        "engineering",
+        "marketing",
+        "fintech",
+        "health",
+        "web3",
+        "climate",
+        "experience",
+        "productivity",
+        "leadership",
+    }
     short = parsed.get("short_article")
     if not isinstance(short, dict):
         short = {}
@@ -668,6 +704,12 @@ def _normalize_trending_summary(parsed: dict[str, Any]) -> dict[str, Any]:
     short["outline"] = []
     short["body"] = body
     parsed["short_article"] = short
+    interest_id = str(parsed.get("interest_id", "")).strip().lower()
+    if interest_id == "ai":
+        interest_id = "technology"
+    elif interest_id == "business":
+        interest_id = "business-market"
+    parsed["interest_id"] = interest_id if interest_id in allowed_interest_ids else "technology"
     return parsed
 
 
@@ -745,6 +787,7 @@ def generate_summary(
             '{{\n'
             '  "rejected": <true|false>,\n'
             '  "rejection_reason": "<short reason when rejected, else empty string>",\n'
+            '  "interest_id": "<one canonical interest id>",\n'
             '  "short_article": {{\n'
             '    "subtitle": "...",\n'
             '    "headline": "...",\n'

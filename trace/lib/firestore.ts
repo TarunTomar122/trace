@@ -83,6 +83,13 @@ export interface UserProfile {
   feedBuildStatus?: 'pending' | 'building' | 'ready' | 'error';
   feedBuildRequestedAt?: string;
 
+  // How did they find us (onboarding)
+  referralSource?: 'friend' | 'youtube' | 'twitter' | 'instagram' | 'other';
+
+  // App store review
+  hasRequestedReview?: boolean;
+  reviewRequestedAt?: string;
+
   // Timestamps
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;
@@ -545,7 +552,79 @@ export async function markEarlyAdopterOfferSeen(uid: string): Promise<void> {
   }
 }
 
+/**
+ * Save how the user found us (referral source) - called during sign up flow.
+ */
+export async function saveReferralSource(
+  uid: string,
+  source: 'friend' | 'youtube' | 'twitter' | 'instagram' | 'other'
+): Promise<void> {
+  try {
+    const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
+    await setDoc(docRef, { referralSource: source }, { merge: true });
+  } catch (error) {
+    console.error('Error saving referral source:', error);
+  }
+}
+
+/**
+ * Mark that we've requested a review from this user (to avoid asking again).
+ */
+export async function markReviewRequested(uid: string): Promise<void> {
+  try {
+    const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
+    await setDoc(
+      docRef,
+      {
+        hasRequestedReview: true,
+        reviewRequestedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('Error marking review requested:', error);
+  }
+}
+
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+  const firstNonEmptyString = (...values: Array<string | null | undefined>): string => {
+    for (const value of values) {
+      if (typeof value !== 'string') continue;
+      const trimmed = value.trim();
+      if (trimmed) return trimmed;
+    }
+    return '';
+  };
+
+  const mergeProfileIdentity = (
+    primary: UserProfile,
+    fallback?: UserProfile | null
+  ): UserProfile => {
+    const displayName = firstNonEmptyString(
+      primary.displayName,
+      primary.name,
+      fallback?.displayName,
+      fallback?.name
+    );
+    const name = firstNonEmptyString(
+      primary.name,
+      primary.displayName,
+      fallback?.name,
+      fallback?.displayName
+    );
+    const email = firstNonEmptyString(primary.email, fallback?.email);
+    const photoURL =
+      firstNonEmptyString(primary.photoURL || '', fallback?.photoURL || '') || null;
+
+    return {
+      ...primary,
+      displayName,
+      name,
+      email,
+      photoURL,
+    };
+  };
+
   const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
   let cachedProfile: UserProfile | null = null;
 
@@ -554,7 +633,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   try {
     const cached = await getDocFromCache(docRef);
     if (cached.exists()) {
-      cachedProfile = cached.data() as UserProfile;
+      cachedProfile = mergeProfileIdentity(cached.data() as UserProfile);
     }
   } catch {
     // No cached profile yet; continue to server fetch below.
@@ -562,8 +641,8 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
 
   try {
     // Always try server as source-of-truth. Use a timeout so startup
-    // doesn't hang on poor networks.
-    const serverTimeoutMs = cachedProfile?.onboarded ? 1500 : 4500;
+    // doesn't hang on poor networks. Short timeout if we have cache.
+    const serverTimeoutMs = cachedProfile ? 800 : 3000;
     const docSnap = await Promise.race([
       getDocFromServer(docRef),
       new Promise<null>((resolve) => setTimeout(() => resolve(null), serverTimeoutMs)),
@@ -572,7 +651,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
       return cachedProfile;
     }
     if (docSnap.exists()) {
-      return docSnap.data() as UserProfile;
+      return mergeProfileIdentity(docSnap.data() as UserProfile, cachedProfile);
     }
     // Doc does not exist on server; fall back to cache if present.
     if (cachedProfile) {
@@ -638,6 +717,26 @@ export async function getOrCreateUserProfile(
 ): Promise<UserProfile> {
   const existing = await getUserProfile(uid);
   if (existing) {
+    const identityPatch: Partial<UserProfile> = {};
+    if (!String(existing.email || '').trim() && email) {
+      identityPatch.email = email;
+    }
+    if (!String(existing.displayName || '').trim() && displayName) {
+      identityPatch.displayName = displayName;
+    }
+    if (!String(existing.name || '').trim() && displayName) {
+      identityPatch.name = displayName;
+    }
+    if (!existing.photoURL && photoURL) {
+      identityPatch.photoURL = photoURL;
+    }
+    if (Object.keys(identityPatch).length > 0) {
+      await updateUserProfile(uid, identityPatch);
+      return {
+        ...existing,
+        ...identityPatch,
+      };
+    }
     return existing;
   }
   return createUserProfile(uid, email, displayName, photoURL);
@@ -1377,6 +1476,40 @@ export async function getAppVersionConfig(): Promise<AppVersionConfig | null> {
       latest_version: data.latest_version,
     };
   } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetch a trending article by doc_id from v3_trending_pool.
+ * Used for deep linking from notifications.
+ *
+ * The doc_id is a URL hash: sha256(url)[:32]
+ * Backend sends this in the notification payload as `articleId`.
+ */
+export async function getArticleById(articleId: string): Promise<FeedItem | null> {
+  try {
+    const ref = doc(firestore, 'v3_trending_pool', articleId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+
+    const data = snap.data();
+    // Transform pool item to FeedItem format expected by the app
+    return {
+      id: snap.id,
+      title: data.title || '',
+      url: data.url || '',
+      type: data.type || 'article',
+      source: data.source || data.source_name || '',
+      source_name: data.source_name || data.source || '',
+      thumbnail: data.thumbnail || data.og_image || null,
+      tags: data.tags || [],
+      published_date: data.published_date || data.fetched_at,
+      summary: data.summary,
+      metadata: data.metadata,
+    } as FeedItem;
+  } catch (error) {
+    console.error('[firestore] Error fetching article by ID:', error);
     return null;
   }
 }

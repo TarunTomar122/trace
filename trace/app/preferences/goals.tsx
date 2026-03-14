@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft, Check } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors } from '@/constants/theme';
+import { Colors, FontFamily } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -137,9 +137,9 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   backBtn: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '700' },
+  headerTitle: { fontSize: 18, fontFamily: FontFamily.bold },
   scrollContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
-  desc: { fontSize: 14, lineHeight: 20, marginBottom: 16 },
+  desc: { fontSize: 14, fontFamily: FontFamily.regular, lineHeight: 20, marginBottom: 16 },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -149,8 +149,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   optionText: { flex: 1, gap: 2 },
-  optionLabel: { fontSize: 15, fontWeight: '600' },
-  optionSub: { fontSize: 12 },
+  optionLabel: { fontSize: 15, fontFamily: FontFamily.semiBold },
+  optionSub: { fontSize: 12, fontFamily: FontFamily.regular },
   checkCircle: {
     width: 22,
     height: 22,
@@ -167,5 +167,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
   },
-  saveBtnText: { color: '#000', fontSize: 15, fontWeight: '700' },
+  saveBtnText: { color: '#000', fontSize: 15, fontFamily: FontFamily.bold },
 });

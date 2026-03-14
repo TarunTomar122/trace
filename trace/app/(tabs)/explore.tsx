@@ -22,7 +22,7 @@ import {
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors } from '@/constants/theme';
+import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
@@ -384,16 +384,17 @@ const s = StyleSheet.create({
   },
   avatarInitial: {
     fontSize: 30,
-    fontWeight: '700',
+    fontFamily: FontFamilySerif.bold,
   },
   name: {
     fontSize: 22,
-    fontWeight: '700',
+    fontFamily: FontFamilySerif.bold,
     letterSpacing: -0.3,
     marginBottom: 2,
   },
   email: {
     fontSize: 14,
+    fontFamily: FontFamily.regular,
   },
   badgeRow: {
     flexDirection: 'row',
@@ -407,7 +408,7 @@ const s = StyleSheet.create({
   },
   badgeText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
   },
 
   card: {
@@ -428,12 +429,12 @@ const s = StyleSheet.create({
   },
   statValue: {
     fontSize: 24,
-    fontWeight: '800',
+    fontFamily: FontFamilySerif.bold,
     letterSpacing: -0.5,
   },
   statLabel: {
     fontSize: 11,
-    fontWeight: '500',
+    fontFamily: FontFamily.semiBold,
   },
   statDivider: {
     width: StyleSheet.hairlineWidth,
@@ -448,11 +449,12 @@ const s = StyleSheet.create({
   },
   nudgeTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
     marginBottom: 2,
   },
   nudgeDesc: {
     fontSize: 13,
+    fontFamily: FontFamily.regular,
     lineHeight: 18,
   },
 
@@ -469,15 +471,16 @@ const s = StyleSheet.create({
   },
   subLabel: {
     fontSize: 17,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
   },
   subTitle: {
     fontSize: 17,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     letterSpacing: -0.3,
   },
   subDesc: {
     fontSize: 14,
+    fontFamily: FontFamily.regular,
     lineHeight: 20,
   },
   upgradeBtn: {
@@ -493,13 +496,14 @@ const s = StyleSheet.create({
   upgradeBtnText: {
     color: '#fff',
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
   },
 
   
   // Preferences
   prefDesc: {
     fontSize: 13,
+    fontFamily: FontFamily.regular,
     lineHeight: 18,
     marginLeft: 34,
     marginTop: -8,
@@ -515,7 +519,7 @@ const s = StyleSheet.create({
   menuText: {
     flex: 1,
     fontSize: 15,
-    fontWeight: '500',
+    fontFamily: FontFamily.semiBold,
   },
   menuDivider: {
     height: StyleSheet.hairlineWidth,
@@ -530,11 +534,12 @@ const s = StyleSheet.create({
   },
   newsletterTitle: {
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
     marginBottom: 2,
   },
   newsletterDesc: {
     fontSize: 13,
+    fontFamily: FontFamily.regular,
     lineHeight: 18,
   },
 
@@ -551,11 +556,12 @@ const s = StyleSheet.create({
   },
   bottomRowText: {
     fontSize: 15,
-    fontWeight: '500',
+    fontFamily: FontFamily.semiBold,
   },
 
   footer: {
     fontSize: 12,
+    fontFamily: FontFamily.regular,
     textAlign: 'center',
     marginTop: 24,
   },

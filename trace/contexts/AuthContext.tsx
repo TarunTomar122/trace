@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { Platform } from 'react-native';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { Image } from 'expo-image';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   AuthCredential,
   GoogleAuthProvider,
@@ -11,7 +12,9 @@ import {
   User,
 } from 'firebase/auth';
 import { app, auth } from '@/lib/firebase';
-import { getOrCreateUserProfile, getUserProfile, deleteUserData, UserProfile } from '@/lib/firestore';
+import { getOrCreateUserProfile, getUserProfile, deleteUserData, UserProfile, getV3UserFeed } from '@/lib/firestore';
+import { enablePushNotifications } from '@/lib/notifications';
+import { setPrefetchedFeed, setPrefetchPromise, clearFeedCache } from '@/lib/feed-cache';
 
 interface AuthContextType {
   user: User | null;
@@ -39,6 +42,140 @@ const AuthContext = createContext<AuthContextType>({
   retryProfileLoad: async () => {},
 });
 
+const PROFILE_CACHE_PREFIX = 'trace_profile_snapshot_v1:';
+
+function profileCacheKey(uid: string): string {
+  return `${PROFILE_CACHE_PREFIX}${uid}`;
+}
+
+function toCachedProfile(profile: UserProfile): UserProfile {
+  return {
+    uid: profile.uid,
+    email: profile.email || '',
+    displayName: profile.displayName || '',
+    photoURL: profile.photoURL ?? null,
+    onboarded: !!profile.onboarded,
+    name: profile.name || '',
+    role: profile.role || '',
+    seniority: profile.seniority,
+    interests: Array.isArray(profile.interests) ? profile.interests : [],
+    selectedLearningSources: Array.isArray(profile.selectedLearningSources) ? profile.selectedLearningSources : [],
+    careerGoals: Array.isArray(profile.careerGoals) ? profile.careerGoals : [],
+    summaryStyle: profile.summaryStyle,
+    company: profile.company,
+    interestQueries: profile.interestQueries,
+    hobbies: Array.isArray(profile.hobbies) ? profile.hobbies : [],
+    skills: Array.isArray(profile.skills) ? profile.skills : [],
+    dislikedTopics: Array.isArray(profile.dislikedTopics) ? profile.dislikedTopics : [],
+    sourcePreferences: profile.sourcePreferences || {
+      youtube: 0,
+      articles: 0,
+      papers: 0,
+      repos: 0,
+      tweets: 0,
+      discussions: 0,
+    },
+    contentDepth: profile.contentDepth || null,
+    goals: profile.goals,
+    subscriptionStatus: profile.subscriptionStatus || 'none',
+    appSubscriptionStatus: profile.appSubscriptionStatus,
+    isEarlyAdopter: profile.isEarlyAdopter,
+    earlyAdopterOfferSeen: profile.earlyAdopterOfferSeen,
+    newsletterOptIn: profile.newsletterOptIn,
+    pushNotificationsEnabled: profile.pushNotificationsEnabled,
+    pushToken: profile.pushToken,
+    pushTokenUpdatedAt: profile.pushTokenUpdatedAt,
+    feedBuildStatus: profile.feedBuildStatus,
+    feedBuildRequestedAt: profile.feedBuildRequestedAt,
+    referralSource: profile.referralSource,
+    hasRequestedReview: profile.hasRequestedReview,
+    reviewRequestedAt: profile.reviewRequestedAt,
+    createdAt: profile.createdAt ?? null,
+    updatedAt: profile.updatedAt ?? null,
+    onboardedAt: profile.onboardedAt ?? null,
+    lastActiveAt: profile.lastActiveAt ?? null,
+  };
+}
+
+function firstNonEmptyString(...values: Array<string | null | undefined>): string {
+  for (const value of values) {
+    if (typeof value !== 'string') continue;
+    const trimmed = value.trim();
+    if (trimmed) return trimmed;
+  }
+  return '';
+}
+
+function mergeProfileWithSessionIdentity(
+  nextProfile: UserProfile,
+  firebaseUser: User | null,
+  currentProfile?: UserProfile | null
+): UserProfile {
+  const displayName = firstNonEmptyString(
+    nextProfile.displayName,
+    nextProfile.name,
+    currentProfile?.displayName,
+    currentProfile?.name,
+    firebaseUser?.displayName || ''
+  );
+  const name = firstNonEmptyString(
+    nextProfile.name,
+    nextProfile.displayName,
+    currentProfile?.name,
+    currentProfile?.displayName,
+    firebaseUser?.displayName || ''
+  );
+  const email = firstNonEmptyString(
+    nextProfile.email,
+    currentProfile?.email,
+    firebaseUser?.email || ''
+  );
+  const photoURL =
+    firstNonEmptyString(
+      nextProfile.photoURL || '',
+      currentProfile?.photoURL || '',
+      firebaseUser?.photoURL || ''
+    ) || null;
+
+  return {
+    ...nextProfile,
+    displayName,
+    name,
+    email,
+    photoURL,
+  };
+}
+
+async function readCachedProfile(uid: string): Promise<UserProfile | null> {
+  try {
+    const raw = await AsyncStorage.getItem(profileCacheKey(uid));
+    if (!raw) return null;
+    return JSON.parse(raw) as UserProfile;
+  } catch (error) {
+    console.warn('[Auth] Failed to read cached profile:', error);
+    return null;
+  }
+}
+
+async function writeCachedProfile(profile: UserProfile): Promise<void> {
+  try {
+    await AsyncStorage.setItem(
+      profileCacheKey(profile.uid),
+      JSON.stringify(toCachedProfile(profile))
+    );
+  } catch (error) {
+    console.warn('[Auth] Failed to write cached profile:', error);
+  }
+}
+
+async function clearCachedProfile(uid: string): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(profileCacheKey(uid));
+  } catch (error) {
+    console.warn('[Auth] Failed to clear cached profile:', error);
+  }
+}
+
 export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -48,6 +185,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profileResolved, setProfileResolved] = useState(false);
   const [profileLoadError, setProfileLoadError] = useState(false);
   const signInInFlightRef = useRef(false);
+  const lastHandledAuthUidRef = useRef<string | null | undefined>(undefined);
+  const profileRef = useRef<UserProfile | null>(null);
+
+  useEffect(() => {
+    profileRef.current = profile;
+  }, [profile]);
+
+  const commitProfile = (nextProfile: UserProfile | null, firebaseUser: User | null) => {
+    if (!nextProfile) return null;
+    const mergedProfile = mergeProfileWithSessionIdentity(
+      nextProfile,
+      firebaseUser,
+      profileRef.current
+    );
+    profileRef.current = mergedProfile;
+    setProfile(mergedProfile);
+    return mergedProfile;
+  };
+
+  const applyAuthState = async (firebaseUser: User | null) => {
+    const nextUid = firebaseUser?.uid ?? null;
+    if (lastHandledAuthUidRef.current === nextUid) {
+      return;
+    }
+    const previousUid = lastHandledAuthUidRef.current ?? null;
+    lastHandledAuthUidRef.current = nextUid;
+
+    setUser(firebaseUser);
+    if (firebaseUser) {
+      setProfileResolved(false);
+      const cachedProfile = await readCachedProfile(firebaseUser.uid);
+      if (cachedProfile) {
+        commitProfile(cachedProfile, firebaseUser);
+        setProfileResolved(true);
+      }
+      // Startup should never create/overwrite profiles.
+      // Single attempt - getUserProfile already uses cache-first with server fallback.
+      await loadProfile(firebaseUser, { allowCreate: false });
+
+      // Prefetch feed in parallel with profile load for faster startup
+      const feedPromise = getV3UserFeed(firebaseUser.uid).then((feed) => {
+        if (feed) {
+          setPrefetchedFeed(firebaseUser.uid, feed);
+        }
+        return feed;
+      }).catch(() => null);
+      setPrefetchPromise(feedPromise);
+    } else {
+      profileRef.current = null;
+      setProfile(null);
+      setProfileResolved(true);
+      clearFeedCache();
+      if (previousUid) {
+        void clearCachedProfile(previousUid);
+      }
+    }
+    setLoading(false);
+  };
 
   const loadProfile = async (firebaseUser: User, options?: { allowCreate?: boolean }) => {
     const allowCreate = options?.allowCreate ?? true;
@@ -61,7 +256,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             firebaseUser.photoURL
           )
         : await getUserProfile(firebaseUser.uid);
-      setProfile(userProfile);
+      const resolvedProfile = commitProfile(userProfile, firebaseUser);
 
       // Prefetch profile photo for instant loading
       if (firebaseUser.photoURL) {
@@ -70,7 +265,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
 
-      return userProfile;
+      // Register for push notifications if user has onboarded and hasn't disabled them
+      if (resolvedProfile?.onboarded && resolvedProfile?.pushNotificationsEnabled !== false) {
+        enablePushNotifications(firebaseUser.uid).catch((err) => {
+          console.warn('[Auth] Push notification registration failed:', err);
+        });
+      }
+
+      if (resolvedProfile) {
+        void writeCachedProfile(resolvedProfile);
+      }
+
+      return resolvedProfile;
     } catch (error) {
       console.error('Error loading profile:', error);
       setProfileLoadError(true);
@@ -83,7 +289,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshProfile = async () => {
     if (user) {
       const p = await getUserProfile(user.uid);
-      setProfile(p);
+      const resolvedProfile = commitProfile(p, user);
+      if (resolvedProfile) {
+        void writeCachedProfile(resolvedProfile);
+      }
     }
   };
 
@@ -101,28 +310,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       offlineAccess: true,
     });
 
-    // Listen to Firebase auth state changes
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-      if (firebaseUser) {
-        setProfileResolved(false);
-        // Startup should never create/overwrite profiles.
-        // We retry read-only once if the first fetch misses.
-        void loadProfile(firebaseUser, { allowCreate: false }).then(async (p) => {
-          if (!p) {
-            setProfileResolved(false);
-            await new Promise((r) => setTimeout(r, 600));
-            await loadProfile(firebaseUser, { allowCreate: false });
-          }
-        });
-      } else {
-        setProfile(null);
-        setProfileResolved(true);
-      }
-      setLoading(false);
-    });
+    let cancelled = false;
+    let unsubscribe = () => {};
 
-    return unsubscribe;
+    const initAuth = async () => {
+      try {
+        const authStateReady = (auth as any).authStateReady;
+        if (typeof authStateReady === 'function') {
+          await authStateReady.call(auth);
+        }
+      } catch (error) {
+        console.warn('[Auth] authStateReady failed, falling back to currentUser:', error);
+      }
+
+      if (cancelled) return;
+
+      await applyAuthState(auth.currentUser);
+      if (cancelled) return;
+
+      unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        void applyAuthState(firebaseUser);
+      });
+    };
+
+    void initAuth();
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, []);
 
   const signInWithCredentialWithRetry = async (
@@ -257,7 +473,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Sign out of Google
       await GoogleSignin.signOut();
       // Sign out of Firebase
+      if (user?.uid) {
+        await clearCachedProfile(user.uid);
+      }
       await firebaseSignOut(auth);
+      profileRef.current = null;
       setProfile(null);
     } catch (error) {
       console.error('Sign Out Error:', error);
@@ -285,8 +505,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await deleteUserData(currentUser.uid);
       // Sign out of Google
       await GoogleSignin.signOut();
+      await clearCachedProfile(currentUser.uid);
       // Delete the Firebase auth account
       await auth.currentUser?.delete();
+      profileRef.current = null;
       setProfile(null);
       setUser(null);
     } catch (error) {

@@ -18,7 +18,7 @@ import {
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors } from '@/constants/theme';
+import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { FeedItem } from '@/lib/firestore';
 import { getArticleImage } from '@/lib/fallback-images';
 
@@ -183,22 +183,22 @@ const csStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: {
+    fontFamily: FontFamily.bold,
     fontSize: 8,
-    fontWeight: '800',
     color: '#fff',
     letterSpacing: 0.5,
   },
   sourceName: {
+    fontFamily: FontFamily.semiBold,
     fontSize: 12,
-    fontWeight: '600',
     color: 'rgba(255,255,255,0.85)',
     flexShrink: 1,
   },
-  dot: { fontSize: 10, color: 'rgba(255,255,255,0.5)' },
-  time: { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
+  dot: { fontFamily: FontFamily.regular, fontSize: 10, color: 'rgba(255,255,255,0.5)' },
+  time: { fontFamily: FontFamily.regular, fontSize: 11, color: 'rgba(255,255,255,0.5)' },
   title: {
+    fontFamily: FontFamilySerif.semiBold,
     fontSize: 18,
-    fontWeight: '700',
     color: '#fff',
     lineHeight: 24,
     letterSpacing: -0.3,
@@ -406,28 +406,29 @@ const tStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: {
+    fontFamily: FontFamily.bold,
     fontSize: 10,
-    fontWeight: '800',
     color: '#fff',
     letterSpacing: 0.5,
   },
   sourceNameOverlay: {
+    fontFamily: FontFamily.semiBold,
     fontSize: 13,
-    fontWeight: '600',
     color: 'rgba(255,255,255,0.9)',
     flexShrink: 1,
   },
-  dotOverlay: { fontSize: 12, color: 'rgba(255,255,255,0.6)' },
-  timeOverlay: { fontSize: 12, color: 'rgba(255,255,255,0.6)' },
+  dotOverlay: { fontFamily: FontFamily.regular, fontSize: 12, color: 'rgba(255,255,255,0.6)' },
+  timeOverlay: { fontFamily: FontFamily.regular, fontSize: 12, color: 'rgba(255,255,255,0.6)' },
   titleOverlay: {
+    fontFamily: FontFamilySerif.semiBold,
     fontSize: 22,
-    fontWeight: '700',
     color: '#fff',
     lineHeight: 28,
     letterSpacing: -0.3,
     marginBottom: 8,
   },
   headlineOverlay: {
+    fontFamily: FontFamily.regular,
     fontSize: 15,
     color: 'rgba(255,255,255,0.8)',
     lineHeight: 21,
@@ -438,9 +439,9 @@ const tStyles = StyleSheet.create({
     marginTop: 16,
   },
   swipeText: {
+    fontFamily: FontFamily.semiBold,
     fontSize: 12,
     color: 'rgba(255,255,255,0.7)',
-    fontWeight: '600',
   },
   textSlide: {
     padding: 0,
@@ -463,24 +464,24 @@ const tStyles = StyleSheet.create({
     flex: 1,
   },
   sourceName: {
+    fontFamily: FontFamily.bold,
     fontSize: 14,
-    fontWeight: '700',
   },
   slideLabel: {
+    fontFamily: FontFamily.bold,
     fontSize: 10,
-    fontWeight: '700',
     letterSpacing: 1,
     marginTop: 2,
   },
   slideNum: {
+    fontFamily: FontFamily.semiBold,
     fontSize: 12,
-    fontWeight: '600',
     opacity: 0.6,
   },
   slideText: {
+    fontFamily: FontFamily.regular,
     fontSize: 18,
     lineHeight: 28,
-    fontWeight: '400',
     letterSpacing: -0.3,
   },
   pagination: {
@@ -601,26 +602,27 @@ const fyStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: {
+    fontFamily: FontFamily.bold,
     fontSize: 9,
-    fontWeight: '800',
     color: '#fff',
     letterSpacing: 0.5,
   },
   sourceName: {
+    fontFamily: FontFamily.semiBold,
     fontSize: 13,
-    fontWeight: '600',
     flexShrink: 1,
   },
-  dot: { fontSize: 12 },
-  time: { fontSize: 12 },
+  dot: { fontFamily: FontFamily.regular, fontSize: 12 },
+  time: { fontFamily: FontFamily.regular, fontSize: 12 },
   title: {
+    fontFamily: FontFamilySerif.semiBold,
     fontSize: 18,
-    fontWeight: '700',
     lineHeight: 24,
     letterSpacing: -0.3,
     marginBottom: 6,
   },
   snippet: {
+    fontFamily: FontFamily.regular,
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 4,
@@ -636,8 +638,8 @@ const fyStyles = StyleSheet.create({
     gap: 5,
   },
   readTimeText: {
+    fontFamily: FontFamily.semiBold,
     fontSize: 12,
-    fontWeight: '500',
   },
   actionBtn: {
     padding: 6,
@@ -769,16 +771,17 @@ const ddStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: {
+    fontFamily: FontFamily.bold,
     fontSize: 11,
-    fontWeight: '800',
     color: '#fff',
     letterSpacing: 0.5,
   },
   sourceName: {
+    fontFamily: FontFamily.bold,
     fontSize: 14,
-    fontWeight: '700',
   },
   date: {
+    fontFamily: FontFamily.regular,
     fontSize: 12,
     marginTop: 2,
   },
@@ -797,22 +800,24 @@ const ddStyles = StyleSheet.create({
     paddingVertical: 5,
   },
   readTimeText: {
+    fontFamily: FontFamily.bold,
     fontSize: 12,
-    fontWeight: '700',
   },
   title: {
+    fontFamily: FontFamilySerif.semiBold,
     fontSize: 19,
-    fontWeight: '700',
     lineHeight: 26,
     letterSpacing: -0.3,
     marginBottom: 8,
   },
   snippet: {
+    fontFamily: FontFamily.regular,
     fontSize: 14,
     lineHeight: 21,
     marginBottom: 6,
   },
   sectionsPreview: {
+    fontFamily: FontFamily.regular,
     fontSize: 12,
     lineHeight: 16,
   },
@@ -875,16 +880,17 @@ const legacyStyles = StyleSheet.create({
     gap: 6,
   },
   sourceLabel: {
+    fontFamily: FontFamily.semiBold,
     fontSize: 12,
-    fontWeight: '500',
   },
   title: {
+    fontFamily: FontFamily.semiBold,
     fontSize: 16,
-    fontWeight: '600',
     lineHeight: 22,
     letterSpacing: -0.2,
   },
   snippet: {
+    fontFamily: FontFamily.regular,
     fontSize: 13,
     lineHeight: 18,
   },
@@ -895,7 +901,7 @@ const legacyStyles = StyleSheet.create({
     marginTop: 2,
   },
   readTime: {
+    fontFamily: FontFamily.semiBold,
     fontSize: 11,
-    fontWeight: '500',
   },
 });

@@ -16,7 +16,7 @@ import { PurchasesPackage } from 'react-native-purchases';
 
 import { ThemedText } from '@/components/themed-text';
 import { AppLogo } from '@/components/app-logo';
-import { Colors } from '@/constants/theme';
+import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -143,14 +143,14 @@ const tlStyles = StyleSheet.create({
   },
   label: {
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
     marginBottom: 2,
   },
   title: {
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     lineHeight: 22,
   },
   desc: {
@@ -234,7 +234,7 @@ function StepPrimer({
 const primerStyles = StyleSheet.create({
   sectionLabel: {
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     letterSpacing: 1,
     marginBottom: 14,
   },
@@ -643,13 +643,14 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     fontSize: 28,
-    fontWeight: '800',
+    fontFamily: FontFamilySerif.bold,
     textAlign: 'center',
     letterSpacing: -0.5,
     lineHeight: 36,
   },
   heroSub: {
     fontSize: 15,
+    fontFamily: FontFamily.regular,
     lineHeight: 22,
     textAlign: 'center',
     paddingHorizontal: 16,
@@ -674,7 +675,7 @@ const styles = StyleSheet.create({
   },
   benefitText: {
     fontSize: 15,
-    fontWeight: '500',
+    fontFamily: FontFamily.semiBold,
     flex: 1,
   },
 
@@ -717,7 +718,7 @@ const styles = StyleSheet.create({
   },
   planLabel: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
   },
   planBadge: {
     backgroundColor: '#F59E0B',
@@ -727,7 +728,7 @@ const styles = StyleSheet.create({
   },
   planBadgeText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: '#fff',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -737,11 +738,11 @@ const styles = StyleSheet.create({
   },
   planPrice: {
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
   },
   planPeriod: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: FontFamily.semiBold,
   },
   loadingPlans: {
     alignItems: 'center',
@@ -766,7 +767,7 @@ const styles = StyleSheet.create({
   ctaText: {
     color: '#fff',
     fontSize: 17,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
   },
 
   // ─── Skip ───
@@ -777,7 +778,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: FontFamily.semiBold,
   },
 
   // ─── Restore ───
@@ -788,7 +789,7 @@ const styles = StyleSheet.create({
   },
   restoreText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: FontFamily.semiBold,
   },
 
   // ─── Legal ───

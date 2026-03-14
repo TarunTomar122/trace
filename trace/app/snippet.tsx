@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Trash2, Quote } from 'lucide-react-native';
 
-import { Colors } from '@/constants/theme';
+import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useToast } from '@/contexts/ToastContext';
 import { getSnippets, removeSnippet, Snippet } from '@/lib/bookmarks';
@@ -17,7 +17,7 @@ function RichText({ children, style }: { children: string; style?: any }) {
       {parts.map((part, i) => {
         if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
           return (
-            <Text key={i} style={[style, { fontWeight: '700' }]}>
+            <Text key={i} style={[style, { fontFamily: FontFamily.bold }]}>
               {part.slice(2, -2)}
             </Text>
           );
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   },
   topBarLabelText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -161,11 +161,12 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
     marginBottom: 16,
   },
   content: {
     fontSize: 18,
+    fontFamily: FontFamily.regular,
     lineHeight: 30,
   },
   quoteCard: {
@@ -176,12 +177,13 @@ const styles = StyleSheet.create({
   },
   quoteText: {
     fontSize: 16,
+    fontFamily: FontFamilySerif.regular,
     lineHeight: 26,
     fontStyle: 'italic',
   },
   quoteSource: {
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
     marginTop: 10,
   },
 });

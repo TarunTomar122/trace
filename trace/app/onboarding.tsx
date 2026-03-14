@@ -28,7 +28,7 @@ import {
 import type { LucideIcon } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors, Fonts } from '@/constants/theme';
+import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -365,7 +365,7 @@ export default function OnboardingScreen() {
             <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)}>
               <ThemedText style={styles.title}>What fires you up?</ThemedText>
               <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
-                Pick 3+ topics. This powers your <ThemedText style={{ fontWeight: '700', color: ACCENT }}>For You</ThemedText> articles and learning cards.
+                Pick 3+ topics. This powers your <ThemedText style={{ fontFamily: FontFamily.bold, color: ACCENT }}>For You</ThemedText> articles and learning cards.
               </ThemedText>
 
               <View style={styles.gridTwo}>
@@ -590,12 +590,12 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12 },
   progressBar: { height: 5, borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 3 },
-  stepLabel: { fontSize: 12, fontWeight: '500', marginTop: 8, paddingLeft: 2 },
+  stepLabel: { fontSize: 12, fontFamily: FontFamily.semiBold, marginTop: 8, paddingLeft: 2 },
 
   scrollContent: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 80 },
 
-  title: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5, lineHeight: 34, marginBottom: 8, fontFamily: Fonts.serif },
-  subtitle: { fontSize: 15, lineHeight: 22, marginBottom: 28, fontFamily: Fonts.serif },
+  title: { fontSize: 26, letterSpacing: -0.5, lineHeight: 34, marginBottom: 8, fontFamily: FontFamilySerif.bold },
+  subtitle: { fontSize: 15, lineHeight: 22, marginBottom: 28, fontFamily: FontFamily.semiBold },
 
   // 2-column grid
   gridTwo: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
@@ -623,8 +623,8 @@ const styles = StyleSheet.create({
   },
   iconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   iconBoxCompact: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  cardLabel: { fontSize: 16, fontWeight: '600' },
-  cardLabelCompact: { fontSize: 13, fontWeight: '600' },
+  cardLabel: { fontSize: 16, fontFamily: FontFamily.semiBold },
+  cardLabelCompact: { fontSize: 13, fontFamily: FontFamily.semiBold },
   cardSubtitle: { fontSize: 11, lineHeight: 14, marginTop: 2 },
   checkBadgeOverlay: {
     position: 'absolute',
@@ -649,7 +649,7 @@ const styles = StyleSheet.create({
     width: HALF_W,
   },
   chipIconBox: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
-  chipLabel: { fontSize: 14, fontWeight: '600', flex: 1 },
+  chipLabel: { fontSize: 14, fontFamily: FontFamily.semiBold, flex: 1 },
 
   selectionCount: { fontSize: 13, textAlign: 'center', marginTop: 16 },
 
@@ -664,7 +664,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   categoryIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  categoryLabel: { fontSize: 15, fontWeight: '600' },
+  categoryLabel: { fontSize: 15, fontFamily: FontFamily.semiBold },
   categoryCount: { fontSize: 12, marginTop: 2 },
   sourceExpanded: { paddingLeft: 8, paddingRight: 4, paddingTop: 4, paddingBottom: 8, gap: 4 },
   sourceRow: {
@@ -683,8 +683,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sourceAvatarText: { fontSize: 15, fontWeight: '700' },
-  sourceName: { fontSize: 14, fontWeight: '600' },
+  sourceAvatarText: { fontSize: 15, fontFamily: FontFamily.bold },
+  sourceName: { fontSize: 14, fontFamily: FontFamily.semiBold },
   sourceDesc: { fontSize: 12, lineHeight: 16, marginTop: 1 },
   checkSmall: { marginLeft: 4 },
 
@@ -695,7 +695,7 @@ const styles = StyleSheet.create({
   summaryCard: { borderRadius: 16, padding: 18, marginBottom: 2 },
   summaryHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 14 },
   summaryIconBox: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
-  summaryLabel: { fontSize: 17, fontWeight: '700' },
+  summaryLabel: { fontSize: 17, fontFamily: FontFamily.bold },
   summarySubtitle: { fontSize: 13, lineHeight: 18, marginTop: 4 },
   previewBox: { borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14 },
   previewText: { fontSize: 13, lineHeight: 20, fontStyle: 'italic' },
@@ -716,7 +716,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 4,
   },
-  backBtnText: { fontSize: 15, fontWeight: '500' },
+  backBtnText: { fontSize: 15, fontFamily: FontFamily.semiBold },
   continueBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -725,5 +725,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     borderRadius: 14,
   },
-  continueBtnText: { fontSize: 16, fontWeight: '700', color: '#000' },
+  continueBtnText: { fontSize: 16, fontFamily: FontFamily.bold, color: '#000' },
 });

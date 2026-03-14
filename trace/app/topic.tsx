@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
-import * as Sharing from 'expo-sharing';
+import RNShare from 'react-native-share';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -23,20 +23,20 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft, ChevronRight, Share2, Bookmark } from 'lucide-react-native';
 
-import { Colors, Fonts } from '@/constants/theme';
+import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getCurrentTopic } from '@/lib/topic-store';
 import { setCurrentArticle } from '@/lib/article-store';
 import type { FeedItem, TopicTimelineEvent } from '@/lib/firestore';
 
-function RichText({ children, style }: { children: string; style?: any }) {
+function RichText({ children, style, selectable = true }: { children: string; style?: any; selectable?: boolean }) {
   const parts = children.split(/(\*\*.*?\*\*|\*.*?\*)/g);
   return (
-    <Text style={style}>
+    <Text style={style} selectable={selectable}>
       {parts.map((part, i) => {
         if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
           return (
-            <Text key={i} style={[style, { fontWeight: '700' }]}>
+            <Text key={i} style={[style, { fontFamily: FontFamily.bold }]}>
               {part.slice(2, -2)}
             </Text>
           );
@@ -74,6 +74,11 @@ function hashColor(str: string): string {
   }
   const palette = ['#6366f1', '#8b5cf6', '#ec4899', '#f97316', '#0ea5e9', '#10b981', '#f59e0b'];
   return palette[Math.abs(hash) % palette.length];
+}
+
+function isSafeImageUri(uri?: string | null): uri is string {
+  const value = String(uri || '').trim();
+  return value.startsWith('http://') || value.startsWith('https://') || value.startsWith('file://');
 }
 
 function truncateText(text: string, maxLength: number): { text: string; truncated: boolean } {
@@ -158,8 +163,19 @@ export default function TopicScreen() {
   );
 
   if (!topic) {
-    router.back();
-    return null;
+    return (
+      <SafeAreaView style={[styles.root, { backgroundColor: Colors[colorScheme].background }]}>
+        <View style={[styles.emptyState, { paddingTop: Math.max(insets.top, 24) + 24 }]}>
+          <Text style={[styles.emptyTitle, { color: Colors[colorScheme].text }]}>Topic unavailable</Text>
+          <Text style={[styles.emptyBody, { color: Colors[colorScheme].muted }]}>
+            This topic is no longer in memory. Go back to the feed and open it again.
+          </Text>
+          <Pressable style={styles.emptyButton} onPress={() => router.replace('/(tabs)')}>
+            <Text style={styles.emptyButtonText}>Back to feed</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   const isSingletonTopic = (topic.source_count ?? 0) <= 1 || (topic.article_count ?? 0) <= 1;
@@ -180,9 +196,11 @@ export default function TopicScreen() {
   const shareViewRef = useRef<View>(null);
 
   const handleShare = async () => {
-    const shareMessage = `${displayTitle}\n\nRead more on Trace\nhttps://yourtrace.online`;
+    // Build share message with overview text
+    const overview = splitBody.first || displayBody.slice(0, 300);
+    const shareMessage = `${overview}\n\nRead more such stories at yourtrace.online`;
 
-    // If no thumbnail, fall back to text sharing
+    // No thumbnail - share text only
     if (!displayThumbnail) {
       await Share.share({ message: shareMessage });
       return;
@@ -190,33 +208,30 @@ export default function TopicScreen() {
 
     setIsSharing(true);
     try {
-      // Capture the share view as an image
       const uri = await captureRef(shareViewRef, {
         format: 'png',
         quality: 1,
       });
 
       if (Platform.OS === 'ios') {
-        // iOS supports sharing both file URL and message together
+        // iOS: Use native Share API
         await Share.share({
           url: uri,
           message: shareMessage,
         });
       } else {
-        // Android: expo-sharing for image, then native share for text
-        const isAvailable = await Sharing.isAvailableAsync();
-        if (isAvailable) {
-          await Sharing.shareAsync(uri, {
-            mimeType: 'image/png',
-            dialogTitle: shareMessage,
-          });
-        } else {
-          await Share.share({ message: shareMessage });
-        }
+        // Android: Use react-native-share for image + text
+        await RNShare.open({
+          message: shareMessage,
+          url: `file://${uri}`,
+          type: 'image/png',
+        });
       }
-    } catch (error) {
-      console.error('Error sharing:', error);
-      await Share.share({ message: shareMessage });
+    } catch (error: any) {
+      // User cancelled share is not an error
+      if (error?.message !== 'User did not share') {
+        console.error('Error sharing:', error);
+      }
     } finally {
       setIsSharing(false);
     }
@@ -232,7 +247,7 @@ export default function TopicScreen() {
 
         {/* Hero image */}
         <View style={styles.heroWrap}>
-          {displayThumbnail ? (
+          {displayThumbnail && isSafeImageUri(displayThumbnail) ? (
             <Image
               source={{ uri: displayThumbnail }}
               style={styles.heroImage}
@@ -254,7 +269,7 @@ export default function TopicScreen() {
 
         {/* Title section below hero */}
         <View style={styles.titleSection}>
-          <Text style={[styles.title, { color: Colors[colorScheme].text }]}>
+          <Text style={[styles.title, { color: Colors[colorScheme].text }]} selectable>
             {displayTitle}
           </Text>
           {age ? (
@@ -337,13 +352,13 @@ export default function TopicScreen() {
                       </Text>
 
                       {/* Title */}
-                      <Text style={[styles.timelineTitle, { color: Colors[colorScheme].text }]}>
+                      <Text style={[styles.timelineTitle, { color: Colors[colorScheme].text }]} selectable>
                         {event.title}
                       </Text>
 
                       {/* Summary */}
                       {summaryData.text ? (
-                        <Text style={[styles.timelineSummary, { color: Colors[colorScheme].muted }]}>
+                        <Text style={[styles.timelineSummary, { color: Colors[colorScheme].muted }]} selectable>
                           {summaryData.text}
                           {summaryData.truncated && hasArticle && (
                             <Text style={styles.readMore}>read more...</Text>
@@ -417,6 +432,38 @@ export default function TopicScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  emptyState: {
+    flex: 1,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontFamily: FontFamilySerif.bold,
+    lineHeight: 28,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptyBody: {
+    fontSize: 15,
+    fontFamily: FontFamily.regular,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginBottom: 18,
+    maxWidth: 320,
+  },
+  emptyButton: {
+    backgroundColor: '#111111',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 999,
+  },
+  emptyButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontFamily: FontFamily.bold,
+  },
 
   // Floating header over image
   floatingHeader: {
@@ -478,10 +525,9 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    fontWeight: '700',
+    fontFamily: FontFamilySerif.bold,
     lineHeight: 28,
     letterSpacing: -0.3,
-    fontFamily: Fonts.serif,
   },
   ageBadge: {
     alignSelf: 'flex-start',
@@ -492,7 +538,7 @@ const styles = StyleSheet.create({
   },
   ageBadgeText: {
     fontSize: 10,
-    fontWeight: '500',
+    fontFamily: FontFamily.semiBold,
     color: '#fff',
   },
   summaryBlock: {
@@ -504,11 +550,11 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 15,
     lineHeight: 23,
-    fontWeight: '400',
+    fontFamily: FontFamily.regular,
   },
   meta: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: FontFamily.semiBold,
   },
 
   // Content
@@ -535,7 +581,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     lineHeight: 23,
-    fontWeight: '400',
+    fontFamily: FontFamily.regular,
   },
   emptyText: {
     padding: 20,
@@ -550,7 +596,7 @@ const styles = StyleSheet.create({
   },
   timelineLabel: {
     fontSize: 20,
-    fontWeight: '700',
+    fontFamily: FontFamilySerif.bold,
     color: '#F59E0B',
     marginBottom: 16,
   },
@@ -569,24 +615,25 @@ const styles = StyleSheet.create({
   timelineSource: {
     marginBottom: 6,
     fontSize: 13,
-    fontWeight: '500',
+    fontFamily: FontFamily.regular,
   },
   timelineDot: {
     color: '#9ca3af',
   },
   timelineTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: FontFamilySerif.semiBold,
     lineHeight: 22,
     marginBottom: 4,
   },
   timelineSummary: {
     fontSize: 14,
+    fontFamily: FontFamily.regular,
     lineHeight: 21,
   },
   readMore: {
     color: '#F59E0B',
-    fontWeight: '600',
+    fontFamily: FontFamily.regular,
   },
   timelineChevron: {
     justifyContent: 'center',
@@ -624,15 +671,14 @@ const styles = StyleSheet.create({
   },
   shareTitle: {
     fontSize: 28,
-    fontWeight: '700',
     color: '#fff',
     lineHeight: 34,
-    fontFamily: Fonts.serif,
+    fontFamily: FontFamilySerif.bold,
     marginBottom: 12,
   },
   shareBranding: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
     color: 'rgba(255,255,255,0.7)',
     letterSpacing: 2,
     textTransform: 'uppercase',

@@ -1,5 +1,4 @@
-import { Pressable, ScrollView, StyleSheet, View, Text, Switch, Alert } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
+import { Linking, Pressable, ScrollView, StyleSheet, View, Text, Switch, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
@@ -10,24 +9,28 @@ import {
   Crown,
   LogOut,
   Mail,
-  HelpCircle,
+  Star,
   CreditCard,
   Trash2,
   Trophy,
   Calendar,
+  Bell,
+  HelpCircle,
 } from 'lucide-react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { Colors, Fonts } from '@/constants/theme';
+import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { updateUserProfile } from '@/lib/firestore';
 import { getStreakData, StreakData } from '@/lib/streaks';
-import { useEffect, useState } from 'react';
+import { enablePushNotifications, disablePushNotifications } from '@/lib/notifications';
+import * as StoreReview from 'expo-store-review';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 
+const STAT_ORANGE = '#FF6B35';
 const ACCENT_ORANGE = '#ff8d28';
-const CONTACT_URL = 'https://www.yourtrace.online/contact';
 
 function getInitials(name?: string | null): string {
   if (!name) return '?';
@@ -44,24 +47,31 @@ type MenuRowProps = {
   onPress: () => void;
   showChevron?: boolean;
   danger?: boolean;
+  rightElement?: React.ReactNode;
+  isLast?: boolean;
 };
 
-function MenuRow({ icon: Icon, label, subtitle, colorScheme, onPress, showChevron = true, danger }: MenuRowProps) {
-  const iconColor = danger ? '#EF4444' : Colors[colorScheme].muted;
-  const labelColor = danger ? '#EF4444' : Colors[colorScheme].text;
+function MenuRow({ icon: Icon, label, subtitle, colorScheme, onPress, showChevron = true, danger, rightElement, isLast }: MenuRowProps) {
+  const isDark = colorScheme === 'dark';
+  const iconBg = danger ? '#EF444415' : isDark ? '#2a2a2a' : '#ECECF0';
+  const iconColor = danger ? '#EF4444' : '#717182';
+  const labelColor = danger ? '#EF4444' : isDark ? '#fff' : '#000000';
+  const dividerColor = isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8';
 
   return (
-    <Pressable onPress={onPress} style={styles.menuRow}>
-      <View style={[styles.menuIcon, { backgroundColor: danger ? '#EF444410' : `${Colors[colorScheme].muted}15` }]}>
-        <Icon size={18} color={iconColor} strokeWidth={1.8} />
+    <Pressable
+      onPress={onPress}
+      style={[styles.menuRow, !isLast && { borderBottomWidth: 1, borderBottomColor: dividerColor }]}>
+      <View style={[styles.menuIcon, { backgroundColor: iconBg }]}>
+        <Icon size={20} color={iconColor} strokeWidth={1.7} />
       </View>
       <View style={styles.menuText}>
         <Text style={[styles.menuLabel, { color: labelColor }]}>{label}</Text>
         {subtitle && (
-          <Text style={[styles.menuSubtitle, { color: Colors[colorScheme].muted }]}>{subtitle}</Text>
+          <Text style={[styles.menuSubtitle, { color: isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.6)' }]}>{subtitle}</Text>
         )}
       </View>
-      {showChevron && <ChevronRight size={18} color={Colors[colorScheme].border} strokeWidth={1.5} />}
+      {rightElement ?? (showChevron && <ChevronRight size={20} color={isDark ? 'rgba(255,255,255,0.3)' : '#CBCED4'} strokeWidth={1.5} />)}
     </Pressable>
   );
 }
@@ -71,9 +81,28 @@ export default function ProfileScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
   const { user, profile, signOut, refreshProfile, deleteAccount } = useAuth();
-  const { isProUser, isEarlyAdopter, presentCustomerCenter, presentPaywall } = useRevenueCat();
+  const {
+    isProUser,
+    isEarlyAdopter,
+    loading: rcLoading,
+    refreshCustomerInfo,
+    presentCustomerCenter,
+    presentPaywall,
+  } = useRevenueCat();
   const [streak, setStreak] = useState<StreakData | null>(null);
   const [newsletterEnabled, setNewsletterEnabled] = useState(profile?.newsletterOptIn !== false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(profile?.pushNotificationsEnabled !== false);
+  const [isAccessResolving, setIsAccessResolving] = useState(true);
+  const refreshProfileRef = useRef(refreshProfile);
+  const refreshCustomerInfoRef = useRef(refreshCustomerInfo);
+
+  useEffect(() => {
+    refreshProfileRef.current = refreshProfile;
+  }, [refreshProfile]);
+
+  useEffect(() => {
+    refreshCustomerInfoRef.current = refreshCustomerInfo;
+  }, [refreshCustomerInfo]);
 
   useEffect(() => {
     getStreakData().then(setStreak);
@@ -82,6 +111,37 @@ export default function ProfileScreen() {
   useEffect(() => {
     setNewsletterEnabled(profile?.newsletterOptIn !== false);
   }, [profile?.newsletterOptIn]);
+
+  useEffect(() => {
+    setNotificationsEnabled(profile?.pushNotificationsEnabled !== false);
+  }, [profile?.pushNotificationsEnabled]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+
+      if (!user?.uid) {
+        setIsAccessResolving(false);
+        return () => {
+          active = false;
+        };
+      }
+
+      setIsAccessResolving(true);
+      void Promise.allSettled([
+        refreshProfileRef.current(),
+        refreshCustomerInfoRef.current(),
+      ]).finally(() => {
+        if (active) {
+          setIsAccessResolving(false);
+        }
+      });
+
+      return () => {
+        active = false;
+      };
+    }, [user?.uid])
+  );
 
   const displayName = profile?.displayName || profile?.name || user?.displayName || 'User';
   const email = profile?.email || user?.email || '';
@@ -99,6 +159,31 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleNotificationsToggle = async (value: boolean) => {
+    setNotificationsEnabled(value);
+    if (user?.uid) {
+      try {
+        if (value) {
+          const success = await enablePushNotifications(user.uid);
+          if (!success) {
+            Alert.alert(
+              'Notifications Unavailable',
+              'Push notifications require a physical device and permission. Please check your device settings.'
+            );
+            setNotificationsEnabled(false);
+            return;
+          }
+        } else {
+          await disablePushNotifications(user.uid);
+        }
+        await refreshProfile();
+      } catch (error) {
+        console.error('Failed to update notification preference:', error);
+        setNotificationsEnabled(!value);
+      }
+    }
+  };
+
   const handleManageSubscription = async () => {
     await presentCustomerCenter();
   };
@@ -106,6 +191,23 @@ export default function ProfileScreen() {
   const handleSignOut = async () => {
     await signOut();
     router.replace('/');
+  };
+
+  const handleHelpFeedback = () => {
+    Linking.openURL('mailto:support@yourtrace.online?subject=Trace App Feedback');
+  };
+
+  const handleRateApp = async () => {
+    try {
+      const isAvailable = await StoreReview.isAvailableAsync();
+      if (isAvailable) {
+        await StoreReview.requestReview();
+      } else {
+        Alert.alert('Not Available', 'App rating is not available on this device.');
+      }
+    } catch (error) {
+      console.warn('[Profile] Error requesting review:', error);
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -129,6 +231,9 @@ export default function ProfileScreen() {
     );
   };
 
+  const switchTrackColor = { false: isDark ? '#3a3a3a' : '#CBCED4', true: `${ACCENT_ORANGE}90` };
+  const switchThumbColor = (on: boolean) => on ? ACCENT_ORANGE : '#fff';
+
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
@@ -137,73 +242,77 @@ export default function ProfileScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
-          <ChevronLeft size={24} color={Colors[colorScheme].text} />
+          <ChevronLeft size={24} color={isDark ? '#fff' : '#0A0A0A'} strokeWidth={2} />
         </Pressable>
-        <ThemedText style={styles.headerTitle}>Profile</ThemedText>
-        <View style={styles.backBtn} />
+        <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#312D2D' }]}>Profile</Text>
       </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
 
-        {/* Profile Card */}
-        <View style={[styles.profileCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-          <View style={[styles.avatar, { backgroundColor: Colors[colorScheme].muted }]}>
-            <Text style={styles.avatarText}>{getInitials(displayName)}</Text>
+        {/* Profile — centered, flat on page */}
+        <View style={styles.profileSection}>
+          <View style={[styles.avatar, { backgroundColor: isDark ? '#2a3d1f' : '#E8FFC9' }]}>
+            <Text style={[styles.avatarText, { color: isDark ? '#d4f0a0' : '#312D2D' }]}>
+              {getInitials(displayName)}
+            </Text>
           </View>
-          <Text style={[styles.profileName, { color: Colors[colorScheme].text }]}>{displayName}</Text>
-          {email && (
-            <Text style={[styles.profileEmail, { color: Colors[colorScheme].muted }]}>{email}</Text>
+
+          {/* Badges — between avatar and name, rotated per design */}
+          {(isProUser || isEarlyAdopter) && (
+            <View style={styles.badges}>
+              {isProUser && (
+                <View style={[styles.badge, { backgroundColor: `${ACCENT_ORANGE}18`, transform: [{ rotate: '-6deg' }] }]}>
+                  <Crown size={11} color={ACCENT_ORANGE} />
+                  <Text style={[styles.badgeText, { color: ACCENT_ORANGE }]}>Pro</Text>
+                </View>
+              )}
+              {isEarlyAdopter && (
+                <View style={[styles.badge, { backgroundColor: '#F5F0FF', transform: [{ rotate: '-6deg' }] }]}>
+                  <Text style={[styles.badgeText, { color: '#8051DE' }]}>Early Access</Text>
+                </View>
+              )}
+            </View>
           )}
-          <View style={styles.badges}>
-            {isProUser && (
-              <View style={[styles.badge, { backgroundColor: `${ACCENT_ORANGE}15` }]}>
-                <Crown size={12} color={ACCENT_ORANGE} />
-                <Text style={[styles.badgeText, { color: ACCENT_ORANGE }]}>Pro</Text>
-              </View>
-            )}
-            {isEarlyAdopter && (
-              <View style={[styles.badge, { backgroundColor: '#8B5CF615' }]}>
-                <Text style={[styles.badgeText, { color: '#8B5CF6' }]}>Early Adopter</Text>
-              </View>
-            )}
+
+          <Text style={[styles.profileName, { color: isDark ? '#fff' : '#000000' }]}>{displayName}</Text>
+          {email !== '' && (
+            <Text style={[styles.profileEmail, { color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.6)' }]}>{email}</Text>
+          )}
+        </View>
+
+        {/* Stats Card — white bg, no border, border-radius 20 */}
+        <View style={[styles.statsCard, { backgroundColor: isDark ? '#1c1c1c' : '#FFFFFF' }]}>
+          <View style={styles.statsRow}>
+            <View style={styles.stat}>
+              <Flame size={24} color={STAT_ORANGE} fill={STAT_ORANGE} />
+              <Text style={[styles.statValue, { color: isDark ? '#fff' : '#000000' }]}>{streak?.currentStreak ?? 0}</Text>
+              <Text style={[styles.statLabel, { color: isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.65)' }]}>Current</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]} />
+            <View style={styles.stat}>
+              <Trophy size={24} color={STAT_ORANGE} />
+              <Text style={[styles.statValue, { color: isDark ? '#fff' : '#000000' }]}>{streak?.longestStreak ?? 0}</Text>
+              <Text style={[styles.statLabel, { color: isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.65)' }]}>Best</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]} />
+            <View style={styles.stat}>
+              <Calendar size={24} color={STAT_ORANGE} />
+              <Text style={[styles.statValue, { color: isDark ? '#fff' : '#000000' }]}>{streak?.streakHistory.length ?? 0}</Text>
+              <Text style={[styles.statLabel, { color: isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.65)' }]}>Total</Text>
+            </View>
           </View>
         </View>
 
-        {/* Streak Card */}
-        {streak && streak.currentStreak > 0 && (
-          <View style={[styles.streakCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-            <View style={styles.statsRow}>
-              <View style={styles.stat}>
-                <Flame size={20} color={ACCENT_ORANGE} fill={ACCENT_ORANGE} />
-                <Text style={[styles.statValue, { color: Colors[colorScheme].text }]}>{streak.currentStreak}</Text>
-                <Text style={[styles.statLabel, { color: Colors[colorScheme].muted }]}>Current</Text>
-              </View>
-              <View style={[styles.statDivider, { backgroundColor: Colors[colorScheme].border }]} />
-              <View style={styles.stat}>
-                <Trophy size={20} color={ACCENT_ORANGE} />
-                <Text style={[styles.statValue, { color: Colors[colorScheme].text }]}>{streak.longestStreak}</Text>
-                <Text style={[styles.statLabel, { color: Colors[colorScheme].muted }]}>Best</Text>
-              </View>
-              <View style={[styles.statDivider, { backgroundColor: Colors[colorScheme].border }]} />
-              <View style={styles.stat}>
-                <Calendar size={20} color={ACCENT_ORANGE} />
-                <Text style={[styles.statValue, { color: Colors[colorScheme].text }]}>{streak.streakHistory.length}</Text>
-                <Text style={[styles.statLabel, { color: Colors[colorScheme].muted }]}>Days</Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Subscription Card */}
-        {!isProUser && (
+        {/* Upgrade card (non-Pro only) */}
+        {!isProUser && !rcLoading && !isAccessResolving && (
           <View style={[styles.upgradeCard, { backgroundColor: isDark ? '#2a1a10' : '#fff8f0', borderColor: `${ACCENT_ORANGE}30` }]}>
             <View style={styles.upgradeHeader}>
-              <Crown size={20} color={ACCENT_ORANGE} />
-              <Text style={[styles.upgradeTitle, { color: Colors[colorScheme].text }]}>Unlock Pro</Text>
+              <Crown size={18} color={ACCENT_ORANGE} />
+              <Text style={[styles.upgradeTitle, { color: isDark ? '#fff' : '#000' }]}>Unlock Pro</Text>
             </View>
-            <Text style={[styles.upgradeDesc, { color: Colors[colorScheme].muted }]}>
+            <Text style={[styles.upgradeDesc, { color: isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.6)' }]}>
               Unlimited articles, deep dives, and personalized summaries.
             </Text>
             <Pressable onPress={() => presentPaywall()} style={styles.upgradeBtn}>
@@ -212,84 +321,99 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* Settings Section */}
-        <Text style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>Settings</Text>
-        <View style={[styles.menuCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-          <MenuRow
-            icon={Settings}
-            label="Feed Preferences"
-            subtitle="Interests, sources, goals"
-            colorScheme={colorScheme}
-            onPress={() => router.push('/preferences')}
-          />
-          <View style={[styles.menuDivider, { backgroundColor: Colors[colorScheme].border }]} />
-          <View style={styles.menuRow}>
-            <View style={[styles.menuIcon, { backgroundColor: `${Colors[colorScheme].muted}15` }]}>
-              <Mail size={18} color={Colors[colorScheme].muted} strokeWidth={1.8} />
-            </View>
-            <View style={styles.menuText}>
-              <Text style={[styles.menuLabel, { color: Colors[colorScheme].text }]}>Newsletter</Text>
-              <Text style={[styles.menuSubtitle, { color: Colors[colorScheme].muted }]}>Weekly digest emails</Text>
-            </View>
+        {/* Preferences — flat rows, no card */}
+        <Text style={[styles.sectionLabel, { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.45)' }]}>Preferences</Text>
+        <MenuRow
+          icon={Settings}
+          label="Feed Preferences"
+          subtitle="Interests, sources, goals"
+          colorScheme={colorScheme}
+          onPress={() => router.push('/preferences')}
+        />
+        <MenuRow
+          icon={Mail}
+          label="Newsletter"
+          subtitle="Weekly digest emails"
+          colorScheme={colorScheme}
+          onPress={() => {}}
+          showChevron={false}
+          rightElement={
             <Switch
               value={newsletterEnabled}
               onValueChange={handleNewsletterToggle}
-              trackColor={{ false: Colors[colorScheme].border, true: `${ACCENT_ORANGE}80` }}
-              thumbColor={newsletterEnabled ? ACCENT_ORANGE : '#f4f3f4'}
+              trackColor={switchTrackColor}
+              thumbColor={switchThumbColor(newsletterEnabled)}
             />
-          </View>
-        </View>
+          }
+        />
+        <MenuRow
+          icon={Bell}
+          label="Push Notifications"
+          subtitle="Daily briefings & alerts"
+          colorScheme={colorScheme}
+          onPress={() => {}}
+          showChevron={false}
+          isLast
+          rightElement={
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={handleNotificationsToggle}
+              trackColor={switchTrackColor}
+              thumbColor={switchThumbColor(notificationsEnabled)}
+            />
+          }
+        />
 
-        {/* Subscription Management (Pro users) */}
-        {isProUser && (
-          <>
-            <Text style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>Subscription</Text>
-            <View style={[styles.menuCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-              <MenuRow
-                icon={CreditCard}
-                label="Manage Subscription"
-                subtitle="Billing, cancel, or change plan"
-                colorScheme={colorScheme}
-                onPress={handleManageSubscription}
-              />
-            </View>
-          </>
-        )}
+        {/* Subscription */}
+        <Text style={[styles.sectionLabel, { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.45)' }]}>Subscription</Text>
+        <MenuRow
+          icon={CreditCard}
+          label="Manage Subscription"
+          subtitle={(rcLoading || isAccessResolving) ? "Checking your plan..." : "Billing, cancel, or change plan"}
+          colorScheme={colorScheme}
+          onPress={handleManageSubscription}
+          isLast
+        />
 
-        {/* Support Section */}
-        <Text style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>Support</Text>
-        <View style={[styles.menuCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-          <MenuRow
-            icon={HelpCircle}
-            label="Help & Feedback"
-            subtitle="Get help or share feedback"
-            colorScheme={colorScheme}
-            onPress={() => WebBrowser.openBrowserAsync(CONTACT_URL)}
-          />
-        </View>
+        {/* Support */}
+        <Text style={[styles.sectionLabel, { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.45)' }]}>Support</Text>
+        <MenuRow
+          icon={HelpCircle}
+          label="Help & Feedback"
+          subtitle="Get help or share feedback"
+          colorScheme={colorScheme}
+          onPress={handleHelpFeedback}
+        />
+        <MenuRow
+          icon={Star}
+          label="Rate App"
+          subtitle="Love Trace? Leave a review!"
+          colorScheme={colorScheme}
+          onPress={handleRateApp}
+          isLast
+        />
 
         {/* Account Actions */}
-        <View style={[styles.menuCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border, marginTop: 24 }]}>
-          <MenuRow
-            icon={LogOut}
-            label="Sign Out"
-            colorScheme={colorScheme}
-            onPress={handleSignOut}
-            showChevron={false}
-            danger
-          />
-          <View style={[styles.menuDivider, { backgroundColor: Colors[colorScheme].border }]} />
-          <MenuRow
-            icon={Trash2}
-            label="Delete Account"
-            colorScheme={colorScheme}
-            onPress={handleDeleteAccount}
-            showChevron={false}
-            danger
-          />
-        </View>
+        <Text style={[styles.sectionLabel, { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.45)' }]}>Account</Text>
+        <MenuRow
+          icon={LogOut}
+          label="Sign Out"
+          colorScheme={colorScheme}
+          onPress={handleSignOut}
+          showChevron={false}
+          danger
+        />
+        <MenuRow
+          icon={Trash2}
+          label="Delete Account"
+          colorScheme={colorScheme}
+          onPress={handleDeleteAccount}
+          showChevron={false}
+          danger
+          isLast
+        />
 
-        <Text style={[styles.footer, { color: Colors[colorScheme].muted }]}>
+        <Text style={[styles.footer, { color: isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)' }]}>
           Trace v1.0.0
         </Text>
       </ScrollView>
@@ -299,110 +423,115 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
+
+  // Header — left-aligned arrow + title
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    gap: 8,
+    paddingLeft: 16,
+    paddingRight: 16,
     paddingTop: 8,
     paddingBottom: 14,
   },
   backBtn: {
-    width: 34,
-    height: 34,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    fontFamily: Fonts.serif,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 40,
+    fontFamily: FontFamilySerif.semiBold,
+    fontSize: 19,
+    lineHeight: 25,
   },
 
-  // Profile Card
-  profileCard: {
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 40,
+    gap: 20,
+  },
+
+  // Profile section — centered on page, no card
+  profileSection: {
     alignItems: 'center',
-    padding: 28,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginBottom: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 60,
   },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 68,
+    height: 68,
+    borderRadius: 100,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    marginBottom: 10,
   },
   avatarText: {
-    color: '#fff',
-    fontSize: 26,
-    fontWeight: '700',
-    fontFamily: Fonts.serif,
-  },
-  profileName: {
-    fontSize: 22,
-    fontWeight: '700',
-    fontFamily: Fonts.serif,
-    marginBottom: 4,
-  },
-  profileEmail: {
-    fontSize: 14,
+    fontFamily: FontFamilySerif.bold,
+    fontSize: 25,
+    lineHeight: 32,
   },
   badges: {
     flexDirection: 'row',
     gap: 8,
-    marginTop: 12,
+    marginBottom: 10,
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+    borderRadius: 999,
   },
   badgeText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
+    fontSize: 13,
+    lineHeight: 17,
+  },
+  profileName: {
+    fontFamily: FontFamilySerif.semiBold,
+    fontSize: 19,
+    lineHeight: 25,
+    marginBottom: 4,
+  },
+  profileEmail: {
+    fontFamily: FontFamily.regular,
+    fontSize: 13,
+    lineHeight: 17,
+    textAlign: 'center',
   },
 
-  // Streak Card
-  streakCard: {
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginBottom: 24,
+  // Stats Card — white bg, NO border, border-radius 20
+  statsCard: {
+    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
   },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-around',
   },
   stat: {
     flex: 1,
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   statValue: {
-    fontSize: 24,
-    fontWeight: '800',
-    fontFamily: Fonts.serif,
+    fontFamily: FontFamilySerif.bold,
+    fontSize: 23,
+    lineHeight: 30,
   },
   statLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontFamily: FontFamily.semiBold,
+    fontSize: 14,
+    lineHeight: 18,
   },
   statDivider: {
     width: 1,
-    height: 40,
+    height: 64,
   },
 
   // Upgrade Card
@@ -410,7 +539,6 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 16,
     borderWidth: 1,
-    marginBottom: 24,
   },
   upgradeHeader: {
     flexDirection: 'row',
@@ -419,13 +547,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   upgradeTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    fontFamily: Fonts.serif,
+    fontFamily: FontFamilySerif.semiBold,
+    fontSize: 17,
   },
   upgradeDesc: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontFamily: FontFamily.regular,
+    fontSize: 13,
+    lineHeight: 19,
     marginBottom: 16,
   },
   upgradeBtn: {
@@ -435,61 +563,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   upgradeBtnText: {
+    fontFamily: FontFamily.bold,
     color: '#fff',
     fontSize: 15,
-    fontWeight: '700',
   },
 
-  // Section Label
+  // Section label
   sectionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    marginBottom: 10,
-    marginTop: 8,
+    fontFamily: FontFamily.semiBold,
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: -12,
   },
 
-  // Menu Card
-  menuCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
+  // Menu row — flat, border-bottom separator only
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    gap: 12,
+    paddingVertical: 12,
   },
   menuIcon: {
-    width: 38,
-    height: 38,
+    width: 40,
+    height: 40,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   menuText: {
     flex: 1,
-    gap: 2,
+    gap: 4,
   },
   menuLabel: {
+    fontFamily: FontFamilySerif.semiBold,
     fontSize: 15,
-    fontWeight: '600',
+    lineHeight: 20,
   },
   menuSubtitle: {
+    fontFamily: FontFamily.regular,
     fontSize: 13,
-  },
-  menuDivider: {
-    height: StyleSheet.hairlineWidth,
-    marginLeft: 68,
+    lineHeight: 17,
   },
 
   footer: {
+    fontFamily: FontFamily.regular,
     fontSize: 12,
     textAlign: 'center',
-    marginTop: 24,
+    marginTop: -4,
   },
 });

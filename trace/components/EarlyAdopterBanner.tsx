@@ -4,7 +4,7 @@ import { Gift, Rocket, ChevronRight, X } from 'lucide-react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { Colors } from '@/constants/theme';
+import { Colors, FontFamily } from '@/constants/theme';
 import { getEarlyAdopterStatus, EarlyAdopterStatus } from '@/lib/firestore';
 
 const DISMISSED_KEY = 'early_adopter_banner_dismissed';
@@ -127,9 +127,10 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
   },
   subtitle: {
     fontSize: 13,
+    fontFamily: FontFamily.regular,
   },
 });

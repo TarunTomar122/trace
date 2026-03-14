@@ -1241,7 +1241,7 @@ def _build_trending_topics_payload(
     store: V3Store,
     ranked_items: list[dict[str, Any]],
     summary_map: dict[str, dict[str, Any] | None],
-    max_topics: int = 14,
+    max_topics: int = 20,
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -1771,6 +1771,10 @@ def _build_feed_item(pool_item: dict[str, Any], summary: dict[str, Any] | None) 
     url = pool_item.get("url", "")
     domain = urlparse(url).netloc.lower() if url else ""
     item_id = hashlib.sha256(url.encode("utf-8")).hexdigest()[:32]
+    summary_interest = str((summary or {}).get("interest_id", "")).strip()
+    item_interest = _normalize_trending_interest_id(
+        summary_interest or pool_item.get("interest_id", "")
+    )
     return {
         "id": f"tr_{item_id}",
         "url": url,
@@ -1778,7 +1782,7 @@ def _build_feed_item(pool_item: dict[str, Any], summary: dict[str, Any] | None) 
         "type": "news",
         "source": domain,
         "source_name": pool_item.get("source_name", domain),
-        "interest_id": pool_item.get("interest_id", ""),
+        "interest_id": item_interest,
         "feed_type": "trending",
         "published_date": pool_item.get("published_date", ""),
         "thumbnail": pool_item.get("og_image", ""),
@@ -1924,7 +1928,21 @@ def build_global_feed(
         summary = summary_map.get(url)
         if not summary:
             continue
+        classified_interest = _normalize_trending_interest_id(
+            str(summary.get("interest_id", "")).strip() or str(item.get("interest_id", "")).strip()
+        )
+        item["interest_id"] = classified_interest
         feed_items.append(_build_feed_item(item, summary))
+
+    for item in ranked_for_topics:
+        url = str(item.get("url", "")).strip()
+        summary = summary_map.get(url)
+        if not isinstance(summary, dict):
+            continue
+        classified_interest = _normalize_trending_interest_id(
+            str(summary.get("interest_id", "")).strip() or str(item.get("interest_id", "")).strip()
+        )
+        item["interest_id"] = classified_interest
 
     _log(f"Built {len(feed_items)} feed items")
 
@@ -1934,7 +1952,7 @@ def build_global_feed(
         store=store,
         ranked_items=ranked_for_topics,
         summary_map=summary_map,
-        max_topics=14,
+        max_topics=20,
     )
     _log(
         f"Built {len(trending_topics)} grouped topics "

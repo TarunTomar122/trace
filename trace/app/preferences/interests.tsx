@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft, Check } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors } from '@/constants/theme';
+import { Colors, FontFamily } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -138,9 +138,9 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   backBtn: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '700' },
+  headerTitle: { fontSize: 18, fontFamily: FontFamily.bold },
   scrollContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
-  desc: { fontSize: 14, lineHeight: 20, marginBottom: 16 },
+  desc: { fontSize: 14, fontFamily: FontFamily.regular, lineHeight: 20, marginBottom: 16 },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chipText: { fontSize: 13, fontWeight: '600' },
+  chipText: { fontSize: 13, fontFamily: FontFamily.semiBold },
   footer: { borderTopWidth: 1, paddingHorizontal: 20, paddingVertical: 14 },
   saveBtn: {
     height: 50,
@@ -171,5 +171,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
   },
-  saveBtnText: { color: '#000', fontSize: 15, fontWeight: '700' },
+  saveBtnText: { color: '#000', fontSize: 15, fontFamily: FontFamily.bold },
 });

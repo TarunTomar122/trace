@@ -8,7 +8,7 @@ import BookmarkIllus from '@/components/illustrations/BookmarkIllus';
 
 import { ThemedText } from '@/components/themed-text';
 import { TrendingCard, ForYouCard, DeepDiveCard } from '@/components/FeedCard';
-import { Colors } from '@/constants/theme';
+import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { FeedItem } from '@/lib/firestore';
@@ -269,11 +269,12 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: '800',
+    fontFamily: FontFamilySerif.bold,
     letterSpacing: -0.5,
   },
   countText: {
     fontSize: 14,
+    fontFamily: FontFamily.regular,
     marginTop: 4,
   },
 
@@ -298,7 +299,7 @@ const styles = StyleSheet.create({
   },
   filterText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
   },
 
   // Feed
@@ -328,11 +329,12 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
     marginTop: 8,
   },
   emptySub: {
     fontSize: 14,
+    fontFamily: FontFamily.regular,
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: 40,
@@ -355,11 +357,12 @@ const styles = StyleSheet.create({
   },
   lockedTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
     marginTop: 8,
   },
   lockedSub: {
     fontSize: 14,
+    fontFamily: FontFamily.regular,
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: 40,
@@ -373,7 +376,7 @@ const styles = StyleSheet.create({
   },
   upgradeButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
   },
 
   // Snippets
@@ -388,7 +391,7 @@ const styles = StyleSheet.create({
   },
   snippetsTitle: {
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -399,11 +402,12 @@ const styles = StyleSheet.create({
   },
   snippetLabel: {
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
     marginBottom: 6,
   },
   snippetContent: {
     fontSize: 14,
+    fontFamily: FontFamily.regular,
     lineHeight: 20,
   },
 });

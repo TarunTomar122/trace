@@ -18,13 +18,20 @@ import {
   Flame,
   GraduationCap,
   ChevronRight,
+  Users,
+  Youtube,
+  Twitter,
+  Instagram,
+  Sparkles,
+  Check,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { AppLogo } from '@/components/app-logo';
-import { Colors, Fonts } from '@/constants/theme';
+import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
+import { saveReferralSource } from '@/lib/firestore';
 
 export const ILLUS_PALETTE = {
   coral: { light: '#FEF2F2', dark: '#1a1212' },
@@ -37,6 +44,16 @@ const TERMS_URL = 'https://www.yourtrace.online/terms';
 const PRIVACY_URL = 'https://www.yourtrace.online/privacy-policy';
 const SPLASH_BG = '#FEF7F4'; // Matches splash.png background - warm off-white
 
+type ReferralSource = 'friend' | 'youtube' | 'twitter' | 'instagram' | 'other';
+
+const REFERRAL_OPTIONS: { id: ReferralSource; label: string; icon: typeof Users }[] = [
+  { id: 'friend', label: 'From a friend', icon: Users },
+  { id: 'youtube', label: 'YouTube', icon: Youtube },
+  { id: 'twitter', label: 'Twitter / X', icon: Twitter },
+  { id: 'instagram', label: 'Instagram', icon: Instagram },
+  { id: 'other', label: 'Just discovered it', icon: Sparkles },
+];
+
 const INTRO_PAGES = [
   {
     title: 'Trending, simplified',
@@ -45,7 +62,7 @@ const INTRO_PAGES = [
   },
   {
     title: 'Learn on the go',
-    body: 'Tell us your role and level. We find the best articles, videos, and blogs — then compress them into quick reads. Updated daily.',
+    body: 'Tell us your role and level. We find the best articles then compress them into quick reads. Updated daily.',
     demo: 'for_you',
   },
 ];
@@ -295,17 +312,20 @@ function PageDots({
 
 // ─── Main screen ────────────────────────────────────────────────────────────
 export default function WelcomeScreen() {
-  const { signInWithGoogle } = useAuth();
+  const { signInWithGoogle, user } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
   const { width: screenWidth } = useWindowDimensions();
 
   const [page, setPage] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedReferral, setSelectedReferral] = useState<ReferralSource | null>(null);
   const carouselRef = useRef<ScrollView>(null);
+  const pendingReferralRef = useRef<ReferralSource | null>(null);
 
-  const totalPages = INTRO_PAGES.length + 1;
-  const isLanding = page >= INTRO_PAGES.length;
+  // Page flow: intro screens -> referral source -> landing
+  const isReferralPage = page === INTRO_PAGES.length;
+  const isLanding = page > INTRO_PAGES.length;
 
   const scrollToPage = (targetPage: number) => {
     carouselRef.current?.scrollTo({ x: targetPage * screenWidth, animated: true });
@@ -321,7 +341,11 @@ export default function WelcomeScreen() {
     setError(null);
     setIsLoading(true);
     try {
+      // Store the referral before sign-in (in case we need it after)
+      pendingReferralRef.current = selectedReferral;
       await signInWithGoogle();
+      // After successful sign-in, save the referral source if selected
+      // The user object should be available now from AuthContext
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not sign in.';
       setError(message);
@@ -330,68 +354,119 @@ export default function WelcomeScreen() {
     }
   };
 
-  return (
-    <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: isLanding ? SPLASH_BG : Colors[colorScheme].background }]}
-      edges={['top', 'bottom']}
-    >
-      {/* Skip button — floats over the carousel */}
-      {!isLanding && (
-        <View style={styles.skipContainer} pointerEvents="box-none">
-          <Pressable onPress={() => scrollToPage(INTRO_PAGES.length)} hitSlop={12}>
-            <Text style={[styles.skipText, { color: Colors[colorScheme].muted }]}>Skip</Text>
-          </Pressable>
-        </View>
-      )}
+  // Save referral source after user signs in
+  const saveReferralAfterSignIn = async (uid: string, source: ReferralSource) => {
+    try {
+      await saveReferralSource(uid, source);
+    } catch (err) {
+      console.warn('Failed to save referral source:', err);
+    }
+  };
 
-      {/* Horizontal carousel */}
-      <ScrollView
-        ref={carouselRef}
-        horizontal
-        pagingEnabled
-        scrollEventThrottle={16}
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={handleScrollEnd}
-        style={styles.carousel}
-        bounces={false}
+  // Effect to save referral when user becomes available after sign-in
+  const hasAttemptedSaveRef = useRef(false);
+  if (user && pendingReferralRef.current && !hasAttemptedSaveRef.current) {
+    hasAttemptedSaveRef.current = true;
+    saveReferralAfterSignIn(user.uid, pendingReferralRef.current);
+  }
+
+  // Show referral source selection page
+  if (isReferralPage) {
+    return (
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
+        edges={['top', 'bottom']}
       >
-        {/* Intro pages */}
-        {INTRO_PAGES.map((introPage, i) => (
-          <ScrollView
-            key={i}
-            style={{ width: screenWidth }}
-            contentContainerStyle={[styles.pageContent, { paddingTop: 52 }]}
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-          >
-            <ThemedText style={styles.introTitle}>{introPage.title}</ThemedText>
-
-            <Text style={[styles.introBody, { color: Colors[colorScheme].muted }]}>
-              {introPage.body}
+        <View style={styles.referralContainer}>
+          <View style={styles.referralContent}>
+            <ThemedText style={styles.referralTitle}>
+              How did you find us?
+            </ThemedText>
+            <Text style={[styles.referralSubtitle, { color: Colors[colorScheme].muted }]}>
+              We'd love to know! This helps us grow.
             </Text>
 
-            <View style={styles.demoContainer}>
-              {introPage.demo === 'trending' && <DemoTrendingCard colorScheme={colorScheme} />}
-              {introPage.demo === 'for_you' && <DemoForYouCard colorScheme={colorScheme} />}
-              {introPage.demo === 'deep_dive' && <DemoDeepDiveCard colorScheme={colorScheme} />}
+            <View style={styles.referralOptions}>
+              {REFERRAL_OPTIONS.map((option) => {
+                const isSelected = selectedReferral === option.id;
+                const IconComponent = option.icon;
+                return (
+                  <Pressable
+                    key={option.id}
+                    onPress={() => setSelectedReferral(option.id)}
+                    style={[
+                      styles.referralOption,
+                      {
+                        backgroundColor: isSelected
+                          ? Colors[colorScheme].foreground
+                          : colorScheme === 'dark' ? '#1a1a1a' : '#f5f5f5',
+                        borderColor: isSelected
+                          ? Colors[colorScheme].foreground
+                          : colorScheme === 'dark' ? '#2a2a2a' : '#e5e5e5',
+                      },
+                    ]}
+                  >
+                    <IconComponent
+                      size={20}
+                      color={isSelected ? Colors[colorScheme].background : Colors[colorScheme].text}
+                      strokeWidth={2}
+                    />
+                    <Text
+                      style={[
+                        styles.referralOptionText,
+                        { color: isSelected ? Colors[colorScheme].background : Colors[colorScheme].text },
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                    {isSelected && (
+                      <Check size={18} color={Colors[colorScheme].background} strokeWidth={2.5} />
+                    )}
+                  </Pressable>
+                );
+              })}
             </View>
+          </View>
 
-            <View style={styles.pageFooter}>
-              <PageDots total={totalPages} current={page} colorScheme={colorScheme} />
-              <Pressable
-                onPress={() => scrollToPage(page + 1)}
-                style={[styles.nextBtn, { backgroundColor: Colors[colorScheme].foreground }]}
+          <View style={styles.fixedFooter}>
+            <Pressable
+              onPress={() => setPage(INTRO_PAGES.length + 1)}
+              style={[
+                styles.nextBtn,
+                {
+                  backgroundColor: selectedReferral
+                    ? Colors[colorScheme].foreground
+                    : colorScheme === 'dark' ? '#333' : '#ddd',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.nextBtnText,
+                  {
+                    color: selectedReferral
+                      ? Colors[colorScheme].background
+                      : Colors[colorScheme].muted,
+                  },
+                ]}
               >
-                <Text style={[styles.nextBtnText, { color: Colors[colorScheme].background }]}>Next</Text>
-                <ChevronRight size={18} color={Colors[colorScheme].background} strokeWidth={2.5} />
-              </Pressable>
-            </View>
-          </ScrollView>
-        ))}
+                {selectedReferral ? 'Continue' : 'Skip'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-        {/* Landing page */}
+  // Show landing page separately (not in carousel)
+  if (isLanding) {
+    return (
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
+        edges={['top', 'bottom']}
+      >
         <ScrollView
-          style={{ width: screenWidth }}
           contentContainerStyle={styles.landingPageContent}
           showsVerticalScrollIndicator={false}
           bounces={false}
@@ -405,63 +480,133 @@ export default function WelcomeScreen() {
             <ThemedText style={styles.landingTitle}>
               Trace
             </ThemedText>
-              <Text style={[styles.landingSubtitle, { color: Colors[colorScheme].muted }]}>
-                Your interests. Your level.{'\n'}One feed that keeps you sharp.
-              </Text>
-              <View style={styles.statsRow}>
-                <View style={[styles.statPill, { backgroundColor: '#F9731612' }]}>
-                  <Flame size={13} color="#F97316" strokeWidth={2} />
-                  <Text style={[styles.statText, { color: Colors[colorScheme].text }]}>Trending · hourly</Text>
-                </View>
-                <View style={[styles.statPill, { backgroundColor: '#0EA5E912' }]}>
-                  <GraduationCap size={13} color="#0EA5E9" strokeWidth={2} />
-                  <Text style={[styles.statText, { color: Colors[colorScheme].text }]}>Articles · daily</Text>
-                </View>
+            <Text style={[styles.landingSubtitle, { color: Colors[colorScheme].muted }]}>
+              Your interests. Your level.{'\n'}One feed that keeps you sharp.
+            </Text>
+            <View style={styles.statsRow}>
+              <View style={[styles.statPill, { backgroundColor: '#F9731612' }]}>
+                <Flame size={13} color="#F97316" strokeWidth={2} />
+                <Text style={[styles.statText, { color: Colors[colorScheme].text }]}>Trending · hourly</Text>
+              </View>
+              <View style={[styles.statPill, { backgroundColor: '#0EA5E912' }]}>
+                <GraduationCap size={13} color="#0EA5E9" strokeWidth={2} />
+                <Text style={[styles.statText, { color: Colors[colorScheme].text }]}>Articles · daily</Text>
               </View>
             </View>
-            <View style={styles.pageFooter}>
-              <PageDots total={totalPages} current={page} colorScheme={colorScheme} />
-              <View style={styles.ctaStack}>
-                <Pressable
-                  style={[
-                    styles.primaryButton,
-                    { backgroundColor: Colors[colorScheme].foreground },
-                    isLoading && styles.buttonDisabled,
-                  ]}
-                  onPress={handleGoogleSignIn}
-                  disabled={isLoading}
+          </View>
+          <View style={styles.pageFooter}>
+            <View style={styles.ctaStack}>
+              <Pressable
+                style={[
+                  styles.primaryButton,
+                  { backgroundColor: Colors[colorScheme].foreground },
+                  isLoading && styles.buttonDisabled,
+                ]}
+                onPress={handleGoogleSignIn}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={Colors[colorScheme].background} />
+                ) : (
+                  <Text style={[styles.primaryButtonText, { color: Colors[colorScheme].background }]}>
+                    Get started free
+                  </Text>
+                )}
+              </Pressable>
+
+              {error && <Text style={[styles.errorText, { color: '#EF4444' }]}>{error}</Text>}
+
+              <Text style={[styles.legalFooter, { color: Colors[colorScheme].muted }]}>
+                By continuing you accept our{' '}
+                <Text
+                  style={[styles.legalLink, { color: Colors[colorScheme].muted }]}
+                  onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)}
                 >
-                  {isLoading ? (
-                    <ActivityIndicator color={Colors[colorScheme].background} />
-                  ) : (
-                    <Text style={[styles.primaryButtonText, { color: Colors[colorScheme].background }]}>
-                      Get started free
-                    </Text>
-                  )}
-                </Pressable>
-
-                {error && <Text style={[styles.errorText, { color: '#EF4444' }]}>{error}</Text>}
-
-                <Text style={[styles.legalFooter, { color: Colors[colorScheme].muted }]}>
-                  By continuing you accept our{' '}
-                  <Text
-                    style={[styles.legalLink, { color: Colors[colorScheme].muted }]}
-                    onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)}
-                  >
-                    Terms
-                  </Text>
-                  {' & '}
-                  <Text
-                    style={[styles.legalLink, { color: Colors[colorScheme].muted }]}
-                    onPress={() => WebBrowser.openBrowserAsync(PRIVACY_URL)}
-                  >
-                    Privacy Policy
-                  </Text>
+                  Terms
                 </Text>
-              </View>
+                {' & '}
+                <Text
+                  style={[styles.legalLink, { color: Colors[colorScheme].muted }]}
+                  onPress={() => WebBrowser.openBrowserAsync(PRIVACY_URL)}
+                >
+                  Privacy Policy
+                </Text>
+              </Text>
             </View>
+          </View>
         </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // Intro pages - only content swipes, footer stays fixed
+  const currentIntro = INTRO_PAGES[page] || INTRO_PAGES[0];
+
+  return (
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
+      edges={['top', 'bottom']}
+    >
+      {/* Skip button */}
+      <View style={styles.skipContainer} pointerEvents="box-none">
+        <Pressable onPress={() => scrollToPage(INTRO_PAGES.length)} hitSlop={12}>
+          <Text style={[styles.skipText, { color: Colors[colorScheme].muted }]}>Skip</Text>
+        </Pressable>
+      </View>
+
+      {/* Swipeable content area only */}
+      <ScrollView
+        ref={carouselRef}
+        horizontal
+        pagingEnabled
+        scrollEventThrottle={16}
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={handleScrollEnd}
+        style={styles.carousel}
+        bounces={false}
+        contentContainerStyle={styles.carouselContent}
+      >
+        {INTRO_PAGES.map((introPage, i) => (
+          <ScrollView
+            key={i}
+            style={{ width: screenWidth }}
+            contentContainerStyle={styles.introContent}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            <ThemedText style={styles.introTitle}>{introPage.title}</ThemedText>
+            <Text style={[styles.introBody, { color: Colors[colorScheme].muted }]}>
+              {introPage.body}
+            </Text>
+            <View style={styles.demoContainer}>
+              {introPage.demo === 'trending' && <DemoTrendingCard colorScheme={colorScheme} />}
+              {introPage.demo === 'for_you' && <DemoForYouCard colorScheme={colorScheme} />}
+              {introPage.demo === 'deep_dive' && <DemoDeepDiveCard colorScheme={colorScheme} />}
+            </View>
+          </ScrollView>
+        ))}
       </ScrollView>
+
+      {/* Fixed footer - doesn't swipe */}
+      <View style={styles.fixedFooter}>
+        <PageDots total={INTRO_PAGES.length} current={page} colorScheme={colorScheme} />
+        {page < INTRO_PAGES.length - 1 ? (
+          <Pressable
+            onPress={() => scrollToPage(page + 1)}
+            style={[styles.nextBtn, { backgroundColor: Colors[colorScheme].foreground }]}
+          >
+            <Text style={[styles.nextBtnText, { color: Colors[colorScheme].background }]}>Next</Text>
+            <ChevronRight size={18} color={Colors[colorScheme].background} strokeWidth={2.5} />
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={() => setPage(INTRO_PAGES.length)}
+            style={[styles.nextBtn, { backgroundColor: Colors[colorScheme].foreground }]}
+          >
+            <Text style={[styles.nextBtnText, { color: Colors[colorScheme].background }]}>Get Started</Text>
+          </Pressable>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -480,16 +625,32 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 15,
-    fontWeight: '500',
+    fontFamily: FontFamily.regular,
   },
 
   // Carousel
   carousel: {
     flex: 1,
   },
+  carouselContent: {
+    alignItems: 'flex-start',
+  },
+  introContent: {
+    paddingHorizontal: 20,
+    paddingTop: 52,
+    paddingBottom: 20,
+    alignItems: 'center',
+  },
   pageContent: {
     paddingHorizontal: 20,
     paddingBottom: 28,
+    alignItems: 'center',
+  },
+  fixedFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 20,
+    gap: 14,
     alignItems: 'center',
   },
   landingPageContent: {
@@ -511,17 +672,16 @@ const styles = StyleSheet.create({
   },
   introBadgeText: {
     fontSize: 11,
-    fontWeight: '800',
+    fontFamily: FontFamily.bold,
     letterSpacing: 0.8,
   },
   introTitle: {
     fontSize: 30,
-    fontWeight: '800',
     textAlign: 'center',
     letterSpacing: -0.5,
     lineHeight: 38,
     marginBottom: 10,
-    fontFamily: Fonts.serif,
+    fontFamily: FontFamilySerif.semiBold,
   },
   introBody: {
     fontSize: 15,
@@ -529,7 +689,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     paddingHorizontal: 8,
     marginBottom: 24,
-    fontFamily: Fonts.serif,
+    fontFamily: FontFamily.regular,
   },
   demoContainer: {
     width: '100%',
@@ -563,7 +723,7 @@ const styles = StyleSheet.create({
   },
   nextBtnText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
   },
 
   // Landing page
@@ -580,12 +740,11 @@ const styles = StyleSheet.create({
   },
   landingTitle: {
     fontSize: 38,
-    fontWeight: '900',
     textAlign: 'center',
     lineHeight: 46,
     letterSpacing: -1.2,
     marginBottom: 18,
-    fontFamily: Fonts.serif,
+    fontFamily: FontFamily.semiBold,
   },
   landingSubtitle: {
     fontSize: 15,
@@ -593,7 +752,7 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     marginBottom: 28,
     paddingHorizontal: 4,
-    fontFamily: Fonts.serif,
+    fontFamily: FontFamily.regular,
   },
   statsRow: {
     flexDirection: 'row',
@@ -610,8 +769,7 @@ const styles = StyleSheet.create({
   },
   statText: {
     fontSize: 13,
-    fontWeight: '600',
-    fontFamily: Fonts.serif,
+    fontFamily: FontFamily.semiBold,
   },
 
   // CTA (landing page footer)
@@ -633,7 +791,7 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
   },
   errorText: {
     fontSize: 13,
@@ -646,6 +804,48 @@ const styles = StyleSheet.create({
   },
   legalLink: {
     textDecorationLine: 'underline',
+  },
+
+  // Referral page
+  referralContainer: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  referralContent: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 80,
+  },
+  referralTitle: {
+    fontSize: 28,
+    textAlign: 'center',
+    letterSpacing: -0.5,
+    lineHeight: 36,
+    marginBottom: 10,
+    fontFamily: FontFamily.bold,
+  },
+  referralSubtitle: {
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 32,
+    fontFamily: FontFamily.bold,
+  },
+  referralOptions: {
+    gap: 12,
+  },
+  referralOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  referralOptionText: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: FontFamily.semiBold,
   },
 });
 
@@ -700,13 +900,13 @@ const demoStyles = StyleSheet.create({
   },
   ageText: {
     fontSize: 10,
-    fontWeight: '800',
+    fontFamily: FontFamily.bold,
     color: '#FDBA74',
     letterSpacing: 0.8,
   },
   heroTitle: {
     fontSize: 21,
-    fontWeight: '700',
+    fontFamily: FontFamilySerif.semiBold,
     color: '#fff',
     lineHeight: 26,
     letterSpacing: -0.4,
@@ -731,7 +931,7 @@ const demoStyles = StyleSheet.create({
   },
   sourceBadgeText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
     color: '#fff',
   },
   titleSection: {
@@ -741,7 +941,7 @@ const demoStyles = StyleSheet.create({
   },
   cardTitleLarge: {
     fontSize: 20,
-    fontWeight: '700',
+    fontFamily: FontFamilySerif.semiBold,
     lineHeight: 25,
     letterSpacing: -0.4,
   },
@@ -758,11 +958,11 @@ const demoStyles = StyleSheet.create({
   },
   tabPillText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: FontFamily.semiBold,
   },
   tabPillTextActive: {
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: '#111827',
   },
   cardPager: {
@@ -776,7 +976,7 @@ const demoStyles = StyleSheet.create({
   },
   learningCardLabelSimple: {
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     marginBottom: 10,
     letterSpacing: -0.2,
   },
@@ -803,7 +1003,7 @@ const demoStyles = StyleSheet.create({
 
   metaText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: FontFamily.semiBold,
   },
 
   section: {
@@ -819,7 +1019,7 @@ const demoStyles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: 10,
-    fontWeight: '800',
+    fontFamily: FontFamilySerif.semiBold,
     letterSpacing: 0.8,
     marginBottom: 2,
   },
@@ -874,19 +1074,19 @@ const demoStyles = StyleSheet.create({
   },
   timelineAvatarText: {
     fontSize: 8,
-    fontWeight: '800',
+    fontFamily: FontFamilySerif.semiBold,
     color: '#fff',
   },
   timelineSource: {
     fontSize: 11,
-    fontWeight: '500',
+    fontFamily: FontFamily.semiBold,
   },
   timelineSourceDot: {
     color: '#9ca3af',
   },
   timelineTitle: {
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: FontFamilySerif.semiBold,
     lineHeight: 18,
     marginBottom: 3,
   },
@@ -907,7 +1107,7 @@ const demoStyles = StyleSheet.create({
   },
   deepDiveHeroBadgeText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontFamily: FontFamilySerif.semiBold,
     color: '#fff',
   },
   deepDiveHeroMeta: {
@@ -942,7 +1142,7 @@ const demoStyles = StyleSheet.create({
   },
   chapterNumberText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: FontFamilySerif.semiBold,
   },
   chapterName: {
     fontSize: 12,

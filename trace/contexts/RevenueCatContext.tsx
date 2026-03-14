@@ -21,6 +21,8 @@ interface RevenueCatContextType {
   isProUser: boolean;
   /** True only if the user has an active RevenueCat entitlement (app purchase). */
   hasRCEntitlement: boolean;
+  /** True if the stored profile already indicates app subscription access. */
+  hasAppSubscriptionSnapshot: boolean;
   /** True only if the user has an active web subscription via Dodo/Firestore. */
   hasWebSubscription: boolean;
   /** True if user signed up during the early adopter promo period. */
@@ -39,6 +41,7 @@ interface RevenueCatContextType {
 const RevenueCatContext = createContext<RevenueCatContextType>({
   isProUser: false,
   hasRCEntitlement: false,
+  hasAppSubscriptionSnapshot: false,
   hasWebSubscription: false,
   isEarlyAdopter: false,
   customerInfo: null,
@@ -91,6 +94,10 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
   // ─── Access from RevenueCat (app purchases) ───
   const hasRCEntitlement = !!customerInfo?.entitlements.active[ENTITLEMENT_ID];
 
+  // ─── Access from persisted app-subscription state in Firestore ───
+  const appStatus = profile?.appSubscriptionStatus || 'none';
+  const hasAppSubscriptionSnapshot = appStatus === 'active' || appStatus === 'trial';
+
   // ─── Access from Dodo/web (Firestore subscriptionStatus) ───
   const webStatus = profile?.subscriptionStatus || 'none';
   const hasWebSubscription = webStatus === 'active' || webStatus === 'trial';
@@ -99,7 +106,11 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
   const isEarlyAdopter = profile?.isEarlyAdopter === true;
 
   // ─── Combined: user has access if ANY source grants it ───
-  const isProUser = hasRCEntitlement || hasWebSubscription || isEarlyAdopter;
+  const isProUser =
+    hasRCEntitlement ||
+    hasAppSubscriptionSnapshot ||
+    hasWebSubscription ||
+    isEarlyAdopter;
 
   // - Sync appSubscriptionStatus to Firestore (stable - uses refs) -
   const syncAppSubStatus = useCallback(async (info: CustomerInfo) => {
@@ -294,6 +305,7 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
       value={{
         isProUser,
         hasRCEntitlement,
+        hasAppSubscriptionSnapshot,
         hasWebSubscription,
         isEarlyAdopter,
         customerInfo,
