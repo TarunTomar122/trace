@@ -12,7 +12,7 @@
   "items_per_user": 0,
   "sources": [
     {
-      "interest_id": "technology",
+      "interest_id": "tech",
       "name": "The Verge",
       "url": "https://www.theverge.com/rss/index.xml",
       "type": "atom",
@@ -20,7 +20,7 @@
       "source_weight": 1.2
     },
     {
-      "interest_id": "technology",
+      "interest_id": "tech",
       "name": "TechCrunch",
       "url": "https://techcrunch.com/feed/",
       "type": "rss",
@@ -28,7 +28,7 @@
       "source_weight": 1.2
     },
     {
-      "interest_id": "technology",
+      "interest_id": "tech",
       "name": "Ars Technica",
       "url": "https://feeds.arstechnica.com/arstechnica/index",
       "type": "rss",
@@ -36,7 +36,7 @@
       "source_weight": 1.0
     },
     {
-      "interest_id": "technology",
+      "interest_id": "tech",
       "name": "9to5Mac",
       "url": "https://9to5mac.com/feed/",
       "type": "rss",
@@ -44,7 +44,7 @@
       "source_weight": 1.0
     },
     {
-      "interest_id": "technology",
+      "interest_id": "tech",
       "name": "9to5Google",
       "url": "https://9to5google.com/feed/",
       "type": "rss",
@@ -52,42 +52,42 @@
       "source_weight": 1.0
     },
     {
-      "interest_id": "technology",
+      "interest_id": "tech",
       "name": "VentureBeat AI",
       "url": "https://venturebeat.com/category/ai/feed/",
       "type": "rss",
       "source_weight": 1.15
     },
     {
-      "interest_id": "technology",
+      "interest_id": "tech",
       "name": "OpenAI News",
       "url": "https://openai.com/news/rss.xml",
       "type": "rss",
       "source_weight": 1.25
     },
     {
-      "interest_id": "technology",
+      "interest_id": "tech",
       "name": "Google AI Blog",
       "url": "https://blog.google/technology/ai/rss/",
       "type": "rss",
       "source_weight": 1.2
     },
     {
-      "interest_id": "technology",
+      "interest_id": "tech",
       "name": "DeepMind Blog",
       "url": "https://deepmind.google/blog/rss.xml",
       "type": "rss",
       "source_weight": 1.2
     },
     {
-      "interest_id": "technology",
+      "interest_id": "tech",
       "name": "Anthropic News",
       "url": "https://www.anthropic.com/news",
       "type": "html",
       "source_weight": 1.1
     },
     {
-      "interest_id": "business-market",
+      "interest_id": "markets",
       "name": "Yahoo Finance Tech",
       "url": "https://finance.yahoo.com/news/rssindex",
       "type": "rss",
@@ -95,7 +95,7 @@
       "source_weight": 1.2
     },
     {
-      "interest_id": "business-market",
+      "interest_id": "markets",
       "name": "CNBC Technology",
       "url": "https://www.cnbc.com/id/19854910/device/rss/rss.html",
       "type": "rss",
@@ -103,7 +103,7 @@
       "source_weight": 1.2
     },
     {
-      "interest_id": "business-market",
+      "interest_id": "markets",
       "name": "CNBC Top News",
       "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
       "type": "rss",
@@ -111,14 +111,14 @@
       "source_weight": 1.15
     },
     {
-      "interest_id": "business-market",
+      "interest_id": "markets",
       "name": "Bloomberg Technology",
       "url": "https://feeds.bloomberg.com/technology/news.rss",
       "type": "rss",
       "source_weight": 1.25
     },
     {
-      "interest_id": "technology",
+      "interest_id": "tech",
       "name": "AI News",
       "url": "https://www.artificialintelligence-news.com/feed/",
       "type": "rss",

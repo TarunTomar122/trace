@@ -210,13 +210,21 @@ TOKEN_DISPLAY = {
 }
 
 CANONICAL_TRENDING_INTEREST_MAP = {
-    "ai": "technology",
-    "business": "business-market",
+    "technology": "tech",
+    "business-market": "markets",
+    "business": "markets",
+    "experience": "product-design",
+    "design": "product-design",
+    "leadership": "markets",
+    "productivity": "tech",
+    "health": "tech",
+    "web3": "fintech",
+    "climate": "tech",
 }
 
 
 def _normalize_trending_interest_id(raw: str) -> str:
-    value = str(raw or "").strip()
+    value = str(raw or "").strip().lower()
     if not value:
         return ""
     return CANONICAL_TRENDING_INTEREST_MAP.get(value, value)
@@ -1491,7 +1499,7 @@ def _ingest_hn_discovery(
                     "og_image": og_image,
                     "content": content[:10000],
                     "content_length": len(content),
-                    "interest_id": "technology",
+                    "interest_id": "tech",
                     "source_name": "Hacker News",
                     "source_url": "https://news.ycombinator.com/",
                     "content_source": result_content.get("source", "http"),
@@ -1606,7 +1614,7 @@ def _ingest_youtube_discovery(
                     "og_image": thumbnail,
                     "content": content[:5000],
                     "content_length": len(content),
-                    "interest_id": "technology",
+                    "interest_id": "tech",
                     "source_name": "YouTube",
                     "source_url": "https://www.youtube.com/",
                     "content_source": "youtube_meta",

@@ -19,9 +19,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Trace — Trending Topics & Personalized Articles with AI Summaries",
-  description: "Two feeds built around you — trending topics grouped from many sources, and personalized articles to help you grow. All with AI-powered summaries.",
-  keywords: ["personalized feed", "AI summaries", "trending news", "content curation", "daily briefing", "for you feed", "RSS alternative"],
+  title: "Trace — Trending Topics with AI Summaries",
+  description: "High-signal trending topics grouped from many sources, with summaries, key points, and timelines that help you catch up fast.",
+  keywords: ["AI summaries", "trending news", "content curation", "daily briefing", "topic overviews", "RSS alternative"],
   authors: [{ name: "Trace" }],
   metadataBase: new URL('https://www.yourtrace.online'),
   alternates: {
@@ -32,21 +32,21 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://www.yourtrace.online",
     siteName: "Trace",
-    title: "Trace — Trending, For You & Deep Dives with AI Summaries",
-    description: "Three daily feeds built around you — trending news, interest-matched articles, and expert deep dives with AI-powered summaries.",
+    title: "Trace — Trending Topics with AI Summaries",
+    description: "High-signal trending topics grouped from many sources, with summaries, key points, and timelines.",
     images: [
       {
         url: "/trace.png",
         width: 1200,
         height: 630,
-        alt: "Trace — Trending, For You & Deep Dives",
+        alt: "Trace — Trending topics with AI summaries",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Trace — Trending, For You & Deep Dives with AI Summaries",
-    description: "Three daily feeds built around you with AI summaries in your preferred reading style.",
+    title: "Trace — Trending Topics with AI Summaries",
+    description: "High-signal trending topics with AI summaries that help you catch up faster.",
     images: ["/trace.png"],
   },
   robots: {
@@ -105,7 +105,7 @@ export default function RootLayout({
         "@type": "Product",
         "@id": "https://www.yourtrace.online/#product",
         "name": "Trace Pro",
-        "description": "Three daily feeds — Trending, For You, and Deep Dives — with AI summaries in your preferred style",
+        "description": "Trending topics with AI summaries, key points, and timelines that help you catch up faster",
         "image": "https://www.yourtrace.online/trace.png",
         "offers": {
           "@type": "Offer",
@@ -125,7 +125,7 @@ export default function RootLayout({
             "name": "What does Trace include?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Trace includes three daily feeds: Trending, For You, and Deep Dives. Every item includes an AI summary in your preferred reading style."
+              "text": "Trace gives you trending topics grouped from many sources, each with an AI summary, key points, and a timeline."
             }
           },
           {
@@ -141,7 +141,7 @@ export default function RootLayout({
             "name": "How does personalization work?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "You choose your role, interests, and preferred sources. Trace uses those inputs to rank and summarize content for your daily feeds."
+              "text": "You choose the topics you care about. Trace uses those inputs to prioritize and summarize the stories in your daily feed."
             }
           }
         ]

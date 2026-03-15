@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
       .split(',')
       .map(topic => topic.trim())
       .filter(topic => topic.length > 0);
-    const defaultTopics = ['ai', 'design', 'productivity', 'startups', 'frontend'];
+    const defaultTopics = ['ai', 'tech', 'startups', 'markets', 'engineering'];
     const topicIds = (preferredTopics.length > 0 ? preferredTopics : defaultTopics).slice(0, limit);
 
     const topicRefs = topicIds.map((topicId) =>
@@ -131,4 +131,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

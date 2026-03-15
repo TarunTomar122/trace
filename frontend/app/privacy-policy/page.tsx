@@ -7,7 +7,7 @@ export default function PrivacyPolicyPage() {
     <div className="min-h-screen bg-background text-foreground">
       <PublicHeader />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
         {/* Folder Tabs */}
         <div className="flex items-end mb-0">
           <div
@@ -33,8 +33,8 @@ export default function PrivacyPolicyPage() {
         </div>
 
         {/* Main Content */}
-        <div className="bg-surface rounded-tr-lg rounded-b-lg p-6 sm:p-10">
-          <h1 className="text-2xl sm:text-3xl font-semibold text-foreground mb-2">Privacy Policy</h1>
+        <div className="bg-surface rounded-tr-lg rounded-b-lg p-6 sm:p-10 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-[-0.02em] text-foreground mb-2">Privacy Policy</h1>
           <p className="text-xs text-secondary/50 mb-8">Last Updated: February 17, 2026</p>
 
           <div className="space-y-8 text-sm text-secondary leading-relaxed">
@@ -169,7 +169,7 @@ export default function PrivacyPolicyPage() {
               </p>
             </section>
 
-            <section className="p-5 rounded-lg bg-surface-secondary">
+            <section className="p-5 rounded-xl bg-surface-secondary">
               <h2 className="text-lg font-semibold text-foreground mb-3">Contact Us</h2>
               <p className="mb-3">
                 If you have questions or concerns about this privacy policy, please contact us:

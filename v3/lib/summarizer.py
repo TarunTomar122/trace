@@ -28,7 +28,7 @@ TIMEOUT = 45
 
 TECHNICAL_ROLES = {"developer", "founder", "engineer"}
 TECHNICAL_SENIORITIES = {"senior", "executive"}
-TECHNICAL_INTERESTS = {"engineering", "ai", "technology", "ai-machine-learning"}
+TECHNICAL_INTERESTS = {"engineering", "ai", "tech", "technology", "ai-machine-learning"}
 
 
 def compute_technical_depth(profile: dict) -> str:
@@ -191,21 +191,18 @@ Return JSON with EXACT structure:
 
 RULES:
 - Choose exactly one interest_id from this allowed list:
-  technology, business-market, startups, engineering, marketing, fintech, health, web3, climate, experience, productivity, leadership
+  ai, tech, startups, markets, engineering, product-design, marketing
 - Pick the interest_id based on the actual story itself, not the publisher.
 - Prefer narrower lanes when clearly supported:
-  startup funding/M&A/ecosystem -> startups
+  frontier labs/model launches/AI agents/AI policy -> ai
+  startup funding/M&A/ecosystem/founder news -> startups
+  earnings/public markets/company strategy/M&A at large companies -> markets
   developer tools/infra/security/platform engineering -> engineering
+  app redesigns/product changes/UX/interface decisions -> product-design
   ad platforms/SEO/GTM/distribution -> marketing
-  payments/banking/markets/fintech companies -> fintech
-  biotech/healthcare/medical devices/wellness companies -> health
-  crypto/blockchain/tokens/exchanges -> web3
-  energy/EVs/climate tech/sustainability policy -> climate
-  product/design/UX/interface changes -> experience
-  workplace tools/personal workflow software -> productivity
-  management/org/exec decisions as the story -> leadership
-  use technology for broad AI/consumer tech/platform stories when no narrower lane fits
-- Never return legacy labels like ai or business.
+  payments/banking/trading/crypto/financial platforms -> fintech
+  use tech for broad consumer tech/platform/device/software stories when no narrower lane fits
+- Never return legacy labels like technology, business-market, experience, leadership, productivity, climate, health, or web3.
 - Write like a sharp reporter, not a marketer.
 - The body is the main story layer. It must read naturally as a paragraph, not as disguised bullet points.
 - In the body, cover the core development, the main actors, and the most important concrete detail or consequence from the source.
@@ -572,7 +569,7 @@ def _cache_bucket(feed_type: str, technical_depth: str = "", output_format: str 
     output_format: 'cards' for learning cards, '' for prose (default)
     """
     if feed_type == "trending":
-        return "trending_v7"  # includes topic interest classification
+        return "trending_v8"  # seven-interest taxonomy
     if feed_type == "deep_dives":
         if technical_depth == "deep":
             return "deep_dive_v6_deep"
@@ -661,18 +658,14 @@ def summary_lookup_key(url: str, feed_type: str = "default", technical_depth: st
 def _normalize_trending_summary(parsed: dict[str, Any]) -> dict[str, Any]:
     """Clean up trending summary - remove markdown formatting but keep full content."""
     allowed_interest_ids = {
-        "technology",
-        "business-market",
+        "ai",
+        "tech",
         "startups",
+        "markets",
         "engineering",
         "marketing",
         "fintech",
-        "health",
-        "web3",
-        "climate",
-        "experience",
-        "productivity",
-        "leadership",
+        "product-design",
     }
     short = parsed.get("short_article")
     if not isinstance(short, dict):
@@ -705,11 +698,20 @@ def _normalize_trending_summary(parsed: dict[str, Any]) -> dict[str, Any]:
     short["body"] = body
     parsed["short_article"] = short
     interest_id = str(parsed.get("interest_id", "")).strip().lower()
-    if interest_id == "ai":
-        interest_id = "technology"
-    elif interest_id == "business":
-        interest_id = "business-market"
-    parsed["interest_id"] = interest_id if interest_id in allowed_interest_ids else "technology"
+    legacy_map = {
+        "technology": "tech",
+        "business-market": "markets",
+        "business": "markets",
+        "experience": "product-design",
+        "design": "product-design",
+        "leadership": "markets",
+        "productivity": "tech",
+        "health": "tech",
+        "web3": "fintech",
+        "climate": "tech",
+    }
+    interest_id = legacy_map.get(interest_id, interest_id)
+    parsed["interest_id"] = interest_id if interest_id in allowed_interest_ids else "tech"
     return parsed
 
 

@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
           source: 'trace_app',
           datafast_visitor_id: datafastVisitorId, // Pass DataFast visitor ID for conversion tracking
         },
-        return_url: `${process.env.NEXT_PUBLIC_APP_URL}/profile?subscription=success`,
+        return_url: `${process.env.NEXT_PUBLIC_APP_URL}/feed?subscription=success`,
       }),
     });
 

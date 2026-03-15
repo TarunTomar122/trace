@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import Script from 'next/script';
 import PublicHeader from '@/components/PublicHeader';
 import Footer from '@/components/Footer';
@@ -42,6 +41,8 @@ export const metadata: Metadata = {
       'Grouped topics, story overviews, and timelines from across the web.',
   },
 };
+
+const TRENDING_STORY_LIMIT = 3;
 
 type TrendingItem = {
   id: string;
@@ -238,7 +239,7 @@ async function getTodaysItems(): Promise<TrendingItem[]> {
           thumbnail: item.thumbnail || undefined,
         };
       });
-      return items;
+      return items.slice(0, TRENDING_STORY_LIMIT);
     }
   }
 
@@ -255,7 +256,7 @@ async function getTodaysItems(): Promise<TrendingItem[]> {
   if (unifiedDoc.exists) {
     const data = unifiedDoc.data() || {};
     const rows = Array.isArray(data.items) ? data.items : [];
-    const items: TrendingItem[] = rows.slice(0, 12).map((item: UnifiedNewsletterItem, idx: number) => ({
+    const items: TrendingItem[] = rows.slice(0, TRENDING_STORY_LIMIT).map((item: UnifiedNewsletterItem, idx: number) => ({
       id: item.id || `trending-${idx}-${shortHash(item.url || String(idx))}`,
       title: item.title || '',
       url: item.url || '',
@@ -308,7 +309,7 @@ async function getTodaysItems(): Promise<TrendingItem[]> {
     String(b.published_date || '').localeCompare(String(a.published_date || ''))
   );
 
-  const items: TrendingItem[] = deduped.slice(0, 12).map((item, idx) => ({
+  const items: TrendingItem[] = deduped.slice(0, TRENDING_STORY_LIMIT).map((item, idx) => ({
     id: item.url ? `trending-${idx}-${shortHash(item.url)}` : `trending-${idx}`,
     title: item.title || '',
     url: item.url || '',
@@ -392,8 +393,7 @@ async function getTopicLinks(): Promise<TopicLink[]> {
 }
 
 export default async function TrendingPage() {
-  const [allItems, topicLinks] = await Promise.all([getTodaysItems(), getTopicLinks()]);
-  const items = allItems.slice(0, 5);
+  const [items, topicLinks] = await Promise.all([getTodaysItems(), getTopicLinks()]);
   const itemListSchema = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
@@ -403,7 +403,7 @@ export default async function TrendingPage() {
     url: 'https://www.yourtrace.online/trending',
     mainEntity: {
       '@type': 'ItemList',
-      itemListElement: items.slice(0, 12).map((item, index) => ({
+      itemListElement: items.map((item, index) => ({
         '@type': 'ListItem',
         position: index + 1,
         url: item.url,
@@ -426,28 +426,8 @@ export default async function TrendingPage() {
       />
       <PublicHeader />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        {/* Folder Tabs */}
-        <div className="flex items-end mb-0">
-          <div
-            className="px-6 py-2.5 text-sm font-medium text-foreground bg-surface rounded-tl-lg"
-            style={{ clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 100%, 0 100%)' }}
-          >
-            Trending
-          </div>
-          <Link
-            href="/"
-            className="px-6 py-2.5 text-sm font-medium text-tab-inactive bg-surface-tertiary hover:text-foreground transition-colors"
-            style={{ clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 100%, 0 100%)', marginLeft: '-6px' }}
-          >
-            Sign In
-          </Link>
-        </div>
-
-        {/* Main Container */}
-        <div className="bg-surface rounded-tr-lg rounded-b-lg overflow-hidden">
-          <TrendingContent items={items} />
-        </div>
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <TrendingContent items={items} />
       </main>
       <Footer />
     </div>

@@ -469,40 +469,72 @@ export interface UserProfile {
 }
 
 export const INTERESTS = [
-  { id: 'technology', label: 'Technology' },
-  { id: 'business-market', label: 'Business & Market' },
-  { id: 'experience', label: 'Experience' },
-  { id: 'productivity', label: 'Productivity' },
+  { id: 'ai', label: 'AI' },
+  { id: 'tech', label: 'Tech' },
+  { id: 'startups', label: 'Startups' },
+  { id: 'markets', label: 'Markets' },
+  { id: 'engineering', label: 'Engineering' },
+  { id: 'product-design', label: 'Product & Design' },
+  { id: 'marketing', label: 'Marketing' },
+  { id: 'fintech', label: 'Fintech' },
 ];
 
 export const INTEREST_SUBTOPICS: Record<string, { id: string; label: string }[]> = {
-  technology: [
-    { id: 'ai', label: 'AI' },
-    { id: 'automation', label: 'Automation' },
-    { id: 'software-tech', label: 'Software & Tech' },
-    { id: 'productivity-tools', label: 'Productivity Tools' },
-    { id: 'future-tech', label: 'Future Tech' },
+  ai: [
+    { id: 'model-launches', label: 'Model Launches' },
+    { id: 'agents', label: 'AI Agents' },
+    { id: 'labs', label: 'Labs & Frontier Models' },
+    { id: 'policy', label: 'AI Policy' },
+    { id: 'tools', label: 'AI Tools' },
   ],
-  'business-market': [
-    { id: 'product-strategy', label: 'Product Strategy' },
-    { id: 'market-trends', label: 'Market Trends' },
-    { id: 'economy-impact', label: 'Economy & Impact' },
-    { id: 'startups', label: 'Startups' },
-    { id: 'marketing', label: 'Marketing' },
+  tech: [
+    { id: 'big-tech', label: 'Big Tech' },
+    { id: 'consumer-tech', label: 'Consumer Tech' },
+    { id: 'platforms', label: 'Platforms' },
+    { id: 'devices', label: 'Devices' },
+    { id: 'internet', label: 'Internet' },
   ],
-  experience: [
-    { id: 'creative-process', label: 'Creative Process' },
-    { id: 'design-tools', label: 'Design Tools' },
-    { id: 'ux-design', label: 'UX Design' },
-    { id: 'brand-storytelling', label: 'Brand & Storytelling' },
-    { id: 'user-psychology', label: 'User Psychology' },
+  startups: [
+    { id: 'funding', label: 'Funding' },
+    { id: 'founders', label: 'Founders' },
+    { id: 'm-and-a', label: 'M&A' },
+    { id: 'early-stage', label: 'Early Stage' },
+    { id: 'ecosystem', label: 'Ecosystem' },
   ],
-  productivity: [
-    { id: 'career-growth', label: 'Career Growth' },
-    { id: 'personal-finance', label: 'Personal Finance' },
-    { id: 'soft-skills', label: 'Soft Skills' },
-    { id: 'investments', label: 'Investments' },
-    { id: 'wellbeing', label: 'Wellbeing' },
+  markets: [
+    { id: 'earnings', label: 'Earnings' },
+    { id: 'public-markets', label: 'Public Markets' },
+    { id: 'company-strategy', label: 'Company Strategy' },
+    { id: 'macro', label: 'Macro' },
+    { id: 'deals', label: 'Deals' },
+  ],
+  engineering: [
+    { id: 'developer-tools', label: 'Developer Tools' },
+    { id: 'infra-cloud', label: 'Infra & Cloud' },
+    { id: 'cybersecurity', label: 'Cybersecurity' },
+    { id: 'open-source', label: 'Open Source' },
+    { id: 'platform-engineering', label: 'Platform Engineering' },
+  ],
+  'product-design': [
+    { id: 'ux', label: 'UX' },
+    { id: 'ui', label: 'UI' },
+    { id: 'product-changes', label: 'Product Changes' },
+    { id: 'app-redesigns', label: 'App Redesigns' },
+    { id: 'design-systems', label: 'Design Systems' },
+  ],
+  marketing: [
+    { id: 'growth', label: 'Growth' },
+    { id: 'seo', label: 'SEO' },
+    { id: 'ads', label: 'Ads & Platforms' },
+    { id: 'distribution', label: 'Distribution' },
+    { id: 'ecommerce', label: 'E-commerce' },
+  ],
+  fintech: [
+    { id: 'payments', label: 'Payments' },
+    { id: 'banking', label: 'Banking' },
+    { id: 'crypto', label: 'Crypto' },
+    { id: 'trading', label: 'Trading' },
+    { id: 'financial-platforms', label: 'Financial Platforms' },
   ],
 };
 
@@ -523,18 +555,14 @@ export const SENIORITY_LEVELS = [
 ] as const;
 
 export const ONBOARDING_INTERESTS = [
-  { id: 'technology', label: 'AI & Machine Learning' },
-  { id: 'experience', label: 'Design & UX' },
-  { id: 'business-market', label: 'Product Strategy' },
-  { id: 'startups', label: 'Startups & VC' },
-  { id: 'leadership', label: 'Leadership' },
+  { id: 'ai', label: 'AI' },
+  { id: 'tech', label: 'Tech' },
+  { id: 'startups', label: 'Startups' },
+  { id: 'markets', label: 'Markets' },
   { id: 'engineering', label: 'Engineering' },
-  { id: 'marketing', label: 'Growth & Marketing' },
+  { id: 'product-design', label: 'Product & Design' },
+  { id: 'marketing', label: 'Marketing' },
   { id: 'fintech', label: 'Fintech' },
-  { id: 'health', label: 'Health & Wellness' },
-  { id: 'web3', label: 'Web3 & Crypto' },
-  { id: 'climate', label: 'Climate & Sustainability' },
-  { id: 'productivity', label: 'Productivity' },
 ] as const;
 
 export const LEARNING_SOURCE_CATEGORIES = [

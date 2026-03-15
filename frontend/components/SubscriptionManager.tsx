@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   CreditCard,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth } from '@/lib/firebase';
+import { trackCheckoutClicked, trackPaywallShown, trackSubscriptionStarted } from '@/lib/posthog';
 
 interface SubscriptionStatus {
   subscriptionStatus: string;
@@ -28,8 +30,36 @@ interface SubscriptionStatus {
   hasAccess: boolean;
 }
 
+function toDateOrNull(value: unknown): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === 'object' && value !== null) {
+    const maybeTimestamp = value as { seconds?: number; toDate?: () => Date };
+    if (typeof maybeTimestamp.toDate === 'function') return maybeTimestamp.toDate();
+    if (typeof maybeTimestamp.seconds === 'number') return new Date(maybeTimestamp.seconds * 1000);
+  }
+  const parsed = new Date(String(value));
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function buildSubscriptionStatus(profile: any): SubscriptionStatus {
+  const status = profile?.subscriptionStatus || 'none';
+  return {
+    subscriptionStatus: status,
+    subscriptionId: profile?.subscriptionId || null,
+    planId: profile?.planId || null,
+    trialEndDate: toDateOrNull(profile?.trialEndDate),
+    nextBillingDate: toDateOrNull(profile?.nextBillingDate),
+    lastPaymentDate: toDateOrNull(profile?.lastPaymentDate),
+    cancelledAt: toDateOrNull(profile?.cancelledAt),
+    willCancelAt: toDateOrNull(profile?.willCancelAt),
+    hasAccess: ['trial', 'active'].includes(status) || ['trial', 'active'].includes(profile?.appSubscriptionStatus || 'none'),
+  };
+}
+
 export default function SubscriptionManager() {
   const { user, profile, refreshProfile } = useAuth();
+  const searchParams = useSearchParams();
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -37,6 +67,47 @@ export default function SubscriptionManager() {
   const [isCreatingCheckout, setIsCreatingCheckout] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const autoCheckoutStarted = React.useRef(false);
+  const trackedPaywall = React.useRef(false);
+  const trackedSuccess = React.useRef(false);
+  const refreshProfileRef = React.useRef(refreshProfile);
+  const checkoutIntent = searchParams.get('intent') === 'checkout';
+  const checkoutReturned = searchParams.get('subscription') === 'success';
+
+  useEffect(() => {
+    refreshProfileRef.current = refreshProfile;
+  }, [refreshProfile]);
+
+  const fetchSubscriptionStatus = React.useCallback(async () => {
+    if (!user) return false;
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return false;
+      const response = await fetch('/api/subscription/status', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) return false;
+      const data = await response.json();
+      setSubscriptionStatus({
+        subscriptionStatus: data.subscriptionStatus || 'none',
+        subscriptionId: data.subscriptionId || null,
+        planId: data.planId || null,
+        trialEndDate: toDateOrNull(data.trialEndDate),
+        nextBillingDate: toDateOrNull(data.nextBillingDate),
+        lastPaymentDate: toDateOrNull(data.lastPaymentDate),
+        cancelledAt: toDateOrNull(data.cancelledAt),
+        willCancelAt: toDateOrNull(data.willCancelAt),
+        hasAccess: Boolean(data.hasAccess),
+      });
+      setIsLoading(false);
+      return true;
+    } catch (err) {
+      console.error('Error fetching subscription status:', err);
+      return false;
+    }
+  }, [user]);
 
   // Refresh profile once on mount to get latest subscription data
   const hasRefreshed = React.useRef(false);
@@ -73,26 +144,46 @@ export default function SubscriptionManager() {
         setError('💡 You started a checkout but didn\'t complete it. Ready to try again?');
       }
 
-      setSubscriptionStatus({
-        subscriptionStatus: status,
-        subscriptionId: profile.subscriptionId || null,
-        planId: profile.planId || null,
-        trialEndDate: profile.trialEndDate ? new Date((profile.trialEndDate as any).seconds * 1000) : null,
-        nextBillingDate: profile.nextBillingDate ? new Date((profile.nextBillingDate as any).seconds * 1000) : null,
-        lastPaymentDate: profile.lastPaymentDate ? new Date((profile.lastPaymentDate as any).seconds * 1000) : null,
-        cancelledAt: profile.cancelledAt ? new Date((profile.cancelledAt as any).seconds * 1000) : null,
-        willCancelAt: profile.willCancelAt ? new Date((profile.willCancelAt as any).seconds * 1000) : null,
-        hasAccess: ['trial', 'active'].includes(status) || ['trial', 'active'].includes(profile.appSubscriptionStatus || 'none'),
-      });
+      setSubscriptionStatus(buildSubscriptionStatus(profile));
       setIsLoading(false);
     }
   }, [profile]);
+
+  useEffect(() => {
+    if (!user) return;
+    let attempts = 0;
+    const syncStatus = async () => {
+      attempts += 1;
+      const ok = await fetchSubscriptionStatus();
+      if (ok && checkoutReturned) {
+        await refreshProfileRef.current();
+      }
+    };
+    syncStatus();
+    if (!checkoutReturned) return;
+    const interval = setInterval(() => {
+      if (attempts >= 6) {
+        clearInterval(interval);
+        return;
+      }
+      syncStatus();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [user, checkoutReturned, fetchSubscriptionStatus]);
+
+  useEffect(() => {
+    if (!trackedPaywall.current && !isLoading && subscriptionStatus?.subscriptionStatus === 'none') {
+      trackedPaywall.current = true;
+      trackPaywallShown('profile_subscription_tab');
+    }
+  }, [isLoading, subscriptionStatus?.subscriptionStatus]);
 
   const handleSubscribe = async () => {
     if (!user) return;
 
     setIsCreatingCheckout(true);
     setError(null);
+    trackCheckoutClicked(checkoutIntent ? 'checkout_intent_resume' : 'profile_subscription_cta');
 
     try {
       const token = await auth.currentUser?.getIdToken();
@@ -247,6 +338,23 @@ export default function SubscriptionManager() {
     }
   };
 
+  const status = subscriptionStatus?.subscriptionStatus || 'none';
+  const hasAccess = subscriptionStatus?.hasAccess || false;
+
+  useEffect(() => {
+    if (checkoutIntent && !autoCheckoutStarted.current && !isLoading && status === 'none' && !isCreatingCheckout) {
+      autoCheckoutStarted.current = true;
+      handleSubscribe();
+    }
+  }, [checkoutIntent, isLoading, status, isCreatingCheckout]);
+
+  useEffect(() => {
+    if (checkoutReturned && !trackedSuccess.current && (status === 'trial' || status === 'active')) {
+      trackedSuccess.current = true;
+      trackSubscriptionStarted('pro_monthly');
+    }
+  }, [checkoutReturned, status]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -254,9 +362,6 @@ export default function SubscriptionManager() {
       </div>
     );
   }
-
-  const status = subscriptionStatus?.subscriptionStatus || 'none';
-  const hasAccess = subscriptionStatus?.hasAccess || false;
 
   // Unsubscribed state — matches profile tab section style
   if (status === 'none') {
@@ -280,9 +385,9 @@ export default function SubscriptionManager() {
                 <Zap size={14} className="text-white" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-foreground">Unlimited For You &amp; Deep Dives</p>
+                <p className="text-sm font-semibold text-foreground">Unlimited topic access</p>
                 <p className="text-sm text-secondary mt-0.5">
-                  Full access to all personalized articles and expert deep dives, refreshed daily.
+                  Get the full set of daily trending topics, summaries, and timelines.
                 </p>
               </div>
             </div>
@@ -294,7 +399,7 @@ export default function SubscriptionManager() {
               <div>
                 <p className="text-sm font-semibold text-foreground">AI summaries in your style</p>
                 <p className="text-sm text-secondary mt-0.5">
-                  Choose executive brief, practitioner deep-dive, or casual talking points.
+                  Read clean summaries with the context and key points worth remembering.
                 </p>
               </div>
             </div>
@@ -306,7 +411,7 @@ export default function SubscriptionManager() {
               <div>
                 <p className="text-sm font-semibold text-foreground">Start with a free trial</p>
                 <p className="text-sm text-secondary mt-0.5">
-                  Try Pro free for 4 days, then $2.99/mo. Cancel anytime &mdash; no charge if you cancel before the trial ends.
+                  Try Pro free for 3 days, then $2.99/mo. Cancel anytime and you won&apos;t be charged if you cancel before the trial ends.
                 </p>
               </div>
             </div>
@@ -340,7 +445,7 @@ export default function SubscriptionManager() {
           </button>
 
           <p className="text-xs text-secondary/50 mt-3">
-            4-day free trial, then $2.99/month. Cancel anytime.
+            3-day free trial, then $2.99/month. Cancel anytime.
           </p>
         </section>
 
@@ -464,7 +569,7 @@ export default function SubscriptionManager() {
               ) : (
                 <div className="space-y-3 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/40">
                   <p className="text-sm text-foreground">
-                    Are you sure? You&apos;ll lose unlimited For You articles and Deep Dives.
+                    Are you sure? You&apos;ll lose unlimited topic access and your full feed.
                   </p>
                   <div className="flex gap-3">
                     <button

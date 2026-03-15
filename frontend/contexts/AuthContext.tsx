@@ -16,7 +16,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   profileResolved: boolean;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (intent?: 'read' | 'checkout') => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -32,6 +32,8 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const useAuth = () => useContext(AuthContext);
+
+const CHECKOUT_INTENT_KEY = 'trace_post_auth_intent';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -103,12 +105,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (intent: 'read' | 'checkout' = 'read') => {
     try {
+      if (typeof window !== 'undefined') {
+        if (intent === 'checkout') {
+          sessionStorage.setItem(CHECKOUT_INTENT_KEY, 'checkout');
+        } else {
+          sessionStorage.removeItem(CHECKOUT_INTENT_KEY);
+        }
+      }
       const result = await signInWithPopup(auth, googleProvider);
       if (result.user) {
         setProfileResolved(false);
         const userProfile = await loadProfile(result.user, { allowCreate: true });
+        const postAuthIntent =
+          typeof window !== 'undefined' ? sessionStorage.getItem(CHECKOUT_INTENT_KEY) : null;
         
         // Track sign in with PostHog
         identifyUser(result.user.uid, {
@@ -119,7 +130,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         trackSignIn("google");
         
         if (!userProfile?.onboarded) {
-          window.location.href = '/onboarding';
+          window.location.href = postAuthIntent === 'checkout'
+            ? '/onboarding?intent=checkout'
+            : '/onboarding';
+        } else if (postAuthIntent === 'checkout') {
+          sessionStorage.removeItem(CHECKOUT_INTENT_KEY);
+          window.location.href = '/profile?tab=subscription&intent=checkout';
         } else {
           window.location.href = '/feed';
         }

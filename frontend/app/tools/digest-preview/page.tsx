@@ -18,16 +18,14 @@ import { getArticleImage } from "@/lib/fallback-images";
 
 // Interest options
 const INTERESTS = [
-  { id: "ai", label: "AI & Machine Learning", keywords: ["ai", "gpt", "llm", "machine", "learning", "openai", "anthropic", "neural"] },
-  { id: "startups", label: "Startups & Founders", keywords: ["startup", "founder", "vc", "funding", "saas", "entrepreneur", "launch"] },
-  { id: "tech", label: "Tech Industry", keywords: ["tech", "software", "google", "apple", "microsoft", "meta", "amazon"] },
-  { id: "productivity", label: "Productivity", keywords: ["productivity", "habit", "workflow", "efficiency", "focus", "time"] },
-  { id: "engineering", label: "Engineering", keywords: ["engineering", "code", "developer", "programming", "architecture", "system"] },
-  { id: "design", label: "Design & UX", keywords: ["design", "ux", "ui", "figma", "interface", "user", "experience"] },
-  { id: "business", label: "Business Strategy", keywords: ["business", "strategy", "growth", "market", "revenue", "sales"] },
-  { id: "science", label: "Science & Research", keywords: ["science", "research", "study", "discovery", "biology", "physics"] },
-  { id: "finance", label: "Finance & Crypto", keywords: ["finance", "crypto", "bitcoin", "invest", "stock", "market", "trading"] },
-  { id: "career", label: "Career Growth", keywords: ["career", "job", "hiring", "interview", "salary", "promotion", "manager"] },
+  { id: "ai", label: "AI", keywords: ["ai", "gpt", "llm", "machine", "learning", "openai", "anthropic", "neural", "agent"] },
+  { id: "tech", label: "Tech", keywords: ["tech", "software", "google", "apple", "microsoft", "meta", "amazon", "device", "platform"] },
+  { id: "startups", label: "Startups", keywords: ["startup", "founder", "vc", "funding", "saas", "entrepreneur", "launch"] },
+  { id: "markets", label: "Markets", keywords: ["business", "market", "earnings", "revenue", "stock", "deal", "acquisition"] },
+  { id: "engineering", label: "Engineering", keywords: ["engineering", "code", "developer", "programming", "architecture", "system", "security", "cloud"] },
+  { id: "product-design", label: "Product & Design", keywords: ["design", "ux", "ui", "figma", "interface", "user", "experience", "product"] },
+  { id: "marketing", label: "Marketing", keywords: ["marketing", "growth", "seo", "ads", "distribution", "creator", "brand"] },
+  { id: "fintech", label: "Fintech", keywords: ["finance", "crypto", "bitcoin", "bank", "payment", "trading", "fintech"] },
 ];
 
 type TrendingItem = {
@@ -343,7 +341,7 @@ export default function DigestPreviewPage() {
                     <ul className="space-y-2 mb-5">
                       {[
                         "Personalized For You feed",
-                        "Expert Deep Dives",
+                        "High-signal trending topics",
                         "AI-powered summaries",
                         "No spam, unsubscribe anytime",
                       ].map((item) => (
@@ -354,7 +352,7 @@ export default function DigestPreviewPage() {
                       ))}
                     </ul>
                     <button
-                      onClick={signInWithGoogle}
+                      onClick={() => signInWithGoogle('read')}
                       className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
                     >
                       Start reading for free

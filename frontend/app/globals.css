@@ -102,6 +102,16 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
   --tw-prose-td-borders: #1a1a1a;
 }
 
+/* Floating animation for hero card */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
 /* Infinite marquee animation */
 @keyframes marquee {
   0% {

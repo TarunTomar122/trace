@@ -115,7 +115,7 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
                 </div>
               ) : (
                 <button
-                  onClick={signInWithGoogle}
+                  onClick={() => signInWithGoogle('read')}
                   className="bg-foreground text-background px-6 py-2.5 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all"
                 >
                   Sign In
@@ -142,7 +142,7 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
                 </Link>
               ) : (
                 <button
-                  onClick={signInWithGoogle}
+                  onClick={() => signInWithGoogle('read')}
                   className="bg-foreground text-background px-4 py-2 rounded-full text-sm font-medium"
                 >
                   Sign In

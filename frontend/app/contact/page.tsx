@@ -8,7 +8,7 @@ export default function ContactPage() {
     <div className="min-h-screen bg-background text-foreground">
       <PublicHeader />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
         {/* Folder Tabs */}
         <div className="flex items-end mb-0">
           <Link
@@ -34,8 +34,8 @@ export default function ContactPage() {
         </div>
 
         {/* Main Content */}
-        <div className="bg-surface rounded-tr-lg rounded-b-lg p-6 sm:p-10">
-          <h1 className="text-2xl sm:text-3xl font-semibold text-foreground mb-2">Contact Us</h1>
+        <div className="bg-surface rounded-tr-lg rounded-b-lg p-6 sm:p-10 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-[-0.02em] text-foreground mb-2">Contact Us</h1>
           <p className="text-sm text-secondary mb-8">
             Have a question, feedback, or need help with your subscription? We&apos;re here to help.
           </p>
@@ -44,7 +44,7 @@ export default function ContactPage() {
             {/* Email */}
             <a
               href="mailto:yourtrace.online@gmail.com"
-              className="flex items-center gap-4 p-4 bg-surface-secondary rounded-lg hover:bg-surface-tertiary transition-colors group"
+              className="flex items-center gap-4 p-4 bg-surface-secondary rounded-xl hover:bg-surface-tertiary transition-all hover:shadow-sm group"
             >
               <div className="w-10 h-10 rounded-lg bg-surface flex items-center justify-center">
                 <Mail size={18} className="text-secondary" />
@@ -60,7 +60,7 @@ export default function ContactPage() {
               href="https://x.com/tarat_211"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-4 p-4 bg-surface-secondary rounded-lg hover:bg-surface-tertiary transition-colors group"
+              className="flex items-center gap-4 p-4 bg-surface-secondary rounded-xl hover:bg-surface-tertiary transition-all hover:shadow-sm group"
             >
               <div className="w-10 h-10 rounded-lg bg-surface flex items-center justify-center">
                 <svg className="w-4 h-4 text-secondary" viewBox="0 0 24 24" fill="currentColor">
@@ -78,7 +78,7 @@ export default function ContactPage() {
               href="https://github.com/TarunTomar122"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-4 p-4 bg-surface-secondary rounded-lg hover:bg-surface-tertiary transition-colors group"
+              className="flex items-center gap-4 p-4 bg-surface-secondary rounded-xl hover:bg-surface-tertiary transition-all hover:shadow-sm group"
             >
               <div className="w-10 h-10 rounded-lg bg-surface flex items-center justify-center">
                 <svg className="w-4 h-4 text-secondary" viewBox="0 0 24 24" fill="currentColor">
@@ -93,7 +93,7 @@ export default function ContactPage() {
           </div>
 
           {/* Subscription support note */}
-          <div className="mt-8 p-5 rounded-lg bg-surface-secondary max-w-md">
+          <div className="mt-8 p-5 rounded-xl bg-surface-secondary max-w-md">
             <p className="text-sm font-semibold text-foreground mb-2">Subscription & Billing Support</p>
             <p className="text-sm text-secondary leading-relaxed">
               For subscription cancellations or billing issues on Android, manage your subscription via{' '}

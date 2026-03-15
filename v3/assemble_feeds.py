@@ -37,17 +37,24 @@ from v3.lib.scorer import rank_articles  # noqa: E402
 from v3.lib.diversity import dedupe_and_cap  # noqa: E402
 
 ROLE_PRIMARY_INTERESTS: dict[str, list[str]] = {
-    "designer": ["experience"],
-    "developer": ["engineering", "technology"],
-    "pm": ["business-market", "startups"],
-    "marketer": ["marketing", "business-market"],
-    "founder": ["startups", "business-market", "leadership"],
+    "designer": ["product-design"],
+    "developer": ["engineering", "tech", "ai"],
+    "pm": ["markets", "startups", "product-design"],
+    "marketer": ["marketing", "markets"],
+    "founder": ["startups", "markets"],
 }
 
 INTEREST_ALIASES: dict[str, str] = {
-    "ai": "technology",
-    "business": "business-market",
-    "design": "experience",
+    "technology": "tech",
+    "business-market": "markets",
+    "business": "markets",
+    "experience": "product-design",
+    "design": "product-design",
+    "leadership": "markets",
+    "productivity": "tech",
+    "health": "tech",
+    "climate": "tech",
+    "web3": "fintech",
 }
 
 EVERGREEN_EXPERIMENT_MAX_AGE_DAYS = 365

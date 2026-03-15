@@ -89,7 +89,7 @@ export default function InstagramCallbackPage() {
               Sign in to Trace first so we can save Instagram access for your account.
             </p>
             <button
-              onClick={signInWithGoogle}
+              onClick={() => signInWithGoogle('read')}
               className="rounded-md bg-black px-4 py-2 text-sm font-semibold text-white"
             >
               Sign in with Google

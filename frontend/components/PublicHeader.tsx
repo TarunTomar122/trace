@@ -4,24 +4,24 @@ import Link from 'next/link';
 
 export default function PublicHeader() {
   return (
-    <header className="bg-background border-b border-border/30">
+    <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-14">
-          <Link href="/" className="flex items-center gap-2">
+        <div className="flex items-center justify-between h-16">
+          <Link href="/" className="flex items-center gap-3">
             <img src="/trace.webp" alt="Trace" className="h-6 w-auto" />
-            <span className="text-sm font-semibold tracking-[0.12em] text-foreground">TRACE</span>
+            <span className="text-sm font-semibold tracking-[0.18em]">TRACE</span>
           </Link>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Link
               href="/trending"
-              className="text-sm text-secondary hover:text-foreground transition-colors"
+              className="hidden sm:inline-flex rounded-full px-4 py-2 text-sm font-medium text-secondary transition-colors hover:text-foreground"
             >
               Trending
             </Link>
             <Link
               href="/"
-              className="px-4 py-2 text-sm font-medium bg-foreground text-background rounded-lg hover:bg-foreground/90 transition-colors"
+              className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90 hover:shadow-lg hover:shadow-black/10"
             >
               Sign In
             </Link>
