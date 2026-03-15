@@ -365,7 +365,7 @@ export default function OnboardingScreen() {
             <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)}>
               <ThemedText style={styles.title}>What fires you up?</ThemedText>
               <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
-                Pick 3+ topics. This powers your <ThemedText style={{ fontFamily: FontFamily.bold, color: ACCENT }}>For You</ThemedText> articles and learning cards.
+                Pick 3+ beats you care about — we build grouped topic briefings around them, updated daily.
               </ThemedText>
 
               <View style={styles.gridTwo}>

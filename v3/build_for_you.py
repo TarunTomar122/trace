@@ -1,20 +1,15 @@
 #!/usr/bin/env python3
 """
-Build "For You" feed — role-first, interest-matched articles.
+Build "For You" feed — one personalized morning brief per user.
 
-Selection priority:
-  1. Role's primary interest domain
-  2. Career-goal keyword boosts within eligible items
-  3. LLM reject-gate drops low-signal content at summary time
-
-Phase 1 (pool): Fetch articles from for_you_sources.json → v3_for_you_pool
-Phase 2 (feed): Per-user selection + scoring + summarise → write feed
+Fetches content from HN, Reddit, and role-specific RSS/blogs once per role,
+then generates a Morning-Brew-style brief per user using GPT.
 
 Usage:
-  python3 -m v3.build_for_you                          # both phases
-  python3 -m v3.build_for_you --skip-pool               # feed only
-  python3 -m v3.build_for_you --pool-only               # pool only
-  python3 -m v3.build_for_you --user-id <uid>           # single user
+  python3 -m v3.build_for_you                          # full: fetch pool + build
+  python3 -m v3.build_for_you --skip-pool             # build only (use cached pool)
+  python3 -m v3.build_for_you --pool-only             # fetch pool only
+  python3 -m v3.build_for_you --user-id <uid>         # single user
 """
 
 from __future__ import annotations
@@ -22,6 +17,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -29,105 +25,364 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+import requests
 from dotenv import load_dotenv
+from openai import OpenAI
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 load_dotenv(REPO_ROOT / ".env")
 
-from v1.storage import is_user_subscribed  # noqa: E402
 from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
-from v3.lib.store import V3Store, FOR_YOU_POOL, FREE_TIER_LIMITS, _today_ist  # noqa: E402
-from v3.lib.content import fetch_content, fetch_og_image  # noqa: E402
-from v3.lib.summarizer import get_or_generate_summary, batch_presummarize, compute_technical_depth  # noqa: E402
-from v3.lib.scorer import rank_articles  # noqa: E402
-from v3.lib.diversity import dedupe_and_cap  # noqa: E402
+from v3.lib.content import fetch_og_image  # noqa: E402
+from v3.lib.store import V3Store, _today_ist  # noqa: E402
 
 CONFIG_PATH = "v3/config/for_you_sources.json"
+BRIEF_SOURCES_PATH = "v3/config/brief_sources.json"
 DEFAULT_ITEMS = 0
-DEFAULT_LIMIT_PER_SOURCE = 15
-DEFAULT_MAX_AGE = 365
-HEALTH_INTEREST_IDS = {"health", "biotech", "medicine", "health-tech"}
-MEDICAL_TOPIC_KEYWORDS = {
-    "cancer",
-    "immune system",
-    "immunity",
-    "tumor",
-    "tumour",
-    "vaccine",
-    "antibody",
-    "clinical trial",
-    "drug discovery",
-    "molecule",
-    "genome",
-    "protein",
-    "diagnosis",
-    "diagnostic",
-    "disease",
-    "hospital",
-}
-COMMERCE_TITLE_PATTERNS = (
-    r"\$\s?\d+\s*off",
-    r"\b\d+%\s*off\b",
-)
-COMMERCE_TITLE_KEYWORDS = {
-    "deal",
-    "deals",
-    "sale",
-    "discount",
-    "coupon",
-    "buy",
-    "shop",
-    "sponsored",
-    "sponsored post",
-    "paid post",
-    "paid content",
-    "advertorial",
-    "partner post",
-    "partner content",
-    "gift guide",
-    "black friday",
-    "prime day",
-    "best ",
-}
-COMMERCE_CONTENT_KEYWORDS = {
-    "affiliate",
-    "sponsored",
-    "sponsored post",
-    "paid content",
-    "advertorial",
-    "partner post",
-    "partner content",
-    "we may earn a commission",
-    "buy now",
-    "shop now",
-}
-GENERIC_SECTION_TITLES = {
-    "product",
-    "products",
-    "engineering",
-    "design",
-    "marketing",
-    "leadership",
-    "startups",
-    "company",
+FOR_YOU_BRIEF_BUCKET = "for_you_brief_v17_top_stories"
+FOR_YOU_BRIEF_MODEL = "gpt-4o"
+# gpt-4o for cost efficiency (~$0.01/brief). Switch to "gpt-5" if quality needs a boost.
+
+HN_TIMEOUT = 15
+REDDIT_TIMEOUT = 15
+RSS_LINK_LIMIT = 10
+REDDIT_USER_AGENT = "TraceBrief/1.0"
+
+ROLE_LABELS = {
+    "developer": "engineer",
+    "designer": "designer",
+    "pm": "product manager",
+    "marketer": "marketer",
+    "founder": "founder",
 }
 
-ROLE_PRIMARY_INTERESTS: dict[str, list[str]] = {
-    "designer":  ["experience"],
-    "developer": ["engineering", "technology"],
-    "pm":        ["business-market", "startups"],
-    "marketer":  ["marketing", "business-market"],
-    "founder":   ["startups", "business-market", "leadership"],
+ROLE_FEED_INTEREST = {
+    "developer": "engineering",
+    "designer": "experience",
+    "pm": "business-market",
+    "marketer": "marketing",
+    "founder": "startups",
 }
 
-ROLE_QUOTA = 0.5
+GOAL_LABELS = {
+    "get-promoted": "get promoted",
+    "switch-careers": "switch careers",
+    "build-something": "build something",
+    "lead-team": "lead a team",
+    "stay-sharp": "stay sharp",
+    "grow-network": "grow my network",
+}
+
+ROLE_FOCUS = {
+    "developer": "Focus on: cool new tools, HN drama, GitHub projects blowing up, infra shifts, AI/agent stuff, and things that make engineers go 'oh that's clever.'",
+    "founder": "Focus on: what's changing in distribution, AI product wedges, startup tactics, competition moves, and things that help you build smarter or move faster.",
+    "designer": "Focus on: design systems, product craft, AI in the design workflow, tools that are changing how things get built, and things that make designers more dangerous.",
+    "pm": "Focus on: product strategy, new product patterns, execution tricks, user insights, and things that sharpen product sense.",
+    "marketer": "Focus on: growth channels, positioning shifts, distribution plays, and concrete tactics that are actually working right now.",
+}
+
+PROMPT = """You're writing {name}'s morning brief. Think Morning Brew meets group chat — chill, fun, smart, zero fluff.
+
+Today is {today}.
+
+{name} is an {role} trying to {goal}.
+Interests: {interests}.
+{role_focus}
+
+Here are today's top stories and posts from sources relevant to {name}. First act like an editor: ignore low-signal career venting, resume/job angst, beginner asks, or generic complaints unless they contain a very concrete workflow, tool, or debate. Then pick the 5-6 most interesting items and write a brief about them.
+
+---
+{articles_block}
+---
+
+Tone:
+- Conversational. Like a smart friend who's already scrolled through everything and is giving you the highlights over coffee.
+- Light humor is good. Don't force it, but don't be a robot either.
+- Confident and opinionated. Have a take. "This is cool because..." not "This may be relevant to..."
+- Short punchy paragraphs. 2-3 sentences max per paragraph. White space is your friend.
+- Talk TO {name}, not AT them. No lectures, no "lesson worth learning" energy.
+
+Structure — this is important, follow it closely:
+- Each beat MUST start with a ## header. The header should be short, catchy, Morning Brew style (e.g. "## Cloudflare said hold my beer", "## The AI brain fry is real", "## Your new favorite CLI tool"). Make them fun and specific.
+- Under each ## header, write 1-2 short paragraphs about that beat.
+- Use **bold** on the first mention of key names, tools, or projects in each beat (e.g. "**vinext**", "**Show HN**", "**GPT-5**"). Don't overdo it — 1-2 bold terms per beat max.
+- 5-6 beats total, each with its own ## header.
+- End with a short closing line after the last beat (no header needed for the closing).
+
+Do NOT:
+- Write "lesson worth learning" or "key takeaway" or anything that sounds like a LinkedIn post
+- Use corporate speak or analyst tone
+- Put URLs or (source.com) citations in the body text
+- Write dense paragraphs — if a paragraph is more than 3 sentences, break it up
+- Be generic. Be specific about names, projects, numbers
+- Skip the ## headers. Every beat needs one.
+- Invent or hallucinate stories. Only use articles from the list above.
+- Build the whole brief from one source type only if the list truly forces you to. Mix community and editorial signal when possible.
+
+Do:
+- Name-drop specific projects, tools, posts, people from the articles
+- Have a point of view on why something matters
+- Make it feel like {name} is ahead of the curve after reading this
+- Use at least 4 distinct sources from the list
+- Use **bold** to make key terms pop
+- You can combine related articles into one beat if they tell a bigger story together
+- Prefer concrete workflows, launches, case studies, tools, or debates with substance over vague discussion posts.
+- If a Reddit or HN post is selected, make sure the reason is obvious from the brief itself.
+
+Important: put the source reference RIGHT AFTER each beat using source numbers only, using this exact format:
+→ [3]
+or
+→ [3, 7]
+
+The numbers must refer to the numbered source list above. Do not write or invent URLs yourself.
+Do NOT put a separate ## Sources section at the bottom. Sources go inline, right after the beat that uses them.
+
+Return markdown only in this format:
+# Your daily brief
+
+subtitle — one punchy line that makes you want to keep reading
+
+## catchy beat header
+1-2 short paragraphs with **bold** key terms
+→ [3]
+
+## another catchy beat header
+1-2 short paragraphs with **bold** key terms
+→ [7, 9]
+
+## one more catchy beat header
+1-2 short paragraphs with **bold** key terms
+→ [2]
+
+## one more catchy beat header
+1-2 short paragraphs with **bold** key terms
+→ [5]
+
+## one more catchy beat header
+1-2 short paragraphs with **bold** key terms
+→ [11]
+
+short closing line"""
 
 
 def _log(msg: str) -> None:
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{ts}] [v3-for-you] {msg}")
+
+
+# ── Content pool fetching ─────────────────────────────────────────────
+
+def _load_brief_sources() -> dict[str, Any]:
+    with open(REPO_ROOT / BRIEF_SOURCES_PATH, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _fetch_hn_stories(brief_cfg: dict[str, Any]) -> list[dict[str, str]]:
+    """Fetch HN front page + Show HN via Algolia API."""
+    articles: list[dict[str, str]] = []
+    urls = [
+        brief_cfg.get("hn", {}).get("frontpage_url", ""),
+        brief_cfg.get("hn", {}).get("show_hn_url", ""),
+    ]
+    for api_url in urls:
+        if not api_url:
+            continue
+        try:
+            resp = requests.get(api_url, timeout=HN_TIMEOUT)
+            resp.raise_for_status()
+            hits = resp.json().get("hits", [])
+        except Exception as exc:
+            _log(f"  HN fetch failed ({api_url[:60]}): {exc}")
+            continue
+        for hit in hits:
+            title = str(hit.get("title", "")).strip()
+            url = str(hit.get("url", "")).strip()
+            if not title:
+                continue
+            hn_url = f"https://news.ycombinator.com/item?id={hit.get('objectID', '')}"
+            points = hit.get("points") or 0
+            source = "Show HN" if title.lower().startswith("show hn") else "Hacker News"
+            articles.append({
+                "title": title,
+                "url": url or hn_url,
+                "source": source,
+                "signal": f"{points} points",
+            })
+    _log(f"  HN: fetched {len(articles)} stories")
+    return articles
+
+
+def _fetch_reddit_posts(subreddits: list[str]) -> list[dict[str, str]]:
+    """Fetch top posts from Reddit subreddits via JSON API."""
+    articles: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for sub in subreddits:
+        try:
+            resp = requests.get(
+                f"https://www.reddit.com/r/{sub}/hot.json?limit=10&t=week",
+                headers={"User-Agent": REDDIT_USER_AGENT},
+                timeout=REDDIT_TIMEOUT,
+            )
+            resp.raise_for_status()
+            posts = resp.json().get("data", {}).get("children", [])
+        except Exception as exc:
+            _log(f"  Reddit r/{sub} failed: {exc}")
+            continue
+        for post in posts:
+            data = post.get("data", {})
+            title = str(data.get("title", "")).strip()
+            url = str(data.get("url", "")).strip()
+            permalink = f"https://www.reddit.com{data.get('permalink', '')}"
+            ups = data.get("ups", 0)
+            if not title or data.get("stickied"):
+                continue
+            link = url if url and not url.startswith("https://www.reddit.com/r/") else permalink
+            if link in seen:
+                continue
+            seen.add(link)
+            articles.append({
+                "title": title,
+                "url": link,
+                "source": f"r/{sub}",
+                "signal": f"{ups} upvotes",
+            })
+    _log(f"  Reddit: fetched {len(articles)} posts from {len(subreddits)} subs")
+    return articles
+
+
+def _fetch_rss_articles(sources: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Fetch latest articles from RSS/HTML sources."""
+    articles: list[dict[str, str]] = []
+    for src in sources:
+        name = src.get("name", "")
+        url = src.get("url", "")
+        if not url:
+            continue
+        try:
+            result = fetch_article_links(url, limit=RSS_LINK_LIMIT)
+            links = result.articles if hasattr(result, "articles") else []
+        except Exception as exc:
+            _log(f"  RSS {name} failed: {exc}")
+            continue
+        for link in links:
+            title = str(link.get("title", "")).strip()
+            href = str(link.get("url", "")).strip()
+            if not title or not href:
+                continue
+            articles.append({
+                "title": title,
+                "url": href,
+                "source": name,
+                "signal": "",
+            })
+    _log(f"  RSS: fetched {len(articles)} articles from {len(sources)} sources")
+    return articles
+
+
+def fetch_content_pool(roles: list[str] | None = None) -> dict[str, list[dict[str, str]]]:
+    """
+    Fetch content pool for all roles. Returns {role: [articles]}.
+    Shared sources (HN) are fetched once and reused.
+    """
+    brief_cfg = _load_brief_sources()
+    hn_roles = brief_cfg.get("hn", {}).get("roles", ["developer", "founder"])
+    reddit_cfg = brief_cfg.get("reddit", {})
+    rss_cfg = brief_cfg.get("rss", {})
+
+    hn_articles = _fetch_hn_stories(brief_cfg)
+    all_roles = roles or list(set(list(reddit_cfg.keys()) + list(rss_cfg.keys())))
+
+    pool: dict[str, list[dict[str, str]]] = {}
+    for role in all_roles:
+        role_articles: list[dict[str, str]] = []
+        if role in hn_roles:
+            role_articles.extend(hn_articles)
+        reddit_subs = reddit_cfg.get(role, [])
+        if reddit_subs:
+            role_articles.extend(_fetch_reddit_posts(reddit_subs))
+        rss_sources = rss_cfg.get(role, [])
+        if rss_sources:
+            role_articles.extend(_fetch_rss_articles(rss_sources))
+
+        seen: set[str] = set()
+        deduped: list[dict[str, str]] = []
+        for article in role_articles:
+            url = article.get("url", "")
+            if url in seen:
+                continue
+            seen.add(url)
+            deduped.append(article)
+
+        def _signal_score(a: dict[str, str]) -> int:
+            sig = a.get("signal", "")
+            match = re.search(r"(\d+)", sig)
+            return int(match.group(1)) if match else 0
+
+        deduped.sort(key=_signal_score, reverse=True)
+        pool[role] = deduped
+        _log(f"  Pool for {role}: {len(deduped)} unique articles")
+
+    return pool
+
+
+def _format_articles_block(articles: list[dict[str, str]], limit: int = 36) -> str:
+    """Format articles into a text block for the prompt."""
+    lines: list[str] = []
+    for i, article in enumerate(articles[:limit], 1):
+        source = article.get("source", "")
+        title = article.get("title", "")
+        url = article.get("url", "")
+        signal = article.get("signal", "")
+        parts = [f"{i}. [{source}] {title}"]
+        if signal:
+            parts.append(f"({signal})")
+        parts.append(f"→ {url}")
+        lines.append(" ".join(parts))
+    return "\n".join(lines)
+
+
+def _expand_source_markers(markdown: str, articles: list[dict[str, str]]) -> str:
+    article_map: dict[int, dict[str, str]] = {
+        index: article for index, article in enumerate(articles, 1)
+    }
+    expanded_lines: list[str] = []
+
+    for raw_line in markdown.splitlines():
+        stripped = raw_line.strip()
+        marker_match = re.search(r"(?:→|->)\s*((?:\[\d+\]\s*,?\s*)+)\s*$", stripped)
+        if not marker_match:
+            expanded_lines.append(raw_line)
+            continue
+
+        prefix = stripped[:marker_match.start()].rstrip()
+        if prefix:
+            expanded_lines.append(prefix)
+
+        marker_text = marker_match.group(1)
+        ids = [int(match) for match in re.findall(r"\[(\d+)\]", marker_text)]
+        if not ids:
+            expanded_lines.append(raw_line)
+            continue
+
+        resolved = []
+        for source_id in ids:
+            article = article_map.get(source_id)
+            if not article:
+                continue
+            resolved.append(
+                f"→ {article.get('source', '').strip()} — {article.get('title', '').strip()} ({article.get('url', '').strip()})"
+            )
+
+        if resolved:
+            expanded_lines.extend(resolved)
+        elif prefix:
+            continue
+        else:
+            expanded_lines.append(raw_line)
+
+    return "\n".join(expanded_lines)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -140,13 +395,8 @@ def _parse_args() -> argparse.Namespace:
         "--items-per-user", type=int, default=DEFAULT_ITEMS,
         help="Items per user (0 = use config value)",
     )
-    p.add_argument(
-        "--limit-per-source", type=int,
-        default=DEFAULT_LIMIT_PER_SOURCE,
-    )
-    p.add_argument(
-        "--max-age-days", type=int, default=DEFAULT_MAX_AGE,
-    )
+    p.add_argument("--limit-per-source", type=int, default=15)
+    p.add_argument("--max-age-days", type=int, default=365)
     p.add_argument("--date", default="")
     p.add_argument(
         "--users-file",
@@ -163,13 +413,11 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _load_config() -> dict[str, Any]:
-    with open(REPO_ROOT / CONFIG_PATH) as f:
+    with open(REPO_ROOT / CONFIG_PATH, encoding="utf-8") as f:
         return json.load(f)
 
 
-def _load_users(
-    store: V3Store, args: argparse.Namespace,
-) -> list[dict[str, Any]]:
+def _load_users(store: V3Store, args: argparse.Namespace) -> list[dict[str, Any]]:
     if args.users_file:
         try:
             with open(args.users_file, "r", encoding="utf-8") as f:
@@ -182,272 +430,303 @@ def _load_users(
     return store.get_onboarded_users(args.audience)
 
 
-def _title_matches_keywords(
-    title: str, keywords: list[str],
-) -> bool:
-    if not keywords:
-        return True
-    lower = title.lower()
-    return any(kw.lower() in lower for kw in keywords)
+def _goal_label(goals: list[str]) -> str:
+    values = [str(goal or "").strip() for goal in goals if str(goal or "").strip()]
+    if not values:
+        return "stay sharp"
+    primary = values[0]
+    return GOAL_LABELS.get(primary, primary.replace("-", " "))
 
 
-def _title_has_excluded_keywords(
-    title: str, keywords: list[str],
-) -> bool:
-    if not keywords:
-        return False
-    lower = title.lower()
-    return any(kw.lower() in lower for kw in keywords)
+def _role_label(role: str) -> str:
+    normalized = str(role or "").strip().lower()
+    return ROLE_LABELS.get(normalized, normalized or "professional")
 
 
-def _build_source_weight_map(
-    config: dict[str, Any],
-) -> dict[str, float]:
-    """Map source_name → source_weight from config."""
-    out: dict[str, float] = {}
-    for src in config.get("sources", []):
-        name = src.get("name", "").strip()
-        if name:
-            out[name] = src.get("source_weight", 1.0)
-    return out
+def _allowed_domains_for_role(role: str) -> list[str]:
+    normalized = str(role or "").strip().lower()
+    domains = list(BASE_ALLOWED_DOMAINS)
+    domains.extend(ROLE_ALLOWED_DOMAINS.get(normalized, []))
+    return list(dict.fromkeys(domains))
 
 
-def _is_medical_topic(item: dict[str, Any]) -> bool:
-    """Detect medical-heavy stories for health/biotech lanes only."""
-    title = str(item.get("title", "")).lower()
-    content = str(item.get("content", "")).lower()[:2500]
-    text = f"{title} {content}"
-    return any(kw in text for kw in MEDICAL_TOPIC_KEYWORDS)
+def _brief_cache_url(
+    uid: str,
+    target_date: str,
+    role: str,
+    goal: str,
+    interests: list[str],
+) -> str:
+    raw = "|".join([
+        uid,
+        target_date,
+        role,
+        goal,
+        ",".join(sorted(str(item).strip() for item in interests if str(item).strip())),
+    ])
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
+    return f"trace://for-you-morning-brief/{uid}/{target_date}/{digest}"
 
 
-def _is_commerce_or_deal_content(title: str, content: str = "") -> bool:
-    """Block shopping/deals/affiliate content from For You."""
-    tl = (title or "").lower()
-    cl = (content or "").lower()[:2000]
-    if any(re.search(p, tl) for p in COMMERCE_TITLE_PATTERNS):
-        return True
-    if any(k in tl for k in COMMERCE_TITLE_KEYWORDS):
-        return True
-    if any(k in cl for k in COMMERCE_CONTENT_KEYWORDS):
-        return True
-    return False
+def _parse_source_lines(markdown: str) -> tuple[str, list[dict[str, str]]]:
+    parts = re.split(r"\n##\s+Sources\s*\n", markdown, maxsplit=1, flags=re.IGNORECASE)
+    main = parts[0].strip()
+    source_block = parts[1].strip() if len(parts) > 1 else ""
+    sources: list[dict[str, str]] = []
+    seen_urls: set[str] = set()
+
+    def _try_add(line: str, prefix: str) -> None:
+        content = line[len(prefix):].strip()
+        match = re.match(r"^(.+?)\s+[—-]\s+(.+?)\s+\((https?://[^)]+)\)\s*$", content)
+        if match:
+            source_name = match.group(1).strip()
+            title = match.group(2).strip()
+            url = match.group(3).strip()
+        else:
+            url_match = re.search(r"\((https?://[^)]+)\)\s*$", content)
+            if not url_match:
+                return
+            url = url_match.group(1).strip()
+            head = content[:url_match.start()].strip()
+            if " — " in head:
+                source_name, title = [p.strip() for p in head.split(" — ", 1)]
+            elif " - " in head:
+                source_name, title = [p.strip() for p in head.split(" - ", 1)]
+            else:
+                source_name = urlparse(url).netloc
+                title = head or url
+        if url and url not in seen_urls:
+            seen_urls.add(url)
+            sources.append({"name": source_name, "title": title, "url": url})
+
+    for raw_line in main.splitlines():
+        line = raw_line.strip()
+        if line.startswith("→"):
+            _try_add(line, "→")
+
+    for raw_line in source_block.splitlines():
+        line = raw_line.strip()
+        if line.startswith("- "):
+            _try_add(line, "- ")
+
+    return main, sources
 
 
-def _is_low_signal_for_you_item(
-    title: str,
-    url: str = "",
-    source_name: str = "",
-) -> bool:
-    """Reject generic hub pages and thin section pages that slip through source feeds."""
-    title_clean = (title or "").strip()
-    title_lower = title_clean.lower()
-    url_lower = (url or "").strip().lower()
-    source_lower = (source_name or "").strip().lower()
-
-    if title_lower in GENERIC_SECTION_TITLES:
-        return True
-
-    if len(title_clean.split()) <= 2 and title_lower in GENERIC_SECTION_TITLES:
-        return True
-
-    # First Round Review homepage can surface taxonomy pages like /articles/product
-    if source_lower == "first round review" and "/articles/" in url_lower:
-        return True
-
-    return False
+def _is_community_domain(url: str) -> bool:
+    host = urlparse(url).netloc.lower()
+    return host == "news.ycombinator.com" or host.endswith(".reddit.com") or host == "reddit.com"
 
 
-def _filter_for_you_candidates(
-    candidates: list[dict[str, Any]],
-    eligible: set[str],
-    allow_medical: bool,
-) -> list[dict[str, Any]]:
-    filtered = [
-        c for c in candidates
-        if c.get("interest_id", "") in eligible
+def _clean_brief_text(text: str) -> str:
+    cleaned = str(text or "").strip()
+    if not cleaned:
+        return ""
+    result_lines: list[str] = []
+    for line in cleaned.split("\n"):
+        if line.strip().startswith("→"):
+            result_lines.append(line)
+            continue
+        line = re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", r"\1", line)
+        line = re.sub(r"\(?https?://\S+\)?", "", line)
+        line = re.sub(r"[ \t]{2,}", " ", line)
+        line = re.sub(r" +([,.;:!?])", r"\1", line)
+        line = re.sub(r"\(\s*\)", "", line)
+        result_lines.append(line)
+    return "\n".join(result_lines).strip()
+
+
+def _normalize_markdown_brief(markdown: str) -> dict[str, Any]:
+    main, sources = _parse_source_lines(markdown)
+    lines = [line.rstrip() for line in main.splitlines()]
+
+    title = ""
+    remainder: list[str] = []
+    title_consumed = False
+    for line in lines:
+        stripped = line.strip()
+        if not title_consumed and stripped.startswith("# "):
+            title = stripped[2:].strip()
+            title_consumed = True
+            continue
+        remainder.append(line)
+
+    if not title:
+        for line in lines:
+            stripped = line.strip()
+            if stripped:
+                title = stripped
+                break
+
+    subtitle = ""
+    body_lines: list[str] = []
+    subtitle_set = False
+    for line in remainder:
+        stripped = line.strip()
+        if not subtitle_set and stripped:
+            subtitle = stripped
+            subtitle_set = True
+            continue
+        body_lines.append(line)
+
+    body = _clean_brief_text("\n".join(body_lines).strip())
+    subtitle = _clean_brief_text(subtitle)
+
+    primary_source = next(
+        (src for src in sources if not _is_community_domain(src["url"])),
+        sources[0] if sources else None,
+    )
+    primary_url = primary_source["url"] if primary_source else ""
+    thumbnail = fetch_og_image(primary_url) if primary_url else ""
+
+    word_count = len(re.findall(r"\w+", body))
+    reading_time = max(1, round(word_count / 220))
+
+    return {
+        "title": "Your daily brief",
+        "short_article": {
+            "subtitle": subtitle,
+            "why_it_matters": "",
+            "key_takeaways": [],
+            "body": body,
+            "bottom_line": "",
+        },
+        "put_this_to_work": [],
+        "reading_time_minutes": reading_time,
+        "sources": sources,
+        "primary_url": primary_url,
+        "thumbnail": thumbnail,
+    }
+
+
+def _generate_personalized_brief(
+    store: V3Store,
+    *,
+    profile: dict[str, Any],
+    target_date: str,
+    articles: list[dict[str, str]],
+) -> tuple[dict[str, Any] | None, bool]:
+    uid = str(profile.get("uid", "")).strip()
+    role = str(profile.get("role", "")).strip().lower()
+    name = str(profile.get("name") or profile.get("displayName") or "there").strip() or "there"
+    goals = profile.get("careerGoals") or []
+    interests = [
+        str(item).strip()
+        for item in (profile.get("interests") or [])
+        if str(item).strip()
     ]
-    if not allow_medical:
-        filtered = [
-            c for c in filtered
-            if not _is_medical_topic(c)
-        ]
-    filtered = [
-        c for c in filtered
-        if not _is_commerce_or_deal_content(
-            str(c.get("title", "")),
-            str(c.get("content", "")),
-        )
-    ]
-    filtered = [
-        c for c in filtered
-        if not _is_low_signal_for_you_item(
-            str(c.get("title", "")),
-            url=str(c.get("url", "")),
-            source_name=str(c.get("source_name", "")),
-        )
-    ]
-    return filtered
+    goal_label = _goal_label(goals)
+
+    cache_url = _brief_cache_url(uid, target_date, role, goal_label, interests)
+    cached = store.get_cached_summary_v2(cache_url, FOR_YOU_BRIEF_BUCKET)
+    if cached:
+        cached_summary = cached.get("summary")
+        if isinstance(cached_summary, dict):
+            return cached_summary, True
+
+    if not articles:
+        raise RuntimeError(f"No articles in pool for role={role}")
+
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY not configured")
+
+    articles_block = _format_articles_block(articles, limit=36)
+
+    prompt = PROMPT.format(
+        name=name,
+        today=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        role=_role_label(role),
+        goal=goal_label,
+        interests=", ".join(interests) if interests else "engineering, tech, AI",
+        role_focus=ROLE_FOCUS.get(role, "Lean into the most useful, timely signals for this person's work."),
+        articles_block=articles_block,
+    )
+
+    client = OpenAI(api_key=api_key)
+    response = client.chat.completions.create(
+        model=FOR_YOU_BRIEF_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.9,
+    )
+
+    raw_markdown = (response.choices[0].message.content or "").strip()
+    if not raw_markdown:
+        raise RuntimeError("OpenAI returned empty brief")
+
+    expanded_markdown = _expand_source_markers(raw_markdown, articles)
+    summary = _normalize_markdown_brief(expanded_markdown)
+    store.save_cached_summary_v2(cache_url, FOR_YOU_BRIEF_BUCKET, summary, FOR_YOU_BRIEF_MODEL)
+    return summary, False
 
 
-def _apply_role_quota(
-    ranked: list[dict[str, Any]],
-    role_primary: set[str],
-    target: int,
-) -> list[dict[str, Any]]:
-    """Enforce role-first quota: at least ROLE_QUOTA of items
-    from role's primary interests, then fill from the rest."""
-    if not role_primary:
-        return ranked[:target]
+def _build_synthesized_feed_item(
+    uid: str,
+    target_date: str,
+    role: str,
+    goal: str,
+    summary: dict[str, Any],
+) -> dict[str, Any]:
+    primary_url = str(summary.get("primary_url", "")).strip()
+    sources = summary.get("sources") if isinstance(summary.get("sources"), list) else []
+    raw_id = f"{uid}|{target_date}|{role}|{goal}|{primary_url}|{summary.get('title', '')}"
+    item_id = hashlib.sha256(raw_id.encode("utf-8")).hexdigest()[:32]
 
-    primary = [a for a in ranked if a.get("interest_id") in role_primary]
-    other = [a for a in ranked if a.get("interest_id") not in role_primary]
-
-    min_primary = max(1, int(target * ROLE_QUOTA))
-    picked_primary = primary[:min_primary]
-    remaining = target - len(picked_primary)
-    leftover_primary = primary[min_primary:]
-    fill_pool = leftover_primary + other
-    picked = picked_primary + fill_pool[:remaining]
-    return picked
-
-
-# -----------------------------------------------------------------------
-# Phase 1: Pool refresh
-# -----------------------------------------------------------------------
-
-def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) -> dict[str, int]:
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    import threading
-
-    sources = config.get("sources", [])
-    stats = {"sources": len(sources), "links_found": 0, "new_items": 0, "skipped": 0, "filtered": 0, "errors": 0}
-    stats_lock = threading.Lock()
-
-    def _process_source(src: dict[str, Any]) -> None:
-        src_name = src["name"]
-        title_keywords = src.get("title_keywords", [])
-        exclude_title_keywords = src.get("exclude_title_keywords", [])
-        _log(f"Fetching {src_name} ({src['url']})")
-
-        try:
-            result = fetch_article_links(src["url"], limit=limit_per_source)
-            articles = result.articles if hasattr(result, "articles") else []
-        except Exception as exc:
-            _log(f"  ERROR fetching {src_name}: {exc}")
-            with stats_lock:
-                stats["errors"] += 1
-            return
-
-        with stats_lock:
-            stats["links_found"] += len(articles)
-        _log(f"  {src_name}: {len(articles)} links")
-
-        article_urls = [
-            art.url if hasattr(art, "url") else art.get("url", "")
-            for art in articles
-        ]
-        existing_urls = store.pool_items_exist(FOR_YOU_POOL, article_urls)
-
-        for art in articles:
-            url = art.url if hasattr(art, "url") else art.get("url", "")
-            if not url:
-                continue
-
-            if url in existing_urls:
-                with stats_lock:
-                    stats["skipped"] += 1
-                continue
-
-            title = art.title if hasattr(art, "title") else art.get("title", "")
-            if title_keywords and not _title_matches_keywords(title, title_keywords):
-                with stats_lock:
-                    stats["filtered"] += 1
-                continue
-            if exclude_title_keywords and _title_has_excluded_keywords(
-                title, exclude_title_keywords
-            ):
-                with stats_lock:
-                    stats["filtered"] += 1
-                continue
-            if _is_commerce_or_deal_content(title):
-                with stats_lock:
-                    stats["filtered"] += 1
-                continue
-            if _is_low_signal_for_you_item(title, url=url, source_name=src_name):
-                with stats_lock:
-                    stats["filtered"] += 1
-                continue
-            published = art.published_date if hasattr(art, "published_date") else art.get("published_date", "")
-            og_image = art.og_image if hasattr(art, "og_image") else art.get("og_image", "")
-
-            result_content = fetch_content(url)
-            content = result_content["content"]
-            if not content:
-                _log(f"  No content for {url}")
-                with stats_lock:
-                    stats["errors"] += 1
-                continue
-            if not og_image:
-                og_image = result_content.get("image", "") or fetch_og_image(url)
-
-            store.upsert_pool_item(FOR_YOU_POOL, url, {
-                "title": title,
-                "published_date": str(published) if published else "",
-                "og_image": og_image,
-                "content": content[:15000],
-                "content_length": len(content),
-                "interest_id": src.get("interest_id", ""),
-                "subinterest_id": src.get("subinterest_id", ""),
-                "source_name": src_name,
-                "source_url": src["url"],
-                "content_source": result_content["source"],
-                "fetched_at": datetime.now(timezone.utc).isoformat(),
-                "is_active": True,
-            })
-            with stats_lock:
-                stats["new_items"] += 1
-            _log(f"  + {title[:60]}")
-            existing_urls.add(url)
-
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = [executor.submit(_process_source, src) for src in sources]
-        for f in as_completed(futures):
-            exc = f.exception()
-            if exc:
-                _log(f"  Source worker error: {exc}")
-
-    stale = store.deactivate_stale(FOR_YOU_POOL, max_age_days=DEFAULT_MAX_AGE + 7)
-    stats["deactivated"] = stale
-    _log(f"Pool refresh done: {stats}")
-    return stats
-
-
-# -----------------------------------------------------------------------
-# Phase 2: Per-user feed generation
-# -----------------------------------------------------------------------
-
-def _build_feed_item(pool_item: dict[str, Any], summary: dict[str, Any] | None) -> dict[str, Any]:
-    url = pool_item.get("url", "")
-    domain = urlparse(url).netloc.lower() if url else ""
-    item_id = hashlib.sha256(url.encode("utf-8")).hexdigest()[:32]
     return {
         "id": f"fy_{item_id}",
-        "url": url,
-        "title": pool_item.get("title", ""),
-        "type": "blog",
-        "source": domain,
-        "source_name": pool_item.get("source_name", domain),
-        "interest_id": pool_item.get("interest_id", ""),
-        "subinterest_id": pool_item.get("subinterest_id", ""),
+        "url": primary_url,
+        "title": summary.get("title", ""),
+        "type": "brief",
+        "source": "trace",
+        "source_name": "Trace Brief",
+        "interest_id": ROLE_FEED_INTEREST.get(role, ""),
+        "subinterest_id": role,
         "feed_type": "for_you",
-        "published_date": pool_item.get("published_date", ""),
-        "thumbnail": pool_item.get("og_image", ""),
-        "summary": summary or {},
+        "published_date": target_date,
+        "thumbnail": summary.get("thumbnail", ""),
+        "summary": {
+            "short_article": summary.get("short_article", {}),
+            "reading_time_minutes": summary.get("reading_time_minutes", 2),
+        },
+        "sources": sources,
         "metadata": {
             "feed_type": "for_you",
-            "content_length": pool_item.get("content_length", 0),
+            "content_length": len(str((summary.get("short_article") or {}).get("body", ""))),
+            "synthesized": True,
+            "source_count": len(sources),
+            "why_relevant": f"For {_role_label(role)}s focused on {goal}.",
+            "goal": goal,
+            "role": role,
+            "source_description": ", ".join(
+                str(src.get("name", "")).strip()
+                for src in sources[:3]
+                if str(src.get("name", "")).strip()
+            ),
+            "morning_brief": True,
         },
     }
+
+
+_content_pool_cache: dict[str, list[dict[str, str]]] = {}
+
+
+def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) -> dict[str, int]:
+    del store, config, limit_per_source
+    global _content_pool_cache
+    _log("Fetching content pool from HN, Reddit, and RSS sources...")
+    _content_pool_cache = fetch_content_pool()
+    total = sum(len(v) for v in _content_pool_cache.values())
+    stats = {
+        "sources": len(_content_pool_cache),
+        "links_found": total,
+        "new_items": total,
+        "skipped": 0,
+        "filtered": 0,
+        "errors": 0,
+        "deactivated": 0,
+        "mode": "self_fetched",
+    }
+    _log(f"Content pool ready: {total} articles across {len(_content_pool_cache)} roles")
+    return stats
 
 
 def build_user_feeds(
@@ -455,259 +734,85 @@ def build_user_feeds(
     config: dict[str, Any],
     args: argparse.Namespace,
 ) -> dict[str, int]:
+    global _content_pool_cache
     target_date = args.date.strip() or _today_ist()
-    cfg_items = config.get("items_per_user", 8)
-    items_per_user = args.items_per_user or cfg_items
-    max_age = args.max_age_days
+    cfg_items = max(1, int(config.get("items_per_user", 1) or 1))
+    items_per_user = max(1, int(args.items_per_user or cfg_items))
 
     users = _load_users(store, args)
     if args.user_id:
-        users = [
-            u for u in users if u.get("uid") == args.user_id
-        ]
+        users = [u for u in users if u.get("uid") == args.user_id]
     if args.limit_users > 0:
         users = users[: args.limit_users]
 
-    _log(
-        f"Building For You for {len(users)} users, "
-        f"date={target_date}"
-    )
+    roles_needed = list({
+        str(u.get("role", "developer")).strip().lower() or "developer"
+        for u in users
+    })
+    if not _content_pool_cache:
+        _log("Content pool empty, fetching now...")
+        _content_pool_cache = fetch_content_pool(roles=roles_needed)
 
-    # ------------------------------------------------------------------
-    # PHASE 2a: Pick articles per user (role-first, strict interests)
-    # ------------------------------------------------------------------
-    _log("-" * 40)
-    _log("PHASE 2a: Select articles per user")
-    _log("-" * 40)
-
-    user_picks: list[tuple[dict, list[dict]]] = []
-    allowed_sources = {
-        str(src.get("name", "")).strip()
-        for src in config.get("sources", [])
-        if str(src.get("name", "")).strip()
-    }
-    source_weights = _build_source_weight_map(config)
-    eligible_union: set[str] = set()
-    user_inputs: list[tuple[dict, set[str], set[str], list[str], int, str, bool]] = []
-
-    for profile in users:
-        uid = profile.get("uid", "")
-        if not uid:
-            continue
-
-        role = profile.get("role", "")
-        goals = profile.get("careerGoals", []) or []
-        is_sub = is_user_subscribed(profile)
-        target = (
-            items_per_user
-            if is_sub
-            else FREE_TIER_LIMITS.get("for_you", 2)
-        )
-
-        role_primary = set(
-            ROLE_PRIMARY_INTERESTS.get(role, [])
-        )
-
-        if not role_primary:
-            _log(f"  user={uid} role={role or 'unknown'} has no role lane, skip")
-            store.write_feed_section(
-                uid, target_date, "for_you", [],
-            )
-            continue
-
-        eligible = role_primary.copy()
-
-        eligible_union |= eligible
-        user_inputs.append(
-            (
-                profile,
-                eligible,
-                role_primary,
-                goals,
-                target,
-                role,
-                is_sub,
-            )
-        )
-
-    all_candidates: list[dict[str, Any]] = []
-    if user_inputs and eligible_union:
-        all_candidates = store.load_pool(
-            FOR_YOU_POOL,
-            interest_ids=eligible_union,
-            source_names=allowed_sources,
-            max_age_days=max_age,
-        )
-    _log(f"Loaded {len(all_candidates)} shared for_you pool candidates")
-
-    for (
-        profile,
-        eligible,
-        role_primary,
-        goals,
-        target,
-        role,
-        is_sub,
-    ) in user_inputs:
-        uid = profile.get("uid", "")
-        if not uid:
-            continue
-        seen_urls = store.get_seen_urls(uid)
-        unseen_candidates = [
-            c for c in all_candidates
-            if c.get("interest_id", "") in eligible
-            and c.get("url", "") not in seen_urls
-        ]
-        seen_candidates = [
-            c for c in all_candidates
-            if c.get("interest_id", "") in eligible
-            and c.get("url", "") in seen_urls
-        ]
-        allow_medical = bool(eligible & HEALTH_INTEREST_IDS)
-        unseen_candidates = _filter_for_you_candidates(
-            unseen_candidates, eligible, allow_medical
-        )
-        seen_candidates = _filter_for_you_candidates(
-            seen_candidates, eligible, allow_medical
-        )
-
-        candidates = unseen_candidates
-        if len(candidates) < target and seen_candidates:
-            needed = target - len(candidates)
-            candidates = candidates + seen_candidates[:needed]
-            _log(
-                f"  user={uid} topped up with {min(needed, len(seen_candidates))} seen items"
-            )
-
-        for c in candidates:
-            sn = c.get("source_name", "")
-            c["_source_weight"] = source_weights.get(sn, 1.0)
-
-        if not candidates:
-            store.write_feed_section(
-                uid, target_date, "for_you", [],
-            )
-            continue
-
-        ranked = rank_articles(
-            candidates, goals,
-            role_primary_interests=role_primary,
-        )
-        diverse = dedupe_and_cap(ranked)
-        picked = _apply_role_quota(
-            diverse, role_primary, target,
-        )
-
-        tier = "free" if not is_sub else "pro"
-        _log(
-            f"  user={uid} {tier} role={role} "
-            f"eligible={sorted(eligible)} → {len(picked)}"
-        )
-        user_picks.append((profile, picked))
-
-    # ------------------------------------------------------------------
-    # PHASE 2b: Batch pre-summarize by technical_depth
-    # ------------------------------------------------------------------
-    _log("-" * 40)
-    _log("PHASE 2b: Pre-summarize needed articles (parallel, by depth)")
-    _log("-" * 40)
-
-    # Group articles by technical_depth
-    items_by_depth: dict[str, dict[str, dict]] = {"deep": {}, "accessible": {}}
-    user_depths: dict[str, str] = {}
-
-    for profile, picked in user_picks:
-        uid = profile.get("uid", "")
-        depth = compute_technical_depth(profile)
-        user_depths[uid] = depth
-        _log(f"  user={uid} → technical_depth={depth}")
-
-        for item in picked:
-            url = item.get("url", "")
-            if url and url not in items_by_depth[depth]:
-                items_by_depth[depth][url] = item
-
-    # Run batch per depth — generate prose summaries for the article reader
-    summary_maps: dict[str, dict[str, dict[str, Any] | None]] = {}
-    for depth in ["deep", "accessible"]:
-        items = list(items_by_depth[depth].values())
-        if not items:
-            summary_maps[depth] = {}
-            continue
-        _log(f"Batch summarize {len(items)} articles for depth={depth} (prose format)")
-        presummary = batch_presummarize(
-            store, items,
-            feed_type="for_you", max_workers=8,
-            technical_depth=depth,
-            output_format="",
-        )
-        summary_maps[depth] = presummary.get("summary_map", {}) or {}
-
-    # ------------------------------------------------------------------
-    # PHASE 2c: Assemble feeds (all summaries now cached — fast)
-    # ------------------------------------------------------------------
-    _log("-" * 40)
-    _log("PHASE 2c: Assemble feeds from cache")
-    _log("-" * 40)
+    _log(f"Building For You for {len(users)} users, date={target_date}")
 
     stats = {
         "users": 0,
         "items_total": 0,
-        "summaries_generated": 0,
-        "summaries_cached": 0,
+        "briefs_generated": 0,
+        "briefs_cached": 0,
         "rejected_items": 0,
-        "users_deep": 0,
-        "users_accessible": 0,
     }
 
-    for profile, picked in user_picks:
-        uid = profile.get("uid", "")
-        depth = user_depths.get(uid, "accessible")
-        depth_map = summary_maps.get(depth, {})
+    for profile in users:
+        uid = str(profile.get("uid", "")).strip()
+        if not uid:
+            continue
 
+        role = str(profile.get("role", "")).strip().lower() or "developer"
+        brief_goal = _goal_label(profile.get("careerGoals") or [])
         feed_items: list[dict[str, Any]] = []
-        for item in picked:
-            url = item.get("url", "")
-            if url in depth_map:
-                summary = depth_map[url]
-                was_cached = True
-            else:
-                summary, was_cached = get_or_generate_summary(
-                    store=store,
-                    url=url,
-                    title=item.get("title", ""),
-                    content=item.get("content", ""),
-                    feed_type="for_you",
-                    technical_depth=depth,
-                    output_format="",
-                )
-            if not summary:
-                stats["rejected_items"] += 1
-                continue
-            if was_cached:
-                stats["summaries_cached"] += 1
-            else:
-                stats["summaries_generated"] += 1
 
-            feed_items.append(_build_feed_item(item, summary))
+        role_articles = _content_pool_cache.get(role, _content_pool_cache.get("developer", []))
+
+        try:
+            summary, was_cached = _generate_personalized_brief(
+                store,
+                profile=profile,
+                target_date=target_date,
+                articles=role_articles,
+            )
+        except Exception as exc:
+            _log(f"  user={uid} brief generation failed: {exc}")
+            summary = None
+            was_cached = False
+
+        if summary:
+            if was_cached:
+                stats["briefs_cached"] += 1
+            else:
+                stats["briefs_generated"] += 1
+            feed_items.append(
+                _build_synthesized_feed_item(
+                    uid,
+                    target_date,
+                    role,
+                    brief_goal,
+                    summary,
+                )
+            )
+            feed_items = feed_items[:items_per_user]
+        else:
+            stats["rejected_items"] += 1
 
         store.write_feed_section(uid, target_date, "for_you", feed_items)
         stats["users"] += 1
         stats["items_total"] += len(feed_items)
-        if depth == "deep":
-            stats["users_deep"] += 1
-        else:
-            stats["users_accessible"] += 1
-        _log(f"  user={uid} depth={depth} wrote {len(feed_items)} for_you items")
+        _log(f"  user={uid} wrote {len(feed_items)} for_you briefs")
 
     store.record_run("for_you", {"date": target_date, **stats})
     _log(f"For You feeds done: {stats}")
     return stats
 
-
-# -----------------------------------------------------------------------
-# Main
-# -----------------------------------------------------------------------
 
 def main() -> None:
     args = _parse_args()
@@ -721,8 +826,7 @@ def main() -> None:
 
     store = V3Store()
     config = _load_config()
-    sources = config.get("sources", [])
-    _log(f"Config loaded: {len(sources)} sources")
+    _log(f"Config loaded: {len(config.get('sources', []))} sources")
 
     if not args.skip_pool:
         _log("-" * 40)

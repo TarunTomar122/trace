@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Purchases, {
   LOG_LEVEL,
   CustomerInfo,
@@ -14,6 +15,37 @@ import { getOrCreateUserProfile, triggerFeedGeneration, updateUserProfile } from
 // ─── Config ───
 const RC_API_KEY = 'goog_KNVMTAxIZiOOVXIEZhptsqjFMEU';
 const ENTITLEMENT_ID = 'trace Premium';
+const RC_SNAPSHOT_PREFIX = 'trace_rc_access_v1:';
+
+function rcSnapshotKey(uid: string): string {
+  return `${RC_SNAPSHOT_PREFIX}${uid}`;
+}
+
+async function readRcAccessSnapshot(uid: string): Promise<boolean> {
+  try {
+    const raw = await AsyncStorage.getItem(rcSnapshotKey(uid));
+    return raw === 'true';
+  } catch (error) {
+    console.warn('[RevenueCat] Failed to read cached access snapshot:', error);
+    return false;
+  }
+}
+
+async function writeRcAccessSnapshot(uid: string, hasAccess: boolean): Promise<void> {
+  try {
+    await AsyncStorage.setItem(rcSnapshotKey(uid), hasAccess ? 'true' : 'false');
+  } catch (error) {
+    console.warn('[RevenueCat] Failed to write cached access snapshot:', error);
+  }
+}
+
+async function clearRcAccessSnapshot(uid: string): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(rcSnapshotKey(uid));
+  } catch (error) {
+    console.warn('[RevenueCat] Failed to clear cached access snapshot:', error);
+  }
+}
 
 // ─── Types ───
 interface RevenueCatContextType {
@@ -86,10 +118,12 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
 
   const lastIdentifiedUid = useRef<string | null>(null);
   const configuredRef = useRef(false);
+  const lastSnapshotUid = useRef<string | null>(null);
 
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cachedRcAccess, setCachedRcAccess] = useState(false);
 
   // ─── Access from RevenueCat (app purchases) ───
   const hasRCEntitlement = !!customerInfo?.entitlements.active[ENTITLEMENT_ID];
@@ -108,6 +142,7 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
   // ─── Combined: user has access if ANY source grants it ───
   const isProUser =
     hasRCEntitlement ||
+    cachedRcAccess ||
     hasAppSubscriptionSnapshot ||
     hasWebSubscription ||
     isEarlyAdopter;
@@ -137,6 +172,13 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
       console.error('[RevenueCat] Error syncing appSubscriptionStatus:', error);
     }
   }, [profileResolved]);
+
+  const cacheRcAccess = useCallback(async (uid: string | null, info: CustomerInfo | null) => {
+    if (!uid) return;
+    const hasAccess = !!info?.entitlements.active[ENTITLEMENT_ID];
+    setCachedRcAccess(hasAccess);
+    await writeRcAccessSnapshot(uid, hasAccess);
+  }, []);
 
   // ─── Initialize SDK (once) ───
   useEffect(() => {
@@ -170,11 +212,20 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
       setLoading(true);
       try {
         if (uid) {
+          lastSnapshotUid.current = uid;
+          const cached = await readRcAccessSnapshot(uid);
+          setCachedRcAccess(cached);
           const { customerInfo: info } = await Purchases.logIn(uid);
           setCustomerInfo(info);
+          await cacheRcAccess(uid, info);
           syncAppSubStatus(info);
           console.log('[RevenueCat] Logged in as', uid);
         } else {
+          if (lastSnapshotUid.current) {
+            await clearRcAccessSnapshot(lastSnapshotUid.current);
+            lastSnapshotUid.current = null;
+          }
+          setCachedRcAccess(false);
           const info = await Purchases.logOut();
           setCustomerInfo(info);
           console.log('[RevenueCat] Logged out');
@@ -196,6 +247,7 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
     const listener = (info: CustomerInfo) => {
       console.log('[RevenueCat] Customer info updated');
       setCustomerInfo(info);
+      void cacheRcAccess(userRef.current?.uid ?? null, info);
       syncAppSubStatus(info);
     };
 
@@ -239,6 +291,7 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
       try {
         const { customerInfo: info } = await Purchases.purchasePackage(pkg);
         setCustomerInfo(info);
+        await cacheRcAccess(userRef.current?.uid ?? null, info);
         const success = !!info.entitlements.active[ENTITLEMENT_ID];
 
         if (success) {
@@ -270,6 +323,7 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
     try {
       const info = await Purchases.restorePurchases();
       setCustomerInfo(info);
+      await cacheRcAccess(userRef.current?.uid ?? null, info);
       const success = !!info.entitlements.active[ENTITLEMENT_ID];
       await syncAppSubStatus(info);
       if (success) {
@@ -295,10 +349,12 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
     try {
       const info = await Purchases.getCustomerInfo();
       setCustomerInfo(info);
+      await cacheRcAccess(userRef.current?.uid ?? null, info);
+      await syncAppSubStatus(info);
     } catch (error) {
       console.error('[RevenueCat] Error refreshing customer info:', error);
     }
-  }, []);
+  }, [cacheRcAccess, syncAppSubStatus]);
 
   return (
     <RevenueCatContext.Provider

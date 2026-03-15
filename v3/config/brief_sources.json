@@ -1,0 +1,76 @@
+{
+  "description": "Role-specific sources for the morning brief content pool. Fetched once per day, shared across all users of the same role.",
+  "max_age_days": 14,
+  "hn": {
+    "frontpage_url": "https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=30",
+    "show_hn_url": "https://hn.algolia.com/api/v1/search?tags=show_hn&hitsPerPage=15",
+    "roles": ["developer", "founder"]
+  },
+  "reddit": {
+    "developer": [
+      "programming",
+      "ExperiencedDevs",
+      "webdev",
+      "devops",
+      "LocalLLaMA"
+    ],
+    "designer": [
+      "userexperience",
+      "UXDesign",
+      "FigmaDesign",
+      "DesignSystems",
+      "UI_Design"
+    ],
+    "pm": [
+      "ProductManagement",
+      "product_design",
+      "startups"
+    ],
+    "marketer": [
+      "marketing",
+      "SEO",
+      "GrowthHacking",
+      "digital_marketing"
+    ],
+    "founder": [
+      "startups",
+      "Entrepreneur",
+      "SaaS",
+      "indiehackers"
+    ]
+  },
+  "rss": {
+    "developer": [
+      {"name": "Pragmatic Engineer", "url": "https://newsletter.pragmaticengineer.com/feed", "type": "rss"},
+      {"name": "LeadDev", "url": "https://leaddev.com/rss.xml", "type": "rss"},
+      {"name": "Stack Overflow Blog", "url": "https://stackoverflow.blog/feed/", "type": "rss"},
+      {"name": "GitHub Blog", "url": "https://github.blog/feed/", "type": "rss"},
+      {"name": "Cloudflare Blog", "url": "https://blog.cloudflare.com/rss/", "type": "rss"}
+    ],
+    "designer": [
+      {"name": "A List Apart", "url": "https://alistapart.com/main/feed/", "type": "rss"},
+      {"name": "Maze Blog", "url": "https://maze.co/blog/", "type": "html"},
+      {"name": "Figma Blog", "url": "https://www.figma.com/blog/", "type": "html"},
+      {"name": "Nielsen Norman Group", "url": "https://www.nngroup.com/feed/rss/", "type": "rss"}
+    ],
+    "pm": [
+      {"name": "First Round Review", "url": "https://review.firstround.com/", "type": "html"},
+      {"name": "Mind the Product", "url": "https://www.mindtheproduct.com/", "type": "html"},
+      {"name": "Intercom Blog", "url": "https://www.intercom.com/blog/", "type": "html"},
+      {"name": "Stratechery", "url": "https://stratechery.com/feed/", "type": "rss"},
+      {"name": "Lenny's Newsletter", "url": "https://www.lennysnewsletter.com/feed", "type": "rss"}
+    ],
+    "marketer": [
+      {"name": "HubSpot Blog", "url": "https://blog.hubspot.com/marketing/rss.xml", "type": "rss"},
+      {"name": "Ahrefs Blog", "url": "https://ahrefs.com/blog/feed/", "type": "rss"},
+      {"name": "Buffer Blog", "url": "https://buffer.com/resources/feed/", "type": "rss"},
+      {"name": "Moz Blog", "url": "https://moz.com/feed", "type": "rss"}
+    ],
+    "founder": [
+      {"name": "First Round Review", "url": "https://review.firstround.com/", "type": "html"},
+      {"name": "Sifted", "url": "https://sifted.eu/feed", "type": "rss"},
+      {"name": "TechCrunch Startups", "url": "https://techcrunch.com/category/startups/feed/", "type": "rss"},
+      {"name": "Y Combinator Blog", "url": "https://www.ycombinator.com/blog/rss/", "type": "rss"}
+    ]
+  }
+}

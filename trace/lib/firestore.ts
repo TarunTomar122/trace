@@ -266,18 +266,14 @@ export const SENIORITY_LEVELS = [
 ] as const;
 
 export const ONBOARDING_INTERESTS = [
-  { id: 'technology', label: 'AI & Machine Learning', icon: 'cpu' },
-  { id: 'experience', label: 'Design & UX', icon: 'palette' },
-  { id: 'business-market', label: 'Product Strategy', icon: 'target' },
-  { id: 'startups', label: 'Startups & VC', icon: 'rocket' },
-  { id: 'leadership', label: 'Leadership', icon: 'users' },
+  { id: 'ai', label: 'AI', icon: 'cpu' },
+  { id: 'tech', label: 'Tech', icon: 'code' },
+  { id: 'startups', label: 'Startups', icon: 'rocket' },
+  { id: 'markets', label: 'Markets', icon: 'bar-chart-3' },
   { id: 'engineering', label: 'Engineering', icon: 'settings' },
-  { id: 'marketing', label: 'Growth & Marketing', icon: 'bar-chart-3' },
+  { id: 'product-design', label: 'Product & Design', icon: 'palette' },
+  { id: 'marketing', label: 'Marketing', icon: 'trending-up' },
   { id: 'fintech', label: 'Fintech', icon: 'dollar-sign' },
-  { id: 'health', label: 'Health & Wellness', icon: 'heart' },
-  { id: 'web3', label: 'Web3 & Crypto', icon: 'link' },
-  { id: 'climate', label: 'Climate & Sustainability', icon: 'globe' },
-  { id: 'productivity', label: 'Productivity', icon: 'zap' },
 ] as const;
 
 export const LEARNING_SOURCE_CATEGORIES = [

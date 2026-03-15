@@ -69,47 +69,58 @@ const ACCENT_ORANGE = '#ff8d28';
 const META_GREEN = '#5a6b35'; // Darker olive for better contrast on pastel backgrounds
 
 const INTEREST_LABELS: Record<string, string> = {
-  technology: 'Tech',
   ai: 'AI',
-  business: 'Business',
-  'business-market': 'Markets',
+  tech: 'Tech',
   startups: 'Startups',
-  experience: 'Design',
+  markets: 'Markets',
   engineering: 'Engineering',
-  leadership: 'Leadership',
+  'product-design': 'Product & Design',
   marketing: 'Marketing',
-  productivity: 'Productivity',
   fintech: 'Fintech',
+  // Legacy labels kept so old stored IDs still display readable names
+  technology: 'Tech',
+  'business-market': 'Markets',
+  experience: 'Design',
+  leadership: 'Leadership',
+  productivity: 'Productivity',
   health: 'Health',
-  web3: 'Web3',
-  climate: 'Climate',
+  web3: 'Fintech',
+  climate: 'Tech',
+  business: 'Markets',
 };
 
 type FilterType = 'all' | 'trending' | 'discover' | string;
 
 const INTEREST_ALIASES: Record<string, string> = {
-  // Map various formats to our canonical keys
+  // Canonical aliases
   'artificial-intelligence': 'ai',
   'artificial_intelligence': 'ai',
   'machine-learning': 'ai',
-  'tech': 'technology',
-  'software': 'technology',
+  // Legacy IDs -> new canonical IDs
+  'technology': 'tech',
+  'software': 'tech',
+  'productivity': 'tech',
+  'health': 'tech',
+  'healthcare': 'tech',
+  'climate': 'tech',
+  'sustainability': 'tech',
   'software-engineering': 'engineering',
   'software_engineering': 'engineering',
-  'design': 'experience',
-  'ux': 'experience',
-  'user-experience': 'experience',
-  'product-design': 'experience',
-  // 'business-market' is now a canonical ID, not aliased
+  'design': 'product-design',
+  'ux': 'product-design',
+  'user-experience': 'product-design',
+  'experience': 'product-design',
+  'business-market': 'markets',
+  'business': 'markets',
+  'leadership': 'markets',
+  'management': 'markets',
   'finance': 'fintech',
-  'crypto': 'web3',
-  'blockchain': 'web3',
+  'crypto': 'fintech',
+  'blockchain': 'fintech',
+  'web3': 'fintech',
   'startup': 'startups',
   'entrepreneurship': 'startups',
-  'management': 'leadership',
   'growth': 'marketing',
-  'healthcare': 'health',
-  'sustainability': 'climate',
 };
 
 function normalizeInterestId(value?: string | null): string {
@@ -277,15 +288,12 @@ function buildInterleavedFeed(
   const sections: FeedSection[] = [];
 
   if (filter === 'trending') {
-    // Only trending
-    if (trending.length > 0) {
-      // Sort by source_count for hero
-      const sorted = [...trending].sort((a, b) => (b.source_count ?? 0) - (a.source_count ?? 0));
-      sections.push({ type: 'hero', topic: sorted[0] });
-      sections.push({ type: 'section-header', title: 'More trending', icon: 'flame' });
-      for (let i = 1; i < sorted.length; i++) {
-        sections.push({ type: 'trending', topic: sorted[i] });
-      }
+    const sorted = [...trending].sort((a, b) => (b.source_count ?? 0) - (a.source_count ?? 0));
+    for (const topic of sorted) {
+      sections.push({ type: 'trending', topic });
+    }
+    for (const item of forYou) {
+      sections.push({ type: 'foryou', item });
     }
     return sections;
   }
@@ -297,11 +305,8 @@ function buildInterleavedFeed(
 
     const sortedTrending = [...discoverTrending].sort((a, b) => (b.source_count ?? 0) - (a.source_count ?? 0));
 
-    if (sortedTrending.length > 0) {
-      sections.push({ type: 'hero', topic: sortedTrending[0] });
-      for (let i = 1; i < sortedTrending.length; i++) {
-        sections.push({ type: 'trending', topic: sortedTrending[i] });
-      }
+    for (const topic of sortedTrending) {
+      sections.push({ type: 'trending', topic });
     }
 
     for (const item of discoverForYou) {
@@ -339,11 +344,15 @@ function buildInterleavedFeed(
     return sections;
   }
 
-  // "All" filter - show all trending items
+  // "All" filter - show all trending topics + individual uncovered articles
   const sortedTrending = [...trending].sort((a, b) => (b.source_count ?? 0) - (a.source_count ?? 0));
 
   for (const topic of sortedTrending) {
     sections.push({ type: 'trending', topic });
+  }
+
+  for (const item of forYou) {
+    sections.push({ type: 'foryou', item });
   }
 
   return sections;
@@ -408,25 +417,27 @@ export default function UnifiedFeedScreen() {
     if (!user) return false;
     if (!isOnboarded && !hasRenderableFeed) return false;
     try {
+      let seeded = false;
+
       // Check for prefetched feed first (loaded during splash)
       const prefetched = consumePrefetchedFeed(user.uid);
       if (prefetched) {
         setV3Feed(prefetched);
-        return true;
+        seeded = true;
       }
 
       // Check if there's a pending prefetch promise
       const prefetchPromise = getPrefetchPromise();
-      if (prefetchPromise) {
+      if (!seeded && prefetchPromise) {
         const feed = await prefetchPromise;
         if (feed) {
           setV3Feed(feed);
-          return true;
+          seeded = true;
         }
       }
 
-      // Fallback to fresh fetch, with a couple short retries to smooth
-      // over auth-transition/cache races right after sign-in.
+      // Always do a fresh fetch too, so prefetched/stale startup data
+      // gets replaced automatically without needing a manual reload.
       for (let attempt = 0; attempt < 3; attempt++) {
         const v3 = await getV3UserFeed(user.uid);
         if (v3 && ((v3.trending_topics?.length ?? 0) > 0 || (v3.for_you?.length ?? 0) > 0)) {
@@ -437,7 +448,7 @@ export default function UnifiedFeedScreen() {
           await sleep(900);
         }
       }
-      return false;
+      return seeded;
     } catch (error) {
       console.error('Error loading feed:', error);
       return false;
@@ -494,50 +505,70 @@ export default function UnifiedFeedScreen() {
     setIsRefreshing(false);
   }, [loadFeed, refreshProfile]);
 
-  // Only show pills for interests that have content in trending
-  const availableInterests = useMemo(() => {
-    const interestsWithContent = new Set<string>();
-    for (const topic of v3Feed?.trending_topics || []) {
-      const rawInterest = topic.interest_id;
-      if (rawInterest) {
-        const normalized = normalizeInterestId(rawInterest);
-        // Use normalized if it has a label, otherwise use raw
-        if (INTEREST_LABELS[normalized]) {
-          interestsWithContent.add(normalized);
-        } else if (INTEREST_LABELS[rawInterest]) {
-          interestsWithContent.add(rawInterest);
-        } else {
-          // Add raw value so we at least show something
-          interestsWithContent.add(rawInterest);
-        }
-      }
-    }
-    return Array.from(interestsWithContent);
-  }, [v3Feed?.trending_topics]);
+  // Normalized user profile interests
+  const userInterestIds = useMemo(
+    () => (profile?.interests || []).map((i) => normalizeInterestId(i)),
+    [profile?.interests],
+  );
 
-  // Filter pills data
+  // Pills for interests that appear in trending content AND in the user's profile.
+  // Everything else collapses into the "Suggested" pill.
+  const availableInterests = useMemo(() => {
+    const userSet = new Set(userInterestIds);
+    const matched = new Set<string>();
+    for (const topic of v3Feed?.trending_topics || []) {
+      const raw = topic.interest_id;
+      if (!raw) continue;
+      const normalized = normalizeInterestId(raw);
+      const canonical = INTEREST_LABELS[normalized] ? normalized : INTEREST_LABELS[raw] ? raw : normalized;
+      if (userSet.has(canonical)) matched.add(canonical);
+    }
+    return Array.from(matched);
+  }, [v3Feed?.trending_topics, userInterestIds]);
+
+  // Filter pills: All → matched user interests → Suggested (content outside user interests)
   const filterPills = useMemo(() => {
-    const pills: { id: FilterType; label: string }[] = [
-      { id: 'all', label: 'All' },
-    ];
+    const pills: { id: FilterType; label: string }[] = [{ id: 'all', label: 'All' }];
+
     for (const interest of availableInterests) {
-      // Pretty label or capitalize the raw value
       const label = INTEREST_LABELS[interest] ||
-        interest.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        interest.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
       pills.push({ id: interest, label });
     }
+
+    // Add "Suggested" pill if any trending topic falls outside the user's interests
+    const matchedSet = new Set(availableInterests);
+    const hasSuggested = (v3Feed?.trending_topics || []).some((t) => {
+      if (!t.interest_id) return true;
+      const normalized = normalizeInterestId(t.interest_id);
+      return !matchedSet.has(normalized) && !matchedSet.has(t.interest_id);
+    });
+    if (hasSuggested) {
+      pills.push({ id: 'discover', label: 'Suggested' });
+    }
+
     return pills;
-  }, [availableInterests]);
+  }, [availableInterests, v3Feed?.trending_topics]);
 
   // Trending topics are already entitlement-trimmed by backend.
   const trendingTopics = useMemo(() => v3Feed?.trending_topics || [], [v3Feed?.trending_topics]);
 
-  const userInterestIds = useMemo(() => (profile?.interests || []).map((interest) => normalizeInterestId(interest)), [profile?.interests]);
+  // Individual trending articles NOT already grouped inside a trending_topic.
+  // These are the articles the backend generated that didn't make it into a grouped topic.
+  const uncoveredTrendingArticles = useMemo(() => {
+    const coveredIds = new Set<string>();
+    for (const topic of trendingTopics) {
+      for (const article of topic.articles || []) {
+        if (article.id) coveredIds.add(article.id);
+      }
+    }
+    return (v3Feed?.trending || []).filter((item) => !coveredIds.has(item.id));
+  }, [trendingTopics, v3Feed?.trending]);
 
   // Build interleaved feed
   const feedSections = useMemo(
-    () => buildInterleavedFeed(trendingTopics, [], activeFilter, userInterestIds),
-    [trendingTopics, activeFilter, userInterestIds]
+    () => buildInterleavedFeed(trendingTopics, uncoveredTrendingArticles, activeFilter, userInterestIds),
+    [trendingTopics, uncoveredTrendingArticles, activeFilter, userInterestIds]
   );
 
   // Top 3 stories for carousel (sorted by source_count)

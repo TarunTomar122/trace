@@ -198,6 +198,7 @@ function WorthReadingArticleView({
   isBookmarked,
   nextArticle,
   onNextArticle,
+  sources,
 }: {
   content: WorthReadingContent;
   title: string;
@@ -211,6 +212,7 @@ function WorthReadingArticleView({
   isBookmarked: boolean;
   nextArticle?: { title: string; sourceName: string; thumbnail?: string } | null;
   onNextArticle?: () => void;
+  sources?: SourceRef[];
 }) {
   const insets = useSafeAreaInsets();
   const isDark = colorScheme === 'dark';
@@ -247,7 +249,32 @@ function WorthReadingArticleView({
     transform: [{ translateY: headerTranslateY.value }],
   }));
 
-  const renderWorthReadingLine = (line: string, key: string | number) => {
+  const renderWorthReadingLine = (line: string, key: string | number, isFirstH2?: boolean) => {
+    if (line.startsWith('→ ') || line.startsWith('→')) {
+      const match = line.match(/^→\s*(.+?)\s+[—\-]\s+(.+?)\s+\((https?:\/\/[^)]+)\)\s*$/);
+      if (match) {
+        const srcName = match[1].trim();
+        const srcTitle = match[2].trim();
+        const srcUrl = match[3].trim();
+        return (
+          <Pressable
+            key={key}
+            onPress={() => WebBrowser.openBrowserAsync(srcUrl)}
+            style={[wrStyles.inlineSource, { backgroundColor: isDark ? '#1a1a1a' : '#f3f4f6' }]}>
+            <View style={{ flex: 1, gap: 1 }}>
+              <Text style={[wrStyles.inlineSourceName, { color: Colors[colorScheme].text }]} numberOfLines={1}>
+                {srcName}
+              </Text>
+              <Text style={[wrStyles.inlineSourceTitle, { color: Colors[colorScheme].muted }]} numberOfLines={1}>
+                {srcTitle}
+              </Text>
+            </View>
+            <ExternalLink size={14} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+          </Pressable>
+        );
+      }
+      return null;
+    }
     if (line.startsWith('### ')) {
       return (
         <RichText key={key} style={[wrStyles.sectionH3, { color: Colors[colorScheme].text }]}>
@@ -257,9 +284,14 @@ function WorthReadingArticleView({
     }
     if (line.startsWith('## ')) {
       return (
-        <RichText key={key} style={[wrStyles.sectionH2, { color: Colors[colorScheme].text }]}>
-          {line.replace(/^##\s*/, '')}
-        </RichText>
+        <View key={key}>
+          {!isFirstH2 && (
+            <View style={[wrStyles.beatDivider, { backgroundColor: isDark ? '#2a2a2a' : '#e5e5e5' }]} />
+          )}
+          <RichText style={[wrStyles.sectionH2, { color: Colors[colorScheme].text }]}>
+            {line.replace(/^##\s*/, '')}
+          </RichText>
+        </View>
       );
     }
     if (line.startsWith('- ') || line.startsWith('* ')) {
@@ -330,19 +362,26 @@ function WorthReadingArticleView({
 
           {content.paragraphs && content.paragraphs.length > 0 ? (
             <View style={[wrStyles.sectionCard, { backgroundColor: isDark ? '#111827' : '#f8fafc' }]}>
-              {content.paragraphs.map((paragraph, index) => {
-                const lines = paragraph
-                  .split('\n')
-                  .map((line) => line.trim())
-                  .filter(Boolean);
-                return (
-                  <View
-                    key={index}
-                    style={index < content.paragraphs!.length - 1 ? wrStyles.blockGap : null}>
-                    {lines.map((line, lineIndex) => renderWorthReadingLine(line, `${index}-${lineIndex}`))}
-                  </View>
-                );
-              })}
+              {(() => {
+                let h2Count = 0;
+                return content.paragraphs.map((paragraph, index) => {
+                  const lines = paragraph
+                    .split('\n')
+                    .map((line) => line.trim())
+                    .filter(Boolean);
+                  return (
+                    <View
+                      key={index}
+                      style={index < content.paragraphs!.length - 1 ? wrStyles.blockGap : null}>
+                      {lines.map((line, lineIndex) => {
+                        const isH2 = line.startsWith('## ');
+                        if (isH2) h2Count++;
+                        return renderWorthReadingLine(line, `${index}-${lineIndex}`, isH2 && h2Count === 1);
+                      })}
+                    </View>
+                  );
+                });
+              })()}
             </View>
           ) : null}
 
@@ -484,11 +523,11 @@ const wrStyles = StyleSheet.create({
     gap: 10,
   },
   sectionH2: {
-    fontSize: 19,
-    fontFamily: FontFamilySerif.semiBold,
-    lineHeight: 25,
-    letterSpacing: -0.3,
-    marginBottom: 2,
+    fontSize: 18,
+    fontFamily: FontFamily.bold,
+    lineHeight: 24,
+    letterSpacing: -0.2,
+    marginBottom: 6,
   },
   sectionH3: {
     fontSize: 15,
@@ -502,8 +541,56 @@ const wrStyles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     lineHeight: 25,
   },
+  beatDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginTop: 14,
+    marginBottom: 16,
+  },
   blockGap: {
     marginBottom: 12,
+  },
+  sourcesSection: {
+    marginTop: 8,
+    gap: 10,
+  },
+  sourcesLabel: {
+    fontSize: 11,
+    fontFamily: FontFamily.bold,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  sourceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 14,
+    padding: 14,
+  },
+  sourceCardName: {
+    fontSize: 14,
+    fontFamily: FontFamily.semiBold,
+  },
+  sourceCardTitle: {
+    fontSize: 13,
+    fontFamily: FontFamily.regular,
+    lineHeight: 18,
+  },
+  inlineSource: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginTop: 4,
+  },
+  inlineSourceName: {
+    fontSize: 13,
+    fontFamily: FontFamily.semiBold,
+  },
+  inlineSourceTitle: {
+    fontSize: 12,
+    fontFamily: FontFamily.regular,
   },
   listRow: {
     flexDirection: 'row',
@@ -1465,6 +1552,7 @@ export default function ArticleScreen() {
         isBookmarked={bookmarked}
         nextArticle={nextArticleData}
         onNextArticle={handleNextArticle}
+        sources={item.sources}
       />
     );
   }
@@ -1553,6 +1641,28 @@ export default function ArticleScreen() {
                   <RichText style={[nStyles.whyText, { color: Colors[colorScheme].text }]}>
                     {whyItMatters}
                   </RichText>
+                </View>
+              )}
+
+              {item.sources && item.sources.length > 0 && (
+                <View style={nStyles.inlineSourcesSection}>
+                  <Text style={[nStyles.inlineSourcesLabel, { color: mutedColor }]}>Sources</Text>
+                  {item.sources.map((src, i) => (
+                    <Pressable
+                      key={`${src.url}-${i}`}
+                      onPress={() => src.url ? WebBrowser.openBrowserAsync(src.url) : undefined}
+                      style={[nStyles.inlineSourceCard, { backgroundColor: isDark ? '#1a1a1a' : '#f8f9fa' }]}>
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text style={[nStyles.inlineSourceName, { color: textColor }]} numberOfLines={1}>
+                          {src.name}
+                        </Text>
+                        <Text style={[nStyles.inlineSourceTitle, { color: mutedColor }]} numberOfLines={2}>
+                          {src.title}
+                        </Text>
+                      </View>
+                      <ExternalLink size={16} color={mutedColor} strokeWidth={1.5} />
+                    </Pressable>
+                  ))}
                 </View>
               )}
             </View>
@@ -1856,6 +1966,32 @@ const nStyles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     lineHeight: 24,
     fontStyle: 'italic',
+  },
+  inlineSourcesSection: {
+    marginTop: 10,
+    gap: 10,
+  },
+  inlineSourcesLabel: {
+    fontSize: 11,
+    fontFamily: FontFamily.bold,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  inlineSourceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 14,
+    padding: 14,
+  },
+  inlineSourceName: {
+    fontSize: 14,
+    fontFamily: FontFamily.semiBold,
+  },
+  inlineSourceTitle: {
+    fontSize: 13,
+    fontFamily: FontFamily.regular,
+    lineHeight: 18,
   },
 
   blurredSection: { position: 'relative', marginBottom: 0 },

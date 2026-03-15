@@ -605,8 +605,14 @@ def assemble(args: argparse.Namespace) -> dict[str, int]:
             day_feed = store.load_feed(uid, date_key) if date_key != target_date else feed
             for section in ("for_you", "trending"):
                 for item in day_feed.get(section, []):
-                    if isinstance(item, dict) and item.get("url"):
+                    if not isinstance(item, dict):
+                        continue
+                    if item.get("url"):
                         all_seen_urls.append(item["url"])
+                    if section == "for_you":
+                        for source in item.get("sources", []):
+                            if isinstance(source, dict) and source.get("url"):
+                                all_seen_urls.append(source["url"])
         if all_seen_urls:
             promoted = store.promote_feed_to_seen(uid, all_seen_urls)
             stats["seen_promoted"] += promoted

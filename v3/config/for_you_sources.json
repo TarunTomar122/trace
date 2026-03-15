@@ -140,14 +140,6 @@
       "source_weight": 1.05
     },
     {
-      "interest_id": "engineering",
-      "subinterest_id": "scaling-systems",
-      "name": "High Scalability",
-      "url": "https://highscalability.com/",
-      "type": "html",
-      "source_weight": 1.1
-    },
-    {
       "interest_id": "startups",
       "subinterest_id": "startups",
       "name": "First Round Review",

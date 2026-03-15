@@ -194,7 +194,7 @@ export default function ProfileScreen() {
   };
 
   const handleHelpFeedback = () => {
-    Linking.openURL('mailto:support@yourtrace.online?subject=Trace App Feedback');
+    Linking.openURL('mailto:yourtrace.online@gmail.com?subject=Trace App Feedback');
   };
 
   const handleRateApp = async () => {
@@ -300,7 +300,7 @@ export default function ProfileScreen() {
             <View style={styles.stat}>
               <Calendar size={24} color={STAT_ORANGE} />
               <Text style={[styles.statValue, { color: isDark ? '#fff' : '#000000' }]}>{streak?.streakHistory.length ?? 0}</Text>
-              <Text style={[styles.statLabel, { color: isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.65)' }]}>Total</Text>
+              <Text style={[styles.statLabel, { color: isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.65)' }]}>Total Days</Text>
             </View>
           </View>
         </View>
