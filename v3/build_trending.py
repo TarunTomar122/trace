@@ -122,6 +122,17 @@ OFF_TOPIC_NEWS_KEYWORDS = (
     "ukraine",
     "oil prices",
     "congressional map",
+    "oscar",
+    "oscars",
+    "grammy",
+    "grammys",
+    "emmy",
+    "emmys",
+    "award show",
+    "awards season",
+    "red carpet",
+    "box office",
+    "kpop",
 )
 STRONG_TECH_TERMS = (
     "ai",

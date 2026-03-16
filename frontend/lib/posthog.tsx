@@ -7,12 +7,23 @@ import { useEffect, Suspense } from "react";
 
 // Initialize PostHog only on client side
 if (typeof window !== "undefined") {
-  posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
-    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
-    person_profiles: "identified_only",
-    capture_pageview: false, // We capture manually for better control
-    capture_pageleave: true,
-  });
+  const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+  const shouldInitPosthog =
+    Boolean(posthogKey) &&
+    posthogKey!.startsWith("phc_") &&
+    window.location.hostname !== "localhost" &&
+    window.location.hostname !== "127.0.0.1";
+
+  if (shouldInitPosthog) {
+    posthog.init(posthogKey!, {
+      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
+      person_profiles: "identified_only",
+      capture_pageview: false,
+      capture_pageleave: true,
+    });
+  } else if (process.env.NODE_ENV === "development") {
+    console.info("[PostHog] Skipping client init on localhost or with a non-project key.");
+  }
 }
 
 // Track page views on route change
@@ -155,4 +166,3 @@ export function trackCheckoutClicked(source: string, props?: Record<string, unkn
     ...props,
   });
 }
-

@@ -8,16 +8,44 @@ import {
   Timestamp,
   collection,
   getDocs,
+  getDocsFromCache,
   query,
   orderBy,
   limit,
   documentId,
   getCountFromServer,
 } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { firestore } from './firebase';
 
 // ============ Early Adopter Config ============
 const EARLY_ADOPTER_LIMIT = 350;
+const FEED_CACHE_PREFIX = 'trace_v3_feed_snapshot_v1:';
+
+function feedCacheKey(uid: string): string {
+  return `${FEED_CACHE_PREFIX}${uid}`;
+}
+
+async function readCachedFeed(uid: string): Promise<V3UserFeed | null> {
+  try {
+    const raw = await AsyncStorage.getItem(feedCacheKey(uid));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as V3UserFeed;
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed;
+  } catch (error) {
+    console.warn('[Feed] Failed to read cached feed snapshot:', error);
+    return null;
+  }
+}
+
+async function writeCachedFeed(uid: string, feed: V3UserFeed): Promise<void> {
+  try {
+    await AsyncStorage.setItem(feedCacheKey(uid), JSON.stringify(feed));
+  } catch (error) {
+    console.warn('[Feed] Failed to write cached feed snapshot:', error);
+  }
+}
 
 // ============ Types ============
 export interface ChatMessage {
@@ -655,7 +683,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     }
     return null;
   } catch (error) {
-    console.error('Error getting user profile from server:', error);
+    console.warn('Error getting user profile from server, using cached profile if available:', error);
     // Network/server failure: cached data is better than null.
     return cachedProfile;
   }
@@ -967,17 +995,34 @@ export async function getLatestUserFeed(uid: string): Promise<UserFeed | null> {
 }
 
 export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
+  const fetchQueryWithFallback = async (
+    q: ReturnType<typeof query>,
+    label: string,
+  ) => {
+    try {
+      return await getDocs(q);
+    } catch (error) {
+      console.warn(`[Feed] ${label} server fetch failed, trying Firestore cache:`, error);
+      try {
+        return await getDocsFromCache(q);
+      } catch (cacheError) {
+        console.warn(`[Feed] ${label} cache fetch failed:`, cacheError);
+        return null;
+      }
+    }
+  };
+
   try {
     // Fetch user-specific feed (for_you)
     const feedRef = collection(firestore, 'v3_user_feeds', uid, 'daily');
     const latestQuery = query(feedRef, orderBy(documentId(), 'desc'), limit(5));
-    const snapshot = await getDocs(latestQuery);
+    const snapshot = await fetchQueryWithFallback(latestQuery, 'user feed');
 
     // Fetch GLOBAL trending feed (shared by all users).
     // Read a few days so we can recover from partial latest docs.
     const globalFeedRef = collection(firestore, 'v3_user_feeds', '_global', 'daily');
     const globalQuery = query(globalFeedRef, orderBy(documentId(), 'desc'), limit(5));
-    const globalSnapshot = await getDocs(globalQuery);
+    const globalSnapshot = await fetchQueryWithFallback(globalQuery, 'global feed');
 
     let forYou: FeedItem[] = [];
     let trending: FeedItem[] = [];
@@ -991,16 +1036,16 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
 
     // Get the latest available user content per section instead of assuming
     // the newest daily doc already has every lane populated.
-    if (!snapshot.empty) {
+    if (snapshot && !snapshot.empty) {
       const userDocs = snapshot.docs;
       const latestDoc = userDocs[0];
-      const latestData = latestDoc.data();
+      const latestData = latestDoc.data() as any;
       feedDate = latestData.date || latestDoc.id;
       assembledAt = latestData.assembled_at;
       metadata = latestData.metadata;
 
       for (const docSnap of userDocs) {
-        const data = docSnap.data();
+        const data = docSnap.data() as any;
         if (forYou.length === 0 && Array.isArray(data.for_you) && data.for_you.length > 0) {
           forYou = data.for_you;
         }
@@ -1035,11 +1080,11 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
 
     // Get trending from global feed.
     // Prefer the newest doc that actually has trending content.
-    if (!globalSnapshot.empty) {
+    if (globalSnapshot && !globalSnapshot.empty) {
       const globalDocs = globalSnapshot.docs;
       let selectedGlobalDocId = globalDocs[0].id;
       for (const globalDoc of globalDocs) {
-        const globalData = globalDoc.data();
+        const globalData = globalDoc.data() as any;
         const candidateTrending = Array.isArray(globalData.trending) ? globalData.trending : [];
         const candidateTopics = Array.isArray(globalData.trending_topics) ? globalData.trending_topics : [];
         if (candidateTrending.length > 0 || candidateTopics.length > 0) {
@@ -1055,7 +1100,7 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
 
       // If every recent global doc is empty, still use latest as baseline.
       if (trending.length === 0 && trendingTopics.length === 0) {
-        const latestGlobalData = globalDocs[0].data();
+        const latestGlobalData = globalDocs[0].data() as any;
         trending = Array.isArray(latestGlobalData.trending) ? latestGlobalData.trending : [];
         trendingTopics = Array.isArray(latestGlobalData.trending_topics) ? latestGlobalData.trending_topics : [];
       }
@@ -1080,11 +1125,16 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
       trending.length === 0 &&
       trendingTopics.length === 0
     ) {
+      const cachedFeed = await readCachedFeed(uid);
+      if (cachedFeed) {
+        console.log('[Feed] All sections empty, using AsyncStorage snapshot');
+        return cachedFeed;
+      }
       console.log('[Feed] All sections empty');
       return null;
     }
 
-    return {
+    const resolvedFeed = {
       date: feedDate,
       for_you: forYou as FeedItem[],
       trending: trending as FeedItem[],
@@ -1093,8 +1143,15 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
       assembled_at: assembledAt,
       metadata,
     };
+    await writeCachedFeed(uid, resolvedFeed);
+    return resolvedFeed;
   } catch (error) {
     console.error('Error getting v3 feed:', error);
+    const cachedFeed = await readCachedFeed(uid);
+    if (cachedFeed) {
+      console.log('[Feed] Returning AsyncStorage snapshot after fatal feed error');
+      return cachedFeed;
+    }
     return null;
   }
 }

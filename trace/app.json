@@ -2,7 +2,6 @@
   "expo": {
     "name": "trace",
     "slug": "trace",
-    "owner": "taruntomar",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -14,7 +13,11 @@
       "bundleIdentifier": "online.yourtrace.app",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification",
+          "remote-notification"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -77,8 +80,10 @@
     },
     "extra": {
       "eas": {
-        "projectId": ""
-      }
-    }
+        "projectId": "e2cff770-ee69-4f5c-a3e1-ce0ec6a246c4"
+      },
+      "router": {}
+    },
+    "owner": "tarun_tomar_122"
   }
 }

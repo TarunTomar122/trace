@@ -93,7 +93,7 @@ export default function LandingPage() {
       <main>
         {/* ── Hero ── */}
         <section className="px-4 pt-16 pb-14 sm:px-6 sm:pt-24 sm:pb-20 lg:pt-28">
-          <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1fr_1.1fr] lg:items-center">
             <div className="max-w-2xl">
               <Reveal>
                 <div className="inline-flex items-center gap-2.5 rounded-full border border-black/8 bg-white/80 backdrop-blur-sm px-4 py-2.5 text-[13px] font-medium text-secondary shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
@@ -371,50 +371,94 @@ export default function LandingPage() {
 /* ─── sub-components ─── */
 
 function HeroBriefCard() {
+  const SOURCES = ['TechCrunch', 'The Verge', '9to5Google', 'Ars Technica', 'Wired'];
+  const SIDEBAR_ITEMS = [
+    { title: 'Google turns Maps into an AI navigation product', sources: 5, active: true },
+    { title: 'Meta to lay off up to 20% of staff', sources: 3, active: false },
+    { title: 'Apple is redesigning Siri from scratch', sources: 4, active: false },
+    { title: 'Stripe launches AI-powered revenue tools', sources: 2, active: false },
+  ];
+  const TIMELINE = [
+    { source: 'TechCrunch', text: 'Google announces Gemini integration across Maps, Search, and Assistant at I/O keynote.' },
+    { source: 'The Verge', text: '"Ask Maps" lets users type natural-language questions about routes and places.' },
+  ];
+
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-[#151515] p-5 text-white shadow-[0_32px_80px_rgba(15,15,15,0.25)] sm:p-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 pb-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            </span>
-            <p className="text-[11px] uppercase tracking-[0.2em] text-white/35">Live briefing</p>
-          </div>
-          <h2 className="mt-3 max-w-[280px] text-[1.5rem] font-bold leading-[1.15] tracking-[-0.02em] sm:max-w-sm sm:text-[1.75rem]">
-            Google turns Maps into an AI navigation product
-          </h2>
-        </div>
-        <div className="shrink-0 rounded-lg bg-white/8 px-3 py-2 text-right">
-          <div className="text-lg font-bold leading-none">5</div>
-          <div className="mt-1 text-[10px] uppercase tracking-[0.14em] text-white/35">sources</div>
-        </div>
+    <div className="relative overflow-hidden rounded-2xl bg-white shadow-[0_32px_80px_rgba(0,0,0,0.12)] ring-1 ring-black/6">
+      {/* Mini toolbar */}
+      <div className="flex items-center gap-2 border-b border-black/6 px-4 py-2.5">
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+        </span>
+        <span className="text-[11px] font-medium text-secondary/50 uppercase tracking-[0.12em]">Your briefing</span>
+        <span className="ml-auto text-[10px] text-secondary/35">Just now</span>
       </div>
 
-      {/* Summary */}
-      <div className="pb-5">
-        <p className="text-[11px] uppercase tracking-[0.2em] text-white/35">Summary</p>
-        <p className="mt-2 text-[15px] leading-[1.7] text-white/85">
-          Google is bundling Gemini answers, immersive route views, and richer driver context into one broader shift toward conversational navigation.
-        </p>
-      </div>
-
-      {/* Why it matters */}
-      <div className="rounded-xl bg-[#f4efe7] p-4 text-[#151515]">
-        <p className="text-[11px] uppercase tracking-[0.2em] text-[#151515]/35">Why it matters</p>
-        <div className="mt-2.5 space-y-2">
-          {[
-            'Ask Maps uses Gemini to answer route questions instead of forcing a manual search loop.',
-            'Coverage from TechCrunch, The Verge, and 9to5Google is stitched into one readable story.',
-            'You decide quickly which original sources are actually worth opening.',
-          ].map((text, i) => (
-            <p key={i} className="text-[13px] leading-[1.65] text-[#151515]/75">
-              <span className="mr-1.5 font-mono text-[11px] text-[#151515]/30">{String(i + 1).padStart(2, '0')}</span>
-              {text}
-            </p>
+      <div className="flex">
+        {/* Mini sidebar */}
+        <div className="hidden w-[170px] shrink-0 border-r border-black/6 sm:block">
+          {SIDEBAR_ITEMS.map((item, i) => (
+            <div key={i} className={`px-3.5 py-3 ${item.active ? 'bg-[#f7f3eb]' : ''} ${i > 0 ? 'border-t border-black/6' : ''}`}>
+              <p className={`text-[11px] leading-[1.4] font-medium ${item.active ? 'text-foreground' : 'text-secondary/55'}`} style={{
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}>{item.title}</p>
+              <p className="mt-1 text-[9px] text-secondary/35">{item.sources} sources</p>
+            </div>
           ))}
+        </div>
+
+        {/* Main content */}
+        <div className="flex-1 p-5 sm:p-6">
+          {/* Source pills */}
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {SOURCES.map((s) => (
+              <span key={s} className="rounded-full bg-black/5 px-2.5 py-0.5 text-[10px] font-medium text-secondary/55">{s}</span>
+            ))}
+          </div>
+
+          <h3 className="text-[1.25rem] font-bold leading-[1.2] tracking-[-0.02em] sm:text-[1.4rem]">
+            Google turns Maps into an AI navigation product
+          </h3>
+
+          <p className="mt-3 text-[14px] leading-[1.7] text-secondary/70">
+            Google is bundling Gemini answers, immersive route views, and richer driver context into one broader shift toward conversational navigation.
+          </p>
+
+          {/* Key points */}
+          <div className="mt-4 space-y-2.5">
+            {[
+              'Ask Maps uses Gemini to answer route questions instead of a manual search loop.',
+              'Coverage from 5 outlets stitched into one readable story.',
+            ].map((text, i) => (
+              <div key={i} className="flex items-start gap-2.5">
+                <span className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-emerald-50 text-[10px] font-bold text-emerald-600">{i + 1}</span>
+                <p className="text-[13px] leading-[1.6] text-secondary/60">{text}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Source highlights timeline */}
+          <div className="mt-5 border-t border-black/6 pt-4">
+            <p className="text-[9px] font-medium text-secondary/35 uppercase tracking-[0.12em] mb-3">Source highlights</p>
+            <div className="space-y-0">
+              {TIMELINE.map((entry, i) => (
+                <div key={i} className="flex gap-3">
+                  <div className="flex flex-col items-center">
+                    <span className={`h-2 w-2 rounded-full shrink-0 ${i === 0 ? 'bg-emerald-400' : 'bg-black/10'}`} />
+                    {i < TIMELINE.length - 1 && <span className="w-px flex-1 bg-black/6" />}
+                  </div>
+                  <div className="pb-3">
+                    <span className="text-[10px] font-semibold text-secondary/45">{entry.source}</span>
+                    <p className="text-[12px] leading-[1.55] text-secondary/60 mt-0.5">{entry.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

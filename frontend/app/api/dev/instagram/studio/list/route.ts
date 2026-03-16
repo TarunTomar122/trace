@@ -23,6 +23,10 @@ function stripMarkdown(text: string): string {
     .trim();
 }
 
+function stripSlidePrefixes(text: string): string {
+  return text.replace(/\bSlide\s*\d+\s*:\s*/gi, '').trim();
+}
+
 function toSentences(text: string): string[] {
   return text
     .replace(/\s+/g, ' ')
@@ -36,7 +40,7 @@ function buildCaption(headline: string, subtitle: string, body: string): string 
   const seen = new Set<string>();
   const chunks: string[] = [];
   const pushUnique = (line: string) => {
-    const cleaned = stripMarkdown(line.trim());
+    const cleaned = stripMarkdown(stripSlidePrefixes(line.trim()));
     if (!cleaned) return;
     const key = norm(cleaned);
     if (!key || key === norm(headline) || seen.has(key)) return;
@@ -44,8 +48,7 @@ function buildCaption(headline: string, subtitle: string, body: string): string 
     chunks.push(cleaned);
   };
 
-  pushUnique(subtitle);
-  toSentences(stripMarkdown(body)).forEach(pushUnique);
+  toSentences(stripMarkdown(stripSlidePrefixes(body))).forEach(pushUnique);
   const summary = chunks.join(' ');
 
   return [stripMarkdown(headline), '', summary || 'Big story to watch today.', '', 'Read more such stories at yourtrace.online'].join('\n');

@@ -501,6 +501,11 @@ QUALITY GATE (VERY IMPORTANT):
 - Reject sponsored or commercial content such as: "Sponsored Post", advertorials,
   vendor promos, partner content, product marketing disguised as an article,
   hiring/role-listing posts, or brand/customer success writeups that are mainly promotional.
+- Reject entertainment, celebrity, awards-show, culture-war, or general lifestyle stories
+  unless the article has a clear, concrete tech/business/product angle that would genuinely
+  matter to professionals following Trace.
+- For trending specifically, if the story does not plausibly belong in one of the allowed
+  professional lanes, reject it instead of force-fitting it into a tag.
 - If the title or opening content makes it clear this is sponsored, paid, or promotional,
   reject it even if the rest of the article is readable.
 - If rejected, set "rejected": true and include a short reason.
@@ -569,7 +574,7 @@ def _cache_bucket(feed_type: str, technical_depth: str = "", output_format: str 
     output_format: 'cards' for learning cards, '' for prose (default)
     """
     if feed_type == "trending":
-        return "trending_v8"  # seven-interest taxonomy
+        return "trending_v9"  # stronger relevance gate for professional/news lane fit
     if feed_type == "deep_dives":
         if technical_depth == "deep":
             return "deep_dive_v6_deep"

@@ -26,25 +26,10 @@ export async function GET(request: NextRequest) {
     const token = authHeader.split('Bearer ')[1];
     await adminAuth.verifyIdToken(token);
 
-    // Get all users from Firebase Auth (accurate creation dates)
-    const authUsers: Map<string, { createdAt: string }> = new Map();
-    let nextPageToken: string | undefined;
-    do {
-      const listResult = await adminAuth.listUsers(1000, nextPageToken);
-      listResult.users.forEach(user => {
-        authUsers.set(user.uid, {
-          createdAt: user.metadata.creationTime || '',
-        });
-      });
-      nextPageToken = listResult.pageToken;
-    } while (nextPageToken);
-
     // Get all user profiles from Firestore
     const usersSnapshot = await adminFirestore
       .collection('user_profiles')
       .get();
-
-    const totalUsers = authUsers.size; // Use Auth count, not Firestore
 
     // Create a map of Firestore profiles
     const firestoreProfiles: Map<string, any> = new Map();
@@ -52,10 +37,59 @@ export async function GET(request: NextRequest) {
       firestoreProfiles.set(doc.id, doc.data());
     });
 
-    // Process ONLY users that exist in Firebase Auth (the source of truth)
-    console.log(`Processing ${authUsers.size} auth users (${usersSnapshot.docs.length} Firestore profiles)...`);
-    const users = await Promise.all(Array.from(authUsers.entries()).map(async ([uid, authData]) => {
+    // Try Firebase Auth first for signup dates, but do not let an empty/misconfigured
+    // Auth admin view make the whole dashboard look like the product has zero users.
+    const authUsers: Map<string, { createdAt: string }> = new Map();
+    try {
+      let nextPageToken: string | undefined;
+      do {
+        const listResult = await adminAuth.listUsers(1000, nextPageToken);
+        listResult.users.forEach(user => {
+          authUsers.set(user.uid, {
+            createdAt: user.metadata.creationTime || '',
+          });
+        });
+        nextPageToken = listResult.pageToken;
+      } while (nextPageToken);
+    } catch (error) {
+      console.error('Error listing Firebase Auth users, falling back to Firestore profiles:', error);
+    }
+
+    const sourceEntries =
+      authUsers.size > 0
+        ? Array.from(authUsers.entries()).map(([uid, authData]) => ({ uid, createdAt: authData.createdAt }))
+        : usersSnapshot.docs.map((doc) => {
+            const data = doc.data();
+            const createdAt =
+              data.createdAt?.toDate?.()?.toISOString?.() ||
+              (data.createdAt?._seconds
+                ? new Date(data.createdAt._seconds * 1000).toISOString()
+                : data.createdAt || '');
+            return { uid: doc.id, createdAt };
+          });
+
+    console.log(`Processing ${sourceEntries.length} analytics users (${authUsers.size} auth users, ${usersSnapshot.docs.length} Firestore profiles)...`);
+    const users = await Promise.all(sourceEntries.map(async ({ uid, createdAt }) => {
       const data = firestoreProfiles.get(uid) || {};
+
+      const hasMobileSignals = Boolean(
+        data.referralSource ||
+        data.pushToken ||
+        data.pushNotificationsEnabled ||
+        data.hasRequestedReview ||
+        (data.appSubscriptionStatus && data.appSubscriptionStatus !== 'none')
+      );
+      const hasWebSignals = Boolean(
+        data.subscriptionId ||
+        data.dodoCustomerId ||
+        data.planId ||
+        data.lastCheckoutSessionId
+      );
+
+      let platform: 'mobile' | 'web' | 'both' | 'unknown' = 'unknown';
+      if (hasMobileSignals && hasWebSignals) platform = 'both';
+      else if (hasMobileSignals) platform = 'mobile';
+      else if (hasWebSignals) platform = 'web';
       
       // Get latest feed (single query, avoid scanning all feeds)
       let feedItemCount = 0;
@@ -127,14 +161,18 @@ export async function GET(request: NextRequest) {
         interactionCount, // Today's interactions
         totalInteractionCount, // All-time interactions
         lastInteractionDate,
-        // Use Firebase Auth creation time (the source of truth for signups)
-        createdAt: authData.createdAt || null,
+        // Prefer Firebase Auth creation time when available, otherwise fall back to profile createdAt.
+        createdAt: createdAt || null,
         onboardedAt: data.onboardedAt?.toDate?.() ? data.onboardedAt.toDate().toISOString() : data.onboardedAt || null,
         interests: data.interests || [],
         selectedLearningSources: data.selectedLearningSources || [],
         selectedSources: data.selectedSources || [],
+        referralSource: data.referralSource || null,
+        platform,
       };
     }));
+
+    const totalUsers = users.length;
 
     // Calculate summary stats
     const onboardedUsers = users.filter(u => u.onboarded);
@@ -177,6 +215,21 @@ export async function GET(request: NextRequest) {
       return hasNoSubscriptionId || trialExpired;
     });
 
+    const platformBreakdown = users.reduce(
+      (acc, user) => {
+        const key = user.platform || 'unknown';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      },
+      { mobile: 0, web: 0, both: 0, unknown: 0 } as Record<'mobile' | 'web' | 'both' | 'unknown', number>
+    );
+
+    const referralBreakdown = users.reduce((acc, user) => {
+      const key = user.referralSource || 'unknown';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
     const summary = {
       totalUsers,
       onboardedUsers: onboardedUsers.length,
@@ -194,6 +247,8 @@ export async function GET(request: NextRequest) {
       avgTodayInteractions: subscribedUsers.length > 0
         ? (subscribedUsers.reduce((sum, u) => sum + u.interactionCount, 0) / subscribedUsers.length).toFixed(1)
         : 0,
+      platformBreakdown,
+      referralBreakdown,
     };
 
     return NextResponse.json({
@@ -216,4 +271,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

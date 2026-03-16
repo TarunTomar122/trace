@@ -34,11 +34,14 @@ type UserData = {
   email: string;
   onboarded: boolean;
   subscriptionStatus: string;
+  appSubscriptionStatus?: string;
   createdAt: any;
   onboardedAt: any;
   interests?: string[];
   selectedLearningSources?: string[];
   selectedSources?: string[];
+  referralSource?: string | null;
+  platform?: 'mobile' | 'web' | 'both' | 'unknown';
 };
 
 type DailyStats = {
@@ -114,6 +117,8 @@ export default function AnalyticsPage() {
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [userFeed, setUserFeed] = useState<UserFeed | null>(null);
   const [isFetchingFeed, setIsFetchingFeed] = useState(false);
+  const [firebaseError, setFirebaseError] = useState<string | null>(null);
+  const [visitorError, setVisitorError] = useState<string | null>(null);
 
   // Load preferences from localStorage
   const [timeRange, setTimeRange] = useState<TimeRange>(() => {
@@ -198,14 +203,18 @@ export default function AnalyticsPage() {
         const sixHoursAgo = Date.now() - 6 * 60 * 60 * 1000;
 
         if (cachedUsers && cachedTime && parseInt(cachedTime) > sixHoursAgo) {
+          const parsedUsers = JSON.parse(cachedUsers);
           // Use cached Firebase data
-          setUsers(JSON.parse(cachedUsers));
-          setLastFetched(new Date(parseInt(cachedTime)));
-        } else {
-          // Fetch fresh Firebase data
-          const token = await user.getIdToken();
-          await fetchFirebaseData(token);
+          if (Array.isArray(parsedUsers) && parsedUsers.length > 0) {
+            setUsers(parsedUsers);
+            setLastFetched(new Date(parseInt(cachedTime)));
+          }
         }
+
+        // Always fetch fresh Firebase data in the background so empty/stale cache
+        // does not make the dashboard look like the app has zero users.
+        const token = await user.getIdToken();
+        await fetchFirebaseData(token);
 
         // Check cached PostHog stats
         const cachedStats = localStorage.getItem('analytics_posthog_stats');
@@ -213,10 +222,8 @@ export default function AnalyticsPage() {
 
         if (cachedStats && cachedPosthogTime && parseInt(cachedPosthogTime) > sixHoursAgo) {
           setVisitorStats(JSON.parse(cachedStats));
-        } else {
-          const token = await user.getIdToken();
-          await fetchVisitorStats(token);
         }
+        await fetchVisitorStats(token);
       } catch (error) {
         console.error('Error loading analytics:', error);
       } finally {
@@ -269,7 +276,10 @@ export default function AnalyticsPage() {
           stats[createdDate].onboarded++;
         }
 
-        if (['trial', 'active'].includes(u.subscriptionStatus)) {
+        if (
+          ['trial', 'active'].includes(u.subscriptionStatus) ||
+          ['trial', 'active'].includes(u.appSubscriptionStatus || '')
+        ) {
           stats[createdDate].subscribed++;
         }
       }
@@ -341,8 +351,33 @@ export default function AnalyticsPage() {
   const allTimeTotals = useMemo(() => ({
     signups: users.length,
     onboarded: users.filter(u => u.onboarded).length,
-    subscribed: users.filter(u => ['trial', 'active'].includes(u.subscriptionStatus)).length,
+    subscribed: users.filter(u =>
+      ['trial', 'active'].includes(u.subscriptionStatus) ||
+      ['trial', 'active'].includes(u.appSubscriptionStatus || '')
+    ).length,
   }), [users]);
+
+  const platformBreakdown = useMemo(() => {
+    return users.reduce(
+      (acc, user) => {
+        const key = user.platform || 'unknown';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      },
+      { mobile: 0, web: 0, both: 0, unknown: 0 } as Record<'mobile' | 'web' | 'both' | 'unknown', number>
+    );
+  }, [users]);
+
+  const referralBreakdown = useMemo(() => {
+    const counts = users.reduce((acc, user) => {
+      const key = user.referralSource || 'unknown';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1]);
+  }, [users]);
 
   // Search users by name
   const searchResults = useMemo(() => {
@@ -389,22 +424,29 @@ export default function AnalyticsPage() {
   const fetchFirebaseData = async (token?: string) => {
     try {
       setIsFetchingData(true);
+      setFirebaseError(null);
       const authToken = token || (user ? await user.getIdToken() : null);
       if (!authToken) return;
 
       const response = await fetch('/api/dev/analytics', {
         headers: { 'Authorization': `Bearer ${authToken}` },
       });
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.users || []);
-        setLastFetched(new Date());
-        // Cache the data
-        localStorage.setItem('analytics_firebase_users', JSON.stringify(data.users || []));
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to fetch Firebase analytics');
+      }
+
+      setUsers(data.users || []);
+      setLastFetched(new Date());
+
+      if (Array.isArray(data.users) && data.users.length > 0) {
+        localStorage.setItem('analytics_firebase_users', JSON.stringify(data.users));
         localStorage.setItem('analytics_firebase_time', String(Date.now()));
       }
     } catch (error) {
       console.error('Error fetching Firebase data:', error);
+      setFirebaseError(error instanceof Error ? error.message : 'Failed to fetch Firebase analytics');
     } finally {
       setIsFetchingData(false);
     }
@@ -413,21 +455,25 @@ export default function AnalyticsPage() {
   // Fetch PostHog visitor stats (with caching)
   const fetchVisitorStats = async (token?: string) => {
     try {
+      setVisitorError(null);
       const authToken = token || (user ? await user.getIdToken() : null);
       if (!authToken) return;
 
       const posthogResponse = await fetch('/api/dev/posthog-stats?days=30', {
         headers: { 'Authorization': `Bearer ${authToken}` },
       });
-      if (posthogResponse.ok) {
-        const posthogData = await posthogResponse.json();
-        setVisitorStats(posthogData);
-        // Cache the data
-        localStorage.setItem('analytics_posthog_stats', JSON.stringify(posthogData));
-        localStorage.setItem('analytics_posthog_time', String(Date.now()));
+      const posthogData = await posthogResponse.json();
+
+      if (!posthogResponse.ok) {
+        throw new Error(posthogData?.error || 'Failed to fetch visitor stats');
       }
+
+      setVisitorStats(posthogData);
+      localStorage.setItem('analytics_posthog_stats', JSON.stringify(posthogData));
+      localStorage.setItem('analytics_posthog_time', String(Date.now()));
     } catch (error) {
       console.error('Error fetching PostHog stats:', error);
+      setVisitorError(error instanceof Error ? error.message : 'Failed to fetch visitor stats');
     }
   };
 
@@ -485,6 +531,31 @@ export default function AnalyticsPage() {
           </div>
         ) : (
           <div className="space-y-6">
+            {(firebaseError || visitorError) && (
+              <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4">
+                <p className="text-sm font-medium text-red-600 dark:text-red-400">Analytics fetch issues</p>
+                {firebaseError && (
+                  <p className="mt-1 text-xs text-red-600/80 dark:text-red-400/80">
+                    Firebase analytics: {firebaseError}
+                  </p>
+                )}
+                {visitorError && (
+                  <p className="mt-1 text-xs text-red-600/80 dark:text-red-400/80">
+                    Visitor stats: {visitorError}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {!firebaseError && users.length === 0 && (
+              <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-5 py-4">
+                <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Analytics backend returned zero users</p>
+                <p className="mt-1 text-xs text-amber-700/80 dark:text-amber-300/80">
+                  This usually means the dev route is reading the wrong Firebase source or the Admin credentials are not seeing your real project data.
+                </p>
+              </div>
+            )}
+
             {/* All-Time Stats Cards */}
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-white dark:bg-white/5 rounded-2xl p-6 border border-black/5 dark:border-white/5 shadow-sm">
@@ -539,6 +610,62 @@ export default function AnalyticsPage() {
               </div>
 
               </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-black/5 dark:border-white/5">
+                  <h2 className="font-semibold">Likely Platform</h2>
+                  <p className="text-xs text-secondary/50 mt-0.5">Derived from app-specific vs web-specific profile/payment signals</p>
+                </div>
+                <div className="p-6 grid grid-cols-4 gap-3">
+                  {[
+                    { label: 'Mobile', value: platformBreakdown.mobile, tone: 'text-emerald-500 bg-emerald-500/10' },
+                    { label: 'Web/Desktop', value: platformBreakdown.web, tone: 'text-blue-500 bg-blue-500/10' },
+                    { label: 'Both', value: platformBreakdown.both, tone: 'text-violet-500 bg-violet-500/10' },
+                    { label: 'Unknown', value: platformBreakdown.unknown, tone: 'text-secondary/70 bg-black/5 dark:bg-white/5' },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-xl border border-black/5 dark:border-white/5 p-4">
+                      <div className={`inline-flex rounded-lg px-2 py-1 text-xs font-medium ${item.tone}`}>
+                        {item.label}
+                      </div>
+                      <p className="mt-3 text-3xl font-bold tracking-tight">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-black/5 dark:border-white/5">
+                  <h2 className="font-semibold">Where Users Came From</h2>
+                  <p className="text-xs text-secondary/50 mt-0.5">Based on the mobile onboarding referral question</p>
+                </div>
+                <div className="p-6">
+                  {referralBreakdown.length === 0 ? (
+                    <p className="text-sm text-secondary/50">No referral-source data yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {referralBreakdown.map(([source, count]) => {
+                        const pct = users.length > 0 ? Math.round((count / users.length) * 100) : 0;
+                        return (
+                          <div key={source} className="space-y-1.5">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium capitalize">{source.replace('-', ' ')}</span>
+                              <span className="text-secondary/60">{count} users · {pct}%</span>
+                            </div>
+                            <div className="h-2 rounded-full bg-black/5 dark:bg-white/5 overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-blue-500"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
 
             {/* Conversion Funnel */}
             <div className="bg-white dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm overflow-hidden">

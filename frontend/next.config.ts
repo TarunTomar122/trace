@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://datafa.st https://va.vercel-scripts.com https://apis.google.com https://accounts.google.com https://*.firebaseapp.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://datafa.st https://va.vercel-scripts.com https://apis.google.com https://accounts.google.com https://*.firebaseapp.com https://us-assets.i.posthog.com https://*.posthog.com",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",

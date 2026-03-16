@@ -510,9 +510,53 @@ function FeedPageContent() {
     });
   }, [v3Feed?.trending_topics]);
 
-  const visibleTrendingTopics = useMemo(() => (
-    isSubscribed ? trendingTopics : trendingTopics.slice(0, FREE_LIMITS.trending)
-  ), [isSubscribed, trendingTopics]);
+  const userInterests = useMemo(() => new Set(profile?.interests || []), [profile?.interests]);
+
+  const visibleTrendingTopics = useMemo(() => {
+    if (isSubscribed) return trendingTopics;
+
+    const getInterest = (t: TrendingTopic) =>
+      t.interest_id && userInterests.has(t.interest_id) ? t.interest_id
+        : t.tags?.find(tag => userInterests.has(tag)) || null;
+
+    const buckets = new Map<string, TrendingTopic[]>();
+    for (const t of trendingTopics) {
+      const interest = getInterest(t);
+      if (!interest) continue;
+      const arr = buckets.get(interest) || [];
+      arr.push(t);
+      buckets.set(interest, arr);
+    }
+
+    const picked: TrendingTopic[] = [];
+    const pickedIds = new Set<string>();
+    const bucketKeys = [...buckets.keys()];
+
+    let round = 0;
+    while (picked.length < FREE_LIMITS.trending && round < 10) {
+      for (const key of bucketKeys) {
+        if (picked.length >= FREE_LIMITS.trending) break;
+        const arr = buckets.get(key)!;
+        if (round < arr.length && !pickedIds.has(arr[round].id)) {
+          picked.push(arr[round]);
+          pickedIds.add(arr[round].id);
+        }
+      }
+      round++;
+    }
+
+    if (picked.length < FREE_LIMITS.trending) {
+      for (const t of trendingTopics) {
+        if (picked.length >= FREE_LIMITS.trending) break;
+        if (!pickedIds.has(t.id)) {
+          picked.push(t);
+          pickedIds.add(t.id);
+        }
+      }
+    }
+
+    return picked;
+  }, [isSubscribed, trendingTopics, userInterests]);
 
   const lockedTrendingCount = useMemo(() => {
     const total = trendingTopics.length || (v3Feed?.trending?.length || 0);
@@ -614,7 +658,6 @@ function FeedPageContent() {
     return list;
   }, [visibleTrendingTopics, v3Feed?.trending, isSubscribed, fallbackTrending]);
 
-  const userInterests = useMemo(() => new Set(profile?.interests || []), [profile?.interests]);
 
   const filteredList = useMemo(() => {
     if (activeFilter === 'all') return currentList;

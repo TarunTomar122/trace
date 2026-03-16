@@ -7,7 +7,7 @@
     "dev": "expo start --dev-client",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
-    "android:emulator": "~/Library/Android/sdk/emulator/emulator -avd Pixel_9",
+    "android:emulator": "~/Library/Android/sdk/emulator/emulator -avd Pixel_9 -dns-server 8.8.8.8,8.8.4.4",
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint"

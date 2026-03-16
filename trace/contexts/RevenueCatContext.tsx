@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import Purchases, {
   LOG_LEVEL,
   CustomerInfo,
@@ -13,7 +14,10 @@ import { useToast } from '@/contexts/ToastContext';
 import { getOrCreateUserProfile, triggerFeedGeneration, updateUserProfile } from '@/lib/firestore';
 
 // ─── Config ───
-const RC_API_KEY = 'goog_KNVMTAxIZiOOVXIEZhptsqjFMEU';
+const RC_API_KEY =
+  Platform.OS === 'ios'
+    ? 'appl_wxLpHRKnErnnHufdxErbGxwmavE'
+    : 'goog_KNVMTAxIZiOOVXIEZhptsqjFMEU';
 const ENTITLEMENT_ID = 'trace Premium';
 const RC_SNAPSHOT_PREFIX = 'trace_rc_access_v1:';
 
