@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Sparkles,
   ChevronRight,
@@ -13,7 +14,7 @@ import {
   ArrowRight,
   Zap,
 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { consumePendingPostAuthIntent, getPostAuthDestination, useAuth } from "@/contexts/AuthContext";
 import { getArticleImage } from "@/lib/fallback-images";
 
 // Interest options
@@ -179,7 +180,8 @@ function DigestPreview({
 }
 
 export default function DigestPreviewPage() {
-  const { signInWithGoogle } = useAuth();
+  const router = useRouter();
+  const { user, profile, profileResolved, signInWithGoogle } = useAuth();
   const [step, setStep] = useState<"select" | "preview">("select");
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [allItems, setAllItems] = useState<TrendingItem[]>([]);
@@ -204,6 +206,20 @@ export default function DigestPreviewPage() {
     }
     fetchTrending();
   }, []);
+
+  useEffect(() => {
+    if (!user || !profileResolved) return;
+    const pendingIntent = consumePendingPostAuthIntent();
+    if (!pendingIntent) return;
+    router.push(getPostAuthDestination(profile, pendingIntent));
+  }, [user, profileResolved, profile, router]);
+
+  const handleSignIn = async () => {
+    const result = await signInWithGoogle('read');
+    if (result.status === 'success') {
+      router.push(getPostAuthDestination(result.profile, result.intent));
+    }
+  };
 
   const toggleInterest = (id: string) => {
     setSelectedInterests((prev) =>
@@ -352,7 +368,7 @@ export default function DigestPreviewPage() {
                       ))}
                     </ul>
                     <button
-                      onClick={() => signInWithGoogle('read')}
+                      onClick={() => void handleSignIn()}
                       className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
                     >
                       Start reading for free

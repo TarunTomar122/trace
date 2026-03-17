@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Check, Clock3, Mail, Newspaper, Zap, Layers, BookOpen } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { consumePendingPostAuthIntent, getPostAuthDestination, useAuth } from '@/contexts/AuthContext';
 
 /* ─── scroll-reveal utility ─── */
 
@@ -45,18 +45,39 @@ function Reveal({ children, className = '', delay = 0 }: { children: React.React
 
 export default function LandingPage() {
   const router = useRouter();
-  const { user, profile, loading, signInWithGoogle } = useAuth();
-  const isOnboarded = !!user && !!profile?.onboarded;
-  const handleStartReading = () => signInWithGoogle('read');
-  const handleStartTrial = () => signInWithGoogle('checkout');
+  const { user, profile, loading, profileResolved, signInWithGoogle } = useAuth();
+  const googlePlayUrl = "/api/affiliate/outbound?target=android_app&next=" + encodeURIComponent("https://play.google.com/store/apps/details?id=online.yourtrace.app");
+
+  const handleAuthStart = async (intent: 'read' | 'checkout') => {
+    const result = await signInWithGoogle(intent);
+    if (result.status === 'success') {
+      router.push(getPostAuthDestination(result.profile, result.intent));
+    }
+  };
 
   useEffect(() => {
-    if (!loading && user) {
-      router.replace(isOnboarded ? '/feed' : '/onboarding');
-    }
-  }, [user, loading, isOnboarded, router]);
+    if (loading || !user || !profileResolved) return;
+    const pendingIntent = consumePendingPostAuthIntent();
+    router.replace(getPostAuthDestination(profile, pendingIntent || 'read'));
+  }, [user, loading, profileResolved, profile, router]);
 
-  if (loading || user) {
+  const handleStartReading = () => {
+    void handleAuthStart('read');
+  };
+
+  const handleStartTrial = () => {
+    void handleAuthStart('checkout');
+  };
+
+  if (loading || (user && !profileResolved)) {
+    return (
+      <div className="min-h-screen bg-[#f4efe7] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (user) {
     return (
       <div className="min-h-screen bg-[#f4efe7] flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin" />
@@ -328,7 +349,7 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <a
-                  href="https://play.google.com/store/apps/details?id=online.yourtrace.app"
+                  href={googlePlayUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 rounded-full bg-[#151515] px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-black hover:shadow-lg hover:shadow-black/10"

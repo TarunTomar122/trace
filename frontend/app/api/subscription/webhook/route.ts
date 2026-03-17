@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!adminDb) throw new Error('Firestore not initialized');
+    const db = adminDb;
     
     // Get user ID from metadata
     let userId = eventData.metadata?.user_id;
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
     if (!userId && eventData.subscription_id) {
       console.warn('No user_id in metadata, searching by subscription_id:', eventData.subscription_id);
       try {
-        const usersSnapshot = await adminDb.collection('user_profiles')
+        const usersSnapshot = await db.collection('user_profiles')
           .where('subscriptionId', '==', eventData.subscription_id)
           .limit(1)
           .get();
@@ -71,7 +72,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing user_id' }, { status: 400 });
     }
 
-    const userRef = adminDb.collection('user_profiles').doc(userId);
+    const userRef = db.collection('user_profiles').doc(userId);
+
+    const recordAffiliateConversion = async () => {
+      const affiliateCode = eventData.metadata?.affiliate_code;
+      if (!affiliateCode) return;
+      const conversionId = eventData.subscription_id || `${userId}_${affiliateCode}`;
+      await db.collection('affiliate_conversions').doc(conversionId).set({
+        code: String(affiliateCode).toLowerCase(),
+        uid: userId,
+        subscriptionId: eventData.subscription_id || null,
+        checkoutSessionId: eventData.checkout_id || eventData.session_id || null,
+        customerId: eventData.customer_id || eventData.customer?.customer_id || null,
+        eventType,
+        source: 'web_subscription',
+        createdAt: new Date(),
+      }, { merge: true });
+
+      await userRef.set({
+        affiliateCode: String(affiliateCode).toLowerCase(),
+        updatedAt: new Date(),
+      }, { merge: true });
+    };
     
     // Helper: trigger feed generation for a newly subscribed user
     const triggerFeedGeneration = async (reason: string) => {
@@ -157,6 +179,7 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date(),
         });
         console.log(`Subscription created for user ${userId}: ${eventData.subscription_id}`);
+        await recordAffiliateConversion();
         
         // Trigger feed generation for new subscriber
         await triggerFeedGeneration('subscription.created');
@@ -174,6 +197,7 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date(),
         });
         console.log(`Subscription activated for user ${userId}`);
+        await recordAffiliateConversion();
         
         // Also trigger feed generation as safety net (in case subscription.created didn't fire or failed)
         await triggerFeedGeneration('subscription.active');
@@ -342,4 +366,3 @@ export async function OPTIONS() {
     },
   });
 }
-

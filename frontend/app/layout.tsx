@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Space_Grotesk, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { PostHogProvider } from "@/lib/posthog";
 import ThemeProvider from "@/components/ThemeProvider";
+import AffiliateTracker from "@/components/AffiliateTracker";
 import "./globals.css";
 import Script from "next/script";
 
@@ -161,6 +163,9 @@ export default function RootLayout({
         />
         <ThemeProvider>
           <PostHogProvider>
+            <Suspense fallback={null}>
+              <AffiliateTracker />
+            </Suspense>
             <AuthProvider>
               {children}
             </AuthProvider>

@@ -22,6 +22,14 @@ export default function InstagramCallbackPage() {
   const [state, setState] = useState<ConnectState>('idle');
   const [message, setMessage] = useState<string>('');
 
+  const handleSignIn = async () => {
+    const result = await signInWithGoogle('read', { rememberIntent: false });
+    if (result.status === 'error') {
+      setState('error');
+      setMessage(result.message);
+    }
+  };
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setQueryParams({
@@ -89,7 +97,7 @@ export default function InstagramCallbackPage() {
               Sign in to Trace first so we can save Instagram access for your account.
             </p>
             <button
-              onClick={() => signInWithGoogle('read')}
+              onClick={() => void handleSignIn()}
               className="rounded-md bg-black px-4 py-2 text-sm font-semibold text-white"
             >
               Sign in with Google

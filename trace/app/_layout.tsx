@@ -35,8 +35,9 @@ import { RevenueCatProvider } from '@/contexts/RevenueCatContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { Colors, FontFamily, Typography } from '@/constants/theme';
-import { getAppVersionConfig, getArticleById } from '@/lib/firestore';
+import { getAppVersionConfig, getArticleById, getTopicById } from '@/lib/firestore';
 import { setCurrentArticle } from '@/lib/article-store';
+import { setCurrentTopic } from '@/lib/topic-store';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -119,7 +120,7 @@ function checkVersion(current: string, target: string): boolean {
 }
 
 function AuthGate({ children }: { children: ReactNode }) {
-  const { user, profile, loading, profileResolved } = useAuth();
+  const { user, profile, bootUid, bootProfile, loading, profileResolved } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const colorScheme = useColorScheme();
@@ -127,15 +128,18 @@ function AuthGate({ children }: { children: ReactNode }) {
   const [appReady, setAppReady] = useState(false);
 
   useEffect(() => {
-    if (loading) return;
-    if (user && !profileResolved) return;
+    const effectiveUid = user?.uid || bootUid;
+    const effectiveProfile = profile || bootProfile;
+
+    if (loading && !effectiveProfile) return;
+    if (user && !profileResolved && !bootProfile) return;
     // Don't block on RevenueCat - let feed load while RC initializes in background
 
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboarding = segments[0] === 'onboarding';
     const inEarlyAdopter = segments[0] === 'early-adopter';
 
-    if (!user) {
+    if (!effectiveUid) {
       if (!inAuthGroup) {
         router.replace('/(auth)/welcome');
       } else {
@@ -144,7 +148,7 @@ function AuthGate({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (profile?.onboarded === false) {
+    if (effectiveProfile?.onboarded === false) {
       // If already on early-adopter or onboarding, let those screens handle navigation
       if (inEarlyAdopter || inOnboarding) {
         setAppReady(true);
@@ -154,16 +158,16 @@ function AuthGate({ children }: { children: ReactNode }) {
       // Profile is null means it failed to load (network error / cache miss).
       // Don't route anywhere — keep the splash up. The AuthContext retry will
       // re-resolve profileResolved and re-trigger this effect once it succeeds.
-      if (!profile) return;
+      if (!effectiveProfile) return;
 
       // Only route once the early-adopter state is explicit. Missing/stale values
       // should keep the splash up until the real profile resolves.
-      if (profile.isEarlyAdopter === false) {
+      if (effectiveProfile.isEarlyAdopter === false) {
         router.replace('/early-adopter');
         return;
       }
 
-      if (profile.isEarlyAdopter !== true) {
+      if (effectiveProfile.isEarlyAdopter !== true) {
         return;
       }
 
@@ -172,7 +176,7 @@ function AuthGate({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (!profile) {
+    if (!effectiveProfile) {
       return;
     }
 
@@ -185,7 +189,7 @@ function AuthGate({ children }: { children: ReactNode }) {
 
     // On a valid screen; release the splash.
     setAppReady(true);
-  }, [loading, user, profile, profileResolved, segments, router]);
+  }, [loading, user, profile, bootUid, bootProfile, profileResolved, segments, router]);
 
   // Hide native splash + branded overlay together
   useEffect(() => {
@@ -227,9 +231,18 @@ function RootLayoutNav() {
   useEffect(() => {
     initializeNotifications();
 
-    // Handle notification taps - fetch article and navigate
+    // Handle notification taps - prefer topic deep links, then fall back to article
     const subscription = addNotificationResponseListener(async (response) => {
       const data = response.notification.request.content.data;
+
+      if (data?.topicId) {
+        const topic = await getTopicById(String(data.topicId));
+        if (topic) {
+          setCurrentTopic(topic);
+          router.push('/topic');
+          return;
+        }
+      }
 
       if (data?.articleId) {
         const article = await getArticleById(String(data.articleId));

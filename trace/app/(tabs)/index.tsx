@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -11,7 +11,9 @@ import {
   Dimensions,
   Linking,
   Platform,
+  InteractionManager,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -55,6 +57,7 @@ import {
   recordLastActive,
 } from '@/lib/firestore';
 
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as typeof FlashList;
 const SCREEN_WIDTH = Dimensions.get('window').width;
 import { logReadingEvent } from '@/lib/reading-analytics';
 import { setCurrentTopic } from '@/lib/topic-store';
@@ -277,6 +280,40 @@ type FeedSection =
   | { type: 'foryou'; item: FeedItem; label?: string; preview?: string }
   | { type: 'section-header'; title: string; icon: 'flame' | 'compass' };
 
+function getSectionTimestamp(section: FeedSection): number {
+  if (section.type === 'trending') {
+    const t = section.topic;
+    const raw = t.last_updated_at || t.first_seen_at;
+    if (raw) { const ms = new Date(raw).getTime(); if (!isNaN(ms)) return ms; }
+    return 0;
+  }
+  if (section.type === 'foryou') {
+    const raw = section.item.published_date;
+    if (raw) { const ms = new Date(raw).getTime(); if (!isNaN(ms)) return ms; }
+    return 0;
+  }
+  return 0;
+}
+
+function isUserInterested(section: FeedSection, interestSet: Set<string>): boolean {
+  const raw = section.type === 'trending'
+    ? section.topic.interest_id
+    : section.type === 'foryou'
+      ? section.item.interest_id
+      : undefined;
+  if (!raw) return false;
+  return interestSet.has(normalizeInterestId(raw));
+}
+
+function rankSections(sections: FeedSection[], interestSet: Set<string>): FeedSection[] {
+  return [...sections].sort((a, b) => {
+    const aInterested = isUserInterested(a, interestSet) ? 0 : 1;
+    const bInterested = isUserInterested(b, interestSet) ? 0 : 1;
+    if (aInterested !== bInterested) return aInterested - bInterested;
+    return getSectionTimestamp(b) - getSectionTimestamp(a);
+  });
+}
+
 function buildInterleavedFeed(
   trending: TrendingTopic[],
   forYou: FeedItem[],
@@ -284,41 +321,35 @@ function buildInterleavedFeed(
   userInterests: string[]
 ): FeedSection[] {
   const normalizedUserInterests = userInterests.map((interest) => normalizeInterestId(interest));
+  const interestSet = new Set(normalizedUserInterests);
   const normalizedFilter = typeof filter === 'string' ? normalizeInterestId(filter) : filter;
   const sections: FeedSection[] = [];
 
   if (filter === 'trending') {
-    const sorted = [...trending].sort((a, b) => (b.source_count ?? 0) - (a.source_count ?? 0));
-    for (const topic of sorted) {
+    for (const topic of trending) {
       sections.push({ type: 'trending', topic });
     }
     for (const item of forYou) {
       sections.push({ type: 'foryou', item });
     }
-    return sections;
+    return rankSections(sections, interestSet);
   }
 
   if (filter === 'discover') {
-    // Show content OUTSIDE user's main interests
-    const discoverTrending = trending.filter((t) => !t.interest_id || !normalizedUserInterests.includes(normalizeInterestId(t.interest_id)));
-    const discoverForYou = forYou.filter((item) => !item.interest_id || !normalizedUserInterests.includes(normalizeInterestId(item.interest_id)));
+    const discoverTrending = trending.filter((t) => !t.interest_id || !interestSet.has(normalizeInterestId(t.interest_id)));
+    const discoverForYou = forYou.filter((item) => !item.interest_id || !interestSet.has(normalizeInterestId(item.interest_id)));
 
-    const sortedTrending = [...discoverTrending].sort((a, b) => (b.source_count ?? 0) - (a.source_count ?? 0));
-
-    for (const topic of sortedTrending) {
+    for (const topic of discoverTrending) {
       sections.push({ type: 'trending', topic });
     }
-
     for (const item of discoverForYou) {
       sections.push({ type: 'foryou', item });
     }
-
-    return sections;
+    // Discover is all non-interested, just sort newest first
+    return [...sections].sort((a, b) => getSectionTimestamp(b) - getSectionTimestamp(a));
   }
 
   if (filter !== 'all') {
-    // Interest filter - filter BOTH trending and for_you by interest_id
-    // Match both raw and normalized values
     const filteredTrending = trending.filter((t) => {
       const raw = t.interest_id;
       const normalized = normalizeInterestId(raw);
@@ -330,40 +361,112 @@ function buildInterleavedFeed(
       return raw === filter || normalized === filter || normalized === normalizedFilter;
     });
 
-    // Sort trending by source_count - all as 'trending' type (no hero for filtered views)
-    const sortedTrending = [...filteredTrending].sort((a, b) => (b.source_count ?? 0) - (a.source_count ?? 0));
-
-    for (const topic of sortedTrending) {
+    for (const topic of filteredTrending) {
       sections.push({ type: 'trending', topic });
     }
-
     for (const item of filteredForYou) {
       sections.push({ type: 'foryou', item });
     }
-
-    return sections;
+    // Single interest filter — just sort newest first
+    return [...sections].sort((a, b) => getSectionTimestamp(b) - getSectionTimestamp(a));
   }
 
-  // "All" filter - show all trending topics + individual uncovered articles
-  const sortedTrending = [...trending].sort((a, b) => (b.source_count ?? 0) - (a.source_count ?? 0));
-
-  for (const topic of sortedTrending) {
+  // "All" filter — interested + newest first, then suggested + newest
+  for (const topic of trending) {
     sections.push({ type: 'trending', topic });
   }
-
   for (const item of forYou) {
     sections.push({ type: 'foryou', item });
   }
-
-  return sections;
+  return rankSections(sections, interestSet);
 }
+
+/* ─── Memoized feed row components ─── */
+
+const TrendingFeedRow = React.memo(function TrendingFeedRow({
+  topic,
+  colorScheme,
+  onPress,
+}: {
+  topic: TrendingTopic;
+  colorScheme: 'light' | 'dark';
+  onPress: (topic: TrendingTopic) => void;
+}) {
+  const display = getTopicDisplay(topic);
+  const sourceCount = topic.source_count ?? 1;
+  const articleCount = topic.article_count ?? 1;
+  return (
+    <Pressable
+      onPress={() => onPress(topic)}
+      style={[styles.ongoingRow, styles.ongoingRowPadded, { borderBottomColor: `${Colors[colorScheme].border}40` }]}>
+      <View style={styles.ongoingBody}>
+        <Text numberOfLines={2} style={[styles.ongoingTitle2, { color: Colors[colorScheme].text }]}>
+          {display.title}
+        </Text>
+        <View style={styles.ongoingMeta}>
+          <Text style={styles.ongoingMetaText}>{sourceCount} Sources</Text>
+          <View style={styles.ongoingMetaDot} />
+          <Text style={styles.ongoingMetaText}>{articleCount} Updates</Text>
+        </View>
+      </View>
+      {isRealImage(display.thumbnail) ? (
+        <Image source={{ uri: display.thumbnail! }} style={styles.ongoingThumb} resizeMode="cover" />
+      ) : (
+        <View style={[styles.ongoingThumb, styles.ongoingThumbPlaceholder]} />
+      )}
+    </Pressable>
+  );
+});
+
+const ForYouFeedRow = React.memo(function ForYouFeedRow({
+  item,
+  colorScheme,
+  onPress,
+}: {
+  item: FeedItem;
+  colorScheme: 'light' | 'dark';
+  onPress: (item: FeedItem) => void;
+}) {
+  return (
+    <Pressable
+      onPress={() => onPress(item)}
+      style={[styles.ongoingRow, styles.ongoingRowPadded, { borderBottomColor: `${Colors[colorScheme].border}40` }]}>
+      <View style={styles.ongoingBody}>
+        <Text numberOfLines={2} style={[styles.ongoingTitle2, { color: Colors[colorScheme].text }]}>
+          {item.title}
+        </Text>
+        <View style={styles.ongoingMeta}>
+          <Text style={styles.ongoingMetaText}>1 Source</Text>
+          <View style={styles.ongoingMetaDot} />
+          <Text style={styles.ongoingMetaText}>New</Text>
+        </View>
+      </View>
+      {isRealImage(item.thumbnail) ? (
+        <Image source={{ uri: item.thumbnail! }} style={styles.ongoingThumb} resizeMode="cover" />
+      ) : (
+        <View style={[styles.ongoingThumb, styles.ongoingThumbPlaceholder]} />
+      )}
+    </Pressable>
+  );
+});
 
 export default function UnifiedFeedScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, profile, refreshProfile, profileLoadError, retryProfileLoad } = useAuth();
+  const {
+    user,
+    profile,
+    bootUid,
+    bootProfile,
+    bootInterests,
+    refreshProfile,
+    profileLoadError,
+    retryProfileLoad,
+  } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
 
+  const effectiveUid = user?.uid || bootUid || null;
+  const effectiveProfile = profile || bootProfile;
   const [v3Feed, setV3Feed] = useState<V3UserFeed | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -376,7 +479,7 @@ export default function UnifiedFeedScreen() {
   const scrollY = useSharedValue(0);
   const STICKY_THRESHOLD = 80; // When sticky header appears
 
-  const isOnboarded = profile?.onboarded === true;
+  const isOnboarded = effectiveProfile?.onboarded === true;
   const hasRenderableFeed = !!v3Feed && (
     (v3Feed.trending_topics?.length ?? 0) > 0 ||
     (v3Feed.for_you?.length ?? 0) > 0
@@ -414,13 +517,13 @@ export default function UnifiedFeedScreen() {
   }, [user, profile, streak]);
 
   const loadFeed = useCallback(async (): Promise<boolean> => {
-    if (!user) return false;
+    if (!effectiveUid) return false;
     if (!isOnboarded && !hasRenderableFeed) return false;
     try {
       let seeded = false;
 
       // Check for prefetched feed first (loaded during splash)
-      const prefetched = consumePrefetchedFeed(user.uid);
+      const prefetched = consumePrefetchedFeed(effectiveUid);
       if (prefetched) {
         setV3Feed(prefetched);
         seeded = true;
@@ -439,7 +542,7 @@ export default function UnifiedFeedScreen() {
       // Always do a fresh fetch too, so prefetched/stale startup data
       // gets replaced automatically without needing a manual reload.
       for (let attempt = 0; attempt < 3; attempt++) {
-        const v3 = await getV3UserFeed(user.uid);
+        const v3 = await getV3UserFeed(effectiveUid);
         if (v3 && ((v3.trending_topics?.length ?? 0) > 0 || (v3.for_you?.length ?? 0) > 0)) {
           setV3Feed(v3);
           return true;
@@ -453,11 +556,11 @@ export default function UnifiedFeedScreen() {
       console.error('Error loading feed:', error);
       return false;
     }
-  }, [user, isOnboarded, hasRenderableFeed]);
+  }, [effectiveUid, isOnboarded, hasRenderableFeed]);
 
   const isFeedBuilding = (() => {
-    if (profile?.feedBuildStatus !== 'building') return false;
-    const requestedAt = profile?.feedBuildRequestedAt as any;
+    if (effectiveProfile?.feedBuildStatus !== 'building') return false;
+    const requestedAt = effectiveProfile?.feedBuildRequestedAt as any;
     if (!requestedAt) return false;
     const ts =
       typeof requestedAt === 'string'
@@ -487,7 +590,7 @@ export default function UnifiedFeedScreen() {
   }, [loadFeed, isOnboarded, hasRenderableFeed, user?.uid]);
 
   useEffect(() => {
-    if (!isFeedBuilding || !user) return;
+    if (!isFeedBuilding || !effectiveUid) return;
     pollRef.current = setInterval(async () => {
       await refreshProfile();
       const found = await loadFeed();
@@ -496,7 +599,7 @@ export default function UnifiedFeedScreen() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [isFeedBuilding, user, loadFeed, refreshProfile]);
+  }, [isFeedBuilding, effectiveUid, loadFeed, refreshProfile]);
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -506,13 +609,28 @@ export default function UnifiedFeedScreen() {
   }, [loadFeed, refreshProfile]);
 
   // Normalized user profile interests
-  const userInterestIds = useMemo(
-    () => (profile?.interests || []).map((i) => normalizeInterestId(i)),
-    [profile?.interests],
-  );
+  const userInterestIds = useMemo(() => {
+    const liveInterests = (effectiveProfile?.interests || []).map((i) => normalizeInterestId(i));
+    if (liveInterests.length > 0) return liveInterests;
+    return bootInterests.map((i) => normalizeInterestId(i));
+  }, [bootInterests, effectiveProfile?.interests]);
 
   // Pills for interests that appear in trending content AND in the user's profile.
   // Everything else collapses into the "Suggested" pill.
+  const feedInterestIds = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const topic of v3Feed?.trending_topics || []) {
+      if (!topic.interest_id) continue;
+      const normalized = normalizeInterestId(topic.interest_id);
+      if (!INTEREST_LABELS[normalized]) continue;
+      counts.set(normalized, (counts.get(normalized) || 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([interest]) => interest)
+      .slice(0, 4);
+  }, [v3Feed?.trending_topics]);
+
   const availableInterests = useMemo(() => {
     const userSet = new Set(userInterestIds);
     const matched = new Set<string>();
@@ -523,8 +641,10 @@ export default function UnifiedFeedScreen() {
       const canonical = INTEREST_LABELS[normalized] ? normalized : INTEREST_LABELS[raw] ? raw : normalized;
       if (userSet.has(canonical)) matched.add(canonical);
     }
-    return Array.from(matched);
-  }, [v3Feed?.trending_topics, userInterestIds]);
+    const matchedList = Array.from(matched);
+    if (matchedList.length > 0) return matchedList;
+    return feedInterestIds;
+  }, [feedInterestIds, v3Feed?.trending_topics, userInterestIds]);
 
   // Filter pills: All → matched user interests → Suggested (content outside user interests)
   const filterPills = useMemo(() => {
@@ -537,6 +657,9 @@ export default function UnifiedFeedScreen() {
     }
 
     // Add "Suggested" pill if any trending topic falls outside the user's interests
+    if (userInterestIds.length === 0) {
+      return pills;
+    }
     const matchedSet = new Set(availableInterests);
     const hasSuggested = (v3Feed?.trending_topics || []).some((t) => {
       if (!t.interest_id) return true;
@@ -548,7 +671,7 @@ export default function UnifiedFeedScreen() {
     }
 
     return pills;
-  }, [availableInterests, v3Feed?.trending_topics]);
+  }, [availableInterests, userInterestIds.length, v3Feed?.trending_topics]);
 
   // Trending topics are already entitlement-trimmed by backend.
   const trendingTopics = useMemo(() => v3Feed?.trending_topics || [], [v3Feed?.trending_topics]);
@@ -581,7 +704,6 @@ export default function UnifiedFeedScreen() {
   const forYouItems = useMemo(() => {
     if (!v3Feed) return [];
     const filtered = v3Feed.for_you.filter((item) => !isNoisyItem(item));
-    // Fisher-Yates shuffle
     const shuffled = [...filtered];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -589,6 +711,12 @@ export default function UnifiedFeedScreen() {
     }
     return shuffled;
   }, [v3Feed]);
+
+  // Pre-compute patched items once instead of on every tap
+  const patchedForYouItems = useMemo(
+    () => forYouItems.map(patchForYouItem),
+    [forYouItems],
+  );
 
   // Scroll handler for sticky header
   const scrollHandler = useAnimatedScrollHandler({
@@ -628,42 +756,60 @@ export default function UnifiedFeedScreen() {
     return { opacity };
   });
 
-  const handleTopicPress = async (topic: TrendingTopic) => {
-    const firstEvent = topic.timeline?.[0];
-    const firstArticle = topic.articles?.[0];
-    const url = firstEvent?.article_url || firstArticle?.url || '';
-    logReadingEvent({
-      eventType: 'feed_open',
-      itemId: topic.id,
-      title: topic.title,
-      url,
-      tags: topic.tags,
-      itemType: 'topic',
-      feedCategory: 'trending_topic',
-    });
+  const handleTopicPress = useCallback((topic: TrendingTopic) => {
     setCurrentTopic(topic);
     router.push('/topic');
-  };
-
-  const handleItemPress = async (item: FeedItem) => {
-    const patchedItem = patchForYouItem(item);
-    logReadingEvent({
-      eventType: 'feed_open',
-      itemId: patchedItem.id,
-      title: patchedItem.title,
-      url: patchedItem.url,
-      tags: patchedItem.tags,
-      itemType: patchedItem.type || patchedItem.source,
-      feedCategory: patchedItem.metadata?.feed_category || patchedItem.feed_type,
+    InteractionManager.runAfterInteractions(() => {
+      const firstEvent = topic.timeline?.[0];
+      const firstArticle = topic.articles?.[0];
+      logReadingEvent({
+        eventType: 'feed_open',
+        itemId: topic.id,
+        title: topic.title,
+        url: firstEvent?.article_url || firstArticle?.url || '',
+        tags: topic.tags,
+        itemType: 'topic',
+        feedCategory: 'trending_topic',
+      });
     });
-    const patchedItems = forYouItems.map(patchForYouItem);
-    const idx = patchedItems.findIndex((i) => i.id === patchedItem.id);
-    setArticleList(patchedItems, idx >= 0 ? idx : 0);
+  }, [router]);
+
+  const handleItemPress = useCallback((item: FeedItem) => {
+    const patchedItem = patchForYouItem(item);
+    const idx = patchedForYouItems.findIndex((i) => i.id === patchedItem.id);
+    setArticleList(patchedForYouItems, idx >= 0 ? idx : 0);
     setCurrentArticle(patchedItem);
     router.push('/article');
-  };
+    InteractionManager.runAfterInteractions(() => {
+      logReadingEvent({
+        eventType: 'feed_open',
+        itemId: patchedItem.id,
+        title: patchedItem.title,
+        url: patchedItem.url,
+        tags: patchedItem.tags,
+        itemType: patchedItem.type || patchedItem.source,
+        feedCategory: patchedItem.metadata?.feed_category || patchedItem.feed_type,
+      });
+    });
+  }, [patchedForYouItems, router]);
 
   const isEmpty = feedSections.length === 0;
+
+  const feedKeyExtractor = useCallback((item: FeedSection, index: number) => {
+    if (item.type === 'trending') return `t-${item.topic.id}`;
+    if (item.type === 'foryou') return `f-${item.item.id}`;
+    return `s-${index}`;
+  }, []);
+
+  const renderFeedItem = useCallback(({ item: section }: { item: FeedSection }) => {
+    if (section.type === 'trending') {
+      return <TrendingFeedRow topic={section.topic} colorScheme={colorScheme} onPress={handleTopicPress} />;
+    }
+    if (section.type === 'foryou') {
+      return <ForYouFeedRow item={section.item} colorScheme={colorScheme} onPress={handleItemPress} />;
+    }
+    return null;
+  }, [colorScheme, handleTopicPress, handleItemPress]);
 
   const handleRetry = async () => {
     setIsRetrying(true);
@@ -672,7 +818,7 @@ export default function UnifiedFeedScreen() {
   };
 
   // Show error UI if profile failed to load (network issue)
-  if (profileLoadError && !profile) {
+  if (profileLoadError && !effectiveProfile) {
     return (
       <SafeAreaView
         style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
@@ -698,7 +844,181 @@ export default function UnifiedFeedScreen() {
     );
   }
 
-  const firstName = getFirstName(profile);
+  const firstName = getFirstName(effectiveProfile);
+
+  const showFlatList = !isLoading && hasRenderableFeed && !isEmpty && !(isFeedBuilding && isEmpty);
+  const scrollContentContainerStyle = useMemo(
+    () => [styles.scrollContent, { paddingTop: insets.top }],
+    [insets.top]
+  );
+
+  // Shared scroll props
+  const scrollProps = {
+    showsVerticalScrollIndicator: false,
+    onScroll: scrollHandler,
+    scrollEventThrottle: 16,
+    refreshControl: (
+      <RefreshControl
+        refreshing={isRefreshing}
+        onRefresh={onRefresh}
+        tintColor={Colors[colorScheme].foreground}
+      />
+    ),
+  } as const;
+
+  const renderHeader = () => (
+    <>
+      {/* Main Header - fades out on scroll */}
+      <Animated.View style={[styles.header, mainHeaderStyle]}>
+        <View style={styles.headerLeft}>
+          <Text style={[styles.headerGreeting, { color: Colors[colorScheme].text }]}>
+            Hi, {firstName}
+          </Text>
+          <Text style={[styles.headerSubtitle, { color: Colors[colorScheme].muted }]}>
+            Trace the stories that move your world.
+          </Text>
+        </View>
+        <View style={styles.headerRight}>
+          <Pressable
+            onPress={() => router.push('/profile')}
+            hitSlop={12}
+            style={[styles.profileButton, { borderColor: Colors[colorScheme].border }]}>
+            <User size={18} color={Colors[colorScheme].text} strokeWidth={1.8} />
+            {streak && streak.currentStreak > 0 && (
+              <View style={styles.profileStreakBadge}>
+                <Flame size={10} color="#fff" fill="#fff" />
+                <Text style={styles.profileStreakText}>{streak.currentStreak}</Text>
+              </View>
+            )}
+          </Pressable>
+        </View>
+      </Animated.View>
+
+      {/* Update Available Banner */}
+      {showUpdateBanner && (
+        <Pressable
+          onPress={() => Linking.openURL(
+            Platform.OS === 'ios'
+              ? 'https://apps.apple.com/app/id6745196498'
+              : 'https://play.google.com/store/apps/details?id=online.yourtrace.app'
+          )}
+          style={[styles.updateBanner, { backgroundColor: Colors[colorScheme].card }]}>
+          <View style={styles.updateBannerContent}>
+            <View style={[styles.updateBannerIcon, { backgroundColor: `${ACCENT_ORANGE}20` }]}>
+              <ArrowUp size={16} color={ACCENT_ORANGE} />
+            </View>
+            <View style={styles.updateBannerText}>
+              <Text style={[styles.updateBannerTitle, { color: Colors[colorScheme].text }]}>
+                Update Available
+              </Text>
+              <Text style={[styles.updateBannerSubtitle, { color: Colors[colorScheme].muted }]}>
+                A new version of Trace is available
+              </Text>
+            </View>
+          </View>
+          <ChevronRight size={18} color={Colors[colorScheme].muted} />
+        </Pressable>
+      )}
+
+      {/* For You Section - Horizontal Carousel */}
+      {!isLoading && forYouItems.length > 0 && (
+        <View style={styles.forYouSection}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.forYouCarouselContainer}
+            snapToInterval={SCREEN_WIDTH - 34}
+            decelerationRate="fast">
+            {forYouItems.slice(0, 6).map((item, index) => {
+              const sourceName = item.source_name || item.source || '';
+              const preview = extractBodyPreview(item);
+              const cardBg = CARD_COLORS[index % CARD_COLORS.length];
+              const sourceCount = 4;
+              const updateCount = 7;
+              return (
+                <Pressable
+                  key={item.id}
+                  onPress={() => handleItemPress(item)}
+                  style={[styles.forYouCard, { backgroundColor: cardBg }]}>
+                  <View style={styles.forYouCardImageArea}>
+                    {isRealImage(item.thumbnail) ? (
+                      <Image source={{ uri: item.thumbnail! }} style={styles.forYouCardImage} resizeMode="cover" />
+                    ) : (
+                      <View style={styles.forYouCardImagePlaceholder} />
+                    )}
+                  </View>
+                  <View style={styles.forYouCardContent}>
+                    <Text numberOfLines={2} style={styles.forYouCardTitle}>
+                      {item.title}
+                    </Text>
+                    {preview ? (
+                      <Text numberOfLines={2} style={styles.forYouCardPreview}>
+                        {preview}
+                      </Text>
+                    ) : null}
+                    <View style={styles.forYouCardMeta}>
+                      <Text style={styles.forYouCardMetaText}>{sourceCount} Sources</Text>
+                      <View style={styles.forYouCardMetaDot} />
+                      <Text style={styles.forYouCardMetaText}>{updateCount} Updates</Text>
+                    </View>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+    </>
+  );
+
+  const renderPills = () => (
+    <View style={styles.pillsSection}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.pillsContainer}>
+        {filterPills.map((pill) => {
+          const isActive = activeFilter === pill.id;
+          return (
+            <Pressable
+              key={pill.id}
+              onPress={() => setActiveFilter(pill.id)}
+              style={[
+                styles.pill,
+                {
+                  backgroundColor: isActive ? `${ACCENT_ORANGE}28` : Colors[colorScheme].background,
+                  borderColor: isActive ? ACCENT_ORANGE : Colors[colorScheme].border,
+                },
+              ]}>
+              <Text
+                style={[
+                  styles.pillText,
+                  {
+                    color: Colors[colorScheme].text,
+                    fontFamily: isActive ? FontFamily.semiBold : FontFamily.regular,
+                  },
+                ]}>
+                {pill.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+
+  const listHeader = useMemo(() => (
+    <>
+      {renderHeader()}
+      {renderPills()}
+      <View style={styles.ongoingHeader}>
+        <Text style={[styles.ongoingTitle, { color: Colors[colorScheme].text }]}>Trending</Text>
+      </View>
+    </>
+  ), [
+    firstName, colorScheme, showUpdateBanner, isLoading, forYouItems,
+    filterPills, activeFilter, streak, mainHeaderStyle,
+  ]);
 
   return (
     <View style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}>
@@ -735,278 +1055,48 @@ export default function UnifiedFeedScreen() {
         </View>
       </Animated.View>
 
-      <Animated.ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top }]}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            tintColor={Colors[colorScheme].foreground}
-          />
-        }>
-        {/* Main Header - fades out on scroll */}
-        <Animated.View style={[styles.header, mainHeaderStyle]}>
-          <View style={styles.headerLeft}>
-            <Text style={[styles.headerGreeting, { color: Colors[colorScheme].text }]}>
-              Hi, {firstName}
-            </Text>
-            <Text style={[styles.headerSubtitle, { color: Colors[colorScheme].muted }]}>
-              Trace the stories that move your world.
-            </Text>
-          </View>
-          <View style={styles.headerRight}>
-            <Pressable
-              onPress={() => router.push('/profile')}
-              hitSlop={12}
-              style={[styles.profileButton, { borderColor: Colors[colorScheme].border }]}>
-              <User size={18} color={Colors[colorScheme].text} strokeWidth={1.8} />
-              {streak && streak.currentStreak > 0 && (
-                <View style={styles.profileStreakBadge}>
-                  <Flame size={10} color="#fff" fill="#fff" />
-                  <Text style={styles.profileStreakText}>{streak.currentStreak}</Text>
-                </View>
-              )}
-            </Pressable>
-          </View>
-        </Animated.View>
+      {showFlatList ? (
+        <AnimatedFlashList
+          data={feedSections}
+          keyExtractor={feedKeyExtractor}
+          renderItem={renderFeedItem}
+          ListHeaderComponent={listHeader}
+          ListFooterComponent={<TouchGrassFooter colorScheme={colorScheme} />}
+          contentContainerStyle={scrollContentContainerStyle}
+          {...scrollProps}
+        />
+      ) : (
+        <Animated.ScrollView {...scrollProps} contentContainerStyle={scrollContentContainerStyle}>
+          {renderHeader()}
 
-        {/* Update Available Banner */}
-        {showUpdateBanner && (
-          <Pressable
-            onPress={() => Linking.openURL(
-              Platform.OS === 'ios'
-                ? 'https://apps.apple.com/app/id6745196498'
-                : 'https://play.google.com/store/apps/details?id=online.yourtrace.app'
-            )}
-            style={[styles.updateBanner, { backgroundColor: Colors[colorScheme].card }]}>
-            <View style={styles.updateBannerContent}>
-              <View style={[styles.updateBannerIcon, { backgroundColor: `${ACCENT_ORANGE}20` }]}>
-                <ArrowUp size={16} color={ACCENT_ORANGE} />
-              </View>
-              <View style={styles.updateBannerText}>
-                <Text style={[styles.updateBannerTitle, { color: Colors[colorScheme].text }]}>
-                  Update Available
-                </Text>
-                <Text style={[styles.updateBannerSubtitle, { color: Colors[colorScheme].muted }]}>
-                  A new version of Trace is available
-                </Text>
-              </View>
-            </View>
-            <ChevronRight size={18} color={Colors[colorScheme].muted} />
-          </Pressable>
-        )}
-
-        {/* For You Section - Horizontal Carousel */}
-        {!isLoading && forYouItems.length > 0 && (
-          <View style={styles.forYouSection}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.forYouCarouselContainer}
-              snapToInterval={SCREEN_WIDTH - 34}
-              decelerationRate="fast">
-              {forYouItems.slice(0, 6).map((item, index) => {
-                const sourceName = item.source_name || item.source || '';
-                const preview = extractBodyPreview(item);
-                const cardBg = CARD_COLORS[index % CARD_COLORS.length];
-                const sourceCount = 4; // Placeholder for now
-                const updateCount = 7; // Placeholder for now
-                return (
-                  <Pressable
-                    key={item.id}
-                    onPress={() => handleItemPress(item)}
-                    style={[styles.forYouCard, { backgroundColor: cardBg }]}>
-                    {/* Image placeholder area */}
-                    <View style={styles.forYouCardImageArea}>
-                      {isRealImage(item.thumbnail) ? (
-                        <Image source={{ uri: item.thumbnail! }} style={styles.forYouCardImage} resizeMode="cover" />
-                      ) : (
-                        <View style={styles.forYouCardImagePlaceholder} />
-                      )}
-                    </View>
-                    {/* Content */}
-                    <View style={styles.forYouCardContent}>
-                      <Text numberOfLines={2} style={styles.forYouCardTitle}>
-                        {item.title}
-                      </Text>
-                      {preview ? (
-                        <Text numberOfLines={2} style={styles.forYouCardPreview}>
-                          {preview}
-                        </Text>
-                      ) : null}
-                      <View style={styles.forYouCardMeta}>
-                        <Text style={styles.forYouCardMetaText}>{sourceCount} Sources</Text>
-                        <View style={styles.forYouCardMetaDot} />
-                        <Text style={styles.forYouCardMetaText}>{updateCount} Updates</Text>
-                      </View>
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Loading / Building states */}
-        {(isLoading || !hasRenderableFeed) ? (
-          <View style={styles.padded}>
-            <SkeletonLoader colorScheme={colorScheme} />
-          </View>
-        ) : isFeedBuilding && isEmpty ? (
-          <>
-            <View style={styles.pillsSection}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsContainer}>
-                {filterPills.map((pill) => {
-                  const isActive = activeFilter === pill.id;
-                  return (
-                    <Pressable key={pill.id} onPress={() => setActiveFilter(pill.id)} style={[styles.pill, { backgroundColor: isActive ? `${ACCENT_ORANGE}28` : Colors[colorScheme].background, borderColor: isActive ? ACCENT_ORANGE : Colors[colorScheme].border }]}>
-                      <Text style={[styles.pillText, { color: Colors[colorScheme].text, fontFamily: isActive ? FontFamily.semiBold : FontFamily.regular }]}>{pill.label}</Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </View>
+          {(isLoading || !hasRenderableFeed) ? (
             <View style={styles.padded}>
-              <FeedBuildingLoader colorScheme={colorScheme} />
+              <SkeletonLoader colorScheme={colorScheme} />
             </View>
-          </>
-        ) : isEmpty ? (
-          <>
-            <View style={styles.pillsSection}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsContainer}>
-                {filterPills.map((pill) => {
-                  const isActive = activeFilter === pill.id;
-                  return (
-                    <Pressable key={pill.id} onPress={() => setActiveFilter(pill.id)} style={[styles.pill, { backgroundColor: isActive ? `${ACCENT_ORANGE}28` : Colors[colorScheme].background, borderColor: isActive ? ACCENT_ORANGE : Colors[colorScheme].border }]}>
-                      <Text style={[styles.pillText, { color: Colors[colorScheme].text, fontFamily: isActive ? FontFamily.semiBold : FontFamily.regular }]}>{pill.label}</Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </View>
-            <View style={styles.padded}>
-              <View style={styles.emptyState}>
-                <View style={[styles.emptyIllus, { backgroundColor: colorScheme === 'dark' ? '#1a1a2e' : '#f5f3ff' }]}>
-                  <DigestIllus width={44} height={44} color={Colors[colorScheme].text} />
-                </View>
-                <ThemedText style={[styles.emptyText, { color: Colors[colorScheme].muted }]}>
-                  No articles yet. Pull to refresh.
-                </ThemedText>
+          ) : isFeedBuilding && isEmpty ? (
+            <>
+              {renderPills()}
+              <View style={styles.padded}>
+                <FeedBuildingLoader colorScheme={colorScheme} />
               </View>
-            </View>
-          </>
-        ) : (
-          <>
-            {/* Filter Pills */}
-            <View style={styles.pillsSection}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.pillsContainer}>
-                {filterPills.map((pill) => {
-                  const isActive = activeFilter === pill.id;
-                  return (
-                    <Pressable
-                      key={pill.id}
-                      onPress={() => setActiveFilter(pill.id)}
-                      style={[
-                        styles.pill,
-                        {
-                          backgroundColor: isActive ? `${ACCENT_ORANGE}28` : Colors[colorScheme].background,
-                          borderColor: isActive ? ACCENT_ORANGE : Colors[colorScheme].border,
-                        },
-                      ]}>
-                      <Text
-                        style={[
-                          styles.pillText,
-                          {
-                            color: Colors[colorScheme].text,
-                            fontFamily: isActive ? FontFamily.semiBold : FontFamily.regular,
-                          },
-                        ]}>
-                        {pill.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </View>
-
-            {/* Ongoing Section Header */}
-            <View style={styles.ongoingHeader}>
-              <Text style={[styles.ongoingTitle, { color: Colors[colorScheme].text }]}>Trending</Text>
-            </View>
-
-            {/* Ongoing Article List - Figma style */}
-            <View style={styles.ongoingList}>
-              {feedSections.map((section) => {
-                if (section.type === 'trending') {
-                  const topic = section.topic;
-                  const display = getTopicDisplay(topic);
-                  const sourceCount = topic.source_count ?? 1;
-                  const articleCount = topic.article_count ?? 1;
-                  return (
-                    <Pressable
-                      key={`trending-${topic.id}`}
-                      onPress={() => handleTopicPress(topic)}
-                      style={[styles.ongoingRow, { borderBottomColor: `${Colors[colorScheme].border}40` }]}>
-                      <View style={styles.ongoingBody}>
-                        <Text numberOfLines={2} style={[styles.ongoingTitle2, { color: Colors[colorScheme].text }]}>
-                          {display.title}
-                        </Text>
-                        <View style={styles.ongoingMeta}>
-                          <Text style={styles.ongoingMetaText}>{sourceCount} Sources</Text>
-                          <View style={styles.ongoingMetaDot} />
-                          <Text style={styles.ongoingMetaText}>{articleCount} Updates</Text>
-                        </View>
-                      </View>
-                      {isRealImage(display.thumbnail) ? (
-                        <Image source={{ uri: display.thumbnail! }} style={styles.ongoingThumb} resizeMode="cover" />
-                      ) : (
-                        <View style={[styles.ongoingThumb, styles.ongoingThumbPlaceholder]} />
-                      )}
-                    </Pressable>
-                  );
-                }
-
-                if (section.type === 'foryou') {
-                  const item = section.item;
-                  return (
-                    <Pressable
-                      key={`foryou-${item.id}`}
-                      onPress={() => handleItemPress(item)}
-                      style={[styles.ongoingRow, { borderBottomColor: `${Colors[colorScheme].border}40` }]}>
-                      <View style={styles.ongoingBody}>
-                        <Text numberOfLines={2} style={[styles.ongoingTitle2, { color: Colors[colorScheme].text }]}>
-                          {item.title}
-                        </Text>
-                        <View style={styles.ongoingMeta}>
-                          <Text style={styles.ongoingMetaText}>1 Source</Text>
-                          <View style={styles.ongoingMetaDot} />
-                          <Text style={styles.ongoingMetaText}>New</Text>
-                        </View>
-                      </View>
-                      {isRealImage(item.thumbnail) ? (
-                        <Image source={{ uri: item.thumbnail! }} style={styles.ongoingThumb} resizeMode="cover" />
-                      ) : (
-                        <View style={[styles.ongoingThumb, styles.ongoingThumbPlaceholder]} />
-                      )}
-                    </Pressable>
-                  );
-                }
-
-                return null;
-              })}
-            </View>
-
-            {/* Footer */}
-            <TouchGrassFooter colorScheme={colorScheme} />
-          </>
-        )}
-      </Animated.ScrollView>
+            </>
+          ) : (
+            <>
+              {renderPills()}
+              <View style={styles.padded}>
+                <View style={styles.emptyState}>
+                  <View style={[styles.emptyIllus, { backgroundColor: colorScheme === 'dark' ? '#1a1a2e' : '#f5f3ff' }]}>
+                    <DigestIllus width={44} height={44} color={Colors[colorScheme].text} />
+                  </View>
+                  <ThemedText style={[styles.emptyText, { color: Colors[colorScheme].muted }]}>
+                    No articles yet. Pull to refresh.
+                  </ThemedText>
+                </View>
+              </View>
+            </>
+          )}
+        </Animated.ScrollView>
+      )}
     </View>
   );
 }
@@ -1545,6 +1635,9 @@ const styles = StyleSheet.create({
     fontFamily: FontFamilySerif.semiBold,
   },
   ongoingList: {
+    paddingHorizontal: 20,
+  },
+  ongoingRowPadded: {
     paddingHorizontal: 20,
   },
   ongoingRow: {

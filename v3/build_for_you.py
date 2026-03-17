@@ -20,6 +20,7 @@ import json
 import os
 import re
 import sys
+import math
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -41,7 +42,7 @@ from v3.lib.store import V3Store, _today_ist  # noqa: E402
 CONFIG_PATH = "v3/config/for_you_sources.json"
 BRIEF_SOURCES_PATH = "v3/config/brief_sources.json"
 DEFAULT_ITEMS = 0
-FOR_YOU_BRIEF_BUCKET = "for_you_brief_v17_top_stories"
+FOR_YOU_BRIEF_BUCKET = "for_you_brief_v21_top_stories"
 FOR_YOU_BRIEF_MODEL = "gpt-4o"
 # gpt-4o for cost efficiency (~$0.01/brief). Switch to "gpt-5" if quality needs a boost.
 
@@ -49,6 +50,14 @@ HN_TIMEOUT = 15
 REDDIT_TIMEOUT = 15
 RSS_LINK_LIMIT = 10
 REDDIT_USER_AGENT = "TraceBrief/1.0"
+
+ROLE_FALLBACK_IMAGES = {
+    "developer": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=500&fit=crop",
+    "designer": "https://images.unsplash.com/photo-1558655146-9f40138edfeb?w=800&h=500&fit=crop",
+    "pm": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=500&fit=crop",
+    "marketer": "https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&h=500&fit=crop",
+    "founder": "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=800&h=500&fit=crop",
+}
 
 ROLE_LABELS = {
     "developer": "engineer",
@@ -83,6 +92,14 @@ ROLE_FOCUS = {
     "marketer": "Focus on: growth channels, positioning shifts, distribution plays, and concrete tactics that are actually working right now.",
 }
 
+ROLE_COMMUNITY_RULE = {
+    "developer": "If the list contains substantive Hacker News or Reddit posts, include at least 2 community-driven picks.",
+    "founder": "If the list contains substantive community posts, include at least 2 community-driven picks.",
+    "designer": "If the list contains substantive Reddit/community posts, include 1-2 community-driven picks in the final brief, but keep at least 2 editorial picks. Avoid generic critique requests, inspiration dumps, and low-context 'what do you think/how can I improve this' posts.",
+    "pm": "If the list contains substantive Reddit/community posts, include at least 1 community-driven pick in the final brief.",
+    "marketer": "If the list contains substantive Reddit/community posts, include at least 1 community-driven pick in the final brief.",
+}
+
 PROMPT = """You're writing {name}'s morning brief. Think Morning Brew meets group chat — chill, fun, smart, zero fluff.
 
 Today is {today}.
@@ -90,8 +107,16 @@ Today is {today}.
 {name} is an {role} trying to {goal}.
 Interests: {interests}.
 {role_focus}
+{community_rule}
 
 Here are today's top stories and posts from sources relevant to {name}. First act like an editor: ignore low-signal career venting, resume/job angst, beginner asks, or generic complaints unless they contain a very concrete workflow, tool, or debate. Then pick the 5-6 most interesting items and write a brief about them.
+
+Source balance:
+- Aim for roughly 75% community-driven signal and 25% editorial grounding.
+- In practice, for a 5-6 beat brief, that usually means 3-4 beats from community sources (Reddit/Hacker News) and 1-2 beats from editorial sources.
+- Do not make the brief all editorial unless the list truly forces you to.
+- Do not make the brief all community unless the list truly forces you to.
+- Use editorial sources to sharpen or validate the strongest community ideas, not to drown them out.
 
 ---
 {articles_block}
@@ -218,6 +243,36 @@ def _fetch_reddit_posts(subreddits: list[str]) -> list[dict[str, str]]:
     """Fetch top posts from Reddit subreddits via JSON API."""
     articles: list[dict[str, str]] = []
     seen: set[str] = set()
+    low_signal_patterns = (
+        "how can i improve",
+        "how do i improve",
+        "what do you think",
+        "feedback please",
+        "roast my",
+        "rate my",
+        "my portfolio",
+        "my design",
+        "can someone explain",
+        "beginner question",
+    )
+
+    def _add_article(title: str, link: str, source: str, signal: str = "") -> None:
+        lower_title = title.lower().strip()
+        if (
+            not title
+            or not link
+            or link in seen
+            or any(pattern in lower_title for pattern in low_signal_patterns)
+        ):
+            return
+        seen.add(link)
+        articles.append({
+            "title": title,
+            "url": link,
+            "source": source,
+            "signal": signal,
+        })
+
     for sub in subreddits:
         try:
             resp = requests.get(
@@ -229,6 +284,17 @@ def _fetch_reddit_posts(subreddits: list[str]) -> list[dict[str, str]]:
             posts = resp.json().get("data", {}).get("children", [])
         except Exception as exc:
             _log(f"  Reddit r/{sub} failed: {exc}")
+            try:
+                rss_result = fetch_article_links(f"https://www.reddit.com/r/{sub}/.rss", limit=10)
+                rss_links = rss_result.articles if hasattr(rss_result, "articles") else []
+            except Exception as rss_exc:
+                _log(f"  Reddit r/{sub} RSS fallback failed: {rss_exc}")
+                continue
+
+            for link in rss_links:
+                title = str(link.get("title", "")).strip()
+                href = str(link.get("url", "")).strip()
+                _add_article(title, href, f"r/{sub}")
             continue
         for post in posts:
             data = post.get("data", {})
@@ -239,15 +305,7 @@ def _fetch_reddit_posts(subreddits: list[str]) -> list[dict[str, str]]:
             if not title or data.get("stickied"):
                 continue
             link = url if url and not url.startswith("https://www.reddit.com/r/") else permalink
-            if link in seen:
-                continue
-            seen.add(link)
-            articles.append({
-                "title": title,
-                "url": link,
-                "source": f"r/{sub}",
-                "signal": f"{ups} upvotes",
-            })
+            _add_article(title, link, f"r/{sub}", f"{ups} upvotes")
     _log(f"  Reddit: fetched {len(articles)} posts from {len(subreddits)} subs")
     return articles
 
@@ -341,6 +399,34 @@ def _format_articles_block(articles: list[dict[str, str]], limit: int = 36) -> s
         parts.append(f"→ {url}")
         lines.append(" ".join(parts))
     return "\n".join(lines)
+
+
+def _prioritize_articles_for_brief(
+    articles: list[dict[str, str]],
+    total_limit: int = 36,
+    community_share: float = 0.75,
+) -> list[dict[str, str]]:
+    if not articles:
+        return []
+
+    capped = articles[: max(total_limit * 2, total_limit)]
+    community = [article for article in capped if _is_community_domain(article.get("url", ""))]
+    editorial = [article for article in capped if not _is_community_domain(article.get("url", ""))]
+
+    community_target = min(len(community), math.ceil(total_limit * community_share))
+    editorial_target = min(len(editorial), total_limit - community_target)
+
+    selected = community[:community_target] + editorial[:editorial_target]
+
+    if len(selected) < total_limit:
+        community_left = community[community_target:]
+        editorial_left = editorial[editorial_target:]
+        for article in community_left + editorial_left:
+            if len(selected) >= total_limit:
+                break
+            selected.append(article)
+
+    return selected[:total_limit]
 
 
 def _expand_source_markers(markdown: str, articles: list[dict[str, str]]) -> str:
@@ -535,7 +621,7 @@ def _clean_brief_text(text: str) -> str:
     return "\n".join(result_lines).strip()
 
 
-def _normalize_markdown_brief(markdown: str) -> dict[str, Any]:
+def _normalize_markdown_brief(markdown: str, role: str = "") -> dict[str, Any]:
     main, sources = _parse_source_lines(markdown)
     lines = [line.rstrip() for line in main.splitlines()]
 
@@ -576,7 +662,18 @@ def _normalize_markdown_brief(markdown: str) -> dict[str, Any]:
         sources[0] if sources else None,
     )
     primary_url = primary_source["url"] if primary_source else ""
-    thumbnail = fetch_og_image(primary_url) if primary_url else ""
+
+    thumbnail = ""
+    for source in sources:
+        image = fetch_og_image(str(source.get("url", "")).strip())
+        if image:
+            thumbnail = image
+            if not primary_url:
+                primary_url = str(source.get("url", "")).strip()
+            break
+
+    if not thumbnail:
+        thumbnail = ROLE_FALLBACK_IMAGES.get(str(role or "").strip().lower(), "")
 
     word_count = len(re.findall(r"\w+", body))
     reading_time = max(1, round(word_count / 220))
@@ -630,7 +727,8 @@ def _generate_personalized_brief(
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY not configured")
 
-    articles_block = _format_articles_block(articles, limit=36)
+    prompt_articles = _prioritize_articles_for_brief(articles, total_limit=36, community_share=0.75)
+    articles_block = _format_articles_block(prompt_articles, limit=36)
 
     prompt = PROMPT.format(
         name=name,
@@ -639,6 +737,7 @@ def _generate_personalized_brief(
         goal=goal_label,
         interests=", ".join(interests) if interests else "engineering, tech, AI",
         role_focus=ROLE_FOCUS.get(role, "Lean into the most useful, timely signals for this person's work."),
+        community_rule=ROLE_COMMUNITY_RULE.get(role, "Mix community and editorial signal when possible."),
         articles_block=articles_block,
     )
 
@@ -653,8 +752,8 @@ def _generate_personalized_brief(
     if not raw_markdown:
         raise RuntimeError("OpenAI returned empty brief")
 
-    expanded_markdown = _expand_source_markers(raw_markdown, articles)
-    summary = _normalize_markdown_brief(expanded_markdown)
+    expanded_markdown = _expand_source_markers(raw_markdown, prompt_articles)
+    summary = _normalize_markdown_brief(expanded_markdown, role=role)
     store.save_cached_summary_v2(cache_url, FOR_YOU_BRIEF_BUCKET, summary, FOR_YOU_BRIEF_MODEL)
     return summary, False
 

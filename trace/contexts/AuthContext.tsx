@@ -15,10 +15,18 @@ import { app, auth } from '@/lib/firebase';
 import { getOrCreateUserProfile, getUserProfile, deleteUserData, UserProfile, getV3UserFeed } from '@/lib/firestore';
 import { enablePushNotifications } from '@/lib/notifications';
 import { setPrefetchedFeed, setPrefetchPromise, clearFeedCache } from '@/lib/feed-cache';
+import {
+  clearCachedProfileInterests,
+  readCachedProfileInterests,
+  writeCachedProfileInterests,
+} from '@/lib/profile-cache';
 
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
+  bootUid: string | null;
+  bootProfile: UserProfile | null;
+  bootInterests: string[];
   loading: boolean;
   profileResolved: boolean;
   profileLoadError: boolean;
@@ -32,6 +40,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
+  bootUid: null,
+  bootProfile: null,
+  bootInterests: [],
   loading: true,
   profileResolved: false,
   profileLoadError: false,
@@ -43,6 +54,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 const PROFILE_CACHE_PREFIX = 'trace_profile_snapshot_v1:';
+const AUTH_BOOT_KEY = 'trace_auth_boot_v1';
 
 function profileCacheKey(uid: string): string {
   return `${PROFILE_CACHE_PREFIX}${uid}`;
@@ -176,11 +188,42 @@ async function clearCachedProfile(uid: string): Promise<void> {
   }
 }
 
+async function readBootUid(): Promise<string | null> {
+  try {
+    const raw = await AsyncStorage.getItem(AUTH_BOOT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { uid?: string };
+    return parsed?.uid || null;
+  } catch (error) {
+    console.warn('[Auth] Failed to read boot snapshot:', error);
+    return null;
+  }
+}
+
+async function writeBootUid(uid: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(AUTH_BOOT_KEY, JSON.stringify({ uid, updatedAt: Date.now() }));
+  } catch (error) {
+    console.warn('[Auth] Failed to write boot snapshot:', error);
+  }
+}
+
+async function clearBootUid(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(AUTH_BOOT_KEY);
+  } catch (error) {
+    console.warn('[Auth] Failed to clear boot snapshot:', error);
+  }
+}
+
 export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [bootUid, setBootUid] = useState<string | null>(null);
+  const [bootProfile, setBootProfile] = useState<UserProfile | null>(null);
+  const [bootInterests, setBootInterests] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [profileResolved, setProfileResolved] = useState(false);
   const [profileLoadError, setProfileLoadError] = useState(false);
@@ -201,6 +244,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
     profileRef.current = mergedProfile;
     setProfile(mergedProfile);
+    setBootUid(mergedProfile.uid);
+    setBootProfile(mergedProfile);
+    setBootInterests(Array.isArray(mergedProfile.interests) ? mergedProfile.interests : []);
     return mergedProfile;
   };
 
@@ -235,11 +281,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       profileRef.current = null;
       setProfile(null);
+      setBootUid(null);
+      setBootProfile(null);
+      setBootInterests([]);
       setProfileResolved(true);
       clearFeedCache();
       if (previousUid) {
         void clearCachedProfile(previousUid);
+        void clearCachedProfileInterests(previousUid);
       }
+      void clearBootUid();
     }
     setLoading(false);
   };
@@ -274,6 +325,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (resolvedProfile) {
         void writeCachedProfile(resolvedProfile);
+        void writeBootUid(resolvedProfile.uid);
+        void writeCachedProfileInterests(resolvedProfile.uid, resolvedProfile.interests || []);
       }
 
       return resolvedProfile;
@@ -292,6 +345,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const resolvedProfile = commitProfile(p, user);
       if (resolvedProfile) {
         void writeCachedProfile(resolvedProfile);
+        void writeCachedProfileInterests(resolvedProfile.uid, resolvedProfile.interests || []);
       }
     }
   };
@@ -313,7 +367,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     let unsubscribe = () => {};
 
+    const hydrateBootSnapshot = async () => {
+      const cachedUid = await readBootUid();
+      if (!cachedUid || cancelled) return;
+      const cachedInterests = await readCachedProfileInterests(cachedUid);
+      if (cancelled) return;
+      if (cachedInterests.length > 0) {
+        setBootUid(cachedUid);
+        setBootInterests(cachedInterests);
+      }
+      const cachedProfile = await readCachedProfile(cachedUid);
+      if (cancelled || !cachedProfile) return;
+      const mergedCachedProfile = (
+        (!Array.isArray(cachedProfile.interests) || cachedProfile.interests.length === 0) &&
+        cachedInterests.length > 0
+      ) ? { ...cachedProfile, interests: cachedInterests } : cachedProfile;
+      setBootUid(cachedUid);
+      setBootProfile(mergedCachedProfile);
+      // Seed profile for the first paint if Firebase is slow.
+      profileRef.current = mergedCachedProfile;
+      setProfile((current) => current ?? mergedCachedProfile);
+    };
+
     const initAuth = async () => {
+      await hydrateBootSnapshot();
+      if (cancelled) return;
       try {
         const authStateReady = (auth as any).authStateReady;
         if (typeof authStateReady === 'function') {
@@ -475,10 +553,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Sign out of Firebase
       if (user?.uid) {
         await clearCachedProfile(user.uid);
+        await clearCachedProfileInterests(user.uid);
       }
+      await clearBootUid();
       await firebaseSignOut(auth);
       profileRef.current = null;
       setProfile(null);
+      setBootUid(null);
+      setBootProfile(null);
+      setBootInterests([]);
     } catch (error) {
       console.error('Sign Out Error:', error);
       throw error;
@@ -506,11 +589,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Sign out of Google
       await GoogleSignin.signOut();
       await clearCachedProfile(currentUser.uid);
+      await clearCachedProfileInterests(currentUser.uid);
+      await clearBootUid();
       // Delete the Firebase auth account
       await auth.currentUser?.delete();
       profileRef.current = null;
       setProfile(null);
       setUser(null);
+      setBootUid(null);
+      setBootProfile(null);
+      setBootInterests([]);
     } catch (error) {
       console.error('Delete Account Error:', error);
       throw error;
@@ -522,6 +610,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         profile,
+        bootUid,
+        bootProfile,
+        bootInterests,
         loading,
         profileResolved,
         profileLoadError,

@@ -49,6 +49,8 @@
     ],
     "designer": [
       {"name": "A List Apart", "url": "https://alistapart.com/main/feed/", "type": "rss"},
+      {"name": "Sidebar", "url": "https://sidebar.io/feed.xml", "type": "rss"},
+      {"name": "UX Collective", "url": "https://uxdesign.cc/feed", "type": "rss"},
       {"name": "Maze Blog", "url": "https://maze.co/blog/", "type": "html"},
       {"name": "Figma Blog", "url": "https://www.figma.com/blog/", "type": "html"},
       {"name": "Nielsen Norman Group", "url": "https://www.nngroup.com/feed/rss/", "type": "rss"}

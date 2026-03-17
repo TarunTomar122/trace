@@ -2,11 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X, LogOut } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { useAuth } from "@/contexts/AuthContext";
+import { consumePendingPostAuthIntent, getPostAuthDestination, useAuth } from "@/contexts/AuthContext";
 
 type MainNavProps = {
   showBanner?: boolean;
@@ -17,15 +18,30 @@ function cn(...inputs: ClassValue[]) {
 }
 
 export default function MainNav({ showBanner = false }: MainNavProps) {
+  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, profile, signInWithGoogle, signOut } = useAuth();
+  const { user, profile, profileResolved, signInWithGoogle, signOut } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    if (!user || !profileResolved) return;
+    const pendingIntent = consumePendingPostAuthIntent();
+    if (!pendingIntent) return;
+    router.push(getPostAuthDestination(profile, pendingIntent));
+  }, [user, profileResolved, profile, router]);
+
+  const handleSignIn = async () => {
+    const result = await signInWithGoogle('read');
+    if (result.status === 'success') {
+      router.push(getPostAuthDestination(result.profile, result.intent));
+    }
+  };
 
   return (
     <nav
@@ -115,7 +131,7 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
                 </div>
               ) : (
                 <button
-                  onClick={() => signInWithGoogle('read')}
+                  onClick={() => void handleSignIn()}
                   className="bg-foreground text-background px-6 py-2.5 rounded-full text-sm font-medium hover:bg-foreground/90 transition-all"
                 >
                   Sign In
@@ -142,7 +158,7 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
                 </Link>
               ) : (
                 <button
-                  onClick={() => signInWithGoogle('read')}
+                  onClick={() => void handleSignIn()}
                   className="bg-foreground text-background px-4 py-2 rounded-full text-sm font-medium"
                 >
                   Sign In
@@ -201,7 +217,7 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
                   ) : (
                     <button
                       onClick={() => {
-                        signInWithGoogle();
+                        void handleSignIn();
                         setMobileMenuOpen(false);
                       }}
                       className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-left"

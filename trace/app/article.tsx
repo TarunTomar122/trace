@@ -9,6 +9,7 @@ import {
   Dimensions,
   Platform,
   Share,
+  InteractionManager,
 } from 'react-native';
 import ViewShot from 'react-native-view-shot';
 import RNShare from 'react-native-share';
@@ -1335,19 +1336,20 @@ export default function ArticleScreen() {
   };
 
   useEffect(() => {
-    if (!item) {
-      return;
-    }
-    checkBookmarked(item.id).then(setBookmarked);
-    logReadingEvent({
-      eventType: 'summary_open',
-      itemId: item.id,
-      title: item.title,
-      url: item.url,
-      itemType: item.type || item.source,
-      feedCategory: item.metadata?.feed_category || item.feed_type,
+    if (!item) return;
+    const handle = InteractionManager.runAfterInteractions(() => {
+      checkBookmarked(item.id).then(setBookmarked);
+      logReadingEvent({
+        eventType: 'summary_open',
+        itemId: item.id,
+        title: item.title,
+        url: item.url,
+        itemType: item.type || item.source,
+        feedCategory: item.metadata?.feed_category || item.feed_type,
+      });
+      updateStreak();
     });
-    updateStreak();
+    return () => handle.cancel();
   }, [item, router]);
 
   if (!item) {

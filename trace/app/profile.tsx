@@ -1,4 +1,4 @@
-import { Linking, Pressable, ScrollView, StyleSheet, View, Text, Switch, Alert } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View, Text, Switch, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
@@ -202,12 +202,15 @@ export default function ProfileScreen() {
       const isAvailable = await StoreReview.isAvailableAsync();
       if (isAvailable) {
         await StoreReview.requestReview();
-      } else {
-        Alert.alert('Not Available', 'App rating is not available on this device.');
+        return;
       }
     } catch (error) {
-      console.warn('[Profile] Error requesting review:', error);
+      console.warn('[Profile] In-app review failed, opening store:', error);
     }
+    const storeUrl = Platform.OS === 'ios'
+      ? 'https://apps.apple.com/app/id6745196498?action=write-review'
+      : 'https://play.google.com/store/apps/details?id=online.yourtrace.app';
+    Linking.openURL(storeUrl);
   };
 
   const handleDeleteAccount = () => {

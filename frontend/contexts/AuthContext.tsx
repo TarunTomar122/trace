@@ -4,19 +4,29 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
   User,
   signInWithPopup,
+  signInWithRedirect,
   signOut as firebaseSignOut,
   onAuthStateChanged
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
-import { getOrCreateUserProfile, getUserProfile, UserProfile } from '@/lib/firestore';
+import { getOrCreateUserProfile, getUserProfile, syncAffiliateAttributionToProfile, UserProfile } from '@/lib/firestore';
+import { readAffiliateAttribution } from '@/lib/affiliate';
 import { identifyUser, resetUser, trackSignIn, trackSignOut } from '@/lib/posthog';
+
+export type SignInIntent = 'read' | 'checkout';
+
+export type SignInResult =
+  | { status: 'success'; user: User; profile: UserProfile | null; intent: SignInIntent }
+  | { status: 'redirecting'; intent: SignInIntent }
+  | { status: 'cancelled'; code?: string; intent: SignInIntent }
+  | { status: 'error'; code?: string; message: string; intent: SignInIntent };
 
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
   profileResolved: boolean;
-  signInWithGoogle: (intent?: 'read' | 'checkout') => Promise<void>;
+  signInWithGoogle: (intent?: SignInIntent, options?: { rememberIntent?: boolean }) => Promise<SignInResult>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -26,7 +36,7 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   loading: true,
   profileResolved: false,
-  signInWithGoogle: async () => {},
+  signInWithGoogle: async () => ({ status: 'cancelled', intent: 'read' }),
   signOut: async () => {},
   refreshProfile: async () => {},
 });
@@ -34,6 +44,45 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 const CHECKOUT_INTENT_KEY = 'trace_post_auth_intent';
+
+export function consumePendingPostAuthIntent(): SignInIntent | null {
+  if (typeof window === 'undefined') return null;
+  const intent = sessionStorage.getItem(CHECKOUT_INTENT_KEY);
+  if (intent === 'read' || intent === 'checkout') {
+    sessionStorage.removeItem(CHECKOUT_INTENT_KEY);
+    return intent;
+  }
+  return null;
+}
+
+function setPendingPostAuthIntent(intent: SignInIntent | null) {
+  if (typeof window === 'undefined') return;
+  if (intent) {
+    sessionStorage.setItem(CHECKOUT_INTENT_KEY, intent);
+    return;
+  }
+  sessionStorage.removeItem(CHECKOUT_INTENT_KEY);
+}
+
+export function getPostAuthDestination(profile: UserProfile | null, intent: SignInIntent = 'read'): string {
+  if (!profile?.onboarded) {
+    return intent === 'checkout' ? '/onboarding?intent=checkout' : '/onboarding';
+  }
+  return intent === 'checkout' ? '/profile?tab=subscription&intent=checkout' : '/feed';
+}
+
+function isPopupFallbackEnvironment() {
+  if (typeof window === 'undefined') return false;
+  const ua = window.navigator.userAgent || '';
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+  const isEmbedded = /(FBAN|FBAV|Instagram|Line|LinkedInApp|wv|WebView)/i.test(ua);
+  return isMobile || isEmbedded;
+}
+
+function shouldFallbackToRedirect(errorCode?: string) {
+  return errorCode === 'auth/popup-blocked'
+    || errorCode === 'auth/operation-not-supported-in-this-environment';
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -58,6 +107,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error loading profile:', error);
       throw error;
+    }
+  };
+
+  const syncPendingAffiliate = async (uid: string, profile: UserProfile | null) => {
+    if (profile?.affiliateCode) return;
+    const attribution = readAffiliateAttribution();
+    if (!attribution?.code) return;
+    try {
+      await syncAffiliateAttributionToProfile(uid, attribution);
+      setProfile((prev) => prev ? {
+        ...prev,
+        affiliateCode: attribution.code,
+        affiliateLandingPath: attribution.landingPath || null,
+        utmSource: attribution.utmSource || null,
+        utmCampaign: attribution.utmCampaign || null,
+        utmMedium: attribution.utmMedium || null,
+      } : prev);
+    } catch (error) {
+      console.error('Error syncing pending affiliate attribution:', error);
     }
   };
 
@@ -95,6 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           name: firebaseUser.displayName,
           onboarded: userProfile?.onboarded || false,
         });
+        await syncPendingAffiliate(firebaseUser.uid, userProfile);
       } else {
         setProfile(null);
         setProfileResolved(true);
@@ -105,22 +174,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const signInWithGoogle = async (intent: 'read' | 'checkout' = 'read') => {
+  const signInWithGoogle = async (
+    intent: SignInIntent = 'read',
+    options?: { rememberIntent?: boolean }
+  ): Promise<SignInResult> => {
+    const rememberIntent = options?.rememberIntent ?? true;
     try {
-      if (typeof window !== 'undefined') {
-        if (intent === 'checkout') {
-          sessionStorage.setItem(CHECKOUT_INTENT_KEY, 'checkout');
-        } else {
-          sessionStorage.removeItem(CHECKOUT_INTENT_KEY);
-        }
-      }
+      setPendingPostAuthIntent(rememberIntent ? intent : null);
       const result = await signInWithPopup(auth, googleProvider);
       if (result.user) {
+        setPendingPostAuthIntent(null);
         setProfileResolved(false);
         const userProfile = await loadProfile(result.user, { allowCreate: true });
-        const postAuthIntent =
-          typeof window !== 'undefined' ? sessionStorage.getItem(CHECKOUT_INTENT_KEY) : null;
-        
+
         // Track sign in with PostHog
         identifyUser(result.user.uid, {
           email: result.user.email,
@@ -128,21 +194,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           onboarded: userProfile?.onboarded || false,
         });
         trackSignIn("google");
-        
-        if (!userProfile?.onboarded) {
-          window.location.href = postAuthIntent === 'checkout'
-            ? '/onboarding?intent=checkout'
-            : '/onboarding';
-        } else if (postAuthIntent === 'checkout') {
-          sessionStorage.removeItem(CHECKOUT_INTENT_KEY);
-          window.location.href = '/profile?tab=subscription&intent=checkout';
-        } else {
-          window.location.href = '/feed';
-        }
+        await syncPendingAffiliate(result.user.uid, userProfile);
+
+        return {
+          status: 'success',
+          user: result.user,
+          profile: userProfile,
+          intent,
+        };
       }
+      setPendingPostAuthIntent(null);
+      return { status: 'cancelled', intent };
     } catch (error) {
       console.error('Error signing in with Google:', error);
-      throw error;
+      const errorCode = typeof error === 'object' && error && 'code' in error ? String(error.code) : undefined;
+      const errorMessage = error instanceof Error ? error.message : 'Sign-in failed';
+
+      if (shouldFallbackToRedirect(errorCode) && isPopupFallbackEnvironment()) {
+        await signInWithRedirect(auth, googleProvider);
+        return { status: 'redirecting', intent };
+      }
+
+      setPendingPostAuthIntent(null);
+
+      if (errorCode === 'auth/popup-closed-by-user' || errorCode === 'auth/cancelled-popup-request') {
+        return { status: 'cancelled', code: errorCode, intent };
+      }
+
+      return {
+        status: 'error',
+        code: errorCode,
+        message: errorMessage,
+        intent,
+      };
     }
   };
 

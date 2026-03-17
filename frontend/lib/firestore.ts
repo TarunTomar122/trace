@@ -462,6 +462,14 @@ export interface UserProfile {
   newsletterFrequency?: string; // Default 'daily'
   newsletterLastSentAt?: string | null; // ISO datetime
 
+  // Web affiliate attribution
+  affiliateCode?: string | null;
+  affiliateAttributedAt?: Timestamp | string | null;
+  affiliateLandingPath?: string | null;
+  utmSource?: string | null;
+  utmCampaign?: string | null;
+  utmMedium?: string | null;
+
   // Timestamps
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;
@@ -888,6 +896,12 @@ export async function createUserProfile(
     lastCheckoutCreatedAt: null,
     cancelledAt: null,
     willCancelAt: null,
+    affiliateCode: null,
+    affiliateAttributedAt: null,
+    affiliateLandingPath: null,
+    utmSource: null,
+    utmCampaign: null,
+    utmMedium: null,
     createdAt: serverTimestamp() as Timestamp,
     updatedAt: serverTimestamp() as Timestamp,
     onboardedAt: null,
@@ -1005,6 +1019,36 @@ export async function updateUserProfile(
     await setDoc(docRef, cleanData, { merge: true });
   } catch (error) {
     console.error('Error updating user profile:', error);
+    throw error;
+  }
+}
+
+export async function syncAffiliateAttributionToProfile(
+  uid: string,
+  attribution: {
+    code: string;
+    landingPath?: string | null;
+    utmSource?: string | null;
+    utmCampaign?: string | null;
+    utmMedium?: string | null;
+  }
+): Promise<void> {
+  const existing = await getUserProfile(uid);
+  if (existing?.affiliateCode) return;
+
+  try {
+    const docRef = doc(firestore, "user_profiles", uid);
+    await setDoc(docRef, {
+      affiliateCode: attribution.code,
+      affiliateAttributedAt: serverTimestamp(),
+      affiliateLandingPath: attribution.landingPath || null,
+      utmSource: attribution.utmSource || null,
+      utmCampaign: attribution.utmCampaign || null,
+      utmMedium: attribution.utmMedium || null,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    console.error("Error syncing affiliate attribution:", error);
     throw error;
   }
 }

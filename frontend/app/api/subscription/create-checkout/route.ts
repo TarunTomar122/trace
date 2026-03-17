@@ -2,6 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
 
+function readAffiliateCookie(raw: string | undefined) {
+  if (!raw) return null;
+  try {
+    return JSON.parse(decodeURIComponent(raw)) as {
+      code?: string;
+      landingPath?: string | null;
+      utmSource?: string | null;
+      utmCampaign?: string | null;
+      utmMedium?: string | null;
+    };
+  } catch {
+    return null;
+  }
+}
+
 // This endpoint creates a Dodo Payments checkout session for subscription
 export async function POST(request: NextRequest) {
   try {
@@ -109,6 +124,20 @@ export async function POST(request: NextRequest) {
     // Get DataFast visitor ID from cookies
     const cookieStore = await cookies();
     const datafastVisitorId = cookieStore.get('datafast_visitor_id')?.value;
+    const affiliateCookie = readAffiliateCookie(cookieStore.get('trace_affiliate')?.value);
+    const affiliateCode = userData?.affiliateCode || affiliateCookie?.code || null;
+
+    if (affiliateCode && !userData?.affiliateCode) {
+      await adminDb.collection('user_profiles').doc(userId).set({
+        affiliateCode,
+        affiliateAttributedAt: new Date(),
+        affiliateLandingPath: affiliateCookie?.landingPath || null,
+        utmSource: affiliateCookie?.utmSource || null,
+        utmCampaign: affiliateCookie?.utmCampaign || null,
+        utmMedium: affiliateCookie?.utmMedium || null,
+        updatedAt: new Date(),
+      }, { merge: true });
+    }
     
     const checkoutResponse = await fetch(`${DODO_BASE_URL}/checkouts`, {
       method: 'POST',
@@ -134,6 +163,11 @@ export async function POST(request: NextRequest) {
           user_id: userId,
           source: 'trace_app',
           datafast_visitor_id: datafastVisitorId, // Pass DataFast visitor ID for conversion tracking
+          affiliate_code: affiliateCode,
+          affiliate_landing_path: userData?.affiliateLandingPath || affiliateCookie?.landingPath || null,
+          utm_source: userData?.utmSource || affiliateCookie?.utmSource || null,
+          utm_campaign: userData?.utmCampaign || affiliateCookie?.utmCampaign || null,
+          utm_medium: userData?.utmMedium || affiliateCookie?.utmMedium || null,
         },
         return_url: `${process.env.NEXT_PUBLIC_APP_URL}/feed?subscription=success`,
       }),

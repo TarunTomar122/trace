@@ -43,6 +43,7 @@ from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
 from v3.lib.store import V3Store, TRENDING_POOL, _today_ist  # noqa: E402
 from v3.lib.content import fetch_content, fetch_og_image  # noqa: E402
 from v3.lib.summarizer import batch_presummarize, generate_summary  # noqa: E402
+from v3.lib.interest_notifications import send_interest_notifications  # noqa: E402
 from v3.lib.diversity import (  # noqa: E402
     STOPWORDS as DIVERSITY_STOPWORDS,
     dedupe_trending_latest_story,
@@ -250,6 +251,7 @@ def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Build Trending feed (global)")
     p.add_argument("--skip-pool", action="store_true", help="Skip pool refresh, use cached articles")
     p.add_argument("--pool-only", action="store_true", help="Only refresh pool, don't build feed")
+    p.add_argument("--skip-notifications", action="store_true", help="Skip interest-matched push notifications")
     p.add_argument("--limit-per-source", type=int, default=DEFAULT_LIMIT_PER_SOURCE)
     p.add_argument("--max-age-hours", type=int, default=DEFAULT_MAX_AGE_HOURS)
     p.add_argument("--date", default="", help="Target date (default: today IST)")
@@ -1829,6 +1831,10 @@ def build_global_feed(
     target_date = args.date.strip() or _today_ist()
     max_age_hours = args.max_age_hours
     max_age_days = max(1, max_age_hours // 24 + 1)
+    previous_global_feed = store.load_global_feed(target_date)
+    previous_topics = previous_global_feed.get("trending_topics", [])
+    if not isinstance(previous_topics, list):
+        previous_topics = []
 
     _log(f"Building GLOBAL trending feed for date={target_date}")
 
@@ -1902,6 +1908,9 @@ def build_global_feed(
             "topic_overview_generated": 0,
             "topic_overview_cached": 0,
             "rejected": 0,
+            "new_topics": 0,
+            "users_matched": 0,
+            "notifications_sent": 0,
         }
 
     # ------------------------------------------------------------------
@@ -1939,6 +1948,9 @@ def build_global_feed(
         "topic_overview_generated": 0,
         "topic_overview_cached": 0,
         "rejected": presummary.get("rejected", 0) + presummary.get("failed", 0),
+        "new_topics": 0,
+        "users_matched": 0,
+        "notifications_sent": 0,
     }
 
     feed_items: list[dict[str, Any]] = []
@@ -1986,6 +1998,20 @@ def build_global_feed(
     stats["topics"] = int(topic_stats.get("topics", 0))
     stats["topic_overview_generated"] = int(topic_stats.get("overview_generated", 0))
     stats["topic_overview_cached"] = int(topic_stats.get("overview_cached", 0))
+
+    if not args.skip_notifications:
+        notification_stats = send_interest_notifications(
+            store=store,
+            previous_topics=previous_topics,
+            current_topics=trending_topics,
+        )
+        stats.update(notification_stats)
+        _log(
+            "Interest notifications: "
+            f"new_topics={notification_stats.get('new_topics', 0)} "
+            f"users_matched={notification_stats.get('users_matched', 0)} "
+            f"sent={notification_stats.get('notifications_sent', 0)}"
+        )
 
     store.record_run("trending", {"date": target_date, "global": True, **stats})
     _log(f"Global trending feed done: {stats}")

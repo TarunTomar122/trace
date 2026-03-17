@@ -86,14 +86,31 @@ function truncateText(text: string, maxLength: number): { text: string; truncate
   return { text: text.substring(0, maxLength).trim() + '...', truncated: true };
 }
 
+function countWords(value: string): number {
+  return value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .length;
+}
+
 function splitSummaryParagraphs(text: string): { first: string; rest: string } {
   const value = (text || '').trim();
   if (!value) return { first: '', rest: '' };
   const parts = value.split(/(?<=[.!?])\s+/).filter(Boolean);
   if (parts.length < 2) return { first: value, rest: '' };
+
+  // Avoid tiny lead "sentences" caused by abbreviations like "MSFT." or "U.S."
+  let firstParts = [parts[0].trim()];
+  let cursor = 1;
+  while (cursor < parts.length && countWords(firstParts.join(' ')) < 5) {
+    firstParts.push(parts[cursor].trim());
+    cursor += 1;
+  }
+
   return {
-    first: parts[0].trim(),
-    rest: parts.slice(1).join(' ').trim(),
+    first: firstParts.join(' ').trim(),
+    rest: parts.slice(cursor).join(' ').trim(),
   };
 }
 

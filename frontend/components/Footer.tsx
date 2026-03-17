@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 export default function Footer() {
+  const googlePlayUrl = "/api/affiliate/outbound?target=android_app&next=" + encodeURIComponent("https://play.google.com/store/apps/details?id=online.yourtrace.app");
   return (
     <footer className="border-t border-border/20 mt-16">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
@@ -18,7 +19,7 @@ export default function Footer() {
             </div>
           </div>
           <a
-            href="https://play.google.com/store/apps/details?id=online.yourtrace.app"
+            href={googlePlayUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background transition-all hover:bg-foreground/90 hover:shadow-lg hover:shadow-black/10 whitespace-nowrap"

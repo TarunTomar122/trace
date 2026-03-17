@@ -1566,3 +1566,40 @@ export async function getArticleById(articleId: string): Promise<FeedItem | null
     return null;
   }
 }
+
+/**
+ * Fetch a trending topic by topic id from the recent global feeds.
+ * Used for deep linking from notifications carrying `topicId`.
+ */
+export async function getTopicById(topicId: string): Promise<TrendingTopic | null> {
+  try {
+    const datesToTry: string[] = [];
+    for (let offset = 0; offset < 5; offset++) {
+      const d = new Date();
+      d.setDate(d.getDate() - offset);
+      datesToTry.push(d.toISOString().split('T')[0]);
+    }
+
+    for (const date of datesToTry) {
+      const ref = doc(firestore, 'v3_user_feeds', '_global', 'daily', date);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) continue;
+
+      const data = snap.data() || {};
+      const topics = Array.isArray(data.trending_topics) ? data.trending_topics : [];
+      const matched = topics.find((topic: any) => {
+        const id = String(topic?.id || topic?.topic_key || '').trim();
+        return id === topicId;
+      });
+
+      if (matched) {
+        return matched as TrendingTopic;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('[firestore] Error fetching topic by ID:', error);
+    return null;
+  }
+}

@@ -40,6 +40,7 @@ import {
   CAREER_GOALS,
   completeOnboarding,
 } from '@/lib/firestore';
+import { writeCachedProfileInterests } from '@/lib/profile-cache';
 
 const ACCENT = '#F59E0B';
 const ACCENT_BG_DARK = '#1a1408';
@@ -271,6 +272,7 @@ export default function OnboardingScreen() {
         careerGoals: selectedGoals,
       });
 
+      await writeCachedProfileInterests(user.uid, selectedInterests);
       await refreshProfile();
       router.replace('/paywall?fromOnboarding=true');
     } catch (error) {
