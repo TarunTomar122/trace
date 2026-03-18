@@ -229,7 +229,7 @@ function ProfileContent() {
               onToggle={() => editing === 'role' ? cancelEditing() : startEditing('role')}
             />
             {editing === 'role' && (
-              <div className="px-5 py-4 border-t border-border/15 space-y-4 bg-surface">
+              <div className="px-5 py-4 border-t border-border/15 space-y-4 bg-white">
                 <div>
                   <p className="text-xs font-medium text-secondary/60 mb-3">Role</p>
                   <div className="grid grid-cols-2 gap-2">
@@ -278,7 +278,7 @@ function ProfileContent() {
               onToggle={() => editing === 'interests' ? cancelEditing() : startEditing('interests')}
             />
             {editing === 'interests' && (
-              <div className="px-5 py-4 border-t border-border/15 space-y-3 bg-surface">
+              <div className="px-5 py-4 border-t border-border/15 space-y-3 bg-white">
                 <p className="text-xs text-secondary/55">Pick 3-5 topics</p>
                 <div className="flex flex-wrap gap-2">
                   {ONBOARDING_INTERESTS.map((interest) => {
@@ -313,7 +313,7 @@ function ProfileContent() {
               onToggle={() => editing === 'goals' ? cancelEditing() : startEditing('goals')}
             />
             {editing === 'goals' && (
-              <div className="px-5 py-4 border-t border-border/15 space-y-3 bg-surface">
+              <div className="px-5 py-4 border-t border-border/15 space-y-3 bg-white">
                 <p className="text-xs text-secondary/55">Pick up to 3</p>
                 <div className="grid gap-2">
                   {CAREER_GOALS.map((goal) => {
@@ -377,7 +377,7 @@ function ProfileContent() {
         {/* Desktop */}
         <div className="hidden md:block">
           <div
-            className="flex rounded-2xl bg-surface overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+            className="flex rounded-2xl bg-white overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
             style={{ height: 'calc(100vh - 120px)', minHeight: '500px' }}
           >
             {/* Sidebar */}
@@ -451,7 +451,7 @@ function ProfileContent() {
 
         {/* Mobile */}
         <div className="md:hidden">
-          <div className="rounded-2xl bg-surface overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+          <div className="rounded-2xl bg-white overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             {/* User card */}
             <div className="p-5 border-b border-border/20">
               <div className="flex items-center gap-3">

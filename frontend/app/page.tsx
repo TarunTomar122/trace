@@ -245,35 +245,36 @@ export default function LandingPage() {
 
             <Reveal delay={150}>
               <div className="h-full rounded-[28px] bg-[#151515] p-8 text-white shadow-[0_32px_80px_rgba(15,15,15,0.2)] sm:p-10">
-                <div className="flex flex-col gap-6 lg:flex-row">
-                  <PricingCard
-                    tone="dark"
-                    label="Free"
-                    price="Try it"
-                    sublabel="A lightweight daily skim"
-                    items={[
-                      '3 topic briefings per day',
-                      'Summaries, key points, and timelines',
-                      'Daily newsletter access',
-                    ]}
-                    actionLabel="Start free"
-                    onClick={handleStartReading}
-                  />
-                  <PricingCard
-                    tone="light"
-                    label="Pro"
-                    price="$2.99"
-                    sublabel="per month, after 3-day trial"
-                    items={[
-                      'Full daily topic feed',
-                      'Unlimited topic briefings',
-                      'A much cleaner habit than doomscrolling',
-                    ]}
-                    actionLabel="Start free trial"
-                    onClick={handleStartTrial}
-                    popular
-                  />
+                <p className="text-[11px] font-semibold text-white/30 uppercase tracking-[0.18em] mb-5">Trace Pro</p>
+                <h3 className="text-[1.55rem] font-bold tracking-[-0.025em] leading-tight mb-3">
+                  The news habit that<br />doesn't waste your time.
+                </h3>
+                <p className="text-[14px] text-white/45 mb-8 leading-relaxed">
+                  Try it free for 3 days. No charge until the trial ends.
+                </p>
+                <div className="space-y-5 mb-8">
+                  {[
+                    { title: 'Your morning briefing, every day', desc: 'A full feed of stories filtered to what you follow — AI, tech, markets, whatever you care about.' },
+                    { title: 'The point, not the whole article', desc: 'Summary, key takeaways, and why it matters — in under a minute.' },
+                    { title: '10 outlets covered it. We show you one.', desc: 'Related stories collapsed into one clear view, no duplicates.' },
+                    { title: 'No rabbit holes', desc: "Skim today's feed in 5 minutes. Know what's going on. Move on." },
+                  ].map((b, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <Check size={13} className="shrink-0 mt-[3px] text-white/40" strokeWidth={2.5} />
+                      <div>
+                        <p className="text-[13px] font-semibold text-white/90 leading-snug">{b.title}</p>
+                        <p className="text-[12px] text-white/40 mt-0.5 leading-relaxed">{b.desc}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
+                <button
+                  onClick={handleStartTrial}
+                  className="w-full py-3.5 rounded-full text-[13px] font-semibold bg-white text-[#151515] transition-all hover:bg-white/90 hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  Start Free Trial
+                </button>
+                <p className="text-[11px] text-white/25 mt-2.5 text-center">$2.99/month after 3 days · Cancel anytime</p>
               </div>
             </Reveal>
           </div>

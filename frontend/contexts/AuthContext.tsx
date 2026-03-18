@@ -183,7 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setPendingPostAuthIntent(rememberIntent ? intent : null);
       const result = await signInWithPopup(auth, googleProvider);
       if (result.user) {
-        setPendingPostAuthIntent(null);
+        // Keep intent in sessionStorage — page.tsx useEffect reads it once profileResolved=true
         setProfileResolved(false);
         const userProfile = await loadProfile(result.user, { allowCreate: true });
 

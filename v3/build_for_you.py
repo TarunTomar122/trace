@@ -38,13 +38,23 @@ load_dotenv(REPO_ROOT / ".env")
 from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
 from v3.lib.content import fetch_og_image  # noqa: E402
 from v3.lib.store import V3Store, _today_ist  # noqa: E402
+from v1.tools.youtube_transcript import fetch_youtube_transcript  # noqa: E402
+
+try:
+    import yt_dlp  # type: ignore
+except Exception:  # pragma: no cover - optional runtime dependency
+    yt_dlp = None
 
 CONFIG_PATH = "v3/config/for_you_sources.json"
 BRIEF_SOURCES_PATH = "v3/config/brief_sources.json"
 DEFAULT_ITEMS = 0
 FOR_YOU_BRIEF_BUCKET = "for_you_brief_v21_top_stories"
 FOR_YOU_BRIEF_MODEL = "gpt-4o"
+FOR_YOU_VIDEO_BUCKET = "for_you_video_v1"
+FOR_YOU_VIDEO_MODEL = "gpt-4o-mini"
 # gpt-4o for cost efficiency (~$0.01/brief). Switch to "gpt-5" if quality needs a boost.
+FOR_YOU_VIDEO_CHANNEL_URL = "https://www.youtube.com/@CNET/videos"
+FOR_YOU_VIDEO_SCAN_LIMIT = 5
 
 HN_TIMEOUT = 15
 REDDIT_TIMEOUT = 15
@@ -191,10 +201,227 @@ subtitle — one punchy line that makes you want to keep reading
 
 short closing line"""
 
+VIDEO_PROMPT = """You are writing a high-value summary for one recent tech video.
+
+The reader wants a clean text version, not video metadata.
+
+SOURCE TITLE: {title}
+SOURCE URL: {url}
+TRANSCRIPT:
+{transcript}
+
+Return JSON with EXACT structure:
+{{
+  "headline": "Short factual headline",
+  "overview": "2-3 sentence overview focused on what is interesting and why it matters",
+  "key_points": ["3-5 concrete points with specific features, products, numbers, capabilities, tradeoffs, or implications"]
+}}
+
+RULES:
+- Do not mention the channel, publisher, or host unless essential to understanding the story
+- No timeline
+- No hype, no filler, no vague 'industry trend' language
+- Be faithful to the transcript
+- Headline should be short and natural, not clickbait
+- Overview should carry the main value, not just restate the title
+- Key points should be specific and additive, not paraphrases of the overview
+"""
+
 
 def _log(msg: str) -> None:
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{ts}] [v3-for-you] {msg}")
+
+
+def _estimate_reading_time_minutes(text: str) -> int:
+    words = len(str(text or "").split())
+    if words <= 0:
+        return 1
+    return max(1, int(math.ceil(words / 220)))
+
+
+def _first_sentence(text: str, max_len: int = 140) -> str:
+    cleaned = " ".join(str(text or "").split()).strip()
+    if not cleaned:
+        return ""
+    parts = re.split(r"(?<=[.!?])\s+", cleaned)
+    sentence = parts[0].strip() if parts else cleaned
+    if len(sentence) <= max_len:
+        return sentence
+    return sentence[: max_len - 1].rstrip() + "…"
+
+
+def _fetch_recent_channel_videos(limit: int = FOR_YOU_VIDEO_SCAN_LIMIT) -> list[dict[str, Any]]:
+    if yt_dlp is None:
+        return []
+
+    options = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "extract_flat": "in_playlist",
+        "playlistend": limit,
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(options) as ydl:
+            info = ydl.extract_info(FOR_YOU_VIDEO_CHANNEL_URL, download=False) or {}
+    except Exception as exc:
+        _log(f"  recent video fetch failed: {exc}")
+        return []
+
+    videos: list[dict[str, Any]] = []
+    for entry in info.get("entries", []) or []:
+        if not isinstance(entry, dict):
+            continue
+        video_id = str(entry.get("id", "")).strip()
+        title = str(entry.get("title", "")).strip()
+        if not video_id or not title:
+            continue
+        url = str(entry.get("webpage_url") or entry.get("url") or "").strip()
+        if not url or not url.startswith("http"):
+            url = f"https://www.youtube.com/watch?v={video_id}"
+        thumbnail = str(entry.get("thumbnail", "")).strip()
+        if not thumbnail:
+            thumbs = entry.get("thumbnails")
+            if isinstance(thumbs, list) and thumbs:
+                last = thumbs[-1] if isinstance(thumbs[-1], dict) else {}
+                thumbnail = str(last.get("url", "")).strip()
+        videos.append({
+            "video_id": video_id,
+            "url": url,
+            "title": title,
+            "thumbnail": thumbnail,
+            "published_date": str(entry.get("upload_date", "")).strip(),
+        })
+    return videos
+
+
+def _normalize_video_summary(raw: dict[str, Any], transcript: str, source_title: str) -> dict[str, Any]:
+    headline = str(raw.get("headline", "")).strip() or source_title
+    overview = " ".join(str(raw.get("overview", "")).split()).strip()
+    key_points = raw.get("key_points") if isinstance(raw.get("key_points"), list) else []
+    cleaned_points = [
+        " ".join(str(point).split()).strip()
+        for point in key_points
+        if str(point).strip()
+    ][:5]
+    subtitle = _first_sentence(overview) or headline
+    return {
+        "title": headline,
+        "short_article": {
+            "subtitle": subtitle,
+            "why_it_matters": "",
+            "key_takeaways": cleaned_points,
+            "body": overview,
+            "bottom_line": "",
+        },
+        "reading_time_minutes": _estimate_reading_time_minutes(transcript),
+    }
+
+
+def _generate_daily_video_summary(
+    store: V3Store,
+    *,
+    target_date: str,
+) -> dict[str, Any] | None:
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        _log("  daily video skipped: OPENAI_API_KEY not configured")
+        return None
+
+    recent_videos = _fetch_recent_channel_videos(FOR_YOU_VIDEO_SCAN_LIMIT)
+    if not recent_videos:
+        _log("  daily video skipped: no recent channel videos found")
+        return None
+
+    client = OpenAI(api_key=api_key)
+
+    for video in recent_videos:
+        video_url = str(video.get("url", "")).strip()
+        title = str(video.get("title", "")).strip()
+        if not video_url or not title:
+            continue
+
+        cached = store.get_cached_summary_v2(video_url, FOR_YOU_VIDEO_BUCKET)
+        if cached:
+            cached_summary = cached.get("summary")
+            if isinstance(cached_summary, dict):
+                return {
+                    "video": video,
+                    "summary": cached_summary,
+                    "cached": True,
+                }
+
+        transcript = fetch_youtube_transcript(video_url)
+        if not transcript or len(transcript) < 800:
+            continue
+
+        prompt = VIDEO_PROMPT.format(
+            title=title,
+            url=video_url,
+            transcript=transcript[:12000],
+        )
+
+        try:
+            response = client.chat.completions.create(
+                model=FOR_YOU_VIDEO_MODEL,
+                messages=[
+                    {"role": "system", "content": "Return valid JSON only."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.3,
+                response_format={"type": "json_object"},
+                timeout=60,
+            )
+            raw = json.loads(response.choices[0].message.content or "{}")
+            summary = _normalize_video_summary(raw, transcript, title)
+            store.save_cached_summary_v2(video_url, FOR_YOU_VIDEO_BUCKET, summary, FOR_YOU_VIDEO_MODEL)
+            return {
+                "video": video,
+                "summary": summary,
+                "cached": False,
+            }
+        except Exception as exc:
+            _log(f"  daily video summary failed for {video_url}: {exc}")
+
+    _log("  daily video skipped: no transcript-backed summary could be generated")
+    return None
+
+
+def _build_daily_video_feed_item(target_date: str, payload: dict[str, Any]) -> dict[str, Any]:
+    video = payload.get("video", {}) if isinstance(payload.get("video"), dict) else {}
+    summary = payload.get("summary", {}) if isinstance(payload.get("summary"), dict) else {}
+    video_url = str(video.get("url", "")).strip()
+    item_id = hashlib.sha256(f"for_you_video|{video_url}".encode("utf-8")).hexdigest()[:32]
+
+    return {
+        "id": f"fy_video_{item_id}",
+        "url": video_url,
+        "title": summary.get("title", "") or video.get("title", ""),
+        "type": "video",
+        "source": "youtube",
+        "source_name": "",
+        "interest_id": "tech",
+        "subinterest_id": "video-brief",
+        "feed_type": "for_you",
+        "published_date": target_date,
+        "thumbnail": video.get("thumbnail", ""),
+        "summary": {
+            "short_article": summary.get("short_article", {}),
+            "reading_time_minutes": summary.get("reading_time_minutes", 2),
+        },
+        "metadata": {
+            "feed_type": "for_you",
+            "content_length": len(str((summary.get("short_article") or {}).get("body", ""))),
+            "synthesized": True,
+            "source_count": 1,
+            "why_relevant": "A useful recent tech story in text form.",
+            "daily_video": True,
+            "video_url": video_url,
+            "video_title": video.get("title", ""),
+        },
+    }
 
 
 # ── Content pool fetching ─────────────────────────────────────────────
@@ -859,8 +1086,22 @@ def build_user_feeds(
         "items_total": 0,
         "briefs_generated": 0,
         "briefs_cached": 0,
+        "daily_video_generated": 0,
+        "daily_video_cached": 0,
         "rejected_items": 0,
     }
+
+    daily_video_item: dict[str, Any] | None = None
+    try:
+        daily_video_payload = _generate_daily_video_summary(store, target_date=target_date)
+        if daily_video_payload:
+            daily_video_item = _build_daily_video_feed_item(target_date, daily_video_payload)
+            if daily_video_payload.get("cached"):
+                stats["daily_video_cached"] += 1
+            else:
+                stats["daily_video_generated"] += 1
+    except Exception as exc:
+        _log(f"  daily video generation failed: {exc}")
 
     for profile in users:
         uid = str(profile.get("uid", "")).strip()
@@ -899,14 +1140,18 @@ def build_user_feeds(
                     summary,
                 )
             )
-            feed_items = feed_items[:items_per_user]
         else:
             stats["rejected_items"] += 1
+
+        if daily_video_item:
+            feed_items.append(dict(daily_video_item))
+
+        feed_items = feed_items[:items_per_user]
 
         store.write_feed_section(uid, target_date, "for_you", feed_items)
         stats["users"] += 1
         stats["items_total"] += len(feed_items)
-        _log(f"  user={uid} wrote {len(feed_items)} for_you briefs")
+        _log(f"  user={uid} wrote {len(feed_items)} for_you items")
 
     store.record_run("for_you", {"date": target_date, **stats})
     _log(f"For You feeds done: {stats}")

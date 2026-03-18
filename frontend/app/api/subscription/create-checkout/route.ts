@@ -162,12 +162,12 @@ export async function POST(request: NextRequest) {
         metadata: {
           user_id: userId,
           source: 'trace_app',
-          datafast_visitor_id: datafastVisitorId, // Pass DataFast visitor ID for conversion tracking
-          affiliate_code: affiliateCode,
-          affiliate_landing_path: userData?.affiliateLandingPath || affiliateCookie?.landingPath || null,
-          utm_source: userData?.utmSource || affiliateCookie?.utmSource || null,
-          utm_campaign: userData?.utmCampaign || affiliateCookie?.utmCampaign || null,
-          utm_medium: userData?.utmMedium || affiliateCookie?.utmMedium || null,
+          datafast_visitor_id: datafastVisitorId ?? '',
+          affiliate_code: affiliateCode ?? '',
+          affiliate_landing_path: userData?.affiliateLandingPath || affiliateCookie?.landingPath || '',
+          utm_source: userData?.utmSource || affiliateCookie?.utmSource || '',
+          utm_campaign: userData?.utmCampaign || affiliateCookie?.utmCampaign || '',
+          utm_medium: userData?.utmMedium || affiliateCookie?.utmMedium || '',
         },
         return_url: `${process.env.NEXT_PUBLIC_APP_URL}/feed?subscription=success`,
       }),

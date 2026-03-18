@@ -3,15 +3,15 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #d5d0c8;
+  --background: #f5f3ef;
   --foreground: #1a1a1a;
   --primary: #1a1a1a;
   --primary-foreground: #f5f3ef;
   --secondary: #6b6560;
   --border: #c4bfb7;
-  --surface: #f5f3ef;
-  --surface-secondary: #eae7e1;
-  --surface-tertiary: #e0ddd6;
+  --surface: #eae7e1;
+  --surface-secondary: #e0ddd6;
+  --surface-tertiary: #d5d0c8;
   --accent: #1a1a1a;
   --accent-foreground: #f5f3ef;
   --tab-inactive: #9a958e;

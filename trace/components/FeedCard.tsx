@@ -502,11 +502,15 @@ const tStyles = StyleSheet.create({
    ═══════════════════════════════════════════════════════════ */
 
 export function ForYouCard({ item, colorScheme, onPress, accentColor = ACCENT }: CardProps) {
-  const sourceName = item.source_name || item.source || '';
+  const sourceName = item.source_name || (item.type === 'video' ? 'Video Brief' : item.source || '');
   const initials = getSourceInitials(sourceName);
   const avatarBg = hashColor(sourceName);
   const timeAgo = getTimeAgo(item.published_date);
   const snippet = item.summary?.short_article?.subtitle || item.description || '';
+  const takeaways = (item.summary?.short_article?.key_takeaways || [])
+    .map((point) => stripMd(String(point)))
+    .filter(Boolean)
+    .slice(0, 2);
   const readTime = item.summary?.reading_time_minutes;
   const fallbackUrl = getArticleImage(null, item.title);
   const [imageUrl, setImageUrl] = useState(getArticleImage(item.thumbnail, item.title));
@@ -556,6 +560,21 @@ export function ForYouCard({ item, colorScheme, onPress, accentColor = ACCENT }:
           numberOfLines={2}>
           {stripMd(snippet)}
         </Text>
+      )}
+
+      {takeaways.length > 0 && (
+        <View style={fyStyles.takeawaysWrap}>
+          {takeaways.map((point, index) => (
+            <View key={`${item.id}-takeaway-${index}`} style={fyStyles.takeawayRow}>
+              <View style={[fyStyles.takeawayDot, { backgroundColor: accentColor }]} />
+              <Text
+                style={[fyStyles.takeawayText, { color: Colors[colorScheme].text }]}
+                numberOfLines={2}>
+                {point}
+              </Text>
+            </View>
+          ))}
+        </View>
       )}
 
       {/* Footer: read time */}
@@ -626,6 +645,28 @@ const fyStyles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 4,
+  },
+  takeawaysWrap: {
+    gap: 8,
+    marginTop: 8,
+  },
+  takeawayRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  takeawayDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 7,
+    flexShrink: 0,
+  },
+  takeawayText: {
+    flex: 1,
+    fontFamily: FontFamily.medium,
+    fontSize: 13,
+    lineHeight: 19,
   },
   footerRow: {
     flexDirection: 'row',

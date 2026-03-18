@@ -363,93 +363,64 @@ export default function SubscriptionManager() {
     );
   }
 
-  // Unsubscribed state — matches profile tab section style
+  // Unsubscribed state
   if (status === 'none') {
+    const benefits = [
+      { title: 'Your morning briefing, every day', desc: 'A full feed of stories filtered to what you follow — AI, tech, markets, and more.' },
+      { title: 'The point, not the whole article', desc: 'Summary, key takeaways, and why it matters — in under a minute.' },
+      { title: '10 outlets covered it. We show you one.', desc: 'Related stories collapsed into one clear view, no duplicates.' },
+      { title: 'No rabbit holes', desc: "Skim today's feed in 5 minutes. Know what's going on. Move on." },
+    ];
     return (
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="space-y-8"
+        className="space-y-7"
       >
-        {/* How it works section */}
-        <section className="pb-8 border-b border-gray-200 dark:border-gray-800">
-          <h2 className="text-xs font-medium uppercase tracking-wider text-secondary/60 mb-6 flex items-center gap-2">
-            <Lock size={14} className="text-foreground" />
-            What you get with Pro
+        <div>
+          <p className="text-[11px] font-semibold text-secondary/40 uppercase tracking-[0.18em] mb-3">Trace Pro</p>
+          <h2 className="text-xl font-bold text-foreground tracking-[-0.02em] leading-snug mb-1.5">
+            The news habit that<br />doesn't waste your time.
           </h2>
+          <p className="text-[13px] text-secondary/50">Try free for 3 days. No charge until the trial ends.</p>
+        </div>
 
-          <div className="space-y-5">
-            <div className="flex items-start gap-3.5">
-              <div className="w-9 h-9 rounded-full bg-amber-500 flex items-center justify-center shrink-0 mt-0.5">
-                <Zap size={14} className="text-white" />
-              </div>
+        <div className="space-y-4 pb-7 border-b border-border/15">
+          {benefits.map((b, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <CheckCircle2 size={15} className="shrink-0 mt-0.5 text-foreground/40" />
               <div>
-                <p className="text-sm font-semibold text-foreground">Unlimited topic access</p>
-                <p className="text-sm text-secondary mt-0.5">
-                  Get the full set of daily trending topics, summaries, and timelines.
-                </p>
+                <p className="text-[13px] font-semibold text-foreground">{b.title}</p>
+                <p className="text-[12px] text-secondary/50 mt-0.5">{b.desc}</p>
               </div>
             </div>
+          ))}
+        </div>
 
-            <div className="flex items-start gap-3.5">
-              <div className="w-9 h-9 rounded-full bg-amber-500/60 flex items-center justify-center shrink-0 mt-0.5">
-                <Bell size={14} className="text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">AI summaries in your style</p>
-                <p className="text-sm text-secondary mt-0.5">
-                  Read clean summaries with the context and key points worth remembering.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3.5">
-              <div className="w-9 h-9 rounded-full bg-amber-500/30 flex items-center justify-center shrink-0 mt-0.5">
-                <CheckCircle2 size={14} className="text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">Start with a free trial</p>
-                <p className="text-sm text-secondary mt-0.5">
-                  Try Pro free for 3 days, then $2.99/mo. Cancel anytime and you won&apos;t be charged if you cancel before the trial ends.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA section */}
-        <section>
+        <div>
           {error && (
-            <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
+            <div className="mb-4 p-3 rounded-xl bg-red-500/8 border border-red-500/15 text-red-600 text-sm">
               {error}
             </div>
           )}
-
           <button
             onClick={handleSubscribe}
             disabled={isCreatingCheckout}
-            className="w-full bg-amber-500 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-amber-500/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full bg-foreground text-background py-3.5 rounded-full text-[13px] font-semibold hover:bg-foreground/90 transition-all hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {isCreatingCheckout ? (
-              <>
-                <Loader2 className="animate-spin" size={18} />
-                Setting up your trial...
-              </>
+              <><Loader2 className="animate-spin" size={15} />Setting up your trial...</>
             ) : (
-              <>
-                <Zap size={16} />
-                Start Free Trial
-              </>
+              <>Start 3-Day Free Trial</>
             )}
           </button>
-
-          <p className="text-xs text-secondary/50 mt-3">
-            3-day free trial, then $2.99/month. Cancel anytime.
+          <p className="text-[11px] text-secondary/35 mt-2 text-center">
+            $2.99/month after trial · Cancel anytime
           </p>
-        </section>
+        </div>
 
-        <p className="text-xs text-secondary/40">
+        <p className="text-[11px] text-secondary/30">
           Questions? yourtrace.online@gmail.com
         </p>
       </motion.div>
