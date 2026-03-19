@@ -11,6 +11,7 @@
     "remotion:render": "remotion render"
   },
   "dependencies": {
+    "@remotion/google-fonts": "^4.0.409",
     "@vercel/analytics": "^1.6.1",
     "clsx": "^2.1.1",
     "firebase": "^12.7.0",

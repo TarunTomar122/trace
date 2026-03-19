@@ -30,7 +30,7 @@ on:
       audience:
         description: 'Audience segment'
         required: true
-        default: 'subscribed'
+        default: 'all'
         type: choice
         options:
           - all
@@ -69,7 +69,7 @@ jobs:
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             python -u -m v3.scheduler --jobs ${{ inputs.jobs }} --audience ${{ inputs.audience }}
           else
-            python -u -m v3.scheduler --jobs for_you --audience subscribed
+            python -u -m v3.scheduler --jobs for_you --audience all
             python -u -m v3.scheduler --jobs trending assemble --audience all
           fi
 

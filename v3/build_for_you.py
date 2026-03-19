@@ -15,13 +15,14 @@ Usage:
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import hashlib
 import json
 import os
 import re
 import sys
 import math
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -49,10 +50,10 @@ CONFIG_PATH = "v3/config/for_you_sources.json"
 BRIEF_SOURCES_PATH = "v3/config/brief_sources.json"
 DEFAULT_ITEMS = 0
 FOR_YOU_BRIEF_BUCKET = "for_you_brief_v21_top_stories"
-FOR_YOU_BRIEF_MODEL = "gpt-4o"
+FOR_YOU_BRIEF_MODEL = "gpt-5-mini"
 FOR_YOU_VIDEO_BUCKET = "for_you_video_v1"
 FOR_YOU_VIDEO_MODEL = "gpt-4o-mini"
-# gpt-4o for cost efficiency (~$0.01/brief). Switch to "gpt-5" if quality needs a boost.
+# gpt-5-mini is the default cost/quality tradeoff for daily personalized briefs.
 FOR_YOU_VIDEO_CHANNEL_URL = "https://www.youtube.com/@CNET/videos"
 FOR_YOU_VIDEO_SCAN_LIMIT = 5
 
@@ -60,6 +61,7 @@ HN_TIMEOUT = 15
 REDDIT_TIMEOUT = 15
 RSS_LINK_LIMIT = 10
 REDDIT_USER_AGENT = "TraceBrief/1.0"
+RECENT_BRIEF_LOOKBACK_DAYS = 5
 
 ROLE_FALLBACK_IMAGES = {
     "developer": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=500&fit=crop",
@@ -75,6 +77,29 @@ ROLE_LABELS = {
     "pm": "product manager",
     "marketer": "marketer",
     "founder": "founder",
+}
+
+ROLE_ALIASES = {
+    "developer": "developer",
+    "engineer": "developer",
+    "software engineer": "developer",
+    "software developer": "developer",
+    "full stack developer": "developer",
+    "full-stack developer": "developer",
+    "frontend engineer": "developer",
+    "backend engineer": "developer",
+    "designer": "designer",
+    "product designer": "designer",
+    "ux designer": "designer",
+    "ui designer": "designer",
+    "product manager": "pm",
+    "pm": "pm",
+    "marketer": "marketer",
+    "marketing": "marketer",
+    "growth marketer": "marketer",
+    "founder": "founder",
+    "co-founder": "founder",
+    "startup founder": "founder",
 }
 
 ROLE_FEED_INTEREST = {
@@ -173,6 +198,91 @@ or
 
 The numbers must refer to the numbered source list above. Do not write or invent URLs yourself.
 Do NOT put a separate ## Sources section at the bottom. Sources go inline, right after the beat that uses them.
+
+Return markdown only in this format:
+# Your daily brief
+
+subtitle — one punchy line that makes you want to keep reading
+
+## catchy beat header
+1-2 short paragraphs with **bold** key terms
+→ [3]
+
+## another catchy beat header
+1-2 short paragraphs with **bold** key terms
+→ [7, 9]
+
+## one more catchy beat header
+1-2 short paragraphs with **bold** key terms
+→ [2]
+
+## one more catchy beat header
+1-2 short paragraphs with **bold** key terms
+→ [5]
+
+## one more catchy beat header
+1-2 short paragraphs with **bold** key terms
+→ [11]
+
+short closing line"""
+
+ROLE_PROMPT = """You're writing one shared daily community pulse for a group of {role_plural}. Think Morning Brew meets group chat — chill, fun, smart, zero fluff.
+
+Today is {today}.
+
+Audience:
+- Role: {role}
+- Common goals: {goal}
+- Common interests: {interests}
+{role_focus}
+{community_rule}
+
+Here are today's top stories and posts from sources relevant to this audience. First act like an editor: ignore low-signal career venting, resume/job angst, beginner asks, or generic complaints unless they contain a very concrete workflow, tool, or debate. Then pick the 5-6 most interesting items and write a brief about them.
+
+Source balance:
+- Aim for roughly 75% community-driven signal and 25% editorial grounding.
+- In practice, for a 5-6 beat brief, that usually means 3-4 beats from community sources (Reddit/Hacker News) and 1-2 beats from editorial sources.
+- Do not make the brief all editorial unless the list truly forces you to.
+- Do not make the brief all community unless the list truly forces you to.
+- Use editorial sources to sharpen or validate the strongest community ideas, not to drown them out.
+
+---
+{articles_block}
+---
+
+Tone:
+- Conversational. Like a smart friend who's already scrolled through everything and is giving the highlights over coffee.
+- Light humor is good. Don't force it, but don't be a robot either.
+- Confident and opinionated. Have a take. "This is cool because..." not "This may be relevant to..."
+- Short punchy paragraphs. 2-3 sentences max per paragraph. White space is your friend.
+- Talk to this audience, not at them. No lectures, no "lesson worth learning" energy.
+
+Structure:
+- Each beat MUST start with a ## header. The header should be short, catchy, Morning Brew style.
+- Under each ## header, write 1-2 short paragraphs about that beat.
+- Use **bold** on the first mention of key names, tools, or projects in each beat.
+- 5-6 beats total, each with its own ## header.
+- End with a short closing line after the last beat.
+
+Do NOT:
+- Write "lesson worth learning" or "key takeaway" or anything that sounds like a LinkedIn post
+- Use corporate speak or analyst tone
+- Put URLs or (source.com) citations in the body text
+- Write dense paragraphs
+- Be generic. Be specific about names, projects, numbers
+- Invent or hallucinate stories. Only use articles from the list above.
+
+Do:
+- Name-drop specific projects, tools, posts, people from the articles
+- Have a point of view on why something matters for this role
+- Make it feel like this audience is ahead of the curve after reading this
+- Use at least 4 distinct sources from the list
+- You can combine related articles into one beat if they tell a bigger story together
+
+Important: put the source reference RIGHT AFTER each beat using source numbers only, using this exact format:
+→ [3]
+or
+→ [3, 7]
 
 Return markdown only in this format:
 # Your daily brief
@@ -751,13 +861,34 @@ def _goal_label(goals: list[str]) -> str:
     return GOAL_LABELS.get(primary, primary.replace("-", " "))
 
 
-def _role_label(role: str) -> str:
+def _normalize_role(role: Any) -> str:
     normalized = str(role or "").strip().lower()
+    if normalized in ROLE_ALIASES:
+        return ROLE_ALIASES[normalized]
+    if not normalized or normalized in {"other", "student", "none", "null"}:
+        return "developer"
+    return normalized
+
+
+def _role_label(role: str) -> str:
+    normalized = _normalize_role(role)
     return ROLE_LABELS.get(normalized, normalized or "professional")
 
 
+def _role_plural_label(role: str) -> str:
+    normalized = _normalize_role(role)
+    mapping = {
+        "developer": "engineers",
+        "designer": "designers",
+        "pm": "product managers",
+        "marketer": "marketers",
+        "founder": "founders",
+    }
+    return mapping.get(normalized, f"{_role_label(normalized)}s")
+
+
 def _allowed_domains_for_role(role: str) -> list[str]:
-    normalized = str(role or "").strip().lower()
+    normalized = _normalize_role(role)
     domains = list(BASE_ALLOWED_DOMAINS)
     domains.extend(ROLE_ALLOWED_DOMAINS.get(normalized, []))
     return list(dict.fromkeys(domains))
@@ -779,6 +910,81 @@ def _brief_cache_url(
     ])
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
     return f"trace://for-you-morning-brief/{uid}/{target_date}/{digest}"
+
+
+def _role_brief_cache_url(
+    target_date: str,
+    role: str,
+    goals: list[str],
+    interests: list[str],
+) -> str:
+    raw = "|".join([
+        target_date,
+        role,
+        ",".join(sorted(str(item).strip() for item in goals if str(item).strip())),
+        ",".join(sorted(str(item).strip() for item in interests if str(item).strip())),
+    ])
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
+    return f"trace://for-you-role-brief/{role}/{target_date}/{digest}"
+
+
+def _recent_dates_before(target_date: str, days: int) -> list[str]:
+    try:
+        base = datetime.strptime(target_date, "%Y-%m-%d")
+    except ValueError:
+        return []
+    return [
+        (base - timedelta(days=offset)).strftime("%Y-%m-%d")
+        for offset in range(1, max(0, days) + 1)
+    ]
+
+
+def _load_recent_brief_urls(
+    store: V3Store,
+    uid: str,
+    target_date: str,
+    lookback_days: int = RECENT_BRIEF_LOOKBACK_DAYS,
+) -> set[str]:
+    seen_urls: set[str] = set()
+    for date_key in _recent_dates_before(target_date, lookback_days):
+        feed = store.load_feed(uid, date_key)
+        items = feed.get("for_you", [])
+        if not isinstance(items, list):
+            continue
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            url = str(item.get("url", "")).strip()
+            if url:
+                seen_urls.add(url)
+            sources = item.get("sources", [])
+            if not isinstance(sources, list):
+                continue
+            for source in sources:
+                if not isinstance(source, dict):
+                    continue
+                source_url = str(source.get("url", "")).strip()
+                if source_url:
+                    seen_urls.add(source_url)
+    return seen_urls
+
+
+def _deprioritize_recent_articles(
+    articles: list[dict[str, str]],
+    recent_urls: set[str],
+) -> list[dict[str, str]]:
+    if not recent_urls:
+        return list(articles)
+
+    fresh = [
+        article for article in articles
+        if str(article.get("url", "")).strip() not in recent_urls
+    ]
+    repeated = [
+        article for article in articles
+        if str(article.get("url", "")).strip() in recent_urls
+    ]
+    return fresh + repeated
 
 
 def _parse_source_lines(markdown: str) -> tuple[str, list[dict[str, str]]]:
@@ -930,7 +1136,7 @@ def _generate_personalized_brief(
     articles: list[dict[str, str]],
 ) -> tuple[dict[str, Any] | None, bool]:
     uid = str(profile.get("uid", "")).strip()
-    role = str(profile.get("role", "")).strip().lower()
+    role = _normalize_role(profile.get("role"))
     name = str(profile.get("name") or profile.get("displayName") or "there").strip() or "there"
     goals = profile.get("careerGoals") or []
     interests = [
@@ -972,12 +1178,85 @@ def _generate_personalized_brief(
     response = client.chat.completions.create(
         model=FOR_YOU_BRIEF_MODEL,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.9,
     )
 
     raw_markdown = (response.choices[0].message.content or "").strip()
     if not raw_markdown:
         raise RuntimeError("OpenAI returned empty brief")
+
+    expanded_markdown = _expand_source_markers(raw_markdown, prompt_articles)
+    summary = _normalize_markdown_brief(expanded_markdown, role=role)
+    store.save_cached_summary_v2(cache_url, FOR_YOU_BRIEF_BUCKET, summary, FOR_YOU_BRIEF_MODEL)
+    return summary, False
+
+
+def _generate_role_brief(
+    store: V3Store,
+    *,
+    role: str,
+    target_date: str,
+    profiles: list[dict[str, Any]],
+    articles: list[dict[str, str]],
+) -> tuple[dict[str, Any] | None, bool]:
+    role = _normalize_role(role)
+    if not articles:
+        raise RuntimeError(f"No articles in pool for role={role}")
+
+    interest_counter: Counter[str] = Counter()
+    goal_counter: Counter[str] = Counter()
+    for profile in profiles:
+        for interest in profile.get("interests") or []:
+            value = str(interest or "").strip()
+            if value:
+                interest_counter[value] += 1
+        for goal in profile.get("careerGoals") or []:
+            value = str(goal or "").strip()
+            if value:
+                goal_counter[value] += 1
+
+    common_interests = [item for item, _ in interest_counter.most_common(5)]
+    common_goals_raw = [item for item, _ in goal_counter.most_common(3)]
+    common_goals = [_goal_label([goal]) for goal in common_goals_raw if goal]
+    if not common_goals:
+        common_goals = ["stay sharp"]
+
+    cache_url = _role_brief_cache_url(
+        target_date=target_date,
+        role=role,
+        goals=common_goals,
+        interests=common_interests,
+    )
+    cached = store.get_cached_summary_v2(cache_url, FOR_YOU_BRIEF_BUCKET)
+    if cached:
+        cached_summary = cached.get("summary")
+        if isinstance(cached_summary, dict):
+            return cached_summary, True
+
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY not configured")
+
+    prompt_articles = _prioritize_articles_for_brief(articles, total_limit=36, community_share=0.75)
+    articles_block = _format_articles_block(prompt_articles, limit=36)
+    prompt = ROLE_PROMPT.format(
+        today=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        role=_role_label(role),
+        role_plural=_role_plural_label(role),
+        goal=", ".join(common_goals),
+        interests=", ".join(common_interests) if common_interests else "engineering, tech, AI",
+        role_focus=ROLE_FOCUS.get(role, "Lean into the most useful, timely signals for this audience."),
+        community_rule=ROLE_COMMUNITY_RULE.get(role, "Mix community and editorial signal when possible."),
+        articles_block=articles_block,
+    )
+
+    client = OpenAI(api_key=api_key)
+    response = client.chat.completions.create(
+        model=FOR_YOU_BRIEF_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw_markdown = (response.choices[0].message.content or "").strip()
+    if not raw_markdown:
+        raise RuntimeError("OpenAI returned empty role brief")
 
     expanded_markdown = _expand_source_markers(raw_markdown, prompt_articles)
     summary = _normalize_markdown_brief(expanded_markdown, role=role)
@@ -1103,34 +1382,57 @@ def build_user_feeds(
     except Exception as exc:
         _log(f"  daily video generation failed: {exc}")
 
+    users_by_role: dict[str, list[dict[str, Any]]] = {}
     for profile in users:
-        uid = str(profile.get("uid", "")).strip()
-        if not uid:
-            continue
+        role = _normalize_role(profile.get("role"))
+        users_by_role.setdefault(role, []).append(profile)
 
-        role = str(profile.get("role", "")).strip().lower() or "developer"
-        brief_goal = _goal_label(profile.get("careerGoals") or [])
-        feed_items: list[dict[str, Any]] = []
-
+    role_summaries: dict[str, dict[str, Any] | None] = {}
+    role_cache_hits: dict[str, bool] = {}
+    for role, role_profiles in users_by_role.items():
         role_articles = _content_pool_cache.get(role, _content_pool_cache.get("developer", []))
+        recent_brief_urls: set[str] = set()
+        for profile in role_profiles:
+            uid = str(profile.get("uid", "")).strip()
+            if not uid:
+                continue
+            recent_brief_urls.update(_load_recent_brief_urls(store, uid, target_date))
+        candidate_articles = _deprioritize_recent_articles(role_articles, recent_brief_urls)
 
         try:
-            summary, was_cached = _generate_personalized_brief(
+            summary, was_cached = _generate_role_brief(
                 store,
-                profile=profile,
+                role=role,
                 target_date=target_date,
-                articles=role_articles,
+                profiles=role_profiles,
+                articles=candidate_articles,
             )
         except Exception as exc:
-            _log(f"  user={uid} brief generation failed: {exc}")
+            _log(f"  role={role} pulse generation failed: {exc}")
             summary = None
             was_cached = False
 
+        role_summaries[role] = summary
+        role_cache_hits[role] = was_cached
         if summary:
             if was_cached:
                 stats["briefs_cached"] += 1
             else:
                 stats["briefs_generated"] += 1
+        else:
+            stats["rejected_items"] += len(role_profiles)
+
+    for profile in users:
+        uid = str(profile.get("uid", "")).strip()
+        if not uid:
+            continue
+
+        role = _normalize_role(profile.get("role"))
+        brief_goal = _goal_label(profile.get("careerGoals") or [])
+        feed_items: list[dict[str, Any]] = []
+        summary = role_summaries.get(role)
+
+        if summary:
             feed_items.append(
                 _build_synthesized_feed_item(
                     uid,
@@ -1140,8 +1442,6 @@ def build_user_feeds(
                     summary,
                 )
             )
-        else:
-            stats["rejected_items"] += 1
 
         if daily_video_item:
             feed_items.append(dict(daily_video_item))

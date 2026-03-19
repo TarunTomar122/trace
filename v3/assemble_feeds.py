@@ -30,7 +30,6 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 load_dotenv(REPO_ROOT / ".env")
 
-from v1.storage import is_user_subscribed  # noqa: E402
 from v3.lib.store import V3Store, _today_ist  # noqa: E402
 from v3.lib.store import FOR_YOU_POOL  # noqa: E402
 from v3.lib.summarizer import compute_technical_depth, evaluate_for_you_fit, get_or_generate_summary  # noqa: E402
@@ -565,7 +564,6 @@ def assemble(args: argparse.Namespace) -> dict[str, int]:
         if not uid:
             continue
 
-        subscribed = is_user_subscribed(profile)
         feed = store.load_feed(uid, target_date)
         for_you_source_date = target_date
         if args.merged_experiment:
@@ -576,18 +574,13 @@ def assemble(args: argparse.Namespace) -> dict[str, int]:
             )
             store.write_feed_section(uid, target_date, "for_you", for_you)
         else:
-            if subscribed:
-                for_you = feed.get("for_you", [])
-                if not isinstance(for_you, list):
-                    for_you = []
-                if not for_you:
-                    for_you, for_you_source_date = _load_recent_user_section(
-                        store, uid, target_date, "for_you"
-                    )
-            else:
+            for_you = feed.get("for_you", [])
+            if not isinstance(for_you, list):
                 for_you = []
-                for_you_source_date = ""
-                store.write_feed_section(uid, target_date, "for_you", [])
+            if not for_you:
+                for_you, for_you_source_date = _load_recent_user_section(
+                    store, uid, target_date, "for_you"
+                )
         # Always use global trending (it's fresher news, refreshed every 2 hours)
         trending = global_trending
         trending_topics = global_trending_topics

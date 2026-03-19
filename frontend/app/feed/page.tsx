@@ -16,6 +16,13 @@ import {
 import { getArticleImage } from '@/lib/fallback-images';
 import { trackCheckoutClicked, trackPaywallShown, trackSubscriptionStarted } from '@/lib/posthog';
 
+function decodeHtml(str: string): string {
+  if (!str) return str;
+  const txt = document.createElement('textarea');
+  txt.innerHTML = str;
+  return txt.value;
+}
+
 const FREE_LIMITS = { trending: 3 };
 
 const feedFetcher = (uid: string) => getV3UserFeed(uid);
@@ -27,7 +34,7 @@ const trendingFetcher = async () => {
   if (!Array.isArray(data.items)) return [];
   return data.items.map((item: Record<string, unknown>): FeedItem => ({
     id: String(item.id || ''),
-    title: String(item.title || ''),
+    title: decodeHtml(String(item.title || '')),
     url: String(item.url || ''),
     thumbnail: typeof item.thumbnail === 'string' ? item.thumbnail : null,
     source_name: typeof item.source === 'string' ? item.source : undefined,
@@ -69,7 +76,7 @@ function getTopicDisplay(topic: TrendingTopic) {
   return {
     isSingleton,
     article,
-    title: article?.title || topic.title,
+    title: decodeHtml(article?.title || topic.title || ''),
     summary: article?.summary?.short_article?.body || topic.summary || '',
     subtitle: article?.summary?.short_article?.subtitle || topic.summary || '',
     readingTime: article?.summary?.reading_time_minutes,
@@ -678,7 +685,7 @@ function FeedPageContent() {
         list.push({
           id: topic.id,
           type: 'topic',
-          title: display.title,
+          title: decodeHtml(display.title || ''),
           preview: getPreview(display.subtitle || display.summary),
           timestamp: topic.articles?.[0]?.published_date,
           source: display.isSingleton ? display.article?.source_name : undefined,
@@ -702,7 +709,7 @@ function FeedPageContent() {
       list.push({
         id: item.id,
         type: 'article',
-        title: item.title,
+        title: decodeHtml(item.title || ''),
         preview: getPreview(getArticleSummary(item)),
         timestamp: item.published_date,
         source: item.source_name,
@@ -801,7 +808,7 @@ function FeedPageContent() {
       const articleId = display.isSingleton ? display.article?.id : topic.articles?.[0]?.id;
       const articleUrl = display.isSingleton ? display.article?.url : topic.articles?.[0]?.url;
       return {
-        title: display.title,
+        title: decodeHtml(display.title || ''),
         body: display.summary || display.subtitle,
         source: display.isSingleton ? display.article?.source_name : undefined,
         url: articleUrl,
@@ -826,7 +833,7 @@ function FeedPageContent() {
 
     const article = selectedItem.data as FeedItem;
     return {
-      title: article.title,
+      title: decodeHtml(article.title || ''),
       body: getArticleSummary(article),
       source: article.source_name,
       url: article.url,

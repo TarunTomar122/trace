@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import he from 'he';
 import {
   Pressable,
   StyleSheet,
@@ -136,7 +137,7 @@ export function TrendingStoryCard({ item, colorScheme, onPress }: CardProps) {
           )}
         </View>
         <Text style={csStyles.title} numberOfLines={3}>
-          {item.title}
+          {he.decode(item.title)}
         </Text>
       </View>
     </Pressable>
@@ -281,7 +282,7 @@ export function TrendingCard({ item, colorScheme, onPress, accentColor = '#F9731
               </View>
               {/* Title */}
               <Text style={tStyles.titleOverlay} numberOfLines={4}>
-                {item.title}
+                {he.decode(item.title)}
               </Text>
               {/* Headline hook */}
               {headline !== '' && (
@@ -890,7 +891,7 @@ export function FeedCard({ item, colorScheme, onPress }: CardProps) {
           {sourceName || 'Article'}
         </ThemedText>
         <ThemedText style={legacyStyles.title} numberOfLines={3}>
-          {item.title}
+          {he.decode(item.title)}
         </ThemedText>
         {snippet !== '' && (
           <ThemedText

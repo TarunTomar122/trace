@@ -406,7 +406,18 @@ function HeroBriefCard() {
   ];
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-white shadow-[0_32px_80px_rgba(0,0,0,0.12)] ring-1 ring-black/6">
+    <div className="relative">
+      {/* Lizard mascot */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="pointer-events-none absolute -top-10 -right-18 z-0 hidden h-20 w-auto rotate-30 lg:block"
+      >
+        <source src="/hello.webm" type="video/webm" />
+      </video>
+    <div className="relative z-10 overflow-hidden rounded-2xl bg-white shadow-[0_32px_80px_rgba(0,0,0,0.12)] ring-1 ring-black/6">
       {/* Mini toolbar */}
       <div className="flex items-center gap-2 border-b border-black/6 px-4 py-2.5">
         <span className="relative flex h-1.5 w-1.5">
@@ -483,6 +494,7 @@ function HeroBriefCard() {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }

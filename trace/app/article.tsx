@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import he from 'he';
 import {
   Pressable,
   ScrollView,
@@ -393,7 +394,7 @@ function WorthReadingArticleView({
               <View style={wrStyles.nextBtnContent}>
                 <Text style={[wrStyles.nextLabel, { color: Colors[colorScheme].muted }]}>UP NEXT</Text>
                 <Text numberOfLines={1} style={[wrStyles.nextTitle, { color: Colors[colorScheme].text }]}>
-                  {nextArticle.title}
+                  {he.decode(nextArticle.title)}
                 </Text>
               </View>
               <ChevronRight size={20} color={Colors[colorScheme].muted} strokeWidth={2} />
@@ -824,7 +825,7 @@ function ChapterDeepDive({
           showsVerticalScrollIndicator={false}
           contentContainerStyle={dd.chDetailScroll}>
           <Text style={[dd.chDetailTitle, { color: Colors[colorScheme].text }]}>
-            {chapter.title}
+            {he.decode(chapter.title)}
           </Text>
 
           {paragraphs.map((para, pi) => (
@@ -859,7 +860,7 @@ function ChapterDeepDive({
                 <View style={{ flex: 1 }}>
                   <Text style={[dd.chNavHint, { color: Colors[colorScheme].muted }]}>Previous</Text>
                   <Text style={[dd.chNavLabel, { color: Colors[colorScheme].text }]} numberOfLines={1}>
-                    {chapters[idx - 1].title}
+                    {he.decode(chapters[idx - 1].title)}
                   </Text>
                 </View>
               </Pressable>
@@ -871,7 +872,7 @@ function ChapterDeepDive({
                 <View style={{ flex: 1, alignItems: 'flex-end' }}>
                   <Text style={[dd.chNavHint, { color: Colors[colorScheme].muted }]}>Next</Text>
                   <Text style={[dd.chNavLabel, { color: Colors[colorScheme].text }]} numberOfLines={1}>
-                    {chapters[idx + 1].title}
+                    {he.decode(chapters[idx + 1].title)}
                   </Text>
                 </View>
                 <ChevronRight size={18} color={Colors[colorScheme].muted} strokeWidth={2} />
@@ -981,7 +982,7 @@ function ChapterDeepDive({
                   <Text style={[dd.tocNumText, { color: Colors[colorScheme].text }]}>{i + 1}</Text>
                 </View>
                 <Text style={[dd.tocTitle, { color: Colors[colorScheme].text }]} numberOfLines={2}>
-                  {ch.title}
+                  {he.decode(ch.title)}
                 </Text>
                 <ChevronRight size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
               </Pressable>
@@ -1028,7 +1029,7 @@ function ChapterDeepDive({
                     {src.name}
                   </Text>
                   <Text style={[dd.sourceTitle, { color: Colors[colorScheme].muted }]} numberOfLines={2}>
-                    {src.title}
+                    {he.decode(src.title ?? '')}
                   </Text>
                 </View>
                 <ExternalLink size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
@@ -1591,7 +1592,7 @@ export default function ArticleScreen() {
         {/* Title section below hero */}
         <View style={nStyles.titleSection}>
           <Text numberOfLines={4} style={[nStyles.title, { color: Colors[colorScheme].text }]}>
-            {item.title}
+            {he.decode(item.title)}
           </Text>
           {timeAgo !== '' && (
             <View style={nStyles.ageBadge}>
@@ -1659,7 +1660,7 @@ export default function ArticleScreen() {
                           {src.name}
                         </Text>
                         <Text style={[nStyles.inlineSourceTitle, { color: mutedColor }]} numberOfLines={2}>
-                          {src.title}
+                          {he.decode(src.title ?? '')}
                         </Text>
                       </View>
                       <ExternalLink size={16} color={mutedColor} strokeWidth={1.5} />
