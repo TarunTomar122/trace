@@ -4,6 +4,7 @@ __pycache__/
 *.pyo
 .DS_Store
 .env
+*.env.local
 agent/feeds/
 agent/memory/daily/
 *.log
@@ -13,3 +14,6 @@ anybrew-7c6c1-firebase-adminsdk-fbsvc-fe164fd73a.json
 !v3/config/*.json
 !wonder/**/*.json
 *-firebase-adminsdk-*.json
+trace_subscribers.csv
+v1/tools/trace_user_emails.csv
+analysis/data/user_summary.csv
