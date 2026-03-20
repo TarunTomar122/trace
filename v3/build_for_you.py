@@ -57,6 +57,7 @@ FOR_YOU_ROLE_CLASSIFIER_BUCKET = "for_you_role_classifier_v1"
 FOR_YOU_ROLE_CLASSIFIER_MODEL = "gpt-4.1-nano"
 FOR_YOU_VIDEO_BUCKET = "for_you_video_v1"
 FOR_YOU_VIDEO_MODEL = "gpt-4o-mini"
+ENABLE_DAILY_VIDEO = False
 # gpt-5-mini is the default cost/quality tradeoff for daily personalized briefs.
 FOR_YOU_VIDEO_CHANNEL_URL = "https://www.youtube.com/@CNET/videos"
 FOR_YOU_VIDEO_SCAN_LIMIT = 5
@@ -1821,16 +1822,17 @@ def build_user_feeds(
     }
 
     daily_video_item: dict[str, Any] | None = None
-    try:
-        daily_video_payload = _generate_daily_video_summary(store, target_date=target_date)
-        if daily_video_payload:
-            daily_video_item = _build_daily_video_feed_item(target_date, daily_video_payload)
-            if daily_video_payload.get("cached"):
-                stats["daily_video_cached"] += 1
-            else:
-                stats["daily_video_generated"] += 1
-    except Exception as exc:
-        _log(f"  daily video generation failed: {exc}")
+    if ENABLE_DAILY_VIDEO:
+        try:
+            daily_video_payload = _generate_daily_video_summary(store, target_date=target_date)
+            if daily_video_payload:
+                daily_video_item = _build_daily_video_feed_item(target_date, daily_video_payload)
+                if daily_video_payload.get("cached"):
+                    stats["daily_video_cached"] += 1
+                else:
+                    stats["daily_video_generated"] += 1
+        except Exception as exc:
+            _log(f"  daily video generation failed: {exc}")
 
     for role in roles_needed:
         role_profiles = users_by_role.get(role, [])

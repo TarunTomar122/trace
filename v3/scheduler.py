@@ -219,12 +219,9 @@ def main() -> None:
     _log(f"Audience: {args.audience}")
     start = time.time()
 
-    needs_user_snapshot = (
-        run_all
-        or run_feeds
-        or "assemble" in requested
-        or "for_you" in requested
-    )
+    # Only assemble still truly needs a precomputed user snapshot.
+    # For You now builds shared role pulses and can read users directly.
+    needs_user_snapshot = run_all or "assemble" in requested
 
     if needs_user_snapshot:
         try:
