@@ -584,11 +584,6 @@ def assemble(args: argparse.Namespace) -> dict[str, int]:
         # Always use global trending (it's fresher news, refreshed every 2 hours)
         trending = global_trending
         trending_topics = global_trending_topics
-        # Write global trending to user's feed
-        if trending:
-            store.write_feed_section(uid, target_date, "trending", trending)
-        # Always write grouped topics (empty list clears stale content on re-runs).
-        store.write_feed_section(uid, target_date, "trending_topics", trending_topics)
         merged_feed = _build_merged_feed(
             profile,
             trending_topics,
@@ -596,14 +591,14 @@ def assemble(args: argparse.Namespace) -> dict[str, int]:
             now_limit=args.merged_now_limit if args.merged_experiment else 0,
             evergreen_limit=args.merged_evergreen_limit if args.merged_experiment else 0,
         )
-        store.write_feed_section(uid, target_date, "merged_feed", merged_feed)
         total = len(for_you) + len(trending)
 
-        # Promote today's AND yesterday's feed URLs to seen
+        # Promote only For You URLs to seen. Trending is shared/global and
+        # doesn't need per-user seen tracking during scheduled assembly.
         all_seen_urls: list[str] = []
         for date_key in (target_date, yesterday):
             day_feed = store.load_feed(uid, date_key) if date_key != target_date else feed
-            for section in ("for_you", "trending"):
+            for section in ("for_you",):
                 for item in day_feed.get(section, []):
                     if not isinstance(item, dict):
                         continue
@@ -621,7 +616,7 @@ def assemble(args: argparse.Namespace) -> dict[str, int]:
             "for_you_count": len(for_you),
             "trending_count": len(trending),
             "trending_topics_count": len(trending_topics),
-            "merged_feed_count": len(merged_feed),
+            "merged_feed_count": 0,
             "total_items": total,
             "pipeline": "v3",
             "interests": sorted(profile.get("interests", [])),

@@ -70,7 +70,7 @@ jobs:
             python -u -m v3.scheduler --jobs ${{ inputs.jobs }} --audience ${{ inputs.audience }}
           else
             python -u -m v3.scheduler --jobs for_you --audience all
-            python -u -m v3.scheduler --jobs trending assemble --audience all
+            python -u -m v3.scheduler --jobs trending --audience all
           fi
 
   trending-refresh:
@@ -92,9 +92,9 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: Refresh trending and rebuild feeds
+      - name: Refresh trending only
         run: |
-          python -u -m v3.scheduler --jobs trending assemble --audience all --force-pools
+          python -u -m v3.scheduler --jobs trending --audience all --force-pools
 
   # Push notifications - morning (9 AM IST) and evening (8 PM IST)
   push-notification:

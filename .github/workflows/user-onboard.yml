@@ -50,4 +50,4 @@ jobs:
       - name: Build v3 feed (web + mobile)
         run: |
           echo "Building v3 feed for user: ${{ steps.params.outputs.user_id }} (tier: ${{ steps.params.outputs.tier }})"
-          python -u -m v3.scheduler --jobs for_you assemble --user-id "${{ steps.params.outputs.user_id }}" --audience all --tier "${{ steps.params.outputs.tier }}"
+          python -u -m v3.scheduler --jobs for_you --user-id "${{ steps.params.outputs.user_id }}" --audience all --tier "${{ steps.params.outputs.tier }}"

@@ -187,13 +187,13 @@ def main() -> None:
     requested = set(args.jobs)
     run_all = "all" in requested
 
-    # Guardrail: user-scoped "all" should only build that user's feed sections.
+    # Guardrail: user-scoped "all" should only build that user's For You lane.
     if args.user_id and run_all:
-        requested = {"for_you", "assemble"}
+        requested = {"for_you"}
         run_all = False
         _log(
             "User-scoped run with --jobs all detected; "
-            "limiting to for_you + assemble."
+            "limiting to for_you."
         )
 
     run_pools = "pools" in requested
@@ -223,7 +223,7 @@ def main() -> None:
         run_all
         or run_feeds
         or "assemble" in requested
-        or any(job_name in requested for job_name in build_jobs)
+        or "for_you" in requested
     )
 
     if needs_user_snapshot:
