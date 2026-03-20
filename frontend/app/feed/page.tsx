@@ -25,7 +25,7 @@ function decodeHtml(str: string): string {
 
 const FREE_LIMITS = { trending: 3 };
 
-const feedFetcher = (uid: string) => getV3UserFeed(uid);
+const feedFetcher = (uid: string, role?: string | null) => getV3UserFeed(uid, { role });
 
 const trendingFetcher = async () => {
   const res = await fetch('/api/public/trending');
@@ -531,8 +531,8 @@ function FeedPageContent() {
 
 
   const { data: v3Feed, isLoading: feedLoading, mutate: mutateFeed } = useSWR<V3UserFeed | null>(
-    user?.uid ? `feed-${user.uid}` : null,
-    () => feedFetcher(user!.uid),
+    user?.uid ? `feed-${user.uid}-${profile?.role || 'unknown'}` : null,
+    () => feedFetcher(user!.uid, profile?.role),
     { revalidateOnFocus: false, revalidateOnReconnect: false, dedupingInterval: 60000 }
   );
 

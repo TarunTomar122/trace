@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """
-Build "For You" feed — one personalized morning brief per user.
+Build "For You" feed — one shared community pulse per role.
 
-Fetches content from HN, Reddit, and role-specific RSS/blogs once per role,
-then generates a Morning-Brew-style brief per user using GPT.
+Fetches one shared content pool from HN, Reddit, and editorial sources,
+classifies items into the five product roles, and generates a Morning-Brew-style
+brief once per role. The role pulses are stored globally and consumed by clients
+based on the user's profile role.
 
 Usage:
   python3 -m v3.build_for_you                          # full: fetch pool + build
@@ -51,6 +53,8 @@ BRIEF_SOURCES_PATH = "v3/config/brief_sources.json"
 DEFAULT_ITEMS = 0
 FOR_YOU_BRIEF_BUCKET = "for_you_brief_v21_top_stories"
 FOR_YOU_BRIEF_MODEL = "gpt-5-mini"
+FOR_YOU_ROLE_CLASSIFIER_BUCKET = "for_you_role_classifier_v1"
+FOR_YOU_ROLE_CLASSIFIER_MODEL = "gpt-4.1-nano"
 FOR_YOU_VIDEO_BUCKET = "for_you_video_v1"
 FOR_YOU_VIDEO_MODEL = "gpt-4o-mini"
 # gpt-5-mini is the default cost/quality tradeoff for daily personalized briefs.
@@ -62,6 +66,9 @@ REDDIT_TIMEOUT = 15
 RSS_LINK_LIMIT = 10
 REDDIT_USER_AGENT = "TraceBrief/1.0"
 RECENT_BRIEF_LOOKBACK_DAYS = 5
+RECENT_ROLE_LOOKBACK_DAYS = 5
+
+ROLE_ORDER = ["developer", "designer", "pm", "marketer", "founder"]
 
 ROLE_FALLBACK_IMAGES = {
     "developer": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=500&fit=crop",
@@ -97,9 +104,11 @@ ROLE_ALIASES = {
     "marketer": "marketer",
     "marketing": "marketer",
     "growth marketer": "marketer",
+    "creator": "marketer",
     "founder": "founder",
     "co-founder": "founder",
     "startup founder": "founder",
+    "data scientist": "developer",
 }
 
 ROLE_FEED_INTEREST = {
@@ -108,6 +117,39 @@ ROLE_FEED_INTEREST = {
     "pm": "business-market",
     "marketer": "marketing",
     "founder": "startups",
+}
+
+ROLE_KEYWORDS = {
+    "developer": {
+        "api", "sdk", "cli", "database", "infra", "infrastructure", "devops",
+        "open source", "github", "repository", "framework", "javascript",
+        "typescript", "python", "rust", "go", "compiler", "agent", "llm",
+        "model", "terminal", "backend", "frontend", "cloud", "kubernetes",
+        "show hn", "hacker news", "release", "programming",
+    },
+    "designer": {
+        "figma", "ux", "ui", "design system", "design systems", "typography",
+        "prototype", "prototyping", "accessibility", "visual", "layout",
+        "interaction", "interaction design", "product design", "wireframe",
+        "component library", "brand", "creative", "motion",
+    },
+    "pm": {
+        "product", "roadmap", "prioritization", "retention", "onboarding",
+        "user research", "experiment", "conversion", "launch", "feature",
+        "product management", "metrics", "activation", "customer feedback",
+    },
+    "marketer": {
+        "seo", "growth", "campaign", "ads", "advertising", "distribution",
+        "positioning", "brand", "content marketing", "landing page",
+        "acquisition", "newsletter", "copywriting", "social", "funnel",
+        "attribution", "conversion rate",
+    },
+    "founder": {
+        "startup", "startups", "saas", "pricing", "fundraising", "venture",
+        "founder", "cofounder", "go-to-market", "gtm", "sales", "mrr",
+        "acquisition", "market", "competition", "seed", "series a",
+        "product-market fit", "pmf",
+    },
 }
 
 GOAL_LABELS = {
@@ -541,9 +583,46 @@ def _load_brief_sources() -> dict[str, Any]:
         return json.load(f)
 
 
-def _fetch_hn_stories(brief_cfg: dict[str, Any]) -> list[dict[str, str]]:
+def _make_pool_article(
+    *,
+    title: str,
+    url: str,
+    source: str,
+    signal: str = "",
+    role_hints: list[str] | None = None,
+    source_kind: str,
+) -> dict[str, Any]:
+    return {
+        "title": title,
+        "url": url,
+        "source": source,
+        "signal": signal,
+        "role_hints": sorted({
+            _normalize_role(role)
+            for role in (role_hints or [])
+            if str(role or "").strip()
+        }),
+        "source_kind": source_kind,
+    }
+
+
+def _signal_score(article: dict[str, Any]) -> int:
+    sig = str(article.get("signal", "")).strip()
+    match = re.search(r"(\d+)", sig)
+    return int(match.group(1)) if match else 0
+
+
+def _fetch_hn_stories(
+    brief_cfg: dict[str, Any],
+    role_filter: set[str] | None = None,
+) -> list[dict[str, Any]]:
     """Fetch HN front page + Show HN via Algolia API."""
-    articles: list[dict[str, str]] = []
+    articles: list[dict[str, Any]] = []
+    hn_role_hints = [
+        _normalize_role(role)
+        for role in (brief_cfg.get("hn", {}).get("roles", []) or [])
+        if not role_filter or _normalize_role(role) in role_filter
+    ]
     urls = [
         brief_cfg.get("hn", {}).get("frontpage_url", ""),
         brief_cfg.get("hn", {}).get("show_hn_url", ""),
@@ -566,19 +645,23 @@ def _fetch_hn_stories(brief_cfg: dict[str, Any]) -> list[dict[str, str]]:
             hn_url = f"https://news.ycombinator.com/item?id={hit.get('objectID', '')}"
             points = hit.get("points") or 0
             source = "Show HN" if title.lower().startswith("show hn") else "Hacker News"
-            articles.append({
-                "title": title,
-                "url": url or hn_url,
-                "source": source,
-                "signal": f"{points} points",
-            })
+            articles.append(
+                _make_pool_article(
+                    title=title,
+                    url=url or hn_url,
+                    source=source,
+                    signal=f"{points} points",
+                    role_hints=hn_role_hints,
+                    source_kind="community",
+                )
+            )
     _log(f"  HN: fetched {len(articles)} stories")
     return articles
 
 
-def _fetch_reddit_posts(subreddits: list[str]) -> list[dict[str, str]]:
+def _fetch_reddit_posts(role: str, subreddits: list[str]) -> list[dict[str, Any]]:
     """Fetch top posts from Reddit subreddits via JSON API."""
-    articles: list[dict[str, str]] = []
+    articles: list[dict[str, Any]] = []
     seen: set[str] = set()
     low_signal_patterns = (
         "how can i improve",
@@ -592,6 +675,7 @@ def _fetch_reddit_posts(subreddits: list[str]) -> list[dict[str, str]]:
         "can someone explain",
         "beginner question",
     )
+    normalized_role = _normalize_role(role)
 
     def _add_article(title: str, link: str, source: str, signal: str = "") -> None:
         lower_title = title.lower().strip()
@@ -603,17 +687,21 @@ def _fetch_reddit_posts(subreddits: list[str]) -> list[dict[str, str]]:
         ):
             return
         seen.add(link)
-        articles.append({
-            "title": title,
-            "url": link,
-            "source": source,
-            "signal": signal,
-        })
+        articles.append(
+            _make_pool_article(
+                title=title,
+                url=link,
+                source=source,
+                signal=signal,
+                role_hints=[normalized_role],
+                source_kind="community",
+            )
+        )
 
     for sub in subreddits:
         try:
             resp = requests.get(
-                f"https://www.reddit.com/r/{sub}/hot.json?limit=10&t=week",
+                f"https://www.reddit.com/r/{sub}/hot.json?limit=10&t=day",
                 headers={"User-Agent": REDDIT_USER_AGENT},
                 timeout=REDDIT_TIMEOUT,
             )
@@ -647,9 +735,10 @@ def _fetch_reddit_posts(subreddits: list[str]) -> list[dict[str, str]]:
     return articles
 
 
-def _fetch_rss_articles(sources: list[dict[str, str]]) -> list[dict[str, str]]:
+def _fetch_rss_articles(role: str, sources: list[dict[str, str]]) -> list[dict[str, Any]]:
     """Fetch latest articles from RSS/HTML sources."""
-    articles: list[dict[str, str]] = []
+    articles: list[dict[str, Any]] = []
+    normalized_role = _normalize_role(role)
     for src in sources:
         name = src.get("name", "")
         url = src.get("url", "")
@@ -666,60 +755,77 @@ def _fetch_rss_articles(sources: list[dict[str, str]]) -> list[dict[str, str]]:
             href = str(link.get("url", "")).strip()
             if not title or not href:
                 continue
-            articles.append({
-                "title": title,
-                "url": href,
-                "source": name,
-                "signal": "",
-            })
+            articles.append(
+                _make_pool_article(
+                    title=title,
+                    url=href,
+                    source=name,
+                    role_hints=[normalized_role],
+                    source_kind="editorial",
+                )
+            )
     _log(f"  RSS: fetched {len(articles)} articles from {len(sources)} sources")
     return articles
 
 
-def fetch_content_pool(roles: list[str] | None = None) -> dict[str, list[dict[str, str]]]:
-    """
-    Fetch content pool for all roles. Returns {role: [articles]}.
-    Shared sources (HN) are fetched once and reused.
-    """
+def fetch_content_pool(roles: list[str] | None = None) -> list[dict[str, Any]]:
+    """Fetch one shared content pool and merge duplicate URLs across roles."""
     brief_cfg = _load_brief_sources()
-    hn_roles = brief_cfg.get("hn", {}).get("roles", ["developer", "founder"])
     reddit_cfg = brief_cfg.get("reddit", {})
     rss_cfg = brief_cfg.get("rss", {})
+    all_roles = {
+        _normalize_role(role)
+        for role in (roles or list(set(list(reddit_cfg.keys()) + list(rss_cfg.keys()))))
+    }
 
-    hn_articles = _fetch_hn_stories(brief_cfg)
-    all_roles = roles or list(set(list(reddit_cfg.keys()) + list(rss_cfg.keys())))
+    articles: list[dict[str, Any]] = []
+    articles.extend(_fetch_hn_stories(brief_cfg, role_filter=all_roles))
 
-    pool: dict[str, list[dict[str, str]]] = {}
-    for role in all_roles:
-        role_articles: list[dict[str, str]] = []
-        if role in hn_roles:
-            role_articles.extend(hn_articles)
-        reddit_subs = reddit_cfg.get(role, [])
-        if reddit_subs:
-            role_articles.extend(_fetch_reddit_posts(reddit_subs))
-        rss_sources = rss_cfg.get(role, [])
-        if rss_sources:
-            role_articles.extend(_fetch_rss_articles(rss_sources))
+    for role, subreddit_list in reddit_cfg.items():
+        normalized_role = _normalize_role(role)
+        if all_roles and normalized_role not in all_roles:
+            continue
+        if subreddit_list:
+            articles.extend(_fetch_reddit_posts(normalized_role, subreddit_list))
 
-        seen: set[str] = set()
-        deduped: list[dict[str, str]] = []
-        for article in role_articles:
-            url = article.get("url", "")
-            if url in seen:
-                continue
-            seen.add(url)
-            deduped.append(article)
+    for role, sources in rss_cfg.items():
+        normalized_role = _normalize_role(role)
+        if all_roles and normalized_role not in all_roles:
+            continue
+        if sources:
+            articles.extend(_fetch_rss_articles(normalized_role, sources))
 
-        def _signal_score(a: dict[str, str]) -> int:
-            sig = a.get("signal", "")
-            match = re.search(r"(\d+)", sig)
-            return int(match.group(1)) if match else 0
+    deduped_by_url: dict[str, dict[str, Any]] = {}
+    for article in articles:
+        url = str(article.get("url", "")).strip()
+        if not url:
+            continue
+        existing = deduped_by_url.get(url)
+        if not existing:
+            deduped_by_url[url] = dict(article)
+            continue
 
-        deduped.sort(key=_signal_score, reverse=True)
-        pool[role] = deduped
-        _log(f"  Pool for {role}: {len(deduped)} unique articles")
+        existing_hints = set(existing.get("role_hints", []) or [])
+        existing_hints.update(article.get("role_hints", []) or [])
+        existing["role_hints"] = sorted(existing_hints)
 
-    return pool
+        if _signal_score(article) > _signal_score(existing):
+            existing["signal"] = article.get("signal", existing.get("signal", ""))
+        if existing.get("source_kind") != "community" and article.get("source_kind") == "community":
+            existing["source_kind"] = "community"
+        if len(str(article.get("title", "")).strip()) > len(str(existing.get("title", "")).strip()):
+            existing["title"] = article.get("title", existing.get("title", ""))
+
+    deduped = list(deduped_by_url.values())
+    deduped.sort(
+        key=lambda article: (
+            0 if article.get("source_kind") == "community" else 1,
+            -len(article.get("role_hints", []) or []),
+            -_signal_score(article),
+        )
+    )
+    _log(f"  Shared pool ready: {len(deduped)} unique articles")
+    return deduped
 
 
 def _format_articles_block(articles: list[dict[str, str]], limit: int = 36) -> str:
@@ -831,6 +937,12 @@ def _parse_args() -> argparse.Namespace:
         choices=["subscribed", "unsubscribed", "all"],
         default="subscribed",
         help="Which users to build for",
+    )
+    p.add_argument(
+        "--tier",
+        choices=["pro", "free"],
+        default="pro",
+        help="Ignored by role-pulse For You; accepted for scheduler compatibility.",
     )
     return p.parse_args()
 
@@ -985,6 +1097,272 @@ def _deprioritize_recent_articles(
         if str(article.get("url", "")).strip() in recent_urls
     ]
     return fresh + repeated
+
+
+def _normalize_title_signature(text: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", " ", str(text or "").lower()).strip()
+    tokens = [token for token in normalized.split() if token]
+    return " ".join(tokens[:10])
+
+
+def _load_recent_role_history(
+    store: V3Store,
+    role: str,
+    target_date: str,
+    lookback_days: int = RECENT_ROLE_LOOKBACK_DAYS,
+) -> tuple[set[str], set[str]]:
+    role = _normalize_role(role)
+    recent_urls: set[str] = set()
+    recent_titles: set[str] = set()
+    for date_key in _recent_dates_before(target_date, lookback_days):
+        global_feed = store.load_global_feed(date_key)
+        role_map = global_feed.get("for_you_roles", {})
+        if not isinstance(role_map, dict):
+            continue
+        items = role_map.get(role, [])
+        if not isinstance(items, list):
+            continue
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            url = str(item.get("url", "")).strip()
+            if url:
+                recent_urls.add(url)
+            title_sig = _normalize_title_signature(str(item.get("title", "")))
+            if title_sig:
+                recent_titles.add(title_sig)
+            sources = item.get("sources", [])
+            if isinstance(sources, list):
+                for source in sources:
+                    if not isinstance(source, dict):
+                        continue
+                    source_url = str(source.get("url", "")).strip()
+                    if source_url:
+                        recent_urls.add(source_url)
+                    source_sig = _normalize_title_signature(str(source.get("title", "")))
+                    if source_sig:
+                        recent_titles.add(source_sig)
+    return recent_urls, recent_titles
+
+
+def _score_roles_by_rules(article: dict[str, Any]) -> dict[str, int]:
+    text = " ".join([
+        str(article.get("title", "")),
+        str(article.get("source", "")),
+        str(article.get("signal", "")),
+    ]).lower()
+    scores = {role: 0 for role in ROLE_ORDER}
+
+    for hint in article.get("role_hints", []) or []:
+        normalized_hint = _normalize_role(hint)
+        if normalized_hint in scores:
+            scores[normalized_hint] += 4
+
+    if str(article.get("source", "")).strip().lower() == "show hn":
+        scores["developer"] += 3
+        scores["founder"] += 2
+    elif str(article.get("source", "")).strip().lower() == "hacker news":
+        scores["developer"] += 2
+        scores["founder"] += 1
+
+    for role, keywords in ROLE_KEYWORDS.items():
+        for keyword in keywords:
+            if keyword in text:
+                scores[role] += 3 if " " in keyword else 2
+
+    return scores
+
+
+def _classifier_cache_url(article: dict[str, Any]) -> str:
+    raw = "|".join([
+        str(article.get("title", "")).strip(),
+        str(article.get("source", "")).strip(),
+        str(article.get("url", "")).strip(),
+        ",".join(sorted(str(hint).strip() for hint in article.get("role_hints", []) or [])),
+    ])
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
+    return f"trace://for-you-role-classifier/{digest}"
+
+
+def _classify_roles_with_llm(
+    store: V3Store,
+    article: dict[str, Any],
+) -> tuple[list[str], bool]:
+    cache_url = _classifier_cache_url(article)
+    cached = store.get_cached_summary_v2(cache_url, FOR_YOU_ROLE_CLASSIFIER_BUCKET)
+    if cached:
+        cached_summary = cached.get("summary")
+        if isinstance(cached_summary, dict):
+            cached_roles = [
+                _normalize_role(role)
+                for role in (cached_summary.get("roles") or [])
+                if _normalize_role(role) in ROLE_ORDER
+            ]
+            return cached_roles[:2], True
+
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        return [], False
+
+    prompt = (
+        "Classify this content item for Trace's professional audience buckets.\n"
+        "Return JSON only with keys roles and reject.\n"
+        "roles must be an array containing up to 2 values chosen from "
+        f"{', '.join(ROLE_ORDER)}.\n"
+        "Use reject=true if the item does not clearly belong to any of those buckets.\n\n"
+        f"Title: {str(article.get('title', '')).strip()}\n"
+        f"Source: {str(article.get('source', '')).strip()}\n"
+        f"Signal: {str(article.get('signal', '')).strip()}\n"
+        f"Role hints from source list: {', '.join(article.get('role_hints', []) or []) or 'none'}\n"
+        f"Source type: {str(article.get('source_kind', '')).strip()}\n"
+    )
+
+    client = OpenAI(api_key=api_key)
+    try:
+        response = client.chat.completions.create(
+            model=FOR_YOU_ROLE_CLASSIFIER_MODEL,
+            messages=[
+                {"role": "system", "content": "Return valid JSON only."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0,
+            response_format={"type": "json_object"},
+            timeout=30,
+        )
+        raw = json.loads(response.choices[0].message.content or "{}")
+    except Exception as exc:
+        _log(f"  classifier fallback failed for {article.get('title', '')[:50]}: {exc}")
+        return [], False
+
+    roles = [
+        _normalize_role(role)
+        for role in (raw.get("roles") or [])
+        if _normalize_role(role) in ROLE_ORDER
+    ][:2]
+    summary = {"roles": roles, "reject": bool(raw.get("reject"))}
+    store.save_cached_summary_v2(
+        cache_url,
+        FOR_YOU_ROLE_CLASSIFIER_BUCKET,
+        summary,
+        FOR_YOU_ROLE_CLASSIFIER_MODEL,
+    )
+    if summary["reject"]:
+        return [], False
+    return roles, False
+
+
+def _assign_roles_to_article(
+    store: V3Store,
+    article: dict[str, Any],
+) -> tuple[list[str], str]:
+    scores = _score_roles_by_rules(article)
+    ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+    top_role, top_score = ranked[0]
+    second_role, second_score = ranked[1]
+    role_hints = [_normalize_role(role) for role in (article.get("role_hints") or []) if _normalize_role(role) in ROLE_ORDER]
+
+    if top_score >= 6 and second_score >= 5 and (top_score - second_score) <= 1:
+        return [top_role, second_role], "rules"
+    if top_score >= 4:
+        return [top_role], "rules"
+    if len(role_hints) == 1:
+        return [role_hints[0]], "rules"
+    if len(role_hints) >= 2:
+        return role_hints[:2], "rules"
+    if top_score > 0:
+        return [top_role], "rules"
+
+    roles, cached = _classify_roles_with_llm(store, article)
+    if roles:
+        return roles, "cache" if cached else "llm"
+
+    return [], "reject"
+
+
+def _classify_content_pool(
+    store: V3Store,
+    articles: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    stats = {"classified_with_rules": 0, "classified_with_cache": 0, "classified_with_llm": 0, "rejected": 0}
+    classified: list[dict[str, Any]] = []
+    for article in articles:
+        roles, method = _assign_roles_to_article(store, article)
+        if not roles:
+            stats["rejected"] += 1
+            continue
+        record = dict(article)
+        record["roles"] = roles
+        classified.append(record)
+        if method == "cache":
+            stats["classified_with_cache"] += 1
+        elif method == "llm":
+            stats["classified_with_llm"] += 1
+        else:
+            stats["classified_with_rules"] += 1
+    return classified, stats
+
+
+def _score_article_for_role(
+    role: str,
+    article: dict[str, Any],
+    recent_urls: set[str],
+    recent_titles: set[str],
+) -> float:
+    role = _normalize_role(role)
+    score = 0.0
+    if role in (article.get("roles") or []):
+        score += 24.0
+    if role in (article.get("role_hints") or []):
+        score += 8.0
+
+    source_kind = str(article.get("source_kind", "")).strip().lower()
+    if source_kind == "community":
+        score += 18.0
+    elif source_kind == "editorial":
+        score += 8.0
+
+    signal_score = _signal_score(article)
+    score += min(12.0, math.log1p(max(signal_score, 0)))
+
+    title_sig = _normalize_title_signature(article.get("title", ""))
+    if str(article.get("url", "")).strip() in recent_urls:
+        score -= 60.0
+    if title_sig and title_sig in recent_titles:
+        score -= 35.0
+    return score
+
+
+def _select_role_articles(
+    role: str,
+    articles: list[dict[str, Any]],
+    recent_urls: set[str],
+    recent_titles: set[str],
+    total_limit: int = 36,
+) -> list[dict[str, Any]]:
+    role = _normalize_role(role)
+    candidates = [
+        dict(article, _rank_score=_score_article_for_role(role, article, recent_urls, recent_titles))
+        for article in articles
+        if role in (article.get("roles") or [])
+    ]
+    candidates.sort(key=lambda article: (article.get("_rank_score", 0), _signal_score(article)), reverse=True)
+
+    diverse: list[dict[str, Any]] = []
+    source_counts: dict[str, int] = {}
+    community_limit_per_source = 2
+    editorial_limit_per_source = 1
+    for article in candidates:
+        source = str(article.get("source", "")).strip().lower()
+        source_kind = str(article.get("source_kind", "")).strip().lower()
+        limit_per_source = community_limit_per_source if source_kind == "community" else editorial_limit_per_source
+        if source and source_counts.get(source, 0) >= limit_per_source:
+            continue
+        diverse.append(article)
+        if source:
+            source_counts[source] = source_counts.get(source, 0) + 1
+        if len(diverse) >= max(total_limit * 2, total_limit):
+            break
+    return diverse
 
 
 def _parse_source_lines(markdown: str) -> tuple[str, list[dict[str, str]]]:
@@ -1311,7 +1689,54 @@ def _build_synthesized_feed_item(
     }
 
 
-_content_pool_cache: dict[str, list[dict[str, str]]] = {}
+def _build_role_feed_item(
+    target_date: str,
+    role: str,
+    goals: list[str],
+    summary: dict[str, Any],
+) -> dict[str, Any]:
+    primary_url = str(summary.get("primary_url", "")).strip()
+    sources = summary.get("sources") if isinstance(summary.get("sources"), list) else []
+    raw_id = f"{target_date}|{role}|{primary_url}|{summary.get('title', '')}"
+    item_id = hashlib.sha256(raw_id.encode("utf-8")).hexdigest()[:32]
+
+    return {
+        "id": f"fy_role_{item_id}",
+        "url": primary_url,
+        "title": summary.get("title", ""),
+        "type": "brief",
+        "source": "trace",
+        "source_name": "Trace Brief",
+        "interest_id": ROLE_FEED_INTEREST.get(role, ""),
+        "subinterest_id": role,
+        "feed_type": "for_you",
+        "published_date": target_date,
+        "thumbnail": summary.get("thumbnail", ""),
+        "summary": {
+            "short_article": summary.get("short_article", {}),
+            "reading_time_minutes": summary.get("reading_time_minutes", 2),
+        },
+        "sources": sources,
+        "metadata": {
+            "feed_type": "for_you",
+            "content_length": len(str((summary.get("short_article") or {}).get("body", ""))),
+            "synthesized": True,
+            "source_count": len(sources),
+            "why_relevant": f"Shared daily pulse for {_role_plural_label(role)} focused on {', '.join(goals)}.",
+            "goal": ", ".join(goals),
+            "role": role,
+            "source_description": ", ".join(
+                str(src.get("name", "")).strip()
+                for src in sources[:3]
+                if str(src.get("name", "")).strip()
+            ),
+            "morning_brief": True,
+            "role_pulse": True,
+        },
+    }
+
+
+_content_pool_cache: list[dict[str, Any]] = []
 
 
 def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) -> dict[str, int]:
@@ -1319,9 +1744,9 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
     global _content_pool_cache
     _log("Fetching content pool from HN, Reddit, and RSS sources...")
     _content_pool_cache = fetch_content_pool()
-    total = sum(len(v) for v in _content_pool_cache.values())
+    total = len(_content_pool_cache)
     stats = {
-        "sources": len(_content_pool_cache),
+        "sources": 1,
         "links_found": total,
         "new_items": total,
         "skipped": 0,
@@ -1330,7 +1755,7 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
         "deactivated": 0,
         "mode": "self_fetched",
     }
-    _log(f"Content pool ready: {total} articles across {len(_content_pool_cache)} roles")
+    _log(f"Content pool ready: {total} shared articles")
     return stats
 
 
@@ -1343,31 +1768,56 @@ def build_user_feeds(
     target_date = args.date.strip() or _today_ist()
     cfg_items = max(1, int(config.get("items_per_user", 1) or 1))
     items_per_user = max(1, int(args.items_per_user or cfg_items))
-
-    users = _load_users(store, args)
-    if args.user_id:
-        users = [u for u in users if u.get("uid") == args.user_id]
+    audience_users = _load_users(store, args)
     if args.limit_users > 0:
-        users = users[: args.limit_users]
+        audience_users = audience_users[: args.limit_users]
 
-    roles_needed = list({
-        str(u.get("role", "developer")).strip().lower() or "developer"
-        for u in users
-    })
+    target_users = audience_users
+    if args.user_id:
+        target_users = [u for u in audience_users if u.get("uid") == args.user_id]
+
+    target_roles = {
+        _normalize_role(profile.get("role"))
+        for profile in target_users
+        if str(profile.get("uid", "")).strip()
+    }
+    if not target_roles:
+        target_roles = {
+            _normalize_role(profile.get("role"))
+            for profile in audience_users
+            if str(profile.get("uid", "")).strip()
+        }
+
+    users_by_role: dict[str, list[dict[str, Any]]] = {}
+    for profile in audience_users:
+        role = _normalize_role(profile.get("role"))
+        if target_roles and role not in target_roles:
+            continue
+        users_by_role.setdefault(role, []).append(profile)
+
+    roles_needed = sorted(users_by_role.keys())
     if not _content_pool_cache:
         _log("Content pool empty, fetching now...")
         _content_pool_cache = fetch_content_pool(roles=roles_needed)
 
-    _log(f"Building For You for {len(users)} users, date={target_date}")
+    classified_pool, classification_stats = _classify_content_pool(store, _content_pool_cache)
+    _log(
+        f"Building For You for roles={roles_needed} "
+        f"(audience_users={len(audience_users)} target_users={len(target_users)}), "
+        f"date={target_date}"
+    )
 
     stats = {
-        "users": 0,
+        "roles": 0,
+        "target_users": len(target_users),
+        "audience_users": len(audience_users),
         "items_total": 0,
         "briefs_generated": 0,
         "briefs_cached": 0,
         "daily_video_generated": 0,
         "daily_video_cached": 0,
-        "rejected_items": 0,
+        "rejected_roles": 0,
+        **classification_stats,
     }
 
     daily_video_item: dict[str, Any] | None = None
@@ -1382,22 +1832,36 @@ def build_user_feeds(
     except Exception as exc:
         _log(f"  daily video generation failed: {exc}")
 
-    users_by_role: dict[str, list[dict[str, Any]]] = {}
-    for profile in users:
-        role = _normalize_role(profile.get("role"))
-        users_by_role.setdefault(role, []).append(profile)
+    for role in roles_needed:
+        role_profiles = users_by_role.get(role, [])
+        if not role_profiles:
+            continue
 
-    role_summaries: dict[str, dict[str, Any] | None] = {}
-    role_cache_hits: dict[str, bool] = {}
-    for role, role_profiles in users_by_role.items():
-        role_articles = _content_pool_cache.get(role, _content_pool_cache.get("developer", []))
-        recent_brief_urls: set[str] = set()
+        interest_counter: Counter[str] = Counter()
+        goal_counter: Counter[str] = Counter()
         for profile in role_profiles:
-            uid = str(profile.get("uid", "")).strip()
-            if not uid:
-                continue
-            recent_brief_urls.update(_load_recent_brief_urls(store, uid, target_date))
-        candidate_articles = _deprioritize_recent_articles(role_articles, recent_brief_urls)
+            for interest in profile.get("interests") or []:
+                value = str(interest or "").strip()
+                if value:
+                    interest_counter[value] += 1
+            for goal in profile.get("careerGoals") or []:
+                value = str(goal or "").strip()
+                if value:
+                    goal_counter[value] += 1
+
+        common_interests = [item for item, _ in interest_counter.most_common(5)]
+        common_goals = [_goal_label([goal]) for goal, _ in goal_counter.most_common(3)]
+        if not common_goals:
+            common_goals = ["stay sharp"]
+
+        recent_urls, recent_titles = _load_recent_role_history(store, role, target_date)
+        candidate_articles = _select_role_articles(
+            role,
+            classified_pool,
+            recent_urls,
+            recent_titles,
+            total_limit=36,
+        )
 
         try:
             summary, was_cached = _generate_role_brief(
@@ -1412,46 +1876,41 @@ def build_user_feeds(
             summary = None
             was_cached = False
 
-        role_summaries[role] = summary
-        role_cache_hits[role] = was_cached
-        if summary:
-            if was_cached:
-                stats["briefs_cached"] += 1
-            else:
-                stats["briefs_generated"] += 1
-        else:
-            stats["rejected_items"] += len(role_profiles)
-
-    for profile in users:
-        uid = str(profile.get("uid", "")).strip()
-        if not uid:
+        if not summary:
+            stats["rejected_roles"] += 1
             continue
 
-        role = _normalize_role(profile.get("role"))
-        brief_goal = _goal_label(profile.get("careerGoals") or [])
-        feed_items: list[dict[str, Any]] = []
-        summary = role_summaries.get(role)
+        if was_cached:
+            stats["briefs_cached"] += 1
+        else:
+            stats["briefs_generated"] += 1
 
-        if summary:
-            feed_items.append(
-                _build_synthesized_feed_item(
-                    uid,
-                    target_date,
-                    role,
-                    brief_goal,
-                    summary,
-                )
-            )
-
+        role_feed_items = [
+            _build_role_feed_item(target_date, role, common_goals, summary)
+        ]
         if daily_video_item:
-            feed_items.append(dict(daily_video_item))
+            role_feed_items.append(dict(daily_video_item))
+        role_feed_items = role_feed_items[:items_per_user]
 
-        feed_items = feed_items[:items_per_user]
-
-        store.write_feed_section(uid, target_date, "for_you", feed_items)
-        stats["users"] += 1
-        stats["items_total"] += len(feed_items)
-        _log(f"  user={uid} wrote {len(feed_items)} for_you items")
+        store.write_global_role_feed(
+            target_date,
+            role,
+            role_feed_items,
+            metadata={
+                "role": role,
+                "users_count": len(role_profiles),
+                "common_goals": common_goals,
+                "common_interests": common_interests,
+                "candidate_count": len(candidate_articles),
+                "cached": was_cached,
+            },
+        )
+        stats["roles"] += 1
+        stats["items_total"] += len(role_feed_items)
+        _log(
+            f"  role={role} wrote {len(role_feed_items)} global items "
+            f"(users={len(role_profiles)} candidates={len(candidate_articles)})"
+        )
 
     store.record_run("for_you", {"date": target_date, **stats})
     _log(f"For You feeds done: {stats}")
@@ -1482,7 +1941,7 @@ def main() -> None:
             return
 
     _log("-" * 40)
-    _log("PHASE 2: Per-user feed generation")
+    _log("PHASE 2: Role pulse generation")
     _log("-" * 40)
     feed_stats = build_user_feeds(store, config, args)
     _log("=" * 50)

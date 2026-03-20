@@ -542,7 +542,7 @@ export default function UnifiedFeedScreen() {
       // Always do a fresh fetch too, so prefetched/stale startup data
       // gets replaced automatically without needing a manual reload.
       for (let attempt = 0; attempt < 3; attempt++) {
-        const v3 = await getV3UserFeed(effectiveUid);
+        const v3 = await getV3UserFeed(effectiveUid, { role: effectiveProfile?.role });
         if (v3 && ((v3.trending_topics?.length ?? 0) > 0 || (v3.for_you?.length ?? 0) > 0)) {
           setV3Feed(v3);
           return true;

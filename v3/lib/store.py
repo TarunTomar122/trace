@@ -7,7 +7,7 @@ Collections:
   v3_trending_pool      — raw articles for "Trending" feed
   v3_summary_cache      — cached summaries keyed by
                           (url_hash, style, seniority)
-  v3_user_feeds         — assembled per-user feeds with 3 sections
+  v3_user_feeds         — global/shared feed sections plus any legacy per-user feed docs
   v3_seen_urls          — per-user seen URLs with 30-day pruning
   v3_pipeline_runs      — run timestamps for cadence tracking
 """
@@ -491,6 +491,48 @@ class V3Store:
             },
             merge=True,
         )
+
+    def write_global_role_feed(
+        self,
+        date: str,
+        role: str,
+        items: list[dict[str, Any]],
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Write one role-specific For You pulse into the shared global feed doc."""
+        doc_ref = self.db.collection(USER_FEEDS).document("_global").collection(
+            "daily"
+        ).document(date)
+        existing = doc_ref.get().to_dict() or {}
+
+        role_map = existing.get("for_you_roles", {})
+        if not isinstance(role_map, dict):
+            role_map = {}
+        role_map[role] = items
+
+        counts_map = existing.get("for_you_role_counts", {})
+        if not isinstance(counts_map, dict):
+            counts_map = {}
+        counts_map[role] = len(items)
+
+        generated_at_map = existing.get("for_you_role_generated_at", {})
+        if not isinstance(generated_at_map, dict):
+            generated_at_map = {}
+        generated_at_map[role] = _now_iso()
+
+        payload: dict[str, Any] = {
+            "for_you_roles": role_map,
+            "for_you_role_counts": counts_map,
+            "for_you_role_generated_at": generated_at_map,
+        }
+        if metadata is not None:
+            metadata_map = existing.get("for_you_role_metadata", {})
+            if not isinstance(metadata_map, dict):
+                metadata_map = {}
+            metadata_map[role] = metadata
+            payload["for_you_role_metadata"] = metadata_map
+
+        doc_ref.set(payload, merge=True)
 
     def load_global_feed(self, date: str) -> dict[str, Any]:
         """Load the global feed for a given date."""

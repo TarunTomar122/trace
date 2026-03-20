@@ -469,6 +469,8 @@ export interface UserProfile {
   utmSource?: string | null;
   utmCampaign?: string | null;
   utmMedium?: string | null;
+  timezone?: string;
+  locale?: string;
 
   // Timestamps
   createdAt: Timestamp | null;
@@ -706,8 +708,53 @@ export async function getLatestUserFeed(uid: string): Promise<UserFeed | null> {
   }
 }
 
-export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
+function normalizeFeedRole(role?: string | null): string {
+  const normalized = String(role || '').trim().toLowerCase();
+  if (!normalized) return '';
+  if (
+    normalized === 'developer' ||
+    normalized === 'engineer' ||
+    normalized === 'software engineer' ||
+    normalized === 'software developer' ||
+    normalized === 'full stack developer' ||
+    normalized === 'full-stack developer'
+  ) {
+    return 'developer';
+  }
+  if (
+    normalized === 'designer' ||
+    normalized === 'product designer' ||
+    normalized === 'ux designer' ||
+    normalized === 'ui designer'
+  ) {
+    return 'designer';
+  }
+  if (normalized === 'pm' || normalized === 'product manager') {
+    return 'pm';
+  }
+  if (
+    normalized === 'marketer' ||
+    normalized === 'marketing' ||
+    normalized === 'growth marketer' ||
+    normalized === 'creator'
+  ) {
+    return 'marketer';
+  }
+  if (normalized === 'data scientist') {
+    return 'developer';
+  }
+  if (normalized === 'founder' || normalized === 'co-founder' || normalized === 'startup founder') {
+    return 'founder';
+  }
+  return normalized;
+}
+
+export async function getV3UserFeed(
+  uid: string,
+  options?: { role?: string | null }
+): Promise<V3UserFeed | null> {
   try {
+    const normalizedRole = normalizeFeedRole(options?.role);
     // Fetch user-specific feed (for_you, deep_dives)
     const feedRef = collection(firestore, 'v3_user_feeds', uid, 'daily');
     const snapshot = await getDocs(feedRef);
@@ -723,6 +770,7 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
     let mergedFeed: MergedFeedItem[] = [];
     let userTrending: FeedItem[] = [];
     let userTrendingTopics: TrendingTopic[] = [];
+    let roleBasedForYou: FeedItem[] = [];
     let feedDate = '';
     let assembledAt: string | undefined;
     let metadata: V3UserFeed['metadata'];
@@ -778,6 +826,18 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
         const globalData = globalDoc.data();
         const candidateTrending = Array.isArray(globalData.trending) ? globalData.trending : [];
         const candidateTopics = Array.isArray(globalData.trending_topics) ? globalData.trending_topics : [];
+        const roleMap = globalData.for_you_roles && typeof globalData.for_you_roles === 'object'
+          ? globalData.for_you_roles
+          : null;
+        const candidateRoleFeed = normalizedRole && roleMap && Array.isArray(roleMap[normalizedRole])
+          ? roleMap[normalizedRole]
+          : [];
+        if (roleBasedForYou.length === 0 && candidateRoleFeed.length > 0) {
+          roleBasedForYou = candidateRoleFeed;
+          if (!feedDate) {
+            feedDate = globalData.date || globalDoc.id;
+          }
+        }
         if (candidateTrending.length > 0 || candidateTopics.length > 0) {
           trending = candidateTrending;
           trendingTopics = candidateTopics;
@@ -790,8 +850,19 @@ export async function getV3UserFeed(uid: string): Promise<V3UserFeed | null> {
         const latestGlobalData = sortedGlobal[0].data();
         trending = Array.isArray(latestGlobalData.trending) ? latestGlobalData.trending : [];
         trendingTopics = Array.isArray(latestGlobalData.trending_topics) ? latestGlobalData.trending_topics : [];
+        const roleMap = latestGlobalData.for_you_roles && typeof latestGlobalData.for_you_roles === 'object'
+          ? latestGlobalData.for_you_roles
+          : null;
+        if (roleBasedForYou.length === 0 && normalizedRole && roleMap && Array.isArray(roleMap[normalizedRole])) {
+          roleBasedForYou = roleMap[normalizedRole];
+          if (!feedDate) {
+            feedDate = latestGlobalData.date || sortedGlobal[0].id;
+          }
+        }
       }
     }
+
+    if (roleBasedForYou.length > 0) forYou = roleBasedForYou;
 
     // Fallback: if global data is missing/lagging, use user doc sections assembled for that date.
     if (trending.length === 0) trending = userTrending;
@@ -850,6 +921,8 @@ export async function createUserProfile(
   displayName: string,
   photoURL: string | null
 ): Promise<UserProfile> {
+  const timezone = getLocalTimezone();
+  const locale = getLocalLocale();
   const profile: UserProfile = {
     uid,
     email,
@@ -902,6 +975,8 @@ export async function createUserProfile(
     utmSource: null,
     utmCampaign: null,
     utmMedium: null,
+    timezone,
+    locale,
     createdAt: serverTimestamp() as Timestamp,
     updatedAt: serverTimestamp() as Timestamp,
     onboardedAt: null,
@@ -1021,6 +1096,39 @@ export async function updateUserProfile(
     console.error('Error updating user profile:', error);
     throw error;
   }
+}
+
+export function getLocalTimezone(): string {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return typeof tz === 'string' && tz.trim() ? tz.trim() : 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
+export function getLocalLocale(): string {
+  try {
+    const locale = Intl.DateTimeFormat().resolvedOptions().locale;
+    return typeof locale === 'string' && locale.trim() ? locale.trim() : 'en-US';
+  } catch {
+    return 'en-US';
+  }
+}
+
+export async function syncUserTimezone(
+  uid: string,
+  profile?: Pick<UserProfile, 'timezone' | 'locale'> | null
+): Promise<void> {
+  const timezone = getLocalTimezone();
+  const locale = getLocalLocale();
+  if (profile?.timezone === timezone && profile?.locale === locale) {
+    return;
+  }
+  await updateUserProfile(uid, {
+    timezone,
+    locale,
+  } as Partial<UserProfile>);
 }
 
 export async function syncAffiliateAttributionToProfile(

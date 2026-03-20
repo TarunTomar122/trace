@@ -12,7 +12,7 @@ import {
   User,
 } from 'firebase/auth';
 import { app, auth } from '@/lib/firebase';
-import { getOrCreateUserProfile, getUserProfile, deleteUserData, UserProfile, getV3UserFeed } from '@/lib/firestore';
+import { getOrCreateUserProfile, getUserProfile, deleteUserData, UserProfile, getV3UserFeed, syncUserTimezone } from '@/lib/firestore';
 import { enablePushNotifications } from '@/lib/notifications';
 import { setPrefetchedFeed, setPrefetchPromise, clearFeedCache } from '@/lib/feed-cache';
 import {
@@ -100,6 +100,8 @@ function toCachedProfile(profile: UserProfile): UserProfile {
     feedBuildStatus: profile.feedBuildStatus,
     feedBuildRequestedAt: profile.feedBuildRequestedAt,
     referralSource: profile.referralSource,
+    timezone: profile.timezone,
+    locale: profile.locale,
     hasRequestedReview: profile.hasRequestedReview,
     reviewRequestedAt: profile.reviewRequestedAt,
     createdAt: profile.createdAt ?? null,
@@ -271,7 +273,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await loadProfile(firebaseUser, { allowCreate: false });
 
       // Prefetch feed in parallel with profile load for faster startup
-      const feedPromise = getV3UserFeed(firebaseUser.uid).then((feed) => {
+      const feedPromise = getV3UserFeed(firebaseUser.uid, {
+        role: cachedProfile?.role || profileRef.current?.role || null,
+      }).then((feed) => {
         if (feed) {
           setPrefetchedFeed(firebaseUser.uid, feed);
         }
@@ -327,6 +331,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         void writeCachedProfile(resolvedProfile);
         void writeBootUid(resolvedProfile.uid);
         void writeCachedProfileInterests(resolvedProfile.uid, resolvedProfile.interests || []);
+        void syncUserTimezone(resolvedProfile.uid, resolvedProfile);
       }
 
       return resolvedProfile;
@@ -346,6 +351,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (resolvedProfile) {
         void writeCachedProfile(resolvedProfile);
         void writeCachedProfileInterests(resolvedProfile.uid, resolvedProfile.interests || []);
+        void syncUserTimezone(resolvedProfile.uid, resolvedProfile);
       }
     }
   };

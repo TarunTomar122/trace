@@ -351,6 +351,29 @@ def _load_recent_user_section(
     return [], target_date
 
 
+def _load_recent_role_section(
+    store: V3Store,
+    role: str,
+    target_date: str,
+    section: str,
+    lookback_days: int = 5,
+) -> tuple[list[dict[str, Any]], str]:
+    role = str(role or "").strip().lower()
+    for date_key in _recent_dates(target_date, lookback_days):
+        global_feed = store.load_global_feed(date_key)
+        if section == "for_you":
+            role_map = global_feed.get("for_you_roles", {})
+            if isinstance(role_map, dict):
+                items = role_map.get(role, [])
+                if isinstance(items, list) and items:
+                    return items, date_key
+        else:
+            items = global_feed.get(section, [])
+            if isinstance(items, list) and items:
+                return items, date_key
+    return [], target_date
+
+
 def _build_experimental_evergreen_feed(
     store: V3Store,
     profile: dict[str, Any],
@@ -580,6 +603,10 @@ def assemble(args: argparse.Namespace) -> dict[str, int]:
             if not for_you:
                 for_you, for_you_source_date = _load_recent_user_section(
                     store, uid, target_date, "for_you"
+                )
+            if not for_you:
+                for_you, for_you_source_date = _load_recent_role_section(
+                    store, profile.get("role", ""), target_date, "for_you"
                 )
         # Always use global trending (it's fresher news, refreshed every 2 hours)
         trending = global_trending
