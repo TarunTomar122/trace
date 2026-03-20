@@ -51,7 +51,7 @@ except Exception:  # pragma: no cover - optional runtime dependency
 CONFIG_PATH = "v3/config/for_you_sources.json"
 BRIEF_SOURCES_PATH = "v3/config/brief_sources.json"
 DEFAULT_ITEMS = 0
-FOR_YOU_BRIEF_BUCKET = "for_you_brief_v21_top_stories"
+FOR_YOU_BRIEF_BUCKET = "for_you_brief_v23_top_stories"
 FOR_YOU_BRIEF_MODEL = "gpt-5-mini"
 FOR_YOU_ROLE_CLASSIFIER_BUCKET = "for_you_role_classifier_v1"
 FOR_YOU_ROLE_CLASSIFIER_MODEL = "gpt-4.1-nano"
@@ -881,7 +881,7 @@ def _expand_source_markers(markdown: str, articles: list[dict[str, str]]) -> str
 
     for raw_line in markdown.splitlines():
         stripped = raw_line.strip()
-        marker_match = re.search(r"(?:→|->)\s*((?:\[\d+\]\s*,?\s*)+)\s*$", stripped)
+        marker_match = re.search(r"(?:→|->)\s*(\[[\d,\s]+\])\s*$", stripped)
         if not marker_match:
             expanded_lines.append(raw_line)
             continue
@@ -891,7 +891,7 @@ def _expand_source_markers(markdown: str, articles: list[dict[str, str]]) -> str
             expanded_lines.append(prefix)
 
         marker_text = marker_match.group(1)
-        ids = [int(match) for match in re.findall(r"\[(\d+)\]", marker_text)]
+        ids = [int(match) for match in re.findall(r"\d+", marker_text)]
         if not ids:
             expanded_lines.append(raw_line)
             continue
