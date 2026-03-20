@@ -9,7 +9,7 @@ import {
   onAuthStateChanged
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
-import { getOrCreateUserProfile, getUserProfile, syncAffiliateAttributionToProfile, UserProfile } from '@/lib/firestore';
+import { getOrCreateUserProfile, getUserProfile, syncAffiliateAttributionToProfile, syncUserTimezone, UserProfile } from '@/lib/firestore';
 import { readAffiliateAttribution } from '@/lib/affiliate';
 import { identifyUser, resetUser, trackSignIn, trackSignOut } from '@/lib/posthog';
 
@@ -103,6 +103,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         : await getUserProfile(firebaseUser.uid);
       setProfile(userProfile);
       setProfileResolved(true);
+      if (userProfile) {
+        void syncUserTimezone(firebaseUser.uid, userProfile);
+      }
       return userProfile;
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -134,6 +137,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const p = await getUserProfile(user.uid);
         setProfile(p);
+        if (p) {
+          void syncUserTimezone(user.uid, p);
+        }
       } catch (error) {
         console.error('Error refreshing profile:', error);
       }

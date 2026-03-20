@@ -7,9 +7,12 @@ from typing import Any
 import requests
 
 from v3.lib.store import V3Store
+from v3.lib.timezones import now_for_profile
 
 EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
 NOTIFICATION_MARKERS = "v3_push_notifications"
+QUIET_HOURS_START = 22
+QUIET_HOURS_END = 8
 
 INTEREST_ALIASES = {
     "artificial-intelligence": "ai",
@@ -138,8 +141,17 @@ def _get_push_enabled_users(store: V3Store) -> list[dict[str, Any]]:
             "uid": doc.id,
             "pushToken": token,
             "interests": interests,
+            "timezone": data.get("timezone"),
         })
     return users
+
+
+def _can_send_now(user: dict[str, Any]) -> bool:
+    local_now = now_for_profile(user)
+    hour = local_now.hour
+    if QUIET_HOURS_START <= hour or hour < QUIET_HOURS_END:
+        return False
+    return True
 
 
 def _mark_topic_notified(store: V3Store, topic: dict[str, Any], sent_count: int) -> None:
@@ -194,6 +206,8 @@ def send_interest_notifications(
     topic_recipient_counts: dict[str, int] = {}
 
     for user in users:
+        if not _can_send_now(user):
+            continue
         matched_topic = next(
             (
                 topic for topic in candidate_topics
