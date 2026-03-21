@@ -42,6 +42,193 @@ const trendingFetcher = async () => {
   }));
 };
 
+/* ─── Daily Brief Body Parser ─── */
+type BriefBlock =
+  | { type: 'paragraph'; text: string }
+  | { type: 'heading'; text: string }
+  | { type: 'link'; source: string; title: string; url: string };
+
+// Title may contain parentheses (e.g. "Foo (bar)"); anchor on a real http(s) URL, optionally
+// markdown-wrapped as **(https://...)**.
+const BRIEF_LINK_RE =
+  /→\s+([^—\n]+?)\s+—\s+([\s\S]+?)\s*(?:\*\*)?\((https?:\/\/[^)\s]+)\)(?:\*\*)?/g;
+
+function looksLikeBriefBody(raw: string): boolean {
+  return /→\s+[^—\n]+\s+—\s+[\s\S]*?(?:\*\*)?\(https?:\/\//.test(raw);
+}
+
+function parseBriefBody(raw: string): BriefBlock[] {
+  const blocks: BriefBlock[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  BRIEF_LINK_RE.lastIndex = 0;
+
+  while ((match = BRIEF_LINK_RE.exec(raw)) !== null) {
+    const before = raw.slice(lastIndex, match.index).trim();
+    if (before) {
+      for (const chunk of before.split(/\n\n+/)) {
+        const p = chunk.replace(/\n/g, ' ').trim();
+        if (!p) continue;
+        if (p.startsWith('## ')) blocks.push({ type: 'heading', text: p.slice(3).trim() });
+        else blocks.push({ type: 'paragraph', text: p });
+      }
+    }
+    const title = match[2].replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+    blocks.push({ type: 'link', source: match[1].trim(), title, url: match[3] });
+    lastIndex = match.index + match[0].length;
+  }
+
+  const tail = raw.slice(lastIndex).trim();
+  if (tail) {
+    for (const chunk of tail.split(/\n\n+/)) {
+      const p = chunk.replace(/\n/g, ' ').trim();
+      // strip footnote-style refs like → [12, 8, 3]
+      const stripped = p.replace(/→\s*\[[^\]]+\]/g, '').trim();
+      if (!stripped) continue;
+      if (stripped.startsWith('## ')) blocks.push({ type: 'heading', text: stripped.slice(3).trim() });
+      else blocks.push({ type: 'paragraph', text: stripped });
+    }
+  }
+
+  return blocks;
+}
+
+type BriefLink = { source: string; title: string; url: string };
+
+type BriefStory = {
+  heading?: string;
+  paragraphs: string[];
+  link?: BriefLink;
+  /** Same summary block, extra outlets (no duplicate section heading). */
+  moreLinks?: { link: BriefLink; heading?: string }[];
+};
+
+function groupBriefBlocks(blocks: BriefBlock[]): BriefStory[] {
+  const stories: BriefStory[] = [];
+  let current: BriefStory = { paragraphs: [] };
+
+  for (const block of blocks) {
+    if (block.type === 'heading') {
+      // flush current story if it has content
+      if (current.paragraphs.length > 0) { stories.push(current); current = { paragraphs: [] }; }
+      current.heading = block.text;
+    } else if (block.type === 'paragraph') {
+      current.paragraphs.push(block.text);
+    } else if (block.type === 'link') {
+      current.link = block;
+      stories.push(current);
+      current = { paragraphs: [] };
+    }
+  }
+  if (current.paragraphs.length > 0) stories.push(current);
+  return stories;
+}
+
+/** Link-only segments (common when one paragraph cites several outlets) fold into the prior block. */
+function mergeBriefLinkOnlyStories(stories: BriefStory[]): BriefStory[] {
+  const out: BriefStory[] = [];
+  for (const story of stories) {
+    const last = out[out.length - 1];
+    const linkOnly = Boolean(story.link) && story.paragraphs.length === 0;
+
+    if (linkOnly && last?.link) {
+      if (!last.moreLinks) last.moreLinks = [];
+      last.moreLinks.push({ link: story.link!, heading: story.heading });
+      continue;
+    }
+    out.push(story);
+  }
+  return out;
+}
+
+function briefSourceKey(s: string): string {
+  return s.trim().toLowerCase();
+}
+
+function BriefLinkPill({ link, sourceMuted }: { link: BriefLink; sourceMuted?: boolean }) {
+  return (
+    <a
+      href={link.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-foreground/6 hover:bg-foreground/10 transition-colors group max-w-full min-w-0"
+    >
+      <ExternalLink size={11} className="shrink-0 text-foreground/40" />
+      {sourceMuted && (
+        <span className="text-[10px] font-medium text-secondary/45 uppercase tracking-wide shrink-0 max-w-28 truncate">
+          {link.source}
+        </span>
+      )}
+      <span
+        className={`text-[12px] font-medium text-foreground/70 line-clamp-1 min-w-0 ${sourceMuted ? 'flex-1' : 'max-w-[340px]'}`}
+      >
+        {link.title}
+      </span>
+    </a>
+  );
+}
+
+function BriefBody({ body }: { body: string }) {
+  const stories = mergeBriefLinkOnlyStories(groupBriefBlocks(parseBriefBody(body)));
+
+  return (
+    <div>
+      {stories.map((story, i) => {
+        const prev = i > 0 ? stories[i - 1] : undefined;
+        const sameSourceAsPrev =
+          Boolean(story.link && prev?.link) &&
+          briefSourceKey(story.link!.source) === briefSourceKey(prev!.link!.source);
+        const showSourceLabel = Boolean(story.link) && !sameSourceAsPrev;
+        const headingDupesSource =
+          Boolean(story.heading && story.link) &&
+          briefSourceKey(story.heading!) === briefSourceKey(story.link!.source);
+
+        const separator =
+          i > 0
+            ? sameSourceAsPrev
+              ? 'pt-3 mt-3'
+              : 'pt-5 mt-5 border-t border-border/10'
+            : '';
+
+        const extra = story.moreLinks ?? [];
+
+        return (
+        <div key={i} className={separator}>
+          {showSourceLabel && (
+            <p className="text-[10px] font-semibold text-amber-500 dark:text-amber-400 uppercase tracking-[0.18em] mb-2">
+              {story.link!.source}
+            </p>
+          )}
+
+          {story.heading && !headingDupesSource && (
+            <h3 className="text-sm font-semibold text-foreground/70 mb-2">{story.heading}</h3>
+          )}
+
+          {story.paragraphs.map((p, j) => (
+            <p key={j} className="text-[15px] text-secondary leading-relaxed mb-3">{p}</p>
+          ))}
+
+          {story.link && (
+            <div className={`flex flex-col gap-2 ${story.paragraphs.length > 0 ? 'mt-1' : ''}`}>
+              <BriefLinkPill link={story.link} />
+              {extra.map((item, k) => (
+                <BriefLinkPill
+                  key={k}
+                  link={item.link}
+                  sourceMuted={
+                    briefSourceKey(item.link.source) !== briefSourceKey(story.link!.source)
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function stripMarkdown(text: string): string {
   return (text || "")
     .replace(/\*\*(.*?)\*\*/g, "$1")
@@ -271,13 +458,20 @@ function ContentPanel({
         )}
 
         {/* Body / Overview */}
-        {content.body && (
-          <div className="text-secondary leading-relaxed mb-8">
-            <div className="prose prose-slate dark:prose-invert max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{content.body}</ReactMarkdown>
+        {content.body && (() => {
+          const isBriefFormat = looksLikeBriefBody(content.body);
+          return (
+            <div className="text-secondary leading-relaxed mb-8">
+              {isBriefFormat ? (
+                <BriefBody body={content.body} />
+              ) : (
+                <div className="prose prose-slate dark:prose-invert max-w-none">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{content.body}</ReactMarkdown>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Key Takeaways */}
         {content.keyPoints && content.keyPoints.length > 0 && (
@@ -513,7 +707,7 @@ function FeedPageContent() {
     setShowMobileContent(false);
     if (window.history.state?.article) window.history.back();
   };
-  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [activeFilter, setActiveFilter] = useState<string>('for_you');
   const [isExpanded, setIsExpanded] = useState(false);
   const refreshProfileRef = React.useRef(refreshProfile);
 
@@ -747,8 +941,33 @@ function FeedPageContent() {
   }, [visibleTrendingTopics, v3Feed?.trending, isSubscribed, fallbackTrending]);
 
 
+  const pulseList = useMemo(() => {
+    const items = v3Feed?.for_you || [];
+    return items.map(item => ({
+      id: item.id,
+      type: 'article' as const,
+      title: decodeHtml(item.title || ''),
+      preview: getPreview(getArticleSummary(item)),
+      timestamp: item.published_date,
+      source: item.source_name,
+      sourceCount: item.metadata?.source_count || (item.sources?.length || 0),
+      thumbnail: item.thumbnail,
+      interestId: item.interest_id,
+      tags: item.tags,
+      data: item,
+    }));
+  }, [v3Feed?.for_you]);
+
   const filteredList = useMemo(() => {
-    if (activeFilter === 'all') return currentList;
+    if (activeFilter === 'pulse') return pulseList;
+    if (activeFilter === 'for_you') {
+      // All items matching any of the user's interests
+      return currentList.filter(item => {
+        const matchesInterest = item.interestId ? userInterests.has(item.interestId) : false;
+        const matchesTags = item.tags?.some(tag => userInterests.has(tag)) || false;
+        return matchesInterest || matchesTags;
+      });
+    }
     if (activeFilter === 'suggested') {
       return currentList.filter(item => {
         const matchesInterest = item.interestId ? userInterests.has(item.interestId) : false;
@@ -756,21 +975,22 @@ function FeedPageContent() {
         return !(matchesInterest || matchesTags);
       });
     }
-    // Interest tab: filter to items matching that specific interest
+    // Specific interest tab
     return currentList.filter(item => {
       const matchesInterest = item.interestId === activeFilter;
       const matchesTags = item.tags?.includes(activeFilter) || false;
       return matchesInterest || matchesTags;
     });
-  }, [currentList, activeFilter, userInterests]);
+  }, [currentList, pulseList, activeFilter, userInterests]);
 
   const filterCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: currentList.length, suggested: 0 };
+    const counts: Record<string, number> = { pulse: pulseList.length, for_you: 0, suggested: 0 };
     for (const item of currentList) {
       const matchesInterest = item.interestId ? userInterests.has(item.interestId) : false;
       const matchesTags = item.tags?.some(tag => userInterests.has(tag)) || false;
       if (matchesInterest || matchesTags) {
-        // Count per interest
+        counts.for_you++;
+        // Count per specific interest
         const matchedInterest = item.interestId && userInterests.has(item.interestId)
           ? item.interestId
           : item.tags?.find(tag => userInterests.has(tag));
@@ -780,7 +1000,7 @@ function FeedPageContent() {
       }
     }
     return counts;
-  }, [currentList, userInterests]);
+  }, [currentList, pulseList, userInterests]);
 
   const interestTabs = useMemo(() => {
     return ONBOARDING_INTERESTS.filter(interest =>
@@ -796,8 +1016,10 @@ function FeedPageContent() {
 
   const selectedItem = useMemo(() => {
     if (!selectedId) return null;
-    return currentList.find(item => item.id === selectedId) || null;
-  }, [currentList, selectedId]);
+    return currentList.find(item => item.id === selectedId)
+      || pulseList.find(item => item.id === selectedId)
+      || null;
+  }, [currentList, pulseList, selectedId]);
 
   const selectedContent = useMemo((): ContentData | null => {
     if (!selectedItem) return null;
@@ -915,8 +1137,8 @@ function FeedPageContent() {
             className={`flex bg-white overflow-hidden ${isExpanded ? 'h-full' : 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]'}`}
             style={isExpanded ? undefined : { height: 'calc(100vh - 120px)', minHeight: '500px' }}
           >
-            {/* Sidebar */}
-            <div className="w-[340px] shrink-0 border-r border-border/20 flex flex-col">
+            {/* Sidebar — hidden in pulse mode */}
+            <div className={`w-[340px] shrink-0 border-r border-border/20 flex flex-col ${activeFilter === 'pulse' ? 'hidden' : ''}`}>
               <div className="px-5 pt-5 pb-3 border-b border-border/20">
                 <div className="flex items-center justify-between">
                   <h2 className="text-[15px] font-bold text-foreground tracking-[-0.01em]">
@@ -936,7 +1158,8 @@ function FeedPageContent() {
                 {isSubscribed && (
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {([
-                      { key: 'all', label: 'All' },
+                      { key: 'pulse', label: 'Daily Pulse' },
+                      { key: 'for_you', label: 'For You' },
                       ...interestTabs.map(i => ({ key: i.id, label: i.label })),
                       { key: 'suggested', label: 'Suggested' },
                     ]).map(({ key, label }) => (
@@ -982,10 +1205,12 @@ function FeedPageContent() {
                   ) : filteredList.length === 0 ? (
                     <div className="px-5 py-12 text-center">
                       <p className="text-sm text-secondary/55">
-                        {activeFilter === 'suggested'
+                        {activeFilter === 'pulse'
+                          ? 'Your daily pulse is on its way'
+                          : activeFilter === 'suggested'
                           ? 'No suggested stories right now'
-                          : activeFilter === 'all'
-                          ? 'No stories available'
+                          : activeFilter === 'for_you'
+                          ? 'No stories matching your interests'
                           : `No stories for ${INTEREST_LABEL[activeFilter] || activeFilter} yet`}
                       </p>
                     </div>
@@ -1069,11 +1294,16 @@ function FeedPageContent() {
                   ) : null;
                 })()}
 
-                {selectedContent.body && (
-                  <div className="prose prose-sm max-w-none text-secondary leading-relaxed mb-6">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedContent.body}</ReactMarkdown>
-                  </div>
-                )}
+                {selectedContent.body && (() => {
+                  const isBriefFormat = looksLikeBriefBody(selectedContent.body);
+                  return isBriefFormat ? (
+                    <div className="mb-6"><BriefBody body={selectedContent.body} /></div>
+                  ) : (
+                    <div className="prose prose-sm max-w-none text-secondary leading-relaxed mb-6">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedContent.body}</ReactMarkdown>
+                    </div>
+                  );
+                })()}
 
                 {selectedContent.keyPoints && selectedContent.keyPoints.length > 0 && (
                   <div className="mb-6">
@@ -1169,7 +1399,8 @@ function FeedPageContent() {
             <div className="overflow-x-auto scrollbar-hide border-b border-border/15">
               <div className="flex items-center gap-2 px-5 pb-3 w-max">
                 {([
-                  { key: 'all', label: 'All' },
+                  { key: 'pulse', label: 'Daily Pulse' },
+                  { key: 'for_you', label: 'For You' },
                   ...interestTabs.map(i => ({ key: i.id, label: i.label })),
                   { key: 'suggested', label: 'Suggested' },
                 ]).map(({ key, label }) => (
@@ -1195,10 +1426,30 @@ function FeedPageContent() {
             ) : filteredList.length === 0 ? (
               <div className="px-5 py-12 text-center">
                 <p className="text-sm text-secondary/55">
-                  {activeFilter === 'suggested' ? 'No suggested stories right now'
-                    : activeFilter === 'all' ? 'No stories available'
+                  {activeFilter === 'pulse' ? 'Your daily pulse is on its way'
+                    : activeFilter === 'suggested' ? 'No suggested stories right now'
+                    : activeFilter === 'for_you' ? 'No stories matching your interests'
                     : `No stories for ${INTEREST_LABEL[activeFilter] || activeFilter} yet`}
                 </p>
+              </div>
+            ) : activeFilter === 'pulse' && selectedContent ? (
+              /* Pulse: render brief inline, no tap-to-open */
+              <div className="px-5 pt-5 pb-12">
+                <div className="flex items-center gap-2 text-[11px] text-secondary/50 mb-3">
+                  {selectedContent.timestamp && <span>{getTimeLabel(selectedContent.timestamp)}</span>}
+                  {selectedContent.source && <><span className="text-secondary/30">·</span><span>{selectedContent.source}</span></>}
+                  {(selectedContent.sourceCount || 0) > 1 && <><span className="text-secondary/30">·</span><span className="font-medium">{selectedContent.sourceCount} sources</span></>}
+                  {selectedContent.readingTime && <><span className="text-secondary/30">·</span><span>{selectedContent.readingTime} min read</span></>}
+                </div>
+                <h1 className="text-[1.35rem] font-bold text-foreground leading-tight tracking-[-0.02em] mb-5">
+                  {selectedContent.title}
+                </h1>
+                {selectedContent.body && (() => {
+                  const isBriefFormat = looksLikeBriefBody(selectedContent.body);
+                  return isBriefFormat
+                    ? <BriefBody body={selectedContent.body} />
+                    : <p className="text-[15px] text-secondary leading-relaxed">{selectedContent.body}</p>;
+                })()}
               </div>
             ) : (
               <div className="divide-y divide-border/10">
