@@ -12,7 +12,14 @@ import {
   User,
 } from 'firebase/auth';
 import { app, auth } from '@/lib/firebase';
-import { getOrCreateUserProfile, getUserProfile, deleteUserData, UserProfile, getV3UserFeed, syncUserTimezone } from '@/lib/firestore';
+import {
+  getOrCreateUserProfile,
+  getUserProfileWithSource,
+  deleteUserData,
+  UserProfile,
+  getV3UserFeed,
+  syncUserTimezone,
+} from '@/lib/firestore';
 import { enablePushNotifications } from '@/lib/notifications';
 import { setPrefetchedFeed, setPrefetchPromise, clearFeedCache } from '@/lib/feed-cache';
 import {
@@ -30,10 +37,11 @@ interface AuthContextType {
   loading: boolean;
   profileResolved: boolean;
   profileLoadError: boolean;
+  profileServerVerified: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
+  refreshProfile: () => Promise<{ profile: UserProfile | null; serverVerified: boolean }>;
   retryProfileLoad: () => Promise<void>;
 }
 
@@ -46,10 +54,11 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   profileResolved: false,
   profileLoadError: false,
+  profileServerVerified: false,
   signInWithGoogle: async () => {},
   signOut: async () => {},
   deleteAccount: async () => {},
-  refreshProfile: async () => {},
+  refreshProfile: async () => ({ profile: null, serverVerified: false }),
   retryProfileLoad: async () => {},
 });
 
@@ -229,6 +238,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [profileResolved, setProfileResolved] = useState(false);
   const [profileLoadError, setProfileLoadError] = useState(false);
+  const [profileServerVerified, setProfileServerVerified] = useState(false);
   const signInInFlightRef = useRef(false);
   const lastHandledAuthUidRef = useRef<string | null | undefined>(undefined);
   const profileRef = useRef<UserProfile | null>(null);
@@ -263,10 +273,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(firebaseUser);
     if (firebaseUser) {
       setProfileResolved(false);
+      setProfileServerVerified(false);
       const cachedProfile = await readCachedProfile(firebaseUser.uid);
       if (cachedProfile) {
         commitProfile(cachedProfile, firebaseUser);
-        setProfileResolved(true);
       }
       // Startup should never create/overwrite profiles.
       // Single attempt - getUserProfile already uses cache-first with server fallback.
@@ -289,6 +299,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setBootProfile(null);
       setBootInterests([]);
       setProfileResolved(true);
+      setProfileServerVerified(false);
       clearFeedCache();
       if (previousUid) {
         void clearCachedProfile(previousUid);
@@ -303,15 +314,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const allowCreate = options?.allowCreate ?? true;
     setProfileLoadError(false);
     try {
-      const userProfile = allowCreate
-        ? await getOrCreateUserProfile(
-            firebaseUser.uid,
-            firebaseUser.email || '',
-            firebaseUser.displayName || '',
-            firebaseUser.photoURL
-          )
-        : await getUserProfile(firebaseUser.uid);
+      let userProfile: UserProfile | null = null;
+      let serverVerified = false;
+
+      if (allowCreate) {
+        const createdOrExistingProfile = await getOrCreateUserProfile(
+          firebaseUser.uid,
+          firebaseUser.email || '',
+          firebaseUser.displayName || '',
+          firebaseUser.photoURL
+        );
+        const verification = await getUserProfileWithSource(firebaseUser.uid);
+        userProfile = verification.profile || createdOrExistingProfile;
+        serverVerified = verification.source === 'server';
+      } else {
+        const result = await getUserProfileWithSource(firebaseUser.uid);
+        userProfile = result.profile;
+        serverVerified = result.source === 'server';
+      }
       const resolvedProfile = commitProfile(userProfile, firebaseUser);
+      setProfileServerVerified(serverVerified);
 
       // Prefetch profile photo for instant loading
       if (firebaseUser.photoURL) {
@@ -328,8 +350,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (resolvedProfile) {
-        void writeCachedProfile(resolvedProfile);
-        void writeBootUid(resolvedProfile.uid);
+        if (serverVerified) {
+          void writeCachedProfile(resolvedProfile);
+          void writeBootUid(resolvedProfile.uid);
+        } else {
+          void clearCachedProfile(resolvedProfile.uid);
+          void clearBootUid();
+        }
         void writeCachedProfileInterests(resolvedProfile.uid, resolvedProfile.interests || []);
         void syncUserTimezone(resolvedProfile.uid, resolvedProfile);
       }
@@ -338,6 +365,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error loading profile:', error);
       setProfileLoadError(true);
+      setProfileServerVerified(false);
     } finally {
       setProfileResolved(true);
     }
@@ -346,18 +374,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshProfile = async () => {
     if (user) {
-      const p = await getUserProfile(user.uid);
-      const resolvedProfile = commitProfile(p, user);
+      const result = await getUserProfileWithSource(user.uid);
+      const resolvedProfile = commitProfile(result.profile, user);
+      const serverVerified = result.source === 'server';
+      setProfileServerVerified(serverVerified);
       if (resolvedProfile) {
-        void writeCachedProfile(resolvedProfile);
+        if (serverVerified) {
+          void writeCachedProfile(resolvedProfile);
+          void writeBootUid(resolvedProfile.uid);
+        } else {
+          void clearCachedProfile(resolvedProfile.uid);
+          void clearBootUid();
+        }
         void writeCachedProfileInterests(resolvedProfile.uid, resolvedProfile.interests || []);
         void syncUserTimezone(resolvedProfile.uid, resolvedProfile);
       }
+      return { profile: resolvedProfile, serverVerified };
     }
+    return { profile: null, serverVerified: false };
   };
 
   const retryProfileLoad = async () => {
-    if (user && profileLoadError) {
+    if (user && (profileLoadError || !profileServerVerified)) {
       setProfileResolved(false);
       await loadProfile(user, { allowCreate: false });
     }
@@ -622,6 +660,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         profileResolved,
         profileLoadError,
+        profileServerVerified,
         signInWithGoogle,
         signOut,
         deleteAccount,

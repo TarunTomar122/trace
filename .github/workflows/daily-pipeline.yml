@@ -25,6 +25,7 @@ on:
           - pools
           - feeds
           - for_you
+          - pulse
           - trending
           - assemble
       audience:
@@ -70,6 +71,7 @@ jobs:
             python -u -m v3.scheduler --jobs ${{ inputs.jobs }} --audience ${{ inputs.audience }}
           else
             python -u -m v3.scheduler --jobs for_you --audience all
+            python -u -m v3.scheduler --jobs pulse --audience all
             python -u -m v3.scheduler --jobs trending --audience all
           fi
 

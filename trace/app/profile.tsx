@@ -34,9 +34,7 @@ const ACCENT_ORANGE = '#ff8d28';
 
 function getInitials(name?: string | null): string {
   if (!name) return '?';
-  const words = name.trim().split(/\s+/);
-  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
+  return name.trim().charAt(0).toUpperCase();
 }
 
 type MenuRowProps = {
@@ -197,16 +195,7 @@ export default function ProfileScreen() {
     Linking.openURL('mailto:yourtrace.online@gmail.com?subject=Trace App Feedback');
   };
 
-  const handleRateApp = async () => {
-    try {
-      const isAvailable = await StoreReview.isAvailableAsync();
-      if (isAvailable) {
-        await StoreReview.requestReview();
-        return;
-      }
-    } catch (error) {
-      console.warn('[Profile] In-app review failed, opening store:', error);
-    }
+  const handleRateApp = () => {
     const storeUrl = Platform.OS === 'ios'
       ? 'https://apps.apple.com/app/id6745196498?action=write-review'
       : 'https://play.google.com/store/apps/details?id=online.yourtrace.app';

@@ -1,0 +1,74 @@
+{
+  "description": "Sources for the shared Daily Pulse lanes. Community tracks what people are talking about. Build tracks what people are shipping or launching.",
+  "build": {
+    "hn": {
+      "show_hn_url": "https://hn.algolia.com/api/v1/search?tags=show_hn&hitsPerPage=20",
+      "roles": ["developer", "founder"]
+    },
+    "feeds": [
+      {
+        "name": "GitHub Trending",
+        "url": "https://github.com/trending",
+        "type": "github_trending",
+        "source_kind": "build",
+        "role_hints": ["developer", "founder"]
+      },
+      {
+        "name": "GitHub Blog",
+        "url": "https://github.blog/feed/",
+        "type": "rss",
+        "source_kind": "build",
+        "role_hints": ["developer", "founder"]
+      },
+      {
+        "name": "Y Combinator Blog",
+        "url": "https://www.ycombinator.com/blog/rss/",
+        "type": "rss",
+        "source_kind": "editorial",
+        "role_hints": ["founder", "pm"]
+      },
+      {
+        "name": "TechCrunch Startups",
+        "url": "https://techcrunch.com/category/startups/feed/",
+        "type": "rss",
+        "source_kind": "editorial",
+        "role_hints": ["founder", "pm", "marketer"]
+      },
+      {
+        "name": "TLDR AI",
+        "url": "https://tldr.tech/ai/{date}",
+        "type": "tldr_digest",
+        "source_kind": "support",
+        "role_hints": ["developer", "founder"]
+      },
+      {
+        "name": "TLDR Founders",
+        "url": "https://tldr.tech/founders/{date}",
+        "type": "tldr_digest",
+        "source_kind": "support",
+        "role_hints": ["founder"]
+      },
+      {
+        "name": "TLDR Design",
+        "url": "https://tldr.tech/design/{date}",
+        "type": "tldr_digest",
+        "source_kind": "support",
+        "role_hints": ["designer", "pm"]
+      },
+      {
+        "name": "TLDR Product",
+        "url": "https://tldr.tech/product/{date}",
+        "type": "tldr_digest",
+        "source_kind": "support",
+        "role_hints": ["pm", "founder"]
+      },
+      {
+        "name": "TLDR Marketing",
+        "url": "https://tldr.tech/marketing/{date}",
+        "type": "tldr_digest",
+        "source_kind": "support",
+        "role_hints": ["marketer"]
+      }
+    ]
+  }
+}

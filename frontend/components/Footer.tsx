@@ -45,6 +45,11 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/compare" className="text-sm text-secondary hover:text-foreground transition-colors">
+                  Compare
+                </Link>
+              </li>
+              <li>
                 <Link href="/feed" className="text-sm text-secondary hover:text-foreground transition-colors">
                   Your Feed
                 </Link>

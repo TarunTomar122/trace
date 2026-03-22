@@ -273,11 +273,23 @@ export default function OnboardingScreen() {
       });
 
       await writeCachedProfileInterests(user.uid, selectedInterests);
-      await refreshProfile();
+      let verifiedProfile = null as Awaited<ReturnType<typeof refreshProfile>> | null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        verifiedProfile = await refreshProfile();
+        if (verifiedProfile.serverVerified && verifiedProfile.profile?.onboarded) {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 700));
+      }
+
+      if (!verifiedProfile?.serverVerified || !verifiedProfile.profile?.onboarded) {
+        throw new Error('Onboarding state was not confirmed by the server');
+      }
+
       router.replace('/paywall?fromOnboarding=true');
     } catch (error) {
       console.error('Error completing onboarding:', error);
-      showToast('Could not finish setup. Please try again.', 'error');
+      showToast('Could not verify your setup with the server. Please try again.', 'error');
       setIsSubmitting(false);
     }
   };

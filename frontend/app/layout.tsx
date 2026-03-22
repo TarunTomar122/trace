@@ -21,8 +21,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Trace — Trending Topics with AI Summaries",
-  description: "High-signal trending topics grouped from many sources, with summaries, key points, and timelines that help you catch up fast.",
+  title: "Trace — Your daily tech, in one place",
+  description:
+    "The biggest stories, the conversations around them, and what people are building — one daily pulse, not ten feeds.",
   keywords: ["AI summaries", "trending news", "content curation", "daily briefing", "topic overviews", "RSS alternative"],
   authors: [{ name: "Trace" }],
   metadataBase: new URL('https://www.yourtrace.online'),
@@ -34,22 +35,15 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://www.yourtrace.online",
     siteName: "Trace",
-    title: "Trace — Trending Topics with AI Summaries",
-    description: "High-signal trending topics grouped from many sources, with summaries, key points, and timelines.",
-    images: [
-      {
-        url: "/trace.png",
-        width: 1200,
-        height: 630,
-        alt: "Trace — Trending topics with AI summaries",
-      },
-    ],
+    title: "Trace — Your daily tech, in one place",
+    description:
+      "The biggest stories, the conversations around them, and what people are building — one daily pulse, not ten feeds.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Trace — Trending Topics with AI Summaries",
-    description: "High-signal trending topics with AI summaries that help you catch up faster.",
-    images: ["/trace.png"],
+    title: "Trace — Your daily tech, in one place",
+    description:
+      "Stories, conversations & launches. Stay current without bouncing between feeds.",
   },
   robots: {
     index: true,
@@ -111,7 +105,7 @@ export default function RootLayout({
         "image": "https://www.yourtrace.online/trace.png",
         "offers": {
           "@type": "Offer",
-          "price": "2.99",
+          "price": "4.99",
           "priceCurrency": "USD",
           "availability": "https://schema.org/InStock",
           "priceValidUntil": "2026-12-31",
@@ -135,7 +129,7 @@ export default function RootLayout({
             "name": "How much does Trace cost?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Trace starts with a free trial and then costs $2.99 per month. You can cancel anytime from your profile."
+              "text": "Trace starts with a free trial and then costs $4.99 per month. You can cancel anytime from your profile."
             }
           },
           {

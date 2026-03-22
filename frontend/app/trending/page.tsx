@@ -58,6 +58,14 @@ type TopicLink = {
   label: string;
 };
 
+type TopicCard = TopicLink & {
+  summary: string;
+  sourceCount: number;
+  articleCount: number;
+  keyPoints: string[];
+  thumbnail?: string;
+};
+
 type GlobalTrendingItem = {
   id?: string;
   title?: string;
@@ -392,22 +400,125 @@ async function getTopicLinks(): Promise<TopicLink[]> {
     .map(([slug, label]) => ({ slug, label }));
 }
 
+async function getTopicCards(limitCount = 6): Promise<TopicCard[]> {
+  if (!adminFirestore) return [];
+
+  const cards = new Map<string, TopicCard>();
+
+  try {
+    const globalDocs = await getRecentGlobalFeedDocs();
+    for (const doc of globalDocs) {
+      const data = doc.data() || {};
+      const trendingTopics: Array<GlobalTopic & { summary?: string; thumbnail?: string }> = Array.isArray(data.trending_topics)
+        ? data.trending_topics
+        : [];
+
+      for (const topic of trendingTopics) {
+        const slug = normalizeTopicSlug(topic?.topic_key ?? topic?.id);
+        if (!slug || cards.has(slug)) continue;
+        const label = typeof topic?.title === 'string' && topic.title.trim()
+          ? topic.title.trim()
+          : formatTopicLabel(slug);
+        if (!isEligibleTopicLink({
+          slug,
+          label,
+          articleCount: topic.article_count,
+          sourceCount: topic.source_count,
+          timelineCount: topic.timeline?.length,
+          keyPointCount: topic.key_points?.length,
+        })) {
+          continue;
+        }
+        cards.set(slug, {
+          slug,
+          label,
+          summary: stripMarkdown((topic as { summary?: string }).summary || `Trace groups coverage around ${label} into one topic page so you can catch up faster.`),
+          sourceCount: topic.source_count || 0,
+          articleCount: topic.article_count || 0,
+          keyPoints: Array.isArray(topic.key_points) ? topic.key_points.slice(0, 3) : [],
+          thumbnail: (topic as { thumbnail?: string }).thumbnail,
+        });
+        if (cards.size >= limitCount) break;
+      }
+      if (cards.size >= limitCount) break;
+    }
+  } catch (error) {
+    console.error('[trending] Failed to load global topic cards:', error);
+  }
+
+  if (cards.size >= limitCount) {
+    return Array.from(cards.values()).slice(0, limitCount);
+  }
+
+  try {
+    const latestDate = await getLatestTrendingDate();
+    if (latestDate) {
+      const topicDocs = await adminFirestore
+        .collection('trending_news')
+        .doc(latestDate)
+        .collection('topics')
+        .limit(limitCount * 2)
+        .get();
+
+      topicDocs.forEach((doc) => {
+        if (cards.size >= limitCount) return;
+        const data = (doc.data() || {}) as TrendingTopicDoc & {
+          summary?: string;
+          details?: string;
+          display_name?: string;
+          thumbnail?: string;
+          source_count?: number;
+          key_points?: string[];
+        };
+        const slug = normalizeTopicSlug(data.topic_key ?? data.topic_id ?? doc.id);
+        if (!slug || cards.has(slug)) return;
+        const rawLabel = data.display_name || data.name;
+        const label = typeof rawLabel === 'string' && rawLabel.trim()
+          ? rawLabel.trim()
+          : formatTopicLabel(slug);
+        if (!isEligibleTopicLink({
+          slug,
+          label,
+          articleCount: data.article_count ?? data.articles?.length,
+          sourceCount: data.source_count,
+          keyPointCount: data.key_points?.length,
+        })) {
+          return;
+        }
+        cards.set(slug, {
+          slug,
+          label,
+          summary: stripMarkdown(data.summary || data.details || `Trace groups coverage around ${label} into one topic page so you can catch up faster.`),
+          sourceCount: data.source_count || 0,
+          articleCount: data.article_count ?? data.articles?.length ?? 0,
+          keyPoints: Array.isArray(data.key_points) ? data.key_points.slice(0, 3) : [],
+          thumbnail: data.thumbnail,
+        });
+      });
+    }
+  } catch (error) {
+    console.error('[trending] Failed to load fallback topic cards:', error);
+  }
+
+  return Array.from(cards.values()).slice(0, limitCount);
+}
+
 export default async function TrendingPage() {
-  const [items, topicLinks] = await Promise.all([getTodaysItems(), getTopicLinks()]);
+  const [items, topicLinks, topicCards] = await Promise.all([getTodaysItems(), getTopicLinks(), getTopicCards()]);
   const itemListSchema = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: 'Trending Topics And Story Overviews',
+    name: 'Grouped Trending Topics',
     description:
-      'Grouped trending topics with story overviews, timelines, and source coverage from Trace.',
+      'Grouped trending topics with source counts, key points, and topic pages from Trace.',
     url: 'https://www.yourtrace.online/trending',
     mainEntity: {
       '@type': 'ItemList',
-      itemListElement: items.map((item, index) => ({
+      itemListElement: topicCards.map((topic, index) => ({
         '@type': 'ListItem',
         position: index + 1,
-        url: item.url,
-        name: item.title,
+        url: `https://www.yourtrace.online/topics/${topic.slug}`,
+        name: topic.label,
       })),
     },
     about: topicLinks.slice(0, 10).map((topic) => ({
@@ -427,7 +538,7 @@ export default async function TrendingPage() {
       <PublicHeader />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        <TrendingContent items={items} />
+        <TrendingContent items={items} topicCards={topicCards} />
       </main>
       <Footer />
     </div>

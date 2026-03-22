@@ -2,8 +2,9 @@ import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } fro
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type { ReactNode } from 'react';
+import LottieView from 'lottie-react-native';
 import {
   View,
   StyleSheet,
@@ -120,19 +121,36 @@ function checkVersion(current: string, target: string): boolean {
 }
 
 function AuthGate({ children }: { children: ReactNode }) {
-  const { user, profile, bootUid, bootProfile, loading, profileResolved } = useAuth();
+  const {
+    user,
+    profile,
+    bootUid,
+    bootProfile,
+    loading,
+    profileResolved,
+    profileLoadError,
+    profileServerVerified,
+    retryProfileLoad,
+    signOut,
+  } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const colorScheme = useColorScheme();
 
   const [appReady, setAppReady] = useState(false);
+  const [recoveringProfile, setRecoveringProfile] = useState(false);
+  const needsProfileRecovery = !!user && profileResolved && !profileServerVerified;
 
   useEffect(() => {
     const effectiveUid = user?.uid || bootUid;
-    const effectiveProfile = profile || bootProfile;
+    const effectiveProfile = user ? profile : (profile || bootProfile);
 
-    if (loading && !effectiveProfile) return;
-    if (user && !profileResolved && !bootProfile) return;
+    if (loading) return;
+    if (user && !profileResolved) return;
+    if (needsProfileRecovery) {
+      setAppReady(true);
+      return;
+    }
     // Don't block on RevenueCat - let feed load while RC initializes in background
 
     const inAuthGroup = segments[0] === '(auth)';
@@ -189,34 +207,89 @@ function AuthGate({ children }: { children: ReactNode }) {
 
     // On a valid screen; release the splash.
     setAppReady(true);
-  }, [loading, user, profile, bootUid, bootProfile, profileResolved, segments, router]);
+  }, [loading, user, profile, bootUid, bootProfile, profileResolved, needsProfileRecovery, segments, router]);
 
-  // Hide native splash + branded overlay together
+  const [lottieFinished, setLottieFinished] = useState(false);
+  const splashVisible = !appReady || !lottieFinished;
+
+  // Hide native splash as soon as our Lottie overlay is mounted
   useEffect(() => {
-    if (appReady) {
-      SplashScreen.hideAsync();
+    SplashScreen.hideAsync();
+  }, []);
+
+  const onAnimationFinish = useCallback(() => {
+    setLottieFinished(true);
+  }, []);
+
+  const handleRetryProfile = useCallback(async () => {
+    setRecoveringProfile(true);
+    try {
+      await retryProfileLoad();
+    } finally {
+      setRecoveringProfile(false);
     }
-  }, [appReady]);
+  }, [retryProfileLoad]);
 
   return (
     <>
-      {children}
-      {!appReady && (
+      {needsProfileRecovery ? (
+        <View
+          style={[
+            styles.splashContainer,
+            { backgroundColor: Colors[colorScheme].background, paddingHorizontal: 28 },
+          ]}
+        >
+          <Text style={[styles.updateTitle, { color: Colors[colorScheme].foreground, textAlign: 'center' }]}>
+            Account Needs Sync
+          </Text>
+          <Text style={[styles.updateBody, { color: Colors[colorScheme].muted }]}>
+            We found local account data, but could not verify your onboarding state with the server yet.
+            Please retry once you have a stable connection.
+          </Text>
+          <Pressable
+            style={[
+              styles.updateButton,
+              { backgroundColor: Colors[colorScheme].foreground, opacity: recoveringProfile ? 0.7 : 1 },
+            ]}
+            disabled={recoveringProfile}
+            onPress={() => void handleRetryProfile()}
+          >
+            <Text style={[styles.updateButtonText, { color: Colors[colorScheme].background }]}>
+              {recoveringProfile ? 'Retrying...' : 'Retry Sync'}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={{ marginTop: 16, paddingVertical: 12, paddingHorizontal: 24 }}
+            onPress={() => void signOut()}
+          >
+            <Text style={[styles.updateButtonText, { color: Colors[colorScheme].muted }]}>
+              Sign Out
+            </Text>
+          </Pressable>
+          {profileLoadError ? (
+            <Text style={[styles.updateBody, { color: Colors[colorScheme].muted, marginTop: 8, marginBottom: 0 }]}>
+              The last profile fetch failed. If this keeps happening, try switching networks.
+            </Text>
+          ) : null}
+        </View>
+      ) : (
+        children
+      )}
+      {splashVisible && (
         <View
           style={[
             StyleSheet.absoluteFill,
             styles.splashContainer,
-            { backgroundColor: Colors[colorScheme].background, zIndex: 999 },
-          ]}
-        >
-          <Image
-            source={colorScheme === 'dark' ? DARK_LOGO : LIGHT_LOGO}
-            style={styles.splashLogo}
-            resizeMode="contain"
+            { backgroundColor: '#f59e0b', zIndex: 999 },
+          ]}>
+          <LottieView
+            source={require('@/assets/images/splash.json')}
+            autoPlay
+            loop={!appReady}
+            onAnimationFinish={onAnimationFinish}
+            resizeMode="cover"
+            style={{ position: 'absolute', top: '-10%', left: '-10%', width: '120%', height: '120%' }}
           />
-          <Text style={[styles.splashTitle, { color: Colors[colorScheme].foreground }]}>
-            TRACE
-          </Text>
         </View>
       )}
     </>
@@ -337,9 +410,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  lottie: {
+    width: '150%',
+    height: '150%',
+  },
   splashLogo: {
-    width: 64,
-    height: 64,
+    width: 128,
+    height: 128,
     marginBottom: 16,
   },
   splashTitle: {

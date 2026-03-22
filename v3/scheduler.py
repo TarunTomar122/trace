@@ -43,6 +43,11 @@ JOBS = {
         "pool_cadence_days": 1,  # Trending should refresh daily for fresh news
         "description": "Trending (latest news across topics)",
     },
+    "pulse": {
+        "module": "v3.build_daily_pulse",
+        "pool_cadence_days": 1,
+        "description": "Daily Pulse (community + builds by role)",
+    },
     "assemble": {
         "module": "v3.assemble_feeds",
         "pool_cadence_days": 0,
@@ -78,6 +83,7 @@ def _parse_args() -> argparse.Namespace:
             "feeds",
             "for_you",
             "trending",
+            "pulse",
             "assemble",
             "newsletter",
             "newsletter_build",
@@ -212,7 +218,7 @@ def main() -> None:
     if args.tier:
         extra.extend(["--tier", args.tier])
 
-    build_jobs = ["for_you", "trending"]
+    build_jobs = ["for_you", "pulse", "trending"]
     users_file = ""
 
     _log("=== V3 Pipeline Start ===")

@@ -12,8 +12,8 @@ import {
   Linking,
   Platform,
   InteractionManager,
+  FlatList,
 } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -56,9 +56,9 @@ import {
   getAppVersionConfig,
   recordLastActive,
 } from '@/lib/firestore';
-
-const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as typeof FlashList;
+const AnimatedFlatList = Animated.createAnimatedComponent(FlatList) as unknown as typeof FlatList;
 const SCREEN_WIDTH = Dimensions.get('window').width;
+const FEED_ITEM_HEIGHT = 89; // paddingVertical(12*2) + thumb(64) + border(1)
 import { logReadingEvent } from '@/lib/reading-analytics';
 import { setCurrentTopic } from '@/lib/topic-store';
 import { setCurrentArticle, setArticleList } from '@/lib/article-store';
@@ -325,6 +325,28 @@ function buildInterleavedFeed(
   const normalizedFilter = typeof filter === 'string' ? normalizeInterestId(filter) : filter;
   const sections: FeedSection[] = [];
 
+  if (filter === 'for_you') {
+    const matchedTrending = trending.filter((t) => t.interest_id && interestSet.has(normalizeInterestId(t.interest_id)));
+    const matchedForYou = forYou.filter((item) => item.interest_id && interestSet.has(normalizeInterestId(item.interest_id)));
+
+    for (const topic of matchedTrending) {
+      sections.push({ type: 'trending', topic });
+    }
+    for (const item of matchedForYou) {
+      sections.push({ type: 'foryou', item });
+    }
+    // If user has no interests or nothing matches, fall back to all content
+    if (sections.length === 0) {
+      for (const topic of trending) {
+        sections.push({ type: 'trending', topic });
+      }
+      for (const item of forYou) {
+        sections.push({ type: 'foryou', item });
+      }
+    }
+    return rankSections(sections, interestSet);
+  }
+
   if (filter === 'trending') {
     for (const topic of trending) {
       sections.push({ type: 'trending', topic });
@@ -398,7 +420,7 @@ const TrendingFeedRow = React.memo(function TrendingFeedRow({
   return (
     <Pressable
       onPress={() => onPress(topic)}
-      style={[styles.ongoingRow, styles.ongoingRowPadded, { borderBottomColor: `${Colors[colorScheme].border}40` }]}>
+      style={[styles.ongoingRow, styles.ongoingRowPadded]}>
       <View style={styles.ongoingBody}>
         <Text numberOfLines={2} style={[styles.ongoingTitle2, { color: Colors[colorScheme].text }]}>
           {display.title}
@@ -430,7 +452,7 @@ const ForYouFeedRow = React.memo(function ForYouFeedRow({
   return (
     <Pressable
       onPress={() => onPress(item)}
-      style={[styles.ongoingRow, styles.ongoingRowPadded, { borderBottomColor: `${Colors[colorScheme].border}40` }]}>
+      style={[styles.ongoingRow, styles.ongoingRowPadded]}>
       <View style={styles.ongoingBody}>
         <Text numberOfLines={2} style={[styles.ongoingTitle2, { color: Colors[colorScheme].text }]}>
           {item.title}
@@ -472,8 +494,9 @@ export default function UnifiedFeedScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [activeFilter, setActiveFilter] = useState<FilterType>('for_you');
   const [streak, setStreak] = useState<StreakData | null>(null);
+  const v3FeedRef = useRef<V3UserFeed | null>(null);
 
   // Scroll animation for sticky header
   const scrollY = useSharedValue(0);
@@ -484,6 +507,44 @@ export default function UnifiedFeedScreen() {
     (v3Feed.trending_topics?.length ?? 0) > 0 ||
     (v3Feed.for_you?.length ?? 0) > 0
   );
+
+  useEffect(() => {
+    v3FeedRef.current = v3Feed;
+  }, [v3Feed]);
+
+  useEffect(() => {
+    if (!effectiveUid) {
+      setV3Feed(null);
+      setIsLoading(false);
+      return;
+    }
+
+    const prefetchedFeed = consumePrefetchedFeed(effectiveUid);
+    if (prefetchedFeed) {
+      setV3Feed(prefetchedFeed);
+      setIsLoading(false);
+      return;
+    }
+
+    const prefetchPromise = getPrefetchPromise();
+    if (!prefetchPromise) return;
+
+    let cancelled = false;
+    prefetchPromise
+      .then(() => {
+        if (cancelled) return;
+        const readyFeed = consumePrefetchedFeed(effectiveUid);
+        if (readyFeed) {
+          setV3Feed(readyFeed);
+          setIsLoading(false);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveUid]);
 
   useEffect(() => {
     const currentVersion = Application.nativeApplicationVersion || '1.0.0';
@@ -518,29 +579,14 @@ export default function UnifiedFeedScreen() {
 
   const loadFeed = useCallback(async (): Promise<boolean> => {
     if (!effectiveUid) return false;
-    if (!isOnboarded && !hasRenderableFeed) return false;
+    const currentFeed = v3FeedRef.current;
+    const hasCurrentRenderableFeed = !!currentFeed && (
+      (currentFeed.trending_topics?.length ?? 0) > 0 ||
+      (currentFeed.for_you?.length ?? 0) > 0
+    );
+    if (!isOnboarded && !hasCurrentRenderableFeed) return false;
     try {
-      let seeded = false;
-
-      // Check for prefetched feed first (loaded during splash)
-      const prefetched = consumePrefetchedFeed(effectiveUid);
-      if (prefetched) {
-        setV3Feed(prefetched);
-        seeded = true;
-      }
-
-      // Check if there's a pending prefetch promise
-      const prefetchPromise = getPrefetchPromise();
-      if (!seeded && prefetchPromise) {
-        const feed = await prefetchPromise;
-        if (feed) {
-          setV3Feed(feed);
-          seeded = true;
-        }
-      }
-
-      // Always do a fresh fetch too, so prefetched/stale startup data
-      // gets replaced automatically without needing a manual reload.
+      // Always fetch fresh from Firestore
       for (let attempt = 0; attempt < 3; attempt++) {
         const v3 = await getV3UserFeed(effectiveUid, { role: effectiveProfile?.role });
         if (v3 && ((v3.trending_topics?.length ?? 0) > 0 || (v3.for_you?.length ?? 0) > 0)) {
@@ -551,12 +597,12 @@ export default function UnifiedFeedScreen() {
           await sleep(900);
         }
       }
-      return seeded;
+      return false;
     } catch (error) {
       console.error('Error loading feed:', error);
       return false;
     }
-  }, [effectiveUid, isOnboarded, hasRenderableFeed]);
+  }, [effectiveUid, isOnboarded, effectiveProfile?.role]);
 
   const isFeedBuilding = (() => {
     if (effectiveProfile?.feedBuildStatus !== 'building') return false;
@@ -575,19 +621,36 @@ export default function UnifiedFeedScreen() {
   })();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const hasRetriedProfileRef = useRef(false);
+
   useEffect(() => {
     if (!isOnboarded && !hasRenderableFeed) {
-      setIsLoading(false);
+      // Profile may not have refreshed yet after onboarding — retry once
+      if (effectiveUid && !hasRetriedProfileRef.current) {
+        hasRetriedProfileRef.current = true;
+        const retryAfterOnboard = async () => {
+          if (!v3FeedRef.current) {
+            setIsLoading(true);
+          }
+          await refreshProfile();
+          setIsLoading(false);
+        };
+        retryAfterOnboard();
+      } else {
+        setIsLoading(false);
+      }
       return;
     }
     const init = async () => {
-      setIsLoading(true);
+      if (!v3FeedRef.current) {
+        setIsLoading(true);
+      }
       await loadFeed();
       setIsLoading(false);
     };
     init();
     if (user?.uid) recordLastActive(user.uid);
-  }, [loadFeed, isOnboarded, hasRenderableFeed, user?.uid]);
+  }, [effectiveUid, isOnboarded, loadFeed, user?.uid]);
 
   useEffect(() => {
     if (!isFeedBuilding || !effectiveUid) return;
@@ -648,7 +711,7 @@ export default function UnifiedFeedScreen() {
 
   // Filter pills: All → matched user interests → Suggested (content outside user interests)
   const filterPills = useMemo(() => {
-    const pills: { id: FilterType; label: string }[] = [{ id: 'all', label: 'All' }];
+    const pills: { id: FilterType; label: string }[] = [{ id: 'for_you', label: 'For You' }];
 
     for (const interest of availableInterests) {
       const label = INTEREST_LABELS[interest] ||
@@ -776,10 +839,32 @@ export default function UnifiedFeedScreen() {
 
   const handleItemPress = useCallback((item: FeedItem) => {
     const patchedItem = patchForYouItem(item);
-    const idx = patchedForYouItems.findIndex((i) => i.id === patchedItem.id);
-    setArticleList(patchedForYouItems, idx >= 0 ? idx : 0);
-    setCurrentArticle(patchedItem);
-    router.push('/article');
+    // Convert FeedItem to TrendingTopic shape so topic.tsx can render it
+    const body = patchedItem.summary?.short_article?.body || patchedItem.description || '';
+    const asTopic: TrendingTopic = {
+      id: patchedItem.id,
+      topic_key: patchedItem.id,
+      title: patchedItem.title,
+      summary: body,
+      key_points: patchedItem.summary?.short_article?.key_takeaways,
+      thumbnail: patchedItem.thumbnail,
+      source_count: 1,
+      article_count: 1,
+      interest_id: patchedItem.interest_id,
+      tags: patchedItem.tags,
+      first_seen_at: patchedItem.published_date,
+      articles: [patchedItem],
+      timeline: [{
+        id: patchedItem.id,
+        source_name: patchedItem.source_name || patchedItem.source || '',
+        title: patchedItem.title,
+        summary: patchedItem.description || '',
+        article_url: patchedItem.url,
+        timestamp: patchedItem.published_date || '',
+      }],
+    };
+    setCurrentTopic(asTopic);
+    router.push('/topic');
     InteractionManager.runAfterInteractions(() => {
       logReadingEvent({
         eventType: 'feed_open',
@@ -795,21 +880,6 @@ export default function UnifiedFeedScreen() {
 
   const isEmpty = feedSections.length === 0;
 
-  const feedKeyExtractor = useCallback((item: FeedSection, index: number) => {
-    if (item.type === 'trending') return `t-${item.topic.id}`;
-    if (item.type === 'foryou') return `f-${item.item.id}`;
-    return `s-${index}`;
-  }, []);
-
-  const renderFeedItem = useCallback(({ item: section }: { item: FeedSection }) => {
-    if (section.type === 'trending') {
-      return <TrendingFeedRow topic={section.topic} colorScheme={colorScheme} onPress={handleTopicPress} />;
-    }
-    if (section.type === 'foryou') {
-      return <ForYouFeedRow item={section.item} colorScheme={colorScheme} onPress={handleItemPress} />;
-    }
-    return null;
-  }, [colorScheme, handleTopicPress, handleItemPress]);
 
   const handleRetry = async () => {
     setIsRetrying(true);
@@ -846,7 +916,7 @@ export default function UnifiedFeedScreen() {
 
   const firstName = getFirstName(effectiveProfile);
 
-  const showFlatList = !isLoading && hasRenderableFeed && !isEmpty && !(isFeedBuilding && isEmpty);
+
   const scrollContentContainerStyle = useMemo(
     () => [styles.scrollContent, { paddingTop: insets.top }],
     [insets.top]
@@ -927,7 +997,7 @@ export default function UnifiedFeedScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.forYouCarouselContainer}
-            snapToInterval={SCREEN_WIDTH - 34}
+            snapToInterval={SCREEN_WIDTH - 40 + 14}
             decelerationRate="fast">
             {forYouItems.slice(0, 6).map((item, index) => {
               const sourceName = item.source_name || item.source || '';
@@ -938,7 +1008,10 @@ export default function UnifiedFeedScreen() {
               return (
                 <Pressable
                   key={item.id}
-                  onPress={() => handleItemPress(item)}
+                  onPress={() => {
+                    setCurrentArticle(item);
+                    router.push('/brief');
+                  }}
                   style={[styles.forYouCard, { backgroundColor: cardBg }]}>
                   <View style={styles.forYouCardImageArea}>
                     {isRealImage(item.thumbnail) ? (
@@ -986,15 +1059,15 @@ export default function UnifiedFeedScreen() {
               style={[
                 styles.pill,
                 {
-                  backgroundColor: isActive ? `${ACCENT_ORANGE}28` : Colors[colorScheme].background,
-                  borderColor: isActive ? ACCENT_ORANGE : Colors[colorScheme].border,
+                  backgroundColor: isActive ? ACCENT_ORANGE : `${ACCENT_ORANGE}15`,
+                  borderColor: isActive ? ACCENT_ORANGE : `${ACCENT_ORANGE}30`,
                 },
               ]}>
               <Text
                 style={[
                   styles.pillText,
                   {
-                    color: Colors[colorScheme].text,
+                    color: isActive ? '#fff' : Colors[colorScheme].text,
                     fontFamily: isActive ? FontFamily.semiBold : FontFamily.regular,
                   },
                 ]}>
@@ -1006,6 +1079,28 @@ export default function UnifiedFeedScreen() {
       </ScrollView>
     </View>
   );
+
+  const feedKeyExtractor = useCallback((item: FeedSection, index: number) => {
+    if (item.type === 'trending') return `t-${item.topic.id}`;
+    if (item.type === 'foryou') return `f-${item.item.id}`;
+    return `s-${index}`;
+  }, []);
+
+  const renderFeedItem = useCallback(({ item: section }: { item: FeedSection }) => {
+    if (section.type === 'trending') {
+      return <TrendingFeedRow topic={section.topic} colorScheme={colorScheme} onPress={handleTopicPress} />;
+    }
+    if (section.type === 'foryou') {
+      return <ForYouFeedRow item={section.item} colorScheme={colorScheme} onPress={handleItemPress} />;
+    }
+    return null;
+  }, [colorScheme, handleTopicPress, handleItemPress]);
+
+  const getItemLayout = useCallback((_data: any, index: number) => ({
+    length: FEED_ITEM_HEIGHT,
+    offset: FEED_ITEM_HEIGHT * index,
+    index,
+  }), []);
 
   const listHeader = useMemo(() => (
     <>
@@ -1019,6 +1114,8 @@ export default function UnifiedFeedScreen() {
     firstName, colorScheme, showUpdateBanner, isLoading, forYouItems,
     filterPills, activeFilter, streak, mainHeaderStyle,
   ]);
+
+  const showFeed = !isLoading && hasRenderableFeed && !isEmpty && !(isFeedBuilding && isEmpty);
 
   return (
     <View style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}>
@@ -1055,24 +1152,23 @@ export default function UnifiedFeedScreen() {
         </View>
       </Animated.View>
 
-      {showFlatList ? (
-        <AnimatedFlashList
+      {showFeed ? (
+        <AnimatedFlatList
           data={feedSections}
           keyExtractor={feedKeyExtractor}
           renderItem={renderFeedItem}
+          getItemLayout={getItemLayout}
           ListHeaderComponent={listHeader}
           ListFooterComponent={<TouchGrassFooter colorScheme={colorScheme} />}
           contentContainerStyle={scrollContentContainerStyle}
+          removeClippedSubviews
           {...scrollProps}
         />
       ) : (
         <Animated.ScrollView {...scrollProps} contentContainerStyle={scrollContentContainerStyle}>
           {renderHeader()}
-
           {(isLoading || !hasRenderableFeed) ? (
-            <View style={styles.padded}>
-              <SkeletonLoader colorScheme={colorScheme} />
-            </View>
+            <SkeletonLoader colorScheme={colorScheme} />
           ) : isFeedBuilding && isEmpty ? (
             <>
               {renderPills()}
@@ -1550,7 +1646,7 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   forYouCard: {
-    width: SCREEN_WIDTH - 50,
+    width: SCREEN_WIDTH - 40,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     borderBottomLeftRadius: 16,
@@ -1608,26 +1704,26 @@ const styles = StyleSheet.create({
   // Filter pills - Figma style
   pillsSection: {
     marginTop: 4,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   pillsContainer: {
     paddingHorizontal: 20,
-    gap: 10,
+    gap: 8,
   },
   pill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
   },
   pillText: {
-    fontSize: 14,
+    fontSize: 13,
   },
 
   // Ongoing Section - Figma style
   ongoingHeader: {
     paddingHorizontal: 20,
-    marginTop: 8,
+    marginTop: 4,
     marginBottom: 4,
   },
   ongoingTitle: {
@@ -1643,13 +1739,14 @@ const styles = StyleSheet.create({
   ongoingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    paddingVertical: 14,
+    gap: 8,
+    paddingVertical: 12,
     borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   ongoingBody: {
     flex: 1,
-    gap: 6,
+    gap: 8,
   },
   ongoingTitle2: {
     fontSize: 15,
@@ -1673,9 +1770,9 @@ const styles = StyleSheet.create({
     backgroundColor: META_GREEN,
   },
   ongoingThumb: {
-    width: 72,
+    width: 64,
     height: 64,
-    borderRadius: 10,
+    borderRadius: 8,
   },
   ongoingThumbPlaceholder: {
     backgroundColor: '#e0e0e0',
@@ -1724,30 +1821,29 @@ const styles = StyleSheet.create({
 
   // Skeleton styles
   skeletonContainer: { paddingTop: 8 },
-  skeletonCarousel: { marginBottom: 20, paddingLeft: 20 },
+  skeletonCarousel: { marginBottom: 16, paddingHorizontal: 20 },
   skeletonCard: {
-    width: SCREEN_WIDTH - 50,
-    height: 300,
+    width: SCREEN_WIDTH - 40,
+    height: 200,
     borderRadius: 16,
-    marginRight: 14,
   },
   skeletonPills: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   skeletonPill: {
     width: 70,
-    height: 36,
+    height: 32,
     borderRadius: 20,
   },
   skeletonRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 8,
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.05)',
   },
@@ -1756,19 +1852,19 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   skeletonRowTitle: {
-    width: '85%',
-    height: 18,
+    width: '80%',
+    height: 16,
     borderRadius: 6,
   },
   skeletonRowMeta: {
-    width: 100,
-    height: 12,
+    width: 90,
+    height: 10,
     borderRadius: 4,
   },
   skeletonRowThumb: {
-    width: 72,
+    width: 64,
     height: 64,
-    borderRadius: 10,
+    borderRadius: 8,
   },
 });
 

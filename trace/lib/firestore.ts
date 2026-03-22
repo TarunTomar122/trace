@@ -168,6 +168,13 @@ export interface UserProfile {
   lastActiveAt?: Timestamp | null;
 }
 
+export type UserProfileSource = 'server' | 'cache' | 'none';
+
+export interface UserProfileResult {
+  profile: UserProfile | null;
+  source: UserProfileSource;
+}
+
 export interface FeedItem {
   id: string;
   type?: string;
@@ -304,6 +311,8 @@ export interface UserFeed {
 export interface V3UserFeed {
   date: string;
   for_you: FeedItem[];
+  community_pulse?: FeedItem[];
+  build_pulse?: FeedItem[];
   trending: FeedItem[];
   trending_topics?: TrendingTopic[];
   merged_feed?: MergedFeedItem[];
@@ -653,7 +662,7 @@ export async function markReviewRequested(uid: string): Promise<void> {
   }
 }
 
-export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+export async function getUserProfileWithSource(uid: string): Promise<UserProfileResult> {
   const firstNonEmptyString = (...values: Array<string | null | undefined>): string => {
     for (const value of values) {
       if (typeof value !== 'string') continue;
@@ -715,21 +724,38 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
       new Promise<null>((resolve) => setTimeout(() => resolve(null), serverTimeoutMs)),
     ]);
     if (!docSnap) {
-      return cachedProfile;
+      return {
+        profile: cachedProfile,
+        source: cachedProfile ? 'cache' : 'none',
+      };
     }
     if (docSnap.exists()) {
-      return mergeProfileIdentity(docSnap.data() as UserProfile, cachedProfile);
+      return {
+        profile: mergeProfileIdentity(docSnap.data() as UserProfile, cachedProfile),
+        source: 'server',
+      };
     }
     // Doc does not exist on server; fall back to cache if present.
     if (cachedProfile) {
-      return cachedProfile;
+      return {
+        profile: cachedProfile,
+        source: 'cache',
+      };
     }
-    return null;
+    return { profile: null, source: 'none' };
   } catch (error) {
     console.warn('Error getting user profile from server, using cached profile if available:', error);
     // Network/server failure: cached data is better than null.
-    return cachedProfile;
+    return {
+      profile: cachedProfile,
+      source: cachedProfile ? 'cache' : 'none',
+    };
   }
+}
+
+export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+  const result = await getUserProfileWithSource(uid);
+  return result.profile;
 }
 
 export async function createUserProfile(
@@ -928,13 +954,14 @@ export async function updateUserProfile(
   uid: string,
   data: Partial<UserProfile>
 ): Promise<void> {
+  if (!uid) {
+    console.warn('updateUserProfile called without uid, skipping');
+    return;
+  }
   try {
     const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
-    const cleanData = JSON.parse(JSON.stringify({
-      ...data,
-      updatedAt: serverTimestamp(),
-    }));
-    await setDoc(docRef, cleanData, { merge: true });
+    const cleanData = JSON.parse(JSON.stringify(data));
+    await setDoc(docRef, { ...cleanData, updatedAt: serverTimestamp() }, { merge: true });
   } catch (error) {
     console.error('Error updating user profile:', error);
     throw error;
@@ -963,6 +990,7 @@ export async function syncUserTimezone(
   uid: string,
   profile?: Pick<UserProfile, 'timezone' | 'locale'> | null
 ): Promise<void> {
+  if (!uid) return;
   const timezone = getLocalTimezone();
   const locale = getLocalLocale();
   if (profile?.timezone === timezone && profile?.locale === locale) {
@@ -975,6 +1003,7 @@ export async function syncUserTimezone(
 }
 
 export async function recordLastActive(uid: string): Promise<void> {
+  if (!uid) return;
   try {
     const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
     await setDoc(docRef, { lastActiveAt: serverTimestamp() }, { merge: true });
@@ -1114,6 +1143,8 @@ export async function getV3UserFeed(
     let userTrending: FeedItem[] = [];
     let userTrendingTopics: TrendingTopic[] = [];
     let roleBasedForYou: FeedItem[] = [];
+    let communityPulse: FeedItem[] = [];
+    let buildPulse: FeedItem[] = [];
     let feedDate = '';
     let assembledAt: string | undefined;
     let metadata: V3UserFeed['metadata'];
@@ -1174,11 +1205,35 @@ export async function getV3UserFeed(
         const roleMap = globalData.for_you_roles && typeof globalData.for_you_roles === 'object'
           ? globalData.for_you_roles
           : null;
+        const communityRoleMap = globalData.community_pulse_roles && typeof globalData.community_pulse_roles === 'object'
+          ? globalData.community_pulse_roles
+          : null;
+        const buildRoleMap = globalData.build_pulse_roles && typeof globalData.build_pulse_roles === 'object'
+          ? globalData.build_pulse_roles
+          : null;
         const candidateRoleFeed = normalizedRole && roleMap && Array.isArray(roleMap[normalizedRole])
           ? roleMap[normalizedRole]
           : [];
+        const candidateCommunityPulse = normalizedRole && communityRoleMap && Array.isArray(communityRoleMap[normalizedRole])
+          ? communityRoleMap[normalizedRole]
+          : [];
+        const candidateBuildPulse = normalizedRole && buildRoleMap && Array.isArray(buildRoleMap[normalizedRole])
+          ? buildRoleMap[normalizedRole]
+          : [];
         if (roleBasedForYou.length === 0 && candidateRoleFeed.length > 0) {
           roleBasedForYou = candidateRoleFeed;
+          if (!feedDate) {
+            feedDate = globalData.date || globalDoc.id;
+          }
+        }
+        if (communityPulse.length === 0 && candidateCommunityPulse.length > 0) {
+          communityPulse = candidateCommunityPulse;
+          if (!feedDate) {
+            feedDate = globalData.date || globalDoc.id;
+          }
+        }
+        if (buildPulse.length === 0 && candidateBuildPulse.length > 0) {
+          buildPulse = candidateBuildPulse;
           if (!feedDate) {
             feedDate = globalData.date || globalDoc.id;
           }
@@ -1202,8 +1257,26 @@ export async function getV3UserFeed(
         const roleMap = latestGlobalData.for_you_roles && typeof latestGlobalData.for_you_roles === 'object'
           ? latestGlobalData.for_you_roles
           : null;
+        const communityRoleMap = latestGlobalData.community_pulse_roles && typeof latestGlobalData.community_pulse_roles === 'object'
+          ? latestGlobalData.community_pulse_roles
+          : null;
+        const buildRoleMap = latestGlobalData.build_pulse_roles && typeof latestGlobalData.build_pulse_roles === 'object'
+          ? latestGlobalData.build_pulse_roles
+          : null;
         if (roleBasedForYou.length === 0 && normalizedRole && roleMap && Array.isArray(roleMap[normalizedRole])) {
           roleBasedForYou = roleMap[normalizedRole];
+          if (!feedDate) {
+            feedDate = latestGlobalData.date || globalDocs[0].id;
+          }
+        }
+        if (communityPulse.length === 0 && normalizedRole && communityRoleMap && Array.isArray(communityRoleMap[normalizedRole])) {
+          communityPulse = communityRoleMap[normalizedRole];
+          if (!feedDate) {
+            feedDate = latestGlobalData.date || globalDocs[0].id;
+          }
+        }
+        if (buildPulse.length === 0 && normalizedRole && buildRoleMap && Array.isArray(buildRoleMap[normalizedRole])) {
+          buildPulse = buildRoleMap[normalizedRole];
           if (!feedDate) {
             feedDate = latestGlobalData.date || globalDocs[0].id;
           }
@@ -1246,6 +1319,8 @@ export async function getV3UserFeed(
     const resolvedFeed = {
       date: feedDate,
       for_you: forYou as FeedItem[],
+      community_pulse: communityPulse as FeedItem[],
+      build_pulse: buildPulse as FeedItem[],
       trending: trending as FeedItem[],
       trending_topics: trendingTopics as TrendingTopic[],
       merged_feed: mergedFeed as MergedFeedItem[],

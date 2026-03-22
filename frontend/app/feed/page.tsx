@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, Suspense, useMemo } from 'reac
 import { useRouter, useSearchParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Loader2, X, Lock, Sparkles, ExternalLink, Maximize2, Minimize2, Check, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Loader2, Lock, Sparkles, ExternalLink, Maximize2, Minimize2, Check, ArrowLeft, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,8 +13,9 @@ import {
   getV3UserFeed, V3UserFeed, FeedItem, TrendingTopic,
   recordLastActive, ONBOARDING_INTERESTS,
 } from '@/lib/firestore';
-import { getArticleImage } from '@/lib/fallback-images';
+import { getArticleImage, isValidThumbnail } from '@/lib/fallback-images';
 import { trackCheckoutClicked, trackPaywallShown, trackSubscriptionStarted } from '@/lib/posthog';
+import { PulseBetaBadge } from '@/components/PulseBetaBadge';
 
 function decodeHtml(str: string): string {
   if (!str) return str;
@@ -57,6 +58,54 @@ function looksLikeBriefBody(raw: string): boolean {
   return /→\s+[^—\n]+\s+—\s+[\s\S]*?(?:\*\*)?\(https?:\/\//.test(raw);
 }
 
+/** Turn a prose chunk into blocks: markdown ##, em-dash lead, or first-line / single-newline title. */
+function pushTextChunkAsBlocks(chunk: string, blocks: BriefBlock[]) {
+  const trimmed = chunk.trim();
+  if (!trimmed) return;
+
+  const lines = trimmed.split(/\n/).map(l => l.trim()).filter(Boolean);
+  if (lines.length >= 2 && lines[0].length <= 100 && lines[0].length >= 3 && !lines[0].startsWith('→')) {
+    const restJoined = lines.slice(1).join(' ').replace(/\s+/g, ' ').trim();
+    if (restJoined.length >= 25) {
+      blocks.push({ type: 'heading', text: lines[0] });
+      const stripped = restJoined.replace(/→\s*\[[^\]]+\]/g, '').trim();
+      if (stripped.startsWith('## ')) blocks.push({ type: 'heading', text: stripped.slice(3).trim() });
+      else if (stripped) blocks.push({ type: 'paragraph', text: stripped });
+      return;
+    }
+  }
+
+  const p = trimmed.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+  const stripped = p.replace(/→\s*\[[^\]]+\]/g, '').trim();
+  if (!stripped) return;
+
+  if (stripped.startsWith('## ')) {
+    blocks.push({ type: 'heading', text: stripped.slice(3).trim() });
+    return;
+  }
+
+  const emDash = /\s[—–]\s/.exec(stripped);
+  if (emDash && emDash.index !== undefined && emDash.index > 0 && emDash.index < 72) {
+    const left = stripped.slice(0, emDash.index).trim();
+    const right = stripped.slice(emDash.index + emDash[0].length).trim();
+    if (left.length < 90 && right.length > 15) {
+      blocks.push({ type: 'heading', text: left });
+      blocks.push({ type: 'paragraph', text: right });
+      return;
+    }
+  }
+
+  // Fused "short lead + sentence" (e.g. "Quarterly show-and-tell The Share Your Startup thread…")
+  const fused = stripped.match(/^(.{8,78}?)\s+((?:The|This)\s+.+)/);
+  if (fused && fused[1].length <= 78 && fused[2].length > 28) {
+    blocks.push({ type: 'heading', text: fused[1].trim() });
+    blocks.push({ type: 'paragraph', text: fused[2].trim() });
+    return;
+  }
+
+  blocks.push({ type: 'paragraph', text: stripped });
+}
+
 function parseBriefBody(raw: string): BriefBlock[] {
   const blocks: BriefBlock[] = [];
   let lastIndex = 0;
@@ -67,10 +116,7 @@ function parseBriefBody(raw: string): BriefBlock[] {
     const before = raw.slice(lastIndex, match.index).trim();
     if (before) {
       for (const chunk of before.split(/\n\n+/)) {
-        const p = chunk.replace(/\n/g, ' ').trim();
-        if (!p) continue;
-        if (p.startsWith('## ')) blocks.push({ type: 'heading', text: p.slice(3).trim() });
-        else blocks.push({ type: 'paragraph', text: p });
+        pushTextChunkAsBlocks(chunk, blocks);
       }
     }
     const title = match[2].replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
@@ -81,12 +127,7 @@ function parseBriefBody(raw: string): BriefBlock[] {
   const tail = raw.slice(lastIndex).trim();
   if (tail) {
     for (const chunk of tail.split(/\n\n+/)) {
-      const p = chunk.replace(/\n/g, ' ').trim();
-      // strip footnote-style refs like → [12, 8, 3]
-      const stripped = p.replace(/→\s*\[[^\]]+\]/g, '').trim();
-      if (!stripped) continue;
-      if (stripped.startsWith('## ')) blocks.push({ type: 'heading', text: stripped.slice(3).trim() });
-      else blocks.push({ type: 'paragraph', text: stripped });
+      pushTextChunkAsBlocks(chunk, blocks);
     }
   }
 
@@ -145,27 +186,8 @@ function briefSourceKey(s: string): string {
   return s.trim().toLowerCase();
 }
 
-function BriefLinkPill({ link, sourceMuted }: { link: BriefLink; sourceMuted?: boolean }) {
-  return (
-    <a
-      href={link.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-foreground/6 hover:bg-foreground/10 transition-colors group max-w-full min-w-0"
-    >
-      <ExternalLink size={11} className="shrink-0 text-foreground/40" />
-      {sourceMuted && (
-        <span className="text-[10px] font-medium text-secondary/45 uppercase tracking-wide shrink-0 max-w-28 truncate">
-          {link.source}
-        </span>
-      )}
-      <span
-        className={`text-[12px] font-medium text-foreground/70 line-clamp-1 min-w-0 ${sourceMuted ? 'flex-1' : 'max-w-[340px]'}`}
-      >
-        {link.title}
-      </span>
-    </a>
-  );
+function briefLinkLabel(link: BriefLink): string {
+  return [link.source, link.title].filter(Boolean).join(' — ') || link.title || 'Open source';
 }
 
 function BriefBody({ body }: { body: string }) {
@@ -190,38 +212,90 @@ function BriefBody({ body }: { body: string }) {
               : 'pt-5 mt-5 border-t border-border/10'
             : '';
 
-        const extra = story.moreLinks ?? [];
+        const showHeading = Boolean(story.heading && !headingDupesSource);
+        const link = story.link;
+        const linkLabel = link ? briefLinkLabel(link) : '';
 
         return (
         <div key={i} className={separator}>
-          {showSourceLabel && (
-            <p className="text-[10px] font-semibold text-amber-500 dark:text-amber-400 uppercase tracking-[0.18em] mb-2">
-              {story.link!.source}
+          {showSourceLabel && !showHeading && link && (
+            <a
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={linkLabel}
+              aria-label={linkLabel}
+              className="group mb-2 inline-flex max-w-full flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-sm text-inherit no-underline transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
+            >
+              <span className="text-[10px] font-semibold text-foreground/45 uppercase tracking-[0.18em]">
+                {link.source}
+              </span>
+              <ExternalLink
+                size={14}
+                strokeWidth={2}
+                className="shrink-0 translate-y-px text-foreground/40 transition-colors group-hover:text-foreground"
+                aria-hidden
+              />
+            </a>
+          )}
+
+          {showSourceLabel && showHeading && link && (
+            <p className="text-[10px] font-semibold text-foreground/45 uppercase tracking-[0.18em] mb-2">
+              {link.source}
             </p>
           )}
 
-          {story.heading && !headingDupesSource && (
-            <h3 className="text-sm font-semibold text-foreground/70 mb-2">{story.heading}</h3>
+          {showHeading && link && (
+            <h3 className="mb-2.5 text-[15px] font-semibold leading-snug tracking-[-0.02em] text-foreground">
+              <a
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={linkLabel}
+                aria-label={linkLabel}
+                className="group inline-flex max-w-full flex-wrap items-baseline gap-x-1.5 gap-y-0.5 rounded-sm text-inherit no-underline transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
+              >
+                <span>{story.heading}</span>
+                <ExternalLink
+                  size={15}
+                  strokeWidth={2}
+                  className="shrink-0 translate-y-px text-foreground/45 transition-colors group-hover:text-foreground"
+                  aria-hidden
+                />
+              </a>
+            </h3>
+          )}
+
+          {showHeading && !link && (
+            <h3 className="mb-2.5 text-[15px] font-semibold leading-snug tracking-[-0.02em] text-foreground">
+              {story.heading}
+            </h3>
+          )}
+
+          {!showHeading && !(showSourceLabel && link) && link && (
+            <div className="mb-2 flex justify-end">
+              <a
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={linkLabel}
+                aria-label={linkLabel}
+                className="group inline-flex max-w-full items-center gap-1.5 rounded-sm text-[14px] font-medium text-foreground/80 no-underline transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
+              >
+                <span className="line-clamp-2">{link.title || 'Open link'}</span>
+                <ExternalLink
+                  size={15}
+                  strokeWidth={2}
+                  className="shrink-0 text-foreground/40 transition-colors group-hover:text-foreground"
+                  aria-hidden
+                />
+              </a>
+            </div>
           )}
 
           {story.paragraphs.map((p, j) => (
-            <p key={j} className="text-[15px] text-secondary leading-relaxed mb-3">{p}</p>
+            <p key={j} className="text-[15px] text-secondary leading-[1.65] mb-3 last:mb-0">{p}</p>
           ))}
-
-          {story.link && (
-            <div className={`flex flex-col gap-2 ${story.paragraphs.length > 0 ? 'mt-1' : ''}`}>
-              <BriefLinkPill link={story.link} />
-              {extra.map((item, k) => (
-                <BriefLinkPill
-                  key={k}
-                  link={item.link}
-                  sourceMuted={
-                    briefSourceKey(item.link.source) !== briefSourceKey(story.link!.source)
-                  }
-                />
-              ))}
-            </div>
-          )}
         </div>
         );
       })}
@@ -257,6 +331,12 @@ function getTodayLabel(): string {
   return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
+function pulseUrlsMatch(a: string, b: string): boolean {
+  const norm = (s: string) =>
+    s.trim().toLowerCase().replace(/\/$/, '').split('?')[0].split('#')[0];
+  return norm(a) === norm(b);
+}
+
 function getTopicDisplay(topic: TrendingTopic) {
   const isSingleton = (topic.source_count ?? 0) <= 1 || (topic.article_count ?? 0) <= 1;
   const article = isSingleton ? (topic.articles?.[0] ?? null) : null;
@@ -284,6 +364,10 @@ function getPreview(text: string, maxLen = 100): string {
   const clean = stripMarkdown(text);
   if (clean.length <= maxLen) return clean;
   return clean.slice(0, maxLen).trim() + '...';
+}
+
+function isProductHuntWidget(url?: string | null): boolean {
+  return !!url && /api\.producthunt\.com\/widgets\/embed-image/i.test(url);
 }
 
 type TimelineEvent = {
@@ -372,6 +456,56 @@ function StoryItem({
   );
 }
 
+function PulseStoryItem({
+  title,
+  label,
+  theme,
+  signalCount,
+  selected,
+  onClick,
+}: {
+  title: string;
+  label?: string;
+  theme?: string;
+  signalCount?: number;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full text-left px-5 py-4 transition-colors ${
+        selected ? 'bg-surface-secondary' : 'hover:bg-surface-secondary/50'
+      }`}
+    >
+      <div className="min-w-0">
+        {label && (
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-secondary/40 mb-1.5">
+            {label}
+          </p>
+        )}
+        <h3 className="text-sm font-semibold text-foreground leading-snug line-clamp-2 mb-1.5">
+          {title}
+        </h3>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {typeof signalCount === 'number' && signalCount > 0 && (
+            <span className="text-[10px] text-secondary/50">
+              {signalCount} signal{signalCount === 1 ? '' : 's'}
+            </span>
+          )}
+          {typeof signalCount === 'number' && signalCount > 0 && theme && (
+            <span className="text-secondary/30 text-[10px]">·</span>
+          )}
+          {theme && (
+            <span className="text-[10px] text-secondary/50 truncate">{theme}</span>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
 /* ─── Content Panel ─── */
 type ContentData = {
   title: string;
@@ -379,11 +513,14 @@ type ContentData = {
   source?: string;
   url?: string;
   timestamp?: string;
+  countLabel?: string;
   keyPoints?: string[];
+  whyItMatters?: string;
   thumbnail?: string | null;
   timeline?: TimelineEvent[];
+  /** Sidebar detail: default "Timeline" (News); Pulse uses "Signals". */
+  timelineSectionLabel?: string;
   sourceCount?: number;
-  whyItMatters?: string;
   readingTime?: number;
   articleSources?: { name: string; title: string; url: string }[];
 };
@@ -394,11 +531,14 @@ function ContentPanel({
   content: ContentData;
 }) {
   const imageUrl = content.thumbnail ? getArticleImage(content.thumbnail, content.title) : null;
-  const isMultiSource = (content.sourceCount || 0) > 1;
+  const productHuntWidget = isProductHuntWidget(imageUrl);
+  const countLabel = content.countLabel || ((content.sourceCount || 0) > 1 ? `${content.sourceCount} sources` : '');
+  const isMultiSource = Boolean(countLabel);
   const hasTimeline = content.timeline && content.timeline.length > 0;
   const sortedTimeline = hasTimeline
     ? [...content.timeline!].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     : [];
+  const timelineSectionTitle = content.timelineSectionLabel ?? 'Timeline';
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -415,7 +555,7 @@ function ContentPanel({
           {isMultiSource && (
             <>
               <span className="text-secondary/30">·</span>
-              <span className="font-medium text-secondary/70">{content.sourceCount} sources</span>
+              <span className="font-medium text-secondary/70">{countLabel}</span>
             </>
           )}
           {content.readingTime && (
@@ -452,7 +592,11 @@ function ContentPanel({
             <img
               src={imageUrl}
               alt=""
-              className="max-h-[300px] rounded-xl object-contain"
+              className={
+                productHuntWidget
+                  ? 'max-w-[280px] rounded-2xl border border-[#ff6154]/20 bg-white'
+                  : 'max-h-[300px] rounded-xl object-contain'
+              }
             />
           </div>
         )}
@@ -462,6 +606,11 @@ function ContentPanel({
           const isBriefFormat = looksLikeBriefBody(content.body);
           return (
             <div className="text-secondary leading-relaxed mb-8">
+              {!isBriefFormat && (
+                <h3 className="text-[11px] font-semibold text-secondary/60 mb-4 uppercase tracking-[0.15em]">
+                  Overview
+                </h3>
+              )}
               {isBriefFormat ? (
                 <BriefBody body={content.body} />
               ) : (
@@ -490,23 +639,11 @@ function ContentPanel({
           </div>
         )}
 
-        {/* Why it matters */}
-        {content.whyItMatters && (
-          <div className="mb-8 pl-4 border-l-2 border-foreground/10">
-            <h3 className="text-[11px] font-semibold text-secondary/60 mb-2 uppercase tracking-[0.15em]">
-              Why it matters
-            </h3>
-            <p className="text-[15px] text-secondary/80 leading-relaxed">
-              {stripMarkdown(content.whyItMatters)}
-            </p>
-          </div>
-        )}
-
-        {/* Timeline */}
+        {/* Timeline (News) / Signals (Pulse) */}
         {hasTimeline && (
           <div className="mb-8">
             <h3 className="text-[11px] font-semibold text-secondary/50 mb-4 uppercase tracking-[0.15em]">
-              Timeline
+              {timelineSectionTitle}
             </h3>
             <div className="space-y-1">
               {sortedTimeline.slice(0, 8).map((event, i) => {
@@ -571,6 +708,687 @@ function ContentPanel({
   );
 }
 
+/** Shared with News ContentPanel — pulse page uses the same reading rhythm */
+const PULSE_EYEBROW =
+  'text-[11px] font-semibold text-secondary/60 uppercase tracking-[0.15em]';
+const PULSE_SECTION = 'mb-10 sm:mb-12';
+/** Pulse shell: mobile matches News (`bg-background`); md+ uses the same white card as desktop News */
+const PULSE_MAIN_SHELL =
+  'overflow-hidden bg-background md:rounded-2xl md:border md:border-border/15 md:bg-white md:shadow-[0_1px_3px_rgba(0,0,0,0.04)]';
+
+function FeedModeToggle({
+  view,
+  onChange,
+}: {
+  view: 'pulse' | 'briefing';
+  onChange: (view: 'pulse' | 'briefing') => void;
+}) {
+  return (
+    <div className="inline-flex items-center gap-1 rounded-full bg-foreground/6 p-1">
+      {([
+        { key: 'briefing' as const, label: 'News' },
+        { key: 'pulse' as const, label: 'Pulse' },
+      ] as const).map((item) => (
+        <button
+          key={item.key}
+          onClick={() => onChange(item.key)}
+          className={`px-3.5 py-1.5 rounded-full text-[12px] font-medium transition-colors ${
+            view === item.key
+              ? 'bg-foreground text-background'
+              : 'text-secondary/70 hover:text-foreground'
+          }`}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function PulseToolsGrid({ items }: { items: FeedListItem[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4">
+      {items.map((item) => {
+        const thumb = item.thumbnail && isValidThumbnail(item.thumbnail)
+          ? getArticleImage(item.thumbnail, item.title)
+          : null;
+        const isPH = thumb ? isProductHuntWidget(thumb) : false;
+        return (
+          <a
+            key={item.id}
+            href={item.url || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group flex gap-3 rounded-xl border border-border/20 bg-white hover:border-border/40 hover:shadow-sm transition-all p-3.5"
+          >
+            {thumb && (
+              <div className={`shrink-0 ${isPH ? 'w-12 h-12 bg-white rounded-lg border border-[#ff6154]/15 p-1 flex items-center justify-center' : 'w-12 h-12 rounded-lg overflow-hidden'}`}>
+                <img
+                  src={thumb}
+                  alt=""
+                  className={isPH ? 'w-full h-full object-contain' : 'w-full h-full object-cover'}
+                />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[13px] font-semibold text-foreground leading-snug group-hover:underline decoration-foreground/30 underline-offset-2 line-clamp-1">
+                  {item.title}
+                </p>
+                <ExternalLink size={12} className="shrink-0 mt-0.5 text-secondary/30 group-hover:text-secondary/60 transition-colors" />
+              </div>
+              {item.preview && (
+                <p className="text-[12px] text-secondary/60 leading-snug mt-0.5 line-clamp-2">{item.preview}</p>
+              )}
+              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                {item.source && (
+                  <span className="text-[10px] font-medium text-secondary/45 uppercase tracking-wide">{item.source}</span>
+                )}
+                {item.signalCount != null && item.signalCount > 0 && (
+                  <>
+                    <span className="text-secondary/25">·</span>
+                    <span className="text-[10px] text-secondary/45">{item.signalCount.toLocaleString()} {item.source === 'Product Hunt' ? 'upvotes' : item.source === 'GitHub Trending' ? 'stars today' : 'points'}</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─── Daily Pulse Scroll View — card components ─── */
+function DailyPulseToolCard({ item }: { item: FeedListItem }) {
+  const thumb = item.thumbnail && isValidThumbnail(item.thumbnail)
+    ? getArticleImage(item.thumbnail, item.title) : null;
+  const isPH = thumb ? isProductHuntWidget(thumb) : false;
+
+  return (
+    <a
+      href={item.url || '#'}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group flex gap-3 rounded-xl border border-border/20 bg-white hover:border-border/40 hover:shadow-sm transition-all p-3.5"
+    >
+      {thumb && (
+        <div className={`shrink-0 ${isPH ? 'w-11 h-11 bg-white rounded-lg border border-[#ff6154]/15 p-1 flex items-center justify-center' : 'w-11 h-11 rounded-lg overflow-hidden'}`}>
+          <img src={thumb} alt="" className={isPH ? 'w-full h-full object-contain' : 'w-full h-full object-cover'} />
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-[13px] font-semibold text-foreground leading-snug group-hover:underline decoration-foreground/30 underline-offset-2 line-clamp-1">{item.title}</p>
+          <ExternalLink size={11} className="shrink-0 mt-0.5 text-secondary/30 group-hover:text-secondary/60 transition-colors" />
+        </div>
+        {item.preview && <p className="text-[12px] text-secondary/60 leading-snug mt-0.5 line-clamp-2">{item.preview}</p>}
+        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+          {item.source && <span className="text-[10px] font-semibold text-foreground/40 uppercase tracking-wide">{item.source}</span>}
+          {item.signalCount != null && item.signalCount > 0 && (
+            <>
+              <span className="text-foreground/20">·</span>
+              <span className="text-[10px] text-secondary/60">
+                {item.signalCount.toLocaleString()} {item.source === 'Product Hunt' ? 'upvotes' : item.source === 'GitHub Trending' ? 'stars today' : 'points'}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+    </a>
+  );
+}
+
+function DailyPulseBlogCard({ item }: { item: FeedListItem }) {
+  const feedItem = item.data as FeedItem;
+  const body = feedItem.summary?.short_article?.body || '';
+  const isBrief = body ? looksLikeBriefBody(body) : false;
+
+  return (
+    <div className="rounded-2xl border border-border/15 bg-white p-5 sm:p-6">
+      <div className="flex items-center gap-2 mb-3">
+        {item.source && (
+          <span className="text-[11px] font-semibold text-foreground/55 uppercase tracking-[0.12em]">{item.source}</span>
+        )}
+        {item.source && item.timestamp && <span className="text-foreground/20 text-[10px]">·</span>}
+        {item.timestamp && <span className="text-[11px] text-secondary/55">{getTimeLabel(item.timestamp)}</span>}
+      </div>
+      <h3 className="text-[17px] font-bold text-foreground leading-snug tracking-[-0.02em] mb-4">{item.title}</h3>
+      {isBrief && body ? (
+        <div className="mb-4">
+          <BriefBody body={body} />
+        </div>
+      ) : item.preview ? (
+        <p className="text-[14px] text-secondary/75 leading-relaxed mb-4">{item.preview}</p>
+      ) : null}
+      {item.url && (
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-foreground/50 hover:text-foreground underline underline-offset-2 decoration-foreground/20 hover:decoration-foreground/50 transition-colors"
+        >
+          Read original <ExternalLink size={11} />
+        </a>
+      )}
+    </div>
+  );
+}
+
+function DailyPulseDiscussionCard({ item }: { item: FeedListItem }) {
+  const mainUrl = item.url || item.pulseSources?.[0]?.url;
+  const extraLinks = (item.pulseSources || []).filter(
+    s => !mainUrl || !pulseUrlsMatch(s.url, mainUrl)
+  );
+
+  const cardBody = (
+    <div className="rounded-xl border border-border/20 bg-white p-4 h-full flex flex-col group hover:border-border/40 hover:shadow-sm transition-all">
+      <div className="flex items-center gap-1.5 mb-2">
+        {item.source && (
+          <span className="text-[10px] font-semibold text-foreground/40 uppercase tracking-[0.12em]">{item.source}</span>
+        )}
+        {item.signalCount != null && item.signalCount > 0 && (
+          <>
+            <span className="text-foreground/20">·</span>
+            <span className="text-[10px] text-secondary/60">{item.signalCount.toLocaleString()} signals</span>
+          </>
+        )}
+      </div>
+      <p className="text-[13px] font-semibold text-foreground leading-snug mb-2 group-hover:underline decoration-foreground/30 underline-offset-2">{item.title}</p>
+      {item.preview && (
+        <p className="text-[12px] text-secondary/65 leading-relaxed mb-3 whitespace-pre-wrap">{item.preview}</p>
+      )}
+      {extraLinks.length > 0 && (
+        <div className="flex gap-3 flex-wrap mt-auto pt-2">
+          {extraLinks.map(s => (
+            <a
+              key={s.url}
+              href={s.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-foreground/45 hover:text-foreground transition-colors"
+            >
+              {s.name} <ExternalLink size={10} />
+            </a>
+          ))}
+        </div>
+      )}
+      {mainUrl && (
+        <div
+          className={`flex items-center justify-end gap-1.5 pt-3 border-t border-border/10 text-[11px] font-semibold text-secondary/55 group-hover:text-foreground/75 transition-colors ${
+            extraLinks.length === 0 ? 'mt-auto' : ''
+          }`}
+        >
+          <span>Open thread</span>
+          <ExternalLink size={13} className="shrink-0 text-secondary/45 group-hover:text-foreground/60" aria-hidden />
+        </div>
+      )}
+    </div>
+  );
+
+  if (mainUrl) {
+    return (
+      <a
+        href={mainUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block cursor-pointer rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/20"
+      >
+        {cardBody}
+      </a>
+    );
+  }
+  return cardBody;
+}
+
+function DailyPulseView({
+  pulseSections,
+  hasWeeklyPulse,
+  pulseStoryCount,
+}: {
+  pulseSections: Array<{ key: string; label: string; items: FeedListItem[] }>;
+  hasWeeklyPulse: boolean;
+  pulseStoryCount: number;
+}) {
+  const tools = pulseSections.find(s => s.key === 'tools')?.items ?? [];
+  const blogs = pulseSections.find(s => s.key === 'blogs')?.items ?? [];
+  const discussions = pulseSections.find(s => s.key === 'discussions')?.items ?? [];
+  const legacy = pulseSections.find(s => s.key === 'pulse')?.items ?? [];
+  const isEmpty = tools.length + blogs.length + discussions.length + legacy.length === 0;
+
+  if (isEmpty) {
+    return (
+      <div className="py-20 text-center">
+        <p className="text-sm text-secondary/55">Your pulse is on its way</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto px-5 sm:px-0 pb-20 pt-8">
+      <div className="mb-8 pb-5 border-b border-border/10">
+        <p className="text-[10px] font-semibold text-foreground/35 uppercase tracking-[0.22em] mb-2">
+          {hasWeeklyPulse ? 'Weekly Pulse' : 'Daily Pulse'}
+        </p>
+        <h1 className="text-[1.5rem] font-bold text-foreground tracking-[-0.025em] leading-tight">
+          {getTodayLabel()}
+        </h1>
+        {pulseStoryCount > 0 && (
+          <p className="text-[12px] text-secondary/50 mt-1">{pulseStoryCount} picks curated for you</p>
+        )}
+      </div>
+
+      {/* Legacy (non-weekly) pulse */}
+      {!hasWeeklyPulse && legacy.length > 0 && (
+        <div className="divide-y divide-border/10">
+          {legacy.map(item => (
+            <PulseSectionItem
+              key={item.id}
+              title={item.title}
+              preview={item.preview}
+              source={item.source}
+              timestamp={item.timestamp}
+              thumbnail={item.thumbnail}
+              headlineUrl={item.url}
+              pulseSources={item.pulseSources}
+              flush
+            />
+          ))}
+        </div>
+      )}
+
+      {tools.length > 0 && (
+        <section className="mb-12">
+          <p className="text-[10px] font-semibold text-foreground/50 uppercase tracking-[0.2em] mb-5">
+            What People Are Building
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {tools.map(item => <DailyPulseToolCard key={item.id} item={item} />)}
+          </div>
+        </section>
+      )}
+
+      {blogs.length > 0 && (
+        <section className="mb-12">
+          <p className="text-[10px] font-semibold text-foreground/50 uppercase tracking-[0.2em] mb-5">
+            {hasWeeklyPulse ? 'What Happened This Week' : 'What Happened Today'}
+          </p>
+          <div className="space-y-4">
+            {blogs.map(item => <DailyPulseBlogCard key={item.id} item={item} />)}
+          </div>
+        </section>
+      )}
+
+      {discussions.length > 0 && (
+        <section className="mb-12">
+          <p className="text-[10px] font-semibold text-foreground/50 uppercase tracking-[0.2em] mb-5">
+            What People Are Saying
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {discussions.map(item => <DailyPulseDiscussionCard key={item.id} item={item} />)}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function PulseSectionItem({
+  title,
+  preview,
+  source,
+  timestamp,
+  thumbnail,
+  active,
+  compact,
+  flush,
+  headlineUrl,
+  pulseSources,
+  onClick,
+}: {
+  title: string;
+  preview?: string;
+  source?: string;
+  timestamp?: string;
+  thumbnail?: string | null;
+  active?: boolean;
+  compact?: boolean;
+  /** List rows with dividers — no card chrome */
+  flush?: boolean;
+  /** Opens in a new tab; only the headline is linked. */
+  headlineUrl?: string;
+  /** Extra outbound links (e.g. HN + Reddit) below the overview. */
+  pulseSources?: Array<{ name: string; title?: string; url: string }>;
+  /** Omit for static rows (no hover, not a button). */
+  onClick?: () => void;
+}) {
+  const imageUrl = (() => {
+    if (flush) return null;
+    if (compact) {
+      return !isValidThumbnail(thumbnail) ? null : getArticleImage(thumbnail, title);
+    }
+    return isValidThumbnail(thumbnail) ? getArticleImage(thumbnail, title) : null;
+  })();
+
+  const imgClass = (() => {
+    if (!imageUrl) return '';
+    if (isProductHuntWidget(imageUrl)) {
+      if (compact) return 'w-[72px] h-[42px] object-contain rounded-lg border border-[#ff6154]/15 bg-white p-1';
+      return 'w-[76px] h-[46px] object-contain rounded-xl border border-[#ff6154]/15 bg-white p-1.5';
+    }
+    if (compact) return 'w-12 h-12 rounded-lg object-cover';
+    return 'w-14 h-14 rounded-xl object-cover';
+  })();
+
+  const interactive = Boolean(onClick);
+  const outerClass = flush
+    ? interactive
+      ? `w-full text-left transition-colors py-4 sm:py-5 ${active ? 'bg-surface-secondary/70' : 'hover:bg-surface-secondary/40'}`
+      : 'w-full text-left py-4 sm:py-5'
+    : compact
+      ? 'w-full text-left transition-colors py-3'
+      : `w-full text-left transition-colors rounded-2xl border px-4 py-4 ${
+          active
+            ? 'border-foreground/15 bg-foreground/[0.035]'
+            : 'border-border/20 bg-white hover:bg-surface-secondary/40'
+        }`;
+
+  const body = (
+    <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          {flush ? (
+            <>
+              <h3 className="text-sm font-semibold text-foreground leading-snug mb-1.5">
+                {headlineUrl ? (
+                  <a
+                    href={headlineUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group inline-flex max-w-full items-start gap-1.5 rounded-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-2"
+                  >
+                    <span className="min-w-0 flex-1 decoration-foreground/35 underline-offset-[3px] group-hover:underline">
+                      {title}
+                    </span>
+                    <ExternalLink
+                      size={14}
+                      className="mt-0.5 shrink-0 text-secondary/45 transition-colors group-hover:text-foreground/60"
+                      aria-hidden
+                    />
+                    <span className="sr-only">Opens in a new tab</span>
+                  </a>
+                ) : (
+                  title
+                )}
+              </h3>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {timestamp && (
+                  <span className="text-[10px] text-secondary/50">{getTimeLabel(timestamp)}</span>
+                )}
+                {timestamp && source && <span className="text-secondary/30 text-[10px]">·</span>}
+                {source && (
+                  <span className="text-[10px] text-secondary/50 truncate">{source}</span>
+                )}
+              </div>
+              {preview && (
+                <p className="mt-1.5 text-[13px] text-secondary/65 leading-relaxed whitespace-pre-wrap wrap-break-word">
+                  {preview}
+                </p>
+              )}
+              {(() => {
+                const extra = (pulseSources || []).filter(
+                  (s) => headlineUrl && !pulseUrlsMatch(s.url, headlineUrl),
+                );
+                if (extra.length === 0) return null;
+                return (
+                  <div className="mt-3 border-t border-border/10 pt-3">
+                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-secondary/45">
+                      {extra.length > 1 ? 'Links' : 'Also linked'}
+                    </p>
+                    <ul className="space-y-2">
+                      {extra.map((s) => (
+                        <li key={s.url}>
+                          <a
+                            href={s.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group inline-flex max-w-full items-center gap-1.5 rounded-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-2"
+                            onClick={interactive ? (e) => e.stopPropagation() : undefined}
+                          >
+                            <span className="min-w-0 flex-1 text-[12px] font-medium leading-snug decoration-foreground/35 underline-offset-[3px] group-hover:underline">
+                              {s.name}
+                            </span>
+                            <ExternalLink
+                              size={12}
+                              className="shrink-0 text-secondary/40 transition-colors group-hover:text-foreground/55"
+                              aria-hidden
+                            />
+                            <span className="sr-only">Opens in a new tab</span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })()}
+            </>
+          ) : (
+            <>
+              <div className="mb-1.5 flex items-center gap-1.5 flex-wrap">
+                {source && (
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-secondary/45">
+                    {source}
+                  </span>
+                )}
+                {source && timestamp && <span className="text-secondary/25 text-[10px]">·</span>}
+                {timestamp && (
+                  <span className="text-[10px] text-secondary/45">{getTimeLabel(timestamp)}</span>
+                )}
+              </div>
+              <p
+                className={`font-semibold text-foreground leading-snug line-clamp-2 ${
+                  compact ? 'text-[13px]' : 'text-[14px]'
+                }`}
+              >
+                {title}
+              </p>
+              {preview && (
+                <p
+                  className={`mt-1.5 leading-relaxed ${
+                    compact ? 'text-[11px] line-clamp-2 text-secondary/65' : 'text-[12px] line-clamp-3 text-secondary/65'
+                  }`}
+                >
+                  {preview}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+        {imageUrl && (
+          <img
+            src={imageUrl}
+            alt=""
+            className={`shrink-0 bg-foreground/5 ${imgClass}`}
+          />
+        )}
+      </div>
+  );
+
+  if (interactive) {
+    return (
+      <button type="button" onClick={onClick} className={outerClass}>
+        {body}
+      </button>
+    );
+  }
+  return <div className={outerClass}>{body}</div>;
+}
+
+function PulseLeadStory({
+  content,
+}: {
+  content: ContentData;
+}) {
+  const imageUrl = content.thumbnail ? getArticleImage(content.thumbnail, content.title) : null;
+  const productHuntWidget = isProductHuntWidget(imageUrl);
+  const countLabel = content.countLabel || ((content.sourceCount || 0) > 1 ? `${content.sourceCount} sources` : '');
+  const isMultiSource = Boolean(countLabel);
+  const keyPoints = (content.keyPoints || []).slice(0, 2);
+
+  return (
+    <article>
+      <div className="flex items-center gap-2 text-[11px] text-secondary/50 mb-3">
+        {content.timestamp && <span>{getTimeLabel(content.timestamp)}</span>}
+        {content.source && (
+          <>
+            <span className="text-secondary/25">·</span>
+            <span>{content.source}</span>
+          </>
+        )}
+        {isMultiSource && (
+          <>
+            <span className="text-secondary/25">·</span>
+            <span className="font-medium text-secondary/65">{countLabel}</span>
+          </>
+        )}
+      </div>
+
+      <h2 className="text-[1.9rem] font-bold tracking-[-0.04em] text-foreground leading-tight sm:text-[2.4rem]">
+        {content.title}
+      </h2>
+
+      {imageUrl && (
+        <div className="mt-5 mb-6">
+          <img
+            src={imageUrl}
+            alt=""
+            className={
+              productHuntWidget
+                ? 'max-w-[300px] rounded-2xl border border-[#ff6154]/20 bg-white'
+                : 'w-full max-h-[360px] rounded-[24px] object-cover'
+            }
+          />
+        </div>
+      )}
+
+      {content.body && (
+        <div className="prose prose-slate max-w-none text-secondary">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content.body}</ReactMarkdown>
+        </div>
+      )}
+
+      {keyPoints.length > 0 && (
+        <div className="mt-6">
+          <h3 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-secondary/40 mb-3">Key Takeaways</h3>
+          <div className="space-y-2.5">
+            {keyPoints.map((point, index) => (
+              <div key={index} className="flex gap-3">
+                <span className="text-secondary/35 font-mono text-xs mt-0.5">{index + 1}.</span>
+                <p className="text-[15px] text-secondary/80 leading-relaxed">{stripMarkdown(point)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {content.url && (
+        <div className="pt-6 mt-6 border-t border-border/15">
+          <a
+            href={content.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90"
+          >
+            Read original source
+            <ExternalLink size={14} />
+          </a>
+        </div>
+      )}
+    </article>
+  );
+}
+
+type FeedListItem = {
+  id: string;
+  type: 'topic' | 'article';
+  pulseSection?: 'tools' | 'blogs' | 'discussions';
+  title: string;
+  preview: string;
+  timestamp?: string;
+  source?: string;
+  sourceCount: number;
+  thumbnail?: string | null;
+  interestId?: string;
+  tags?: string[];
+  theme?: string;
+  heat?: number;
+  signalCount?: number;
+  /** Original article URL (pulse community/build rows). */
+  url?: string;
+  /** Multiple discussion links (pulse; from API `sources`). */
+  pulseSources?: Array<{ name: string; title?: string; url: string }>;
+  data: TrendingTopic | FeedItem;
+};
+
+function getContentFromFeedListItem(item: FeedListItem | null): ContentData | null {
+  if (!item) return null;
+
+  if (item.type === 'topic') {
+    const topic = item.data as TrendingTopic;
+    const display = getTopicDisplay(topic);
+    const articleUrl = display.isSingleton ? display.article?.url : topic.articles?.[0]?.url;
+    return {
+      title: decodeHtml(display.title || ''),
+      body: display.summary || display.subtitle,
+      source: display.isSingleton ? display.article?.source_name : undefined,
+      url: articleUrl,
+      timestamp: topic.articles?.[0]?.published_date,
+      keyPoints: display.isSingleton
+        ? display.article?.summary?.short_article?.key_takeaways
+        : topic.key_points,
+      thumbnail: display.isSingleton ? display.article?.thumbnail : topic.thumbnail,
+      timeline: !display.isSingleton
+        ? topic.timeline?.map(e => ({ ...e, url: e.article_url || e.source_url }))
+        : undefined,
+      sourceCount: topic.source_count,
+      countLabel: topic.source_count && topic.source_count > 1 ? `${topic.source_count} sources` : undefined,
+      whyItMatters: display.isSingleton
+        ? display.article?.summary?.short_article?.why_it_matters
+        : undefined,
+      readingTime: display.readingTime,
+      articleSources: !display.isSingleton
+        ? topic.articles?.map(a => ({ name: a.source_name || '', title: a.title, url: a.url })).filter(s => s.name)
+        : undefined,
+    };
+  }
+
+  const article = item.data as FeedItem;
+  const isPulseStory = Boolean(article.metadata?.pulse_story || article.metadata?.pulse);
+  return {
+    title: decodeHtml(article.title || ''),
+    body: getArticleSummary(article),
+    source: isPulseStory
+      ? (article.metadata?.theme || article.summary?.short_article?.subtitle || article.source_name)
+      : (article.source_name || article.source),
+    url: article.url,
+    timestamp: article.published_date,
+    countLabel: isPulseStory
+      ? `${article.metadata?.signal_count || article.sources?.length || item.signalCount || 1} signal${(article.metadata?.signal_count || article.sources?.length || item.signalCount || 1) === 1 ? '' : 's'}`
+      : ((article.metadata?.source_count || item.sourceCount || 0) > 1 ? `${article.metadata?.source_count || item.sourceCount} sources` : undefined),
+    keyPoints: article.summary?.short_article?.key_takeaways,
+    thumbnail: article.thumbnail,
+    timeline: isPulseStory
+      ? ((article.signals || article.timeline || []) as TimelineEvent[])
+      : undefined,
+    timelineSectionLabel: isPulseStory ? 'Signals' : undefined,
+    sourceCount: article.metadata?.source_count,
+    whyItMatters: article.summary?.short_article?.why_it_matters,
+    readingTime: article.summary?.reading_time_minutes,
+    articleSources: article.sources?.filter(s => s.name) as ContentData['articleSources'],
+  };
+}
+
 /* ─── Upgrade CTA Card ─── */
 function UpgradeCard({ lockedCount }: { lockedCount: number }) {
   return (
@@ -601,6 +1419,36 @@ function PaywallGate() {
   const { user } = useAuth();
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [pricingPreview, setPricingPreview] = React.useState<{
+    trialDays: number;
+    priceDisplay: string;
+    pricingOffer: 'india' | 'default';
+  } | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const loadPricingPreview = async () => {
+      try {
+        const token = await user?.getIdToken();
+        const response = await fetch('/api/subscription/pricing', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!cancelled) {
+          setPricingPreview(data);
+        }
+      } catch (err) {
+        console.error('Error fetching paywall pricing:', err);
+      }
+    };
+
+    void loadPricingPreview();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const handleStartTrial = async () => {
     if (!user) return;
@@ -624,7 +1472,7 @@ function PaywallGate() {
 
   const benefits = [
     {
-      title: 'Your morning briefing, every day',
+      title: 'Your pulse, every day',
       desc: 'Wake up to a full feed of stories filtered to what you care about — AI, tech, markets, whatever you follow.',
     },
     {
@@ -640,15 +1488,18 @@ function PaywallGate() {
       desc: "Skim today's feed in 5 minutes. Know what's going on. Move on with your day.",
     },
   ];
+  const trialDays = pricingPreview?.trialDays ?? 3;
+  const priceDisplay = pricingPreview?.priceDisplay ?? '$4.99/month';
+  const planName = pricingPreview?.pricingOffer === 'india' ? 'Trace Pro India' : 'Trace Pro';
   return (
     <div className="w-full sm:rounded-2xl sm:bg-surface sm:shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
       <div className="max-w-md mx-auto px-6 sm:px-12 py-10 sm:py-16">
-        <p className="text-[11px] font-semibold text-secondary/35 uppercase tracking-[0.18em] mb-5">Trace Pro</p>
+        <p className="text-[11px] font-semibold text-secondary/35 uppercase tracking-[0.18em] mb-5">{planName}</p>
         <h2 className="text-[1.65rem] font-bold text-foreground tracking-[-0.025em] leading-tight mb-3">
           The news habit that<br />doesn't waste your time.
         </h2>
         <p className="text-[14px] text-secondary/50 mb-10 leading-relaxed">
-          Try it free for 3 days. No charge until the trial ends.
+          Try it free for {trialDays} days. No charge until the trial ends.
         </p>
 
         <div className="space-y-5 mb-10">
@@ -669,9 +1520,9 @@ function PaywallGate() {
           disabled={loading}
           className="flex items-center justify-center gap-2 w-full py-3.5 rounded-full text-[13px] font-semibold bg-foreground text-background transition-all hover:bg-foreground/90 hover:shadow-md hover:shadow-black/10 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:scale-100"
         >
-          {loading ? <><Loader2 size={14} className="animate-spin" />Setting up your trial...</> : 'Start Free Trial'}
+          {loading ? <><Loader2 size={14} className="animate-spin" />Setting up your trial...</> : `Start ${trialDays}-Day Free Trial`}
         </button>
-        <p className="text-[11px] text-secondary/35 mt-2.5 text-center">$2.99/month after 3 days · Cancel anytime</p>
+        <p className="text-[11px] text-secondary/35 mt-2.5 text-center">{priceDisplay} after {trialDays} days · Cancel anytime</p>
       </div>
     </div>
   );
@@ -689,31 +1540,66 @@ function FeedPageContent() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showMobileContent, setShowMobileContent] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<string>('for_you');
+  const [feedView, setFeedView] = useState<'pulse' | 'briefing'>(
+    searchParams.get('view') === 'pulse' ? 'pulse' : 'briefing'
+  );
+  const [isExpanded, setIsExpanded] = useState(false);
+  /** Weekly Pulse only: filter sidebar/list by tools / blogs / discussions. */
+  const [pulseSectionFilter, setPulseSectionFilter] = useState<
+    'all' | 'tools' | 'blogs' | 'discussions'
+  >('all');
+  const refreshProfileRef = React.useRef(refreshProfile);
 
-  // Sync browser back button with mobile article view
+  useEffect(() => {
+    const requested = searchParams.get('view') === 'pulse' ? 'pulse' : 'briefing';
+    setFeedView(requested);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (feedView !== 'pulse') setPulseSectionFilter('all');
+  }, [feedView]);
+
+  const switchFeedView = useCallback((nextView: 'pulse' | 'briefing') => {
+    setFeedView(nextView);
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextView === 'pulse') params.set('view', 'pulse');
+    else params.delete('view');
+    const query = params.toString();
+    router.replace(query ? `/feed?${query}` : '/feed', { scroll: false });
+  }, [router, searchParams]);
+
   useEffect(() => {
     const onPopState = () => setShowMobileContent(false);
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
-  const openMobileArticle = (id: string) => {
+  const openMobileArticle = useCallback((id: string) => {
     setSelectedId(id);
     setShowMobileContent(true);
     window.history.pushState({ article: id }, '');
-  };
+  }, []);
 
-  const closeMobileArticle = () => {
+  const closeMobileArticle = useCallback(() => {
     setShowMobileContent(false);
     if (window.history.state?.article) window.history.back();
-  };
-  const [activeFilter, setActiveFilter] = useState<string>('for_you');
-  const [isExpanded, setIsExpanded] = useState(false);
-  const refreshProfileRef = React.useRef(refreshProfile);
+  }, []);
 
   useEffect(() => {
     refreshProfileRef.current = refreshProfile;
   }, [refreshProfile]);
+
+  useEffect(() => {
+    if (!showMobileContent) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [showMobileContent]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -721,6 +1607,17 @@ function FeedPageContent() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
+  }, [isExpanded]);
+
+  useEffect(() => {
+    if (!isExpanded) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
   }, [isExpanded]);
 
 
@@ -940,26 +1837,118 @@ function FeedPageContent() {
     });
   }, [visibleTrendingTopics, v3Feed?.trending, isSubscribed, fallbackTrending]);
 
+  const pulseStoryList = useMemo((): FeedListItem[] => {
+    const weekly = v3Feed?.daily_pulse ?? v3Feed?.weekly_pulse;
+    if (weekly) {
+      const sections: Array<{ key: 'tools' | 'blogs' | 'discussions'; items: FeedItem[] }> = [
+        { key: 'tools', items: weekly.tools || [] },
+        { key: 'blogs', items: weekly.blogs || [] },
+        { key: 'discussions', items: weekly.discussions || [] },
+      ];
+      return sections.flatMap(({ key, items }) =>
+        items.map((item) => ({
+          id: item.id,
+          type: 'article' as const,
+          pulseSection: key,
+          title: decodeHtml(item.title || ''),
+          preview: getArticleSummary(item).trim(),
+          timestamp: item.published_date,
+          source: item.source_name || item.source,
+          sourceCount: item.metadata?.signal_count || (item.sources?.length || 0),
+          thumbnail: item.thumbnail,
+          interestId: item.interest_id,
+          tags: item.tags,
+          theme:
+            key === 'tools' ? 'Top tools'
+            : key === 'blogs' ? 'Top blogs'
+            : 'Top discussions',
+          heat: item.metadata?.heat,
+          signalCount: item.metadata?.signal_count || (item.sources?.length || 0),
+          url: item.url?.trim() || undefined,
+          pulseSources: (item.sources || [])
+            .filter((s): s is { name: string; title: string; url: string } => Boolean(s?.url?.trim()))
+            .map((s) => ({
+              name: (s.name || '').trim() || 'Link',
+              title: (s.title || '').trim(),
+              url: s.url.trim(),
+            })),
+          data: item,
+        }))
+      );
+    }
 
-  const pulseList = useMemo(() => {
-    const items = v3Feed?.for_you || [];
-    return items.map(item => ({
+    const items = v3Feed?.pulse || [];
+    return items.map((item) => ({
       id: item.id,
       type: 'article' as const,
       title: decodeHtml(item.title || ''),
-      preview: getPreview(getArticleSummary(item)),
+      preview: getArticleSummary(item).trim(),
       timestamp: item.published_date,
-      source: item.source_name,
-      sourceCount: item.metadata?.source_count || (item.sources?.length || 0),
+      source: item.metadata?.theme || item.summary?.short_article?.subtitle || item.source_name,
+      sourceCount: item.metadata?.signal_count || (item.sources?.length || 0),
       thumbnail: item.thumbnail,
       interestId: item.interest_id,
       tags: item.tags,
+      theme: item.metadata?.theme || item.summary?.short_article?.subtitle,
+      heat: item.metadata?.heat,
+      signalCount: item.metadata?.signal_count || (item.sources?.length || 0),
+      url: item.url?.trim() || undefined,
+      pulseSources: (item.sources || [])
+        .filter((s): s is { name: string; title: string; url: string } => Boolean(s?.url?.trim()))
+        .map((s) => ({
+          name: (s.name || '').trim() || 'Link',
+          title: (s.title || '').trim(),
+          url: s.url.trim(),
+        })),
       data: item,
     }));
-  }, [v3Feed?.for_you]);
+  }, [v3Feed?.pulse, (v3Feed?.daily_pulse ?? v3Feed?.weekly_pulse)]);
+
+  const pulseSections = useMemo(() => {
+    if ((v3Feed?.daily_pulse ?? v3Feed?.weekly_pulse)) {
+      return [
+        { key: 'tools' as const, label: 'Top Tools', items: pulseStoryList.filter(item => item.pulseSection === 'tools') },
+        { key: 'blogs' as const, label: 'Top Blogs', items: pulseStoryList.filter(item => item.pulseSection === 'blogs') },
+        { key: 'discussions' as const, label: 'Top Discussions', items: pulseStoryList.filter(item => item.pulseSection === 'discussions') },
+      ].filter(section => section.items.length > 0);
+    }
+    return [{ key: 'pulse' as const, label: 'Pulse', items: pulseStoryList }];
+  }, [(v3Feed?.daily_pulse ?? v3Feed?.weekly_pulse), pulseStoryList]);
+
+  useEffect(() => {
+    if (!(v3Feed?.daily_pulse ?? v3Feed?.weekly_pulse)) setPulseSectionFilter('all');
+  }, [(v3Feed?.daily_pulse ?? v3Feed?.weekly_pulse)]);
+
+  const pulseFilterBuckets = useMemo(() => {
+    if (!(v3Feed?.daily_pulse ?? v3Feed?.weekly_pulse)) return [];
+    const labelByKey: Record<'tools' | 'blogs' | 'discussions', string> = {
+      tools: 'Tools',
+      blogs: 'Blogs',
+      discussions: 'Discussion',
+    };
+    const out: Array<{ key: 'tools' | 'blogs' | 'discussions'; label: string; count: number }> = [];
+    for (const s of pulseSections) {
+      if (s.key === 'tools' || s.key === 'blogs' || s.key === 'discussions') {
+        out.push({ key: s.key, label: labelByKey[s.key], count: s.items.length });
+      }
+    }
+    return out;
+  }, [(v3Feed?.daily_pulse ?? v3Feed?.weekly_pulse), pulseSections]);
+
+  const showPulseSectionFilters = pulseFilterBuckets.length >= 2;
+
+  useEffect(() => {
+    if (pulseSectionFilter === 'all') return;
+    const ok = pulseFilterBuckets.some((b) => b.key === pulseSectionFilter);
+    if (!ok) setPulseSectionFilter('all');
+  }, [pulseFilterBuckets, pulseSectionFilter]);
+
+  const pulseVisibleStoryList = useMemo(() => {
+    if (!(v3Feed?.daily_pulse ?? v3Feed?.weekly_pulse) || pulseSectionFilter === 'all') return pulseStoryList;
+    return pulseStoryList.filter((item) => item.pulseSection === pulseSectionFilter);
+  }, [(v3Feed?.daily_pulse ?? v3Feed?.weekly_pulse), pulseSectionFilter, pulseStoryList]);
 
   const filteredList = useMemo(() => {
-    if (activeFilter === 'pulse') return pulseList;
     if (activeFilter === 'for_you') {
       // All items matching any of the user's interests
       return currentList.filter(item => {
@@ -981,10 +1970,10 @@ function FeedPageContent() {
       const matchesTags = item.tags?.includes(activeFilter) || false;
       return matchesInterest || matchesTags;
     });
-  }, [currentList, pulseList, activeFilter, userInterests]);
+  }, [currentList, activeFilter, userInterests]);
 
   const filterCounts = useMemo(() => {
-    const counts: Record<string, number> = { pulse: pulseList.length, for_you: 0, suggested: 0 };
+    const counts: Record<string, number> = { for_you: 0, suggested: 0 };
     for (const item of currentList) {
       const matchesInterest = item.interestId ? userInterests.has(item.interestId) : false;
       const matchesTags = item.tags?.some(tag => userInterests.has(tag)) || false;
@@ -1000,7 +1989,7 @@ function FeedPageContent() {
       }
     }
     return counts;
-  }, [currentList, pulseList, userInterests]);
+  }, [currentList, userInterests]);
 
   const interestTabs = useMemo(() => {
     return ONBOARDING_INTERESTS.filter(interest =>
@@ -1009,66 +1998,40 @@ function FeedPageContent() {
   }, [userInterests, filterCounts]);
 
   useEffect(() => {
-    if (filteredList.length > 0 && (!selectedId || !filteredList.find(item => item.id === selectedId))) {
+    if (feedView !== 'briefing') return;
+    if (filteredList.length === 0) return;
+    if (!selectedId) { setSelectedId(filteredList[0].id); return; }
+    const inFiltered = filteredList.some(item => item.id === selectedId);
+    if (!inFiltered) {
       setSelectedId(filteredList[0].id);
     }
-  }, [filteredList, selectedId]);
+  }, [feedView, filteredList, selectedId]);
+
+  useEffect(() => {
+    if (feedView !== 'pulse') return;
+    if (pulseVisibleStoryList.length === 0) return;
+    if (!selectedId) { setSelectedId(pulseVisibleStoryList[0].id); return; }
+    const inPulse = pulseVisibleStoryList.some(item => item.id === selectedId);
+    if (!inPulse) {
+      setSelectedId(pulseVisibleStoryList[0].id);
+    }
+  }, [feedView, pulseVisibleStoryList, selectedId]);
 
   const selectedItem = useMemo(() => {
     if (!selectedId) return null;
     return currentList.find(item => item.id === selectedId)
-      || pulseList.find(item => item.id === selectedId)
+      || pulseStoryList.find(item => item.id === selectedId)
       || null;
-  }, [currentList, pulseList, selectedId]);
+  }, [currentList, pulseStoryList, selectedId]);
 
   const selectedContent = useMemo((): ContentData | null => {
-    if (!selectedItem) return null;
-
-    if (selectedItem.type === 'topic') {
-      const topic = selectedItem.data as TrendingTopic;
-      const display = getTopicDisplay(topic);
-      const articleId = display.isSingleton ? display.article?.id : topic.articles?.[0]?.id;
-      const articleUrl = display.isSingleton ? display.article?.url : topic.articles?.[0]?.url;
-      return {
-        title: decodeHtml(display.title || ''),
-        body: display.summary || display.subtitle,
-        source: display.isSingleton ? display.article?.source_name : undefined,
-        url: articleUrl,
-        timestamp: topic.articles?.[0]?.published_date,
-        keyPoints: display.isSingleton
-          ? display.article?.summary?.short_article?.key_takeaways
-          : topic.key_points,
-        thumbnail: display.isSingleton ? display.article?.thumbnail : topic.thumbnail,
-        timeline: !display.isSingleton
-          ? topic.timeline?.map(e => ({ ...e, url: e.article_url || e.source_url }))
-          : undefined,
-        sourceCount: topic.source_count,
-        whyItMatters: display.isSingleton
-          ? display.article?.summary?.short_article?.why_it_matters
-          : undefined,
-        readingTime: display.readingTime,
-        articleSources: !display.isSingleton
-          ? topic.articles?.map(a => ({ name: a.source_name || '', title: a.title, url: a.url })).filter(s => s.name)
-          : undefined,
-      };
-    }
-
-    const article = selectedItem.data as FeedItem;
-    return {
-      title: decodeHtml(article.title || ''),
-      body: getArticleSummary(article),
-      source: article.source_name,
-      url: article.url,
-      timestamp: article.published_date,
-      keyPoints: article.summary?.short_article?.key_takeaways,
-      thumbnail: article.thumbnail,
-      timeline: undefined,
-      sourceCount: article.metadata?.source_count,
-      whyItMatters: article.summary?.short_article?.why_it_matters,
-      readingTime: article.summary?.reading_time_minutes,
-      articleSources: article.sources?.filter(s => s.name) as ContentData['articleSources'],
-    };
+    return getContentFromFeedListItem(selectedItem);
   }, [selectedItem]);
+
+  const mobileContentList = useMemo(() => {
+    if (feedView === 'briefing') return filteredList;
+    return pulseVisibleStoryList;
+  }, [feedView, filteredList, pulseVisibleStoryList]);
 
   const isLoading = loading || (feedLoading && !v3Feed);
 
@@ -1093,6 +2056,11 @@ function FeedPageContent() {
               <span className="text-sm font-semibold tracking-[0.18em]">TRACE</span>
             </Link>
             <div className="flex items-center gap-3">
+              {isSubscribed && (
+                <div className="hidden sm:block">
+                  <FeedModeToggle view={feedView} onChange={switchFeedView} />
+                </div>
+              )}
               {user?.photoURL ? (
                 <Link href="/profile">
                   <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" />
@@ -1107,6 +2075,11 @@ function FeedPageContent() {
               )}
             </div>
           </div>
+          {isSubscribed && (
+            <div className="pb-3 sm:hidden">
+              <FeedModeToggle view={feedView} onChange={switchFeedView} />
+            </div>
+          )}
         </div>
       </header>
 
@@ -1131,18 +2104,34 @@ function FeedPageContent() {
 
         {!isSubscribed && !isLoading && <PaywallGate />}
 
-        {/* Desktop */}
-        <div className={`${!isSubscribed ? 'hidden' : 'hidden md:block'} ${isExpanded ? 'fixed inset-0 z-60 bg-background p-0' : ''}`}>
+        {isSubscribed && feedView === 'pulse' && (
+          isLoading ? (
+            <div className={`${PULSE_MAIN_SHELL} flex items-center justify-center py-20`}>
+              <Loader2 size={20} className="animate-spin text-secondary/40" />
+            </div>
+          ) : (
+            <div className={PULSE_MAIN_SHELL}>
+              <DailyPulseView
+                pulseSections={pulseSections}
+                hasWeeklyPulse={Boolean((v3Feed?.daily_pulse ?? v3Feed?.weekly_pulse))}
+                pulseStoryCount={pulseStoryList.length}
+              />
+            </div>
+          )
+        )}
+
+        {/* Desktop Briefing */}
+        <div className={`${!isSubscribed || feedView !== 'briefing' ? 'hidden' : 'hidden md:block'} ${isExpanded ? 'fixed inset-0 z-60 bg-background p-0' : ''}`}>
           <div
             className={`flex bg-white overflow-hidden ${isExpanded ? 'h-full' : 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]'}`}
             style={isExpanded ? undefined : { height: 'calc(100vh - 120px)', minHeight: '500px' }}
           >
-            {/* Sidebar — hidden in pulse mode */}
-            <div className={`w-[340px] shrink-0 border-r border-border/20 flex flex-col ${activeFilter === 'pulse' ? 'hidden' : ''}`}>
+            {/* Sidebar */}
+            <div className="w-[340px] shrink-0 border-r border-border/20 flex flex-col">
               <div className="px-5 pt-5 pb-3 border-b border-border/20">
                 <div className="flex items-center justify-between">
                   <h2 className="text-[15px] font-bold text-foreground tracking-[-0.01em]">
-                    Your Briefing
+                    News
                   </h2>
                   <button
                     onClick={() => setIsExpanded(e => !e)}
@@ -1156,9 +2145,9 @@ function FeedPageContent() {
                   {getTodayLabel()}{storyCount > 0 ? ` · ${storyCount} stories` : ''}
                 </p>
                 {isSubscribed && (
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {([
-                      { key: 'pulse', label: 'Daily Pulse' },
+                  <>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {([
                       { key: 'for_you', label: 'For You' },
                       ...interestTabs.map(i => ({ key: i.id, label: i.label })),
                       { key: 'suggested', label: 'Suggested' },
@@ -1175,7 +2164,8 @@ function FeedPageContent() {
                         {label}{(filterCounts[key] || 0) > 0 ? ` (${filterCounts[key]})` : ''}
                       </button>
                     ))}
-                  </div>
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -1185,7 +2175,7 @@ function FeedPageContent() {
                     <Lock size={16} className="text-foreground/50" />
                   </div>
                   <p className="text-sm font-semibold text-foreground mb-1">Pro access required</p>
-                  <p className="text-[12px] text-secondary/50 mb-5 leading-relaxed">Start your free trial to read today's full briefing.</p>
+                  <p className="text-[12px] text-secondary/50 mb-5 leading-relaxed">Start your free trial to unlock the full news feed.</p>
                   <Link
                     href="/profile?tab=subscription"
                     onClick={() => trackCheckoutClicked('feed_sidebar_paywall')}
@@ -1194,7 +2184,7 @@ function FeedPageContent() {
                     <Sparkles size={13} />
                     Start Free Trial
                   </Link>
-                  <p className="text-[11px] text-secondary/35 mt-2">Cancel anytime · $2.99/mo after trial</p>
+                  <p className="text-[11px] text-secondary/35 mt-2">Cancel anytime · $4.99/mo after trial</p>
                 </div>
               ) : (
                 <div className="flex-1 overflow-y-auto divide-y divide-border/10">
@@ -1205,9 +2195,7 @@ function FeedPageContent() {
                   ) : filteredList.length === 0 ? (
                     <div className="px-5 py-12 text-center">
                       <p className="text-sm text-secondary/55">
-                        {activeFilter === 'pulse'
-                          ? 'Your daily pulse is on its way'
-                          : activeFilter === 'suggested'
+                        {activeFilter === 'suggested'
                           ? 'No suggested stories right now'
                           : activeFilter === 'for_you'
                           ? 'No stories matching your interests'
@@ -1251,16 +2239,19 @@ function FeedPageContent() {
           </div>
         </div>
 
-        {/* Mobile */}
-        <div className={isSubscribed ? 'md:hidden' : 'hidden'}>
-
-          {/* Full-screen story view */}
-          {showMobileContent && selectedContent && (() => {
-            const currentIdx = filteredList.findIndex(i => i.id === selectedId);
-            const nextItem = currentIdx >= 0 && currentIdx < filteredList.length - 1 ? filteredList[currentIdx + 1] : null;
-            return (
-            <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
-              {/* Nav bar */}
+        {/* Mobile full-screen reader (briefing only) */}
+        {isSubscribed && feedView === 'briefing' && showMobileContent && selectedContent && (() => {
+          const currentIdx = mobileContentList.findIndex(i => i.id === selectedId);
+          const nextItem =
+            currentIdx >= 0 && currentIdx < mobileContentList.length - 1
+              ? mobileContentList[currentIdx + 1]
+              : null;
+          const imageUrl = selectedContent.thumbnail
+            ? getArticleImage(selectedContent.thumbnail, selectedContent.title)
+            : null;
+          const briefFmt = selectedContent.body ? looksLikeBriefBody(selectedContent.body) : false;
+          return (
+            <div className="fixed inset-0 z-[70] bg-background overflow-y-auto md:hidden">
               <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/10 flex items-center gap-2 px-4 py-3">
                 <button
                   onClick={closeMobileArticle}
@@ -1269,45 +2260,48 @@ function FeedPageContent() {
                   <ArrowLeft size={20} />
                 </button>
                 <span className="text-[13px] text-secondary/50 truncate flex-1">
-                  {selectedContent.source || (selectedContent.sourceCount && selectedContent.sourceCount > 1 ? `${selectedContent.sourceCount} sources` : '')}
+                  {[
+                    selectedContent.source,
+                    selectedContent.countLabel,
+                  ].filter(Boolean).join(' · ')}
+                  {selectedContent.readingTime ? ` · ${selectedContent.readingTime} min read` : ''}
                 </span>
               </div>
 
-              {/* Content */}
               <div className="px-5 pt-5 pb-12">
-                <h1 className="text-[1.35rem] font-bold text-foreground leading-tight tracking-[-0.02em] mb-2">
+                <h1 className="text-[1.35rem] font-bold text-foreground leading-tight tracking-[-0.02em] mb-4">
                   {selectedContent.title}
                 </h1>
 
-                {(selectedContent.sourceCount || 0) > 1 && selectedContent.articleSources && selectedContent.articleSources.length > 0 && (
-                  <p className="text-[12px] text-secondary/50 mb-5">
-                    From {selectedContent.articleSources.map(s => s.name).join(', ')}
-                  </p>
+                {imageUrl && (
+                  <div className="mb-6">
+                    <img
+                      src={imageUrl}
+                      alt=""
+                      className={
+                        isProductHuntWidget(imageUrl)
+                          ? 'max-w-[280px] rounded-2xl border border-[#ff6154]/20 bg-white'
+                          : 'w-full max-h-[240px] object-cover rounded-[18px]'
+                      }
+                    />
+                  </div>
                 )}
 
-                {selectedContent.thumbnail && (() => {
-                  const imgUrl = getArticleImage(selectedContent.thumbnail, selectedContent.title);
-                  return imgUrl ? (
-                    <div className="mb-5">
-                      <img src={imgUrl} alt="" className="w-full max-h-[220px] object-cover rounded-xl" />
-                    </div>
-                  ) : null;
-                })()}
-
-                {selectedContent.body && (() => {
-                  const isBriefFormat = looksLikeBriefBody(selectedContent.body);
-                  return isBriefFormat ? (
-                    <div className="mb-6"><BriefBody body={selectedContent.body} /></div>
-                  ) : (
-                    <div className="prose prose-sm max-w-none text-secondary leading-relaxed mb-6">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedContent.body}</ReactMarkdown>
-                    </div>
-                  );
-                })()}
+                {selectedContent.body && (
+                  <div className="mb-6 text-secondary leading-relaxed">
+                    {briefFmt ? (
+                      <BriefBody body={selectedContent.body} />
+                    ) : (
+                      <div className="prose prose-sm max-w-none text-secondary">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedContent.body}</ReactMarkdown>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {selectedContent.keyPoints && selectedContent.keyPoints.length > 0 && (
                   <div className="mb-6">
-                    <h3 className="text-[10px] font-semibold text-secondary/50 mb-3 uppercase tracking-[0.18em]">Key Takeaways</h3>
+                    <h3 className="text-[10px] font-semibold text-secondary/50 mb-3 uppercase tracking-[0.18em]">Key takeaways</h3>
                     <div className="space-y-2">
                       {selectedContent.keyPoints.slice(0, 4).map((point, i) => (
                         <div key={i} className="flex gap-2.5">
@@ -1319,40 +2313,7 @@ function FeedPageContent() {
                   </div>
                 )}
 
-                {selectedContent.whyItMatters && (
-                  <div className="mb-6 pl-3 border-l-2 border-foreground/10">
-                    <p className="text-[10px] font-semibold text-secondary/50 mb-1.5 uppercase tracking-[0.18em]">Why it matters</p>
-                    <p className="text-[14px] text-secondary/80 leading-relaxed">{stripMarkdown(selectedContent.whyItMatters)}</p>
-                  </div>
-                )}
-
-                {selectedContent.timeline && selectedContent.timeline.length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-[10px] font-semibold text-secondary/50 mb-3 uppercase tracking-[0.18em]">Timeline</h3>
-                    <div className="space-y-1">
-                      {selectedContent.timeline.map((event, i) => {
-                        const inner = (
-                          <>
-                            <p className="text-[10px] text-secondary/40 mb-0.5">{getTimeLabel(event.timestamp)}{event.source_name ? ` · ${event.source_name}` : ''}</p>
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="text-[14px] font-medium text-foreground leading-snug">{event.title}</p>
-                              {event.url && <ExternalLink size={12} className="shrink-0 mt-0.5 text-secondary/30" />}
-                            </div>
-                          </>
-                        );
-                        return event.url ? (
-                          <a key={i} href={event.url} target="_blank" rel="noopener noreferrer" className="block rounded-lg px-3 py-2.5 -mx-3 hover:bg-foreground/4 active:bg-foreground/6">
-                            {inner}
-                          </a>
-                        ) : (
-                          <div key={i} className="px-3 py-2.5 -mx-3">{inner}</div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {!selectedContent.timeline?.length && selectedContent.url && (
+                {selectedContent.url && (
                   <a
                     href={selectedContent.url}
                     target="_blank"
@@ -1364,10 +2325,14 @@ function FeedPageContent() {
                   </a>
                 )}
 
-                {nextItem && (
+                {feedView === 'briefing' && nextItem && (
                   <div className="mt-10 pt-6 border-t border-border/15">
                     <button
-                      onClick={() => { setSelectedId(nextItem.id); window.history.replaceState({ article: nextItem.id }, ''); window.scrollTo(0, 0); }}
+                      onClick={() => {
+                        setSelectedId(nextItem.id);
+                        window.history.replaceState({ article: nextItem.id }, '');
+                        window.scrollTo(0, 0);
+                      }}
                       className="w-full flex items-center justify-between px-4 py-4 rounded-2xl bg-foreground/5 active:bg-foreground/10"
                     >
                       <div className="text-left">
@@ -1380,18 +2345,23 @@ function FeedPageContent() {
                 )}
               </div>
             </div>
-          );})()}
+          );
+        })()}
 
+        {/* Mobile Briefing */}
+        <div className={`${isSubscribed && feedView === 'briefing' ? 'md:hidden' : 'hidden'}`}>
           {/* Feed list */}
           <div className="bg-background">
             {/* Briefing header */}
             <div className="px-5 pt-6 pb-4">
               <p className="text-[10px] font-semibold text-secondary/40 uppercase tracking-[0.2em] mb-1">{getTodayLabel()}</p>
               <div className="flex items-end justify-between">
-                <h1 className="text-[1.6rem] font-bold text-foreground tracking-[-0.025em] leading-tight">Your Briefing</h1>
-                {storyCount > 0 && (
-                  <span className="text-[12px] text-secondary/45 mb-0.5">{storyCount} stories</span>
-                )}
+                <div>
+                  <h1 className="text-[1.6rem] font-bold text-foreground tracking-[-0.025em] leading-tight">News</h1>
+                  {storyCount > 0 && (
+                    <span className="text-[12px] text-secondary/45 mb-0.5">{storyCount} stories</span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1399,7 +2369,6 @@ function FeedPageContent() {
             <div className="overflow-x-auto scrollbar-hide border-b border-border/15">
               <div className="flex items-center gap-2 px-5 pb-3 w-max">
                 {([
-                  { key: 'pulse', label: 'Daily Pulse' },
                   { key: 'for_you', label: 'For You' },
                   ...interestTabs.map(i => ({ key: i.id, label: i.label })),
                   { key: 'suggested', label: 'Suggested' },
@@ -1426,30 +2395,10 @@ function FeedPageContent() {
             ) : filteredList.length === 0 ? (
               <div className="px-5 py-12 text-center">
                 <p className="text-sm text-secondary/55">
-                  {activeFilter === 'pulse' ? 'Your daily pulse is on its way'
-                    : activeFilter === 'suggested' ? 'No suggested stories right now'
+                    {activeFilter === 'suggested' ? 'No suggested stories right now'
                     : activeFilter === 'for_you' ? 'No stories matching your interests'
                     : `No stories for ${INTEREST_LABEL[activeFilter] || activeFilter} yet`}
                 </p>
-              </div>
-            ) : activeFilter === 'pulse' && selectedContent ? (
-              /* Pulse: render brief inline, no tap-to-open */
-              <div className="px-5 pt-5 pb-12">
-                <div className="flex items-center gap-2 text-[11px] text-secondary/50 mb-3">
-                  {selectedContent.timestamp && <span>{getTimeLabel(selectedContent.timestamp)}</span>}
-                  {selectedContent.source && <><span className="text-secondary/30">·</span><span>{selectedContent.source}</span></>}
-                  {(selectedContent.sourceCount || 0) > 1 && <><span className="text-secondary/30">·</span><span className="font-medium">{selectedContent.sourceCount} sources</span></>}
-                  {selectedContent.readingTime && <><span className="text-secondary/30">·</span><span>{selectedContent.readingTime} min read</span></>}
-                </div>
-                <h1 className="text-[1.35rem] font-bold text-foreground leading-tight tracking-[-0.02em] mb-5">
-                  {selectedContent.title}
-                </h1>
-                {selectedContent.body && (() => {
-                  const isBriefFormat = looksLikeBriefBody(selectedContent.body);
-                  return isBriefFormat
-                    ? <BriefBody body={selectedContent.body} />
-                    : <p className="text-[15px] text-secondary leading-relaxed">{selectedContent.body}</p>;
-                })()}
               </div>
             ) : (
               <div className="divide-y divide-border/10">
@@ -1465,7 +2414,7 @@ function FeedPageContent() {
                     thumbnail={item.thumbnail}
                     selected={false}
                     onClick={() => openMobileArticle(item.id)}
-                  />
+                    />
                 ))}
               </div>
             )}

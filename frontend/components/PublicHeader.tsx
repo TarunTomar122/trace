@@ -20,6 +20,12 @@ export default function PublicHeader() {
               Trending
             </Link>
             <Link
+              href="/research"
+              className="hidden sm:inline-flex rounded-full px-4 py-2 text-sm font-medium text-secondary transition-colors hover:text-foreground"
+            >
+              Research
+            </Link>
+            <Link
               href="/"
               className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90 hover:shadow-lg hover:shadow-black/10"
             >

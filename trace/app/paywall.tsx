@@ -313,6 +313,7 @@ function StepPaywall({
   onClose,
   isPurchasing,
   isRestoring,
+  isBillingReady,
   fromOnboarding,
 }: {
   colorScheme: 'light' | 'dark';
@@ -324,10 +325,12 @@ function StepPaywall({
   onClose: () => void;
   isPurchasing: boolean;
   isRestoring: boolean;
+  isBillingReady: boolean;
   fromOnboarding: boolean;
 }) {
   const isDark = colorScheme === 'dark';
   const selectedPackage = packages.find((p) => p.planId === selectedPlan)?.pkg;
+  const ctaDisabled = !selectedPackage || isPurchasing || !isBillingReady;
 
   return (
     <ScrollView
@@ -417,10 +420,10 @@ function StepPaywall({
 
       <Pressable
         onPress={onPurchase}
-        disabled={!selectedPackage || isPurchasing}
+        disabled={ctaDisabled}
         style={[
           styles.ctaButton,
-          (!selectedPackage || isPurchasing) && { opacity: 0.5 },
+          ctaDisabled && { opacity: 0.5 },
         ]}>
         {isPurchasing ? (
           <ActivityIndicator size="small" color="#fff" />
@@ -428,15 +431,19 @@ function StepPaywall({
           <>
             <Zap size={18} color="#fff" strokeWidth={2} />
             <Text style={styles.ctaText}>
-              {fromOnboarding ? `Start my free trial` : 'Start free trial'}
+              {!isBillingReady
+                ? 'Preparing billing...'
+                : fromOnboarding
+                  ? 'Start my free trial'
+                  : 'Start free trial'}
             </Text>
           </>
         )}
       </Pressable>
 
-      <Pressable onPress={onRestore} disabled={isRestoring} style={styles.restoreButton}>
+      <Pressable onPress={onRestore} disabled={isRestoring || !isBillingReady} style={styles.restoreButton}>
         <ThemedText style={[styles.restoreText, { color: Colors[colorScheme].muted }]}>
-          {isRestoring ? 'Restoring...' : 'Restore purchases'}
+          {isRestoring ? 'Restoring...' : !isBillingReady ? 'Preparing purchases...' : 'Restore purchases'}
         </ThemedText>
       </Pressable>
 
@@ -455,7 +462,7 @@ export default function PaywallScreen() {
   const params = useLocalSearchParams();
   const colorScheme = useColorScheme() ?? 'light';
   const { showToast } = useToast();
-  const { offerings, purchasePackage, restorePurchases, isProUser } = useRevenueCat();
+  const { offerings, purchasePackage, restorePurchases, isProUser, loading: rcLoading } = useRevenueCat();
 
   const fromOnboarding = params.fromOnboarding === 'true';
 
@@ -491,6 +498,10 @@ export default function PaywallScreen() {
 
   const handlePurchase = async () => {
     if (!selectedPackage || isPurchasing) return;
+    if (rcLoading) {
+      showToast('Still preparing billing. Try again in a moment.', 'info');
+      return;
+    }
     setIsPurchasing(true);
     try {
       const success = await purchasePackage(selectedPackage);
@@ -518,6 +529,10 @@ export default function PaywallScreen() {
 
   const handleRestore = async () => {
     if (isRestoring) return;
+    if (rcLoading) {
+      showToast('Still preparing purchases. Try again in a moment.', 'info');
+      return;
+    }
     setIsRestoring(true);
     try {
       const success = await restorePurchases();
@@ -590,6 +605,7 @@ export default function PaywallScreen() {
             onClose={handleClose}
             isPurchasing={isPurchasing}
             isRestoring={isRestoring}
+            isBillingReady={!rcLoading}
             fromOnboarding={fromOnboarding}
           />
         )}

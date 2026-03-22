@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next'
 import { researchPosts } from './research/content'
 import { adminFirestore } from '@/lib/firebase-admin'
+import { comparePages } from './compare/content'
 
 const FALLBACK_TOPICS: string[] = []
 
@@ -262,5 +263,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticPages, ...topicPages, ...researchPages, ...articlePages];
+  const comparePagesIndex: MetadataRoute.Sitemap = [
+    {
+      url: `${baseUrl}/compare`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.75,
+    },
+  ];
+
+  const compareDetailPages: MetadataRoute.Sitemap = comparePages.map((page) => ({
+    url: `${baseUrl}/compare/${page.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.72,
+  }));
+
+  return [
+    ...staticPages,
+    ...topicPages,
+    ...researchPages,
+    ...comparePagesIndex,
+    ...compareDetailPages,
+    ...articlePages,
+  ];
 }

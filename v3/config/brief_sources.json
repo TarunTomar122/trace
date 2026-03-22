@@ -41,6 +41,7 @@
   },
   "rss": {
     "developer": [
+      {"name": "Lobsters", "url": "https://lobste.rs/rss", "type": "rss", "source_kind": "community"},
       {"name": "Pragmatic Engineer", "url": "https://newsletter.pragmaticengineer.com/feed", "type": "rss"},
       {"name": "LeadDev", "url": "https://leaddev.com/rss.xml", "type": "rss"},
       {"name": "Stack Overflow Blog", "url": "https://stackoverflow.blog/feed/", "type": "rss"},

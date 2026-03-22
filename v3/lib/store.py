@@ -492,6 +492,106 @@ class V3Store:
             merge=True,
         )
 
+    def write_global_role_section(
+        self,
+        date: str,
+        section_prefix: str,
+        role: str,
+        items: list[dict[str, Any]],
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Write one role-specific section into the shared global feed doc."""
+        doc_ref = self.db.collection(USER_FEEDS).document("_global").collection(
+            "daily"
+        ).document(date)
+        existing = doc_ref.get().to_dict() or {}
+
+        roles_key = f"{section_prefix}_roles"
+        counts_key = f"{section_prefix}_role_counts"
+        generated_key = f"{section_prefix}_role_generated_at"
+        metadata_key = f"{section_prefix}_role_metadata"
+
+        role_map = existing.get(roles_key, {})
+        if not isinstance(role_map, dict):
+            role_map = {}
+        role_map[role] = items
+
+        counts_map = existing.get(counts_key, {})
+        if not isinstance(counts_map, dict):
+            counts_map = {}
+        counts_map[role] = len(items)
+
+        generated_at_map = existing.get(generated_key, {})
+        if not isinstance(generated_at_map, dict):
+            generated_at_map = {}
+        generated_at_map[role] = _now_iso()
+
+        payload: dict[str, Any] = {
+            roles_key: role_map,
+            counts_key: counts_map,
+            generated_key: generated_at_map,
+        }
+        if metadata is not None:
+            metadata_map = existing.get(metadata_key, {})
+            if not isinstance(metadata_map, dict):
+                metadata_map = {}
+            metadata_map[role] = metadata
+            payload[metadata_key] = metadata_map
+
+        doc_ref.set(payload, merge=True)
+
+    def write_global_role_digest(
+        self,
+        date: str,
+        section_prefix: str,
+        role: str,
+        sections: dict[str, list[dict[str, Any]]],
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Write one role-specific structured digest into the shared global feed doc."""
+        doc_ref = self.db.collection(USER_FEEDS).document("_global").collection(
+            "daily"
+        ).document(date)
+        existing = doc_ref.get().to_dict() or {}
+
+        roles_key = f"{section_prefix}_roles"
+        counts_key = f"{section_prefix}_role_counts"
+        generated_key = f"{section_prefix}_role_generated_at"
+        metadata_key = f"{section_prefix}_role_metadata"
+
+        role_map = existing.get(roles_key, {})
+        if not isinstance(role_map, dict):
+            role_map = {}
+        role_map[role] = sections
+
+        counts_map = existing.get(counts_key, {})
+        if not isinstance(counts_map, dict):
+            counts_map = {}
+        counts_map[role] = sum(
+            len(items)
+            for items in sections.values()
+            if isinstance(items, list)
+        )
+
+        generated_at_map = existing.get(generated_key, {})
+        if not isinstance(generated_at_map, dict):
+            generated_at_map = {}
+        generated_at_map[role] = _now_iso()
+
+        payload: dict[str, Any] = {
+            roles_key: role_map,
+            counts_key: counts_map,
+            generated_key: generated_at_map,
+        }
+        if metadata is not None:
+            metadata_map = existing.get(metadata_key, {})
+            if not isinstance(metadata_map, dict):
+                metadata_map = {}
+            metadata_map[role] = metadata
+            payload[metadata_key] = metadata_map
+
+        doc_ref.set(payload, merge=True)
+
     def write_global_role_feed(
         self,
         date: str,
@@ -499,40 +599,14 @@ class V3Store:
         items: list[dict[str, Any]],
         metadata: dict[str, Any] | None = None,
     ) -> None:
-        """Write one role-specific For You pulse into the shared global feed doc."""
-        doc_ref = self.db.collection(USER_FEEDS).document("_global").collection(
-            "daily"
-        ).document(date)
-        existing = doc_ref.get().to_dict() or {}
-
-        role_map = existing.get("for_you_roles", {})
-        if not isinstance(role_map, dict):
-            role_map = {}
-        role_map[role] = items
-
-        counts_map = existing.get("for_you_role_counts", {})
-        if not isinstance(counts_map, dict):
-            counts_map = {}
-        counts_map[role] = len(items)
-
-        generated_at_map = existing.get("for_you_role_generated_at", {})
-        if not isinstance(generated_at_map, dict):
-            generated_at_map = {}
-        generated_at_map[role] = _now_iso()
-
-        payload: dict[str, Any] = {
-            "for_you_roles": role_map,
-            "for_you_role_counts": counts_map,
-            "for_you_role_generated_at": generated_at_map,
-        }
-        if metadata is not None:
-            metadata_map = existing.get("for_you_role_metadata", {})
-            if not isinstance(metadata_map, dict):
-                metadata_map = {}
-            metadata_map[role] = metadata
-            payload["for_you_role_metadata"] = metadata_map
-
-        doc_ref.set(payload, merge=True)
+        """Backward-compatible wrapper for the shared For You role section."""
+        self.write_global_role_section(
+            date,
+            "for_you",
+            role,
+            items,
+            metadata=metadata,
+        )
 
     def load_global_feed(self, date: str) -> dict[str, Any]:
         """Load the global feed for a given date."""

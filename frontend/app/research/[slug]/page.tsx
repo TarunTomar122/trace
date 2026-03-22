@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import MainNav from "@/components/MainNav";
 import { researchPosts } from "../content";
@@ -149,6 +150,30 @@ export default async function ResearchPostPage({ params }: PageProps) {
                 </li>
               ))}
             </ul>
+          </section>
+
+          <section className="mt-12 rounded-3xl bg-[#151515] p-8 text-white">
+            <h2 className="text-xl md:text-2xl font-semibold tracking-tight">
+              The product angle
+            </h2>
+            <p className="mt-4 max-w-2xl text-sm md:text-base leading-7 text-white/65">
+              Trace is built around the same ideas in this research: better source selection, grouped topic pages,
+              and faster catch-up without turning your morning into another unread queue.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link
+                href="/trending"
+                className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#151515]"
+              >
+                See grouped topics
+              </Link>
+              <Link
+                href="/"
+                className="rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white"
+              >
+                Start with Trace
+              </Link>
+            </div>
           </section>
         </div>
       </article>

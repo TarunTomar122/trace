@@ -40,6 +40,17 @@ load_dotenv(REPO_ROOT / ".env")
 
 from v2.utils.fetch_article_links import fetch_article_links  # noqa: E402
 from v3.lib.content import fetch_og_image  # noqa: E402
+from v3.lib.pulse_common import (  # noqa: E402
+    classify_content_pool as _shared_classify_content_pool,
+    load_recent_role_history as _shared_load_recent_role_history,
+    make_pool_article as _shared_make_pool_article,
+    normalize_role as _shared_normalize_role,
+    normalize_title_signature as _shared_normalize_title_signature,
+    role_label as _shared_role_label,
+    role_plural_label as _shared_role_plural_label,
+    select_role_articles as _shared_select_role_articles,
+    signal_score as _shared_signal_score,
+)
 from v3.lib.store import V3Store, _today_ist  # noqa: E402
 from v1.tools.youtube_transcript import fetch_youtube_transcript  # noqa: E402
 
@@ -593,24 +604,18 @@ def _make_pool_article(
     role_hints: list[str] | None = None,
     source_kind: str,
 ) -> dict[str, Any]:
-    return {
-        "title": title,
-        "url": url,
-        "source": source,
-        "signal": signal,
-        "role_hints": sorted({
-            _normalize_role(role)
-            for role in (role_hints or [])
-            if str(role or "").strip()
-        }),
-        "source_kind": source_kind,
-    }
+    return _shared_make_pool_article(
+        title=title,
+        url=url,
+        source=source,
+        signal=signal,
+        role_hints=role_hints,
+        source_kind=source_kind,
+    )
 
 
 def _signal_score(article: dict[str, Any]) -> int:
-    sig = str(article.get("signal", "")).strip()
-    match = re.search(r"(\d+)", sig)
-    return int(match.group(1)) if match else 0
+    return _shared_signal_score(article)
 
 
 def _fetch_hn_stories(
@@ -975,29 +980,15 @@ def _goal_label(goals: list[str]) -> str:
 
 
 def _normalize_role(role: Any) -> str:
-    normalized = str(role or "").strip().lower()
-    if normalized in ROLE_ALIASES:
-        return ROLE_ALIASES[normalized]
-    if not normalized or normalized in {"other", "student", "none", "null"}:
-        return "developer"
-    return normalized
+    return _shared_normalize_role(role)
 
 
 def _role_label(role: str) -> str:
-    normalized = _normalize_role(role)
-    return ROLE_LABELS.get(normalized, normalized or "professional")
+    return _shared_role_label(role)
 
 
 def _role_plural_label(role: str) -> str:
-    normalized = _normalize_role(role)
-    mapping = {
-        "developer": "engineers",
-        "designer": "designers",
-        "pm": "product managers",
-        "marketer": "marketers",
-        "founder": "founders",
-    }
-    return mapping.get(normalized, f"{_role_label(normalized)}s")
+    return _shared_role_plural_label(role)
 
 
 def _allowed_domains_for_role(role: str) -> list[str]:
@@ -1101,9 +1092,7 @@ def _deprioritize_recent_articles(
 
 
 def _normalize_title_signature(text: str) -> str:
-    normalized = re.sub(r"[^a-z0-9]+", " ", str(text or "").lower()).strip()
-    tokens = [token for token in normalized.split() if token]
-    return " ".join(tokens[:10])
+    return _shared_normalize_title_signature(text)
 
 
 def _load_recent_role_history(
@@ -1112,38 +1101,13 @@ def _load_recent_role_history(
     target_date: str,
     lookback_days: int = RECENT_ROLE_LOOKBACK_DAYS,
 ) -> tuple[set[str], set[str]]:
-    role = _normalize_role(role)
-    recent_urls: set[str] = set()
-    recent_titles: set[str] = set()
-    for date_key in _recent_dates_before(target_date, lookback_days):
-        global_feed = store.load_global_feed(date_key)
-        role_map = global_feed.get("for_you_roles", {})
-        if not isinstance(role_map, dict):
-            continue
-        items = role_map.get(role, [])
-        if not isinstance(items, list):
-            continue
-        for item in items:
-            if not isinstance(item, dict):
-                continue
-            url = str(item.get("url", "")).strip()
-            if url:
-                recent_urls.add(url)
-            title_sig = _normalize_title_signature(str(item.get("title", "")))
-            if title_sig:
-                recent_titles.add(title_sig)
-            sources = item.get("sources", [])
-            if isinstance(sources, list):
-                for source in sources:
-                    if not isinstance(source, dict):
-                        continue
-                    source_url = str(source.get("url", "")).strip()
-                    if source_url:
-                        recent_urls.add(source_url)
-                    source_sig = _normalize_title_signature(str(source.get("title", "")))
-                    if source_sig:
-                        recent_titles.add(source_sig)
-    return recent_urls, recent_titles
+    return _shared_load_recent_role_history(
+        store,
+        role,
+        target_date,
+        section_prefix="for_you",
+        lookback_days=lookback_days,
+    )
 
 
 def _score_roles_by_rules(article: dict[str, Any]) -> dict[str, int]:
@@ -1284,23 +1248,13 @@ def _classify_content_pool(
     store: V3Store,
     articles: list[dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
-    stats = {"classified_with_rules": 0, "classified_with_cache": 0, "classified_with_llm": 0, "rejected": 0}
-    classified: list[dict[str, Any]] = []
-    for article in articles:
-        roles, method = _assign_roles_to_article(store, article)
-        if not roles:
-            stats["rejected"] += 1
-            continue
-        record = dict(article)
-        record["roles"] = roles
-        classified.append(record)
-        if method == "cache":
-            stats["classified_with_cache"] += 1
-        elif method == "llm":
-            stats["classified_with_llm"] += 1
-        else:
-            stats["classified_with_rules"] += 1
-    return classified, stats
+    return _shared_classify_content_pool(
+        store,
+        articles,
+        bucket=FOR_YOU_ROLE_CLASSIFIER_BUCKET,
+        model=FOR_YOU_ROLE_CLASSIFIER_MODEL,
+        log_fn=lambda msg: _log(f"  {msg}"),
+    )
 
 
 def _score_article_for_role(
@@ -1340,30 +1294,14 @@ def _select_role_articles(
     recent_titles: set[str],
     total_limit: int = 36,
 ) -> list[dict[str, Any]]:
-    role = _normalize_role(role)
-    candidates = [
-        dict(article, _rank_score=_score_article_for_role(role, article, recent_urls, recent_titles))
-        for article in articles
-        if role in (article.get("roles") or [])
-    ]
-    candidates.sort(key=lambda article: (article.get("_rank_score", 0), _signal_score(article)), reverse=True)
-
-    diverse: list[dict[str, Any]] = []
-    source_counts: dict[str, int] = {}
-    community_limit_per_source = 2
-    editorial_limit_per_source = 1
-    for article in candidates:
-        source = str(article.get("source", "")).strip().lower()
-        source_kind = str(article.get("source_kind", "")).strip().lower()
-        limit_per_source = community_limit_per_source if source_kind == "community" else editorial_limit_per_source
-        if source and source_counts.get(source, 0) >= limit_per_source:
-            continue
-        diverse.append(article)
-        if source:
-            source_counts[source] = source_counts.get(source, 0) + 1
-        if len(diverse) >= max(total_limit * 2, total_limit):
-            break
-    return diverse
+    return _shared_select_role_articles(
+        role,
+        articles,
+        recent_urls,
+        recent_titles,
+        total_limit=total_limit,
+        lane="community",
+    )
 
 
 def _parse_source_lines(markdown: str) -> tuple[str, list[dict[str, str]]]:

@@ -20,11 +20,11 @@ export type ResearchPost = {
 export const researchPosts: ResearchPost[] = [
   {
     slug: "anti-brain-rot-attention-moat",
-    title: "Anti Brain Rot: What the Research Actually Says",
-    subtitle: "Evidence on attention decay, doomscrolling, and the habits that reverse it.",
-    tag: "Attention",
+    title: "Why Tech Pulse Needs More Than Headlines",
+    subtitle: "What attention research says about fragmented feeds, shallow updates, and better ways to stay current.",
+    tag: "Tech Pulse",
     excerpt:
-      "Brain rot is more than a meme. Research links heavy and problematic social media use with worse mental health and sleep, while information overload undermines clarity and action.",
+      "The problem with modern tech news is not access. It is fragmentation. Research on attention and overload helps explain why grouped topics and cleaner signal layers work better.",
     author: "Trace Research",
     readTime: "12 min read",
     date: "Feb 5, 2026",
@@ -173,11 +173,11 @@ export const researchPosts: ResearchPost[] = [
   },
   {
     slug: "signal-over-noise-curation",
-    title: "Signal > Noise: Why Curation Beats Volume",
-    subtitle: "Information overload is rising. Curation is the defense.",
-    tag: "Curation",
+    title: "Why Multi-Source Curation Beats Raw Volume",
+    subtitle: "When too many feeds compete for attention, source grouping becomes a product advantage.",
+    tag: "Source Design",
     excerpt:
-      "A major literature review shows information overload research rising fast in social media and virtual collaboration contexts. The fix is intentional curation and feedback loops.",
+      "Information overload keeps rising in digital environments. The answer is not more links. It is better curation, tighter feedback loops, and stronger source selection.",
     author: "Trace Research",
     readTime: "10 min read",
     date: "Feb 5, 2026",
@@ -305,11 +305,11 @@ export const researchPosts: ResearchPost[] = [
   },
   {
     slug: "ai-fatigue-return-of-context",
-    title: "AI Fatigue and the Return of Context",
-    subtitle: "Speed is useful, but context is what makes information actionable.",
-    tag: "AI",
+    title: "AI Summaries Work Better With Real Context",
+    subtitle: "Speed is useful, but source diversity and context are what make summaries trustworthy.",
+    tag: "Context",
     excerpt:
-      "AI summaries scale information fast, but WHO and research on overload show why context and source diversity are essential to avoid confusion and poor decisions.",
+      "AI summaries can compress information fast, but without source diversity and context they create confusion. This is why Trace starts from grouped stories, not one isolated take.",
     author: "Trace Research",
     readTime: "10 min read",
     date: "Feb 5, 2026",
@@ -416,11 +416,11 @@ export const researchPosts: ResearchPost[] = [
   },
   {
     slug: "calm-tech-for-builders",
-    title: "Calm Tech for Builders",
-    subtitle: "Design products that respect attention and improve wellbeing.",
-    tag: "Wellness",
+    title: "Designing A News Product That Respects Attention",
+    subtitle: "Builders win when products reduce tab chaos, context switching, and pointless urgency.",
+    tag: "Product",
     excerpt:
-      "Meta-analyses link social media use with worse mental health and sleep. Calm tech reduces those risks by defaulting to focus, not friction.",
+      "Products that respect attention are easier to trust and easier to keep using. In news, that means grouped topics, calmer interfaces, and fewer low-signal interruptions.",
     author: "Trace Research",
     readTime: "10 min read",
     date: "Feb 5, 2026",

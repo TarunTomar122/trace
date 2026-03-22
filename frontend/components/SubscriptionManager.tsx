@@ -30,6 +30,14 @@ interface SubscriptionStatus {
   hasAccess: boolean;
 }
 
+interface PricingPreview {
+  countryCode: string | null;
+  countrySource: 'header' | 'profile' | 'fallback';
+  trialDays: number;
+  priceDisplay: string;
+  pricingOffer: 'india' | 'default';
+}
+
 function toDateOrNull(value: unknown): Date | null {
   if (!value) return null;
   if (value instanceof Date) return value;
@@ -67,6 +75,7 @@ export default function SubscriptionManager() {
   const [isCreatingCheckout, setIsCreatingCheckout] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [pricingPreview, setPricingPreview] = useState<PricingPreview | null>(null);
   const autoCheckoutStarted = React.useRef(false);
   const trackedPaywall = React.useRef(false);
   const trackedSuccess = React.useRef(false);
@@ -177,6 +186,31 @@ export default function SubscriptionManager() {
       trackPaywallShown('profile_subscription_tab');
     }
   }, [isLoading, subscriptionStatus?.subscriptionStatus]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPricingPreview = async () => {
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        const response = await fetch('/api/subscription/pricing', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!cancelled) {
+          setPricingPreview(data);
+        }
+      } catch (err) {
+        console.error('Error fetching subscription pricing:', err);
+      }
+    };
+
+    void loadPricingPreview();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSubscribe = async () => {
     if (!user) return;
@@ -340,6 +374,9 @@ export default function SubscriptionManager() {
 
   const status = subscriptionStatus?.subscriptionStatus || 'none';
   const hasAccess = subscriptionStatus?.hasAccess || false;
+  const trialDays = pricingPreview?.trialDays ?? 3;
+  const priceDisplay = pricingPreview?.priceDisplay ?? '$4.99/month';
+  const planName = pricingPreview?.pricingOffer === 'india' ? 'Trace Pro India' : 'Trace Pro';
 
   useEffect(() => {
     if (checkoutIntent && !autoCheckoutStarted.current && !isLoading && status === 'none' && !isCreatingCheckout) {
@@ -379,11 +416,11 @@ export default function SubscriptionManager() {
         className="space-y-7"
       >
         <div>
-          <p className="text-[11px] font-semibold text-secondary/40 uppercase tracking-[0.18em] mb-3">Trace Pro</p>
+          <p className="text-[11px] font-semibold text-secondary/40 uppercase tracking-[0.18em] mb-3">{planName}</p>
           <h2 className="text-xl font-bold text-foreground tracking-[-0.02em] leading-snug mb-1.5">
             The news habit that<br />doesn't waste your time.
           </h2>
-          <p className="text-[13px] text-secondary/50">Try free for 3 days. No charge until the trial ends.</p>
+          <p className="text-[13px] text-secondary/50">Try free for {trialDays} days. No charge until the trial ends.</p>
         </div>
 
         <div className="space-y-4 pb-7 border-b border-border/15">
@@ -412,11 +449,11 @@ export default function SubscriptionManager() {
             {isCreatingCheckout ? (
               <><Loader2 className="animate-spin" size={15} />Setting up your trial...</>
             ) : (
-              <>Start 3-Day Free Trial</>
+              <>Start {trialDays}-Day Free Trial</>
             )}
           </button>
           <p className="text-[11px] text-secondary/35 mt-2 text-center">
-            $2.99/month after trial · Cancel anytime
+            {priceDisplay} after trial · Cancel anytime
           </p>
         </div>
 
@@ -442,7 +479,7 @@ export default function SubscriptionManager() {
             </div>
             <div>
               <h3 className="text-lg font-semibold text-foreground">
-                Trace Pro
+                {planName}
               </h3>
               <p className={`text-sm font-medium mt-0.5 ${getStatusColor(status)}`}>
                 {status.replace('_', ' ')}
@@ -488,7 +525,7 @@ export default function SubscriptionManager() {
           <div className="flex items-center gap-3 text-sm">
             <CreditCard size={16} className="text-secondary" />
             <span className="text-secondary">
-              Plan: <span className="text-foreground font-medium">$2.99/month</span>
+              Plan: <span className="text-foreground font-medium">{priceDisplay}</span>
             </span>
           </div>
         </div>

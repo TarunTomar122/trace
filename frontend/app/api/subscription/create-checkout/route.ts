@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
+import { resolveSubscriptionOffer } from '@/lib/subscription-offer';
 
 function readAffiliateCookie(raw: string | undefined) {
   if (!raw) return null;
@@ -101,16 +102,16 @@ export async function POST(request: NextRequest) {
 
     // Dodo Payments API configuration
     const DODO_API_KEY = process.env.DODO_API_KEY;
-    const DODO_PRODUCT_ID = process.env.DODO_PRODUCT_ID; // Your $2.99/month product ID
-    const TRIAL_DAYS = 3; // 3-day free trial
 
-    if (!DODO_API_KEY || !DODO_PRODUCT_ID || DODO_API_KEY === 'sk_your_key_here' || DODO_PRODUCT_ID === 'prod_your_product_id_here') {
+    if (!DODO_API_KEY || DODO_API_KEY === 'sk_your_key_here') {
       console.error('Missing Dodo Payments configuration');
       return NextResponse.json({ 
         error: 'Dodo Payments not configured yet. Please set up your Dodo account and add API credentials to environment variables.',
         needsSetup: true
       }, { status: 400 });
     }
+
+    const offer = resolveSubscriptionOffer(request, userData);
 
     // Create checkout session with Dodo Payments
     // Use test mode by default, switch to live.dodopayments.com for production
@@ -119,7 +120,14 @@ export async function POST(request: NextRequest) {
       ? 'https://live.dodopayments.com' 
       : 'https://test.dodopayments.com';
     
-    console.log('Creating Dodo checkout with:', { DODO_BASE_URL, DODO_PRODUCT_ID, email, userId });
+    console.log('Creating Dodo checkout with:', {
+      DODO_BASE_URL,
+      productId: offer.productId,
+      countryCode: offer.countryCode,
+      countrySource: offer.countrySource,
+      email,
+      userId,
+    });
     
     // Get DataFast visitor ID from cookies
     const cookieStore = await cookies();
@@ -148,12 +156,12 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         product_cart: [
           {
-            product_id: DODO_PRODUCT_ID,
+            product_id: offer.productId,
             quantity: 1,
           }
         ],
         subscription_data: {
-          trial_period_days: TRIAL_DAYS, // 3-day free trial
+          trial_period_days: offer.trialDays,
         },
         customer: {
           email: email,
@@ -162,6 +170,9 @@ export async function POST(request: NextRequest) {
         metadata: {
           user_id: userId,
           source: 'trace_app',
+          checkout_country_code: offer.countryCode ?? '',
+          checkout_country_source: offer.countrySource,
+          pricing_offer: offer.isIndiaOffer ? 'india' : 'default',
           datafast_visitor_id: datafastVisitorId ?? '',
           affiliate_code: affiliateCode ?? '',
           affiliate_landing_path: userData?.affiliateLandingPath || affiliateCookie?.landingPath || '',
@@ -197,13 +208,20 @@ export async function POST(request: NextRequest) {
     await adminDb.collection('user_profiles').doc(userId).update({
       lastCheckoutSessionId: checkoutData.session_id,
       lastCheckoutCreatedAt: new Date(),
+      checkoutCountryCode: offer.countryCode,
+      checkoutCountrySource: offer.countrySource,
+      checkoutOfferType: offer.isIndiaOffer ? 'india' : 'default',
+      checkoutProductId: offer.productId,
       updatedAt: new Date(),
     });
 
     return NextResponse.json({
       checkoutUrl: checkoutData.checkout_url,
       sessionId: checkoutData.session_id,
-      trialDays: TRIAL_DAYS,
+      trialDays: offer.trialDays,
+      countryCode: offer.countryCode,
+      priceDisplay: offer.priceDisplay,
+      pricingOffer: offer.isIndiaOffer ? 'india' : 'default',
     });
 
   } catch (error) {

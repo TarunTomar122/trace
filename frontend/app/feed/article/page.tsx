@@ -259,7 +259,6 @@ export default function ArticlePage() {
   const rawBody = item.summary?.short_article?.body || '';
   const body = (isTrending && slides.length) ? slides.join('\n\n') : (rawBody.length > 100 ? rawBody : (slides.length ? slides.join('\n\n') : rawBody));
   const keyTakeaways = item.summary?.short_article?.key_takeaways;
-  const whyItMatters = item.summary?.short_article?.why_it_matters;
   const learningCards = item.summary?.short_article?.learning_cards as LearningCard[] | undefined;
   const hasLearningCards = learningCards && learningCards.length > 0;
 
@@ -532,69 +531,37 @@ export default function ArticlePage() {
      ═══════════════════════════════════════════════════════ */
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Header />
       <Toast message={toast || ""} visible={!!toast} />
 
-      {/* Hero image */}
-      <div className="container mx-auto px-4 max-w-3xl pt-4">
-        <div className="relative aspect-[1.6/1] sm:aspect-[1.8/1] rounded-2xl overflow-hidden bg-surface-secondary">
-          <img src={imageUrl} alt="" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-black/20" />
-
-          <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
-            <button
-              onClick={handleBack}
-              className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:bg-black/60 transition-colors"
-            >
-              <ArrowLeft size={18} className="text-white" />
-            </button>
-            <button
-              onClick={handleShare}
-              disabled={shareLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 transition-colors text-white text-xs font-medium disabled:opacity-50"
-            >
-              {shareLoading ? <Loader2 size={14} className="animate-spin" /> : shareCopied ? <Check size={14} className="text-green-400" /> : <Share2 size={14} />}
-              {shareLoading ? 'Generating...' : shareCopied ? 'Shared!' : 'Share'}
-            </button>
-          </div>
-        </div>
-
-        {/* Title + meta below image */}
-        <div className="pt-4 pb-1">
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-snug mb-2">{item.title}</h1>
-          <div className="flex items-center gap-2 text-xs text-secondary/50">
-            {item.source_name && <span>{item.source_name}</span>}
-            {item.source_name && <span>·</span>}
-            <span>{readingTime} min read</span>
-          </div>
-        </div>
-      </div>
-
       <main className="container mx-auto px-4 max-w-3xl pt-5 pb-8">
+        <div className="flex items-center gap-2 text-xs text-secondary/45 mb-7">
+          <button
+            onClick={handleBack}
+            className="flex items-center justify-center w-6 h-6 -ml-1 text-secondary/55 hover:text-foreground transition-colors"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          {item.source_name && <span>{item.source_name}</span>}
+          {item.source_name && <span>·</span>}
+          <span>{readingTime} min read</span>
+        </div>
+
+        <h1 className="text-[2.35rem] sm:text-[2.65rem] font-bold text-foreground leading-[1.06] tracking-[-0.045em] mb-6">
+          {item.title}
+        </h1>
+
+        {imageUrl && (
+          <div className="mb-7 rounded-[24px] overflow-hidden bg-surface-secondary">
+            <img src={imageUrl} alt="" className="w-full max-h-[360px] object-cover" />
+          </div>
+        )}
+
         {hasLearningCards ? (
           <ArticleSections cards={learningCards!} />
         ) : (
           <>
-            {!isTrending && keyTakeaways && keyTakeaways.length > 0 && (
-              <div className="p-5 rounded-2xl bg-surface-secondary mb-6">
-                <p className="text-xs font-semibold text-secondary/50 tracking-wide mb-3">
-                  Key Takeaways
-                </p>
-                <ul className="space-y-2">
-                  {keyTakeaways.map((t: string, i: number) => (
-                    <li key={i} className="flex gap-2.5 items-start text-sm">
-                      <span className="w-1.5 h-1.5 rounded-full mt-2 shrink-0 bg-secondary/30" />
-                      <span className="prose prose-sm dark:prose-invert [&>p]:m-0 [&>p]:inline">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{t}</ReactMarkdown>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
             {body ? (
-              <div className="prose prose-base dark:prose-invert max-w-none mb-6">
+              <div className="prose prose-base dark:prose-invert max-w-none mb-8 text-[17px] leading-[1.95]">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{body}</ReactMarkdown>
               </div>
             ) : (
@@ -603,45 +570,35 @@ export default function ArticlePage() {
               </p>
             )}
 
-            {!isTrending && whyItMatters && (
-              <div className="p-5 rounded-2xl bg-surface-secondary mb-6">
-                <p className="text-xs font-semibold text-secondary/50 tracking-wide mb-2">
-                  Why it matters
+            {!isTrending && keyTakeaways && keyTakeaways.length > 0 && (
+              <div className="mb-6">
+                <p className="text-[11px] font-semibold text-secondary/40 uppercase tracking-[0.18em] mb-3">
+                  Key Takeaways
                 </p>
-                <div className="prose prose-sm dark:prose-invert max-w-none text-secondary/70">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{whyItMatters}</ReactMarkdown>
-                </div>
+                <ul className="space-y-2">
+                  {keyTakeaways.map((t: string, i: number) => (
+                    <li key={i} className="flex gap-3 items-start text-sm">
+                      <span className="text-secondary/30 font-mono text-xs mt-0.5">{i + 1}.</span>
+                      <span className="prose prose-sm dark:prose-invert [&>p]:m-0 [&>p]:inline text-secondary/80">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{t}</ReactMarkdown>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </>
         )}
 
-        <div className="border-t border-border/10 pt-5 mt-2 flex items-center justify-between">
-          <button
-            onClick={handleBack}
-            className="text-sm text-secondary/50 hover:text-foreground transition-colors flex items-center gap-1.5"
+        <div className="border-t border-border/10 pt-5 mt-8">
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-5 py-3 rounded-full text-sm font-semibold bg-foreground text-background hover:bg-foreground/90 transition-colors"
           >
-            <ArrowLeft size={14} />
-            Back to feed
-          </button>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleShare}
-              disabled={shareLoading}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium border border-border hover:bg-surface-secondary transition-colors disabled:opacity-50"
-            >
-              {shareLoading ? <Loader2 size={14} className="animate-spin" /> : shareCopied ? <Check size={14} className="text-green-500" /> : <Share2 size={14} />}
-              {shareLoading ? 'Generating...' : shareCopied ? 'Shared!' : 'Share'}
-            </button>
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold bg-foreground text-background hover:bg-foreground/90 transition-colors"
-            >
-              Read Original <ExternalLink size={14} />
-            </a>
-          </div>
+            Read original source <ExternalLink size={14} />
+          </a>
         </div>
       </main>
     </div>
