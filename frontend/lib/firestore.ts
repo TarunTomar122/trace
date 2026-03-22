@@ -519,13 +519,13 @@ export interface UserProfile {
 
 export const INTERESTS = [
   { id: 'ai', label: 'AI' },
+  { id: 'products', label: 'Products' },
   { id: 'tech', label: 'Tech' },
   { id: 'startups', label: 'Startups' },
-  { id: 'markets', label: 'Markets' },
   { id: 'engineering', label: 'Engineering' },
-  { id: 'product-design', label: 'Product & Design' },
-  { id: 'marketing', label: 'Marketing' },
-  { id: 'fintech', label: 'Fintech' },
+  { id: 'ux-design', label: 'UX Design' },
+  { id: 'markets', label: 'Markets' },
+  { id: 'the-world', label: 'The World' },
 ];
 
 export const INTEREST_SUBTOPICS: Record<string, { id: string; label: string }[]> = {
@@ -564,36 +564,34 @@ export const INTEREST_SUBTOPICS: Record<string, { id: string; label: string }[]>
     { id: 'open-source', label: 'Open Source' },
     { id: 'platform-engineering', label: 'Platform Engineering' },
   ],
-  'product-design': [
-    { id: 'ux', label: 'UX' },
+  'ux-design': [
+    { id: 'ux', label: 'UX Research' },
     { id: 'ui', label: 'UI' },
     { id: 'product-changes', label: 'Product Changes' },
     { id: 'app-redesigns', label: 'App Redesigns' },
     { id: 'design-systems', label: 'Design Systems' },
   ],
-  marketing: [
+  products: [
+    { id: 'product-launches', label: 'Product Launches' },
+    { id: 'consumer-apps', label: 'Consumer Apps' },
+    { id: 'b2b-tools', label: 'B2B Tools' },
+    { id: 'product-strategy', label: 'Product Strategy' },
     { id: 'growth', label: 'Growth' },
-    { id: 'seo', label: 'SEO' },
-    { id: 'ads', label: 'Ads & Platforms' },
-    { id: 'distribution', label: 'Distribution' },
-    { id: 'ecommerce', label: 'E-commerce' },
   ],
-  fintech: [
-    { id: 'payments', label: 'Payments' },
-    { id: 'banking', label: 'Banking' },
-    { id: 'crypto', label: 'Crypto' },
-    { id: 'trading', label: 'Trading' },
-    { id: 'financial-platforms', label: 'Financial Platforms' },
+  'the-world': [
+    { id: 'policy', label: 'Policy' },
+    { id: 'geopolitics', label: 'Geopolitics' },
+    { id: 'climate', label: 'Climate' },
+    { id: 'society', label: 'Society' },
+    { id: 'economy', label: 'Economy' },
   ],
 };
 
 export const ROLES = [
-  { id: 'designer', label: 'Designer', subtitle: 'UI/UX, Product, Visual' },
   { id: 'developer', label: 'Developer', subtitle: 'Frontend, Backend, Full-stack' },
+  { id: 'designer', label: 'Designer', subtitle: 'UI/UX, Product, Visual' },
   { id: 'pm', label: 'Product Manager', subtitle: 'Strategy & Roadmaps' },
-  { id: 'marketer', label: 'Marketer', subtitle: 'Growth, Content, Brand' },
   { id: 'founder', label: 'Founder / CEO', subtitle: 'Building & Leading' },
-  { id: 'other', label: 'Other', subtitle: 'Tell us your path' },
 ] as const;
 
 export const SENIORITY_LEVELS = [
@@ -605,13 +603,13 @@ export const SENIORITY_LEVELS = [
 
 export const ONBOARDING_INTERESTS = [
   { id: 'ai', label: 'AI' },
+  { id: 'products', label: 'Products' },
   { id: 'tech', label: 'Tech' },
   { id: 'startups', label: 'Startups' },
-  { id: 'markets', label: 'Markets' },
   { id: 'engineering', label: 'Engineering' },
-  { id: 'product-design', label: 'Product & Design' },
-  { id: 'marketing', label: 'Marketing' },
-  { id: 'fintech', label: 'Fintech' },
+  { id: 'ux-design', label: 'UX Design' },
+  { id: 'markets', label: 'Markets' },
+  { id: 'the-world', label: 'The World' },
 ] as const;
 
 export const LEARNING_SOURCE_CATEGORIES = [
@@ -771,21 +769,14 @@ function normalizeFeedRole(role?: string | null): string {
   if (normalized === 'pm' || normalized === 'product manager') {
     return 'pm';
   }
-  if (
-    normalized === 'marketer' ||
-    normalized === 'marketing' ||
-    normalized === 'growth marketer' ||
-    normalized === 'creator'
-  ) {
-    return 'marketer';
-  }
   if (normalized === 'data scientist') {
     return 'developer';
   }
   if (normalized === 'founder' || normalized === 'co-founder' || normalized === 'startup founder') {
     return 'founder';
   }
-  return normalized;
+  // Unknown roles fall back to developer
+  return 'developer';
 }
 
 export async function getV3UserFeed(

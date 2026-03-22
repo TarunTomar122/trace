@@ -225,13 +225,17 @@ CANONICAL_TRENDING_INTEREST_MAP = {
     "technology": "tech",
     "business-market": "markets",
     "business": "markets",
-    "experience": "product-design",
-    "design": "product-design",
+    # legacy → new
+    "product-design": "ux-design",
+    "experience": "ux-design",
+    "design": "ux-design",
+    "marketing": "startups",
+    "fintech": "markets",
+    "web3": "markets",
     "leadership": "markets",
     "productivity": "tech",
-    "health": "tech",
-    "web3": "fintech",
-    "climate": "tech",
+    "health": "the-world",
+    "climate": "the-world",
 }
 
 

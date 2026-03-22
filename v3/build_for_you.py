@@ -80,13 +80,12 @@ REDDIT_USER_AGENT = "TraceBrief/1.0"
 RECENT_BRIEF_LOOKBACK_DAYS = 5
 RECENT_ROLE_LOOKBACK_DAYS = 5
 
-ROLE_ORDER = ["developer", "designer", "pm", "marketer", "founder"]
+ROLE_ORDER = ["developer", "designer", "pm", "founder"]
 
 ROLE_FALLBACK_IMAGES = {
     "developer": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=500&fit=crop",
     "designer": "https://images.unsplash.com/photo-1558655146-9f40138edfeb?w=800&h=500&fit=crop",
     "pm": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=500&fit=crop",
-    "marketer": "https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&h=500&fit=crop",
     "founder": "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=800&h=500&fit=crop",
 }
 
@@ -94,7 +93,6 @@ ROLE_LABELS = {
     "developer": "engineer",
     "designer": "designer",
     "pm": "product manager",
-    "marketer": "marketer",
     "founder": "founder",
 }
 
@@ -113,10 +111,11 @@ ROLE_ALIASES = {
     "ui designer": "designer",
     "product manager": "pm",
     "pm": "pm",
-    "marketer": "marketer",
-    "marketing": "marketer",
-    "growth marketer": "marketer",
-    "creator": "marketer",
+    # former marketer roles fall back to founder
+    "marketer": "founder",
+    "marketing": "founder",
+    "growth marketer": "founder",
+    "creator": "founder",
     "founder": "founder",
     "co-founder": "founder",
     "startup founder": "founder",
@@ -127,7 +126,6 @@ ROLE_FEED_INTEREST = {
     "developer": "engineering",
     "designer": "experience",
     "pm": "business-market",
-    "marketer": "marketing",
     "founder": "startups",
 }
 
@@ -149,12 +147,6 @@ ROLE_KEYWORDS = {
         "product", "roadmap", "prioritization", "retention", "onboarding",
         "user research", "experiment", "conversion", "launch", "feature",
         "product management", "metrics", "activation", "customer feedback",
-    },
-    "marketer": {
-        "seo", "growth", "campaign", "ads", "advertising", "distribution",
-        "positioning", "brand", "content marketing", "landing page",
-        "acquisition", "newsletter", "copywriting", "social", "funnel",
-        "attribution", "conversion rate",
     },
     "founder": {
         "startup", "startups", "saas", "pricing", "fundraising", "venture",

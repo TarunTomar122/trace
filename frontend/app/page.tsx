@@ -90,11 +90,11 @@ export default function LandingPage() {
   }, []);
 
   const handleStartReading = () => {
-    void handleAuthStart('read');
+    router.push('/onboarding');
   };
 
   const handleStartTrial = () => {
-    void handleAuthStart('checkout');
+    router.push('/onboarding?intent=checkout');
   };
 
   const trialDays = pricingPreview?.trialDays ?? 3;
@@ -576,7 +576,7 @@ function HeroDemoFeedToggle({
 }
 
 function HeroPulsePreview() {
-  const [demoView, setDemoView] = useState<'pulse' | 'briefing'>('pulse');
+  const [demoView, setDemoView] = useState<'pulse' | 'briefing'>('briefing');
   const [newsPick, setNewsPick] = useState(0);
   const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 

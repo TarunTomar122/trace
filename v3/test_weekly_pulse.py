@@ -28,13 +28,12 @@ load_dotenv(REPO_ROOT / ".env")
 
 from v3.lib.store import V3Store, _today_ist  # noqa: E402
 
-ROLE_ORDER = ["developer", "designer", "pm", "marketer", "founder"]
+ROLE_ORDER = ["developer", "designer", "pm", "founder"]
 
 ROLE_PLURAL = {
     "developer": "engineers",
     "designer": "designers",
     "pm": "product managers",
-    "marketer": "marketers",
     "founder": "founders",
 }
 
@@ -43,7 +42,6 @@ ROLE_FOCUS = {
     "founder": "Focus on: what's changing in distribution, AI product wedges, startup tactics, competition moves, and things that help you build smarter or move faster.",
     "designer": "Focus on: design systems, product craft, AI in the design workflow, tools that are changing how things get built.",
     "pm": "Focus on: product strategy, new product patterns, execution tricks, user insights, and things that sharpen product sense.",
-    "marketer": "Focus on: growth channels, positioning shifts, distribution plays, and concrete tactics that are actually working right now.",
 }
 
 WEEKLY_ROLE_PROMPT = """You're writing a "Week in Review" for a community of {role_plural}. Think Stratechery Saturday edition — synthesize what the week actually built toward, not just a list of articles.
