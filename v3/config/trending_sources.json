@@ -81,6 +81,14 @@
     },
     {
       "interest_id": "tech",
+      "name": "InfoQ",
+      "url": "https://www.infoq.com/feed/",
+      "type": "rss",
+      "title_keywords": ["AI", "ai", "agent", "developer", "engineering", "software", "cloud", "platform", "open source"],
+      "source_weight": 1.05
+    },
+    {
+      "interest_id": "tech",
       "name": "Anthropic News",
       "url": "https://www.anthropic.com/news",
       "type": "html",
@@ -116,6 +124,15 @@
       "url": "https://feeds.bloomberg.com/technology/news.rss",
       "type": "rss",
       "source_weight": 1.25
+    },
+    {
+      "interest_id": "markets",
+      "name": "WIRED Business",
+      "url": "https://www.wired.com/feed/category/business/latest/rss",
+      "type": "rss",
+      "title_keywords": ["AI", "ai", "startup", "startups", "tech", "technology", "software", "developer", "cloud", "chip", "openai", "anthropic", "google", "microsoft", "meta", "amazon", "nvidia"],
+      "exclude_title_keywords": ["podcast", "deal", "deals", "sale", "discount"],
+      "source_weight": 1.1
     },
     {
       "interest_id": "tech",
