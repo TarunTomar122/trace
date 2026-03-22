@@ -42,6 +42,13 @@
         "role_hints": ["founder", "pm", "marketer"]
       },
       {
+        "name": "The Rundown AI",
+        "url": "https://www.therundown.ai/archive",
+        "type": "rundown_ai",
+        "source_kind": "editorial",
+        "role_hints": ["developer", "founder", "pm", "designer"]
+      },
+      {
         "name": "TLDR AI",
         "url": "https://tldr.tech/ai/{date}",
         "type": "tldr_digest",

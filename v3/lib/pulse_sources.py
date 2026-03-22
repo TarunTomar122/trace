@@ -211,6 +211,82 @@ def _fetch_tldr_digest(
     return []
 
 
+def _fetch_rundown_ai(
+    *,
+    name: str,
+    source_kind: str,
+    role_hints: list[str],
+    log_fn: Callable[[str], None],
+    lookback_days: int = 2,
+    limit: int = 8,
+) -> list[dict[str, Any]]:
+    """Fetch today's posts from The Rundown AI via sitemap + OG meta tags."""
+    import xml.etree.ElementTree as ET
+
+    sitemap_url = "https://www.therundown.ai/sitemap.xml"
+    try:
+        resp = requests.get(sitemap_url, timeout=RSS_TIMEOUT, headers={"User-Agent": REDDIT_USER_AGENT})
+        resp.raise_for_status()
+        root = ET.fromstring(resp.text)
+    except Exception as exc:
+        log_fn(f"{name}: sitemap fetch failed: {exc}")
+        return []
+
+    ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    cutoff = (datetime.now(timezone.utc).date() - timedelta(days=lookback_days)).isoformat()
+
+    candidates: list[tuple[str, str]] = []  # (url, lastmod)
+    for url_el in root.findall("sm:url", ns):
+        loc = (url_el.findtext("sm:loc", "", ns) or "").strip()
+        lastmod = (url_el.findtext("sm:lastmod", "", ns) or "").strip()
+        if "/p/" not in loc:
+            continue
+        if lastmod and lastmod[:10] < cutoff:
+            continue
+        candidates.append((loc, lastmod))
+
+    candidates = candidates[:limit]
+    if not candidates:
+        log_fn(f"{name}: no recent posts found in sitemap")
+        return []
+
+    entries: list[dict[str, Any]] = []
+    for url, lastmod in candidates:
+        try:
+            page_resp = requests.get(url, timeout=RSS_TIMEOUT, headers={"User-Agent": REDDIT_USER_AGENT})
+            page_resp.raise_for_status()
+            soup = BeautifulSoup(page_resp.text, "html.parser")
+
+            def _meta(prop: str) -> str:
+                tag = soup.find("meta", property=prop) or soup.find("meta", attrs={"name": prop})
+                return str(tag.get("content", "")).strip() if tag else ""  # type: ignore[union-attr]
+
+            title = _meta("og:title") or _meta("twitter:title")
+            description = _meta("og:description") or _meta("twitter:description")
+            pub_date = _meta("article:published_time") or lastmod
+
+            if not title:
+                continue
+
+            entries.append(
+                make_pool_article(
+                    title=title,
+                    url=url,
+                    source=name,
+                    role_hints=role_hints,
+                    source_kind=source_kind,
+                    snippet=description,
+                    published_date=pub_date,
+                )
+            )
+        except Exception as exc:
+            log_fn(f"{name}: failed to fetch {url}: {exc}")
+            continue
+
+    log_fn(f"{name}: fetched {len(entries)} entries")
+    return entries
+
+
 def _fetch_github_trending(
     *,
     role_hints: list[str],
@@ -557,6 +633,16 @@ def _fetch_source_entries(
                 _fetch_tldr_digest(
                     name=name,
                     url_template=url,
+                    source_kind=source_kind,
+                    role_hints=role_hints,
+                    log_fn=log_fn,
+                )
+            )
+            continue
+        if source_type == "rundown_ai":
+            articles.extend(
+                _fetch_rundown_ai(
+                    name=name,
                     source_kind=source_kind,
                     role_hints=role_hints,
                     log_fn=log_fn,
