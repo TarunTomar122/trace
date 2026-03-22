@@ -419,11 +419,11 @@ class FirestoreStore:
         for doc in all_docs:
             data = doc.to_dict()
             email = (data.get("email") or "").lower()
-            opted_out = data.get("newsletterOptIn") is False
+            explicitly_opted_in = data.get("newsletterOptIn") is True
             if (
                 email
                 and not is_user_subscribed(data)
-                and not opted_out
+                and explicitly_opted_in
             ):
                 free_emails.add(email)
 

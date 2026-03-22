@@ -147,35 +147,38 @@ def get_users_with_push_enabled() -> list[dict[str, Any]]:
 
 
 def send_trending_notification() -> dict[str, Any]:
-    """Send a notification about trending news to all enabled users."""
+    """Send a notification about the top trending topic to all enabled users."""
     store = V3Store()
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    
-    # Get a trending item to feature
+
+    # Prefer trending_topics (clustered topics with deep-link IDs) over raw trending items
     global_feed = store.load_global_feed(today)
+    trending_topics = global_feed.get("trending_topics", [])
     trending = global_feed.get("trending", [])
-    
-    if not trending:
-        return {"error": "No trending items found"}
-    
-    # Pick the top item
-    top_item = trending[0]
-    title = "Trending Now"
-    body = top_item.get("title", "Check out what's trending")[:100]
-    
+
+    if not trending_topics and not trending:
+        return {"error": "No trending content found"}
+
+    # Build notification from the top topic (with deep-link topicId) or fall back to article title
+    if trending_topics:
+        top = trending_topics[0]
+        title = "Trending Now"
+        body = top.get("title", "See what's trending today")[:100]
+        notif_data: dict[str, Any] = {"type": "trending", "topicId": top.get("id") or top.get("topic_key", "")}
+    else:
+        top = trending[0]
+        title = "Trending Now"
+        body = top.get("title", "Check out what's trending")[:100]
+        notif_data = {"type": "trending", "articleId": top.get("id", "")}
+
     # Get users with push enabled
     users = get_users_with_push_enabled()
     if not users:
         return {"error": "No users with push enabled"}
-    
+
     tokens = [u["pushToken"] for u in users]
-    stats = send_bulk_notifications(
-        tokens,
-        title,
-        body,
-        data={"type": "trending", "articleId": top_item.get("id")},
-    )
-    
+    stats = send_bulk_notifications(tokens, title, body, data=notif_data)
+
     _log(f"Trending notification sent: {stats}")
     return {"type": "trending", "users": len(users), **stats}
 

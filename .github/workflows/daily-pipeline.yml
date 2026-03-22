@@ -9,9 +9,8 @@ on:
     # Trending refreshes every 3 hours, 24x7 (offset from other jobs)
     - cron: '20 */3 * * *'
 
-    # Push notifications (morning & evening)
+    # Push notifications (morning only)
     - cron: '30 3 * * *'   # 9:00 AM IST - morning notification
-    - cron: '30 14 * * *'  # 8:00 PM IST - evening notification
   
   workflow_dispatch:
     inputs:
@@ -98,9 +97,9 @@ jobs:
         run: |
           python -u -m v3.scheduler --jobs trending --audience all --force-pools
 
-  # Push notifications - morning (9 AM IST) and evening (8 PM IST)
+  # Push notifications - morning (9 AM IST)
   push-notification:
-    if: github.event.schedule == '30 3 * * *' || github.event.schedule == '30 14 * * *'
+    if: github.event.schedule == '30 3 * * *'
     runs-on: ubuntu-latest
 
     steps:
