@@ -21,6 +21,13 @@
         "role_hints": ["developer", "founder"]
       },
       {
+        "name": "Simon Willison's Blog",
+        "url": "https://simonwillison.net/atom/everything/",
+        "type": "atom",
+        "source_kind": "editorial",
+        "role_hints": ["developer", "founder"]
+      },
+      {
         "name": "Y Combinator Blog",
         "url": "https://www.ycombinator.com/blog/rss/",
         "type": "rss",

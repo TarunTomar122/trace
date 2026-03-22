@@ -147,6 +147,30 @@
       "url": "https://techcrunch.com/category/startups/feed/",
       "type": "rss",
       "source_weight": 1.1
+    },
+    {
+      "interest_id": "tech",
+      "name": "Hugging Face Blog",
+      "url": "https://huggingface.co/blog/feed.xml",
+      "type": "rss",
+      "source_weight": 1.2,
+      "exclude_title_keywords": ["tutorial", "course", "how to", "guide"]
+    },
+    {
+      "interest_id": "tech",
+      "name": "MIT Technology Review AI",
+      "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed/",
+      "type": "rss",
+      "source_weight": 1.2,
+      "exclude_title_keywords": ["podcast", "newsletter"]
+    },
+    {
+      "interest_id": "tech",
+      "name": "Stack Overflow Blog",
+      "url": "https://stackoverflow.blog/feed/",
+      "type": "rss",
+      "source_weight": 1.05,
+      "title_keywords": ["AI", "ai", "developer", "survey", "programming", "engineering", "software", "open source", "llm", "model", "agent"]
     }
   ]
 }
