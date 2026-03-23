@@ -160,6 +160,12 @@ export async function POST(request: NextRequest) {
             quantity: 1,
           }
         ],
+        ...(offer.isIndiaOffer && {
+          allowed_payment_method_types: ['upi_collect', 'credit', 'debit'],
+        }),
+        feature_flags: {
+          allow_discount_code: offer.isIndiaOffer,
+        },
         subscription_data: {
           trial_period_days: offer.trialDays,
         },
