@@ -1415,20 +1415,32 @@ function UpgradeCard({ lockedCount }: { lockedCount: number }) {
 }
 
 /* ─── Full-width Paywall Gate ─── */
+const INDIA_PRICING = { trialDays: 1, priceDisplay: '₹10/month', pricingOffer: 'india' as const };
+const DEFAULT_PRICING = { trialDays: 3, priceDisplay: '$4.99/month', pricingOffer: 'default' as const };
+
+function guessClientPricing() {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz === 'Asia/Kolkata') return INDIA_PRICING;
+    const lang = (navigator.language || '').toLowerCase();
+    if (lang === 'en-in' || lang.endsWith('-in')) return INDIA_PRICING;
+  } catch {}
+  return DEFAULT_PRICING;
+}
+
 function PaywallGate() {
   const { user } = useAuth();
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [pricingPreview, setPricingPreview] = React.useState<{
-    trialDays: number;
-    priceDisplay: string;
-    pricingOffer: 'india' | 'default';
-  } | null>(null);
+  // Default on server; client guess applied in useEffect before API confirms
+  const [pricingPreview, setPricingPreview] = React.useState<typeof INDIA_PRICING | typeof DEFAULT_PRICING>(DEFAULT_PRICING);
 
+  // Still confirm with server in background (handles VPN / edge cases)
   React.useEffect(() => {
     let cancelled = false;
-
-    const loadPricingPreview = async () => {
+    // Apply client-side timezone/locale guess immediately (synchronous, no round-trip)
+    setPricingPreview(guessClientPricing());
+    const confirm = async () => {
       try {
         const token = await user?.getIdToken();
         const response = await fetch('/api/subscription/pricing', {
@@ -1436,18 +1448,11 @@ function PaywallGate() {
         });
         if (!response.ok) return;
         const data = await response.json();
-        if (!cancelled) {
-          setPricingPreview(data);
-        }
-      } catch (err) {
-        console.error('Error fetching paywall pricing:', err);
-      }
+        if (!cancelled) setPricingPreview(data);
+      } catch {}
     };
-
-    void loadPricingPreview();
-    return () => {
-      cancelled = true;
-    };
+    void confirm();
+    return () => { cancelled = true; };
   }, [user]);
 
   const handleStartTrial = async () => {
@@ -1488,9 +1493,9 @@ function PaywallGate() {
       desc: "Skim today's feed in 5 minutes. Know what's going on. Move on with your day.",
     },
   ];
-  const trialDays = pricingPreview?.trialDays ?? 3;
-  const priceDisplay = pricingPreview?.priceDisplay ?? '$4.99/month';
-  const planName = pricingPreview?.pricingOffer === 'india' ? 'Trace Pro India' : 'Trace Pro';
+  const trialDays = pricingPreview.trialDays;
+  const priceDisplay = pricingPreview.priceDisplay;
+  const planName = pricingPreview.pricingOffer === 'india' ? 'Trace Pro India' : 'Trace Pro';
   return (
     <div className="w-full sm:rounded-2xl sm:bg-surface sm:shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
       <div className="max-w-md mx-auto px-6 sm:px-12 py-10 sm:py-16">
@@ -1499,7 +1504,7 @@ function PaywallGate() {
           The news habit that<br />doesn't waste your time.
         </h2>
         <p className="text-[14px] text-secondary/50 mb-10 leading-relaxed">
-          Try it free for {trialDays} days. No charge until the trial ends.
+          Try it free for {trialDays} {trialDays === 1 ? 'day' : 'days'}. No charge until the trial ends.
         </p>
 
         <div className="space-y-5 mb-10">
@@ -1522,7 +1527,7 @@ function PaywallGate() {
         >
           {loading ? <><Loader2 size={14} className="animate-spin" />Setting up your trial...</> : `Start ${trialDays}-Day Free Trial`}
         </button>
-        <p className="text-[11px] text-secondary/35 mt-2.5 text-center">{priceDisplay} after {trialDays} days · Cancel anytime</p>
+        <p className="text-[11px] text-secondary/35 mt-2.5 text-center">{priceDisplay} after {trialDays} {trialDays === 1 ? 'day' : 'days'} · Cancel anytime</p>
       </div>
     </div>
   );

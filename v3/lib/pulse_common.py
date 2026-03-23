@@ -109,7 +109,6 @@ def role_plural_label(role: str) -> str:
         "developer": "engineers",
         "designer": "designers",
         "pm": "product managers",
-        "marketer": "marketers",
         "founder": "founders",
     }
     return mapping.get(normalized, f"{role_label(normalized)}s")
@@ -263,7 +262,6 @@ def _score_roles_by_rules(article: dict[str, Any]) -> dict[str, int]:
     elif "y combinator" in source_name or "techcrunch startups" in source_name:
         scores["founder"] += 3
         scores["pm"] += 2
-        scores["marketer"] += 1
     elif "figma" in source_name:
         scores["designer"] += 3
         scores["pm"] += 1

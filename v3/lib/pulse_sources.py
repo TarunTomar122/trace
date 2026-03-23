@@ -217,10 +217,10 @@ def _fetch_rundown_ai(
     source_kind: str,
     role_hints: list[str],
     log_fn: Callable[[str], None],
-    lookback_days: int = 2,
+    lookback_days: int = 7,
     limit: int = 8,
 ) -> list[dict[str, Any]]:
-    """Fetch today's posts from The Rundown AI via sitemap + OG meta tags."""
+    """Fetch recent posts from The Rundown AI via sitemap + OG meta tags."""
     import xml.etree.ElementTree as ET
 
     sitemap_url = "https://www.therundown.ai/sitemap.xml"
