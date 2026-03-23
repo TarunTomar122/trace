@@ -932,10 +932,16 @@ export async function getV3UserFeed(
             feedDate = globalData.date || globalDoc.id;
           }
         }
+        // Always grab trending from the newest doc that has it, but don't
+        // break immediately — keep scanning older docs until we also have
+        // pulse so a 6 AM visit (before today's pulse is generated at 9 AM)
+        // still shows yesterday's pulse instead of nothing.
         if (candidateTrending.length > 0 || candidateTopics.length > 0) {
-          trending = candidateTrending;
-          trendingTopics = candidateTopics;
-          break;
+          if (trending.length === 0) {
+            trending = candidateTrending;
+            trendingTopics = candidateTopics;
+          }
+          if (dailyPulse) break;
         }
       }
 

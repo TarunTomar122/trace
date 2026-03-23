@@ -1,0 +1,43 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - link "Trace TRACE" [ref=e6] [cursor=pointer]:
+          - /url: /
+          - img "Trace" [ref=e7]
+          - generic [ref=e8]: TRACE
+        - link "U" [ref=e10] [cursor=pointer]:
+          - /url: /profile
+          - generic [ref=e11]: U
+    - generic [ref=e14]:
+      - paragraph [ref=e15]: Trace Pro
+      - heading "The news habit that doesn't waste your time." [level=2] [ref=e16]:
+        - text: The news habit that
+        - text: doesn't waste your time.
+      - paragraph [ref=e17]: Try it free for 3 days. No charge until the trial ends.
+      - generic [ref=e18]:
+        - generic [ref=e19]:
+          - img [ref=e20]
+          - generic [ref=e22]:
+            - paragraph [ref=e23]: Your pulse, every day
+            - paragraph [ref=e24]: Wake up to a full feed of stories filtered to what you care about — AI, tech, markets, whatever you follow.
+        - generic [ref=e25]:
+          - img [ref=e26]
+          - generic [ref=e28]:
+            - paragraph [ref=e29]: The point, not the whole article
+            - paragraph [ref=e30]: We read it for you. You get the summary, the key takeaways, and why it matters — in under a minute.
+        - generic [ref=e31]:
+          - img [ref=e32]
+          - generic [ref=e34]:
+            - paragraph [ref=e35]: 10 outlets covered it. We show you one.
+            - paragraph [ref=e36]: When everyone writes about the same story, we collapse it into a single clear view so you stop reading the same thing twice.
+        - generic [ref=e37]:
+          - img [ref=e38]
+          - generic [ref=e40]:
+            - paragraph [ref=e41]: No rabbit holes
+            - paragraph [ref=e42]: Skim today's feed in 5 minutes. Know what's going on. Move on with your day.
+      - button "Start Free Trial" [ref=e43] [cursor=pointer]
+      - paragraph [ref=e44]: $4.99/month after 3 days · Cancel anytime
+  - button "Open Next.js Dev Tools" [ref=e50] [cursor=pointer]:
+    - img [ref=e51]
+  - alert [ref=e54]

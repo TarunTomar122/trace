@@ -212,6 +212,12 @@ def _collect_v3_trending_topics(
                 "topic_id": str(topic.get("id", "")).strip() or str(topic.get("topic_key", "")).strip() or title.lower().replace(" ", "-"),
                 "topic_name": title,
                 "overview": overview,
+                "interest_id": str(topic.get("interest_id", "")).strip(),
+                "tags": [
+                    str(tag).strip()
+                    for tag in (topic.get("tags", []) or [])
+                    if str(tag).strip()
+                ],
                 "key_points": key_points,
                 "article_count": int(topic.get("article_count", 0) or 0),
                 "source_count": int(topic.get("source_count", 0) or 0),
@@ -347,6 +353,8 @@ def _build_top_topics(
             "topic_id": topic_id,
             "topic_name": topic_label,
             "overview": _build_topic_overview(topic_label, rows),
+            "interest_id": topic_id,
+            "tags": [topic_id],
             "article_count": len(rows),
             "latest_published_date": str(top.get("published_date", "")).strip(),
             "key_points": key_points,

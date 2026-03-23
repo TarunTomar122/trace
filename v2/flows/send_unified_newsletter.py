@@ -2,7 +2,7 @@
 """
 Send one unified newsletter to all newsletter recipients.
 
-Recipients = paid/active opted-in + free newsletter recipients.
+Recipients = paid/trial opted-in Trace subscribers only.
 """
 
 from __future__ import annotations
@@ -36,6 +36,19 @@ TYPE_COLORS = {
     "launch": "#d946ef",
 }
 
+INTEREST_ALIASES = {
+    "tech": {"tech", "technology", "ai", "engineering"},
+    "ai": {"ai", "technology", "engineering"},
+    "engineering": {"engineering", "technology", "ai", "open-source", "dev-tools"},
+    "startups": {"startups", "business-market", "products", "fintech", "markets", "marketing"},
+    "products": {"products", "business-market", "technology"},
+    "product-design": {"product-design", "experience", "ux-design"},
+    "ux-design": {"ux-design", "experience", "product-design"},
+    "markets": {"markets", "business-market", "fintech"},
+    "marketing": {"marketing", "business-market", "startups"},
+    "fintech": {"fintech", "business-market", "markets"},
+}
+
 
 def _markdown_inline_to_html(text: str) -> str:
     out = escape(text or "")
@@ -57,13 +70,21 @@ def _load_template(name: str) -> str:
 
 
 def _build_recipients(store: FirestoreStore) -> list[str]:
-    paid = {
+    subscribed = {
         (u.get("email") or "").strip().lower()
         for u in store.get_newsletter_opted_in_users()
         if u.get("email")
     }
-    free = set(store.get_all_free_newsletter_emails())
-    recipients = sorted((paid | free) - {""})
+    return sorted(subscribed - {""})
+
+
+def _build_recipient_profiles(store: FirestoreStore) -> list[dict[str, Any]]:
+    recipients: list[dict[str, Any]] = []
+    for profile in store.get_newsletter_opted_in_users():
+        email = (profile.get("email") or "").strip().lower()
+        if not email:
+            continue
+        recipients.append(profile)
     return recipients
 
 
@@ -80,6 +101,72 @@ def _build_all_signup_recipients(store: FirestoreStore) -> list[str]:
     free_emails = set(store.get_all_free_newsletter_emails())
     recipients = sorted((profile_emails | free_emails) - {""})
     return recipients
+
+
+def _normalize_interest_tokens(raw: list[Any] | None) -> set[str]:
+    tokens: set[str] = set()
+    for interest in raw or []:
+        key = str(interest or "").strip().lower()
+        if not key:
+            continue
+        tokens.add(key)
+        tokens.update(INTEREST_ALIASES.get(key, set()))
+    return tokens
+
+
+def _topic_matches_interests(topic: dict[str, Any], interests: set[str]) -> bool:
+    if not interests:
+        return True
+    topic_tokens: set[str] = set()
+    for field in ("interest_id", "topic_id"):
+        value = str(topic.get(field, "")).strip().lower()
+        if value:
+            topic_tokens.add(value)
+            topic_tokens.update(INTEREST_ALIASES.get(value, set()))
+    for tag in topic.get("tags", []) or []:
+        value = str(tag).strip().lower()
+        if value:
+            topic_tokens.add(value)
+            topic_tokens.update(INTEREST_ALIASES.get(value, set()))
+    return bool(topic_tokens & interests)
+
+
+def _item_matches_interests(item: dict[str, Any], interests: set[str]) -> bool:
+    if not interests:
+        return True
+    item_tokens: set[str] = set()
+    for field in ("topic_id",):
+        value = str(item.get(field, "")).strip().lower()
+        if value:
+            item_tokens.add(value)
+            item_tokens.update(INTEREST_ALIASES.get(value, set()))
+    for tag in item.get("tags", []) or []:
+        value = str(tag).strip().lower()
+        if value:
+            item_tokens.add(value)
+            item_tokens.update(INTEREST_ALIASES.get(value, set()))
+    return bool(item_tokens & interests)
+
+
+def _personalize_newsletter_content(
+    profile: dict[str, Any],
+    *,
+    items: list[dict[str, Any]],
+    top_topics: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    interests = _normalize_interest_tokens(profile.get("interests") or [])
+    if not interests:
+        return items, top_topics
+
+    matched_topics = [topic for topic in top_topics if _topic_matches_interests(topic, interests)]
+    if matched_topics:
+        return items, matched_topics
+
+    matched_items = [item for item in items if _item_matches_interests(item, interests)]
+    if matched_items:
+        return matched_items, []
+
+    return items, top_topics
 
 
 def _generate_topic_html(top_topics: list[dict[str, Any]]) -> str:
@@ -289,12 +376,15 @@ def send_unified_newsletter(
 
     if user_id:
         profile = store.get_user_profile(user_id) or {}
-        email = (profile.get("email") or "").strip().lower()
-        recipients = [email] if email else []
+        recipients = [profile] if (profile.get("email") or "").strip() else []
     elif recipient_mode == "all_signups":
-        recipients = _build_all_signup_recipients(store)
+        recipients = [
+            {"email": email}
+            for email in _build_all_signup_recipients(store)
+            if email
+        ]
     else:
-        recipients = _build_recipients(store)
+        recipients = _build_recipient_profiles(store)
     if not recipients:
         return {
             "success": False,
@@ -302,13 +392,11 @@ def send_unified_newsletter(
             "date": target_date,
         }
 
-    subject = data.get(
+    base_subject = data.get(
         "email_subject",
         f"Trace Trends: Top {len(top_topics) if top_topics else len(items)} stories for {target_date}",
     )
     intro_html = data.get("intro_html", "")
-    html = _generate_html(items, target_date, intro_html, top_topics=top_topics)
-    text = _generate_text(items, target_date, intro_html, top_topics=top_topics)
 
     if dry_run:
         return {
@@ -322,7 +410,30 @@ def send_unified_newsletter(
     sent = 0
     failed = 0
     errors: list[str] = []
-    for email in recipients:
+    last_html = ""
+    last_text = ""
+    for recipient in recipients:
+        email = (recipient.get("email") or "").strip().lower()
+        if not email:
+            continue
+        personalized_items, personalized_topics = _personalize_newsletter_content(
+            recipient,
+            items=items,
+            top_topics=top_topics,
+        )
+        subject = f"Trace Trends: Top {len(personalized_topics) if personalized_topics else len(personalized_items)} topics for {target_date}"
+        html = _generate_html(
+            personalized_items,
+            target_date,
+            intro_html,
+            top_topics=personalized_topics,
+        )
+        text = _generate_text(
+            personalized_items,
+            target_date,
+            intro_html,
+            top_topics=personalized_topics,
+        )
         res = send_newsletter_email(
             to_email=email,
             to_name=None,
@@ -330,6 +441,8 @@ def send_unified_newsletter(
             html_content=html,
             text_content=text,
         )
+        last_html = html
+        last_text = text
         if res.get("success"):
             sent += 1
         else:
@@ -344,8 +457,9 @@ def send_unified_newsletter(
             "sent_count": sent,
             "failed_count": failed,
             "recipient_count": len(recipients),
-            "email_html": html,
-            "email_text": text,
+            "email_subject": base_subject,
+            "email_html": last_html,
+            "email_text": last_text,
         },
         merge=True,
     )
