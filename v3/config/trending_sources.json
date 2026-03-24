@@ -166,6 +166,14 @@
     },
     {
       "interest_id": "tech",
+      "name": "THE DECODER",
+      "url": "https://the-decoder.com/feed/",
+      "type": "rss",
+      "source_weight": 1.15,
+      "exclude_title_keywords": ["podcast", "newsletter", "deal", "deals", "sale", "discount"]
+    },
+    {
+      "interest_id": "tech",
       "name": "Stack Overflow Blog",
       "url": "https://stackoverflow.blog/feed/",
       "type": "rss",
