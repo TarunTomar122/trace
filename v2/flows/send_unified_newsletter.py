@@ -486,7 +486,7 @@ def _parse_args() -> argparse.Namespace:
         "--recipient-mode",
         choices=["newsletter", "all_signups"],
         default="newsletter",
-        help="newsletter=opted-in + free list, all_signups=all known signed-up emails",
+        help="newsletter=subscribed opted-in users only, all_signups=all known signed-up emails",
     )
     return parser.parse_args()
 

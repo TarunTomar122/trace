@@ -61,7 +61,7 @@ JOBS = {
     "newsletter_send": {
         "module": "v2.flows.send_unified_newsletter",
         "pool_cadence_days": 0,
-        "description": "Send daily newsletter to all signups",
+        "description": "Send daily newsletter to subscribed users",
     },
 }
 
@@ -374,7 +374,7 @@ def main() -> None:
 
         if run_all or "newsletter" in requested or "newsletter_send" in requested:
             _log("--- Send newsletter ---")
-            nl_send_args = list(nl_build_args) + ["--recipient-mode", "all_signups"]
+            nl_send_args = list(nl_build_args)
             _run_module(JOBS["newsletter_send"]["module"], nl_send_args)
 
     elapsed = time.time() - start
