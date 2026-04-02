@@ -128,7 +128,8 @@ function buildShareUrl(item: FeedItem): string | null {
   const feedType = item.feed_type || item.metadata?.feed_type;
   const prefix = feedType ? FEED_TYPE_PREFIX[feedType] : null;
   if (!prefix || !item.id) return null;
-  return `https://www.yourtrace.online/articles/${prefix}_${item.id}`;
+  const normalizedId = item.id.startsWith(`${prefix}_`) ? item.id : `${prefix}_${item.id}`;
+  return `https://www.yourtrace.online/articles/${normalizedId}`;
 }
 
 export default function ArticlePage() {
@@ -195,51 +196,11 @@ export default function ArticlePage() {
     const shareUrl = buildShareUrl(item) || item.url;
 
     try {
-      // Generate share image
-      const params = new URLSearchParams({
-        headline: item.title,
-        imageUrl: item.thumbnail || '',
-        url: shareUrl,
-        format: 'square',
-      });
-      const imageResponse = await fetch(`/api/share/render?${params.toString()}`);
-
-      if (!imageResponse.ok) {
-        throw new Error('Failed to generate image');
-      }
-
-      const blob = await imageResponse.blob();
-      const file = new File([blob], 'trace-story.png', { type: 'image/png' });
-
-      // Try Web Share API with file
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: item.title,
-          text: `Read the full story on Trace: ${shareUrl}`,
-        });
-        setShareCopied(true);
-        setTimeout(() => setShareCopied(false), 2000);
-      } else {
-        // Fallback: download the image
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'trace-story.png';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        setShareCopied(true);
-        setTimeout(() => setShareCopied(false), 2000);
-      }
+      await navigator.clipboard.writeText(shareUrl);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
     } catch {
-      // Fallback to just copying the URL
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        setShareCopied(true);
-        setTimeout(() => setShareCopied(false), 2000);
-      } catch { /* nothing */ }
+      /* nothing */
     } finally {
       setShareLoading(false);
     }
@@ -408,7 +369,7 @@ export default function ArticlePage() {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 transition-colors text-white text-xs font-medium disabled:opacity-50"
               >
                 {shareLoading ? <Loader2 size={14} className="animate-spin" /> : shareCopied ? <Check size={14} className="text-green-400" /> : <Share2 size={14} />}
-                {shareLoading ? 'Generating...' : shareCopied ? 'Shared!' : 'Share'}
+                {shareLoading ? 'Copying...' : shareCopied ? 'Link copied' : 'Copy link'}
               </button>
             </div>
 

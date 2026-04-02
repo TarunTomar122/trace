@@ -1,8 +1,10 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { 
   User,
+  onIdTokenChanged,
   signInWithPopup,
   signInWithRedirect,
   signOut as firebaseSignOut,
@@ -12,6 +14,12 @@ import { auth, googleProvider } from '@/lib/firebase';
 import { getOrCreateUserProfile, getUserProfile, syncAffiliateAttributionToProfile, syncUserTimezone, UserProfile } from '@/lib/firestore';
 import { readAffiliateAttribution } from '@/lib/affiliate';
 import { identifyUser, resetUser, trackSignIn, trackSignOut } from '@/lib/posthog';
+import {
+  clearAuthSessionCache,
+  optimisticProfileFromCache,
+  readAuthSessionCache,
+  writeAuthSessionCache,
+} from '@/lib/auth-session-cache';
 
 export type SignInIntent = 'read' | 'checkout';
 
@@ -85,10 +93,28 @@ function shouldFallbackToRedirect(errorCode?: string) {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileResolved, setProfileResolved] = useState(false);
+  const deferInitialProfileBootstrap = pathname === '/feed' || pathname.startsWith('/feed/');
+
+  const syncServerSession = async (idToken: string) => {
+    await fetch('/api/auth/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ idToken }),
+    });
+  };
+
+  const clearServerSession = async () => {
+    await fetch('/api/auth/session', {
+      method: 'DELETE',
+      credentials: 'same-origin',
+    });
+  };
 
   const loadProfile = async (firebaseUser: User, options?: { allowCreate?: boolean }) => {
     const allowCreate = options?.allowCreate ?? true;
@@ -101,11 +127,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             firebaseUser.photoURL
           )
         : await getUserProfile(firebaseUser.uid);
-      setProfile(userProfile);
-      setProfileResolved(true);
-      if (userProfile) {
+      // Never replace a hydrated session-cache profile with null — getDoc can lag or
+      // return null briefly; wiping profile makes feed think the user needs onboarding.
+      if (userProfile !== null) {
+        setProfile(userProfile);
         void syncUserTimezone(firebaseUser.uid, userProfile);
+        writeAuthSessionCache(firebaseUser, userProfile);
       }
+      setProfileResolved(true);
       return userProfile;
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -139,6 +168,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(p);
         if (p) {
           void syncUserTimezone(user.uid, p);
+          writeAuthSessionCache(user, p);
         }
       } catch (error) {
         console.error('Error refreshing profile:', error);
@@ -149,32 +179,86 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
+
       if (firebaseUser) {
-        setProfileResolved(false);
-        let userProfile: UserProfile | null = null;
-        try {
-          userProfile = await loadProfile(firebaseUser, { allowCreate: false });
-        } catch {
-          await new Promise((resolve) => setTimeout(resolve, 600));
+        const cached = readAuthSessionCache();
+        if (cached?.uid === firebaseUser.uid) {
+          const optimistic = optimisticProfileFromCache(firebaseUser, cached);
+          setProfile(optimistic);
+          // Cached "not onboarded" can be stale; wait for Firestore before resolving
+          // to avoid false redirects from /feed to /onboarding.
+          const hasInterests = Array.isArray(optimistic.interests) && optimistic.interests.length > 0;
+          setProfileResolved(optimistic.onboarded === true && hasInterests);
+        } else {
+          setProfile(null);
+          setProfileResolved(false);
+        }
+        // Don't block the app on Firestore — Firebase session is enough to show shell + start feed fetch.
+        setLoading(false);
+
+        const loadProfileInBackground = async () => {
+          let userProfile: UserProfile | null = null;
           try {
             userProfile = await loadProfile(firebaseUser, { allowCreate: false });
           } catch {
-            // Leave profile unresolved on startup if we cannot verify state.
-            setProfileResolved(false);
+            await new Promise((resolve) => setTimeout(resolve, 600));
+            try {
+              userProfile = await loadProfile(firebaseUser, { allowCreate: false });
+            } catch {
+              if (!cached || cached.uid !== firebaseUser.uid) {
+                setProfileResolved(false);
+              }
+            }
           }
+          if (userProfile) {
+            identifyUser(firebaseUser.uid, {
+              email: firebaseUser.email,
+              name: firebaseUser.displayName,
+              onboarded: userProfile.onboarded || false,
+            });
+            await syncPendingAffiliate(firebaseUser.uid, userProfile);
+          }
+        };
+
+        if (deferInitialProfileBootstrap) {
+          const runDeferred = () => {
+            void loadProfileInBackground();
+          };
+
+          if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+            window.requestIdleCallback(() => {
+              globalThis.setTimeout(runDeferred, 0);
+            });
+          } else {
+            globalThis.setTimeout(runDeferred, 1200);
+          }
+          return;
         }
-        // Identify returning users for PostHog
-        identifyUser(firebaseUser.uid, {
-          email: firebaseUser.email,
-          name: firebaseUser.displayName,
-          onboarded: userProfile?.onboarded || false,
-        });
-        await syncPendingAffiliate(firebaseUser.uid, userProfile);
+
+        await loadProfileInBackground();
       } else {
+        clearAuthSessionCache();
         setProfile(null);
         setProfileResolved(true);
+        setLoading(false);
       }
-      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [deferInitialProfileBootstrap]);
+
+  useEffect(() => {
+    const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
+      try {
+        if (!firebaseUser) {
+          await clearServerSession();
+          return;
+        }
+        const idToken = await firebaseUser.getIdToken();
+        await syncServerSession(idToken);
+      } catch (error) {
+        console.error('Error syncing server session:', error);
+      }
     });
 
     return () => unsubscribe();
@@ -189,6 +273,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setPendingPostAuthIntent(rememberIntent ? intent : null);
       const result = await signInWithPopup(auth, googleProvider);
       if (result.user) {
+        const idToken = await result.user.getIdToken();
+        await syncServerSession(idToken);
         // Keep intent in sessionStorage — page.tsx useEffect reads it once profileResolved=true
         setProfileResolved(false);
         const userProfile = await loadProfile(result.user, { allowCreate: true });
@@ -240,6 +326,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       trackSignOut();
       resetUser();
+      clearAuthSessionCache();
+      await clearServerSession();
       await firebaseSignOut(auth);
       setProfile(null);
     } catch (error) {

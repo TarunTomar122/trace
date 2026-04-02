@@ -1,1 +1,1 @@
-export { default } from '../dev/instagram-studio/page';
+export { default } from '../(auth)/dev/instagram-studio/page';

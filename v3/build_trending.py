@@ -212,6 +212,23 @@ TOPIC_TOKEN_CANONICAL = {
     "chatgpt": "openai",
 }
 
+# Narrow inflection normalization for event tokens that should cluster together.
+# Keep this intentionally small to avoid broad, sloppy stemming.
+TOPIC_EVENT_TOKEN_CANONICAL = {
+    "leaks": "leak",
+    "leaked": "leak",
+    "leaking": "leak",
+    "codes": "code",
+    "coded": "code",
+    "coding": "code",
+    "clones": "clone",
+    "cloned": "clone",
+    "cloning": "clone",
+    "unveils": "unveil",
+    "unveiled": "unveil",
+    "unveiling": "unveil",
+}
+
 TOKEN_DISPLAY = {
     "ai": "AI",
     "us": "US",
@@ -473,6 +490,7 @@ def _topic_tokens(text: str) -> set[str]:
         if tok.isdigit():
             continue
         tok = TOPIC_TOKEN_CANONICAL.get(tok, tok)
+        tok = TOPIC_EVENT_TOKEN_CANONICAL.get(tok, tok)
         out.add(tok)
     return out
 
@@ -485,7 +503,7 @@ def _topic_tokens_for_item(item: dict[str, Any]) -> set[str]:
     title_tokens = _topic_tokens(str(item.get("title", "") or ""))
     disc = str(md.get("discovery_topic", "") or "").strip().lower()
     if disc and disc not in TOPIC_STOPWORDS and len(disc) >= 4:
-        title_tokens.add(TOPIC_TOKEN_CANONICAL.get(disc, disc))
+        title_tokens.add(TOPIC_EVENT_TOKEN_CANONICAL.get(TOPIC_TOKEN_CANONICAL.get(disc, disc), disc))
     return title_tokens
 
 

@@ -1,16 +1,16 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, Suspense, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { Loader2, Lock, Sparkles, ExternalLink, Maximize2, Minimize2, Check, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Loader2, Lock, Sparkles, ExternalLink, Maximize2, Minimize2, Check, ArrowLeft, ArrowRight, Share2 } from 'lucide-react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { useAuth } from '@/contexts/AuthContext';
+import { auth } from '@/lib/firebase';
 import { isAlphaMode } from '@/lib/alpha';
 import {
-  getV3UserFeed, V3UserFeed, FeedItem, TrendingTopic,
+  V3UserFeed, FeedItem, TrendingTopic,
   recordLastActive, ONBOARDING_INTERESTS,
 } from '@/lib/firestore';
 import { getArticleImage, isValidThumbnail } from '@/lib/fallback-images';
@@ -25,8 +25,29 @@ function decodeHtml(str: string): string {
 }
 
 const FREE_LIMITS = { trending: 3 };
+const FEED_TYPE_PREFIX: Record<string, string> = {
+  for_you: 'fy',
+  deep_dives: 'dd',
+  trending: 'tr',
+};
+const MarkdownProse = dynamic(() => import('@/components/MarkdownProse'));
 
-const feedFetcher = (uid: string, role?: string | null) => getV3UserFeed(uid, { role });
+const feedFetcher = async (): Promise<V3UserFeed | null> => {
+  const res = await fetch('/api/feed', {
+    credentials: 'same-origin',
+  });
+  if (res.status === 401 && auth.currentUser) {
+    const token = await auth.currentUser.getIdToken();
+    const fallbackRes = await fetch('/api/feed', {
+      credentials: 'same-origin',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!fallbackRes.ok) return null;
+    return fallbackRes.json();
+  }
+  if (!res.ok) return null;
+  return res.json();
+};
 
 const trendingFetcher = async () => {
   const res = await fetch('/api/public/trending');
@@ -448,6 +469,9 @@ function StoryItem({
           <img
             src={imgUrl}
             alt=""
+            loading="lazy"
+            decoding="async"
+            fetchPriority="low"
             className="shrink-0 w-14 h-14 rounded-lg object-cover bg-foreground/5"
           />
         )}
@@ -512,6 +536,7 @@ type ContentData = {
   body: string;
   source?: string;
   url?: string;
+  shareUrl?: string;
   timestamp?: string;
   countLabel?: string;
   keyPoints?: string[];
@@ -530,6 +555,8 @@ function ContentPanel({
 }: {
   content: ContentData;
 }) {
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const imageUrl = content.thumbnail ? getArticleImage(content.thumbnail, content.title) : null;
   const productHuntWidget = isProductHuntWidget(imageUrl);
   const countLabel = content.countLabel || ((content.sourceCount || 0) > 1 ? `${content.sourceCount} sources` : '');
@@ -539,6 +566,21 @@ function ContentPanel({
     ? [...content.timeline!].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     : [];
   const timelineSectionTitle = content.timelineSectionLabel ?? 'Timeline';
+
+  const handleShare = useCallback(async () => {
+    const shareUrl = content.shareUrl || content.url;
+    if (!shareUrl) return;
+    setShareLoading(true);
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      // ignore clipboard failures
+    } finally {
+      setShareLoading(false);
+    }
+  }, [content.shareUrl, content.title, content.url]);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -592,6 +634,7 @@ function ContentPanel({
             <img
               src={imageUrl}
               alt=""
+              decoding="async"
               className={
                 productHuntWidget
                   ? 'max-w-[280px] rounded-2xl border border-[#ff6154]/20 bg-white'
@@ -615,7 +658,7 @@ function ContentPanel({
                 <BriefBody body={content.body} />
               ) : (
                 <div className="prose prose-slate dark:prose-invert max-w-none">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{content.body}</ReactMarkdown>
+                  <MarkdownProse body={content.body} />
                 </div>
               )}
             </div>
@@ -689,18 +732,36 @@ function ContentPanel({
           </div>
         )}
 
-        {/* Original source link (single-source only) */}
-        {!hasTimeline && content.url && (
+        {(content.shareUrl || content.url) && (
           <div className="pt-6 border-t border-border/15">
-            <a
-              href={content.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90 hover:shadow-lg hover:shadow-black/10 hover:scale-[1.02] active:scale-[0.98]"
-            >
-              Read original source
-              <ExternalLink size={14} />
-            </a>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleShare}
+                disabled={shareLoading}
+                className="inline-flex items-center gap-2 rounded-full border border-border/25 bg-white px-5 py-2.5 text-sm font-semibold text-foreground transition-all hover:bg-foreground/5 disabled:opacity-60"
+              >
+                {shareLoading ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : shareCopied ? (
+                  <Check size={14} className="text-green-500" />
+                ) : (
+                  <Share2 size={14} />
+                )}
+                {shareLoading ? 'Copying...' : shareCopied ? 'Link copied' : 'Copy article link'}
+              </button>
+              {content.url && (
+                <a
+                  href={content.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90 hover:shadow-lg hover:shadow-black/10 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  Read original source
+                  <ExternalLink size={14} />
+                </a>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -767,6 +828,9 @@ function PulseToolsGrid({ items }: { items: FeedListItem[] }) {
                 <img
                   src={thumb}
                   alt=""
+                  loading="lazy"
+                  decoding="async"
+                  fetchPriority="low"
                   className={isPH ? 'w-full h-full object-contain' : 'w-full h-full object-cover'}
                 />
               </div>
@@ -815,15 +879,22 @@ function DailyPulseToolCard({ item }: { item: FeedListItem }) {
     >
       {thumb && (
         <div className={`shrink-0 ${isPH ? 'w-11 h-11 bg-white rounded-lg border border-[#ff6154]/15 p-1 flex items-center justify-center' : 'w-11 h-11 rounded-lg overflow-hidden'}`}>
-          <img src={thumb} alt="" className={isPH ? 'w-full h-full object-contain' : 'w-full h-full object-cover'} />
+          <img
+            src={thumb}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            fetchPriority="low"
+            className={isPH ? 'w-full h-full object-contain' : 'w-full h-full object-cover'}
+          />
         </div>
       )}
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-[13px] font-semibold text-foreground leading-snug group-hover:underline decoration-foreground/30 underline-offset-2 line-clamp-1">{item.title}</p>
+          <p className="text-[13px] font-semibold text-foreground leading-snug group-hover:underline decoration-foreground/30 underline-offset-2 line-clamp-2">{item.title}</p>
           <ExternalLink size={11} className="shrink-0 mt-0.5 text-secondary/30 group-hover:text-secondary/60 transition-colors" />
         </div>
-        {item.preview && <p className="text-[12px] text-secondary/60 leading-snug mt-0.5 line-clamp-2">{item.preview}</p>}
+        {item.preview && <p className="text-[12px] text-secondary/60 leading-snug mt-0.5 line-clamp-3">{item.preview}</p>}
         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
           {item.source && <span className="text-[10px] font-semibold text-foreground/40 uppercase tracking-wide">{item.source}</span>}
           {item.signalCount != null && item.signalCount > 0 && (
@@ -844,34 +915,51 @@ function DailyPulseBlogCard({ item }: { item: FeedListItem }) {
   const feedItem = item.data as FeedItem;
   const body = feedItem.summary?.short_article?.body || '';
   const isBrief = body ? looksLikeBriefBody(body) : false;
+  const thumb = item.thumbnail && isValidThumbnail(item.thumbnail)
+    ? getArticleImage(item.thumbnail, item.title) : null;
+  const isPH = thumb ? isProductHuntWidget(thumb) : false;
 
   return (
-    <div className="rounded-2xl border border-border/15 bg-white p-5 sm:p-6">
-      <div className="flex items-center gap-2 mb-3">
-        {item.source && (
-          <span className="text-[11px] font-semibold text-foreground/55 uppercase tracking-[0.12em]">{item.source}</span>
-        )}
-        {item.source && item.timestamp && <span className="text-foreground/20 text-[10px]">·</span>}
-        {item.timestamp && <span className="text-[11px] text-secondary/55">{getTimeLabel(item.timestamp)}</span>}
-      </div>
-      <h3 className="text-[17px] font-bold text-foreground leading-snug tracking-[-0.02em] mb-4">{item.title}</h3>
-      {isBrief && body ? (
-        <div className="mb-4">
-          <BriefBody body={body} />
+    <div className="rounded-2xl border border-border/15 bg-white overflow-hidden sm:shadow-sm sm:border-border/25 sm:hover:shadow-md transition-shadow">
+      {thumb && !isPH && (
+        <div className="w-full h-44 overflow-hidden">
+          <img
+            src={thumb}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            fetchPriority="low"
+            className="w-full h-full object-cover"
+          />
         </div>
-      ) : item.preview ? (
-        <p className="text-[14px] text-secondary/75 leading-relaxed mb-4">{item.preview}</p>
-      ) : null}
-      {item.url && (
-        <a
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-foreground/50 hover:text-foreground underline underline-offset-2 decoration-foreground/20 hover:decoration-foreground/50 transition-colors"
-        >
-          Read original <ExternalLink size={11} />
-        </a>
       )}
+      <div className="p-5 sm:p-6">
+        <div className="flex items-center gap-2 mb-3">
+          {item.source && (
+            <span className="text-[11px] font-semibold text-foreground/55 uppercase tracking-[0.12em]">{item.source}</span>
+          )}
+          {item.source && item.timestamp && <span className="text-foreground/20 text-[10px]">·</span>}
+          {item.timestamp && <span className="text-[11px] text-secondary/55">{getTimeLabel(item.timestamp)}</span>}
+        </div>
+        <h3 className="text-[17px] font-bold text-foreground leading-snug tracking-[-0.02em] mb-4">{item.title}</h3>
+        {isBrief && body ? (
+          <div className="mb-4">
+            <BriefBody body={body} />
+          </div>
+        ) : item.preview ? (
+          <p className="text-[14px] text-secondary/75 leading-relaxed mb-4">{item.preview}</p>
+        ) : null}
+        {item.url && (
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-foreground/50 hover:text-foreground underline underline-offset-2 decoration-foreground/20 hover:decoration-foreground/50 transition-colors"
+          >
+            Read original <ExternalLink size={11} />
+          </a>
+        )}
+      </div>
     </div>
   );
 }
@@ -881,9 +969,24 @@ function DailyPulseDiscussionCard({ item }: { item: FeedListItem }) {
   const extraLinks = (item.pulseSources || []).filter(
     s => !mainUrl || !pulseUrlsMatch(s.url, mainUrl)
   );
+  const thumb = item.thumbnail && isValidThumbnail(item.thumbnail) && !isProductHuntWidget(item.thumbnail)
+    ? getArticleImage(item.thumbnail, item.title) : null;
 
   const cardBody = (
-    <div className="rounded-xl border border-border/20 bg-white p-4 h-full flex flex-col group hover:border-border/40 hover:shadow-sm transition-all">
+    <div className="rounded-xl border border-border/20 bg-white h-full flex flex-col group hover:border-border/40 hover:shadow-sm transition-all overflow-hidden">
+      {thumb && (
+        <div className="w-full h-28 overflow-hidden shrink-0">
+          <img
+            src={thumb}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            fetchPriority="low"
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
+      <div className="p-4 flex flex-col flex-1">
       <div className="flex items-center gap-1.5 mb-2">
         {item.source && (
           <span className="text-[10px] font-semibold text-foreground/40 uppercase tracking-[0.12em]">{item.source}</span>
@@ -925,6 +1028,7 @@ function DailyPulseDiscussionCard({ item }: { item: FeedListItem }) {
           <ExternalLink size={13} className="shrink-0 text-secondary/45 group-hover:text-foreground/60" aria-hidden />
         </div>
       )}
+      </div>
     </div>
   );
 
@@ -952,9 +1056,12 @@ function DailyPulseView({
   hasWeeklyPulse: boolean;
   pulseStoryCount: number;
 }) {
+  const byDateDesc = (a: FeedListItem, b: FeedListItem) =>
+    new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime();
+
   const tools = pulseSections.find(s => s.key === 'tools')?.items ?? [];
-  const blogs = pulseSections.find(s => s.key === 'blogs')?.items ?? [];
-  const discussions = pulseSections.find(s => s.key === 'discussions')?.items ?? [];
+  const blogs = [...(pulseSections.find(s => s.key === 'blogs')?.items ?? [])].sort(byDateDesc);
+  const discussions = [...(pulseSections.find(s => s.key === 'discussions')?.items ?? [])].sort(byDateDesc);
   const legacy = pulseSections.find(s => s.key === 'pulse')?.items ?? [];
   const isEmpty = tools.length + blogs.length + discussions.length + legacy.length === 0;
 
@@ -1209,6 +1316,9 @@ function PulseSectionItem({
           <img
             src={imageUrl}
             alt=""
+            loading="lazy"
+            decoding="async"
+            fetchPriority="low"
             className={`shrink-0 bg-foreground/5 ${imgClass}`}
           />
         )}
@@ -1263,6 +1373,7 @@ function PulseLeadStory({
           <img
             src={imageUrl}
             alt=""
+            decoding="async"
             className={
               productHuntWidget
                 ? 'max-w-[300px] rounded-2xl border border-[#ff6154]/20 bg-white'
@@ -1274,7 +1385,7 @@ function PulseLeadStory({
 
       {content.body && (
         <div className="prose prose-slate max-w-none text-secondary">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content.body}</ReactMarkdown>
+          <MarkdownProse body={content.body} />
         </div>
       )}
 
@@ -1331,6 +1442,20 @@ type FeedListItem = {
   data: TrendingTopic | FeedItem;
 };
 
+function buildArticleShareUrl(article: FeedItem): string | null {
+  const feedType = article.feed_type || article.metadata?.feed_type;
+  const prefix = feedType ? FEED_TYPE_PREFIX[feedType] : null;
+  if (!prefix || !article.id) return null;
+  const normalizedId = article.id.startsWith(`${prefix}_`) ? article.id : `${prefix}_${article.id}`;
+  return `https://www.yourtrace.online/articles/${normalizedId}`;
+}
+
+function buildTopicShareUrl(topic: TrendingTopic): string | null {
+  const topicSlug = topic.topic_key || topic.id;
+  if (!topicSlug) return null;
+  return `https://www.yourtrace.online/topics/${encodeURIComponent(topicSlug)}`;
+}
+
 function getContentFromFeedListItem(item: FeedListItem | null): ContentData | null {
   if (!item) return null;
 
@@ -1343,6 +1468,9 @@ function getContentFromFeedListItem(item: FeedListItem | null): ContentData | nu
       body: display.summary || display.subtitle,
       source: display.isSingleton ? display.article?.source_name : undefined,
       url: articleUrl,
+      shareUrl: display.isSingleton
+        ? (display.article ? buildArticleShareUrl(display.article) : null) || buildTopicShareUrl(topic) || undefined
+        : buildTopicShareUrl(topic) || undefined,
       timestamp: topic.articles?.[0]?.published_date,
       keyPoints: display.isSingleton
         ? display.article?.summary?.short_article?.key_takeaways
@@ -1372,6 +1500,7 @@ function getContentFromFeedListItem(item: FeedListItem | null): ContentData | nu
       ? (article.metadata?.theme || article.summary?.short_article?.subtitle || article.source_name)
       : (article.source_name || article.source),
     url: article.url,
+    shareUrl: buildArticleShareUrl(article) || undefined,
     timestamp: article.published_date,
     countLabel: isPulseStory
       ? `${article.metadata?.signal_count || article.sources?.length || item.signalCount || 1} signal${(article.metadata?.signal_count || article.sources?.length || item.signalCount || 1) === 1 ? '' : 's'}`
@@ -1404,6 +1533,7 @@ function UpgradeCard({ lockedCount }: { lockedCount: number }) {
       </div>
       <Link
         href="/profile?tab=subscription"
+        prefetch={false}
         onClick={() => trackCheckoutClicked('feed_upgrade_card_trending', { locked_count: lockedCount })}
         className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-sm font-semibold bg-foreground text-background transition-all hover:bg-foreground/90 hover:shadow-lg hover:shadow-black/10 hover:scale-[1.02] active:scale-[0.98]"
       >
@@ -1415,7 +1545,7 @@ function UpgradeCard({ lockedCount }: { lockedCount: number }) {
 }
 
 /* ─── Full-width Paywall Gate ─── */
-const INDIA_PRICING = { trialDays: 1, priceDisplay: '₹10/month', pricingOffer: 'india' as const };
+const INDIA_PRICING = { trialDays: 1, priceDisplay: '₹19/month', pricingOffer: 'india' as const };
 const DEFAULT_PRICING = { trialDays: 3, priceDisplay: '$4.99/month', pricingOffer: 'default' as const };
 
 function guessClientPricing() {
@@ -1538,7 +1668,6 @@ function FeedPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, profile, loading, profileResolved, refreshProfile } = useAuth();
-  const [feedBuildNow] = useState(() => Date.now());
   const checkoutReturned = searchParams.get('subscription') === 'success';
   const trackedPaywalls = React.useRef<Set<string>>(new Set());
   const trackedCheckoutSuccess = React.useRef(false);
@@ -1626,44 +1755,77 @@ function FeedPageContent() {
   }, [isExpanded]);
 
 
+  const shouldBootstrapFeed = loading || Boolean(user);
+  const feedKey = shouldBootstrapFeed
+    ? (user?.uid ? `feed-session-${user.uid}` : 'feed-session-bootstrap')
+    : null;
+
   const { data: v3Feed, isLoading: feedLoading, mutate: mutateFeed } = useSWR<V3UserFeed | null>(
-    user?.uid ? `feed-${user.uid}-${profile?.role || 'unknown'}` : null,
-    () => feedFetcher(user!.uid, profile?.role),
+    feedKey,
+    feedFetcher,
     { revalidateOnFocus: false, revalidateOnReconnect: false, dedupingInterval: 60000 }
   );
 
-  const { data: fallbackTrending = [] } = useSWR<FeedItem[]>(
-    'public-trending',
+  const shouldLoadFallbackTrending = Boolean(user) && !feedLoading && (
+    !v3Feed || (
+      (v3Feed.trending_topics?.length ?? 0) === 0
+      && (v3Feed.trending?.length ?? 0) === 0
+    )
+  );
+
+  const { data: fallbackTrending = [], isLoading: fallbackTrendingLoading } = useSWR<FeedItem[]>(
+    shouldLoadFallbackTrending ? 'public-trending' : null,
     trendingFetcher,
     { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
 
-  const isSubscribed = profile?.subscriptionStatus === 'active' || profile?.subscriptionStatus === 'trial'
+  const isSubscribedFromProfile = profile?.subscriptionStatus === 'active' || profile?.subscriptionStatus === 'trial'
     || profile?.appSubscriptionStatus === 'active' || profile?.appSubscriptionStatus === 'trial';
+  const isSubscribedFromFeed = v3Feed?.viewer_profile?.has_access === true
+    || v3Feed?.viewer_profile?.subscription_status === 'active'
+    || v3Feed?.viewer_profile?.subscription_status === 'trial'
+    || v3Feed?.viewer_profile?.app_subscription_status === 'active'
+    || v3Feed?.viewer_profile?.app_subscription_status === 'trial';
+  const isSubscribed = isSubscribedFromProfile || isSubscribedFromFeed;
+  const viewerProfile = v3Feed?.viewer_profile;
+  const viewerOnboarded = profile?.onboarded ?? viewerProfile?.onboarded;
+  const viewerProfileResolved = profileResolved || typeof viewerProfile?.onboarded === 'boolean';
+  const lastActiveMarkedRef = React.useRef<string | null>(null);
 
-  const isFeedBuilding = (() => {
-    if (profile?.feedBuildStatus !== 'building') return false;
-    const raw = profile?.feedBuildRequestedAt;
-    if (!raw) return false;
-    const ts = typeof raw === 'string' ? new Date(raw).getTime()
-      : raw?.toDate ? raw.toDate().getTime()
-      : raw?.seconds ? raw.seconds * 1000 : 0;
-    return ts > 0 && feedBuildNow - ts < 5 * 60 * 1000;
-  })();
 
   useEffect(() => {
     if (!isAlphaMode()) { router.push(user ? '/waitlist' : '/'); return; }
     if (!loading && !user) { router.push('/'); return; }
-    if (user && !profileResolved) return;
-    if (user && profile?.onboarded) recordLastActive(user.uid);
-    else if (user && !loading && !profile?.onboarded) router.push('/onboarding');
-  }, [user, profile, loading, router, profileResolved]);
+    if (user && !viewerProfileResolved) return;
+    if (user && !loading && viewerOnboarded === false) router.push('/onboarding');
+  }, [user, loading, router, viewerProfileResolved, viewerOnboarded]);
 
   useEffect(() => {
-    if (!isFeedBuilding || !user) return;
-    const interval = setInterval(() => mutateFeed(), 15000);
-    return () => clearInterval(interval);
-  }, [isFeedBuilding, user, mutateFeed]);
+    if (!user || !viewerProfileResolved || viewerOnboarded !== true) {
+      lastActiveMarkedRef.current = null;
+      return;
+    }
+
+    if (lastActiveMarkedRef.current === user.uid) return;
+    lastActiveMarkedRef.current = user.uid;
+
+    const markLastActive = () => {
+      recordLastActive(user.uid).catch(() => {
+        lastActiveMarkedRef.current = null;
+      });
+    };
+
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      const idleId = window.requestIdleCallback(() => {
+        globalThis.setTimeout(markLastActive, 0);
+      });
+      return () => window.cancelIdleCallback(idleId);
+    }
+
+    const timeoutId = globalThis.setTimeout(markLastActive, 1500);
+    return () => globalThis.clearTimeout(timeoutId);
+  }, [user, viewerOnboarded, viewerProfileResolved]);
+
 
   useEffect(() => {
     if (!checkoutReturned || !user) return;
@@ -1690,7 +1852,20 @@ function FeedPageContent() {
     });
   }, [v3Feed?.trending_topics]);
 
-  const userInterests = useMemo(() => new Set(profile?.interests || []), [profile?.interests]);
+  const effectiveInterests = useMemo(() => {
+    const fromProfile = Array.isArray(profile?.interests)
+      ? profile.interests.filter((interest): interest is string => typeof interest === 'string' && interest.trim().length > 0)
+      : [];
+    if (fromProfile.length > 0) return fromProfile;
+    const fromFeedViewerProfile = Array.isArray(v3Feed?.viewer_profile?.interests)
+      ? v3Feed.viewer_profile.interests.filter(
+          (interest): interest is string => typeof interest === 'string' && interest.trim().length > 0
+        )
+      : [];
+    return fromFeedViewerProfile;
+  }, [profile?.interests, v3Feed?.viewer_profile?.interests]);
+
+  const userInterests = useMemo(() => new Set(effectiveInterests), [effectiveInterests]);
 
   const visibleTrendingTopics = useMemo(() => {
     if (isSubscribed) return trendingTopics;
@@ -2004,6 +2179,19 @@ function FeedPageContent() {
 
   useEffect(() => {
     if (feedView !== 'briefing') return;
+    const forYouCount = filterCounts.for_you || 0;
+    const suggestedCount = filterCounts.suggested || 0;
+    if (activeFilter === 'for_you' && forYouCount === 0 && suggestedCount > 0) {
+      setActiveFilter('suggested');
+      return;
+    }
+    if (activeFilter === 'suggested' && suggestedCount === 0 && forYouCount > 0) {
+      setActiveFilter('for_you');
+    }
+  }, [feedView, activeFilter, filterCounts.for_you, filterCounts.suggested]);
+
+  useEffect(() => {
+    if (feedView !== 'briefing') return;
     if (filteredList.length === 0) return;
     if (!selectedId) { setSelectedId(filteredList[0].id); return; }
     const inFiltered = filteredList.some(item => item.id === selectedId);
@@ -2022,12 +2210,19 @@ function FeedPageContent() {
     }
   }, [feedView, pulseVisibleStoryList, selectedId]);
 
+  const defaultSelectedId = useMemo(() => {
+    if (feedView === 'briefing') return filteredList[0]?.id ?? null;
+    return pulseVisibleStoryList[0]?.id ?? null;
+  }, [feedView, filteredList, pulseVisibleStoryList]);
+
+  const effectiveSelectedId = selectedId ?? defaultSelectedId;
+
   const selectedItem = useMemo(() => {
-    if (!selectedId) return null;
-    return currentList.find(item => item.id === selectedId)
-      || pulseStoryList.find(item => item.id === selectedId)
+    if (!effectiveSelectedId) return null;
+    return currentList.find(item => item.id === effectiveSelectedId)
+      || pulseStoryList.find(item => item.id === effectiveSelectedId)
       || null;
-  }, [currentList, pulseStoryList, selectedId]);
+  }, [currentList, pulseStoryList, effectiveSelectedId]);
 
   const selectedContent = useMemo((): ContentData | null => {
     return getContentFromFeedListItem(selectedItem);
@@ -2038,9 +2233,11 @@ function FeedPageContent() {
     return pulseVisibleStoryList;
   }, [feedView, filteredList, pulseVisibleStoryList]);
 
-  const isLoading = loading || (feedLoading && !v3Feed);
+  const hasFeedResponse = typeof v3Feed !== 'undefined';
+  const isLoading = shouldBootstrapFeed && !hasFeedResponse;
+  const showBlockingBoot = loading || (Boolean(user) && !hasFeedResponse);
 
-  if (loading) {
+  if (showBlockingBoot) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 size={24} className="animate-spin text-secondary/40" />
@@ -2056,7 +2253,7 @@ function FeedPageContent() {
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center gap-3">
+            <Link href="/" prefetch={false} className="flex items-center gap-3">
               <img src="/trace.webp" alt="Trace" className="h-6 w-auto" />
               <span className="text-sm font-semibold tracking-[0.18em]">TRACE</span>
             </Link>
@@ -2067,12 +2264,13 @@ function FeedPageContent() {
                 </div>
               )}
               {user?.photoURL ? (
-                <Link href="/profile">
+                <Link href="/profile" prefetch={false}>
                   <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" />
                 </Link>
               ) : (
                 <Link
                   href="/profile"
+                  prefetch={false}
                   className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center"
                 >
                   <span className="text-sm font-semibold">{user?.email?.[0]?.toUpperCase() || 'U'}</span>
@@ -2183,13 +2381,14 @@ function FeedPageContent() {
                   <p className="text-[12px] text-secondary/50 mb-5 leading-relaxed">Start your free trial to unlock the full news feed.</p>
                   <Link
                     href="/profile?tab=subscription"
+                    prefetch={false}
                     onClick={() => trackCheckoutClicked('feed_sidebar_paywall')}
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold bg-foreground text-background transition-all hover:bg-foreground/90 hover:scale-[1.02] active:scale-[0.98]"
                   >
                     <Sparkles size={13} />
                     Start Free Trial
                   </Link>
-                  <p className="text-[11px] text-secondary/35 mt-2">Cancel anytime · $4.99/mo after trial</p>
+                  <p className="text-[11px] text-secondary/35 mt-2">Cancel anytime · regional pricing shown at checkout</p>
                 </div>
               ) : (
                 <div className="flex-1 overflow-y-auto divide-y divide-border/10">
@@ -2283,6 +2482,7 @@ function FeedPageContent() {
                     <img
                       src={imageUrl}
                       alt=""
+                      decoding="async"
                       className={
                         isProductHuntWidget(imageUrl)
                           ? 'max-w-[280px] rounded-2xl border border-[#ff6154]/20 bg-white'
@@ -2298,7 +2498,7 @@ function FeedPageContent() {
                       <BriefBody body={selectedContent.body} />
                     ) : (
                       <div className="prose prose-sm max-w-none text-secondary">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedContent.body}</ReactMarkdown>
+                        <MarkdownProse body={selectedContent.body} />
                       </div>
                     )}
                   </div>
@@ -2426,13 +2626,6 @@ function FeedPageContent() {
           </div>
         </div>
 
-        {/* Building banner */}
-        {isFeedBuilding && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 px-5 py-3 rounded-full bg-surface border border-border/20 shadow-lg">
-            <Loader2 size={16} className="animate-spin text-secondary/50" />
-            <p className="text-sm text-secondary/60">Building your personalized feed...</p>
-          </div>
-        )}
 
 
       </div>
@@ -2442,11 +2635,7 @@ function FeedPageContent() {
 
 export default function FeedPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 size={24} className="animate-spin text-secondary/40" />
-      </div>
-    }>
+    <Suspense fallback={null}>
       <FeedPageContent />
     </Suspense>
   );

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import MainNav from "@/components/MainNav";
+import PublicHeader from "@/components/PublicHeader";
 import { researchPosts } from "../content";
 
 type PageProps = {
@@ -90,7 +90,7 @@ export default async function ResearchPostPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
-      <MainNav showBanner={false} />
+      <PublicHeader />
       <article className="relative pt-32 md:pt-36 lg:pt-40 pb-16 md:pb-24 overflow-hidden z-10">
         <div className="container mx-auto px-4 sm:px-6 max-w-3xl">
           <div className="mb-10 md:mb-12">

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import MainNav from "@/components/MainNav";
+import PublicHeader from "@/components/PublicHeader";
+import ScrollCTABanner from "@/components/ScrollCTABanner";
 import { researchPosts } from "./content";
 
 export const metadata: Metadata = {
@@ -16,20 +17,22 @@ export const metadata: Metadata = {
       "Research-backed essays on tech pulse, source grouping, AI summaries with context, and faster catch-up.",
     url: "https://www.yourtrace.online/research",
     siteName: "Trace",
-    type: "website"
+    type: "website",
+    images: [{ url: "https://www.yourtrace.online/opengraph-image", width: 1200, height: 630, alt: "Trace — Research" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Research | Trace",
     description:
-      "Research-backed essays on tech pulse, source grouping, AI summaries with context, and faster catch-up."
+      "Research-backed essays on tech pulse, source grouping, AI summaries with context, and faster catch-up.",
+    images: ["https://www.yourtrace.online/twitter-image"],
   }
 };
 
 export default function ResearchPage() {
   return (
     <div className="min-h-screen bg-background text-foreground px-2 selection:bg-primary/20 selection:text-primary">
-      <MainNav showBanner={false} />
+      <PublicHeader />
       <section className="relative pt-32 md:pt-36 lg:pt-40 pb-16 md:pb-24 overflow-hidden z-10">
         <div className="container mx-auto px-4 sm:px-6 max-w-6xl">
           <div className="text-center mb-10 md:mb-14">
@@ -97,6 +100,7 @@ export default function ResearchPage() {
           </div>
         </div>
       </section>
+      <ScrollCTABanner />
     </div>
   );
 }

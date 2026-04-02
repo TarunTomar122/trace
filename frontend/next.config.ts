@@ -1,6 +1,19 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  trailingSlash: false,
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
+  async redirects() {
+    return [
+      {
+        source: "/:path+/",
+        destination: "/:path+",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

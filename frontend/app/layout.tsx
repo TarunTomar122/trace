@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Space_Grotesk, Geist_Mono } from "next/font/google";
-import { AuthProvider } from "@/contexts/AuthContext";
 import { PostHogProvider } from "@/lib/posthog";
 import ThemeProvider from "@/components/ThemeProvider";
 import AffiliateTracker from "@/components/AffiliateTracker";
@@ -95,7 +94,10 @@ export default function RootLayout({
           "@type": "ImageObject",
           "url": "https://www.yourtrace.online/trace.png"
         },
-        "sameAs": []
+        "sameAs": [
+          "https://x.com/tarat_211",
+          "https://play.google.com/store/apps/details?id=online.yourtrace.app"
+        ]
       },
       {
         "@type": "Product",
@@ -129,7 +131,7 @@ export default function RootLayout({
             "name": "How much does Trace cost?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Trace starts with a free trial and then costs $4.99 per month. You can cancel anytime from your profile."
+              "text": "Trace starts with a free trial, then monthly pricing applies based on your region (for example, ₹19/month in India and $4.99/month in the US). You can cancel anytime from your profile."
             }
           },
           {
@@ -160,9 +162,7 @@ export default function RootLayout({
             <Suspense fallback={null}>
               <AffiliateTracker />
             </Suspense>
-            <AuthProvider>
-              {children}
-            </AuthProvider>
+            {children}
           </PostHogProvider>
         </ThemeProvider>
         <Analytics />
