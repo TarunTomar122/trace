@@ -31,6 +31,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Application from 'expo-application';
 import {
   Flame,
@@ -48,6 +49,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Colors, FontFamily, Typography, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import {
   TrendingTopic,
   FeedItem,
@@ -73,22 +75,25 @@ const META_GREEN = '#5a6b35'; // Darker olive for better contrast on pastel back
 
 const INTEREST_LABELS: Record<string, string> = {
   ai: 'AI',
+  products: 'Products',
   tech: 'Tech',
   startups: 'Startups',
-  markets: 'Markets',
   engineering: 'Engineering',
-  'product-design': 'Product & Design',
-  marketing: 'Marketing',
-  fintech: 'Fintech',
+  'ux-design': 'UX Design',
+  markets: 'Markets',
+  'the-world': 'The World',
   // Legacy labels kept so old stored IDs still display readable names
+  'product-design': 'UX Design',
+  marketing: 'Products',
+  fintech: 'Markets',
   technology: 'Tech',
   'business-market': 'Markets',
-  experience: 'Design',
-  leadership: 'Leadership',
-  productivity: 'Productivity',
-  health: 'Health',
-  web3: 'Fintech',
-  climate: 'Tech',
+  experience: 'UX Design',
+  leadership: 'Markets',
+  productivity: 'The World',
+  health: 'The World',
+  web3: 'Markets',
+  climate: 'The World',
   business: 'Markets',
 };
 
@@ -102,28 +107,33 @@ const INTEREST_ALIASES: Record<string, string> = {
   // Legacy IDs -> new canonical IDs
   'technology': 'tech',
   'software': 'tech',
-  'productivity': 'tech',
-  'health': 'tech',
-  'healthcare': 'tech',
-  'climate': 'tech',
-  'sustainability': 'tech',
   'software-engineering': 'engineering',
   'software_engineering': 'engineering',
-  'design': 'product-design',
-  'ux': 'product-design',
-  'user-experience': 'product-design',
-  'experience': 'product-design',
+  'design': 'ux-design',
+  'ux': 'ux-design',
+  'user-experience': 'ux-design',
+  'experience': 'ux-design',
+  'product-design': 'ux-design',
   'business-market': 'markets',
   'business': 'markets',
   'leadership': 'markets',
   'management': 'markets',
-  'finance': 'fintech',
-  'crypto': 'fintech',
-  'blockchain': 'fintech',
-  'web3': 'fintech',
+  'finance': 'markets',
+  'crypto': 'markets',
+  'blockchain': 'markets',
+  'web3': 'markets',
+  'fintech': 'markets',
   'startup': 'startups',
   'entrepreneurship': 'startups',
-  'growth': 'marketing',
+  'growth': 'products',
+  'marketing': 'products',
+  'productivity': 'the-world',
+  'health': 'the-world',
+  'healthcare': 'the-world',
+  'climate': 'the-world',
+  'sustainability': 'the-world',
+  'policy': 'the-world',
+  'geopolitics': 'the-world',
 };
 
 function normalizeInterestId(value?: string | null): string {
@@ -405,14 +415,18 @@ function buildInterleavedFeed(
 
 /* ─── Memoized feed row components ─── */
 
+const LOCK_IMAGE = require('@/assets/images/lock.png');
+
 const TrendingFeedRow = React.memo(function TrendingFeedRow({
   topic,
   colorScheme,
   onPress,
+  locked,
 }: {
   topic: TrendingTopic;
   colorScheme: 'light' | 'dark';
   onPress: (topic: TrendingTopic) => void;
+  locked?: boolean;
 }) {
   const display = getTopicDisplay(topic);
   const sourceCount = topic.source_count ?? 1;
@@ -431,7 +445,9 @@ const TrendingFeedRow = React.memo(function TrendingFeedRow({
           <Text style={styles.ongoingMetaText}>{articleCount} Updates</Text>
         </View>
       </View>
-      {isRealImage(display.thumbnail) ? (
+      {locked ? (
+        <Image source={LOCK_IMAGE} style={styles.ongoingThumb} resizeMode="cover" />
+      ) : isRealImage(display.thumbnail) ? (
         <Image source={{ uri: display.thumbnail! }} style={styles.ongoingThumb} resizeMode="cover" />
       ) : (
         <View style={[styles.ongoingThumb, styles.ongoingThumbPlaceholder]} />
@@ -444,10 +460,12 @@ const ForYouFeedRow = React.memo(function ForYouFeedRow({
   item,
   colorScheme,
   onPress,
+  locked,
 }: {
   item: FeedItem;
   colorScheme: 'light' | 'dark';
   onPress: (item: FeedItem) => void;
+  locked?: boolean;
 }) {
   return (
     <Pressable
@@ -463,7 +481,9 @@ const ForYouFeedRow = React.memo(function ForYouFeedRow({
           <Text style={styles.ongoingMetaText}>New</Text>
         </View>
       </View>
-      {isRealImage(item.thumbnail) ? (
+      {locked ? (
+        <Image source={LOCK_IMAGE} style={styles.ongoingThumb} resizeMode="cover" />
+      ) : isRealImage(item.thumbnail) ? (
         <Image source={{ uri: item.thumbnail! }} style={styles.ongoingThumb} resizeMode="cover" />
       ) : (
         <View style={[styles.ongoingThumb, styles.ongoingThumbPlaceholder]} />
@@ -474,25 +494,17 @@ const ForYouFeedRow = React.memo(function ForYouFeedRow({
 
 export default function UnifiedFeedScreen() {
   const router = useRouter();
+  const { isProUser } = useRevenueCat();
   const insets = useSafeAreaInsets();
   const {
     user,
     profile,
-    bootUid,
-    bootProfile,
-    bootInterests,
     refreshProfile,
-    profileLoadError,
-    retryProfileLoad,
   } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
-
-  const effectiveUid = user?.uid || bootUid || null;
-  const effectiveProfile = profile || bootProfile;
   const [v3Feed, setV3Feed] = useState<V3UserFeed | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isRetrying, setIsRetrying] = useState(false);
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterType>('for_you');
   const [streak, setStreak] = useState<StreakData | null>(null);
@@ -502,7 +514,7 @@ export default function UnifiedFeedScreen() {
   const scrollY = useSharedValue(0);
   const STICKY_THRESHOLD = 80; // When sticky header appears
 
-  const isOnboarded = effectiveProfile?.onboarded === true;
+  const isOnboarded = profile?.onboarded === true;
   const hasRenderableFeed = !!v3Feed && (
     (v3Feed.trending_topics?.length ?? 0) > 0 ||
     (v3Feed.for_you?.length ?? 0) > 0
@@ -513,13 +525,13 @@ export default function UnifiedFeedScreen() {
   }, [v3Feed]);
 
   useEffect(() => {
-    if (!effectiveUid) {
+    if (!user?.uid) {
       setV3Feed(null);
       setIsLoading(false);
       return;
     }
 
-    const prefetchedFeed = consumePrefetchedFeed(effectiveUid);
+    const prefetchedFeed = consumePrefetchedFeed(user?.uid);
     if (prefetchedFeed) {
       setV3Feed(prefetchedFeed);
       setIsLoading(false);
@@ -533,7 +545,7 @@ export default function UnifiedFeedScreen() {
     prefetchPromise
       .then(() => {
         if (cancelled) return;
-        const readyFeed = consumePrefetchedFeed(effectiveUid);
+        const readyFeed = consumePrefetchedFeed(user?.uid);
         if (readyFeed) {
           setV3Feed(readyFeed);
           setIsLoading(false);
@@ -544,9 +556,11 @@ export default function UnifiedFeedScreen() {
     return () => {
       cancelled = true;
     };
-  }, [effectiveUid]);
+  }, [user?.uid]);
 
   useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
     const currentVersion = Application.nativeApplicationVersion || '1.0.0';
     const compareVersion = (current: string, target: string): boolean => {
       const c = current.split('.').map(Number);
@@ -570,6 +584,22 @@ export default function UnifiedFeedScreen() {
     getStreakData().then(setStreak);
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+
+      void getStreakData().then((nextStreak) => {
+        if (active) {
+          setStreak(nextStreak);
+        }
+      });
+
+      return () => {
+        active = false;
+      };
+    }, [])
+  );
+
   // Request app store review for returning users (streak >= 2)
   useEffect(() => {
     if (user && profile && streak && streak.currentStreak >= 2) {
@@ -578,7 +608,7 @@ export default function UnifiedFeedScreen() {
   }, [user, profile, streak]);
 
   const loadFeed = useCallback(async (): Promise<boolean> => {
-    if (!effectiveUid) return false;
+    if (!user?.uid) return false;
     const currentFeed = v3FeedRef.current;
     const hasCurrentRenderableFeed = !!currentFeed && (
       (currentFeed.trending_topics?.length ?? 0) > 0 ||
@@ -588,7 +618,7 @@ export default function UnifiedFeedScreen() {
     try {
       // Always fetch fresh from Firestore
       for (let attempt = 0; attempt < 3; attempt++) {
-        const v3 = await getV3UserFeed(effectiveUid, { role: effectiveProfile?.role });
+        const v3 = await getV3UserFeed(user?.uid, { role: profile?.role });
         if (v3 && ((v3.trending_topics?.length ?? 0) > 0 || (v3.for_you?.length ?? 0) > 0)) {
           setV3Feed(v3);
           return true;
@@ -602,11 +632,11 @@ export default function UnifiedFeedScreen() {
       console.error('Error loading feed:', error);
       return false;
     }
-  }, [effectiveUid, isOnboarded, effectiveProfile?.role]);
+  }, [user?.uid, isOnboarded, profile?.role]);
 
   const isFeedBuilding = (() => {
-    if (effectiveProfile?.feedBuildStatus !== 'building') return false;
-    const requestedAt = effectiveProfile?.feedBuildRequestedAt as any;
+    if (profile?.feedBuildStatus !== 'building') return false;
+    const requestedAt = profile?.feedBuildRequestedAt as any;
     if (!requestedAt) return false;
     const ts =
       typeof requestedAt === 'string'
@@ -626,7 +656,7 @@ export default function UnifiedFeedScreen() {
   useEffect(() => {
     if (!isOnboarded && !hasRenderableFeed) {
       // Profile may not have refreshed yet after onboarding — retry once
-      if (effectiveUid && !hasRetriedProfileRef.current) {
+      if (user?.uid && !hasRetriedProfileRef.current) {
         hasRetriedProfileRef.current = true;
         const retryAfterOnboard = async () => {
           if (!v3FeedRef.current) {
@@ -650,10 +680,10 @@ export default function UnifiedFeedScreen() {
     };
     init();
     if (user?.uid) recordLastActive(user.uid);
-  }, [effectiveUid, isOnboarded, loadFeed, user?.uid]);
+  }, [user?.uid, isOnboarded, loadFeed, user?.uid]);
 
   useEffect(() => {
-    if (!isFeedBuilding || !effectiveUid) return;
+    if (!isFeedBuilding || !user?.uid) return;
     pollRef.current = setInterval(async () => {
       await refreshProfile();
       const found = await loadFeed();
@@ -662,7 +692,7 @@ export default function UnifiedFeedScreen() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [isFeedBuilding, effectiveUid, loadFeed, refreshProfile]);
+  }, [isFeedBuilding, user?.uid, loadFeed, refreshProfile]);
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -673,10 +703,8 @@ export default function UnifiedFeedScreen() {
 
   // Normalized user profile interests
   const userInterestIds = useMemo(() => {
-    const liveInterests = (effectiveProfile?.interests || []).map((i) => normalizeInterestId(i));
-    if (liveInterests.length > 0) return liveInterests;
-    return bootInterests.map((i) => normalizeInterestId(i));
-  }, [bootInterests, effectiveProfile?.interests]);
+    return (profile?.interests || []).map((i) => normalizeInterestId(i));
+  }, [profile?.interests]);
 
   // Pills for interests that appear in trending content AND in the user's profile.
   // Everything else collapses into the "Suggested" pill.
@@ -743,12 +771,18 @@ export default function UnifiedFeedScreen() {
   // These are the articles the backend generated that didn't make it into a grouped topic.
   const uncoveredTrendingArticles = useMemo(() => {
     const coveredIds = new Set<string>();
+    const coveredUrls = new Set<string>();
     for (const topic of trendingTopics) {
       for (const article of topic.articles || []) {
         if (article.id) coveredIds.add(article.id);
+        if (article.url) coveredUrls.add(article.url);
+      }
+      for (const event of topic.timeline || []) {
+        if (event.id) coveredIds.add(event.id);
+        if (event.article_url) coveredUrls.add(event.article_url);
       }
     }
-    return (v3Feed?.trending || []).filter((item) => !coveredIds.has(item.id));
+    return (v3Feed?.trending || []).filter((item) => !coveredIds.has(item.id) && !coveredUrls.has(item.url || ''));
   }, [trendingTopics, v3Feed?.trending]);
 
   // Build interleaved feed
@@ -819,8 +853,15 @@ export default function UnifiedFeedScreen() {
     return { opacity };
   });
 
+  // The first trending topic in the feed is free for non-subscribers
+  const firstFreeTrendingId = useMemo(() => {
+    const first = feedSections.find((s) => s.type === 'trending');
+    return first?.type === 'trending' ? first.topic.id : null;
+  }, [feedSections]);
+
   const handleTopicPress = useCallback((topic: TrendingTopic) => {
-    setCurrentTopic(topic);
+    const isFree = topic.id === firstFreeTrendingId;
+    setCurrentTopic(topic, isFree);
     router.push('/topic');
     InteractionManager.runAfterInteractions(() => {
       const firstEvent = topic.timeline?.[0];
@@ -835,7 +876,7 @@ export default function UnifiedFeedScreen() {
         feedCategory: 'trending_topic',
       });
     });
-  }, [router]);
+  }, [router, firstFreeTrendingId]);
 
   const handleItemPress = useCallback((item: FeedItem) => {
     const patchedItem = patchForYouItem(item);
@@ -881,40 +922,8 @@ export default function UnifiedFeedScreen() {
   const isEmpty = feedSections.length === 0;
 
 
-  const handleRetry = async () => {
-    setIsRetrying(true);
-    await retryProfileLoad();
-    setIsRetrying(false);
-  };
 
-  // Show error UI if profile failed to load (network issue)
-  if (profileLoadError && !effectiveProfile) {
-    return (
-      <SafeAreaView
-        style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
-        edges={['top']}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorEmoji}>📡</Text>
-          <ThemedText style={styles.errorTitle}>Connection Issue</ThemedText>
-          <ThemedText style={[styles.errorText, { color: Colors[colorScheme].muted }]}>
-            Could not load your profile. Please check your internet connection.
-          </ThemedText>
-          <Pressable
-            onPress={handleRetry}
-            disabled={isRetrying}
-            style={[styles.retryButton, { opacity: isRetrying ? 0.6 : 1 }]}>
-            {isRetrying ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.retryButtonText}>Try Again</Text>
-            )}
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  const firstName = getFirstName(effectiveProfile);
+  const firstName = getFirstName(profile);
 
 
   const scrollContentContainerStyle = useMemo(
@@ -964,14 +973,12 @@ export default function UnifiedFeedScreen() {
         </View>
       </Animated.View>
 
-      {/* Update Available Banner */}
-      {showUpdateBanner && (
+      {/* Update Available Banner (Android only — iOS not on App Store yet) */}
+      {Platform.OS === 'android' && showUpdateBanner && (
         <Pressable
-          onPress={() => Linking.openURL(
-            Platform.OS === 'ios'
-              ? 'https://apps.apple.com/app/id6745196498'
-              : 'https://play.google.com/store/apps/details?id=online.yourtrace.app'
-          )}
+          onPress={() =>
+            Linking.openURL('https://play.google.com/store/apps/details?id=online.yourtrace.app')
+          }
           style={[styles.updateBanner, { backgroundColor: Colors[colorScheme].card }]}>
           <View style={styles.updateBannerContent}>
             <View style={[styles.updateBannerIcon, { backgroundColor: `${ACCENT_ORANGE}20` }]}>
@@ -1088,13 +1095,14 @@ export default function UnifiedFeedScreen() {
 
   const renderFeedItem = useCallback(({ item: section }: { item: FeedSection }) => {
     if (section.type === 'trending') {
-      return <TrendingFeedRow topic={section.topic} colorScheme={colorScheme} onPress={handleTopicPress} />;
+      const isLocked = !isProUser && section.topic.id !== firstFreeTrendingId;
+      return <TrendingFeedRow topic={section.topic} colorScheme={colorScheme} onPress={handleTopicPress} locked={isLocked} />;
     }
     if (section.type === 'foryou') {
-      return <ForYouFeedRow item={section.item} colorScheme={colorScheme} onPress={handleItemPress} />;
+      return <ForYouFeedRow item={section.item} colorScheme={colorScheme} onPress={handleItemPress} locked={!isProUser} />;
     }
     return null;
-  }, [colorScheme, handleTopicPress, handleItemPress]);
+  }, [colorScheme, handleTopicPress, handleItemPress, isProUser, firstFreeTrendingId]);
 
   const getItemLayout = useCallback((_data: any, index: number) => ({
     length: FEED_ITEM_HEIGHT,
@@ -1105,10 +1113,10 @@ export default function UnifiedFeedScreen() {
   const listHeader = useMemo(() => (
     <>
       {renderHeader()}
-      {renderPills()}
       <View style={styles.ongoingHeader}>
         <Text style={[styles.ongoingTitle, { color: Colors[colorScheme].text }]}>Trending</Text>
       </View>
+      {renderPills()}
     </>
   ), [
     firstName, colorScheme, showUpdateBanner, isLoading, forYouItems,
@@ -1151,6 +1159,7 @@ export default function UnifiedFeedScreen() {
           </View>
         </View>
       </Animated.View>
+
 
       {showFeed ? (
         <AnimatedFlatList
@@ -1486,6 +1495,20 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 60 },
   padded: { paddingHorizontal: 20, },
 
+  syncBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    zIndex: 50,
+  },
+  syncBannerText: {
+    fontSize: 13,
+    fontFamily: FontFamily.semiBold,
+  },
+
   // Sticky Header - appears on scroll
   stickyHeader: {
     position: 'absolute',
@@ -1537,7 +1560,7 @@ const styles = StyleSheet.create({
   },
   headerLeft: {
     flex: 1,
-    gap: 6,
+    gap: 2,
   },
   headerGreeting: {
     fontSize: 24,
@@ -1704,7 +1727,7 @@ const styles = StyleSheet.create({
   // Filter pills - Figma style
   pillsSection: {
     marginTop: 4,
-    marginBottom: 4,
+    marginBottom: 10,
   },
   pillsContainer: {
     paddingHorizontal: 20,
@@ -1729,6 +1752,7 @@ const styles = StyleSheet.create({
   ongoingTitle: {
     fontSize: 19,
     fontFamily: FontFamilySerif.semiBold,
+    marginBottom: 10,
   },
   ongoingList: {
     paddingHorizontal: 20,
