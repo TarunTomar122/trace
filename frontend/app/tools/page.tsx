@@ -47,12 +47,38 @@ export default function ToolsPage() {
               <img src="/trace.webp" alt="Trace" className="h-7" />
               <span className="font-semibold text-lg">Trace</span>
             </Link>
-            <Link
-              href="/"
-              className="text-sm text-secondary/60 hover:text-foreground transition-colors"
-            >
-              Back to home
-            </Link>
+            <div className="flex items-center gap-4 text-sm">
+              <Link
+                href="/daily"
+                className="text-secondary/60 hover:text-foreground transition-colors"
+              >
+                Daily
+              </Link>
+              <Link
+                href="/trending"
+                className="text-secondary/60 hover:text-foreground transition-colors"
+              >
+                Trending
+              </Link>
+              <Link
+                href="/research"
+                className="hidden text-secondary/60 hover:text-foreground transition-colors sm:inline"
+              >
+                Research
+              </Link>
+              <Link
+                href="/compare"
+                className="hidden text-secondary/60 hover:text-foreground transition-colors sm:inline"
+              >
+                Compare
+              </Link>
+              <Link
+                href="/"
+                className="text-secondary/60 hover:text-foreground transition-colors"
+              >
+                Home
+              </Link>
+            </div>
           </div>
         </div>
       </header>

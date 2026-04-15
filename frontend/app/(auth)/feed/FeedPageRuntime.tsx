@@ -392,7 +392,6 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     }[] = [];
 
     const coveredArticleIds = new Set<string>();
-    const coveredUrls = new Set<string>();
 
     const roleBasedForYou = effectiveFeed?.for_you || [];
     for (const item of roleBasedForYou) {
@@ -410,7 +409,6 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
         data: item,
       });
       coveredArticleIds.add(item.id);
-      if (item.url) coveredUrls.add(item.url);
     }
 
     if (visibleTrendingTopics.length > 0) {
@@ -431,19 +429,12 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
         });
         for (const a of topic.articles || []) {
           coveredArticleIds.add(a.id);
-          if (a.url) coveredUrls.add(a.url);
-        }
-        for (const event of topic.timeline || []) {
-          if (event.id) coveredArticleIds.add(event.id);
-          if (event.article_url) coveredUrls.add(event.article_url);
         }
       }
     }
 
     const allTrending = effectiveFeed?.trending || [];
-    const remaining = allTrending.filter(
-      (item) => !coveredArticleIds.has(item.id) && !coveredUrls.has(item.url || '')
-    );
+    const remaining = allTrending.filter(item => !coveredArticleIds.has(item.id));
     for (const item of remaining) {
       list.push({
         id: item.id,

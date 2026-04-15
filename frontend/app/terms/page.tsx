@@ -36,6 +36,20 @@ export default function TermsOfServicePage() {
         <div className="bg-surface rounded-tr-lg rounded-b-lg p-6 sm:p-10 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-[-0.02em] text-foreground mb-2">Terms of Service</h1>
           <p className="text-xs text-secondary/50 mb-8">Last Updated: February 17, 2026</p>
+          <div className="mb-8 flex flex-wrap gap-2 text-sm">
+            <Link href="/daily" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+              Daily archive
+            </Link>
+            <Link href="/trending" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+              Trending
+            </Link>
+            <Link href="/research" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+              Research
+            </Link>
+            <Link href="/compare" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+              Compare
+            </Link>
+          </div>
 
           <div className="space-y-8 text-sm text-secondary leading-relaxed">
             <section>
@@ -212,7 +226,7 @@ export default function TermsOfServicePage() {
               <p className="mb-3">
                 If you have questions about these Terms of Service, please contact us:
               </p>
-              <p><strong>Email:</strong> <a href="mailto:yourtrace.online@gmail.com" className="text-foreground hover:underline">yourtrace.online@gmail.com</a></p>
+              <p><strong>Email:</strong> <a href="mailto:tomartarun2001@gmail.com" className="text-foreground hover:underline">tomartarun2001@gmail.com</a></p>
             </section>
 
             <p className="text-xs text-secondary/50 text-center pt-4">

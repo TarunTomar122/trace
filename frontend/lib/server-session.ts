@@ -11,10 +11,15 @@ type TraceSessionPayload = {
 
 function getSessionSecret() {
   const secret = process.env.TRACE_SESSION_SECRET || process.env.INSTAGRAM_RENDER_SECRET;
-  if (!secret) {
-    throw new Error('TRACE_SESSION_SECRET is not configured');
+  if (secret) {
+    return secret;
   }
-  return secret;
+
+  if (process.env.NODE_ENV !== 'production') {
+    return 'trace-dev-session-secret-change-me';
+  }
+
+  throw new Error('TRACE_SESSION_SECRET is not configured');
 }
 
 function base64UrlEncode(input: string) {

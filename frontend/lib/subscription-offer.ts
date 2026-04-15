@@ -27,6 +27,8 @@ const COUNTRY_HEADER_KEYS = [
   'x-country-code',
 ];
 
+type HeaderReader = Pick<Headers, 'get'> | { get(name: string): string | null };
+
 function normalizeCountryCode(value: string | null | undefined): string | null {
   if (!value) return null;
   const normalized = value.trim().toUpperCase();
@@ -48,9 +50,9 @@ function inferCountryFromProfile(profile: UserProfileLike | undefined): string |
   return null;
 }
 
-export function resolveCountryCode(request: NextRequest, profile?: UserProfileLike): Pick<SubscriptionOffer, 'countryCode' | 'countrySource'> {
+export function resolveCountryCodeFromHeaders(headers: HeaderReader, profile?: UserProfileLike): Pick<SubscriptionOffer, 'countryCode' | 'countrySource'> {
   for (const headerName of COUNTRY_HEADER_KEYS) {
-    const headerCountry = normalizeCountryCode(request.headers.get(headerName));
+    const headerCountry = normalizeCountryCode(headers.get(headerName));
     if (headerCountry) {
       return { countryCode: headerCountry, countrySource: 'header' };
     }
@@ -64,8 +66,12 @@ export function resolveCountryCode(request: NextRequest, profile?: UserProfileLi
   return { countryCode: null, countrySource: 'fallback' };
 }
 
-export function resolveSubscriptionOffer(request: NextRequest, profile?: UserProfileLike): SubscriptionOffer {
-  const { countryCode, countrySource } = resolveCountryCode(request, profile);
+export function resolveCountryCode(request: NextRequest, profile?: UserProfileLike): Pick<SubscriptionOffer, 'countryCode' | 'countrySource'> {
+  return resolveCountryCodeFromHeaders(request.headers, profile);
+}
+
+export function resolveSubscriptionOfferFromHeaders(headers: HeaderReader, profile?: UserProfileLike): SubscriptionOffer {
+  const { countryCode, countrySource } = resolveCountryCodeFromHeaders(headers, profile);
   const defaultProductId = process.env.DODO_PRODUCT_ID;
   const indiaProductId = process.env.DODO_PRODUCT_ID_INDIA;
 
@@ -82,10 +88,14 @@ export function resolveSubscriptionOffer(request: NextRequest, profile?: UserPro
     isIndiaOffer,
     productId,
     priceDisplay: isIndiaOffer
-      ? (process.env.SUBSCRIPTION_PRICE_DISPLAY_INDIA || '₹199/month')
+      ? (process.env.SUBSCRIPTION_PRICE_DISPLAY_INDIA || '₹19/month')
       : (process.env.SUBSCRIPTION_PRICE_DISPLAY_DEFAULT || '$4.99/month'),
     trialDays: isIndiaOffer
       ? parseTrialDays(process.env.SUBSCRIPTION_TRIAL_DAYS_INDIA, 1)
       : parseTrialDays(process.env.SUBSCRIPTION_TRIAL_DAYS_DEFAULT ?? process.env.SUBSCRIPTION_TRIAL_DAYS, 3),
   };
+}
+
+export function resolveSubscriptionOffer(request: NextRequest, profile?: UserProfileLike): SubscriptionOffer {
+  return resolveSubscriptionOfferFromHeaders(request.headers, profile);
 }

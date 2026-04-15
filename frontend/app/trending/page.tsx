@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Script from 'next/script';
 import PublicHeader from '@/components/PublicHeader';
 import Footer from '@/components/Footer';
+import ScrollCTABanner from '@/components/ScrollCTABanner';
 import { adminFirestore } from '@/lib/firebase-admin';
 import TrendingContent from './TrendingContent';
 
@@ -33,12 +34,14 @@ export const metadata: Metadata = {
     url: 'https://www.yourtrace.online/trending',
     type: 'website',
     siteName: 'Trace',
+    images: [{ url: 'https://www.yourtrace.online/opengraph-image', width: 1200, height: 630, alt: 'Trace — Trending Topics' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Trending Topics And Story Overviews | Trace',
     description:
       'Grouped topics, story overviews, and timelines from across the web.',
+    images: ['https://www.yourtrace.online/twitter-image'],
   },
 };
 
@@ -541,6 +544,7 @@ export default async function TrendingPage() {
         <TrendingContent items={items} topicCards={topicCards} />
       </main>
       <Footer />
+      <ScrollCTABanner />
     </div>
   );
 }

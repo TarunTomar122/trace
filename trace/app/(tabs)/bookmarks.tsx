@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Lock, Quote } from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
 
 import BookmarkIllus from '@/components/illustrations/BookmarkIllus';
 

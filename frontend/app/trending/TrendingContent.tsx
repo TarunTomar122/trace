@@ -23,6 +23,13 @@ type TopicCard = {
   thumbnail?: string;
 };
 
+const FREE_PAGE_LINKS = [
+  { href: "/daily", label: "Daily archive" },
+  { href: "/research", label: "Research" },
+  { href: "/compare", label: "Compare" },
+  { href: "/tools", label: "Tools" },
+] as const;
+
 function stripMarkdown(text: string): string {
   return (text || "")
     .replace(/\*\*(.*?)\*\*/g, "$1")
@@ -255,6 +262,17 @@ export default function TrendingContent({
         <p className="mt-2 text-sm text-secondary">
           Trace collapses scattered coverage into one clearer view. Check back soon.
         </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          {FREE_PAGE_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="rounded-full border border-border/25 px-3 py-1.5 text-xs font-medium text-secondary hover:text-foreground"
+            >
+              {link.label}
+            </Link>
+          ))}
+        </div>
       </div>
     );
   }
@@ -272,6 +290,17 @@ export default function TrendingContent({
           <p className="mt-5 max-w-2xl text-base leading-8 text-secondary sm:text-lg">
             This preview shows the actual Trace idea: topic-first reading, visible source counts, and one cleaner entry point into the story.
           </p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            {FREE_PAGE_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="rounded-full border border-border/25 px-3 py-1.5 text-xs font-medium text-secondary hover:text-foreground"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 

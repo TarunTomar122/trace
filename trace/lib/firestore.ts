@@ -13,13 +13,11 @@ import {
   orderBy,
   limit,
   documentId,
-  getCountFromServer,
+  runTransaction,
 } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { firestore } from './firebase';
 
-// ============ Early Adopter Config ============
-const EARLY_ADOPTER_LIMIT = 350;
 const FEED_CACHE_PREFIX = 'trace_v3_feed_snapshot_v1:';
 
 function feedCacheKey(uid: string): string {
@@ -168,7 +166,7 @@ export interface UserProfile {
   lastActiveAt?: Timestamp | null;
 }
 
-export type UserProfileSource = 'server' | 'cache' | 'none';
+export type UserProfileSource = 'server' | 'server_no_profile' | 'cache' | 'none';
 
 export interface UserProfileResult {
   profile: UserProfile | null;
@@ -188,7 +186,7 @@ export interface FeedItem {
   stars?: number | null;
   tags?: string[];
   interest_id?: string;
-  feed_type?: 'for_you' | 'deep_dives' | 'trending';
+  feed_type?: 'for_you' | 'deep_dives' | 'trending' | 'curated';
   published_date?: string;
   summary?: {
     short_article?: {
@@ -234,6 +232,9 @@ export interface FeedItem {
     source_description?: string;
     synthesized?: boolean;
     source_count?: number;
+    curated?: boolean;
+    curated_platform?: string;
+    curated_url_type?: string;
   };
   sources?: Array<{
     name: string;
@@ -311,6 +312,7 @@ export interface UserFeed {
 export interface V3UserFeed {
   date: string;
   for_you: FeedItem[];
+  curated?: FeedItem[];
   community_pulse?: FeedItem[];
   build_pulse?: FeedItem[];
   trending: FeedItem[];
@@ -342,18 +344,18 @@ export const SENIORITY_LEVELS = [
   { id: 'early', label: 'Early Career', subtitle: '0-3 years', icon: 'leaf' },
   { id: 'mid', label: 'Mid-Level', subtitle: '3-7 years', icon: 'zap' },
   { id: 'senior', label: 'Senior', subtitle: '7-12 years', icon: 'award' },
-  { id: 'executive', label: 'Executive / Lead', subtitle: '12+ years', icon: 'crown' },
+  { id: 'executive', label: 'lead', subtitle: '12+ years', icon: 'crown' },
 ] as const;
 
 export const ONBOARDING_INTERESTS = [
   { id: 'ai', label: 'AI', icon: 'cpu' },
+  { id: 'products', label: 'Products', icon: 'package' },
   { id: 'tech', label: 'Tech', icon: 'code' },
   { id: 'startups', label: 'Startups', icon: 'rocket' },
-  { id: 'markets', label: 'Markets', icon: 'bar-chart-3' },
   { id: 'engineering', label: 'Engineering', icon: 'settings' },
-  { id: 'product-design', label: 'Product & Design', icon: 'palette' },
-  { id: 'marketing', label: 'Marketing', icon: 'trending-up' },
-  { id: 'fintech', label: 'Fintech', icon: 'dollar-sign' },
+  { id: 'ux-design', label: 'UX Design', icon: 'palette' },
+  { id: 'markets', label: 'Markets', icon: 'bar-chart-3' },
+  { id: 'the-world', label: 'The World', icon: 'globe' },
 ] as const;
 
 export const LEARNING_SOURCE_CATEGORIES = [
@@ -438,40 +440,72 @@ export const CAREER_GOALS = [
 
 // Legacy constants (kept for backward compat with old onboarding code paths)
 export const INTERESTS = [
-  { id: 'technology', label: 'Technology' },
-  { id: 'business-market', label: 'Business & Market' },
-  { id: 'experience', label: 'Experience' },
-  { id: 'productivity', label: 'Productivity' },
+  { id: 'ai', label: 'AI' },
+  { id: 'products', label: 'Products' },
+  { id: 'tech', label: 'Tech' },
+  { id: 'startups', label: 'Startups' },
+  { id: 'engineering', label: 'Engineering' },
+  { id: 'ux-design', label: 'UX Design' },
+  { id: 'markets', label: 'Markets' },
+  { id: 'the-world', label: 'The World' },
 ];
 
 export const INTEREST_SUBTOPICS: Record<string, { id: string; label: string }[]> = {
-  technology: [
-    { id: 'ai', label: 'AI' },
-    { id: 'automation', label: 'Automation' },
-    { id: 'software-tech', label: 'Software & Tech' },
-    { id: 'productivity-tools', label: 'Productivity Tools' },
-    { id: 'future-tech', label: 'Future Tech' },
+  ai: [
+    { id: 'model-launches', label: 'Model Launches' },
+    { id: 'agents', label: 'AI Agents' },
+    { id: 'labs', label: 'Labs & Frontier Models' },
+    { id: 'policy', label: 'AI Policy' },
+    { id: 'tools', label: 'AI Tools' },
   ],
-  'business-market': [
+  tech: [
+    { id: 'big-tech', label: 'Big Tech' },
+    { id: 'consumer-tech', label: 'Consumer Tech' },
+    { id: 'platforms', label: 'Platforms' },
+    { id: 'devices', label: 'Devices' },
+    { id: 'internet', label: 'Internet' },
+  ],
+  startups: [
+    { id: 'funding', label: 'Funding' },
+    { id: 'founders', label: 'Founders' },
+    { id: 'm-and-a', label: 'M&A' },
+    { id: 'early-stage', label: 'Early Stage' },
+    { id: 'ecosystem', label: 'Ecosystem' },
+  ],
+  markets: [
+    { id: 'earnings', label: 'Earnings' },
+    { id: 'public-markets', label: 'Public Markets' },
+    { id: 'company-strategy', label: 'Company Strategy' },
+    { id: 'macro', label: 'Macro' },
+    { id: 'deals', label: 'Deals' },
+  ],
+  engineering: [
+    { id: 'developer-tools', label: 'Developer Tools' },
+    { id: 'infra-cloud', label: 'Infra & Cloud' },
+    { id: 'cybersecurity', label: 'Cybersecurity' },
+    { id: 'open-source', label: 'Open Source' },
+    { id: 'platform-engineering', label: 'Platform Engineering' },
+  ],
+  'ux-design': [
+    { id: 'ux', label: 'UX Research' },
+    { id: 'ui', label: 'UI' },
+    { id: 'product-changes', label: 'Product Changes' },
+    { id: 'app-redesigns', label: 'App Redesigns' },
+    { id: 'design-systems', label: 'Design Systems' },
+  ],
+  products: [
+    { id: 'product-launches', label: 'Product Launches' },
+    { id: 'consumer-apps', label: 'Consumer Apps' },
+    { id: 'b2b-tools', label: 'B2B Tools' },
     { id: 'product-strategy', label: 'Product Strategy' },
-    { id: 'market-trends', label: 'Market Trends' },
-    { id: 'economy-impact', label: 'Economy & Impact' },
-    { id: 'startups', label: 'Startups' },
-    { id: 'marketing', label: 'Marketing' },
+    { id: 'growth', label: 'Growth' },
   ],
-  experience: [
-    { id: 'creative-process', label: 'Creative Process' },
-    { id: 'design-tools', label: 'Design Tools' },
-    { id: 'ux-design', label: 'UX Design' },
-    { id: 'brand-storytelling', label: 'Brand & Storytelling' },
-    { id: 'user-psychology', label: 'User Psychology' },
-  ],
-  productivity: [
-    { id: 'career-growth', label: 'Career Growth' },
-    { id: 'personal-finance', label: 'Personal Finance' },
-    { id: 'soft-skills', label: 'Soft Skills' },
-    { id: 'investments', label: 'Investments' },
-    { id: 'wellbeing', label: 'Wellbeing' },
+  'the-world': [
+    { id: 'policy', label: 'Policy' },
+    { id: 'geopolitics', label: 'Geopolitics' },
+    { id: 'climate', label: 'Climate' },
+    { id: 'society', label: 'Society' },
+    { id: 'economy', label: 'Economy' },
   ],
 };
 
@@ -558,76 +592,6 @@ const COLLECTIONS = {
   userFeeds: 'user_feeds',
 };
 
-// ============ Early Adopter Functions ============
-
-export interface EarlyAdopterStatus {
-  currentCount: number;
-  limit: number;
-  spotsRemaining: number;
-  isOpen: boolean;
-}
-
-/**
- * Get the current early adopter count.
- * Requires `allow list` permission in Firestore rules.
- */
-export async function getEarlyAdopterStatus(): Promise<EarlyAdopterStatus> {
-  try {
-    const usersRef = collection(firestore, COLLECTIONS.userProfiles);
-    const countSnap = await getCountFromServer(usersRef);
-    const currentCount = countSnap.data().count;
-
-    const spotsRemaining = Math.max(0, EARLY_ADOPTER_LIMIT - currentCount);
-    return {
-      currentCount,
-      limit: EARLY_ADOPTER_LIMIT,
-      spotsRemaining,
-      isOpen: spotsRemaining > 0,
-    };
-  } catch (error) {
-    console.error('Error getting early adopter status:', error);
-    // Default to open if we can't check (be generous during launch)
-    return {
-      currentCount: 0,
-      limit: EARLY_ADOPTER_LIMIT,
-      spotsRemaining: EARLY_ADOPTER_LIMIT,
-      isOpen: true,
-    };
-  }
-}
-
-/**
- * Claim early adopter status for a user.
- * Call this when user accepts the early adopter offer.
- */
-export async function claimEarlyAdopterStatus(uid: string): Promise<boolean> {
-  try {
-    const status = await getEarlyAdopterStatus();
-    if (!status.isOpen) {
-      return false; // No spots left
-    }
-
-    const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
-    await setDoc(docRef, { isEarlyAdopter: true }, { merge: true });
-    return true;
-  } catch (error) {
-    console.error('Error claiming early adopter status:', error);
-    return false;
-  }
-}
-
-/**
- * Mark that user has seen the early adopter offer (even if they skipped it).
- */
-export async function markEarlyAdopterOfferSeen(uid: string): Promise<void> {
-  try {
-    const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
-    await setDoc(docRef, { earlyAdopterOfferSeen: true }, { merge: true });
-  } catch (error) {
-    console.error('Error marking early adopter offer seen:', error);
-  }
-}
-
 /**
  * Save how the user found us (referral source) - called during sign up flow.
  */
@@ -662,7 +626,7 @@ export async function markReviewRequested(uid: string): Promise<void> {
   }
 }
 
-export async function getUserProfileWithSource(uid: string): Promise<UserProfileResult> {
+export async function getUserProfileWithSource(uid: string, options?: { serverOnly?: boolean }): Promise<UserProfileResult> {
   const firstNonEmptyString = (...values: Array<string | null | undefined>): string => {
     for (const value of values) {
       if (typeof value !== 'string') continue;
@@ -702,50 +666,47 @@ export async function getUserProfileWithSource(uid: string): Promise<UserProfile
   };
 
   const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
+  const serverOnly = options?.serverOnly ?? false;
   let cachedProfile: UserProfile | null = null;
 
-  // Read cache first for fast startup, but don't trust it as the final truth.
-  // Cached onboarding/subscription flags can be stale across sessions/devices.
-  try {
-    const cached = await getDocFromCache(docRef);
-    if (cached.exists()) {
-      cachedProfile = mergeProfileIdentity(cached.data() as UserProfile);
+  if (!serverOnly) {
+    // Read cache first for fast startup, but don't trust it as the final truth.
+    try {
+      const cached = await getDocFromCache(docRef);
+      if (cached.exists()) {
+        cachedProfile = mergeProfileIdentity(cached.data() as UserProfile);
+      }
+    } catch {
+      // No cached profile yet; continue to server fetch below.
     }
-  } catch {
-    // No cached profile yet; continue to server fetch below.
   }
 
   try {
-    // Always try server as source-of-truth. Use a timeout so startup
-    // doesn't hang on poor networks. Short timeout if we have cache.
-    const serverTimeoutMs = cachedProfile ? 800 : 3000;
+    // Server-only retries get a generous timeout since we're not blocking startup.
+    const serverTimeoutMs = serverOnly ? 10000 : (cachedProfile ? 3000 : 5000);
     const docSnap = await Promise.race([
       getDocFromServer(docRef),
       new Promise<null>((resolve) => setTimeout(() => resolve(null), serverTimeoutMs)),
     ]);
     if (!docSnap) {
+      console.log('[Profile] Server fetch timed out, falling back to cache:', !!cachedProfile);
       return {
         profile: cachedProfile,
         source: cachedProfile ? 'cache' : 'none',
       };
     }
     if (docSnap.exists()) {
+      console.log('[Profile] Server returned profile for uid:', uid, 'onboarded:', (docSnap.data() as any)?.onboarded);
       return {
         profile: mergeProfileIdentity(docSnap.data() as UserProfile, cachedProfile),
         source: 'server',
       };
     }
-    // Doc does not exist on server; fall back to cache if present.
-    if (cachedProfile) {
-      return {
-        profile: cachedProfile,
-        source: 'cache',
-      };
-    }
-    return { profile: null, source: 'none' };
+    // Doc does not exist on server — we reached the server but there's no profile.
+    console.log('[Profile] Server confirmed no profile exists for uid:', uid);
+    return { profile: null, source: 'server_no_profile' };
   } catch (error) {
-    console.warn('Error getting user profile from server, using cached profile if available:', error);
-    // Network/server failure: cached data is better than null.
+    console.warn('[Profile] Server fetch error, falling back to cache:', error);
     return {
       profile: cachedProfile,
       source: cachedProfile ? 'cache' : 'none',
@@ -787,7 +748,6 @@ export async function createUserProfile(
     },
     contentDepth: null,
     subscriptionStatus: 'none',
-    isEarlyAdopter: false, // Will be set when they claim the offer
     timezone,
     locale: getLocalLocale(),
     createdAt: serverTimestamp() as Timestamp,
@@ -811,31 +771,72 @@ export async function getOrCreateUserProfile(
   displayName: string,
   photoURL: string | null
 ): Promise<UserProfile> {
-  const existing = await getUserProfile(uid);
-  if (existing) {
-    const identityPatch: Partial<UserProfile> = {};
-    if (!String(existing.email || '').trim() && email) {
-      identityPatch.email = email;
-    }
-    if (!String(existing.displayName || '').trim() && displayName) {
-      identityPatch.displayName = displayName;
-    }
-    if (!String(existing.name || '').trim() && displayName) {
-      identityPatch.name = displayName;
-    }
-    if (!existing.photoURL && photoURL) {
-      identityPatch.photoURL = photoURL;
-    }
-    if (Object.keys(identityPatch).length > 0) {
-      await updateUserProfile(uid, identityPatch);
-      return {
-        ...existing,
-        ...identityPatch,
+  const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
+
+  // Use a transaction to atomically check-then-create, preventing the race
+  // where a slow getUserProfile returns null and createUserProfile overwrites
+  // an existing onboarded profile with a fresh onboarded:false one.
+  try {
+    return await runTransaction(firestore, async (transaction) => {
+      const docSnap = await transaction.get(docRef);
+
+      if (docSnap.exists()) {
+        const existing = docSnap.data() as UserProfile;
+        const identityPatch: Partial<UserProfile> = {};
+        if (!String(existing.email || '').trim() && email) {
+          identityPatch.email = email;
+        }
+        if (!String(existing.displayName || '').trim() && displayName) {
+          identityPatch.displayName = displayName;
+        }
+        if (!String(existing.name || '').trim() && displayName) {
+          identityPatch.name = displayName;
+        }
+        if (!existing.photoURL && photoURL) {
+          identityPatch.photoURL = photoURL;
+        }
+        if (Object.keys(identityPatch).length > 0) {
+          transaction.update(docRef, { ...identityPatch, updatedAt: serverTimestamp() });
+          return { ...existing, ...identityPatch };
+        }
+        return existing;
+      }
+
+      const timezone = getLocalTimezone();
+      const newProfile: UserProfile = {
+        uid,
+        email,
+        displayName,
+        photoURL,
+        onboarded: false,
+        name: displayName || '',
+        role: '',
+        interests: [],
+        hobbies: [],
+        skills: [],
+        dislikedTopics: [],
+        sourcePreferences: {
+          youtube: 5, articles: 7, papers: 2,
+          repos: 3, tweets: 3, discussions: 4,
+        },
+        contentDepth: null,
+        subscriptionStatus: 'none',
+        timezone,
+        locale: getLocalLocale(),
+        createdAt: serverTimestamp() as Timestamp,
+        updatedAt: serverTimestamp() as Timestamp,
+        onboardedAt: null,
       };
-    }
-    return existing;
+      transaction.set(docRef, newProfile);
+      return newProfile;
+    });
+  } catch (error) {
+    console.error('[Auth] getOrCreateUserProfile transaction failed:', error);
+    // Fallback: try a non-transactional read — if profile exists, return it.
+    const fallback = await getUserProfile(uid);
+    if (fallback) return fallback;
+    throw error;
   }
-  return createUserProfile(uid, email, displayName, photoURL);
 }
 
 export async function completeOnboarding(
@@ -1143,6 +1144,7 @@ export async function getV3UserFeed(
     let userTrending: FeedItem[] = [];
     let userTrendingTopics: TrendingTopic[] = [];
     let roleBasedForYou: FeedItem[] = [];
+    let curated: FeedItem[] = [];
     let communityPulse: FeedItem[] = [];
     let buildPulse: FeedItem[] = [];
     let feedDate = '';
@@ -1211,9 +1213,13 @@ export async function getV3UserFeed(
         const buildRoleMap = globalData.build_pulse_roles && typeof globalData.build_pulse_roles === 'object'
           ? globalData.build_pulse_roles
           : null;
+        const curatedGlobal = Array.isArray(globalData.curated)
+          ? globalData.curated
+          : [];
         const candidateRoleFeed = normalizedRole && roleMap && Array.isArray(roleMap[normalizedRole])
           ? roleMap[normalizedRole]
           : [];
+        const candidateCurated = curatedGlobal;
         const candidateCommunityPulse = normalizedRole && communityRoleMap && Array.isArray(communityRoleMap[normalizedRole])
           ? communityRoleMap[normalizedRole]
           : [];
@@ -1222,6 +1228,12 @@ export async function getV3UserFeed(
           : [];
         if (roleBasedForYou.length === 0 && candidateRoleFeed.length > 0) {
           roleBasedForYou = candidateRoleFeed;
+          if (!feedDate) {
+            feedDate = globalData.date || globalDoc.id;
+          }
+        }
+        if (curated.length === 0 && candidateCurated.length > 0) {
+          curated = candidateCurated;
           if (!feedDate) {
             feedDate = globalData.date || globalDoc.id;
           }
@@ -1263,8 +1275,17 @@ export async function getV3UserFeed(
         const buildRoleMap = latestGlobalData.build_pulse_roles && typeof latestGlobalData.build_pulse_roles === 'object'
           ? latestGlobalData.build_pulse_roles
           : null;
+        const curatedGlobal = Array.isArray(latestGlobalData.curated)
+          ? latestGlobalData.curated
+          : [];
         if (roleBasedForYou.length === 0 && normalizedRole && roleMap && Array.isArray(roleMap[normalizedRole])) {
           roleBasedForYou = roleMap[normalizedRole];
+          if (!feedDate) {
+            feedDate = latestGlobalData.date || globalDocs[0].id;
+          }
+        }
+        if (curated.length === 0 && curatedGlobal.length > 0) {
+          curated = curatedGlobal;
           if (!feedDate) {
             feedDate = latestGlobalData.date || globalDocs[0].id;
           }
@@ -1319,6 +1340,7 @@ export async function getV3UserFeed(
     const resolvedFeed = {
       date: feedDate,
       for_you: forYou as FeedItem[],
+      curated: curated as FeedItem[],
       community_pulse: communityPulse as FeedItem[],
       build_pulse: buildPulse as FeedItem[],
       trending: trending as FeedItem[],

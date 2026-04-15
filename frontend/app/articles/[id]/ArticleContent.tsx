@@ -4,7 +4,8 @@ import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Link from "next/link";
-import { ExternalLink, Clock, Share2, Check, Sparkles, Download, Loader2 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { ArrowLeft, ExternalLink, Clock, Share2, Check, Loader2, Sparkles } from "lucide-react";
 
 const ACCENT = "#F59E0B";
 
@@ -40,75 +41,61 @@ interface Props {
   article: ArticleData;
 }
 
+function normalizeText(value?: string | null): string {
+  return (value || "").replace(/\s+/g, " ").trim();
+}
+
+function buildBodyContent(article: ArticleData): string {
+  const shortArticle = article.summary?.short_article;
+  const rawBody = normalizeText(shortArticle?.body);
+  const slides = Array.isArray(shortArticle?.slides)
+    ? shortArticle.slides
+        .map((slide) => normalizeText(String(slide).replace(/^Slide\s*\d+:\s*/i, "")))
+        .filter(Boolean)
+    : [];
+
+  if (rawBody.length > 80) return rawBody;
+  if (slides.length > 0) return slides.join("\n\n");
+  return rawBody;
+}
+
+function hasMeaningfulSubtitle(article: ArticleData): boolean {
+  const subtitle = normalizeText(article.summary?.short_article?.subtitle);
+  if (!subtitle) return false;
+  return subtitle.toLowerCase() !== normalizeText(article.title).toLowerCase();
+}
+
+function getSafeReturnPath(value: string | null, fallback: string): string {
+  if (!value) return fallback;
+  if (!value.startsWith("/") || value.startsWith("//")) return fallback;
+  return value;
+}
+
 export default function ArticleContent({ article }: Props) {
+  const searchParams = useSearchParams();
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
 
-  const rawSlides = article.summary?.short_article?.slides;
-  const slides = Array.isArray(rawSlides)
-    ? rawSlides
-        .map((slide) => slide.replace(/^Slide\s*\d+:\s*/i, '').trim())
-        .filter(Boolean)
+  const shortArticle = article.summary?.short_article;
+  const subtitle = normalizeText(shortArticle?.subtitle);
+  const bodyContent = buildBodyContent(article);
+  const keyTakeaways = Array.isArray(shortArticle?.key_takeaways)
+    ? shortArticle!.key_takeaways!.map((item) => normalizeText(item)).filter(Boolean)
     : [];
-  const body = article.summary?.short_article?.body;
-  const subtitle = article.summary?.short_article?.subtitle;
-  const keyTakeaways = article.summary?.short_article?.key_takeaways;
-  const whyItMatters = article.summary?.short_article?.why_it_matters;
+  const whyItMatters = normalizeText(shortArticle?.why_it_matters);
   const readingTime = article.summary?.reading_time_minutes || 3;
-  const isTrending = article.feed_type === "trending";
-  const hasImage = article.thumbnail && typeof article.thumbnail === 'string' && article.thumbnail.length > 10;
-  const bodyContent = slides.length > 0 ? slides.join('\n\n') : body;
+  const hasImage = typeof article.thumbnail === "string" && article.thumbnail.length > 10;
+  const returnHref = getSafeReturnPath(searchParams.get("from"), "/trending");
+  const backLabel = returnHref.startsWith("/daily/") ? "Back to daily" : "Back";
 
   const handleShare = async () => {
     setSharing(true);
-    const pageUrl = window.location.href;
-
     try {
-      // Generate share image
-      const params = new URLSearchParams({
-        headline: article.title,
-        imageUrl: article.thumbnail || '',
-        url: pageUrl,
-        format: 'square',
-      });
-      const imageResponse = await fetch(`/api/share/render?${params.toString()}`);
-
-      if (!imageResponse.ok) {
-        throw new Error('Failed to generate image');
-      }
-
-      const blob = await imageResponse.blob();
-      const file = new File([blob], 'trace-story.png', { type: 'image/png' });
-
-      // Try Web Share API with file
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: article.title,
-          text: `Read the full story on Trace: ${pageUrl}`,
-        });
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } else {
-        // Fallback: download the image
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'trace-story.png';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }
-    } catch (err) {
-      // Fallback to just copying the URL
-      try {
-        await navigator.clipboard.writeText(pageUrl);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch { /* nothing */ }
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // ignore clipboard failures
     } finally {
       setSharing(false);
     }
@@ -116,16 +103,15 @@ export default function ArticleContent({ article }: Props) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Minimal public header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md">
-        <div className="container mx-auto px-4 max-w-3xl h-16 flex items-center justify-between">
+      <header className="sticky top-0 z-40 border-b border-border/10 bg-background/92 backdrop-blur-md">
+        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2.5">
-            <img src="/trace.webp" alt="Trace" width={120} height={32} className="h-8 w-auto" />
-            <span className="text-lg font-semibold tracking-[0.12em] text-foreground">TRACE</span>
+            <img src="/trace.webp" alt="Trace" width={28} height={28} className="h-7 w-7 rounded-md" />
+            <span className="text-[15px] font-semibold tracking-[0.14em] text-foreground">TRACE</span>
           </Link>
           <Link
             href="/feed"
-            className="text-sm font-medium px-3 py-1.5 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="text-sm font-semibold transition-colors hover:opacity-80"
             style={{ color: ACCENT }}
           >
             Get your feed
@@ -133,50 +119,67 @@ export default function ArticleContent({ article }: Props) {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 max-w-2xl py-8">
-        <h1 className="text-2xl md:text-3xl font-bold leading-tight mb-4">
-          {article.title}
-        </h1>
+      <main className="mx-auto max-w-3xl px-4 pt-5 pb-10">
+        <div className="mb-5">
+          <Link
+            href={returnHref}
+            className="inline-flex items-center gap-1.5 text-sm text-secondary/55 transition-colors hover:text-foreground"
+          >
+            <ArrowLeft size={15} />
+            {backLabel}
+          </Link>
+        </div>
 
-        <div className="flex items-center gap-3 text-sm text-secondary/60 mb-6">
+        <div className="mb-7 flex items-center gap-2 text-xs text-secondary/45">
           {article.source_name && <span>{article.source_name}</span>}
-          <span className="flex items-center gap-1">
+          {article.source_name && <span>·</span>}
+          <span className="inline-flex items-center gap-1">
             <Clock size={13} />
             {readingTime} min read
           </span>
         </div>
 
-        {subtitle && subtitle.trim().toLowerCase() !== article.title.trim().toLowerCase() && (
-          <p className="text-base text-secondary/75 leading-relaxed mb-6">
+        <h1 className="mb-5 text-[2.1rem] font-bold leading-[1.06] tracking-[-0.045em] text-foreground sm:text-[2.6rem]">
+          {article.title}
+        </h1>
+
+        {hasMeaningfulSubtitle(article) && (
+          <p className="mb-6 max-w-2xl text-[16px] leading-relaxed text-secondary/72">
             {subtitle}
           </p>
         )}
 
-        {/* Thumbnail */}
         {hasImage && (
-          <div className="relative aspect-[16/9] rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 mb-6">
+          <div className="mb-7 overflow-hidden rounded-[24px] bg-surface-secondary">
             <img
               src={article.thumbnail!}
               alt=""
-              className="w-full h-full object-cover"
+              className="max-h-[360px] w-full object-cover"
             />
           </div>
         )}
 
-        {!isTrending && keyTakeaways && keyTakeaways.length > 0 && (
-          <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl p-5 mb-6">
-            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-3">
+        {bodyContent ? (
+          <div className="prose prose-base max-w-none text-[17px] leading-[1.95] text-secondary dark:prose-invert mb-8">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{bodyContent}</ReactMarkdown>
+          </div>
+        ) : (
+          <p className="mb-8 text-sm text-secondary/50">
+            No summary available. Read the original source.
+          </p>
+        )}
+
+        {keyTakeaways.length > 0 && (
+          <div className="mb-8">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary/40">
               Key Takeaways
             </p>
-            <ul className="space-y-2">
-              {keyTakeaways.map((t: string, i: number) => (
-                <li key={i} className="flex gap-2.5 items-start text-sm">
-                  <span
-                    className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
-                    style={{ backgroundColor: ACCENT }}
-                  />
-                  <span className="prose prose-sm dark:prose-invert [&>p]:m-0 [&>p]:inline">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{t}</ReactMarkdown>
+            <ul className="space-y-2.5">
+              {keyTakeaways.map((point, index) => (
+                <li key={index} className="flex items-start gap-3 text-sm">
+                  <span className="mt-0.5 font-mono text-xs text-secondary/30">{index + 1}.</span>
+                  <span className="prose prose-sm text-secondary/80 dark:prose-invert [&>p]:m-0 [&>p]:inline">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{point}</ReactMarkdown>
                   </span>
                 </li>
               ))}
@@ -184,77 +187,78 @@ export default function ArticleContent({ article }: Props) {
           </div>
         )}
 
-        {bodyContent && (
-          <div className="prose prose-sm dark:prose-invert max-w-none mb-6">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{bodyContent}</ReactMarkdown>
-          </div>
-        )}
-
-        {!isTrending && whyItMatters && (
-          <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-5 mb-6">
-            <p className="text-xs font-semibold text-secondary/60 uppercase tracking-wider mb-1.5">
-              Why it matters
+        {whyItMatters && (
+          <div className="mb-8 border-l-2 border-border/20 pl-5">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary/40">
+              Why It Matters
             </p>
-            <div className="prose prose-sm dark:prose-invert max-w-none italic text-secondary/70">
+            <div className="prose prose-sm max-w-none text-secondary/75 dark:prose-invert">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{whyItMatters}</ReactMarkdown>
             </div>
           </div>
         )}
 
-        <div className="border-t border-gray-100 dark:border-gray-800 pt-5 mt-2 flex items-center justify-end gap-2">
-          <button
-            onClick={handleShare}
-            disabled={sharing}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
-          >
-            {sharing ? (
-              <>
+        <div className="mt-8 border-t border-border/10 pt-5">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={handleShare}
+              disabled={sharing}
+              className="inline-flex items-center gap-2 rounded-full border border-border/20 bg-white px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-foreground/5 disabled:opacity-60"
+            >
+              {sharing ? (
                 <Loader2 size={14} className="animate-spin" />
-                Generating...
-              </>
-            ) : copied ? (
-              <>
+              ) : copied ? (
                 <Check size={14} className="text-green-500" />
-                Shared!
-              </>
-            ) : (
-              <>
+              ) : (
                 <Share2 size={14} />
-                Share
-              </>
-            )}
-          </button>
-          <a
-            href={article.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: ACCENT }}
-          >
-            Read Original <ExternalLink size={14} />
-          </a>
-        </div>
-
-        {/* CTA Section */}
-        <div className="mt-12 p-6 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40 border border-amber-200/50 dark:border-amber-800/30">
-          <div className="flex items-start gap-3">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              )}
+              {sharing ? "Copying..." : copied ? "Link copied" : "Copy link"}
+            </button>
+            <a
+              href={article.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: ACCENT }}
             >
-              <Sparkles size={20} className="text-white" />
+              Read original source <ExternalLink size={14} />
+            </a>
+          </div>
+        </div>
+
+        <div className="mt-8 flex flex-wrap gap-2 text-sm">
+          <Link href="/trending" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+            Trending
+          </Link>
+          <Link href="/daily" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+            Daily archive
+          </Link>
+          <Link href="/research" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+            Research
+          </Link>
+          <Link href="/compare" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+            Compare
+          </Link>
+        </div>
+
+        <div className="mt-12 rounded-[24px] border border-[color:rgba(245,158,11,0.18)] bg-[linear-gradient(135deg,rgba(255,251,235,0.95),rgba(255,247,237,0.95))] p-6">
+          <div className="flex items-start gap-3">
+            <div
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+              style={{ backgroundColor: ACCENT }}
+            >
+              <Sparkles size={18} className="text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-lg mb-1">
+              <h3 className="mb-1 text-lg font-semibold text-foreground">
                 Get your personalized feed
               </h3>
-              <p className="text-sm text-secondary/70 mb-4">
-                Trace curates the best articles, videos, and discussions based on your
-                interests and role. Stop doom-scrolling, start learning.
+              <p className="mb-4 text-sm leading-relaxed text-secondary/70">
+                Trace groups the biggest stories, videos, and discussions into one feed so you can stay current without scanning ten tabs.
               </p>
               <Link
                 href="/feed"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-90 hover:scale-[1.02]"
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 style={{ backgroundColor: ACCENT }}
               >
                 Try Trace free

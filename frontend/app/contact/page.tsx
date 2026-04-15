@@ -39,11 +39,22 @@ export default function ContactPage() {
           <p className="text-sm text-secondary mb-8">
             Have a question, feedback, or need help with your subscription? We&apos;re here to help.
           </p>
+          <div className="mb-8 flex flex-wrap gap-2 text-sm">
+            <Link href="/daily" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+              Daily archive
+            </Link>
+            <Link href="/trending" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+              Trending
+            </Link>
+            <Link href="/research" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+              Research
+            </Link>
+          </div>
 
           <div className="space-y-4 max-w-md">
             {/* Email */}
             <a
-              href="mailto:yourtrace.online@gmail.com"
+              href="mailto:tomartarun2001@gmail.com"
               className="flex items-center gap-4 p-4 bg-surface-secondary rounded-xl hover:bg-surface-tertiary transition-all hover:shadow-sm group"
             >
               <div className="w-10 h-10 rounded-lg bg-surface flex items-center justify-center">
@@ -51,7 +62,7 @@ export default function ContactPage() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">Email</p>
-                <p className="text-sm text-secondary">yourtrace.online@gmail.com</p>
+                <p className="text-sm text-secondary">tomartarun2001@gmail.com</p>
               </div>
             </a>
 

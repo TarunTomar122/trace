@@ -110,7 +110,7 @@ function deriveAppSubStatus(
 
 // ─── Provider ───
 export function RevenueCatProvider({ children }: { children: React.ReactNode }) {
-  const { user, profile, profileResolved, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();
   const routerRef = useRef(router);
@@ -156,8 +156,8 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
     const currentUser = userRef.current;
     const uid = currentUser?.uid;
     if (!uid) return;
-    if (!profileResolved) {
-      console.log('[RevenueCat] Skipping appSubscriptionStatus sync until profile resolves');
+    if (!profile) {
+      console.log('[RevenueCat] Skipping appSubscriptionStatus sync until profile loads');
       return;
     }
     const status = deriveAppSubStatus(info);
@@ -175,7 +175,7 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
     } catch (error) {
       console.error('[RevenueCat] Error syncing appSubscriptionStatus:', error);
     }
-  }, [profileResolved]);
+  }, [!!profile]);
 
   const cacheRcAccess = useCallback(async (uid: string | null, info: CustomerInfo | null) => {
     if (!uid) return;

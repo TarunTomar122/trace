@@ -11,6 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "online.yourtrace.app",
+      "usesAppleSignIn": true,
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "UIBackgroundModes": [
@@ -53,7 +54,13 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#f59e0b"
+          "backgroundColor": "#f59e0b",
+          "image": "./assets/images/native-splash.png",
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#f59e0b",
+            "image": "./assets/images/native-splash.png"
+          }
         }
       ],
       [

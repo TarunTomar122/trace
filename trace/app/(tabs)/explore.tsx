@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { StyleSheet, View, Pressable, ScrollView, Alert, Switch, Text, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   Shield,
   FileText,
@@ -45,13 +46,13 @@ const ACCENT = '#F59E0B';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, profile, signOut, deleteAccount, refreshProfile, profileLoadError, retryProfileLoad } = useAuth();
+  const { user, profile, signOut, deleteAccount, refreshProfile } = useAuth();
   const { isProUser, presentPaywall, presentCustomerCenter } = useRevenueCat();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
 
   const isOnboarded = profile?.onboarded === true;
-  const showNetworkError = profileLoadError && !profile;
+  const showNetworkError = false;
   const [newsletterOptIn, setNewsletterOptIn] = useState(profile?.newsletterOptIn !== false);
   const [streak, setStreak] = useState<StreakData | null>(null);
 
@@ -62,6 +63,22 @@ export default function ProfileScreen() {
   useEffect(() => {
     getStreakData().then(setStreak);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+
+      void getStreakData().then((nextStreak) => {
+        if (active) {
+          setStreak(nextStreak);
+        }
+      });
+
+      return () => {
+        active = false;
+      };
+    }, [])
+  );
 
   const handleNewsletterToggle = async (value: boolean) => {
     setNewsletterOptIn(value);
@@ -193,7 +210,7 @@ export default function ProfileScreen() {
         {/* ─── Network error nudge ─── */}
         {showNetworkError && (
           <Pressable
-            onPress={retryProfileLoad}
+            onPress={refreshProfile}
             style={[s.card, s.nudge, { backgroundColor: cardBg }]}>
             <View style={{ flex: 1 }}>
               <Text style={[s.nudgeTitle, { color: Colors[colorScheme].text }]}>

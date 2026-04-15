@@ -20,6 +20,7 @@ import {
   readAuthSessionCache,
   writeAuthSessionCache,
 } from '@/lib/auth-session-cache';
+import { clearFeedPrefetch, prefetchFeedForUser } from '@/lib/feed-prefetch';
 
 export type SignInIntent = 'read' | 'checkout';
 
@@ -181,6 +182,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(firebaseUser);
 
       if (firebaseUser) {
+        if (deferInitialProfileBootstrap) {
+          void prefetchFeedForUser(firebaseUser);
+        }
         const cached = readAuthSessionCache();
         if (cached?.uid === firebaseUser.uid) {
           const optimistic = optimisticProfileFromCache(firebaseUser, cached);
@@ -221,22 +225,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
 
         if (deferInitialProfileBootstrap) {
-          const runDeferred = () => {
-            void loadProfileInBackground();
-          };
-
-          if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-            window.requestIdleCallback(() => {
-              globalThis.setTimeout(runDeferred, 0);
-            });
-          } else {
-            globalThis.setTimeout(runDeferred, 1200);
-          }
+          identifyUser(firebaseUser.uid, {
+            email: firebaseUser.email,
+            name: firebaseUser.displayName,
+            onboarded: cached?.onboarded || false,
+          });
           return;
         }
 
         await loadProfileInBackground();
       } else {
+        clearFeedPrefetch();
         clearAuthSessionCache();
         setProfile(null);
         setProfileResolved(true);
@@ -326,6 +325,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       trackSignOut();
       resetUser();
+      if (user?.uid) {
+        clearFeedPrefetch(user.uid);
+      }
       clearAuthSessionCache();
       await clearServerSession();
       await firebaseSignOut(auth);

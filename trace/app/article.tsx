@@ -11,6 +11,7 @@ import {
   Platform,
   Share,
   InteractionManager,
+  ActivityIndicator,
 } from 'react-native';
 import ViewShot from 'react-native-view-shot';
 import RNShare from 'react-native-share';
@@ -52,6 +53,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { isBookmarked as checkBookmarked, toggleBookmark, addSnippet } from '@/lib/bookmarks';
 import { getCurrentArticle, getNextArticle, navigateToNext, getArticleList, getCurrentIndex } from '@/lib/article-store';
+import { isFreePreview } from '@/lib/topic-store';
 import { logReadingEvent } from '@/lib/reading-analytics';
 import { updateStreak } from '@/lib/streaks';
 import { getArticleImage } from '@/lib/fallback-images';
@@ -181,15 +183,17 @@ export default function ArticleScreen() {
     if (!item) return;
     const handle = InteractionManager.runAfterInteractions(() => {
       checkBookmarked(item.id).then(setBookmarked);
-      logReadingEvent({
-        eventType: 'summary_open',
-        itemId: item.id,
-        title: item.title,
-        url: item.url,
-        itemType: item.type || item.source,
-        feedCategory: item.metadata?.feed_category || item.feed_type,
-      });
-      updateStreak();
+      void (async () => {
+        await logReadingEvent({
+          eventType: 'summary_open',
+          itemId: item.id,
+          title: item.title,
+          url: item.url,
+          itemType: item.type || item.source,
+          feedCategory: item.metadata?.feed_category || item.feed_type,
+        });
+        await updateStreak();
+      })();
     });
     return () => handle.cancel();
   }, [item, router]);
@@ -290,7 +294,7 @@ export default function ArticleScreen() {
   const subtitle = item.summary?.short_article?.subtitle;
   const keyTakeaways = item.summary?.short_article?.key_takeaways;
   const whyItMatters = item.summary?.short_article?.why_it_matters;
-  const hasAccess = isProUser || item.feed_type === 'trending';
+  const hasAccess = isProUser || isFreePreview();
 
   const imageUrl = getArticleImage(item.thumbnail ?? null, item.title);
   const sourceName = item.source_name || item.source || '';
@@ -299,14 +303,29 @@ export default function ArticleScreen() {
   const avatarBg = hashColor(sourceName);
   const isDark = colorScheme === 'dark';
 
-  const bodyLines: string[] = [];
+  // Split body into slide blocks (separated by double newlines), then lines within each block
+  const bodyBlocks: string[][] = [];
   for (const block of body.split(/\n\n+/)) {
-    const lines = block.split(/\n/);
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed) bodyLines.push(trimmed);
-    }
+    const lines = block.split(/\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.length > 0) bodyBlocks.push(lines);
   }
+
+  // For daily briefs (from slides), group consecutive blocks into stories.
+  // A new story starts when a block's first line is entirely bold (**...**).
+  const storyGroups: string[][][] = [];
+  let currentGroup: string[][] = [];
+  for (const block of bodyBlocks) {
+    const firstLine = block[0] || '';
+    const isBoldTitle = /^\*\*[^*]+\*\*$/.test(firstLine.trim());
+    if (isBoldTitle && currentGroup.length > 0) {
+      storyGroups.push(currentGroup);
+      currentGroup = [];
+    }
+    currentGroup.push(block);
+  }
+  if (currentGroup.length > 0) storyGroups.push(currentGroup);
+
+  const bodyLines = bodyBlocks.flat();
 
   const textColor = Colors[colorScheme].text;
   const mutedColor = Colors[colorScheme].muted;
@@ -319,7 +338,10 @@ export default function ArticleScreen() {
     }
     if (line.startsWith('## ')) {
       return (
-        <RichText key={index} style={[nStyles.bodyH2, { color: textColor }]}>{line.replace(/^##\s*/, '')}</RichText>
+        <View key={index}>
+          {index > 0 && <View style={[nStyles.storyDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#e8e8e8' }]} />}
+          <RichText style={[nStyles.bodyH2, { color: textColor }]}>{line.replace(/^##\s*/, '')}</RichText>
+        </View>
       );
     }
     if (line.startsWith('- ') || line.startsWith('* ')) {
@@ -417,7 +439,14 @@ export default function ArticleScreen() {
                 </View>
               )}
 
-              {bodyLines.map((line, i) => renderLine(line, i))}
+              {storyGroups.map((group, groupIdx) => (
+                <View key={`story-${groupIdx}`}>
+                  {groupIdx > 0 && (
+                    <View style={[nStyles.storyDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#e8e8e8' }]} />
+                  )}
+                  {group.flat().map((line, lineIdx) => renderLine(line, groupIdx * 1000 + lineIdx))}
+                </View>
+              ))}
 
               {whyItMatters && (
                 <View style={[nStyles.whyCard, { backgroundColor: isDark ? '#1a1a1a' : '#f9fafb' }]}>
@@ -476,8 +505,7 @@ export default function ArticleScreen() {
                     Every article, distilled to what matters most — so you learn more, faster.
                   </Text>
                   <Pressable style={nStyles.paywallBtn} onPress={() => presentPaywall()}>
-                    <Crown size={16} color="#fff" strokeWidth={2} />
-                    <Text style={nStyles.paywallBtnText}>Unlock full access</Text>
+                    <Text style={nStyles.paywallBtnText}>Start 3-day free trial</Text>
                   </Pressable>
                   <Pressable style={nStyles.readOriginalLink} onPress={handleReadOriginal}>
                     <ExternalLink size={14} color={Colors[colorScheme].muted} strokeWidth={1.5} />
@@ -707,6 +735,7 @@ const nStyles = StyleSheet.create({
   },
 
   body: { gap: 14, marginBottom: 24 },
+  storyDivider: { height: 1, marginVertical: 20 },
   bodyH2: { fontSize: 19, fontFamily: FontFamilySerif.semiBold, lineHeight: 25, marginTop: 8 },
   bodyH3: { fontSize: 15, fontFamily: FontFamilySerif.semiBold, lineHeight: 20, marginTop: 4 },
   bodyText: { fontSize: 15, fontFamily: FontFamily.regular, lineHeight: 24 },
@@ -814,9 +843,9 @@ const nStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#111',
     paddingHorizontal: 28,
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 999,
     marginTop: 6,
     width: '100%',

@@ -45,13 +45,13 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/compare" className="text-sm text-secondary hover:text-foreground transition-colors">
-                  Compare
+                <Link href="/daily" className="text-sm text-secondary hover:text-foreground transition-colors">
+                  Daily Archive
                 </Link>
               </li>
               <li>
-                <Link href="/feed" className="text-sm text-secondary hover:text-foreground transition-colors">
-                  Your Feed
+                <Link href="/compare" className="text-sm text-secondary hover:text-foreground transition-colors">
+                  Compare
                 </Link>
               </li>
             </ul>
@@ -125,7 +125,7 @@ export default function Footer() {
               </li>
               <li>
                 <a
-                  href="mailto:yourtrace.online@gmail.com"
+                  href="mailto:tomartarun2001@gmail.com"
                   className="text-sm text-secondary hover:text-foreground transition-colors"
                 >
                   Email

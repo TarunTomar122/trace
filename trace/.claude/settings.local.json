@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx expo:*)",
+      "Bash(xcode-select:*)",
+      "Bash(xcrun simctl:*)",
+      "Bash(open:*)",
+      "Bash(rm:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(sudo launchctl:*)",
+      "Bash(killall:*)",
+      "Bash(kill 76198:*)",
+      "Bash(adb devices:*)",
+      "Bash($ANDROID_HOME/emulator/emulator -list-avds)",
+      "Read(//Users/ttomar/Library/Android/sdk/emulator/**)",
+      "Bash(~/Library/Android/sdk/emulator/emulator -list-avds)",
+      "Bash(pkill:*)",
+      "Bash(emulator -list-avds)",
+      "Bash(~/Library/Android/sdk/emulator/emulator -avd Pixel_9)",
+      "Bash(cd /Users/ttomar/Documents/personal/claudia && python3 /tmp/check-feed.py)",
+      "Bash(cd /Users/ttomar/Documents/personal/claudia && python3 /tmp/check-feed.py 2>&1)",
+      "mcp__figma__get_design_context",
+      "Bash(ls -la /Users/ttomar/Documents/personal/claudia/trace/app/\\\\\\(auth\\\\\\)/)",
+      "Bash(npm uninstall:*)",
+      "Bash(xargs ls:*)",
+      "Bash(ls:*)",
+      "Bash(xargs basename:*)",
+      "Bash(./android/gradlew -p android app:assembleDebug -x lint -x test --configure-on-demand --build-cache)",
+      "Bash(adb:*)",
+      "Bash(./android/gradlew -p android app:assembleRelease -x lint -x test --configure-on-demand --build-cache)",
+      "Bash(sips:*)",
+      "Bash(xcrun:*)",
+      "Bash(sw_vers)",
+      "Bash(find /Users/ttomar/Documents/personal/claudia/trace/node_modules/@expo/ -name AppDelegate*)",
+      "Bash(find /Users/ttomar/Documents/personal/claudia/trace/node_modules/ -path */template/ios/*AppDelegate*)",
+      "Bash(git:*)",
+      "Bash(eas build:*)"
+    ]
+  }
+}

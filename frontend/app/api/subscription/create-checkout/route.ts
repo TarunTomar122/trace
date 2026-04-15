@@ -162,6 +162,10 @@ export async function POST(request: NextRequest) {
         ],
         ...(offer.isIndiaOffer && {
           allowed_payment_method_types: ['upi_collect', 'credit', 'debit'],
+          billing_currency: 'INR',
+          billing_address: {
+            country: 'IN',
+          },
         }),
         feature_flags: {
           allow_discount_code: offer.isIndiaOffer,

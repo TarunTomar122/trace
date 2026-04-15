@@ -333,7 +333,6 @@ function slimTrendingTopic(topic: TrendingTopic): TrendingTopic {
     article_count: topic.article_count,
     source_count: topic.source_count,
     first_seen_at: topic.first_seen_at,
-    timeline: sanitizeTopicTimeline(topic.timeline),
     articles: topic.articles?.slice(0, 1).map(slimFeedItem),
   };
 }

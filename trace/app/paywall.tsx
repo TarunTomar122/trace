@@ -21,25 +21,25 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { useToast } from '@/contexts/ToastContext';
 
-const TRIAL_DAYS = 4;
+const TRIAL_DAYS = 3;
 const REMINDER_DAY = 3;
 
 const FREE_FEATURES = [
-  'See trending topics and story overviews',
-  'Preview a small part of your For You feed',
-  'Try the app before deciding if it fits your routine',
+  'Big stories across AI, tech, and world news',
+  'Duplicate coverage grouped into one clear storyline',
+  'Short summaries so you know what matters fast',
 ];
 
 const PRO_FEATURES = [
-  'Unlock your full For You feed instead of just 2 picks',
-  'Read full Deep Dives with chapters, TL;DRs, and sources',
-  'Save articles and snippets to build your own library',
+  'Your full personalized pulse, updated daily',
+  'Key takeaways and context without the tab-hopping',
+  'Signal over noise in one calm feed',
 ];
 
 const BENEFITS = [
-  'Read the full feed Trace made for you, not just the preview.',
-  'Turn long sources into short chapters you can actually finish.',
-  'Save the best ideas so you can come back to them later.',
+  'Full summaries and context',
+  'Live updates as stories change',
+  'A feed built around your interests',
 ];
 
 type PlanId = 'weekly' | 'monthly' | 'yearly';
@@ -47,7 +47,7 @@ type PlanId = 'weekly' | 'monthly' | 'yearly';
 const PLAN_CONFIG: Record<PlanId, { label: string; badge?: string }> = {
   weekly: { label: 'Weekly' },
   monthly: { label: 'Monthly' },
-  yearly: { label: 'Yearly', badge: 'Save 50%' },
+  yearly: { label: 'Yearly', badge: 'Save 20%' },
 };
 
 const PLAN_ORDER: PlanId[] = ['yearly', 'monthly', 'weekly'];
@@ -180,12 +180,12 @@ function StepPrimer({
           {"You're in!"}
         </ThemedText>
         <ThemedText style={[styles.heroSub, { color: Colors[colorScheme].muted }]}>
-          Your setup is done. Right now you can preview Trace, or unlock the full version and actually use it the way it was meant to work.
+          Your setup is done. Unlock full Trace to get your complete daily pulse in one place.
         </ThemedText>
       </View>
 
       <ThemedText style={[primerStyles.sectionLabel, { color: Colors[colorScheme].muted }]}>
-        INCLUDED FREE
+        WHAT TRACE DOES
       </ThemedText>
       <View style={styles.benefitsList}>
         {FREE_FEATURES.map((f, i) => (
@@ -201,7 +201,7 @@ function StepPrimer({
       </View>
 
       <ThemedText style={[primerStyles.sectionLabel, { color: '#F59E0B', marginTop: 20 }]}>
-        WITH PRO (FREE FOR {TRIAL_DAYS} DAYS)
+        FULL ACCESS (TRY FOR {TRIAL_DAYS} DAYS)
       </ThemedText>
       <View style={styles.benefitsList}>
         {PRO_FEATURES.map((f, i) => (
@@ -218,13 +218,13 @@ function StepPrimer({
 
       <Pressable onPress={onNext} style={[styles.ctaButton, { marginTop: 28 }]}>
         <Gift size={18} color="#fff" strokeWidth={2} />
-        <Text style={styles.ctaText}>Try the full app free for {TRIAL_DAYS} days</Text>
+        <Text style={styles.ctaText}>Try the full app for {TRIAL_DAYS} days</Text>
         <ArrowRight size={18} color="#fff" strokeWidth={2.5} />
       </Pressable>
 
       <Pressable onPress={onClose} style={styles.skipButton}>
         <ThemedText style={[styles.skipText, { color: Colors[colorScheme].muted }]}>
-          Continue with free version
+          Not now
         </ThemedText>
       </Pressable>
     </ScrollView>
@@ -267,8 +267,8 @@ function StepReminder({
         <TimelineItem
           icon={<Gift size={18} color="#F59E0B" strokeWidth={2} />}
           label="Today"
-          title="Unlock the real experience"
-          desc="Read your full For You feed, open full Deep Dives, and save articles and snippets as you go."
+          title="Unlock full Trace"
+          desc="Get the full daily pulse across AI, tech, and global stories, already grouped and summarized."
           colorScheme={colorScheme}
         />
         <TimelineItem
@@ -281,7 +281,7 @@ function StepReminder({
         <TimelineItem
           icon={<Calendar size={18} color="#F59E0B" strokeWidth={2} />}
           label={`Day ${TRIAL_DAYS + 1}`}
-          title="Keep it only if you want"
+          title="Keep it only if it helps"
           desc="If Trace becomes part of your daily routine, keep it. If not, cancel in Settings in a couple taps."
           isLast
           colorScheme={colorScheme}
@@ -295,7 +295,7 @@ function StepReminder({
 
       <Pressable onPress={onClose} style={styles.skipButton}>
         <ThemedText style={[styles.skipText, { color: Colors[colorScheme].muted }]}>
-          Continue with free version
+          Not now
         </ThemedText>
       </Pressable>
     </ScrollView>
@@ -339,12 +339,10 @@ function StepPaywall({
       <View style={styles.hero}>
         <AppLogo style={styles.heroLogo} />
         <ThemedText style={styles.heroTitle}>
-          {fromOnboarding ? 'Unlock your full\nTrace feed.' : 'Unlock your full\nTrace feed.'}
+          Read the full story.
         </ThemedText>
         <ThemedText style={[styles.heroSub, { color: Colors[colorScheme].muted }]}>
-          {fromOnboarding
-            ? `You already set up your role, interests, and goals. Now unlock the full reading and learning experience with ${TRIAL_DAYS} free days.`
-            : `Get full For You, full Deep Dives, and saved articles in one place.`}
+          Trace groups coverage from 100+ sources so you can actually understand what happened.
         </ThemedText>
       </View>
 
@@ -375,19 +373,13 @@ function StepPaywall({
                 style={[
                   styles.planCard,
                   {
-                    backgroundColor: isDark ? '#151515' : '#fff',
-                    borderColor: isSelected ? '#F59E0B' : Colors[colorScheme].border,
-                    borderWidth: isSelected ? 2 : 1,
+                    backgroundColor: isSelected
+                      ? (isDark ? '#1a1608' : '#FFF7ED')
+                      : (isDark ? '#1a1a1a' : '#f5f5f5'),
+                    borderColor: isSelected ? '#F59E0B' : (isDark ? '#1a1a1a' : '#f5f5f5'),
                   },
                 ]}>
                 <View style={styles.planLeft}>
-                  <View
-                    style={[
-                      styles.radio,
-                      { borderColor: isSelected ? '#F59E0B' : Colors[colorScheme].border },
-                    ]}>
-                    {isSelected && <View style={styles.radioInner} />}
-                  </View>
                   <View>
                     <View style={styles.planLabelRow}>
                       <ThemedText style={styles.planLabel}>{config.label}</ThemedText>
@@ -434,8 +426,8 @@ function StepPaywall({
               {!isBillingReady
                 ? 'Preparing billing...'
                 : fromOnboarding
-                  ? 'Start my free trial'
-                  : 'Start free trial'}
+                  ? `Start my ${TRIAL_DAYS}-day trial`
+                  : `Start ${TRIAL_DAYS}-day trial`}
             </Text>
           </>
         )}
@@ -676,6 +668,7 @@ const styles = StyleSheet.create({
   benefitsList: {
     gap: 16,
     marginBottom: 32,
+    paddingHorizontal: 32,
   },
   benefitRow: {
     flexDirection: 'row',
@@ -704,28 +697,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    paddingHorizontal: 18,
+    paddingVertical: 15,
   },
   planLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  radio: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#F59E0B',
+    gap: 14,
   },
   planLabelRow: {
     flexDirection: 'row',
@@ -775,7 +755,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#111',
     paddingVertical: 16,
     borderRadius: 999,
     marginBottom: 12,

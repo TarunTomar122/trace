@@ -61,6 +61,7 @@ function ForceUpdateGate({ children }: { children: ReactNode }) {
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
 
   useEffect(() => {
+    if (Platform.OS === 'ios') return;
     const appVersion = Application.nativeApplicationVersion || '1.0.0';
     getAppVersionConfig().then((config) => {
       if (!config) return;
@@ -121,98 +122,45 @@ function checkVersion(current: string, target: string): boolean {
 }
 
 function AuthGate({ children }: { children: ReactNode }) {
-  const {
-    user,
-    profile,
-    bootUid,
-    bootProfile,
-    loading,
-    profileResolved,
-    profileLoadError,
-    profileServerVerified,
-    retryProfileLoad,
-    signOut,
-  } = useAuth();
+  const { user, profile, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const colorScheme = useColorScheme();
 
   const [appReady, setAppReady] = useState(false);
-  const [recoveringProfile, setRecoveringProfile] = useState(false);
-  const needsProfileRecovery = !!user && profileResolved && !profileServerVerified;
 
   useEffect(() => {
-    const effectiveUid = user?.uid || bootUid;
-    const effectiveProfile = user ? profile : (profile || bootProfile);
-
     if (loading) return;
-    if (user && !profileResolved) return;
-    if (needsProfileRecovery) {
-      setAppReady(true);
-      return;
-    }
-    // Don't block on RevenueCat - let feed load while RC initializes in background
 
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboarding = segments[0] === 'onboarding';
     const inEarlyAdopter = segments[0] === 'early-adopter';
 
-    if (!effectiveUid) {
-      if (!inAuthGroup) {
-        router.replace('/(auth)/welcome');
-      } else {
-        setAppReady(true);
-      }
+    if (!user) {
+      // Not signed in → welcome
+      if (!inAuthGroup) router.replace('/(auth)/welcome');
+      else setAppReady(true);
       return;
     }
 
-    if (effectiveProfile?.onboarded === false) {
-      // If already on early-adopter or onboarding, let those screens handle navigation
-      if (inEarlyAdopter || inOnboarding) {
-        setAppReady(true);
-        return;
-      }
-
-      // Profile is null means it failed to load (network error / cache miss).
-      // Don't route anywhere — keep the splash up. The AuthContext retry will
-      // re-resolve profileResolved and re-trigger this effect once it succeeds.
-      if (!effectiveProfile) return;
-
-      // Only route once the early-adopter state is explicit. Missing/stale values
-      // should keep the splash up until the real profile resolves.
-      if (effectiveProfile.isEarlyAdopter === false) {
-        router.replace('/early-adopter');
-        return;
-      }
-
-      if (effectiveProfile.isEarlyAdopter !== true) {
-        return;
-      }
-
-      // Already claimed early adopter, go to onboarding
-      router.replace('/onboarding');
+    if (!profile || profile.onboarded !== true) {
+      // Signed in but not onboarded → onboarding
+      if (!inOnboarding) router.replace('/onboarding');
+      else setAppReady(true);
       return;
     }
 
-    if (!effectiveProfile) {
-      return;
-    }
-
-    // User is onboarded - redirect away from auth/onboarding screens.
-    // Keep early-adopter accessible so eligible users can still claim the launch offer.
-    if (inAuthGroup || inOnboarding) {
+    // Signed in + onboarded → main app
+    if (inAuthGroup || inOnboarding || inEarlyAdopter) {
       router.replace('/(tabs)');
       return;
     }
 
-    // On a valid screen; release the splash.
     setAppReady(true);
-  }, [loading, user, profile, bootUid, bootProfile, profileResolved, needsProfileRecovery, segments, router]);
+  }, [loading, user, profile, segments, router]);
 
   const [lottieFinished, setLottieFinished] = useState(false);
   const splashVisible = !appReady || !lottieFinished;
 
-  // Hide native splash as soon as our Lottie overlay is mounted
   useEffect(() => {
     SplashScreen.hideAsync();
   }, []);
@@ -221,60 +169,9 @@ function AuthGate({ children }: { children: ReactNode }) {
     setLottieFinished(true);
   }, []);
 
-  const handleRetryProfile = useCallback(async () => {
-    setRecoveringProfile(true);
-    try {
-      await retryProfileLoad();
-    } finally {
-      setRecoveringProfile(false);
-    }
-  }, [retryProfileLoad]);
-
   return (
     <>
-      {needsProfileRecovery ? (
-        <View
-          style={[
-            styles.splashContainer,
-            { backgroundColor: Colors[colorScheme].background, paddingHorizontal: 28 },
-          ]}
-        >
-          <Text style={[styles.updateTitle, { color: Colors[colorScheme].foreground, textAlign: 'center' }]}>
-            Account Needs Sync
-          </Text>
-          <Text style={[styles.updateBody, { color: Colors[colorScheme].muted }]}>
-            We found local account data, but could not verify your onboarding state with the server yet.
-            Please retry once you have a stable connection.
-          </Text>
-          <Pressable
-            style={[
-              styles.updateButton,
-              { backgroundColor: Colors[colorScheme].foreground, opacity: recoveringProfile ? 0.7 : 1 },
-            ]}
-            disabled={recoveringProfile}
-            onPress={() => void handleRetryProfile()}
-          >
-            <Text style={[styles.updateButtonText, { color: Colors[colorScheme].background }]}>
-              {recoveringProfile ? 'Retrying...' : 'Retry Sync'}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={{ marginTop: 16, paddingVertical: 12, paddingHorizontal: 24 }}
-            onPress={() => void signOut()}
-          >
-            <Text style={[styles.updateButtonText, { color: Colors[colorScheme].muted }]}>
-              Sign Out
-            </Text>
-          </Pressable>
-          {profileLoadError ? (
-            <Text style={[styles.updateBody, { color: Colors[colorScheme].muted, marginTop: 8, marginBottom: 0 }]}>
-              The last profile fetch failed. If this keeps happening, try switching networks.
-            </Text>
-          ) : null}
-        </View>
-      ) : (
-        children
-      )}
+      {children}
       {splashVisible && (
         <View
           style={[
@@ -346,6 +243,7 @@ function RootLayoutNav() {
         <Stack.Screen name="article" options={{ presentation: 'card', animation: 'default' }} />
         <Stack.Screen name="topic" options={{ presentation: 'card', animation: 'default' }} />
         <Stack.Screen name="paywall" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="contact" options={{ presentation: 'card', animation: 'default' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />

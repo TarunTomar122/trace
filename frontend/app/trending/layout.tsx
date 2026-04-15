@@ -18,11 +18,13 @@ export const metadata: Metadata = {
     type: 'website',
     url: 'https://www.yourtrace.online/trending',
     siteName: 'Trace',
+    images: [{ url: 'https://www.yourtrace.online/opengraph-image', width: 1200, height: 630, alt: 'Trace — Trending Topics' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Trending Topics And Story Overviews | Trace',
     description: 'Grouped topics, story overviews, and timelines from across the web.',
+    images: ['https://www.yourtrace.online/twitter-image'],
   },
   alternates: {
     canonical: 'https://www.yourtrace.online/trending',

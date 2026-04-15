@@ -273,16 +273,14 @@ export default function OnboardingScreen() {
       });
 
       await writeCachedProfileInterests(user.uid, selectedInterests);
-      let verifiedProfile = null as Awaited<ReturnType<typeof refreshProfile>> | null;
+      let confirmed: Awaited<ReturnType<typeof refreshProfile>> = null;
       for (let attempt = 0; attempt < 3; attempt++) {
-        verifiedProfile = await refreshProfile();
-        if (verifiedProfile.serverVerified && verifiedProfile.profile?.onboarded) {
-          break;
-        }
+        confirmed = await refreshProfile();
+        if (confirmed?.onboarded) break;
         await new Promise((resolve) => setTimeout(resolve, 700));
       }
 
-      if (!verifiedProfile?.serverVerified || !verifiedProfile.profile?.onboarded) {
+      if (!confirmed?.onboarded) {
         throw new Error('Onboarding state was not confirmed by the server');
       }
 

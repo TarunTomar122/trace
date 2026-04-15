@@ -1,6 +1,6 @@
 import { Linking, Pressable, ScrollView, StyleSheet, View, Text, Switch, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import {
   ChevronLeft,
   ChevronRight,
@@ -18,6 +18,7 @@ import {
   HelpCircle,
 } from 'lucide-react-native';
 
+import { TRACE_SUPPORT_EMAIL } from '@/constants/contact';
 import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -118,6 +119,12 @@ export default function ProfileScreen() {
     useCallback(() => {
       let active = true;
 
+      void getStreakData().then((nextStreak) => {
+        if (active) {
+          setStreak(nextStreak);
+        }
+      });
+
       if (!user?.uid) {
         setIsAccessResolving(false);
         return () => {
@@ -191,8 +198,8 @@ export default function ProfileScreen() {
     router.replace('/');
   };
 
-  const handleHelpFeedback = () => {
-    Linking.openURL('mailto:yourtrace.online@gmail.com?subject=Trace App Feedback');
+  const handleContactUs = () => {
+    router.push('/contact' as Href);
   };
 
   const handleRateApp = () => {
@@ -292,7 +299,7 @@ export default function ProfileScreen() {
             <View style={styles.stat}>
               <Calendar size={24} color={STAT_ORANGE} />
               <Text style={[styles.statValue, { color: isDark ? '#fff' : '#000000' }]}>{streak?.streakHistory.length ?? 0}</Text>
-              <Text style={[styles.statLabel, { color: isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.65)' }]}>Total Days</Text>
+              <Text style={[styles.statLabel, { color: isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.65)' }]}>Total</Text>
             </View>
           </View>
         </View>
@@ -371,10 +378,10 @@ export default function ProfileScreen() {
         <Text style={[styles.sectionLabel, { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.45)' }]}>Support</Text>
         <MenuRow
           icon={HelpCircle}
-          label="Help & Feedback"
-          subtitle="Get help or share feedback"
+          label="Contact us"
+          subtitle={TRACE_SUPPORT_EMAIL}
           colorScheme={colorScheme}
-          onPress={handleHelpFeedback}
+          onPress={handleContactUs}
         />
         <MenuRow
           icon={Star}
@@ -514,12 +521,14 @@ const styles = StyleSheet.create({
   statValue: {
     fontFamily: FontFamilySerif.bold,
     fontSize: 23,
-    lineHeight: 30,
+    lineHeight: 26,
+    marginTop: -2,
   },
   statLabel: {
     fontFamily: FontFamily.semiBold,
     fontSize: 14,
-    lineHeight: 18,
+    lineHeight: 16,
+    marginTop: -1,
   },
   statDivider: {
     width: 1,
@@ -565,7 +574,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.semiBold,
     fontSize: 13,
     lineHeight: 19,
-    marginBottom: -12,
+    marginBottom: 8,
   },
 
   // Menu row — flat, border-bottom separator only
@@ -573,7 +582,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 12,
+    paddingBottom: 16,
   },
   menuIcon: {
     width: 40,

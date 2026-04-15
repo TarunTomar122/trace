@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
   ArrowLeft, ChevronRight, Share2, ExternalLink, Loader2, Check,
 } from 'lucide-react';
 import Link from 'next/link';
-import Header from '@/components/Header';
+import PublicHeader from '@/components/PublicHeader';
 import { getArticleImage } from '@/lib/fallback-images';
 
 interface TimelineEvent {
@@ -78,8 +78,15 @@ function getTimeAgo(dateStr?: string): string {
   return `${diffDay}d ago`;
 }
 
+function getSafeReturnPath(value: string | null, fallback: string): string {
+  if (!value) return fallback;
+  if (!value.startsWith('/') || value.startsWith('//')) return fallback;
+  return value;
+}
+
 export default function TopicContent({ topic }: { topic: TopicData }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [toast, setToast] = useState<string | null>(null);
   const [showFallback, setShowFallback] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
@@ -87,6 +94,8 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
 
   const imageUrl = getArticleImage(topic.thumbnail, topic.title);
   const fallbackUrl = getArticleImage(null, topic.title);
+  const returnHref = getSafeReturnPath(searchParams.get('from'), '/trending');
+  const backLabel = returnHref.startsWith('/daily/') ? 'Back to daily' : 'Back to trending';
 
   const sortedTimeline = useMemo(() => {
     if (!topic.timeline) return [];
@@ -176,18 +185,18 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Header />
+      <PublicHeader />
       <Toast message={toast || ""} visible={!!toast} />
 
-      <main className="container mx-auto px-4 max-w-3xl pt-4 pb-8">
+      <main className="container mx-auto px-4 max-w-3xl pt-8 pb-8">
         {/* Back + Share */}
         <div className="flex items-center justify-between mb-4">
           <Link
-            href="/feed"
+            href={returnHref}
             className="flex items-center gap-1.5 text-sm text-secondary/50 hover:text-foreground transition-colors"
           >
             <ArrowLeft size={16} />
-            Back to feed
+            {backLabel}
           </Link>
           <button
             onClick={handleShare}
@@ -329,6 +338,20 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
               Try Trace Free
               <ExternalLink size={14} />
             </Link>
+            <div className="mt-5 flex flex-wrap justify-center gap-2 text-sm">
+              <Link href="/daily" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+                Daily archive
+              </Link>
+              <Link href="/research" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+                Research
+              </Link>
+              <Link href="/compare" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+                Compare
+              </Link>
+              <Link href="/tools" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+                Tools
+              </Link>
+            </div>
           </div>
         </div>
       </main>

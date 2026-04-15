@@ -181,6 +181,218 @@ export const comparePages: ComparePage[] = [
       },
     ],
   },
+  {
+    slug: "hacker-news-digest",
+    title: "Hacker News Digest Without The Noise | Trace",
+    description:
+      "Trace surfaces the best Hacker News discussions alongside related coverage so you get the signal without refreshing the front page all day.",
+    heroTitle: "A Hacker News digest that gives you context, not just links",
+    heroDescription:
+      "HN is great for discovery. Trace is better when you want the top threads grouped with the stories they reference — without spending an hour on the front page.",
+    intro:
+      "Hacker News rewards curiosity, but it also rewards constant checking. Trace pulls the highest-signal discussions and groups them with the original coverage so you see the full picture in minutes.",
+    comparisonTitle: "Trace vs browsing Hacker News directly",
+    comparisonRows: [
+      {
+        label: "How you catch up",
+        trace: "Grouped stories with community reactions attached",
+        alternative: "Scroll the front page and click into each thread",
+      },
+      {
+        label: "Time investment",
+        trace: "A few minutes to scan the day",
+        alternative: "Multiple check-ins throughout the day",
+      },
+      {
+        label: "Best for",
+        trace: "Busy people who still want HN signal",
+        alternative: "People who enjoy the browsing ritual",
+      },
+    ],
+    sections: [
+      {
+        title: "What Trace adds to HN",
+        body:
+          "Trace does not replace Hacker News. It layers HN discussions on top of coverage from other sources so you see what people are saying and what actually happened in one view.",
+      },
+      {
+        title: "When HN alone is enough",
+        body:
+          "If you love reading deep comment threads and discovering links organically, HN is still unmatched. Trace is for the days when you just want the digest.",
+      },
+    ],
+    faq: [
+      {
+        question: "Does Trace pull all HN threads?",
+        answer:
+          "No. Trace focuses on high-signal discussions — threads with meaningful debate, not every Show HN or Ask HN post.",
+      },
+      {
+        question: "Can I still click through to HN?",
+        answer:
+          "Yes. Trace links back to the original thread so you can dive into comments when you want to.",
+      },
+    ],
+  },
+  {
+    slug: "techmeme-alternative",
+    title: "Techmeme Alternative With Grouped Context | Trace",
+    description:
+      "Trace is a Techmeme alternative that groups stories with community discussion and product launches instead of just headlines and source links.",
+    heroTitle: "A Techmeme alternative that shows you the conversation, not just the headline",
+    heroDescription:
+      "Techmeme is fast for headlines. Trace adds what people are saying and what shipped alongside the story — so you get context, not just links.",
+    intro:
+      "Techmeme does one thing very well: surface the lead story fast. But if you also want to know what developers think, what products launched, and how the conversation is evolving, you need more than a headline aggregator.",
+    comparisonTitle: "Trace vs Techmeme",
+    comparisonRows: [
+      {
+        label: "Coverage scope",
+        trace: "Stories + community reactions + product launches",
+        alternative: "Headlines and related source links",
+      },
+      {
+        label: "Personalization",
+        trace: "Tailored to your role and interests",
+        alternative: "One feed for everyone",
+      },
+      {
+        label: "Best for",
+        trace: "Professionals who want the full picture",
+        alternative: "People who just need the headline fast",
+      },
+    ],
+    sections: [
+      {
+        title: "What Trace does differently",
+        body:
+          "Trace groups the same story from multiple angles: the original reporting, the Reddit and HN threads reacting to it, and any products or tools that shipped alongside it. You get one topic page instead of ten tabs.",
+      },
+      {
+        title: "What Techmeme still does well",
+        body:
+          "If you want a pure headline river with zero friction, Techmeme is still strong. It has been doing that longer than almost anyone. Trace is for the reader who wants more depth in fewer clicks.",
+      },
+    ],
+    faq: [
+      {
+        question: "Is Trace a news aggregator like Techmeme?",
+        answer:
+          "Trace is closer to a daily briefing tool. It aggregates and groups, but adds AI summaries, community signal, and launch tracking — not just links.",
+      },
+      {
+        question: "Does Trace cover the same stories as Techmeme?",
+        answer:
+          "There is significant overlap on big tech stories. Trace also covers product launches and community discussions that Techmeme does not typically surface.",
+      },
+    ],
+  },
+  {
+    slug: "morning-brew-tech-alternative",
+    title: "Morning Brew For Tech People | Trace",
+    description:
+      "Trace is a tech-focused alternative to Morning Brew — deeper coverage, community signal, and product launches instead of general business headlines.",
+    heroTitle: "A Morning Brew alternative built specifically for people in tech",
+    heroDescription:
+      "Morning Brew is great for general business. Trace is built for the person who cares about AI, developer tools, product launches, and what the tech community is actually debating.",
+    intro:
+      "Morning Brew helped normalize the idea of a daily brief. But if your world is tech — AI, infrastructure, developer tools, startups — you need signal from different sources. Trace is that brief.",
+    comparisonTitle: "Trace vs Morning Brew",
+    comparisonRows: [
+      {
+        label: "Focus area",
+        trace: "Tech, AI, developer tools, startups",
+        alternative: "General business and finance",
+      },
+      {
+        label: "Sources",
+        trace: "50+ tech sources including HN, Reddit, Product Hunt, GitHub",
+        alternative: "Mainstream business publications",
+      },
+      {
+        label: "Best for",
+        trace: "Engineers, PMs, founders, and tech-adjacent roles",
+        alternative: "General business professionals",
+      },
+    ],
+    sections: [
+      {
+        title: "Why tech people need a different brief",
+        body:
+          "In tech, the important story might break on a GitHub repo, a Show HN post, or a Reddit thread before any publication covers it. Trace watches those sources so you do not have to.",
+      },
+      {
+        title: "When Morning Brew is still the right fit",
+        body:
+          "If you need a quick scan of markets, macro, and business headlines, Morning Brew is still solid. Trace is not trying to cover earnings calls or IPO filings.",
+      },
+    ],
+    faq: [
+      {
+        question: "Is Trace an email newsletter?",
+        answer:
+          "Trace has a daily email, but the core product is a web and mobile app with grouped topics, community signal, and product launches — more than a newsletter can carry.",
+      },
+      {
+        question: "Can I use both Trace and Morning Brew?",
+        answer:
+          "Absolutely. Many readers use Morning Brew for business context and Trace for deeper tech signal. They complement each other.",
+      },
+    ],
+  },
+  {
+    slug: "ai-news-aggregator",
+    title: "AI News Aggregator With Real Context | Trace",
+    description:
+      "Trace aggregates AI news from research papers, product launches, and community discussions into grouped daily topics instead of an endless link feed.",
+    heroTitle: "An AI news aggregator that groups the chaos into context",
+    heroDescription:
+      "AI moves fast. Trace groups coverage from research, product, and community sources into one daily view so you can follow the important shifts without drowning.",
+    intro:
+      "The AI space generates more content than any single person can follow. New models, new benchmarks, new tools, new debates — every day. Trace is built to compress that into signal you can actually use.",
+    comparisonTitle: "Trace vs other AI news sources",
+    comparisonRows: [
+      {
+        label: "Coverage model",
+        trace: "Grouped topics across papers, products, threads, and launches",
+        alternative: "Individual articles or feeds",
+      },
+      {
+        label: "Community signal",
+        trace: "HN, Reddit, and X discussions layered into stories",
+        alternative: "Usually absent or separate",
+      },
+      {
+        label: "Best for",
+        trace: "Practitioners who want to stay sharp on AI without doomscrolling",
+        alternative: "Researchers who need exhaustive coverage",
+      },
+    ],
+    sections: [
+      {
+        title: "Why AI needs better aggregation",
+        body:
+          "A single model release might generate a paper, three blog posts, five Reddit threads, a Product Hunt launch, and a Twitter discourse cycle — all in 24 hours. Trace groups all of that into one topic page.",
+      },
+      {
+        title: "What Trace does not cover",
+        body:
+          "Trace is not a research index. If you need arxiv-level exhaustiveness or citation graphs, specialized tools are better. Trace is for the practitioner who wants the shape of the day, not every paper.",
+      },
+    ],
+    faq: [
+      {
+        question: "Does Trace cover AI research papers?",
+        answer:
+          "Trace surfaces research when it becomes part of the broader tech conversation — papers that get discussed on HN, Reddit, or that ship as products. It is not an arxiv mirror.",
+      },
+      {
+        question: "How often is AI content updated?",
+        answer:
+          "Daily. Trace generates a fresh pulse every day with the latest AI stories, discussions, and launches grouped by topic.",
+      },
+    ],
+  },
 ];
 
 export function getComparePage(slug: string): ComparePage | undefined {

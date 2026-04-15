@@ -23,9 +23,12 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft, ChevronRight, Share2, Bookmark } from 'lucide-react-native';
 
+import { Crown, Lock } from 'lucide-react-native';
+
 import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getCurrentTopic } from '@/lib/topic-store';
+import { useRevenueCat } from '@/contexts/RevenueCatContext';
+import { getCurrentTopic, isFreePreview } from '@/lib/topic-store';
 import { setCurrentArticle } from '@/lib/article-store';
 import type { FeedItem, TopicTimelineEvent } from '@/lib/firestore';
 
@@ -114,11 +117,31 @@ function splitSummaryParagraphs(text: string): { first: string; rest: string } {
   };
 }
 
+function deriveTopicSourceLabel(topic: NonNullable<ReturnType<typeof getCurrentTopic>>): string {
+  const unique = new Set<string>();
+  for (const article of topic.articles || []) {
+    const name = String(article?.source_name || article?.source || '').trim();
+    if (name) unique.add(name);
+  }
+  for (const event of topic.timeline || []) {
+    const name = String(event?.source_name || '').trim();
+    if (name) unique.add(name);
+  }
+  const names = Array.from(unique);
+  if (names.length === 0) return 'Multiple sources';
+  if (names.length === 1) return names[0];
+  return `${names[0]} + ${names.length - 1} more`;
+}
+
+const ACCENT = '#F59E0B';
+
 export default function TopicScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const insets = useSafeAreaInsets();
+  const { isProUser, presentPaywall } = useRevenueCat();
   const topic = getCurrentTopic();
+  const hasAccess = isProUser || isFreePreview();
 
   // Scroll-hide header animation
   const lastScrollY = useSharedValue(0);
@@ -208,6 +231,7 @@ export default function TopicScreen() {
   const readingTime = primaryArticle?.summary?.reading_time_minutes;
   const age = formatAge(topic.first_seen_at || topic.last_updated_at);
   const isDark = colorScheme === 'dark';
+  const sourceLabel = (primaryArticle?.source_name || primaryArticle?.source || deriveTopicSourceLabel(topic)).trim();
 
   const [isSharing, setIsSharing] = useState(false);
   const shareViewRef = useRef<View>(null);
@@ -296,104 +320,151 @@ export default function TopicScreen() {
           ) : null}
         </View>
 
-        {/* Summary + meta below image, flush with background */}
-        <View style={styles.summaryBlock}>
-          {splitBody.first ? (
-            <RichText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
-              {splitBody.first}
-            </RichText>
-          ) : null}
-          {splitBody.rest ? (
-            <RichText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
-              {splitBody.rest}
-            </RichText>
-          ) : null}
+        {/* Summary + meta below image — only show for users with access */}
+        {hasAccess && (
+          <View style={styles.summaryBlock}>
+            {splitBody.first ? (
+              <RichText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
+                {splitBody.first}
+              </RichText>
+            ) : null}
+            {splitBody.rest ? (
+              <RichText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
+                {splitBody.rest}
+              </RichText>
+            ) : null}
 
-          {isSingletonTopic && primaryArticle ? (
-            <Text style={[styles.meta, { color: Colors[colorScheme].muted }]}>
-              {primaryArticle.source_name || 'Source'}
-              {readingTime ? ` · ${readingTime} min read` : ''}
-            </Text>
-          ) : (
-            <Text style={[styles.meta, { color: Colors[colorScheme].muted }]}>
-              {topic.source_count ?? 0} SOURCES | {topic.article_count ?? 0} UPDATES
-            </Text>
-          )}
-        </View>
+            {isSingletonTopic && primaryArticle ? (
+              <Text style={[styles.meta, { color: Colors[colorScheme].muted }]}>
+                {sourceLabel}
+                {readingTime ? ` · ${readingTime} min read` : ''}
+              </Text>
+            ) : (
+              <Text style={[styles.meta, { color: Colors[colorScheme].muted }]}>
+                {topic.source_count ?? 0} SOURCES | {topic.article_count ?? 0} UPDATES
+              </Text>
+            )}
+          </View>
+        )}
 
         {/* Overview content */}
-        <View style={styles.tabContent}>
-          {Array.isArray(displayKeyPoints) && displayKeyPoints.length > 0 ? (
-            displayKeyPoints.slice(0, 6).map((point, idx) => (
-              <View
-                key={`kp-${idx}`}
-                style={[
-                  styles.bulletRow,
-                  { borderBottomColor: Colors[colorScheme].border },
-                ]}>
-                <View style={styles.bulletDot} />
-                <RichText style={[styles.bulletText, { color: Colors[colorScheme].text }]}>
-                  {point}
-                </RichText>
-              </View>
-            ))
-          ) : (
-            <Text style={[styles.emptyText, { color: Colors[colorScheme].muted }]}>
-              No overview available yet.
-            </Text>
-          )}
+        {hasAccess ? (
+          <View style={styles.tabContent}>
+            {Array.isArray(displayKeyPoints) && displayKeyPoints.length > 0 ? (
+              displayKeyPoints.slice(0, 6).map((point, idx) => (
+                <View
+                  key={`kp-${idx}`}
+                  style={[
+                    styles.bulletRow,
+                    { borderBottomColor: Colors[colorScheme].border },
+                  ]}>
+                  <View style={styles.bulletDot} />
+                  <RichText style={[styles.bulletText, { color: Colors[colorScheme].text }]}>
+                    {point}
+                  </RichText>
+                </View>
+              ))
+            ) : (
+              <Text style={[styles.emptyText, { color: Colors[colorScheme].muted }]}>
+                No overview available yet.
+              </Text>
+            )}
 
-          {!isSingletonTopic && timeline.length > 0 && (
-            <View style={styles.timelineSection}>
-              <Text style={styles.timelineLabel}>Timeline</Text>
-              {timeline.map((event, idx) => {
-                const hasArticle =
-                  !!event.article_url && articlesByUrl.has(event.article_url) &&
-                  Object.keys(articlesByUrl.get(event.article_url)?.summary ?? {}).length > 0;
-                const sourceName = event.source_name || 'Source';
-                const summaryData = truncateText(event.summary || '', 100);
+            {!isSingletonTopic && timeline.length > 0 && (
+              <View style={styles.timelineSection}>
+                <Text style={styles.timelineLabel}>Timeline</Text>
+                {timeline.map((event, idx) => {
+                  const hasArticle =
+                    !!event.article_url && articlesByUrl.has(event.article_url) &&
+                    Object.keys(articlesByUrl.get(event.article_url)?.summary ?? {}).length > 0;
+                  const sourceName = event.source_name || 'Source';
+                  const summaryData = truncateText(event.summary || '', 100);
 
-                return (
-                  <Pressable
-                    key={event.id || `ev-${idx}`}
-                    onPress={() => handleTimelinePress(event)}
-                    disabled={!hasArticle}
-                    style={styles.timelineRow}>
-                    {/* Yellow left border */}
-                    <View style={styles.timelineAccent} />
+                  return (
+                    <Pressable
+                      key={event.id || `ev-${idx}`}
+                      onPress={() => handleTimelinePress(event)}
+                      disabled={!hasArticle}
+                      style={styles.timelineRow}>
+                      {/* Yellow left border */}
+                      <View style={styles.timelineAccent} />
 
-                    {/* Content */}
-                    <View style={styles.timelineContent}>
-                      <Text style={[styles.timelineSource, { color: Colors[colorScheme].muted }]}>
-                        {sourceName} <Text style={styles.timelineDot}>•</Text> {formatAge(event.timestamp)}
-                      </Text>
-
-                      {/* Title */}
-                      <Text style={[styles.timelineTitle, { color: Colors[colorScheme].text }]} selectable>
-                        {event.title}
-                      </Text>
-
-                      {/* Summary */}
-                      {summaryData.text ? (
-                        <Text style={[styles.timelineSummary, { color: Colors[colorScheme].muted }]} selectable>
-                          {summaryData.text}
-                          {summaryData.truncated && hasArticle && (
-                            <Text style={styles.readMore}>read more...</Text>
-                          )}
+                      {/* Content */}
+                      <View style={styles.timelineContent}>
+                        <Text style={[styles.timelineSource, { color: Colors[colorScheme].muted }]}>
+                          {sourceName} <Text style={styles.timelineDot}>•</Text> {formatAge(event.timestamp)}
                         </Text>
-                      ) : null}
-                    </View>
 
-                    {/* Chevron */}
-                    <View style={styles.timelineChevron}>
-                      <ChevronRight size={16} color={Colors[colorScheme].muted} strokeWidth={2} />
-                    </View>
-                  </Pressable>
-                );
-              })}
+                        {/* Title */}
+                        <Text style={[styles.timelineTitle, { color: Colors[colorScheme].text }]} selectable>
+                          {event.title}
+                        </Text>
+
+                        {/* Summary */}
+                        {summaryData.text ? (
+                          <Text style={[styles.timelineSummary, { color: Colors[colorScheme].muted }]} selectable>
+                            {summaryData.text}
+                            {summaryData.truncated && hasArticle && (
+                              <Text style={styles.readMore}>read more...</Text>
+                            )}
+                          </Text>
+                        ) : null}
+                      </View>
+
+                      {/* Chevron */}
+                      <View style={styles.timelineChevron}>
+                        <ChevronRight size={16} color={Colors[colorScheme].muted} strokeWidth={2} />
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        ) : (
+          <>
+            {/* Show first key point as a teaser */}
+            <View style={styles.tabContent}>
+              {Array.isArray(displayKeyPoints) && displayKeyPoints.length > 0 && (
+                <View style={[styles.bulletRow, { borderBottomWidth: 0 }]}>
+                  <View style={styles.bulletDot} />
+                  <RichText style={[styles.bulletText, { color: Colors[colorScheme].text }]}>
+                    {displayKeyPoints[0]}
+                  </RichText>
+                </View>
+              )}
             </View>
-          )}
-        </View>
+
+            {/* Blurred placeholder lines */}
+            <View style={styles.blurredSection}>
+              <View style={{ opacity: 0.12 }}>
+                <View style={[styles.fakeLine, { width: '100%', backgroundColor: Colors[colorScheme].foreground }]} />
+                <View style={[styles.fakeLine, { width: '90%', backgroundColor: Colors[colorScheme].foreground }]} />
+                <View style={[styles.fakeLine, { width: '75%', backgroundColor: Colors[colorScheme].foreground }]} />
+                <View style={[styles.fakeLine, { width: '85%', backgroundColor: Colors[colorScheme].foreground }]} />
+                <View style={[styles.fakeLine, { width: '60%', backgroundColor: Colors[colorScheme].foreground }]} />
+              </View>
+            </View>
+
+            {/* In-page paywall */}
+            <View style={styles.paywallContainer}>
+              <View style={[styles.paywallCard, { backgroundColor: isDark ? '#1a1a1a' : '#f8f9fa' }]}>
+                <View style={[styles.paywallIcon, { backgroundColor: isDark ? '#2e2216' : '#fffbeb' }]}>
+                  <Lock size={22} color={ACCENT} strokeWidth={2} />
+                </View>
+                <Text style={[styles.paywallTitle, { color: Colors[colorScheme].text }]}>
+                  Unlock the full story
+                </Text>
+                <Text style={[styles.paywallDesc, { color: Colors[colorScheme].muted }]}>
+                  Get key takeaways, multi-source timelines, and daily briefs — all in one place.
+                </Text>
+                <Pressable style={styles.paywallBtn} onPress={() => presentPaywall()}>
+                  <Text style={styles.paywallBtnText}>Start 3-day free trial</Text>
+                </Pressable>
+              </View>
+            </View>
+          </>
+        )}
       </Animated.ScrollView>
 
       {/* Floating header over hero image - animated hide on scroll */}
@@ -699,5 +770,65 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
     letterSpacing: 2,
     textTransform: 'uppercase',
+  },
+
+  // Paywall
+  blurredSection: {
+    paddingHorizontal: 20,
+    marginTop: 4,
+  },
+  fakeLine: {
+    height: 14,
+    borderRadius: 6,
+    marginBottom: 10,
+  },
+  paywallContainer: {
+    marginTop: 8,
+    marginBottom: 32,
+    paddingHorizontal: 20,
+  },
+  paywallCard: {
+    borderRadius: 18,
+    padding: 24,
+    alignItems: 'center',
+    gap: 10,
+  },
+  paywallIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  paywallTitle: {
+    fontSize: 18,
+    fontFamily: FontFamilySerif.bold,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  paywallDesc: {
+    fontSize: 14,
+    fontFamily: FontFamily.regular,
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 280,
+  },
+  paywallBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#111',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 999,
+    marginTop: 6,
+    width: '100%',
+  },
+  paywallBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: FontFamily.semiBold,
   },
 });

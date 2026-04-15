@@ -1,0 +1,62 @@
+{
+  "project_info": {
+    "project_number": "94335303623",
+    "project_id": "anybrew-7c6c1",
+    "storage_bucket": "anybrew-7c6c1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:94335303623:android:116b8fb56067c51035a3e2",
+        "android_client_info": {
+          "package_name": "online.yourtrace.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "94335303623-c5eks7s3etiahbbhaapgl9dtd2be7nki.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "online.yourtrace.app",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "94335303623-kvanju6t6hh7tmdauf7u4gh5jbohjeie.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "online.yourtrace.app",
+            "certificate_hash": "d62423d82955037d1cf56e1224c0ff2ea9257497"
+          }
+        },
+        {
+          "client_id": "94335303623-qun0r1562s64vck72483r9lhed22u5h0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDT8SV008vrAt1NJY4pJDg1_Xc6UUHEf1g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "94335303623-qun0r1562s64vck72483r9lhed22u5h0.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "94335303623-i6nipgeaj97qtqohv5sbgmd3epvvscq7.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.trace.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

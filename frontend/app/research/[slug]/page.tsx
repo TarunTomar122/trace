@@ -168,11 +168,25 @@ export default async function ResearchPostPage({ params }: PageProps) {
                 See grouped topics
               </Link>
               <Link
+                href="/daily"
+                className="rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white"
+              >
+                Browse daily archive
+              </Link>
+              <Link
                 href="/"
                 className="rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white"
               >
                 Start with Trace
               </Link>
+            </div>
+          </section>
+
+          <section className="mt-8">
+            <div className="flex flex-wrap gap-2 text-sm">
+              <Link href="/research" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">More research</Link>
+              <Link href="/compare" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">Compare guides</Link>
+              <Link href="/tools" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">Free tools</Link>
             </div>
           </section>
         </div>

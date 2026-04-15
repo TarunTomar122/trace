@@ -44,6 +44,20 @@ export default function CompareHubPage() {
               These pages are for people comparing Trace with RSS readers, traditional news apps,
               and other ways of keeping up. The idea is simple: less scrolling, more context.
             </p>
+            <div className="mt-6 flex flex-wrap gap-2 text-sm">
+              <Link href="/daily" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+                Daily archive
+              </Link>
+              <Link href="/trending" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+                Trending
+              </Link>
+              <Link href="/research" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+                Research
+              </Link>
+              <Link href="/tools" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+                Tools
+              </Link>
+            </div>
           </div>
         </section>
 

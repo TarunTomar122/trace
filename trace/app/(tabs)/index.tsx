@@ -467,6 +467,11 @@ const ForYouFeedRow = React.memo(function ForYouFeedRow({
   onPress: (item: FeedItem) => void;
   locked?: boolean;
 }) {
+  const sourceCount = item.metadata?.source_count || item.sources?.length || 1;
+  const isCurated = item.metadata?.curated === true || item.feed_type === 'curated';
+  const statusLabel = isCurated
+    ? `Curated${item.metadata?.curated_platform ? ` · ${String(item.metadata.curated_platform).toUpperCase()}` : ''}`
+    : 'New';
   return (
     <Pressable
       onPress={() => onPress(item)}
@@ -476,9 +481,9 @@ const ForYouFeedRow = React.memo(function ForYouFeedRow({
           {item.title}
         </Text>
         <View style={styles.ongoingMeta}>
-          <Text style={styles.ongoingMetaText}>1 Source</Text>
+          <Text style={styles.ongoingMetaText}>{sourceCount} Source{sourceCount === 1 ? '' : 's'}</Text>
           <View style={styles.ongoingMetaDot} />
-          <Text style={styles.ongoingMetaText}>New</Text>
+          <Text style={styles.ongoingMetaText}>{statusLabel}</Text>
         </View>
       </View>
       {locked ? (
@@ -517,7 +522,8 @@ export default function UnifiedFeedScreen() {
   const isOnboarded = profile?.onboarded === true;
   const hasRenderableFeed = !!v3Feed && (
     (v3Feed.trending_topics?.length ?? 0) > 0 ||
-    (v3Feed.for_you?.length ?? 0) > 0
+    (v3Feed.for_you?.length ?? 0) > 0 ||
+    (v3Feed.curated?.length ?? 0) > 0
   );
 
   useEffect(() => {
@@ -785,10 +791,24 @@ export default function UnifiedFeedScreen() {
     return (v3Feed?.trending || []).filter((item) => !coveredIds.has(item.id) && !coveredUrls.has(item.url || ''));
   }, [trendingTopics, v3Feed?.trending]);
 
+  const curatedItems = useMemo(() => v3Feed?.curated || [], [v3Feed?.curated]);
+
+  const supplementalArticles = useMemo(() => {
+    const seen = new Set<string>();
+    const merged: FeedItem[] = [];
+    for (const item of [...curatedItems, ...uncoveredTrendingArticles]) {
+      const key = item.url || item.id;
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      merged.push(item);
+    }
+    return merged;
+  }, [curatedItems, uncoveredTrendingArticles]);
+
   // Build interleaved feed
   const feedSections = useMemo(
-    () => buildInterleavedFeed(trendingTopics, uncoveredTrendingArticles, activeFilter, userInterestIds),
-    [trendingTopics, uncoveredTrendingArticles, activeFilter, userInterestIds]
+    () => buildInterleavedFeed(trendingTopics, supplementalArticles, activeFilter, userInterestIds),
+    [trendingTopics, supplementalArticles, activeFilter, userInterestIds]
   );
 
   // Top 3 stories for carousel (sorted by source_count)

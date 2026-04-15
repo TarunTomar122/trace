@@ -166,3 +166,7 @@ export function trackCheckoutClicked(source: string, props?: Record<string, unkn
     ...props,
   });
 }
+
+export function trackLandingCTAClicked(variant: string, location: string) {
+  posthog.capture("landing_cta_clicked", { variant, location });
+}

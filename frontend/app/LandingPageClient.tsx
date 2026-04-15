@@ -154,6 +154,12 @@ export default function LandingPageClient() {
               Trending
             </Link>
             <Link
+              href="/daily"
+              className="hidden rounded-full px-4 py-2 text-sm font-medium text-secondary transition-colors hover:text-foreground sm:inline-flex"
+            >
+              Daily
+            </Link>
+            <Link
               href="/research"
               className="hidden rounded-full px-4 py-2 text-sm font-medium text-secondary transition-colors hover:text-foreground sm:inline-flex"
             >
@@ -599,13 +605,6 @@ export default function LandingPageClient() {
                 </div>
               </div>
               <NewsletterSignup />
-
-              <div className="mt-10 text-center text-sm text-secondary/50">
-                <p className="mb-2">Featured on:</p>
-                <a href="https://toolfame.com/item/trace" target="_blank" rel="noopener noreferrer">
-                  <img src="https://toolfame.com/badge-light.svg" alt="Featured on toolfame.com" className="h-13 w-auto mx-auto" />
-                </a>
-              </div>
             </div>
           </Reveal>
         </section>
@@ -618,6 +617,10 @@ export default function LandingPageClient() {
               <span className="text-xs font-semibold tracking-[0.16em] text-secondary">TRACE</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-secondary">
+              <Link href="/trending" className="transition-colors hover:text-foreground">Trending</Link>
+              <Link href="/daily" className="transition-colors hover:text-foreground">Daily</Link>
+              <Link href="/research" className="transition-colors hover:text-foreground">Research</Link>
+              <Link href="/compare" className="transition-colors hover:text-foreground">Compare</Link>
               <Link href="/privacy-policy" className="transition-colors hover:text-foreground">Privacy</Link>
               <Link href="/terms" className="transition-colors hover:text-foreground">Terms</Link>
               <Link href="/contact" className="transition-colors hover:text-foreground">Contact</Link>

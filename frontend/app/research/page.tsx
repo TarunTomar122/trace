@@ -43,6 +43,20 @@ export default function ResearchPage() {
               We use research to think through the actual problems Trace is solving: too many sources, too little context,
               AI summaries without grounding, and the messy reality of staying current without drowning in feeds.
             </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm">
+              <Link href="/daily" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+                Daily archive
+              </Link>
+              <Link href="/trending" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+                Trending
+              </Link>
+              <Link href="/compare" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+                Compare
+              </Link>
+              <Link href="/tools" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+                Tools
+              </Link>
+            </div>
           </div>
 
           <div className="rounded-3xl border border-border/20 bg-white dark:bg-gray-950 p-6 md:p-7 shadow-sm mb-8 md:mb-10">

@@ -38,6 +38,35 @@ interface PricingPreview {
   pricingOffer: 'india' | 'default';
 }
 
+const INDIA_PRICING_PREVIEW: PricingPreview = {
+  countryCode: 'IN',
+  countrySource: 'fallback',
+  trialDays: 1,
+  priceDisplay: '₹19/month',
+  pricingOffer: 'india',
+};
+
+const DEFAULT_PRICING_PREVIEW: PricingPreview = {
+  countryCode: null,
+  countrySource: 'fallback',
+  trialDays: 3,
+  priceDisplay: '$4.99/month',
+  pricingOffer: 'default',
+};
+
+function guessClientPricingPreview(): PricingPreview {
+  if (typeof window === 'undefined') return DEFAULT_PRICING_PREVIEW;
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz === 'Asia/Kolkata') return INDIA_PRICING_PREVIEW;
+    const lang = (navigator.language || '').toLowerCase();
+    if (lang === 'en-in' || lang.endsWith('-in')) return INDIA_PRICING_PREVIEW;
+  } catch {
+    // fall through
+  }
+  return DEFAULT_PRICING_PREVIEW;
+}
+
 function toDateOrNull(value: unknown): Date | null {
   if (!value) return null;
   if (value instanceof Date) return value;
@@ -374,9 +403,12 @@ export default function SubscriptionManager() {
 
   const status = subscriptionStatus?.subscriptionStatus || 'none';
   const hasAccess = subscriptionStatus?.hasAccess || false;
-  const trialDays = pricingPreview?.trialDays ?? 3;
-  const priceDisplay = pricingPreview?.priceDisplay ?? '$4.99/month';
-  const planName = pricingPreview?.pricingOffer === 'india' ? 'Trace Pro India' : 'Trace Pro';
+  const fallbackPricing = guessClientPricingPreview();
+  const trialDays = pricingPreview?.trialDays ?? fallbackPricing.trialDays;
+  const priceDisplay = pricingPreview?.priceDisplay ?? fallbackPricing.priceDisplay;
+  const planName = (pricingPreview?.pricingOffer ?? fallbackPricing.pricingOffer) === 'india'
+    ? 'Trace Pro India'
+    : 'Trace Pro';
 
   useEffect(() => {
     if (checkoutIntent && !autoCheckoutStarted.current && !isLoading && status === 'none' && !isCreatingCheckout) {
@@ -458,7 +490,7 @@ export default function SubscriptionManager() {
         </div>
 
         <p className="text-[11px] text-secondary/30">
-          Questions? yourtrace.online@gmail.com
+          Questions? tomartarun2001@gmail.com
         </p>
       </motion.div>
     );
@@ -623,7 +655,7 @@ export default function SubscriptionManager() {
 
       {/* Help Text */}
       <p className="text-xs text-secondary/40 text-center">
-        Questions? yourtrace.online@gmail.com
+        Questions? tomartarun2001@gmail.com
       </p>
     </div>
   );

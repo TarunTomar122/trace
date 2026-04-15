@@ -288,12 +288,27 @@ export default async function TopicPage({
     about: (topic.key_points || []).slice(0, 4),
   };
 
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.yourtrace.online' },
+      { '@type': 'ListItem', position: 2, name: 'Trending', item: 'https://www.yourtrace.online/trending' },
+      { '@type': 'ListItem', position: 3, name: topic.title, item: canonicalUrl },
+    ],
+  };
+
   return (
     <>
       <Script
         id="topic-schema"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(topicSchema) }}
+      />
+      <Script
+        id="topic-breadcrumb"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
       <TopicContent topic={topic} />
     </>

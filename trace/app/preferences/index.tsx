@@ -1,13 +1,14 @@
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import {
   ChevronLeft,
   ChevronDown,
-  ChevronRight,
+  ChevronUp,
   Briefcase,
+  GraduationCap,
   Sparkles,
   Target,
   Check,
@@ -29,7 +30,7 @@ import {
 
 const ACCENT = '#F59E0B';
 
-type SectionKey = 'role' | 'interests' | 'goals';
+type SectionKey = 'role' | 'experience' | 'interests' | 'goals';
 
 function lookupLabel(items: readonly { id: string; label: string }[], id: string): string {
   return items.find((i) => i.id === id)?.label || id.replace(/-/g, ' ');
@@ -72,8 +73,8 @@ function AccordionRow({
           ) : null}
         </View>
         {isOpen
-          ? <ChevronDown size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
-          : <ChevronRight size={18} color={Colors[colorScheme].border} strokeWidth={1.5} />}
+          ? <ChevronUp size={18} color={Colors[colorScheme].muted} strokeWidth={1.5} />
+          : <ChevronDown size={18} color={Colors[colorScheme].border} strokeWidth={1.5} />}
       </Pressable>
 
       {isOpen && (
@@ -98,9 +99,9 @@ export default function PreferencesHub() {
   const [role, setRole] = useState(profile?.role || '');
   const [seniority, setSeniority] = useState(profile?.seniority || '');
   const [savingRole, setSavingRole] = useState(false);
-  const roleHasChanges =
-    role !== (profile?.role || '') || seniority !== (profile?.seniority || '');
-  const roleCanSave = role !== '' && seniority !== '';
+  const roleHasChanges = role !== (profile?.role || '');
+  const seniorityHasChanges = seniority !== (profile?.seniority || '');
+  const roleCanSave = role !== '' || seniority !== '';
 
   // Interests
   const [selectedInterests, setSelectedInterests] = useState<string[]>(
@@ -122,6 +123,10 @@ export default function PreferencesHub() {
     (Array.isArray(profile?.careerGoals) ? [...profile.careerGoals] : []).sort().join(','),
   );
   const goalsHasChanges = [...selectedGoals].sort().join(',') !== originalGoals.current;
+
+  const hasAnyChanges = roleHasChanges || seniorityHasChanges || interestsHasChanges || goalsHasChanges;
+  const isSavingAnything = savingRole || savingInterests || savingGoals;
+  const insets = useSafeAreaInsets();
 
   const toggleSection = (key: SectionKey) =>
     setOpenSection((prev) => (prev === key ? null : key));
@@ -189,10 +194,8 @@ export default function PreferencesHub() {
     }
   };
 
-  const roleValue = [
-    profile?.role ? lookupLabel(ROLES as any, profile.role) : '',
-    profile?.seniority ? lookupLabel(SENIORITY_LEVELS as any, profile.seniority) : '',
-  ].filter(Boolean).join(' · ');
+  const roleValue = profile?.role ? lookupLabel(ROLES as any, profile.role) : '';
+  const seniorityValue = profile?.seniority ? lookupLabel(SENIORITY_LEVELS as any, profile.seniority) : '';
 
   const interestValue = (profile?.interests || [])
     .map((id: string) => lookupLabel(ONBOARDING_INTERESTS as any, id))
@@ -221,18 +224,15 @@ export default function PreferencesHub() {
           Feed preferences
         </ThemedText>
 
-        {/* ── Role & Experience ── */}
+        {/* ── Role ── */}
         <AccordionRow
           icon={Briefcase}
-          label="Role & Experience"
+          label="Role"
           value={roleValue}
           isOpen={openSection === 'role'}
           onToggle={() => toggleSection('role')}
           colorScheme={colorScheme}>
 
-          <ThemedText style={[styles.subLabel, { color: Colors[colorScheme].muted }]}>
-            What do you do?
-          </ThemedText>
           {ROLES.map((r) => {
             const sel = role === r.id;
             return (
@@ -257,10 +257,19 @@ export default function PreferencesHub() {
               </Pressable>
             );
           })}
+        </AccordionRow>
 
-          <ThemedText style={[styles.subLabel, { color: Colors[colorScheme].muted, marginTop: 20 }]}>
-            Experience level
-          </ThemedText>
+        <View style={[styles.divider, { backgroundColor: Colors[colorScheme].border }]} />
+
+        {/* ── Experience Level ── */}
+        <AccordionRow
+          icon={GraduationCap}
+          label="Experience Level"
+          value={seniorityValue}
+          isOpen={openSection === 'experience'}
+          onToggle={() => toggleSection('experience')}
+          colorScheme={colorScheme}>
+
           {SENIORITY_LEVELS.map((s) => {
             const sel = seniority === s.id;
             return (
@@ -285,16 +294,6 @@ export default function PreferencesHub() {
               </Pressable>
             );
           })}
-
-          {roleHasChanges && roleCanSave && (
-            <Pressable
-              onPress={handleSaveRole}
-              disabled={savingRole}
-              style={[styles.saveBtn, { opacity: savingRole ? 0.5 : 1 }]}>
-              {savingRole && <ActivityIndicator size="small" color="#000" style={{ marginRight: 8 }} />}
-              <ThemedText style={styles.saveBtnText}>Save changes</ThemedText>
-            </Pressable>
-          )}
         </AccordionRow>
 
         <View style={[styles.divider, { backgroundColor: Colors[colorScheme].border }]} />
@@ -338,15 +337,6 @@ export default function PreferencesHub() {
             })}
           </View>
 
-          {interestsHasChanges && selectedInterests.length > 0 && (
-            <Pressable
-              onPress={handleSaveInterests}
-              disabled={savingInterests}
-              style={[styles.saveBtn, { opacity: savingInterests ? 0.5 : 1 }]}>
-              {savingInterests && <ActivityIndicator size="small" color="#000" style={{ marginRight: 8 }} />}
-              <ThemedText style={styles.saveBtnText}>Save changes</ThemedText>
-            </Pressable>
-          )}
         </AccordionRow>
 
         <View style={[styles.divider, { backgroundColor: Colors[colorScheme].border }]} />
@@ -391,19 +381,29 @@ export default function PreferencesHub() {
             );
           })}
 
-          {goalsHasChanges && selectedGoals.length > 0 && (
-            <Pressable
-              onPress={handleSaveGoals}
-              disabled={savingGoals}
-              style={[styles.saveBtn, { opacity: savingGoals ? 0.5 : 1 }]}>
-              {savingGoals && <ActivityIndicator size="small" color="#000" style={{ marginRight: 8 }} />}
-              <ThemedText style={styles.saveBtnText}>Save changes</ThemedText>
-            </Pressable>
-          )}
         </AccordionRow>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: hasAnyChanges ? 100 : 40 }} />
       </ScrollView>
+
+      {hasAnyChanges && (
+        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16), backgroundColor: Colors[colorScheme].background }]}>
+          <Pressable
+            onPress={async () => {
+              if ((roleHasChanges || seniorityHasChanges) && roleCanSave) await handleSaveRole();
+              if (interestsHasChanges && selectedInterests.length > 0) await handleSaveInterests();
+              if (goalsHasChanges && selectedGoals.length > 0) await handleSaveGoals();
+            }}
+            disabled={isSavingAnything}
+            style={[styles.fixedSaveBtn, { opacity: isSavingAnything ? 0.6 : 1 }]}>
+            {isSavingAnything ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <ThemedText style={styles.fixedSaveBtnText}>Save</ThemedText>
+            )}
+          </Pressable>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -512,15 +512,29 @@ const styles = StyleSheet.create({
   },
   chipText: { fontSize: 13, fontFamily: FontFamily.semiBold },
 
-  // Inline save button
-  saveBtn: {
-    marginTop: 16,
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: ACCENT,
+  // Fixed bottom save bar
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  fixedSaveBtn: {
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#111',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
   },
-  saveBtnText: { color: '#000', fontSize: 14, fontFamily: FontFamily.bold },
+  fixedSaveBtnText: { color: '#fff', fontSize: 16, fontFamily: FontFamily.bold },
 });

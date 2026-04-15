@@ -10,7 +10,8 @@ import {
   orderBy,
   limit
 } from 'firebase/firestore';
-import { firestore } from './firebase';
+import { firestore, auth } from './firebase';
+import { patchAuthSessionCache } from './auth-session-cache';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -376,6 +377,14 @@ export interface V3UserFeed {
     total_items?: number;
     pipeline?: string;
   };
+  viewer_profile?: {
+    role?: string;
+    interests?: string[];
+    onboarded?: boolean;
+    subscription_status?: string;
+    app_subscription_status?: string;
+    has_access?: boolean;
+  };
 }
 
 export interface UserInteraction {
@@ -595,10 +604,10 @@ export const ROLES = [
 ] as const;
 
 export const SENIORITY_LEVELS = [
-  { id: 'early', label: 'Early Career', subtitle: '0-3 years' },
+  { id: 'early', label: 'Student / Early Career', subtitle: '0-3 years' },
   { id: 'mid', label: 'Mid-Level', subtitle: '3-7 years' },
   { id: 'senior', label: 'Senior', subtitle: '7-12 years' },
-  { id: 'executive', label: 'Executive / Lead', subtitle: '12+ years' },
+  { id: 'executive', label: 'lead', subtitle: '12+ years' },
 ] as const;
 
 export const ONBOARDING_INTERESTS = [
@@ -1199,7 +1208,16 @@ export async function completeOnboarding(
     await initializeUserPatterns(uid, data.interests, data.hobbies || []);
 
     triggerFeedGeneration(uid);
-    
+
+    const u = auth.currentUser;
+    if (u?.uid === uid) {
+      patchAuthSessionCache(uid, u, {
+        onboarded: true,
+        role: data.role || '',
+        interests: data.interests,
+        name: data.name,
+      });
+    }
   } catch (error) {
     console.error('Error completing onboarding:', error);
     throw error;
@@ -1245,6 +1263,29 @@ export async function updateUserProfile(
     
     // Use setDoc with merge to handle cases where doc might not exist
     await setDoc(docRef, cleanData, { merge: true });
+
+    const u = auth.currentUser;
+    if (u?.uid === uid) {
+      const patch: Parameters<typeof patchAuthSessionCache>[2] = {};
+      if (data.onboarded !== undefined) patch.onboarded = data.onboarded;
+      if (data.role !== undefined) patch.role = data.role;
+      if (data.interests !== undefined) {
+        patch.interests = Array.isArray(data.interests) ? data.interests : [];
+      }
+      if (data.name !== undefined) patch.name = data.name;
+      if (data.email !== undefined) patch.email = data.email;
+      if (data.displayName !== undefined) patch.displayName = data.displayName;
+      if (data.photoURL !== undefined) patch.photoURL = data.photoURL;
+      if (data.subscriptionStatus !== undefined) {
+        patch.subscriptionStatus = data.subscriptionStatus;
+      }
+      if (data.appSubscriptionStatus !== undefined) {
+        patch.appSubscriptionStatus = data.appSubscriptionStatus;
+      }
+      if (Object.keys(patch).length > 0) {
+        patchAuthSessionCache(uid, u, patch);
+      }
+    }
   } catch (error) {
     console.error('Error updating user profile:', error);
     throw error;

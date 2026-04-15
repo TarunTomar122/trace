@@ -1,0 +1,64 @@
+"use client";
+
+import Link from 'next/link';
+import { User, ArrowLeft } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface HeaderProps {
+  showBackToFeed?: boolean;
+  backHref?: string;
+  backLabel?: string;
+}
+
+export default function Header({
+  showBackToFeed = false,
+  backHref,
+  backLabel = "Back",
+}: HeaderProps) {
+  const { user } = useAuth();
+
+  return (
+    <header className="bg-background border-b border-border/30">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between h-14">
+          {backHref ? (
+            <Link
+              href={backHref}
+              className="flex items-center gap-2 text-sm text-secondary hover:text-foreground transition-colors"
+            >
+              <ArrowLeft size={16} />
+              <span>{backLabel}</span>
+            </Link>
+          ) : showBackToFeed ? (
+            <Link
+              href="/feed"
+              className="flex items-center gap-2 text-sm text-secondary hover:text-foreground transition-colors"
+            >
+              <ArrowLeft size={16} />
+              <span>Feed</span>
+            </Link>
+          ) : (
+            <Link href="/feed" className="flex items-center gap-2">
+              <img src="/trace.webp" alt="Trace" className="h-6 w-auto" />
+              <span className="text-sm font-semibold tracking-[0.12em] text-foreground">TRACE</span>
+            </Link>
+          )}
+
+          <div className="flex items-center gap-3">
+            {user && (
+              <Link href="/profile" className="p-1">
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-surface-secondary flex items-center justify-center">
+                    <User size={16} className="text-secondary/40" />
+                  </div>
+                )}
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}

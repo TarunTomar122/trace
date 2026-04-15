@@ -2,6 +2,7 @@ import { MetadataRoute } from 'next'
 import { researchPosts } from './research/content'
 import { adminFirestore } from '@/lib/firebase-admin'
 import { comparePages } from './compare/content'
+import { getDailyArchiveEntries } from '@/lib/daily-archive'
 
 const FALLBACK_TOPICS: string[] = []
 
@@ -204,9 +205,10 @@ async function getPublicArticlePages(baseUrl: string): Promise<MetadataRoute.Sit
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.yourtrace.online'
-  const [topics, articlePages] = await Promise.all([
+  const [topics, articlePages, dailyArchiveEntries] = await Promise.all([
     getTopicSlugs(),
     getPublicArticlePages(baseUrl),
+    getDailyArchiveEntries(365),
   ])
   
   // Static pages
@@ -247,6 +249,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly',
       priority: 0.7,
     },
+    {
+      url: `${baseUrl}/daily`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.8,
+    },
   ];
 
   const topicPages: MetadataRoute.Sitemap = topics.map((topic) => ({
@@ -279,6 +287,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.72,
   }));
 
+  const dailyArchivePages: MetadataRoute.Sitemap = dailyArchiveEntries.map((entry) => ({
+    url: `${baseUrl}/daily/${entry.date}`,
+    lastModified: entry.assembledAt ? new Date(entry.assembledAt) : new Date(`${entry.date}T00:00:00Z`),
+    changeFrequency: 'weekly' as const,
+    priority: 0.68,
+  }));
+
   return [
     ...staticPages,
     ...topicPages,
@@ -286,5 +301,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...comparePagesIndex,
     ...compareDetailPages,
     ...articlePages,
+    ...dailyArchivePages,
   ];
 }
