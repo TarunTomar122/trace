@@ -151,6 +151,10 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
 
   useEffect(() => {
     if (!showMobileContent) return;
+    // Only lock scroll on mobile/tablet where the article is a full-screen overlay.
+    // On lg+ desktop the article is an inline page layout that needs normal scrolling.
+    const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+    if (isDesktop) return;
 
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -217,7 +221,6 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
       ...v3Feed,
       pulse: pulseFeed.pulse ?? v3Feed.pulse,
       daily_pulse: pulseFeed.daily_pulse ?? v3Feed.daily_pulse,
-      weekly_pulse: pulseFeed.weekly_pulse ?? v3Feed.weekly_pulse,
       community_pulse: pulseFeed.community_pulse ?? v3Feed.community_pulse,
       build_pulse: pulseFeed.build_pulse ?? v3Feed.build_pulse,
     };
@@ -490,7 +493,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   }, [isSubscribed, currentList.length]);
 
   const pulseStoryList = useMemo((): FeedListItem[] => {
-    const weekly = effectiveFeed?.daily_pulse ?? effectiveFeed?.weekly_pulse;
+    const weekly = effectiveFeed?.daily_pulse;
     if (weekly) {
       const sections: Array<{ key: 'tools' | 'blogs' | 'discussions'; items: FeedItem[] }> = [
         { key: 'tools', items: weekly.tools || [] },
@@ -554,10 +557,10 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
         })),
       data: item,
     }));
-  }, [effectiveFeed?.pulse, (effectiveFeed?.daily_pulse ?? effectiveFeed?.weekly_pulse)]);
+  }, [effectiveFeed?.pulse, (effectiveFeed?.daily_pulse)]);
 
   const pulseSections = useMemo(() => {
-    if ((effectiveFeed?.daily_pulse ?? effectiveFeed?.weekly_pulse)) {
+    if ((effectiveFeed?.daily_pulse)) {
       return [
         { key: 'tools' as const, label: 'Top Tools', items: pulseStoryList.filter(item => item.pulseSection === 'tools') },
         { key: 'blogs' as const, label: 'Top Blogs', items: pulseStoryList.filter(item => item.pulseSection === 'blogs') },
@@ -565,14 +568,14 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
       ].filter(section => section.items.length > 0);
     }
     return [{ key: 'pulse' as const, label: 'Pulse', items: pulseStoryList }];
-  }, [(effectiveFeed?.daily_pulse ?? effectiveFeed?.weekly_pulse), pulseStoryList]);
+  }, [(effectiveFeed?.daily_pulse), pulseStoryList]);
 
   useEffect(() => {
-    if (!(effectiveFeed?.daily_pulse ?? effectiveFeed?.weekly_pulse)) setPulseSectionFilter('all');
-  }, [(effectiveFeed?.daily_pulse ?? effectiveFeed?.weekly_pulse)]);
+    if (!(effectiveFeed?.daily_pulse)) setPulseSectionFilter('all');
+  }, [(effectiveFeed?.daily_pulse)]);
 
   const pulseFilterBuckets = useMemo(() => {
-    if (!(effectiveFeed?.daily_pulse ?? effectiveFeed?.weekly_pulse)) return [];
+    if (!(effectiveFeed?.daily_pulse)) return [];
     const labelByKey: Record<'tools' | 'blogs' | 'discussions', string> = {
       tools: 'Tools',
       blogs: 'Blogs',
@@ -585,7 +588,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
       }
     }
     return out;
-  }, [(effectiveFeed?.daily_pulse ?? effectiveFeed?.weekly_pulse), pulseSections]);
+  }, [(effectiveFeed?.daily_pulse), pulseSections]);
 
   const showPulseSectionFilters = pulseFilterBuckets.length >= 2;
 
@@ -596,9 +599,9 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   }, [pulseFilterBuckets, pulseSectionFilter]);
 
   const pulseVisibleStoryList = useMemo(() => {
-    if (!(effectiveFeed?.daily_pulse ?? effectiveFeed?.weekly_pulse) || pulseSectionFilter === 'all') return pulseStoryList;
+    if (!(effectiveFeed?.daily_pulse) || pulseSectionFilter === 'all') return pulseStoryList;
     return pulseStoryList.filter((item) => item.pulseSection === pulseSectionFilter);
-  }, [(effectiveFeed?.daily_pulse ?? effectiveFeed?.weekly_pulse), pulseSectionFilter, pulseStoryList]);
+  }, [(effectiveFeed?.daily_pulse), pulseSectionFilter, pulseStoryList]);
 
   const filteredList = useMemo(() => {
     if (activeFilter === BRIEFING_PULSE_TAB_KEY) {
@@ -921,8 +924,6 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
           </div>
         )}
 
-        {!isSubscribed && !isLoading && <InlineUnlockBanner storyCount={currentList.length} />}
-
         {isSubscribed && feedView === 'pulse' && (
           isPulseViewLoading ? (
             <div className={`${PULSE_MAIN_SHELL} flex items-center justify-center py-20`}>
@@ -932,7 +933,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
             <div className={PULSE_MAIN_SHELL}>
               <DailyPulseView
                 pulseSections={pulseSections}
-                hasWeeklyPulse={Boolean((effectiveFeed?.daily_pulse ?? effectiveFeed?.weekly_pulse))}
+                hasDailyPulse={Boolean(effectiveFeed?.daily_pulse)}
                 pulseStoryCount={pulseStoryList.length}
               />
             </div>
@@ -971,7 +972,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
           />
         )}
 
-
+        {!isSubscribed && !isLoading && <InlineUnlockBanner storyCount={currentList.length} />}
 
       </div>
     </div>

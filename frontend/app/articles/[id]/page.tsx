@@ -6,13 +6,11 @@ import ArticleContent from './ArticleContent';
 // Pool collection mapping based on article ID prefix
 const POOL_MAP: Record<string, string> = {
   'fy': 'v3_for_you_pool',
-  'dd': 'v3_deep_dive_pool',
   'tr': 'v3_trending_pool',
 };
 
 const FEED_TYPE_MAP: Record<string, string> = {
   'fy': 'for_you',
-  'dd': 'deep_dives',
   'tr': 'trending',
 };
 

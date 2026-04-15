@@ -205,7 +205,7 @@ export interface FeedItem {
   stars?: number | null;
   tags?: string[];
   interest_id?: string;
-  feed_type?: 'for_you' | 'deep_dives' | 'trending';
+  feed_type?: 'for_you' | 'trending';
   published_date?: string;
   published_at?: string;
   fetched_at?: string;
@@ -286,17 +286,6 @@ export interface FeedItem {
   _seen?: boolean;
 }
 
-export interface UserFeed {
-  date: string;
-  items: unknown[];
-  metadata?: {
-    source_counts?: Record<string, number>;
-    freshness_ratio?: number;
-    generated_at?: string;
-    version?: string;
-  };
-}
-
 export interface TopicTimelineEvent {
   id: string;
   timestamp: string;
@@ -330,22 +319,6 @@ export interface WorthReadingSummary {
   paragraphs: string[];
 }
 
-export interface MergedFeedItem {
-  id: string;
-  item_kind: 'topic_now' | 'article_worth_reading';
-  label: 'Now' | 'Worth Reading' | 'Signal' | 'Explainer';
-  interest_id?: string;
-  topic_id?: string;
-  article_id?: string;
-  published_date?: string;
-  last_updated_at?: string;
-  source_count?: number;
-  article_count?: number;
-  display_summary?: string;
-  display_key_points?: string[];
-  worth_reading?: WorthReadingSummary;
-}
-
 export interface V3UserFeed {
   date: string;
   for_you: FeedItem[];
@@ -355,25 +328,15 @@ export interface V3UserFeed {
     blogs: FeedItem[];
     discussions: FeedItem[];
   };
-  /** @deprecated kept for backward compat; prefer daily_pulse */
-  weekly_pulse?: {
-    tools: FeedItem[];
-    blogs: FeedItem[];
-    discussions: FeedItem[];
-  };
-  deep_dives: FeedItem[];
   community_pulse?: FeedItem[];
   build_pulse?: FeedItem[];
   trending: FeedItem[];
   trending_topics?: TrendingTopic[];
-  merged_feed?: MergedFeedItem[];
   assembled_at?: string;
   metadata?: {
     for_you_count?: number;
-    deep_dives_count?: number;
     trending_count?: number;
     trending_topics_count?: number;
-    merged_feed_count?: number;
     total_items?: number;
     pipeline?: string;
   };
@@ -738,343 +701,6 @@ export async function getUserPreferences(uid: string): Promise<UserPreferences |
   }
 }
 
-export async function getLatestUserFeed(uid: string): Promise<UserFeed | null> {
-  try {
-    const feedRef = collection(firestore, COLLECTIONS.userFeeds, uid, 'daily');
-    // Get all docs and sort client-side (avoids needing Firestore index)
-    const snapshot = await getDocs(feedRef);
-    if (snapshot.empty) return null;
-    
-    // Sort by document ID (which is the date string YYYY-MM-DD) descending
-    const sortedDocs = snapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
-    return sortedDocs[0].data() as UserFeed;
-  } catch (error) {
-    console.error('Error getting latest feed:', error);
-    return null;
-  }
-}
-
-function normalizeFeedRole(role?: string | null): string {
-  const normalized = String(role || '').trim().toLowerCase();
-  if (!normalized) return '';
-  if (
-    normalized === 'developer' ||
-    normalized === 'engineer' ||
-    normalized === 'software engineer' ||
-    normalized === 'software developer' ||
-    normalized === 'full stack developer' ||
-    normalized === 'full-stack developer'
-  ) {
-    return 'developer';
-  }
-  if (
-    normalized === 'designer' ||
-    normalized === 'product designer' ||
-    normalized === 'ux designer' ||
-    normalized === 'ui designer'
-  ) {
-    return 'designer';
-  }
-  if (normalized === 'pm' || normalized === 'product manager') {
-    return 'pm';
-  }
-  if (normalized === 'data scientist') {
-    return 'developer';
-  }
-  if (normalized === 'founder' || normalized === 'co-founder' || normalized === 'startup founder') {
-    return 'founder';
-  }
-  // Unknown roles fall back to developer
-  return 'developer';
-}
-
-export async function getV3UserFeed(
-  uid: string,
-  options?: { role?: string | null }
-): Promise<V3UserFeed | null> {
-  try {
-    const normalizedRole = normalizeFeedRole(options?.role);
-    // Fetch user-specific feed (for_you, deep_dives)
-    const feedRef = collection(firestore, 'v3_user_feeds', uid, 'daily');
-    const snapshot = await getDocs(feedRef);
-
-    // Fetch GLOBAL trending feed (shared by all users)
-    const globalFeedRef = collection(firestore, 'v3_user_feeds', '_global', 'daily');
-    const globalSnapshot = await getDocs(globalFeedRef);
-
-    let forYou: FeedItem[] = [];
-    let deepDives: FeedItem[] = [];
-    let trending: FeedItem[] = [];
-    let trendingTopics: TrendingTopic[] = [];
-    let mergedFeed: MergedFeedItem[] = [];
-    let userTrending: FeedItem[] = [];
-    let userTrendingTopics: TrendingTopic[] = [];
-    let roleBasedForYou: FeedItem[] = [];
-    let pulse: FeedItem[] = [];
-    let dailyPulse: V3UserFeed['daily_pulse'];
-    let weeklyPulse: V3UserFeed['weekly_pulse'];
-    let communityPulse: FeedItem[] = [];
-    let buildPulse: FeedItem[] = [];
-    let feedDate = '';
-    let assembledAt: string | undefined;
-    let metadata: V3UserFeed['metadata'];
-
-    // Get the latest available user content per section instead of assuming
-    // today's doc is complete. This avoids empty mornings before new sections
-    // have been generated for the current date.
-    if (!snapshot.empty) {
-      const sortedDocs = snapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
-      const latestData = sortedDocs[0].data();
-      feedDate = latestData.date || sortedDocs[0].id;
-      assembledAt = latestData.assembled_at;
-      metadata = latestData.metadata;
-
-      for (const docSnap of sortedDocs) {
-        const data = docSnap.data();
-        if (forYou.length === 0 && Array.isArray(data.for_you) && data.for_you.length > 0) {
-          forYou = data.for_you;
-        }
-        if (deepDives.length === 0 && Array.isArray(data.deep_dives) && data.deep_dives.length > 0) {
-          deepDives = data.deep_dives;
-        }
-        if (userTrending.length === 0 && Array.isArray(data.trending) && data.trending.length > 0) {
-          userTrending = data.trending;
-        }
-        if (mergedFeed.length === 0 && Array.isArray(data.merged_feed) && data.merged_feed.length > 0) {
-          mergedFeed = data.merged_feed;
-        }
-        if (
-          userTrendingTopics.length === 0 &&
-          Array.isArray(data.trending_topics) &&
-          data.trending_topics.length > 0
-        ) {
-          userTrendingTopics = data.trending_topics;
-        }
-        if (
-          forYou.length > 0 &&
-          deepDives.length > 0 &&
-          mergedFeed.length > 0 &&
-          userTrending.length > 0 &&
-          userTrendingTopics.length > 0
-        ) {
-          break;
-        }
-      }
-    }
-
-    // Get trending from global feed (shared by all users).
-    // Prefer the newest global doc that has trending content.
-    if (!globalSnapshot.empty) {
-      const sortedGlobal = globalSnapshot.docs.sort((a, b) => b.id.localeCompare(a.id));
-      for (const globalDoc of sortedGlobal) {
-        const globalData = globalDoc.data();
-        const candidateTrending = Array.isArray(globalData.trending) ? globalData.trending : [];
-        const candidateTopics = Array.isArray(globalData.trending_topics) ? globalData.trending_topics : [];
-        const roleMap = globalData.for_you_roles && typeof globalData.for_you_roles === 'object'
-          ? globalData.for_you_roles
-          : null;
-        const pulseRoleMap = globalData.pulse_roles && typeof globalData.pulse_roles === 'object'
-          ? globalData.pulse_roles
-          : null;
-        const dailyPulseRoleMap = globalData.daily_pulse_roles && typeof globalData.daily_pulse_roles === 'object'
-          ? globalData.daily_pulse_roles
-          : null;
-        const weeklyPulseRoleMap = globalData.weekly_pulse_roles && typeof globalData.weekly_pulse_roles === 'object'
-          ? globalData.weekly_pulse_roles
-          : null;
-        const communityRoleMap = globalData.community_pulse_roles && typeof globalData.community_pulse_roles === 'object'
-          ? globalData.community_pulse_roles
-          : null;
-        const buildRoleMap = globalData.build_pulse_roles && typeof globalData.build_pulse_roles === 'object'
-          ? globalData.build_pulse_roles
-          : null;
-        const candidateRoleFeed = normalizedRole && roleMap && Array.isArray(roleMap[normalizedRole])
-          ? roleMap[normalizedRole]
-          : [];
-        const candidatePulse = normalizedRole && pulseRoleMap && Array.isArray(pulseRoleMap[normalizedRole])
-          ? pulseRoleMap[normalizedRole]
-          : [];
-        // Prefer daily_pulse_roles; fall back to weekly_pulse_roles for existing data
-        const _dailyBucket = normalizedRole && dailyPulseRoleMap && dailyPulseRoleMap[normalizedRole] && typeof dailyPulseRoleMap[normalizedRole] === 'object'
-          ? dailyPulseRoleMap[normalizedRole]
-          : normalizedRole && weeklyPulseRoleMap && weeklyPulseRoleMap[normalizedRole] && typeof weeklyPulseRoleMap[normalizedRole] === 'object'
-            ? weeklyPulseRoleMap[normalizedRole]
-            : null;
-        const candidateWeeklyPulse = _dailyBucket;
-        const candidateCommunityPulse = normalizedRole && communityRoleMap && Array.isArray(communityRoleMap[normalizedRole])
-          ? communityRoleMap[normalizedRole]
-          : [];
-        const candidateBuildPulse = normalizedRole && buildRoleMap && Array.isArray(buildRoleMap[normalizedRole])
-          ? buildRoleMap[normalizedRole]
-          : [];
-        if (roleBasedForYou.length === 0 && candidateRoleFeed.length > 0) {
-          roleBasedForYou = candidateRoleFeed;
-          if (!feedDate) {
-            feedDate = globalData.date || globalDoc.id;
-          }
-        }
-        if (pulse.length === 0 && candidatePulse.length > 0) {
-          pulse = candidatePulse;
-          if (!feedDate) {
-            feedDate = globalData.date || globalDoc.id;
-          }
-        }
-        if (!dailyPulse && candidateWeeklyPulse) {
-          dailyPulse = {
-            tools: Array.isArray(candidateWeeklyPulse.tools) ? candidateWeeklyPulse.tools : [],
-            blogs: Array.isArray(candidateWeeklyPulse.blogs) ? candidateWeeklyPulse.blogs : [],
-            discussions: Array.isArray(candidateWeeklyPulse.discussions) ? candidateWeeklyPulse.discussions : [],
-          };
-          if (!feedDate) {
-            feedDate = globalData.date || globalDoc.id;
-          }
-        }
-        if (communityPulse.length === 0 && candidateCommunityPulse.length > 0) {
-          communityPulse = candidateCommunityPulse;
-          if (!feedDate) {
-            feedDate = globalData.date || globalDoc.id;
-          }
-        }
-        if (buildPulse.length === 0 && candidateBuildPulse.length > 0) {
-          buildPulse = candidateBuildPulse;
-          if (!feedDate) {
-            feedDate = globalData.date || globalDoc.id;
-          }
-        }
-        // Always grab trending from the newest doc that has it, but don't
-        // break immediately — keep scanning older docs until we also have
-        // pulse so a 6 AM visit (before today's pulse is generated at 9 AM)
-        // still shows yesterday's pulse instead of nothing.
-        if (candidateTrending.length > 0 || candidateTopics.length > 0) {
-          if (trending.length === 0) {
-            trending = candidateTrending;
-            trendingTopics = candidateTopics;
-          }
-          if (dailyPulse) break;
-        }
-      }
-
-      // If all global docs inspected are empty, keep latest as baseline.
-      if (trending.length === 0 && trendingTopics.length === 0) {
-        const latestGlobalData = sortedGlobal[0].data();
-        trending = Array.isArray(latestGlobalData.trending) ? latestGlobalData.trending : [];
-        trendingTopics = Array.isArray(latestGlobalData.trending_topics) ? latestGlobalData.trending_topics : [];
-        const roleMap = latestGlobalData.for_you_roles && typeof latestGlobalData.for_you_roles === 'object'
-          ? latestGlobalData.for_you_roles
-          : null;
-        const pulseRoleMap = latestGlobalData.pulse_roles && typeof latestGlobalData.pulse_roles === 'object'
-          ? latestGlobalData.pulse_roles
-          : null;
-        const dailyPulseRoleMapFallback = latestGlobalData.daily_pulse_roles && typeof latestGlobalData.daily_pulse_roles === 'object'
-          ? latestGlobalData.daily_pulse_roles
-          : null;
-        const weeklyPulseRoleMap = latestGlobalData.weekly_pulse_roles && typeof latestGlobalData.weekly_pulse_roles === 'object'
-          ? latestGlobalData.weekly_pulse_roles
-          : null;
-        const communityRoleMap = latestGlobalData.community_pulse_roles && typeof latestGlobalData.community_pulse_roles === 'object'
-          ? latestGlobalData.community_pulse_roles
-          : null;
-        const buildRoleMap = latestGlobalData.build_pulse_roles && typeof latestGlobalData.build_pulse_roles === 'object'
-          ? latestGlobalData.build_pulse_roles
-          : null;
-        if (roleBasedForYou.length === 0 && normalizedRole && roleMap && Array.isArray(roleMap[normalizedRole])) {
-          roleBasedForYou = roleMap[normalizedRole];
-          if (!feedDate) {
-            feedDate = latestGlobalData.date || sortedGlobal[0].id;
-          }
-        }
-        if (pulse.length === 0 && normalizedRole && pulseRoleMap && Array.isArray(pulseRoleMap[normalizedRole])) {
-          pulse = pulseRoleMap[normalizedRole];
-          if (!feedDate) {
-            feedDate = latestGlobalData.date || sortedGlobal[0].id;
-          }
-        }
-        if (!dailyPulse && normalizedRole) {
-          const _fb = (dailyPulseRoleMapFallback?.[normalizedRole] && typeof dailyPulseRoleMapFallback[normalizedRole] === 'object'
-            ? dailyPulseRoleMapFallback[normalizedRole]
-            : weeklyPulseRoleMap?.[normalizedRole] && typeof weeklyPulseRoleMap[normalizedRole] === 'object'
-              ? weeklyPulseRoleMap[normalizedRole]
-              : null);
-          if (_fb) {
-            dailyPulse = {
-              tools: Array.isArray(_fb.tools) ? _fb.tools : [],
-              blogs: Array.isArray(_fb.blogs) ? _fb.blogs : [],
-              discussions: Array.isArray(_fb.discussions) ? _fb.discussions : [],
-            };
-            if (!feedDate) feedDate = latestGlobalData.date || sortedGlobal[0].id;
-          }
-        }
-        if (communityPulse.length === 0 && normalizedRole && communityRoleMap && Array.isArray(communityRoleMap[normalizedRole])) {
-          communityPulse = communityRoleMap[normalizedRole];
-          if (!feedDate) {
-            feedDate = latestGlobalData.date || sortedGlobal[0].id;
-          }
-        }
-        if (buildPulse.length === 0 && normalizedRole && buildRoleMap && Array.isArray(buildRoleMap[normalizedRole])) {
-          buildPulse = buildRoleMap[normalizedRole];
-          if (!feedDate) {
-            feedDate = latestGlobalData.date || sortedGlobal[0].id;
-          }
-        }
-      }
-    }
-
-    if (roleBasedForYou.length > 0) forYou = roleBasedForYou;
-
-    // Fallback: if global data is missing/lagging, use user doc sections assembled for that date.
-    if (trending.length === 0) trending = userTrending;
-    if (trendingTopics.length === 0) trendingTopics = userTrendingTopics;
-
-    if (forYou.length === 0 && deepDives.length === 0 && mergedFeed.length === 0 && trending.length === 0 && trendingTopics.length === 0) {
-      return null;
-    }
-
-    return {
-      date: feedDate,
-      for_you: forYou as FeedItem[],
-      pulse: pulse as FeedItem[],
-      daily_pulse: dailyPulse,
-      weekly_pulse: weeklyPulse,
-      deep_dives: deepDives as FeedItem[],
-      community_pulse: communityPulse as FeedItem[],
-      build_pulse: buildPulse as FeedItem[],
-      trending: trending as FeedItem[],
-      trending_topics: trendingTopics,
-      merged_feed: mergedFeed as MergedFeedItem[],
-      assembled_at: assembledAt,
-      metadata,
-    };
-  } catch (error) {
-    console.error('Error getting v3 feed:', error);
-    return null;
-  }
-}
-
-export async function getUserFeedDates(uid: string, limitCount = 10): Promise<string[]> {
-  try {
-    const feedRef = collection(firestore, COLLECTIONS.userFeeds, uid, 'daily');
-    // Only fetch the IDs we need, ordered by date desc
-    const q = query(feedRef, orderBy('__name__', 'desc'), limit(limitCount));
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) return [];
-    return snapshot.docs.map(docSnap => docSnap.id);
-  } catch (error) {
-    console.error('Error getting feed dates:', error);
-    return [];
-  }
-}
-
-export async function getUserFeedByDate(uid: string, date: string): Promise<UserFeed | null> {
-  try {
-    const docRef = doc(firestore, COLLECTIONS.userFeeds, uid, 'daily', date);
-    const docSnap = await getDoc(docRef);
-    if (!docSnap.exists()) return null;
-    return docSnap.data() as UserFeed;
-  } catch (error) {
-    console.error('Error getting feed by date:', error);
-    return null;
-  }
-}
 
 // Create initial user profile after sign in
 export async function createUserProfile(

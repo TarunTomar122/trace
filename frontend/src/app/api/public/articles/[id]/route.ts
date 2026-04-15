@@ -7,7 +7,6 @@ export const revalidate = 3600;
 // Pool collection mapping based on article ID prefix
 const POOL_MAP: Record<string, string> = {
   'fy': 'v3_for_you_pool',
-  'dd': 'v3_deep_dive_pool',
   'tr': 'v3_trending_pool',
 };
 
@@ -20,7 +19,6 @@ const SUMMARY_CACHE = 'v3_summary_cache';
  *
  * Article IDs are prefixed with pool type:
  *   - fy_<hash> → For You pool
- *   - dd_<hash> → Deep Dives pool
  *   - tr_<hash> → Trending pool
  */
 export async function GET(
@@ -80,7 +78,6 @@ export async function GET(
     // Determine feed type from prefix
     const feedTypeMap: Record<string, string> = {
       'fy': 'for_you',
-      'dd': 'deep_dives',
       'tr': 'trending',
     };
 

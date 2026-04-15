@@ -540,7 +540,7 @@ export default async function TrendingPage() {
       />
       <PublicHeader />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <TrendingContent items={items} topicCards={topicCards} />
       </main>
       <Footer />

@@ -61,8 +61,6 @@ function extractRoleBuckets(globalData: DocData, normalizedRole: string) {
     ? globalData.pulse_roles : null;
   const dailyPulseRoleMap = globalData.daily_pulse_roles && typeof globalData.daily_pulse_roles === 'object'
     ? globalData.daily_pulse_roles : null;
-  const weeklyPulseRoleMap = globalData.weekly_pulse_roles && typeof globalData.weekly_pulse_roles === 'object'
-    ? globalData.weekly_pulse_roles : null;
   const communityRoleMap = globalData.community_pulse_roles && typeof globalData.community_pulse_roles === 'object'
     ? globalData.community_pulse_roles : null;
   const buildRoleMap = globalData.build_pulse_roles && typeof globalData.build_pulse_roles === 'object'
@@ -75,9 +73,7 @@ function extractRoleBuckets(globalData: DocData, normalizedRole: string) {
 
   const dailyPulseBucket = normalizedRole && dailyPulseRoleMap?.[normalizedRole] && typeof dailyPulseRoleMap[normalizedRole] === 'object'
     ? dailyPulseRoleMap[normalizedRole]
-    : normalizedRole && weeklyPulseRoleMap?.[normalizedRole] && typeof weeklyPulseRoleMap[normalizedRole] === 'object'
-      ? weeklyPulseRoleMap[normalizedRole]
-      : null;
+    : null;
 
   const communityFeed = normalizedRole && communityRoleMap && Array.isArray(communityRoleMap[normalizedRole])
     ? communityRoleMap[normalizedRole] : [];
@@ -399,8 +395,6 @@ async function buildFullFeedBody(normalizedRole: string): Promise<FeedBody | nul
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let dailyPulse: { tools: any[]; blogs: any[]; discussions: any[] } | undefined;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let weeklyPulse: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let communityPulse: any[] = [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let buildPulse: any[] = [];
@@ -462,8 +456,6 @@ async function buildFullFeedBody(normalizedRole: string): Promise<FeedBody | nul
   }
 
   const forYou = roleBasedForYou;
-  const deepDives: never[] = [];
-  const mergedFeed: never[] = [];
 
   if (
     forYou.length === 0 &&
@@ -482,13 +474,10 @@ async function buildFullFeedBody(normalizedRole: string): Promise<FeedBody | nul
     for_you: forYou.map(sanitizeFeedItem),
     pulse: pulse.map(sanitizeFeedItem),
     daily_pulse: sanitizePulseBucket(dailyPulse),
-    weekly_pulse: sanitizePulseBucket(weeklyPulse),
-    deep_dives: deepDives,
     community_pulse: communityPulse.map(sanitizeFeedItem),
     build_pulse: buildPulse.map(sanitizeFeedItem),
     trending: trending.map(sanitizeFeedItem),
     trending_topics: trendingTopics.map(sanitizeTrendingTopic),
-    merged_feed: mergedFeed,
     assembled_at: assembledAt,
     metadata,
   };
@@ -597,11 +586,8 @@ export async function getBootstrapFeedForUid(uid: string, roleFromQuery = ''): P
     for_you: feed.for_you.map((item, i) => i < INLINE_FULL_COUNT ? sanitizeFeedItem(item) : slimFeedItem(item)),
     trending: feed.trending.map(slimFeedItem),
     trending_topics: feed.trending_topics?.map((topic, i) => i < INLINE_FULL_COUNT ? sanitizeTrendingTopic(topic) : slimTrendingTopic(topic)),
-    deep_dives: [],
-    merged_feed: [],
     pulse: [],
     daily_pulse: undefined,
-    weekly_pulse: undefined,
     community_pulse: [],
     build_pulse: [],
   };
@@ -625,7 +611,7 @@ export async function getBootstrapFeedForUid(uid: string, roleFromQuery = ''): P
 
 export async function getPulseFeedForUid(uid: string, roleFromQuery = ''): Promise<Pick<
   V3UserFeed,
-  'pulse' | 'daily_pulse' | 'weekly_pulse' | 'community_pulse' | 'build_pulse'
+  'pulse' | 'daily_pulse' | 'community_pulse' | 'build_pulse'
 > | null> {
   const feed = await getFeedForUid(uid, roleFromQuery);
   if (!feed) return null;
@@ -633,7 +619,6 @@ export async function getPulseFeedForUid(uid: string, roleFromQuery = ''): Promi
   return {
     pulse: feed.pulse ?? [],
     daily_pulse: feed.daily_pulse,
-    weekly_pulse: feed.weekly_pulse,
     community_pulse: feed.community_pulse ?? [],
     build_pulse: feed.build_pulse ?? [],
   };
@@ -660,9 +645,6 @@ export async function getFeedItemDetailForUid(
     feed.daily_pulse?.tools || [],
     feed.daily_pulse?.blogs || [],
     feed.daily_pulse?.discussions || [],
-    feed.weekly_pulse?.tools || [],
-    feed.weekly_pulse?.blogs || [],
-    feed.weekly_pulse?.discussions || [],
   ];
 
   for (const group of articleGroups) {

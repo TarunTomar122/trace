@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Script from 'next/script';
 import { notFound } from 'next/navigation';
+import { ArrowLeft, ArrowRight, ExternalLink } from 'lucide-react';
 import PublicHeader from '@/components/PublicHeader';
 import Footer from '@/components/Footer';
 import { getDailyArchiveEntries, getDailyArchiveFeed, getTodayIstDate } from '@/lib/daily-archive';
@@ -157,43 +158,42 @@ export default async function DailyArchiveDatePage({ params }: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
       />
       <PublicHeader />
-      <main className="px-4 sm:px-6">
-        <article className="mx-auto max-w-6xl pt-24 pb-20 sm:pt-32">
-          <Link href="/daily" className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-secondary/55 hover:text-foreground">
+      <main className="px-4 sm:px-6 lg:px-8">
+        <article className="mx-auto max-w-7xl pt-20 pb-20 sm:pt-28">
+          {/* Breadcrumb */}
+          <Link href="/daily" className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.25em] text-secondary/40 transition-colors hover:text-foreground">
+            <ArrowLeft size={12} />
             Trace archive
           </Link>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
+
+          {/* Date headline */}
+          <h1 className="mt-4 text-[2.5rem] font-bold tracking-[-0.04em] leading-[0.95] sm:text-[3.5rem]">
             {formatDateLabel(feed.date)}
           </h1>
-          <p className="mt-4 max-w-3xl text-lg text-secondary">
+          <p className="mt-5 max-w-xl text-[16px] leading-[1.8] text-secondary">
             A full-day snapshot of what moved in tech. Browse topic overviews first, then scan the story feed.
           </p>
-          <div className="mt-5 flex flex-wrap items-center gap-3 text-sm">
-            <Link href="/trending" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">Trending</Link>
-            <Link href="/research" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">Research</Link>
-            <Link href="/compare" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">Compare</Link>
-            <Link href="/tools" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">Tools</Link>
-          </div>
-          <div className="mt-7 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-border/20 bg-white px-4 py-3 shadow-sm dark:bg-gray-950">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-secondary/45">Stories</p>
-              <p className="mt-1 text-2xl font-semibold tracking-tight">{feed.trending.length}</p>
-            </div>
-            <div className="rounded-2xl border border-border/20 bg-white px-4 py-3 shadow-sm dark:bg-gray-950">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-secondary/45">Topics</p>
-              <p className="mt-1 text-2xl font-semibold tracking-tight">{feed.trendingTopics.length}</p>
-            </div>
-            <div className="rounded-2xl border border-border/20 bg-white px-4 py-3 shadow-sm dark:bg-gray-950">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-secondary/45">Snapshot</p>
-              <p className="mt-1 text-sm font-medium text-secondary/80">{assembledAtLabel || 'Archive copy'}</p>
-            </div>
+
+          {/* Stats row */}
+          <div className="mt-8 grid gap-3 sm:grid-cols-3">
+            {[
+              { label: 'Stories', value: String(feed.trending.length) },
+              { label: 'Topics', value: String(feed.trendingTopics.length) },
+              { label: 'Snapshot', value: assembledAtLabel || 'Archive copy' },
+            ].map((stat) => (
+              <div key={stat.label} className="rounded-[14px] border border-border/[0.06] bg-surface/30 px-5 py-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-secondary/30">{stat.label}</p>
+                <p className="mt-1.5 text-[1.25rem] font-bold tracking-[-0.02em]">{stat.value}</p>
+              </div>
+            ))}
           </div>
 
+          {/* Topic overviews */}
           {feed.trendingTopics.length > 0 && (
-            <section className="mt-10">
-              <div className="mb-4 flex items-end justify-between gap-4">
-                <h2 className="text-2xl font-semibold tracking-tight">Topic overviews</h2>
-                <p className="text-xs text-secondary/55">Grouped clusters from the day</p>
+            <section className="mt-14">
+              <div className="mb-6 flex items-end justify-between gap-4">
+                <h2 className="text-[1.5rem] font-bold tracking-[-0.03em]">Topic overviews</h2>
+                <p className="text-[12px] text-secondary/40">Grouped clusters from the day</p>
               </div>
               <div className="grid gap-4 lg:grid-cols-2">
                 {feed.trendingTopics.slice(0, 20).map((topic) => {
@@ -204,28 +204,30 @@ export default async function DailyArchiveDatePage({ params }: PageProps) {
                     .filter(Boolean)
                     .slice(0, 2);
                   const body = (
-                    <div className="h-full rounded-2xl border border-border/20 bg-white p-4 shadow-sm transition-colors hover:border-border/40 dark:bg-gray-950">
+                    <div className="group h-full rounded-[16px] border border-border/[0.06] bg-surface/30 p-5 transition-all hover:bg-surface/60 hover:shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:border-border/15">
                       <div className="flex items-center justify-between gap-3">
-                        <span className="rounded-full bg-foreground/7 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-secondary/65">
+                        <span className="rounded-full bg-foreground/[0.04] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-secondary/40">
                           Topic
                         </span>
-                        <p className="text-[11px] text-secondary/60">
+                        <p className="text-[11px] text-secondary/40">
                           {(topic.article_count || topic.articles?.length || 0)} stories · {topic.source_count || 0} sources
                         </p>
                       </div>
-                      <p className="mt-3 text-base font-semibold leading-snug">{topic.title}</p>
-                      <p className="mt-2 text-sm leading-6 text-secondary/75 line-clamp-3">{cleanedSummary}</p>
+                      <p className="mt-3 text-[15px] font-semibold leading-snug tracking-[-0.01em]">{topic.title}</p>
+                      <p className="mt-2 text-[13px] leading-[1.6] text-secondary/65 line-clamp-3">{cleanedSummary}</p>
                       {keyPoints.length > 0 && (
                         <ul className="mt-3 space-y-1.5">
                           {keyPoints.map((point, idx) => (
-                            <li key={`${topic.id}-kp-${idx}`} className="text-[12px] leading-5 text-secondary/70">
-                              {point}
+                            <li key={`${topic.id}-kp-${idx}`} className="flex gap-2">
+                              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-secondary/20" />
+                              <span className="text-[12px] leading-[1.5] text-secondary/60">{point}</span>
                             </li>
                           ))}
                         </ul>
                       )}
-                      <p className="mt-3 text-[11px] font-medium text-secondary/50">
+                      <p className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-foreground/50 transition-colors group-hover:text-foreground">
                         Open topic overview
+                        <ArrowRight size={11} />
                       </p>
                     </div>
                   );
@@ -241,37 +243,38 @@ export default async function DailyArchiveDatePage({ params }: PageProps) {
             </section>
           )}
 
+          {/* Story feed */}
           {feed.trending.length > 0 && (
-            <section className="mt-12">
-              <div className="mb-4 flex items-end justify-between gap-4">
-                <h2 className="text-2xl font-semibold tracking-tight">Story feed</h2>
-                <p className="text-xs text-secondary/55">Direct links to original sources</p>
+            <section className="mt-14">
+              <div className="mb-6 flex items-end justify-between gap-4">
+                <h2 className="text-[1.5rem] font-bold tracking-[-0.03em]">Story feed</h2>
+                <p className="text-[12px] text-secondary/40">Direct links to original sources</p>
               </div>
-              <ul className="space-y-3">
+              <div className="space-y-3">
                 {feed.trending.slice(0, 40).map((item) => {
                   const articleHref = getPublicArticleHref(item, returnTo);
                   return (
-                    <li key={item.id} className="rounded-2xl border border-border/20 bg-white p-4 shadow-sm transition-colors hover:border-border/40 dark:bg-gray-950">
+                    <div key={item.id} className="group rounded-[16px] border border-border/[0.06] bg-surface/30 p-5 transition-all hover:bg-surface/60 hover:shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:border-border/15">
                       <div className="flex items-start gap-4">
                         <div className="min-w-0 flex-1">
                           {articleHref ? (
                             <Link href={articleHref} className="block">
-                              <p className="text-base font-semibold leading-snug">{item.title}</p>
+                              <p className="text-[15px] font-semibold leading-snug tracking-[-0.01em] transition-colors group-hover:text-foreground/80">{item.title}</p>
                             </Link>
                           ) : (
                             <a href={item.url} target="_blank" rel="noopener noreferrer" className="block">
-                              <p className="text-base font-semibold leading-snug">{item.title}</p>
+                              <p className="text-[15px] font-semibold leading-snug tracking-[-0.01em] transition-colors group-hover:text-foreground/80">{item.title}</p>
                             </a>
                           )}
-                          <p className="mt-1 text-xs text-secondary/60">
+                          <p className="mt-1.5 text-[11px] text-secondary/40">
                             {[item.source_name || item.source, item.published_date].filter(Boolean).join(' · ')}
                           </p>
-                          <p className="mt-2 text-sm leading-6 text-secondary/75 line-clamp-3">{storySubtitle(item)}</p>
-                          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                          <p className="mt-2 text-[13px] leading-[1.6] text-secondary/60 line-clamp-3">{storySubtitle(item)}</p>
+                          <div className="mt-3 flex flex-wrap gap-2">
                             {articleHref && (
                               <Link
                                 href={articleHref}
-                                className="rounded-full border border-border/25 px-2.5 py-1 text-secondary hover:text-foreground"
+                                className="rounded-full border border-border/[0.08] px-3 py-1 text-[11px] font-medium text-secondary/60 transition-all hover:text-foreground hover:border-border/20"
                               >
                                 Read Trace summary
                               </Link>
@@ -280,9 +283,10 @@ export default async function DailyArchiveDatePage({ params }: PageProps) {
                               href={item.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="rounded-full border border-border/25 px-2.5 py-1 text-secondary hover:text-foreground"
+                              className="inline-flex items-center gap-1 rounded-full border border-border/[0.08] px-3 py-1 text-[11px] font-medium text-secondary/60 transition-all hover:text-foreground hover:border-border/20"
                             >
                               Original source
+                              <ExternalLink size={10} />
                             </a>
                           </div>
                         </div>
@@ -296,15 +300,16 @@ export default async function DailyArchiveDatePage({ params }: PageProps) {
                           />
                         )}
                       </div>
-                    </li>
+                    </div>
                   );
                 })}
-              </ul>
+              </div>
             </section>
           )}
 
-          <div className="mt-10">
-            <Link href="/daily" className="text-sm font-medium text-foreground underline underline-offset-4">
+          <div className="mt-12">
+            <Link href="/daily" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-foreground/60 transition-colors hover:text-foreground">
+              <ArrowLeft size={13} />
               View all archived days
             </Link>
           </div>

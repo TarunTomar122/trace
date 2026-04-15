@@ -30,9 +30,9 @@ function pulseUrlsMatch(a: string, b: string): boolean {
 const PULSE_EYEBROW =
   'text-[11px] font-semibold text-secondary/60 uppercase tracking-[0.15em]';
 const PULSE_SECTION = 'mb-10 sm:mb-12';
-/** Pulse shell: mobile matches News (`bg-background`); md+ uses the same white card as desktop News */
+/** Pulse shell: clean background, no card chrome — the content breathes */
 export const PULSE_MAIN_SHELL =
-  'overflow-hidden bg-background md:rounded-2xl md:border md:border-border/15 md:bg-white md:shadow-[0_1px_3px_rgba(0,0,0,0.04)]';
+  'bg-background';
 
 export function FeedModeToggle({
   view,
@@ -148,63 +148,81 @@ function CategoryBadge({ children }: { children: React.ReactNode }) {
 const discussionOutboundLink =
   'inline-flex items-center gap-1.5 text-[13px] font-semibold text-secondary/60 hover:text-foreground transition-colors decoration-border/50 hover:decoration-foreground/40 underline underline-offset-[4px]';
 
-function PulseDiscussionCard({ item }: { item: FeedListItem }) {
+export function PulseDiscussionCard({ item, rank }: { item: FeedListItem; rank: number }) {
   const url = item.url || item.pulseSources?.[0]?.url;
   const extraLinks = (item.pulseSources || []).filter(
     s => !url || !pulseUrlsMatch(s.url, url)
   );
-  
+
   const feedItem = item.data as FeedItem;
   const body = feedItem.summary?.short_article?.body || '';
   const isBrief = body ? looksLikeBriefBody(body) : false;
-  
+
   const sourceLower = (item.source || '').toLowerCase();
   const isHN = sourceLower.includes('hacker news');
   const isReddit = sourceLower.includes('reddit');
-  const sourceColor = isHN ? 'text-[#ff6600] bg-[#ff6600]/10 border-[#ff6600]/20' : isReddit ? 'text-[#ff4500] bg-[#ff4500]/10 border-[#ff4500]/20' : 'text-secondary/70 bg-foreground/[0.04] border-border/10';
 
   return (
-    <article className="relative flex flex-col py-8 sm:py-10 border-b border-border/15 last:border-0 group">
-      <div className="flex items-center gap-2 mb-3">
-        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wider ${sourceColor}`}>
-           {item.source || 'Discussion'}
-        </span>
-        {item.signalCount != null && item.signalCount > 0 && (
-          <span className="text-[12px] font-medium text-secondary/50">
-            {item.signalCount.toLocaleString()} points
+    <article className="group relative flex gap-4 py-6 border-b border-border/10 last:border-0">
+      {/* Rank number */}
+      <span className="text-[28px] font-bold text-foreground/10 leading-none mt-1 shrink-0 w-8 text-right tabular-nums select-none">
+        {String(rank).padStart(2, '0')}
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 mb-2">
+          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+            isHN ? 'text-[#ff6600] bg-[#ff6600]/8' : isReddit ? 'text-[#ff4500] bg-[#ff4500]/8' : 'text-secondary/60 bg-foreground/[0.04]'
+          }`}>
+            {item.source || 'Discussion'}
           </span>
+          {item.signalCount != null && item.signalCount > 0 && (
+            <span className="text-[11px] font-medium text-secondary/45 tabular-nums">
+              {item.signalCount.toLocaleString()} points
+            </span>
+          )}
+        </div>
+
+        {url ? (
+          <a href={url} target="_blank" rel="noopener noreferrer" className="block group/link">
+            <h3 className="text-[17px] sm:text-[19px] font-bold text-foreground leading-[1.25] tracking-[-0.015em] mb-2 group-hover/link:underline decoration-foreground/25 underline-offset-[3px]">
+              {item.title}
+            </h3>
+          </a>
+        ) : (
+          <h3 className="text-[17px] sm:text-[19px] font-bold text-foreground leading-[1.25] tracking-[-0.015em] mb-2">
+            {item.title}
+          </h3>
         )}
-      </div>
-      
-      <h3 className="text-[1.35rem] sm:text-[1.5rem] font-bold text-foreground leading-[1.25] tracking-[-0.02em] mb-4">
-        {item.title}
-      </h3>
-      
-      <div className="pl-4 border-l-2 border-border/40 text-[14.5px] sm:text-[15px] leading-[1.65] text-secondary/80 mb-6">
-        {isBrief && body ? (
-          <BriefBody body={body} />
-        ) : item.preview ? (
-          <p>{item.preview}</p>
+
+        {(isBrief && body) || item.preview ? (
+          <div className="text-[14px] leading-[1.7] text-secondary/70 mb-3 line-clamp-3">
+            {isBrief && body ? (
+              <BriefBody body={body} />
+            ) : (
+              <p>{item.preview}</p>
+            )}
+          </div>
         ) : null}
-      </div>
-      
-      <div className="flex items-center gap-x-5">
-        {url && (
-          <a href={url} target="_blank" rel="noopener noreferrer" className={discussionOutboundLink}>
-            Join discussion <ExternalLink size={13} strokeWidth={2.5} />
-          </a>
-        )}
-        {extraLinks.slice(0, 2).map(s => (
-          <a key={s.url} href={s.url} target="_blank" rel="noopener noreferrer" className={discussionOutboundLink}>
-            {s.name} <ExternalLink size={13} strokeWidth={2.5} />
-          </a>
-        ))}
+
+        <div className="flex items-center gap-4">
+          {url && (
+            <a href={url} target="_blank" rel="noopener noreferrer" className={discussionOutboundLink}>
+              Join discussion <ExternalLink size={13} strokeWidth={2.5} />
+            </a>
+          )}
+          {extraLinks.slice(0, 2).map(s => (
+            <a key={s.url} href={s.url} target="_blank" rel="noopener noreferrer" className={discussionOutboundLink}>
+              {s.name} <ExternalLink size={13} strokeWidth={2.5} />
+            </a>
+          ))}
+        </div>
       </div>
     </article>
   );
 }
 
-function PulseToolCard({ item }: { item: FeedListItem }) {
+export function PulseToolCard({ item }: { item: FeedListItem }) {
   const url = item.url || item.pulseSources?.[0]?.url;
   const thumb = item.thumbnail && isValidThumbnail(item.thumbnail) ? getArticleImage(item.thumbnail, item.title) : null;
   const isPH = thumb ? isProductHuntWidget(thumb) : false;
@@ -214,51 +232,49 @@ function PulseToolCard({ item }: { item: FeedListItem }) {
       href={url || '#'}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex flex-col justify-between gap-4 p-5 rounded-2xl border border-border/20 bg-foreground/1.5 hover:bg-foreground/3 hover:border-border/30 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)] h-full"
+      className="group flex items-start gap-4 p-4 rounded-xl border border-border/15 bg-white hover:border-border/30 hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)] transition-all"
     >
-      <div className="flex items-start gap-4">
-        {thumb && (
-          <div className={`shrink-0 ${isPH ? 'w-12 h-12 bg-white rounded-[10px] border border-border/20 p-1.5 flex items-center justify-center shadow-sm' : 'w-12 h-12 rounded-[10px] overflow-hidden shadow-sm'}`}>
-            <img
-              src={thumb}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              className={isPH ? 'w-full h-full object-contain' : 'w-full h-full object-cover'}
-            />
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <h3 className="text-[15px] font-bold text-foreground leading-[1.35] tracking-tight mb-1.5 group-hover:underline decoration-foreground/30 underline-offset-[3px] line-clamp-2">
-            {item.title}
-          </h3>
-          <p className="text-[13px] text-secondary/70 leading-relaxed line-clamp-2">
+      {thumb && (
+        <div className={`shrink-0 ${isPH ? 'w-11 h-11 bg-white rounded-lg border border-border/20 p-1 flex items-center justify-center' : 'w-11 h-11 rounded-lg overflow-hidden'}`}>
+          <img
+            src={thumb}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className={isPH ? 'w-full h-full object-contain' : 'w-full h-full object-cover'}
+          />
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <h3 className="text-[14px] font-bold text-foreground leading-snug tracking-tight mb-1 group-hover:underline decoration-foreground/25 underline-offset-[3px] line-clamp-2">
+          {item.title}
+        </h3>
+        {item.preview && (
+          <p className="text-[12px] text-secondary/60 leading-relaxed line-clamp-2 mb-2">
             {item.preview}
           </p>
-        </div>
-      </div>
-      
-      <div className="flex items-center justify-between mt-1 pt-1">
-        <div className="flex items-center gap-2.5">
-          <span className="inline-flex items-center px-2 py-0.5 rounded bg-background border border-border/40 text-[10px] font-bold uppercase tracking-wider text-secondary/60">
+        )}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-secondary/50">
             {item.source || 'Tool'}
           </span>
           {item.signalCount != null && item.signalCount > 0 && (
-            <span className="text-[11px] font-medium text-secondary/50">
-              {item.signalCount.toLocaleString()} {item.source === 'GitHub Trending' ? 'stars' : 'upvotes'}
-            </span>
+            <>
+              <span className="text-secondary/25 text-[10px]">·</span>
+              <span className="text-[10px] font-medium text-secondary/45 tabular-nums">
+                {item.signalCount.toLocaleString()} {item.source === 'GitHub Trending' ? 'stars' : 'upvotes'}
+              </span>
+            </>
           )}
         </div>
-        
-        <div className="w-8 h-8 rounded-full bg-background border border-border/40 flex items-center justify-center text-secondary/40 group-hover:text-foreground group-hover:border-foreground/30 transition-all shadow-sm shrink-0">
-          <ExternalLink size={14} strokeWidth={2} />
-        </div>
       </div>
+      <ExternalLink size={14} className="shrink-0 mt-1 text-secondary/20 group-hover:text-secondary/50 transition-colors" />
     </a>
   );
 }
 
-function PulseReadCard({ item }: { item: FeedListItem }) {
+/** Hero variant for the first blog story — full-width image, large type */
+export function PulseReadHero({ item }: { item: FeedListItem }) {
   const feedItem = item.data as FeedItem;
   const body = feedItem.summary?.short_article?.body || '';
   const isBrief = body ? looksLikeBriefBody(body) : false;
@@ -269,36 +285,28 @@ function PulseReadCard({ item }: { item: FeedListItem }) {
       : null;
   const isPH = thumb ? isProductHuntWidget(thumb) : false;
 
-  const metaBits: string[] = [];
-  if (item.source) metaBits.push(item.source);
-  if (item.timestamp) metaBits.push(getTimeLabel(item.timestamp));
-
   return (
-    <article className={pulseStoryCard}>
-      <h2 className="text-[1.65rem] sm:text-[2rem] font-bold text-foreground leading-[1.12] tracking-[-0.03em] mb-4 transition-colors">
+    <article className="pb-10 border-b border-border/15">
+      <div className="flex items-center gap-2 text-[11px] text-secondary/50 mb-3">
+        {item.source && <span className="font-semibold uppercase tracking-[0.1em]">{item.source}</span>}
+        {item.source && item.timestamp && <span className="text-secondary/25">·</span>}
+        {item.timestamp && <span>{getTimeLabel(item.timestamp)}</span>}
+      </div>
+
+      <h2 className="text-[1.75rem] sm:text-[2.15rem] font-bold text-foreground leading-[1.1] tracking-[-0.03em] mb-5">
         {item.title}
       </h2>
 
       {thumb && !isPH && (
-        <div className="mb-6">
-          <div className="overflow-hidden rounded-xl bg-foreground/[0.02] dark:bg-surface-tertiary/40 border border-border/10">
-            <img
-              src={thumb}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              fetchPriority="low"
-              className="aspect-[16/9] w-full object-cover sm:aspect-[2/1]"
-            />
-          </div>
-          {metaBits.length > 0 && (
-            <p className="mt-3 text-[12px] font-medium text-secondary/60 tracking-wide uppercase">{metaBits.join(' · ')}</p>
-          )}
+        <div className="mb-6 overflow-hidden rounded-xl">
+          <img
+            src={thumb}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="w-full max-h-[400px] object-cover"
+          />
         </div>
-      )}
-
-      {(!thumb || isPH) && metaBits.length > 0 && (
-        <p className="mb-5 text-[12px] font-medium text-secondary/60 tracking-wide uppercase">{metaBits.join(' · ')}</p>
       )}
 
       <div className={`${newsletterBody} space-y-4`}>
@@ -310,12 +318,12 @@ function PulseReadCard({ item }: { item: FeedListItem }) {
       </div>
 
       {keyTakeaways.length > 0 && (
-        <div className="mt-8 border-t border-border/20 pt-6">
-          <h3 className="text-[13px] font-bold uppercase tracking-[0.1em] text-foreground/80 mb-4">The details</h3>
-          <ul className="space-y-3">
+        <div className="mt-8 p-5 rounded-xl border border-border/12 bg-foreground/[0.015]">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-secondary/55 mb-3">Key Takeaways</h3>
+          <ul className="space-y-2.5">
             {keyTakeaways.map((point, i) => (
               <li key={i} className="flex gap-3 text-[15px] leading-relaxed text-foreground/85">
-                <span className="shrink-0 font-bold text-secondary/40 tabular-nums">{i + 1}.</span>
+                <span className="shrink-0 font-bold text-secondary/35 tabular-nums text-[13px] mt-0.5">{i + 1}.</span>
                 <span>{stripMarkdown(point)}</span>
               </li>
             ))}
@@ -324,15 +332,9 @@ function PulseReadCard({ item }: { item: FeedListItem }) {
       )}
 
       {item.url && (
-        <div className="mt-8">
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={pulseOutboundButton}
-          >
-            Read the full story
-            <ExternalLink size={14} strokeWidth={2.5} />
+        <div className="mt-6">
+          <a href={item.url} target="_blank" rel="noopener noreferrer" className={pulseOutboundButton}>
+            Read the full story <ExternalLink size={14} strokeWidth={2.5} />
           </a>
         </div>
       )}
@@ -340,13 +342,82 @@ function PulseReadCard({ item }: { item: FeedListItem }) {
   );
 }
 
+/** Compact read card for non-hero blog stories */
+export function PulseReadCard({ item }: { item: FeedListItem }) {
+  const feedItem = item.data as FeedItem;
+  const body = feedItem.summary?.short_article?.body || '';
+  const isBrief = body ? looksLikeBriefBody(body) : false;
+  const keyTakeaways = feedItem.summary?.short_article?.key_takeaways ?? [];
+  const thumb =
+    item.thumbnail && isValidThumbnail(item.thumbnail)
+      ? getArticleImage(item.thumbnail, item.title)
+      : null;
+  const isPH = thumb ? isProductHuntWidget(thumb) : false;
+
+  return (
+    <article className="py-8 border-b border-border/10 last:border-0">
+      <div className="flex items-center gap-2 text-[11px] text-secondary/50 mb-2">
+        {item.source && <span className="font-semibold uppercase tracking-[0.1em]">{item.source}</span>}
+        {item.source && item.timestamp && <span className="text-secondary/25">·</span>}
+        {item.timestamp && <span>{getTimeLabel(item.timestamp)}</span>}
+      </div>
+
+      <h3 className="text-[1.25rem] sm:text-[1.4rem] font-bold text-foreground leading-[1.2] tracking-[-0.02em] mb-3">
+        {item.title}
+      </h3>
+
+      {thumb && !isPH && (
+        <div className="mb-4 overflow-hidden rounded-lg">
+          <img src={thumb} alt="" loading="lazy" decoding="async" className="w-full max-h-[240px] object-cover" />
+        </div>
+      )}
+
+      <div className="text-[15px] leading-[1.7] text-secondary/80 line-clamp-4 mb-4">
+        {isBrief && body ? (
+          <BriefBody body={body} />
+        ) : item.preview ? (
+          <p>{item.preview}</p>
+        ) : null}
+      </div>
+
+      {keyTakeaways.length > 0 && (
+        <div className="mb-4">
+          <ul className="space-y-1.5">
+            {keyTakeaways.slice(0, 3).map((point, i) => (
+              <li key={i} className="flex gap-2 text-[13px] leading-relaxed text-secondary/70">
+                <span className="shrink-0 font-bold text-secondary/30 tabular-nums mt-px">{i + 1}.</span>
+                <span>{stripMarkdown(point)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {item.url && (
+        <a href={item.url} target="_blank" rel="noopener noreferrer" className={discussionOutboundLink}>
+          Read full story <ExternalLink size={13} strokeWidth={2.5} />
+        </a>
+      )}
+    </article>
+  );
+}
+
+export function PulseSectionHeader({ title }: { title: string }) {
+  return (
+    <div className="mb-6 flex items-center gap-4">
+      <h2 className="text-[12px] font-bold uppercase tracking-[0.15em] text-foreground/70">{title}</h2>
+      <div className="h-px flex-1 bg-border/30" />
+    </div>
+  );
+}
+
 export function DailyPulseView({
   pulseSections,
-  hasWeeklyPulse,
+  hasDailyPulse,
   pulseStoryCount,
 }: {
   pulseSections: Array<{ key: string; label: string; items: FeedListItem[] }>;
-  hasWeeklyPulse: boolean;
+  hasDailyPulse: boolean;
   pulseStoryCount: number;
 }) {
   const byDateDesc = (a: FeedListItem, b: FeedListItem) =>
@@ -370,26 +441,31 @@ export function DailyPulseView({
     );
   }
 
+  // Split blogs into hero (first) and rest
+  const heroRead = blogs[0] || null;
+  const restReads = blogs.slice(1);
+
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 pb-20 pt-6 sm:px-8 lg:max-w-4xl lg:px-10">
-      <header className="mb-10 border-b border-border/30 pb-8 text-left">
-        <p className={PULSE_EYEBROW}>
-          {hasWeeklyPulse ? 'Weekly pulse' : 'Daily pulse'}
+    <div className="mx-auto w-full max-w-6xl px-4 pb-20 pt-8 sm:px-8 lg:px-10">
+      {/* Header */}
+      <header className="mb-10 pb-8 border-b border-border/20">
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-400 mb-2">
+          Daily Pulse
         </p>
-        <h1 className="mt-2 text-[1.75rem] font-bold leading-[1.12] tracking-[-0.03em] text-foreground sm:text-[2rem]">
+        <h1 className="text-[1.85rem] sm:text-[2.25rem] font-bold leading-[1.08] tracking-[-0.035em] text-foreground">
           {getTodayLabel()}
         </h1>
         {pulseStoryCount > 0 && (
-          <p className="mt-2 text-[14px] text-secondary">
-            {pulseStoryCount} stories hand-picked for you.
+          <p className="mt-2.5 text-[14px] text-secondary/60">
+            {pulseStoryCount} stories curated for you
           </p>
         )}
       </header>
 
-      <div className="flex flex-col gap-12 sm:gap-16">
-        {/* Legacy (non-weekly) pulse */}
-        {!hasWeeklyPulse && legacy.length > 0 && (
-          <section className="flex flex-col gap-6">
+      {/* Legacy (non-weekly) pulse */}
+      {!hasDailyPulse && legacy.length > 0 && (
+        <section className="mb-12">
+          <div className="flex flex-col gap-6">
             {legacy.map(item => (
               <PulseSectionItem
                 key={item.id}
@@ -403,51 +479,63 @@ export function DailyPulseView({
                 flush
               />
             ))}
-          </section>
-        )}
+          </div>
+        </section>
+      )}
 
-        {blogs.length > 0 && (
-          <section>
-            <div className="mb-6 flex items-center gap-4">
-              <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground">Top Reads</h2>
-              <div className="h-px flex-1 bg-border/40"></div>
+      {/* Top Reads — hero + sidebar on desktop */}
+      {blogs.length > 0 && (
+        <section className="mb-14">
+          <PulseSectionHeader title="Top Reads" />
+
+          {heroRead && restReads.length > 0 ? (
+            /* Desktop: hero left + stacked cards right */
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] xl:grid-cols-[1fr_380px] gap-8 lg:gap-10">
+              <div>
+                <PulseReadHero item={heroRead} />
+              </div>
+              <div className="flex flex-col lg:border-l lg:border-border/15 lg:pl-8">
+                {restReads.map(item => (
+                  <PulseReadCard key={item.id} item={item} />
+                ))}
+              </div>
             </div>
+          ) : heroRead ? (
+            /* Single story — full width hero */
+            <PulseReadHero item={heroRead} />
+          ) : (
             <div className="flex flex-col">
               {blogs.map(item => (
                 <PulseReadCard key={item.id} item={item} />
               ))}
             </div>
-          </section>
-        )}
+          )}
+        </section>
+      )}
 
-        {tools.length > 0 && (
-          <section>
-            <div className="mb-6 flex items-center gap-4">
-              <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground">Trending Tools & Repos</h2>
-              <div className="h-px flex-1 bg-border/40"></div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {tools.map(item => (
-                <PulseToolCard key={`Building-${item.id}`} item={item} />
-              ))}
-            </div>
-          </section>
-        )}
+      {/* Tools & Repos — clean grid */}
+      {tools.length > 0 && (
+        <section className="mb-14">
+          <PulseSectionHeader title="Trending Tools & Repos" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {tools.map(item => (
+              <PulseToolCard key={item.id} item={item} />
+            ))}
+          </div>
+        </section>
+      )}
 
-        {discussions.length > 0 && (
-          <section>
-            <div className="mb-6 flex items-center gap-4">
-              <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground">Top Discussions</h2>
-              <div className="h-px flex-1 bg-border/40"></div>
-            </div>
-            <div className="flex flex-col">
-              {discussions.map(item => (
-                <PulseDiscussionCard key={`Saying-${item.id}`} item={item} />
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
+      {/* Discussions — ranked list */}
+      {discussions.length > 0 && (
+        <section className="mb-14">
+          <PulseSectionHeader title="Top Discussions" />
+          <div className="flex flex-col">
+            {discussions.map((item, i) => (
+              <PulseDiscussionCard key={item.id} item={item} rank={i + 1} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

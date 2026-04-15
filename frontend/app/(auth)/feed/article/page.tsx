@@ -120,7 +120,6 @@ function ArticleSections({ cards }: { cards: LearningCard[] }) {
 
 const FEED_TYPE_PREFIX: Record<string, string> = {
   for_you: 'fy',
-  deep_dives: 'dd',
   trending: 'tr',
 };
 

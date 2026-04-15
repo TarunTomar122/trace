@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import PublicHeader from "@/components/PublicHeader";
 import ScrollCTABanner from "@/components/ScrollCTABanner";
 import { researchPosts } from "./content";
@@ -31,89 +32,106 @@ export const metadata: Metadata = {
 
 export default function ResearchPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground px-2 selection:bg-primary/20 selection:text-primary">
+    <div className="min-h-screen bg-background text-foreground">
       <PublicHeader />
-      <section className="relative pt-32 md:pt-36 lg:pt-40 pb-16 md:pb-24 overflow-hidden z-10">
-        <div className="container mx-auto px-4 sm:px-6 max-w-6xl">
-          <div className="text-center mb-10 md:mb-14">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-4">
-              Research behind a better tech pulse
+
+      {/* Hero */}
+      <section className="px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl pt-20 pb-14 sm:pt-28 sm:pb-20">
+          <div className="max-w-3xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-secondary/35">Research</p>
+            <h1 className="mt-4 text-[2.5rem] font-bold tracking-[-0.04em] leading-[0.95] sm:text-[3.5rem]">
+              The thinking behind<br className="hidden sm:block" />
+              a better tech pulse
             </h1>
-            <p className="text-secondary text-base md:text-lg max-w-2xl mx-auto">
+            <p className="mt-5 max-w-xl text-[16px] leading-[1.8] text-secondary">
               We use research to think through the actual problems Trace is solving: too many sources, too little context,
               AI summaries without grounding, and the messy reality of staying current without drowning in feeds.
             </p>
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm">
-              <Link href="/daily" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
-                Daily archive
-              </Link>
-              <Link href="/trending" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
-                Trending
-              </Link>
-              <Link href="/compare" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
-                Compare
-              </Link>
-              <Link href="/tools" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
-                Tools
-              </Link>
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-border/20 bg-white dark:bg-gray-950 p-6 md:p-7 shadow-sm mb-8 md:mb-10">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="mt-6 flex flex-wrap items-center gap-2">
               {[
-                {
-                  title: "Tech pulse",
-                  body: "Why staying current gets harder when the same story is scattered across too many places.",
-                },
-                {
-                  title: "Source grouping",
-                  body: "Why multi-source context beats one-link reading when the story is moving fast.",
-                },
-                {
-                  title: "AI with context",
-                  body: "Why summaries help only when they preserve enough depth, comparison, and source grounding.",
-                },
-              ].map((item) => (
-                <div key={item.title}>
-                  <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-secondary/45">
-                    {item.title}
-                  </h2>
-                  <p className="mt-2 text-sm md:text-[15px] leading-7 text-secondary">
-                    {item.body}
-                  </p>
-                </div>
+                { href: "/daily", label: "Daily archive" },
+                { href: "/trending", label: "Trending" },
+                { href: "/compare", label: "Compare" },
+              ].map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="rounded-full border border-border/[0.08] px-3.5 py-1.5 text-[12px] font-medium text-secondary/60 transition-all hover:text-foreground hover:border-border/20"
+                >
+                  {link.label}
+                </Link>
               ))}
             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+      {/* Core concepts */}
+      <section className="px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+            {[
+              {
+                title: "Tech pulse",
+                body: "Why staying current gets harder when the same story is scattered across too many places.",
+              },
+              {
+                title: "Source grouping",
+                body: "Why multi-source context beats one-link reading when the story is moving fast.",
+              },
+              {
+                title: "AI with context",
+                body: "Why summaries help only when they preserve enough depth, comparison, and source grounding.",
+              },
+            ].map((item) => (
+              <div key={item.title} className="rounded-[16px] border border-border/[0.06] bg-surface/30 p-6">
+                <h2 className="text-[10px] font-semibold uppercase tracking-[0.25em] text-secondary/30">
+                  {item.title}
+                </h2>
+                <p className="mt-3 text-[14px] leading-[1.7] text-secondary">
+                  {item.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Articles */}
+      <section className="px-4 pt-14 pb-20 sm:px-6 sm:pt-20 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             {researchPosts.map((post) => (
               <Link
                 key={post.title}
                 href={`/research/${post.slug}`}
-                className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 md:p-7 shadow-sm hover:shadow-md dark:shadow-gray-900/50 transition-shadow block group"
+                className="group flex flex-col rounded-[18px] border border-border/[0.06] bg-surface/30 p-6 transition-all hover:bg-surface/60 hover:shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:border-border/15 sm:p-7"
               >
-                <div className="text-xs font-semibold uppercase tracking-wider text-secondary mb-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-secondary/30">
                   {post.tag}
-                </div>
-                <h2 className="text-xl md:text-2xl font-semibold text-foreground mb-3 group-hover:text-foreground/80 transition-colors">
+                </p>
+                <h2 className="mt-3 text-[1.25rem] font-bold tracking-[-0.02em] leading-snug text-foreground transition-colors group-hover:text-foreground/80 sm:text-[1.4rem]">
                   {post.title}
                 </h2>
-                <p className="text-secondary text-sm md:text-base leading-relaxed mb-4">
+                <p className="mt-3 flex-1 text-[14px] leading-[1.7] text-secondary">
                   {post.excerpt}
                 </p>
-                <div className="text-xs font-semibold uppercase tracking-wider text-foreground mb-3">
-                  Read article →
-                </div>
-                <div className="text-xs text-secondary uppercase tracking-wider">
-                  {post.author} · {post.readTime} · {post.date}
+                <div className="mt-5 flex items-center justify-between">
+                  <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-foreground/60 transition-colors group-hover:text-foreground">
+                    Read article
+                    <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                  <span className="text-[11px] text-secondary/30">
+                    {post.author} · {post.readTime}
+                  </span>
                 </div>
               </Link>
             ))}
           </div>
         </div>
       </section>
+
       <ScrollCTABanner />
     </div>
   );

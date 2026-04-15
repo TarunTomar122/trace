@@ -355,8 +355,8 @@ function ProfileContent() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center gap-3">
               <img src="/trace.webp" alt="Trace" className="h-6 w-auto" />
@@ -373,36 +373,33 @@ function ProfileContent() {
         </div>
       </header>
 
-      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-        {/* Desktop */}
-        <div className="hidden md:block">
-          <div
-            className="flex rounded-2xl bg-white overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-            style={{ height: 'calc(100vh - 120px)', minHeight: '500px' }}
-          >
-            {/* Sidebar */}
-            <div className="w-[280px] shrink-0 border-r border-border/20 flex flex-col">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 lg:py-12">
+        {/* Desktop: full-width grid layout */}
+        <div className="hidden md:grid md:grid-cols-[240px_1fr] lg:grid-cols-[280px_1fr] gap-10 lg:gap-16">
+          {/* Left nav */}
+          <aside className="min-w-0">
+            <div className="sticky top-24">
               {/* User card */}
-              <div className="p-5 border-b border-border/20">
-                <div className="flex items-center gap-3.5">
+              <div className="mb-8">
+                <div className="flex items-center gap-3.5 mb-3">
                   {user.photoURL ? (
-                    <img src={user.photoURL} alt="" className="w-12 h-12 rounded-full" />
+                    <img src={user.photoURL} alt="" className="w-14 h-14 rounded-full" />
                   ) : (
-                    <div className="w-12 h-12 rounded-full bg-surface-secondary flex items-center justify-center text-lg font-bold text-secondary/60">
+                    <div className="w-14 h-14 rounded-full bg-foreground/8 flex items-center justify-center text-xl font-bold text-secondary/50">
                       {user.displayName?.charAt(0) || '?'}
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h2 className="text-sm font-bold text-foreground truncate">
+                    <h2 className="text-[15px] font-bold text-foreground truncate">
                       {profile?.name || user.displayName || 'User'}
                     </h2>
-                    <p className="text-xs text-secondary/50 truncate">{user.email}</p>
+                    <p className="text-[12px] text-secondary/45 truncate">{user.email}</p>
                   </div>
                 </div>
                 {roleValue && (
-                  <div className="flex flex-wrap gap-1.5 mt-3">
+                  <div className="flex flex-wrap gap-1.5">
                     {roleValue.split(' · ').map((badge) => (
-                      <span key={badge} className="text-[10px] font-medium px-2.5 py-0.5 rounded-full bg-foreground/5 text-secondary/60">
+                      <span key={badge} className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-foreground/[0.04] text-secondary/55">
                         {badge}
                       </span>
                     ))}
@@ -410,112 +407,104 @@ function ProfileContent() {
                 )}
               </div>
 
-              {/* Nav tabs */}
-              <div className="p-3 flex-1">
+              {/* Nav */}
+              <nav className="flex flex-col gap-0.5 mb-8">
                 {TAB_CONFIG.map((tab) => (
                   <button
                     key={tab.key}
                     onClick={() => { setActiveTab(tab.key); setEditing(null); }}
-                    className={`flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors mb-0.5 ${
+                    className={`flex items-center gap-3 w-full px-3.5 py-2.5 rounded-lg text-[14px] font-medium transition-colors ${
                       activeTab === tab.key
-                        ? 'bg-surface-secondary text-foreground'
-                        : 'text-secondary/60 hover:text-foreground hover:bg-surface-secondary/50'
+                        ? 'bg-foreground/[0.06] text-foreground'
+                        : 'text-secondary/55 hover:text-foreground hover:bg-foreground/[0.03]'
                     }`}
                   >
-                    <tab.icon size={16} />
+                    <tab.icon size={16} strokeWidth={activeTab === tab.key ? 2.5 : 2} />
                     {tab.label}
                   </button>
                 ))}
+              </nav>
 
-              </div>
-
-              {/* Sign out */}
-              <div className="p-3 border-t border-border/20">
+              <div className="border-t border-border/15 pt-4">
                 <button
                   onClick={handleSignOut}
-                  className="flex items-center gap-3 px-3.5 py-2.5 w-full rounded-xl text-sm text-secondary/55 hover:text-foreground hover:bg-surface-secondary/50 transition-colors"
+                  className="flex items-center gap-3 px-3.5 py-2.5 w-full rounded-lg text-[14px] text-secondary/45 hover:text-foreground hover:bg-foreground/[0.03] transition-colors"
                 >
                   <LogOut size={16} />
                   Sign out
                 </button>
-                <p className="text-[10px] text-secondary/30 text-center mt-3">Trace v1.0.5</p>
               </div>
             </div>
+          </aside>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto px-8 py-8">
-              {tabContent}
-            </div>
-          </div>
+          {/* Content */}
+          <main className="min-w-0 pb-16">
+            {tabContent}
+          </main>
         </div>
 
         {/* Mobile */}
         <div className="md:hidden">
-          <div className="rounded-2xl bg-white overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-            {/* User card */}
-            <div className="p-5 border-b border-border/20">
-              <div className="flex items-center gap-3">
-                {user.photoURL ? (
-                  <img src={user.photoURL} alt="" className="w-11 h-11 rounded-full" />
-                ) : (
-                  <div className="w-11 h-11 rounded-full bg-surface-secondary flex items-center justify-center text-lg font-bold text-secondary/60">
-                    {user.displayName?.charAt(0) || '?'}
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-sm font-bold text-foreground truncate">
-                    {profile?.name || user.displayName || 'User'}
-                  </h2>
-                  <p className="text-xs text-secondary/50 truncate">{user.email}</p>
+          {/* User card */}
+          <div className="mb-6">
+            <div className="flex items-center gap-3 mb-2">
+              {user.photoURL ? (
+                <img src={user.photoURL} alt="" className="w-12 h-12 rounded-full" />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-foreground/8 flex items-center justify-center text-lg font-bold text-secondary/50">
+                  {user.displayName?.charAt(0) || '?'}
                 </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <h2 className="text-[15px] font-bold text-foreground truncate">
+                  {profile?.name || user.displayName || 'User'}
+                </h2>
+                <p className="text-[12px] text-secondary/45 truncate">{user.email}</p>
               </div>
-              {roleValue && (
-                <div className="flex flex-wrap gap-1.5 mt-3">
-                  {roleValue.split(' · ').map((badge) => (
-                    <span key={badge} className="text-[10px] font-medium px-2.5 py-0.5 rounded-full bg-foreground/5 text-secondary/60">
-                      {badge}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
-
-            {/* Tab pills */}
-            <div className="flex items-center gap-1.5 px-5 py-3 border-b border-border/20 overflow-x-auto">
-              {TAB_CONFIG.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => { setActiveTab(tab.key); setEditing(null); }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-colors ${
-                    activeTab === tab.key
-                      ? 'bg-foreground text-background'
-                      : 'bg-foreground/5 text-secondary/60 hover:bg-foreground/10'
-                  }`}
-                >
-                  <tab.icon size={12} />
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Content */}
-            <div className="p-5">
-              {tabContent}
-
-              {activeTab === 'account' && (
-                <div className="mt-6 pt-5 border-t border-border/15 space-y-2">
-                  <button
-                    onClick={handleSignOut}
-                    className="flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-sm text-secondary/55 hover:text-foreground hover:bg-surface-secondary/50 transition-colors"
-                  >
-                    <LogOut size={15} />
-                    Sign out
-                  </button>
-                  <p className="text-[10px] text-secondary/30 text-center mt-3">Trace v1.0.5</p>
-                </div>
-              )}
-            </div>
+            {roleValue && (
+              <div className="flex flex-wrap gap-1.5">
+                {roleValue.split(' · ').map((badge) => (
+                  <span key={badge} className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-foreground/[0.04] text-secondary/55">
+                    {badge}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
+
+          {/* Tab pills */}
+          <div className="flex items-center gap-1.5 mb-6 pb-4 border-b border-border/15 overflow-x-auto scrollbar-hide">
+            {TAB_CONFIG.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => { setActiveTab(tab.key); setEditing(null); }}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[12px] font-medium whitespace-nowrap transition-colors ${
+                  activeTab === tab.key
+                    ? 'bg-foreground text-background'
+                    : 'bg-foreground/[0.06] text-secondary/60 hover:bg-foreground/10'
+                }`}
+              >
+                <tab.icon size={13} />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Content */}
+          {tabContent}
+
+          {activeTab === 'account' && (
+            <div className="mt-8 pt-5 border-t border-border/15">
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm text-secondary/45 hover:text-foreground hover:bg-foreground/[0.03] transition-colors"
+              >
+                <LogOut size={15} />
+                Sign out
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

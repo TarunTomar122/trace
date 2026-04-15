@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 import PublicHeader from '@/components/PublicHeader';
 import Footer from '@/components/Footer';
 import { getDailyArchiveEntries } from '@/lib/daily-archive';
@@ -40,57 +41,92 @@ function formatDateLabel(value: string): string {
   }).format(parsed);
 }
 
+function formatShortDate(value: string): string {
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(parsed);
+}
+
+function formatWeekday(value: string): string {
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    timeZone: 'UTC',
+  }).format(parsed);
+}
+
 export default async function DailyArchiveIndexPage() {
   const entries = await getDailyArchiveEntries(365);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <PublicHeader />
-      <main className="px-4 sm:px-6">
-        <section className="mx-auto max-w-5xl pt-24 pb-20 sm:pt-32">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-secondary/45">Trace Archive</p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">Daily snapshots</h1>
-          <p className="mt-4 max-w-3xl text-lg leading-8 text-secondary">
-            Explore previous-day snapshots of stories and topic overviews. Today&apos;s date is intentionally excluded from this archive.
+      <main className="px-4 sm:px-6 lg:px-8">
+        {/* Hero */}
+        <section className="mx-auto max-w-7xl pt-20 pb-14 sm:pt-28 sm:pb-20">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-secondary/35">Trace Archive</p>
+          <h1 className="mt-4 text-[2.5rem] font-bold tracking-[-0.04em] leading-[0.95] sm:text-[3.5rem]">
+            Daily snapshots
+          </h1>
+          <p className="mt-5 max-w-xl text-[16px] leading-[1.8] text-secondary">
+            Every day, Trace captures the full picture — stories, discussions, and launches — and archives it here. Browse any past day to see what shaped the conversation.
           </p>
-          <div className="mt-5 flex flex-wrap items-center gap-3 text-sm">
-            <Link href="/trending" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">Trending</Link>
-            <Link href="/research" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">Research</Link>
-            <Link href="/compare" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">Compare</Link>
-            <Link href="/tools" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">Tools</Link>
+          <div className="mt-6 flex flex-wrap items-center gap-2">
+            {[
+              { href: '/trending', label: 'Trending' },
+              { href: '/research', label: 'Research' },
+              { href: '/compare', label: 'Compare' },
+            ].map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="rounded-full border border-border/[0.08] px-3.5 py-1.5 text-[12px] font-medium text-secondary/60 transition-all hover:text-foreground hover:border-border/20"
+              >
+                {link.label}
+              </Link>
+            ))}
           </div>
+        </section>
 
-          <div className="mt-10 rounded-3xl border border-border/20 bg-white p-6 shadow-sm dark:bg-gray-950">
-            {entries.length === 0 ? (
-              <p className="text-sm text-secondary">No archived daily snapshots yet.</p>
-            ) : (
-              <ul className="space-y-4">
-                {entries.map((entry) => (
-                  <li key={entry.date}>
-                    <Link
-                      href={`/daily/${entry.date}`}
-                      className="group block rounded-2xl border border-border/15 bg-background p-4 transition-colors hover:border-border/35"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-base font-semibold">{formatDateLabel(entry.date)}</p>
-                          <p className="mt-1 text-xs text-secondary/60">
-                            {entry.trendingCount} stories · {entry.topicCount} topics
-                          </p>
-                          {entry.topHeadline && (
-                            <p className="mt-2 line-clamp-2 text-sm text-secondary/75">{entry.topHeadline}</p>
-                          )}
-                        </div>
-                        <span className="text-xs font-medium text-secondary/50 group-hover:text-foreground">
-                          Open
-                        </span>
+        {/* Archive list */}
+        <section className="mx-auto max-w-7xl pb-20">
+          {entries.length === 0 ? (
+            <div className="rounded-[20px] border border-border/[0.08] bg-surface/30 p-12 text-center">
+              <p className="text-[15px] font-semibold">No archived snapshots yet</p>
+              <p className="mt-2 text-[13px] text-secondary/60">Check back tomorrow for your first daily archive.</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {entries.map((entry, i) => (
+                <Link
+                  key={entry.date}
+                  href={`/daily/${entry.date}`}
+                  className="group rounded-[16px] border border-border/[0.06] bg-surface/30 p-5 transition-all hover:bg-surface/60 hover:shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:border-border/15"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-[15px] font-semibold tracking-[-0.01em]">{formatShortDate(entry.date)}</p>
+                        <span className="text-[11px] text-secondary/35">{formatWeekday(entry.date)}</span>
                       </div>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                      <p className="mt-1.5 text-[12px] text-secondary/50">
+                        {entry.trendingCount} stories · {entry.topicCount} topics
+                      </p>
+                      {entry.topHeadline && (
+                        <p className="mt-2.5 line-clamp-2 text-[13px] leading-relaxed text-secondary/70">{entry.topHeadline}</p>
+                      )}
+                    </div>
+                    <ArrowRight size={14} className="mt-1 shrink-0 text-secondary/20 transition-all group-hover:text-foreground/50 group-hover:translate-x-0.5" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
       </main>
       <Footer />

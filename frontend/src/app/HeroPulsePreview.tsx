@@ -311,8 +311,9 @@ export default function HeroPulsePreview() {
               </section>
             </div>
           ) : (
-            <div className="flex h-full min-h-0 flex-col sm:flex-row">
-              <div className="flex min-h-0 flex-3 flex-col border-b border-border/15 sm:w-[36%] sm:flex-none sm:border-b-0 sm:border-r">
+            <div className="flex h-full min-h-0 flex-row">
+              {/* Story list — full width on mobile, sidebar on sm+ */}
+              <div className="flex min-h-0 w-full flex-col sm:w-[36%] sm:flex-none sm:border-r sm:border-border/15">
                 <div className="shrink-0 border-b border-border/15 px-4 py-3 sm:px-3.5">
                   <p className="text-[12px] font-bold text-foreground">News</p>
                   <p className="mt-0.5 text-[10px] text-secondary/55">Today · {newsStories.length} stories</p>
@@ -351,7 +352,8 @@ export default function HeroPulsePreview() {
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto bg-[#fbfaf7] px-5 py-5 sm:px-6">
+              {/* Detail panel — hidden on mobile, shown on sm+ */}
+              <div className="hidden min-h-0 flex-1 overflow-y-auto bg-[#fbfaf7] px-5 py-5 sm:block sm:px-6">
                 <div className="mx-auto max-w-xl">
                   <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-secondary/40">
                     <span>For You</span>

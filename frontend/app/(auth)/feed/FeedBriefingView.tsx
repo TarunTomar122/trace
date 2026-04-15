@@ -35,6 +35,11 @@ import {
   getTodayLabel,
   isProductHuntWidget,
   looksLikeBriefBody,
+  PulseDiscussionCard,
+  PulseReadCard,
+  PulseReadHero,
+  PulseSectionHeader,
+  PulseToolCard,
   stripMarkdown,
 } from './FeedUi';
 
@@ -536,6 +541,611 @@ function ScrollFeedCardWithDetail({
   );
 }
 
+/* ─── Desktop Editorial Layout (lg+) ─── */
+
+function EditorialHeroCard({ item }: { item: FeedListItem }) {
+  const imgUrl = item.thumbnail ? getArticleImage(item.thumbnail, item.title) : null;
+  const showImg = imgUrl && !isProductHuntWidget(imgUrl);
+  const isMultiSource = item.sourceCount > 1;
+
+  return (
+    <article className="group">
+      {showImg && (
+        <div className="overflow-hidden rounded-xl mb-4">
+          <img
+            src={imgUrl!}
+            alt=""
+            loading="eager"
+            decoding="async"
+            className="w-full h-[320px] object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+          />
+        </div>
+      )}
+      <div className="flex items-center gap-1.5 text-[11px] text-secondary/55 mb-2">
+        {item.source && <span className="font-medium uppercase tracking-[0.08em]">{item.source}</span>}
+        {item.timestamp && (
+          <>
+            <span className="text-secondary/30">·</span>
+            <span>{getTimeLabel(item.timestamp)}</span>
+          </>
+        )}
+        {isMultiSource && (
+          <>
+            <span className="text-secondary/30">·</span>
+            <span>{item.sourceCount} sources</span>
+          </>
+        )}
+      </div>
+      <h2 className="text-[1.65rem] font-bold text-foreground leading-[1.18] tracking-[-0.025em] mb-2">
+        {item.title}
+      </h2>
+      {item.preview && (
+        <p className="text-[15px] text-secondary/70 leading-relaxed line-clamp-3">
+          {item.preview}
+        </p>
+      )}
+    </article>
+  );
+}
+
+function EditorialMediumCard({ item }: { item: FeedListItem }) {
+  const imgUrl = item.thumbnail ? getArticleImage(item.thumbnail, item.title) : null;
+  const showImg = imgUrl && !isProductHuntWidget(imgUrl);
+  const isMultiSource = item.sourceCount > 1;
+
+  return (
+    <article className="group">
+      {showImg && (
+        <div className="overflow-hidden rounded-lg mb-3">
+          <img
+            src={imgUrl!}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="w-full h-[180px] object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+          />
+        </div>
+      )}
+      <div className="flex items-center gap-1.5 text-[10px] text-secondary/50 mb-1.5">
+        {item.source && <span className="font-medium uppercase tracking-[0.08em]">{item.source}</span>}
+        {isMultiSource && (
+          <>
+            <span className="text-secondary/30">·</span>
+            <span>{item.sourceCount} sources</span>
+          </>
+        )}
+      </div>
+      <h3 className="text-[15px] font-bold text-foreground leading-snug tracking-[-0.01em] mb-1">
+        {item.title}
+      </h3>
+      {item.preview && (
+        <p className="text-[13px] text-secondary/60 leading-relaxed line-clamp-2">
+          {item.preview}
+        </p>
+      )}
+    </article>
+  );
+}
+
+function EditorialSidebarItem({
+  item,
+  showDivider = true,
+}: {
+  item: FeedListItem;
+  showDivider?: boolean;
+}) {
+  const isMultiSource = item.sourceCount > 1;
+
+  return (
+    <article className={`py-3.5 ${showDivider ? 'border-b border-border/15' : ''}`}>
+      <h4 className="text-[14px] font-semibold text-foreground leading-snug tracking-[-0.01em] mb-1.5 line-clamp-3">
+        {item.title}
+      </h4>
+      <div className="flex items-center gap-1.5 text-[10px] text-secondary/50">
+        {item.source && <span className="truncate max-w-[120px]">{item.source}</span>}
+        {isMultiSource && (
+          <>
+            <span className="text-secondary/25">·</span>
+            <span className="shrink-0">{item.sourceCount} sources</span>
+          </>
+        )}
+        {item.timestamp && (
+          <>
+            <span className="text-secondary/25">·</span>
+            <span className="shrink-0">{getTimeLabel(item.timestamp)}</span>
+          </>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function DesktopEditorialLayout({
+  filteredList,
+  isLoading,
+  onSelect,
+  activeFilter,
+  isLocked,
+}: {
+  filteredList: FeedListItem[];
+  isLoading: boolean;
+  onSelect: (id: string) => void;
+  activeFilter: string;
+  isLocked: boolean;
+}) {
+  if (isLoading) {
+    return <ScrollFeedLoadingSkeleton editorial />;
+  }
+
+  if (filteredList.length === 0) {
+    return (
+      <div className="px-4 py-16 text-center">
+        <p className="text-[15px] text-secondary/55">
+          {activeFilter === BRIEFING_PULSE_TAB_KEY ? 'Nothing in your pulse yet' : 'Nothing here yet'}
+        </p>
+      </div>
+    );
+  }
+
+  // Split list: topics go center, articles go to sidebars
+  const topics = filteredList.filter((item) => item.type === 'topic');
+  const articles = filteredList.filter((item) => item.type === 'article');
+
+  // If no topics, promote first few articles to center
+  const heroItem = topics[0] || articles[0] || null;
+  const centerGrid = topics.length > 0
+    ? topics.slice(1, 5)
+    : articles.slice(1, 5);
+
+  // Remaining go to sidebars
+  const usedIds = new Set([
+    heroItem?.id,
+    ...centerGrid.map((item) => item.id),
+  ].filter(Boolean));
+  const remaining = filteredList.filter((item) => !usedIds.has(item.id));
+
+  // Split remaining between left and right sidebars
+  const leftItems = remaining.filter((_, i) => i % 2 === 0).slice(0, 6);
+  const rightItems = remaining.filter((_, i) => i % 2 !== 0).slice(0, 6);
+
+  return (
+    <div className="grid grid-cols-[minmax(200px,1fr)_minmax(0,2.2fr)_minmax(200px,1fr)] gap-8 pt-6 pb-12">
+      {/* Left sidebar — compact headlines */}
+      <aside className="min-w-0">
+        <div className="mb-4 flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-400">
+            Today&apos;s Picks
+          </span>
+          <div className="flex-1 h-px bg-border/25" />
+        </div>
+        <div>
+          {leftItems.map((item, i) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onSelect(item.id)}
+              className="block w-full text-left hover:bg-foreground/[0.03] -mx-2 px-2 rounded-lg transition-colors"
+            >
+              <EditorialSidebarItem
+                item={item}
+                showDivider={i < leftItems.length - 1}
+              />
+            </button>
+          ))}
+          {leftItems.length === 0 && (
+            <p className="text-[13px] text-secondary/40 py-4">More stories coming soon</p>
+          )}
+        </div>
+      </aside>
+
+      {/* Center — hero + grid */}
+      <main className="min-w-0">
+        {heroItem && (
+          <button
+            type="button"
+            onClick={() => onSelect(heroItem.id)}
+            className="block w-full text-left mb-8 hover:opacity-95 transition-opacity"
+          >
+            <EditorialHeroCard item={heroItem} />
+          </button>
+        )}
+        {centerGrid.length > 0 && (
+          <div className="grid grid-cols-2 gap-6">
+            {centerGrid.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onSelect(item.id)}
+                className="block w-full text-left hover:opacity-95 transition-opacity"
+              >
+                <EditorialMediumCard item={item} />
+              </button>
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* Right sidebar — compact headlines */}
+      <aside className="min-w-0">
+        <div className="mb-4 flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-secondary/60">
+            Trending Stories
+          </span>
+          <div className="flex-1 h-px bg-border/25" />
+        </div>
+        <div>
+          {rightItems.map((item, i) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onSelect(item.id)}
+              className="block w-full text-left hover:bg-foreground/[0.03] -mx-2 px-2 rounded-lg transition-colors"
+            >
+              <EditorialSidebarItem
+                item={item}
+                showDivider={i < rightItems.length - 1}
+              />
+            </button>
+          ))}
+          {rightItems.length === 0 && (
+            <p className="text-[13px] text-secondary/40 py-4">More stories coming soon</p>
+          )}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+/* ─── Desktop Pulse Editorial Layout (lg+) ─── */
+
+function DesktopPulseEditorialLayout({
+  filteredList,
+  isLoading,
+}: {
+  filteredList: FeedListItem[];
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return <ScrollFeedLoadingSkeleton editorial />;
+  }
+
+  if (filteredList.length === 0) {
+    return (
+      <div className="px-4 py-16 text-center">
+        <p className="text-[15px] text-secondary/55">Nothing in your pulse yet</p>
+      </div>
+    );
+  }
+
+  const blogs = filteredList.filter((item) => item.pulseSection === 'blogs');
+  const tools = filteredList.filter((item) => item.pulseSection === 'tools');
+  const discussions = filteredList.filter((item) => item.pulseSection === 'discussions');
+  // Items without a pulseSection go to a general bucket
+  const other = filteredList.filter((item) => !item.pulseSection);
+
+  const heroRead = blogs[0] || null;
+  const restReads = blogs.slice(1);
+
+  return (
+    <div className="pt-8 pb-16">
+      {/* Top Reads */}
+      {blogs.length > 0 && (
+        <section className="mb-14">
+          <PulseSectionHeader title="Top Reads" />
+          {heroRead && restReads.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] xl:grid-cols-[1fr_380px] gap-8 lg:gap-10">
+              <div>
+                <PulseReadHero item={heroRead} />
+              </div>
+              <div className="flex flex-col lg:border-l lg:border-border/15 lg:pl-8">
+                {restReads.map((item) => (
+                  <PulseReadCard key={item.id} item={item} />
+                ))}
+              </div>
+            </div>
+          ) : heroRead ? (
+            <PulseReadHero item={heroRead} />
+          ) : (
+            <div className="flex flex-col">
+              {blogs.map((item) => (
+                <PulseReadCard key={item.id} item={item} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Tools & Repos */}
+      {tools.length > 0 && (
+        <section className="mb-14">
+          <PulseSectionHeader title="Trending Tools & Repos" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {tools.map((item) => (
+              <PulseToolCard key={item.id} item={item} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Discussions */}
+      {discussions.length > 0 && (
+        <section className="mb-14">
+          <PulseSectionHeader title="Top Discussions" />
+          <div className="flex flex-col">
+            {discussions.map((item, i) => (
+              <PulseDiscussionCard key={item.id} item={item} rank={i + 1} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Other items without a section */}
+      {other.length > 0 && (
+        <section className="mb-14">
+          <PulseSectionHeader title="More" />
+          <div className="flex flex-col">
+            {other.map((item, i) => (
+              <PulseDiscussionCard key={item.id} item={item} rank={i + 1} />
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+/* ─── Desktop Full Article Page (lg+) ─── */
+
+function DesktopArticlePageView({
+  selectedContent,
+  lockedStory,
+  isLocked,
+  isContentLoading,
+  filteredList,
+  selectedId,
+  setSelectedId,
+  onBack,
+}: {
+  selectedContent: ContentData | null;
+  lockedStory: FeedListItem | null;
+  isLocked: boolean;
+  isContentLoading: boolean;
+  filteredList: FeedListItem[];
+  selectedId: string | null;
+  setSelectedId: (id: string) => void;
+  onBack: () => void;
+}) {
+  const story = lockedStory;
+  const imageUrl = (selectedContent?.thumbnail || story?.thumbnail)
+    ? getArticleImage(selectedContent?.thumbnail || story?.thumbnail || null, selectedContent?.title || story?.title || '')
+    : null;
+  const briefFmt = selectedContent?.body ? looksLikeBriefBody(selectedContent.body) : false;
+
+  // Build sidebar: exclude current article, take up to 8
+  const sidebarItems = filteredList.filter((item) => item.id !== selectedId).slice(0, 8);
+
+  // Next article for "Up Next" at bottom
+  const currentIdx = filteredList.findIndex((item) => item.id === selectedId);
+  const nextItem = currentIdx >= 0 && currentIdx < filteredList.length - 1
+    ? filteredList[currentIdx + 1]
+    : null;
+
+  return (
+    <div className="pt-6 pb-16">
+      {/* Back to feed */}
+      <button
+        onClick={onBack}
+        className="inline-flex items-center gap-1.5 text-[13px] text-secondary/60 hover:text-foreground transition-colors mb-6"
+      >
+        <ArrowLeft size={16} />
+        <span>Back to feed</span>
+      </button>
+
+      <div className="grid grid-cols-[1fr_300px] xl:grid-cols-[1fr_340px] gap-10 xl:gap-14">
+        {/* Main article content */}
+        <article className="min-w-0">
+          {/* Meta bar */}
+          <div className="flex items-center gap-2 text-[12px] text-secondary/55 mb-4">
+            {selectedContent?.source || story?.source ? (
+              <span className="font-medium">{selectedContent?.source || story?.source}</span>
+            ) : null}
+            {selectedContent?.timestamp && (
+              <>
+                {(selectedContent?.source || story?.source) && <span className="text-secondary/30">·</span>}
+                <span>{getTimeLabel(selectedContent.timestamp)}</span>
+              </>
+            )}
+            {(selectedContent?.countLabel || (story?.sourceCount && story.sourceCount > 1)) && (
+              <>
+                <span className="text-secondary/30">·</span>
+                <span>{selectedContent?.countLabel || `${story!.sourceCount} sources`}</span>
+              </>
+            )}
+            {selectedContent?.readingTime && (
+              <>
+                <span className="text-secondary/30">·</span>
+                <span>{selectedContent.readingTime} min read</span>
+              </>
+            )}
+          </div>
+
+          {/* Title */}
+          <h1 className="text-[2rem] xl:text-[2.25rem] font-bold text-foreground leading-[1.12] tracking-[-0.03em] mb-6">
+            {selectedContent?.title || story?.title}
+          </h1>
+
+          {/* Hero image */}
+          {imageUrl && (
+            <div className="mb-8">
+              <img
+                src={imageUrl}
+                alt=""
+                decoding="async"
+                className={
+                  isProductHuntWidget(imageUrl)
+                    ? 'max-w-[280px] rounded-2xl border border-[#ff6154]/20 bg-white'
+                    : 'w-full max-h-[420px] object-cover rounded-xl'
+                }
+              />
+            </div>
+          )}
+
+          {/* Locked state */}
+          {isLocked && story ? (
+            <div className="rounded-2xl border border-border/15 bg-surface-secondary/30 p-6">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border/20 bg-foreground/5 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-secondary/60">
+                <Lock size={12} />
+                Subscriber story
+              </div>
+              {story.preview && (
+                <p className="text-[15px] leading-7 text-secondary/65">{story.preview}</p>
+              )}
+              <p className="mt-5 text-[15px] font-semibold text-foreground">Subscribe to unlock the full brief</p>
+              <Link
+                href="/profile?tab=subscription"
+                prefetch={false}
+                className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background"
+              >
+                <Sparkles size={14} />
+                Subscribe to unlock
+              </Link>
+            </div>
+          ) : isContentLoading && !selectedContent?.body ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 size={22} className="animate-spin text-secondary/40" />
+            </div>
+          ) : (
+            <>
+              {/* Article body */}
+              {selectedContent?.body && (
+                <div className="mb-8 text-[17px] text-foreground/85 leading-[1.85]">
+                  {briefFmt ? (
+                    <BriefBody body={selectedContent.body} />
+                  ) : (
+                    <div className="prose prose-lg dark:prose-invert max-w-none">
+                      <MarkdownProse body={selectedContent.body} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Key takeaways */}
+              {selectedContent?.keyPoints && selectedContent.keyPoints.length > 0 && (
+                <div className="mb-8 p-6 rounded-xl border border-border/15 bg-surface-secondary/20">
+                  <h3 className="text-[11px] font-semibold text-secondary/55 mb-4 uppercase tracking-[0.15em]">
+                    Key Takeaways
+                  </h3>
+                  <div className="space-y-3">
+                    {selectedContent.keyPoints.slice(0, 6).map((point, i) => (
+                      <div key={i} className="flex gap-3">
+                        <span className="text-secondary/35 font-mono text-[13px] mt-0.5 shrink-0">{i + 1}.</span>
+                        <p className="text-[15px] text-secondary/80 leading-relaxed">{stripMarkdown(point)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Why it matters */}
+              {selectedContent?.whyItMatters && (
+                <div className="mb-8 pl-5 border-l-2 border-foreground/15">
+                  <h3 className="text-[11px] font-semibold text-secondary/55 mb-2 uppercase tracking-[0.15em]">
+                    Why It Matters
+                  </h3>
+                  <p className="text-[15px] text-secondary/75 leading-relaxed">{stripMarkdown(selectedContent.whyItMatters)}</p>
+                </div>
+              )}
+
+              {/* Source link */}
+              {selectedContent?.url && (
+                <div className="pt-6 border-t border-border/15">
+                  <a
+                    href={selectedContent.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold bg-foreground text-background hover:bg-foreground/90 transition-colors"
+                  >
+                    Read original source
+                    <ExternalLink size={14} />
+                  </a>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Up Next */}
+          {nextItem && (
+            <div className="mt-10 pt-6 border-t border-border/15">
+              <button
+                onClick={() => {
+                  setSelectedId(nextItem.id);
+                  window.history.replaceState({ article: nextItem.id }, '');
+                  window.scrollTo(0, 0);
+                }}
+                className="w-full flex items-center justify-between px-5 py-5 rounded-xl bg-foreground/[0.03] hover:bg-foreground/[0.06] border border-border/10 transition-colors"
+              >
+                <div className="text-left">
+                  <p className="text-[10px] font-semibold text-secondary/40 uppercase tracking-[0.15em] mb-1.5">Up Next</p>
+                  <p className="text-[15px] font-semibold text-foreground leading-snug line-clamp-2">{nextItem.title}</p>
+                  {nextItem.source && (
+                    <p className="text-[12px] text-secondary/45 mt-1">{nextItem.source}</p>
+                  )}
+                </div>
+                <ArrowRight size={18} className="shrink-0 ml-4 text-foreground/40" />
+              </button>
+            </div>
+          )}
+        </article>
+
+        {/* Right sidebar — Most Popular */}
+        <aside className="min-w-0">
+          <div className="sticky top-20">
+            <div className="mb-5 flex items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-foreground/70">
+                Most Popular
+              </span>
+              <div className="flex-1 h-px bg-border/25" />
+            </div>
+
+            <div className="flex flex-col">
+              {sidebarItems.map((item, i) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedId(item.id);
+                    window.history.replaceState({ article: item.id }, '');
+                    window.scrollTo(0, 0);
+                  }}
+                  className="group flex gap-3 py-3.5 border-b border-border/10 last:border-0 text-left hover:bg-foreground/[0.02] -mx-2 px-2 rounded-lg transition-colors"
+                >
+                  <span className="text-[22px] font-bold text-foreground/15 leading-none mt-0.5 shrink-0 w-7 text-right tabular-nums">
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-[14px] font-semibold text-foreground leading-snug tracking-[-0.01em] mb-1 line-clamp-3 group-hover:text-foreground/80">
+                      {item.title}
+                    </h4>
+                    <div className="flex items-center gap-1.5 text-[10px] text-secondary/45">
+                      {item.source && <span className="truncate max-w-[120px]">{item.source}</span>}
+                      {item.source && item.sourceCount > 1 && <span className="text-secondary/25">·</span>}
+                      {item.sourceCount > 1 && <span className="shrink-0">{item.sourceCount} sources</span>}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {sidebarItems.length === 0 && (
+              <p className="text-[13px] text-secondary/40 py-4">No other stories right now</p>
+            )}
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
 function ScrollFeedPosts({
   filteredList,
   isLoading,
@@ -744,6 +1354,15 @@ export default function FeedBriefingView({
   briefingLayout,
   showPulseTab,
 }: FeedBriefingViewProps) {
+  const [lgUp, setLgUp] = useState(false);
+  useLayoutEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const apply = () => setLgUp(mq.matches);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, []);
+
   if (briefingLayout === 'scroll') {
     return (
       <>
@@ -755,18 +1374,46 @@ export default function FeedBriefingView({
           storyCount={storyCount}
           showPulseTab={showPulseTab}
         />
-        <div
-          className="mx-auto w-full max-w-[min(43rem,100%)] min-h-[calc(100vh-11rem)]"
-          style={{ overflowAnchor: 'none' }}
-        >
-          <ScrollFeedPosts
+        {lgUp && activeFilter === BRIEFING_PULSE_TAB_KEY ? (
+          <DesktopPulseEditorialLayout
             filteredList={filteredList}
             isLoading={isLoading}
-            onSelect={setSelectedId}
-            activeFilter={activeFilter}
-            isLocked={isLocked}
           />
-        </div>
+        ) : lgUp ? (
+          showMobileContent && (selectedContent || (isLocked && lockedStory)) ? (
+            <DesktopArticlePageView
+              selectedContent={selectedContent}
+              lockedStory={lockedStory}
+              isLocked={isLocked}
+              isContentLoading={isContentLoading}
+              filteredList={filteredList}
+              selectedId={selectedId}
+              setSelectedId={setSelectedId}
+              onBack={closeMobileArticle}
+            />
+          ) : (
+            <DesktopEditorialLayout
+              filteredList={filteredList}
+              isLoading={isLoading}
+              onSelect={(id) => { setSelectedId(id); openMobileArticle(id); }}
+              activeFilter={activeFilter}
+              isLocked={isLocked}
+            />
+          )
+        ) : (
+          <div
+            className="mx-auto w-full max-w-[min(43rem,100%)] min-h-[calc(100vh-11rem)]"
+            style={{ overflowAnchor: 'none' }}
+          >
+            <ScrollFeedPosts
+              filteredList={filteredList}
+              isLoading={isLoading}
+              onSelect={setSelectedId}
+              activeFilter={activeFilter}
+              isLocked={isLocked}
+            />
+          </div>
+        )}
       </>
     );
   }

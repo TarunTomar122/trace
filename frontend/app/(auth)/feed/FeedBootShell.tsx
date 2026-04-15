@@ -68,14 +68,95 @@ function SkeletonRows({ rows }: { rows: number }) {
   );
 }
 
+/* ─── Editorial Grid Skeleton (desktop lg+) ─── */
+
+function EditorialSidebarItemSkeleton() {
+  return (
+    <div className="py-3.5 border-b border-border/10 last:border-0">
+      <div className={`${skBlock} h-4 w-full mb-1.5`} />
+      <div className={`${skBlock} h-4 w-3/4 mb-2`} />
+      <div className="flex items-center gap-2">
+        <div className={`${sk} h-2.5 w-16`} />
+        <div className={`${sk} h-2.5 w-10`} />
+      </div>
+    </div>
+  );
+}
+
+function EditorialGridSkeleton() {
+  return (
+    <div className="grid grid-cols-[minmax(200px,1fr)_minmax(0,2.2fr)_minmax(200px,1fr)] gap-8 pt-6 pb-12">
+      {/* Left sidebar */}
+      <div>
+        <div className="mb-4 flex items-center gap-2">
+          <div className={`${sk} h-2.5 w-20`} />
+          <div className="flex-1 h-px bg-border/15" />
+        </div>
+        {Array.from({ length: 5 }, (_, i) => (
+          <EditorialSidebarItemSkeleton key={i} />
+        ))}
+      </div>
+
+      {/* Center — hero + grid */}
+      <div>
+        {/* Hero image */}
+        <div className="rounded-xl bg-black/[0.05] dark:bg-white/[0.06] animate-pulse h-[280px] mb-4" />
+        {/* Hero meta */}
+        <div className="flex items-center gap-2 mb-2">
+          <div className={`${sk} h-2.5 w-20`} />
+          <div className={`${sk} h-2.5 w-12`} />
+        </div>
+        {/* Hero title */}
+        <div className={`${skBlock} h-7 w-[90%] mb-2`} />
+        <div className={`${skBlock} h-7 w-[70%] mb-3`} />
+        {/* Hero preview */}
+        <div className={`${sk} h-3.5 w-full mb-1.5`} />
+        <div className={`${sk} h-3.5 w-[85%] mb-8`} />
+
+        {/* Medium cards grid */}
+        <div className="grid grid-cols-2 gap-6">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div key={i}>
+              <div className="rounded-lg bg-black/[0.05] dark:bg-white/[0.06] animate-pulse h-[150px] mb-3" />
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className={`${sk} h-2 w-14`} />
+                <div className={`${sk} h-2 w-10`} />
+              </div>
+              <div className={`${skBlock} h-4 w-full mb-1`} />
+              <div className={`${skBlock} h-4 w-3/4`} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Right sidebar */}
+      <div>
+        <div className="mb-4 flex items-center gap-2">
+          <div className={`${sk} h-2.5 w-24`} />
+          <div className="flex-1 h-px bg-border/15" />
+        </div>
+        {Array.from({ length: 5 }, (_, i) => (
+          <EditorialSidebarItemSkeleton key={i} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** Shown while stories load. Use `embedded` inside `FeedBriefingView` (parent already sets column + top padding). */
 export function ScrollFeedLoadingSkeleton({
   rows = 6,
   embedded = false,
+  editorial = false,
 }: {
   rows?: number;
   embedded?: boolean;
+  /** Show the 3-column editorial grid skeleton instead of scroll cards */
+  editorial?: boolean;
 }) {
+  if (editorial) {
+    return <EditorialGridSkeleton />;
+  }
   if (embedded) {
     return <SkeletonRows rows={rows} />;
   }
@@ -103,7 +184,13 @@ export default function FeedBootShell() {
 
       <div className="max-w-7xl mx-auto px-0 py-0 sm:px-6 sm:pt-2 sm:pb-5 lg:px-8 lg:pt-3 lg:pb-8">
         <ScrollFeedTabBarSkeleton />
-        <ScrollFeedLoadingSkeleton rows={5} />
+        {/* Editorial grid on desktop, scroll cards on mobile */}
+        <div className="hidden lg:block">
+          <ScrollFeedLoadingSkeleton editorial />
+        </div>
+        <div className="lg:hidden">
+          <ScrollFeedLoadingSkeleton rows={5} />
+        </div>
       </div>
     </div>
   );

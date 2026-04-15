@@ -14,7 +14,6 @@ export function decodeHtml(str: string): string {
 export const FREE_LIMITS = { trending: 3 };
 export const FEED_TYPE_PREFIX: Record<string, string> = {
   for_you: 'fy',
-  deep_dives: 'dd',
   trending: 'tr',
 };
 export { MarkdownProse };
