@@ -61,7 +61,7 @@ const INDIA_PRICING_PREVIEW = {
 
 const DEFAULT_PRICING_PREVIEW = {
   trialDays: 3,
-  priceDisplay: '$4.99/month',
+  priceDisplay: '$2.99/month',
   pricingOffer: 'default' as const,
 };
 
@@ -98,11 +98,7 @@ export default function LandingPageClient() {
 
   const handleStartReading = (location = 'hero') => {
     trackLandingCTAClicked('read', location);
-    if (user && profileResolved) {
-      router.push(getPostAuthDestination(profile, 'read'));
-    } else {
-      router.push('/onboarding');
-    }
+    router.push('/feed');
   };
 
   const handleStartTrial = (location = 'hero') => {
@@ -674,7 +670,7 @@ export default function LandingPageClient() {
               <img src="/trace.webp" alt="Trace" className="h-4 w-auto" />
               <span className="text-[11px] font-semibold tracking-[0.18em] text-secondary/50">TRACE</span>
             </div>
-            <div className="flex items-center gap-6 text-[13px] text-secondary/50">
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-secondary/50">
               <Link href="/trending" className="transition-colors hover:text-foreground">Trending</Link>
               <Link href="/daily" className="transition-colors hover:text-foreground">Daily</Link>
               <Link href="/research" className="transition-colors hover:text-foreground">Research</Link>
@@ -764,13 +760,13 @@ function NewsletterSignup() {
       <p className="mx-auto mt-3 max-w-md text-[14px] leading-[1.7] text-secondary">
         Same Trace signal, delivered every morning. No spam, just the day&apos;s stories, discussions, and launches worth opening.
       </p>
-      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3 sm:flex-row">
+      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3 px-2 sm:flex-row sm:px-0">
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@company.com"
-          className="h-12 flex-1 rounded-full border border-black/[0.08] bg-[#faf8f4] px-5 text-[14px] outline-none transition-colors placeholder:text-secondary/35 focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10"
+          className="min-h-12 flex-1 rounded-full border border-black/[0.08] bg-[#faf8f4] px-6 py-3.5 text-[15px] outline-none transition-colors placeholder:text-secondary/35 focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 sm:text-[14px]"
           autoComplete="email"
           required
         />

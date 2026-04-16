@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { TRACE_SESSION_COOKIE_NAME, verifyTraceSession } from '@/lib/server-session';
-import { getBootstrapFeedForUid } from '@/lib/feed-server';
+import { getBootstrapFeedForUid, getPublicBootstrapFeed } from '@/lib/feed-server';
 import FeedPageClient from './FeedPageClient';
 
 export default async function FeedPage() {
@@ -14,6 +14,8 @@ export default async function FeedPage() {
       if (session) {
         initialFeed = await getBootstrapFeedForUid(session.uid);
       }
+    } else {
+      initialFeed = await getPublicBootstrapFeed('developer');
     }
   } catch (error) {
     // Server-side feed fetch is best-effort — client will retry via SWR.

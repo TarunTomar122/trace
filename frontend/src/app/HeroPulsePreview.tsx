@@ -138,7 +138,7 @@ export default function HeroPulsePreview() {
   const preventNav = (e: React.MouseEvent) => e.preventDefault();
 
   return (
-    <div className="relative">
+    <div className="relative overflow-x-clip">
       <div className="relative z-10 overflow-hidden rounded-2xl border border-border/15 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] ring-1 ring-black/4">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/15 px-4 py-3 sm:px-5">
           <p className="text-[10px] font-semibold text-secondary/45 uppercase tracking-[0.18em]">{todayLabel}</p>

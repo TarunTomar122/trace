@@ -63,7 +63,7 @@ export function InlineUnlockBanner({ storyCount }: { storyCount: number }) {
 
 /* ─── Full-width Paywall Gate ─── */
 const INDIA_PRICING = { trialDays: 1, priceDisplay: '₹19/month', pricingOffer: 'india' as const };
-const DEFAULT_PRICING = { trialDays: 3, priceDisplay: '$4.99/month', pricingOffer: 'default' as const };
+const DEFAULT_PRICING = { trialDays: 3, priceDisplay: '$2.99/month', pricingOffer: 'default' as const };
 
 function guessClientPricing() {
   try {

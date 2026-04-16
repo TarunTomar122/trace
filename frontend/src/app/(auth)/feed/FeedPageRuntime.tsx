@@ -20,7 +20,7 @@ import {
 } from '@/lib/feed-item-detail-client';
 import { consumePrefetchedFeed } from '@/lib/feed-prefetch';
 import FeedBootShell from './FeedBootShell';
-import FeedBriefingView, { BriefingLayoutToggle, BRIEFING_PULSE_TAB_KEY } from './FeedBriefingView';
+import FeedBriefingView, { BRIEFING_PULSE_TAB_KEY } from './FeedBriefingView';
 import { InlineUnlockBanner } from './FeedPaywall';
 import {
   ContentData,
@@ -36,12 +36,11 @@ import {
   PULSE_MAIN_SHELL,
 } from './FeedUi';
 
-const BRIEFING_LAYOUT_STORAGE_KEY = 'trace.briefingLayout';
+const FEED_DEBUG_LOGS = process.env.NODE_ENV !== 'production';
 
-/** Desktop (md+) → compact scroll; phone → classic split, until the user picks otherwise (localStorage). */
-function briefingLayoutDefaultForViewport(): 'panel' | 'scroll' {
-  if (typeof window === 'undefined') return 'scroll';
-  return window.matchMedia('(min-width: 768px)').matches ? 'scroll' : 'panel';
+function feedDebugLog(...args: unknown[]) {
+  if (!FEED_DEBUG_LOGS) return;
+  console.log('[feed-debug]', ...args);
 }
 
 /** Aggregated daily digest row — excluded from the main news list */
@@ -50,6 +49,7 @@ function isTraceBriefFeedItem(item: { source?: string }): boolean {
 }
 
 async function fetchWithAuthFallback<T>(path: string): Promise<T | null> {
+  const startedAt = performance.now();
   const res = await fetch(path, {
     credentials: 'same-origin',
   });
@@ -59,9 +59,21 @@ async function fetchWithAuthFallback<T>(path: string): Promise<T | null> {
       credentials: 'same-origin',
       headers: { Authorization: `Bearer ${token}` },
     });
+    feedDebugLog('request', path, {
+      status: fallbackRes.status,
+      authFallback: true,
+      serverTiming: fallbackRes.headers.get('server-timing'),
+      elapsedMs: Number((performance.now() - startedAt).toFixed(1)),
+    });
     if (!fallbackRes.ok) return null;
     return fallbackRes.json();
   }
+  feedDebugLog('request', path, {
+    status: res.status,
+    authFallback: false,
+    serverTiming: res.headers.get('server-timing'),
+    elapsedMs: Number((performance.now() - startedAt).toFixed(1)),
+  });
   if (!res.ok) return null;
   return res.json();
 }
@@ -109,7 +121,6 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   const [feedView, setFeedView] = useState<'pulse' | 'briefing'>(
     searchParams.get('view') === 'pulse' ? 'pulse' : 'briefing'
   );
-  const [briefingLayout, setBriefingLayoutState] = useState<'panel' | 'scroll'>('scroll');
   /** Tailwind `md` — layout toggle only applies at this breakpoint and up. */
   const [mdUp, setMdUp] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -118,6 +129,12 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     'all' | 'tools' | 'blogs' | 'discussions'
   >('all');
   const refreshProfileRef = React.useRef(refreshProfile);
+  const phasePerfRef = React.useRef({
+    startedAt: performance.now(),
+    authReady: false,
+    listReady: false,
+    detailReadyForId: '' as string,
+  });
 
   useEffect(() => {
     const requested = searchParams.get('view') === 'pulse' ? 'pulse' : 'briefing';
@@ -185,7 +202,8 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   }, [isExpanded]);
 
 
-  const shouldBootstrapFeed = loading || Boolean(user);
+  const hasInitialFeed = Boolean(initialFeed);
+  const shouldBootstrapFeed = Boolean(user) || (loading && !hasInitialFeed);
   const feedKey = shouldBootstrapFeed
     ? (user?.uid ? `feed-session-${user.uid}` : 'feed-session-bootstrap')
     : null;
@@ -215,17 +233,18 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     }
   );
 
+  const baseFeed = v3Feed ?? initialFeed ?? null;
   const effectiveFeed = useMemo(() => {
-    if (!v3Feed) return v3Feed;
-    if (!pulseFeed) return v3Feed;
+    if (!baseFeed) return baseFeed;
+    if (!pulseFeed) return baseFeed;
     return {
-      ...v3Feed,
-      pulse: pulseFeed.pulse ?? v3Feed.pulse,
-      daily_pulse: pulseFeed.daily_pulse ?? v3Feed.daily_pulse,
-      community_pulse: pulseFeed.community_pulse ?? v3Feed.community_pulse,
-      build_pulse: pulseFeed.build_pulse ?? v3Feed.build_pulse,
+      ...baseFeed,
+      pulse: pulseFeed.pulse ?? baseFeed.pulse,
+      daily_pulse: pulseFeed.daily_pulse ?? baseFeed.daily_pulse,
+      community_pulse: pulseFeed.community_pulse ?? baseFeed.community_pulse,
+      build_pulse: pulseFeed.build_pulse ?? baseFeed.build_pulse,
     };
-  }, [v3Feed, pulseFeed]);
+  }, [baseFeed, pulseFeed]);
 
   const shouldLoadFallbackTrending = Boolean(user) && !feedLoading && (
     !effectiveFeed || (
@@ -248,28 +267,6 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     || effectiveFeed?.viewer_profile?.app_subscription_status === 'active'
     || effectiveFeed?.viewer_profile?.app_subscription_status === 'trial';
   const isSubscribed = isSubscribedFromProfile || isSubscribedFromFeed;
-
-  const setBriefingLayout = useCallback((next: 'panel' | 'scroll') => {
-    setBriefingLayoutState(next);
-    try {
-      localStorage.setItem(BRIEFING_LAYOUT_STORAGE_KEY, next);
-    } catch {
-      /* quota / private mode */
-    }
-  }, []);
-
-  useLayoutEffect(() => {
-    try {
-      const raw = localStorage.getItem(BRIEFING_LAYOUT_STORAGE_KEY);
-      if (raw === 'panel' || raw === 'scroll') {
-        setBriefingLayoutState(raw);
-        return;
-      }
-    } catch {
-      /* ignore */
-    }
-    setBriefingLayoutState(briefingLayoutDefaultForViewport());
-  }, []);
 
   useLayoutEffect(() => {
     const mq = window.matchMedia('(min-width: 768px)');
@@ -299,10 +296,10 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
 
   useEffect(() => {
     if (!isAlphaMode()) { router.push(user ? '/waitlist' : '/'); return; }
-    if (!loading && !user) { router.push('/'); return; }
+    if (!loading && !user && !hasInitialFeed) { router.push('/'); return; }
     if (user && !viewerProfileResolved) return;
     if (user && !loading && viewerOnboarded === false) router.push('/onboarding');
-  }, [user, loading, router, viewerProfileResolved, viewerOnboarded]);
+  }, [user, loading, router, viewerProfileResolved, viewerOnboarded, hasInitialFeed]);
 
   useEffect(() => {
     if (!user || !viewerProfileResolved || viewerOnboarded !== true) {
@@ -773,6 +770,11 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     if (!isSubscribed) return null;
     return getContentFromFeedListItem(hydratedSelectedItem);
   }, [isSubscribed, hydratedSelectedItem]);
+  const selectedContentLoading =
+    isSubscribed &&
+    Boolean(effectiveSelectedId) &&
+    !selectedItemHasFullContent &&
+    (selectedItemDetailLoading || !detailMatchesSelected);
 
   // ── Prefetch: seed SWR cache for inline-full items, then background-fetch the rest ──
   const { mutate: globalMutate } = useSWRConfig();
@@ -862,13 +864,50 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     && pulseLoading
     && pulseStoryList.length === 0;
 
+  useEffect(() => {
+    if (phasePerfRef.current.authReady) return;
+    if (loading) return;
+    phasePerfRef.current.authReady = true;
+    feedDebugLog('phase', 'auth-ready', {
+      elapsedMs: Number((performance.now() - phasePerfRef.current.startedAt).toFixed(1)),
+      user: Boolean(user),
+      profileResolved,
+    });
+  }, [loading, user, profileResolved]);
+
+  useEffect(() => {
+    if (phasePerfRef.current.listReady) return;
+    if (showBlockingBoot) return;
+    phasePerfRef.current.listReady = true;
+    feedDebugLog('phase', 'list-ready', {
+      elapsedMs: Number((performance.now() - phasePerfRef.current.startedAt).toFixed(1)),
+      stories: briefingVisibleList.length,
+      hasFeedResponse,
+      hasRenderableBootstrapFeed,
+      selectedId: effectiveSelectedId,
+    });
+  }, [showBlockingBoot, briefingVisibleList.length, hasFeedResponse, hasRenderableBootstrapFeed, effectiveSelectedId]);
+
+  useEffect(() => {
+    if (!effectiveSelectedId) return;
+    if (selectedContentLoading) return;
+    if (!selectedContent) return;
+    if (phasePerfRef.current.detailReadyForId === effectiveSelectedId) return;
+    phasePerfRef.current.detailReadyForId = effectiveSelectedId;
+    feedDebugLog('phase', 'detail-ready', {
+      elapsedMs: Number((performance.now() - phasePerfRef.current.startedAt).toFixed(1)),
+      selectedId: effectiveSelectedId,
+      hadInlineContent: selectedItemHasFullContent,
+    });
+  }, [effectiveSelectedId, selectedContentLoading, selectedContent, selectedItemHasFullContent]);
+
   if (showBlockingBoot) {
     return <FeedBootShell />;
   }
 
   const storyCount = briefingVisibleList.length;
-  /** Below Tailwind `md`: always classic split; `md` and up: stored / toggled layout. */
-  const effectiveBriefingLayout = mdUp ? briefingLayout : 'panel';
+  /** Below Tailwind `md`: always classic split; `md` and up: fixed compact layout. */
+  const effectiveBriefingLayout = mdUp ? 'scroll' : 'panel';
 
   return (
     <div className="min-h-screen bg-background">
@@ -883,11 +922,6 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
               </Link>
             </div>
             <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
-              {feedView === 'briefing' && (
-                <div className="hidden md:block">
-                  <BriefingLayoutToggle layout={briefingLayout} onChange={setBriefingLayout} />
-                </div>
-              )}
               {user?.photoURL ? (
                 <Link href="/profile" prefetch={false}>
                   <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" />
@@ -951,12 +985,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
             activeFilter={activeFilter}
             setActiveFilter={setActiveFilter}
             isLoading={isLoading || isBriefingPulseLoading}
-            isContentLoading={
-              isSubscribed &&
-              Boolean(effectiveSelectedId) &&
-              !selectedItemHasFullContent &&
-              (selectedItemDetailLoading || !detailMatchesSelected)
-            }
+            isContentLoading={selectedContentLoading}
             isContentRefreshing={isSubscribed && Boolean(selectedContent) && Boolean(effectiveSelectedId) && detailMatchesSelected && selectedItemDetailLoading}
             filteredList={briefingVisibleList}
             selectedId={selectedId}

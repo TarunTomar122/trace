@@ -52,6 +52,13 @@ export async function GET(request: NextRequest) {
       `assemble;dur=${(assembledDoneAt - readsDoneAt).toFixed(1)}`,
       `total;dur=${(assembledDoneAt - requestStartedAt).toFixed(1)}`,
     ].join(', ');
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[api/feed]', {
+        hasFeed: Boolean(feed),
+        elapsedMs: Number((assembledDoneAt - requestStartedAt).toFixed(1)),
+        serverTiming,
+      });
+    }
 
     return NextResponse.json(feed, {
       headers: {

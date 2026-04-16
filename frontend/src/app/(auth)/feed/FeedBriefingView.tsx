@@ -271,28 +271,35 @@ function ScrollFeedUnlockGate() {
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background dark:via-background/60" />
       <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4">
         <div className="rounded-2xl border border-[#cfd9de] bg-background/95 p-4 shadow-sm backdrop-blur-sm dark:border-white/15 dark:bg-background/90">
-          <div className="flex gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground/8">
-              <Lock size={16} className="text-foreground/70" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[15px] font-bold text-[#0f1419] dark:text-[#f7f9f9]">
-                Subscribe to unlock the full brief
-              </p>
-              <p className="mt-1 text-[14px] leading-snug text-[#536471] dark:text-[#8b98a5]">
-                Full summaries, key takeaways, why it matters, and source links are included with Trace Pro.
-              </p>
-              <Link
-                href="/profile?tab=subscription"
-                prefetch={false}
-                onClick={() => trackCheckoutClicked('feed_scroll_expand_unlock', {})}
-                className="mt-3 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90"
-              >
-                <Sparkles size={14} />
-                Subscribe to unlock
-              </Link>
-            </div>
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-900/80 dark:text-amber-200/90">
+            <Sparkles size={11} />
+            Trace Pro
           </div>
+          <p className="text-[16px] font-bold text-[#0f1419] dark:text-[#f7f9f9]">
+            Unlock the full brief in 2 minutes
+          </p>
+          <p className="mt-1 text-[14px] leading-snug text-[#536471] dark:text-[#8b98a5]">
+            Get key takeaways, why it matters, and source links for every story.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-secondary/70">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground/6 px-2.5 py-1">
+              <Check size={12} className="text-emerald-600/80" />
+              Daily signal
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground/6 px-2.5 py-1">
+              <Check size={12} className="text-emerald-600/80" />
+              No fluff
+            </span>
+          </div>
+          <Link
+            href="/profile?tab=subscription"
+            prefetch={false}
+            onClick={() => trackCheckoutClicked('feed_scroll_expand_unlock', {})}
+            className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90"
+          >
+            <Sparkles size={14} />
+            Start free trial
+          </Link>
         </div>
       </div>
     </div>
@@ -506,13 +513,13 @@ function ScrollFeedInterestTabs({
 
   return (
     <div className="sticky top-16 z-30 -mx-4 sm:-mx-6 lg:-mx-8 border-b border-border/20 bg-background/80 backdrop-blur-xl">
-      <div className="px-4 sm:px-6 lg:px-8 pt-0.5 pb-0">
-        <p className="text-center text-[12px] text-secondary/55 mb-0.5 leading-tight">
+      <div className="px-4 sm:px-6 lg:px-8 py-0">
+        <p className="text-center text-[11px] text-secondary/55 mb-0 leading-tight">
           {getTodayLabel()}
           {storyCount > 0 ? ` · ${storyCount} stories` : ''}
         </p>
       </div>
-      <div className="min-w-0 max-w-full overflow-x-auto overflow-y-hidden scrollbar-hide pb-0.5 touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+      <div className="min-w-0 max-w-full overflow-x-auto overflow-y-hidden scrollbar-hide pb-0 touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch]">
         {/* min-w-full + justify-center: centered on desktop when tabs fit; w-max: grow for horizontal scroll on small screens */}
         <div className="flex w-max min-w-full justify-center">
           <div className="inline-flex shrink-0 px-4 sm:px-6 lg:px-8">
@@ -523,7 +530,7 @@ function ScrollFeedInterestTabs({
                   key={key}
                   type="button"
                   onClick={() => setActiveFilter(key)}
-                  className={`relative shrink-0 px-3.5 py-2 text-[15px] font-medium whitespace-nowrap transition-colors ${
+                  className={`relative shrink-0 px-3.5 py-1.5 text-[15px] font-medium whitespace-nowrap transition-colors ${
                     pulseAccent
                       ? selected
                         ? 'font-bold text-foreground'
@@ -682,7 +689,7 @@ function EditorialMediumCard({ item }: { item: FeedListItem }) {
           </>
         )}
       </div>
-      <h3 className="text-[15px] font-bold text-foreground leading-snug tracking-[-0.01em] mb-1">
+      <h3 className="min-h-[3.9rem] text-[15px] font-bold text-foreground leading-snug tracking-[-0.01em] mb-1 line-clamp-3">
         {item.title}
       </h3>
       {item.preview && (
@@ -922,28 +929,54 @@ function DesktopPulseEditorialLayout({
         </section>
       )}
 
-      {/* Tools & Repos */}
-      {tools.length > 0 && (
+      {/* Discussions + Tools rail */}
+      {discussions.length > 0 && tools.length > 0 ? (
         <section className="mb-14">
-          <PulseSectionHeader title="Trending Tools & Repos" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {tools.map((item) => (
-              <PulseToolCard key={item.id} item={item} />
-            ))}
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-8 xl:gap-10 items-start">
+            <div>
+              <PulseSectionHeader title="Top Discussions" />
+              <div className="flex flex-col">
+                {discussions.map((item, i) => (
+                  <PulseDiscussionCard key={item.id} item={item} rank={i + 1} />
+                ))}
+              </div>
+            </div>
+            <aside className="min-w-0 xl:sticky xl:top-24">
+              <PulseSectionHeader title="Trending Tools & Repos" />
+              <div className="flex flex-col gap-3">
+                {tools.map((item) => (
+                  <PulseToolCard key={item.id} item={item} />
+                ))}
+              </div>
+            </aside>
           </div>
         </section>
-      )}
+      ) : (
+        <>
+          {/* Tools & Repos */}
+          {tools.length > 0 && (
+            <section className="mb-14">
+              <PulseSectionHeader title="Trending Tools & Repos" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {tools.map((item) => (
+                  <PulseToolCard key={item.id} item={item} />
+                ))}
+              </div>
+            </section>
+          )}
 
-      {/* Discussions */}
-      {discussions.length > 0 && (
-        <section className="mb-14">
-          <PulseSectionHeader title="Top Discussions" />
-          <div className="flex flex-col">
-            {discussions.map((item, i) => (
-              <PulseDiscussionCard key={item.id} item={item} rank={i + 1} />
-            ))}
-          </div>
-        </section>
+          {/* Discussions */}
+          {discussions.length > 0 && (
+            <section className="mb-14">
+              <PulseSectionHeader title="Top Discussions" />
+              <div className="flex flex-col">
+                {discussions.map((item, i) => (
+                  <PulseDiscussionCard key={item.id} item={item} rank={i + 1} />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
       )}
 
       {/* Other items without a section */}
@@ -991,11 +1024,63 @@ function DesktopArticlePageView({
   // Build sidebar: exclude current article, take up to 8
   const sidebarItems = filteredList.filter((item) => item.id !== selectedId).slice(0, 8);
 
-  // Next article for "Up Next" at bottom
   const currentIdx = filteredList.findIndex((item) => item.id === selectedId);
-  const nextItem = currentIdx >= 0 && currentIdx < filteredList.length - 1
-    ? filteredList[currentIdx + 1]
-    : null;
+  const [desktopStreamState, setDesktopStreamState] = useState<{ anchorId: string | null; loadedIds: string[] }>({
+    anchorId: null,
+    loadedIds: [],
+  });
+  const desktopLoadedIds = useMemo(
+    () => (desktopStreamState.anchorId === selectedId ? desktopStreamState.loadedIds : []),
+    [desktopStreamState, selectedId]
+  );
+  const desktopNextCandidate =
+    currentIdx >= 0 && currentIdx + 1 + desktopLoadedIds.length < filteredList.length
+      ? filteredList[currentIdx + 1 + desktopLoadedIds.length]
+      : null;
+  const desktopLoadMoreRef = useRef<HTMLDivElement | null>(null);
+  const desktopDetailRequestsRef = useRef<Set<string>>(new Set());
+  const [desktopDetailCache, setDesktopDetailCache] = useState<Record<string, FeedItemDetailResponse>>({});
+
+  useEffect(() => {
+    if (!desktopNextCandidate || isLocked) return;
+    const node = desktopLoadMoreRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (!first?.isIntersecting) return;
+        observer.disconnect();
+        setDesktopStreamState((prev) => {
+          const base = prev.anchorId === selectedId ? prev.loadedIds : [];
+          if (base.includes(desktopNextCandidate.id)) return prev;
+          return {
+            anchorId: selectedId,
+            loadedIds: [...base, desktopNextCandidate.id],
+          };
+        });
+      },
+      { root: null, threshold: 0.15, rootMargin: '0px 0px 280px 0px' }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [desktopNextCandidate, isLocked, selectedId]);
+
+  useEffect(() => {
+    if (isLocked || desktopLoadedIds.length === 0) return;
+    for (const id of desktopLoadedIds) {
+      if (desktopDetailCache[id]) continue;
+      if (desktopDetailRequestsRef.current.has(id)) continue;
+      desktopDetailRequestsRef.current.add(id);
+      fetchFeedItemDetail(id)
+        .then((detail) => {
+          if (!detail) return;
+          setDesktopDetailCache((prev) => ({ ...prev, [id]: detail }));
+        })
+        .catch(() => {
+          // Keep skeleton when detail fetch fails.
+        });
+    }
+  }, [desktopLoadedIds, desktopDetailCache, isLocked]);
 
   return (
     <div className="pt-6 pb-16">
@@ -1060,21 +1145,34 @@ function DesktopArticlePageView({
           {/* Locked state */}
           {isLocked && story ? (
             <div className="rounded-2xl border border-border/15 bg-surface-secondary/30 p-6">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border/20 bg-foreground/5 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-secondary/60">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-amber-900/80 dark:text-amber-200/90">
                 <Lock size={12} />
-                Subscriber story
+                Trace Pro story
               </div>
               {story.preview && (
                 <p className="text-[15px] leading-7 text-secondary/65">{story.preview}</p>
               )}
-              <p className="mt-5 text-[15px] font-semibold text-foreground">Subscribe to unlock the full brief</p>
+              <p className="mt-5 text-[17px] font-semibold text-foreground">Unlock the full brief in 2 minutes</p>
+              <p className="mt-1 text-[14px] leading-6 text-secondary/60">
+                Key takeaways, context, and source links are waiting for you.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-secondary/70">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground/6 px-2.5 py-1">
+                  <Check size={12} className="text-emerald-600/80" />
+                  Daily signal
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground/6 px-2.5 py-1">
+                  <Check size={12} className="text-emerald-600/80" />
+                  No rabbit holes
+                </span>
+              </div>
               <Link
                 href="/profile?tab=subscription"
                 prefetch={false}
                 className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background"
               >
                 <Sparkles size={14} />
-                Subscribe to unlock
+                Start free trial
               </Link>
             </div>
           ) : isContentLoading && !selectedContent?.body ? (
@@ -1157,26 +1255,140 @@ function DesktopArticlePageView({
             </>
           )}
 
-          {/* Up Next */}
-          {nextItem && (
-            <div className="mt-10 pt-6 border-t border-border/15">
-              <button
-                onClick={() => {
-                  setSelectedId(nextItem.id);
-                  window.history.replaceState({ article: nextItem.id }, '');
-                  window.scrollTo(0, 0);
-                }}
-                className="w-full flex items-center justify-between px-5 py-5 rounded-xl bg-foreground/[0.03] hover:bg-foreground/[0.06] border border-border/10 transition-colors"
-              >
-                <div className="text-left">
-                  <p className="text-[10px] font-semibold text-secondary/40 uppercase tracking-[0.15em] mb-1.5">Up Next</p>
-                  <p className="text-[15px] font-semibold text-foreground leading-snug line-clamp-2">{nextItem.title}</p>
-                  {nextItem.source && (
-                    <p className="text-[12px] text-secondary/45 mt-1">{nextItem.source}</p>
+          {/* Appended stories stream */}
+          {desktopLoadedIds.map((id) => {
+            const listItem = filteredList.find((entry) => entry.id === id);
+            if (!listItem) return null;
+            const detail = desktopDetailCache[id];
+            const hydrated =
+              detail?.item?.id === listItem.id
+                ? (listItem.type === 'article' && detail.kind === 'article')
+                  ? { ...listItem, data: detail.item }
+                  : (listItem.type === 'topic' && detail.kind === 'topic')
+                    ? { ...listItem, data: detail.item }
+                    : listItem
+                : listItem;
+            const content = getContentFromFeedListItem(hydrated);
+            const hasBody = Boolean(content?.body);
+            const streamImageUrl = (content?.thumbnail || listItem.thumbnail)
+              ? getArticleImage(content?.thumbnail || listItem.thumbnail || null, content?.title || listItem.title || '')
+              : null;
+            return (
+              <section key={id} className="mt-12 pt-8 border-t border-border/15">
+                <p className="text-[10px] font-semibold text-secondary/40 uppercase tracking-[0.15em] mb-3">Next Story</p>
+                <div className="flex items-center gap-2 text-[12px] text-secondary/55 mb-4">
+                  {content?.source || listItem.source ? (
+                    <span className="font-medium">{content?.source || listItem.source}</span>
+                  ) : null}
+                  {content?.timestamp && (
+                    <>
+                      {(content?.source || listItem.source) && <span className="text-secondary/30">·</span>}
+                      <span>{getTimeLabel(content.timestamp)}</span>
+                    </>
+                  )}
+                  {(content?.countLabel || (listItem.sourceCount > 1 ? `${listItem.sourceCount} sources` : null)) && (
+                    <>
+                      <span className="text-secondary/30">·</span>
+                      <span>{content?.countLabel || `${listItem.sourceCount} sources`}</span>
+                    </>
+                  )}
+                  {content?.readingTime && (
+                    <>
+                      <span className="text-secondary/30">·</span>
+                      <span>{content.readingTime} min read</span>
+                    </>
                   )}
                 </div>
-                <ArrowRight size={18} className="shrink-0 ml-4 text-foreground/40" />
-              </button>
+                <h2 className="text-[2rem] xl:text-[2.2rem] font-bold text-foreground leading-[1.12] tracking-[-0.03em] mb-6">
+                  {content?.title || listItem.title}
+                </h2>
+                {!hasBody ? (
+                  <div className="animate-pulse space-y-4 py-2">
+                    <div className="h-[17px] w-full rounded-md bg-foreground/7" />
+                    <div className="h-[17px] w-[97%] rounded-md bg-foreground/7" />
+                    <div className="h-[17px] w-[92%] rounded-md bg-foreground/6" />
+                    <div className="h-[17px] w-full rounded-md bg-foreground/6" />
+                    <div className="h-[17px] w-[88%] rounded-md bg-foreground/5" />
+                    <div className="h-[17px] w-[74%] rounded-md bg-foreground/5" />
+                    <div className="h-[17px] w-[95%] rounded-md bg-foreground/5" />
+                  </div>
+                ) : (
+                  <>
+                    {streamImageUrl && (
+                      <div className="mb-8">
+                        <img
+                          src={streamImageUrl}
+                          alt=""
+                          decoding="async"
+                          className={
+                            isProductHuntWidget(streamImageUrl)
+                              ? 'max-w-[280px] rounded-2xl border border-[#ff6154]/20 bg-white'
+                              : 'w-full max-h-[420px] object-cover rounded-xl'
+                          }
+                        />
+                      </div>
+                    )}
+                    <div className="mb-8 text-[17px] text-foreground/85 leading-[1.85]">
+                      {looksLikeBriefBody(content!.body) ? (
+                        <BriefBody body={content!.body} />
+                      ) : (
+                        <div className="prose prose-lg dark:prose-invert max-w-none">
+                          <MarkdownProse body={content!.body} />
+                        </div>
+                      )}
+                    </div>
+                    {content?.keyPoints && content.keyPoints.length > 0 && (
+                      <div className="mb-8 p-6 rounded-xl border border-border/15 bg-surface-secondary/20">
+                        <h3 className="text-[11px] font-semibold text-secondary/55 mb-4 uppercase tracking-[0.15em]">
+                          Key Takeaways
+                        </h3>
+                        <div className="space-y-3">
+                          {content.keyPoints.slice(0, 6).map((point, i) => (
+                            <div key={i} className="flex gap-3">
+                              <span className="text-secondary/35 font-mono text-[13px] mt-0.5 shrink-0">{i + 1}.</span>
+                              <p className="text-[15px] text-secondary/80 leading-relaxed">{stripMarkdown(point)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {content?.whyItMatters && (
+                      <div className="mb-8 pl-5 border-l-2 border-foreground/15">
+                        <h3 className="text-[11px] font-semibold text-secondary/55 mb-2 uppercase tracking-[0.15em]">
+                          Why It Matters
+                        </h3>
+                        <p className="text-[15px] text-secondary/75 leading-relaxed">{stripMarkdown(content.whyItMatters)}</p>
+                      </div>
+                    )}
+                    {(content?.shareUrl || content?.url) && (
+                      <div className="pt-6 border-t border-border/15 flex flex-wrap items-center gap-3">
+                        <ShareButton url={content.shareUrl || content.url!} />
+                        {content?.url && (
+                          <a
+                            href={content.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold bg-foreground text-background hover:bg-foreground/90 transition-colors"
+                          >
+                            Read original source
+                            <ExternalLink size={14} />
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
+            );
+          })}
+
+          {desktopNextCandidate && !isLocked && (
+            <div ref={desktopLoadMoreRef} className="mt-10 pt-6 border-t border-border/15">
+              <div className="w-full rounded-xl border border-border/10 bg-foreground/[0.02] px-5 py-5 animate-pulse">
+                <div className="h-3 w-24 rounded-full bg-foreground/10 mb-3" />
+                <div className="h-4 w-[80%] rounded-md bg-foreground/10 mb-2" />
+                <div className="h-4 w-[58%] rounded-md bg-foreground/8" />
+              </div>
             </div>
           )}
         </article>
@@ -1357,9 +1569,9 @@ function LockedStoryPanel({ story }: { story: FeedListItem }) {
   return (
     <div className="flex h-full flex-col overflow-y-auto px-6 py-8 sm:px-10">
       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center">
-        <div className="mb-5 inline-flex w-fit items-center gap-2 rounded-full border border-border/20 bg-foreground/5 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-secondary/60">
+        <div className="mb-5 inline-flex w-fit items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-amber-900/80 dark:text-amber-200/90">
           <Lock size={12} />
-          Subscriber story
+          Trace Pro story
         </div>
         <h2 className="text-[2rem] font-bold tracking-[-0.03em] text-foreground">
           {story.title}
@@ -1392,12 +1604,22 @@ function LockedStoryPanel({ story }: { story: FeedListItem }) {
         )}
 
         <div className="mt-8 max-w-xl rounded-3xl border border-border/15 bg-surface-secondary/30 p-6">
-          <p className="text-base font-semibold text-foreground">
-            Subscribe to unlock the full brief
+          <p className="text-[19px] font-semibold text-foreground">
+            Unlock this story in full
           </p>
           <p className="mt-2 text-sm leading-6 text-secondary/60">
-            Get the summary, why it matters, key takeaways, and the source links for every story in your feed.
+            Get key takeaways, context, and source links for every story in your feed.
           </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-secondary/70">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground/6 px-2.5 py-1">
+              <Check size={12} className="text-emerald-600/80" />
+              Daily signal
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground/6 px-2.5 py-1">
+              <Check size={12} className="text-emerald-600/80" />
+              No fluff
+            </span>
+          </div>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
               href="/profile?tab=subscription"
@@ -1405,7 +1627,7 @@ function LockedStoryPanel({ story }: { story: FeedListItem }) {
               className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90"
             >
               <Sparkles size={14} />
-              Subscribe to unlock
+              Start free trial
             </Link>
           </div>
         </div>
@@ -1454,7 +1676,6 @@ export default function FeedBriefingView({
     if (showMobileContent && mobileArticleRef.current) {
       mobileArticleRef.current.scrollTop = 0;
     }
-    setShareCopied(false);
   }, [selectedId, showMobileContent]);
 
   if (briefingLayout === 'scroll') {
@@ -1468,7 +1689,7 @@ export default function FeedBriefingView({
           storyCount={storyCount}
           showPulseTab={showPulseTab}
         />
-        {lgUp && activeFilter === BRIEFING_PULSE_TAB_KEY ? (
+        {activeFilter === BRIEFING_PULSE_TAB_KEY ? (
           <DesktopPulseEditorialLayout
             filteredList={filteredList}
             isLoading={isLoading}
@@ -1688,24 +1909,34 @@ export default function FeedBriefingView({
 
               {isLocked && story ? (
                 <div className="rounded-[28px] border border-border/15 bg-surface-secondary/30 p-5">
-                  <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border/20 bg-foreground/5 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-secondary/60">
+                  <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-amber-900/80 dark:text-amber-200/90">
                     <Lock size={12} />
-                    Subscriber story
+                    Trace Pro story
                   </div>
                   {story.preview && (
                     <p className="text-[14px] leading-7 text-secondary/65">{story.preview}</p>
                   )}
-                  <p className="mt-5 text-[14px] font-semibold text-foreground">Subscribe to unlock the full brief</p>
+                  <p className="mt-5 text-[16px] font-semibold text-foreground">Unlock the full brief in 2 minutes</p>
                   <p className="mt-1 text-[13px] leading-6 text-secondary/60">
                     Read the summary, key points, and source links for this story and the rest of your feed.
                   </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-secondary/70">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground/6 px-2.5 py-1">
+                      <Check size={12} className="text-emerald-600/80" />
+                      Daily signal
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground/6 px-2.5 py-1">
+                      <Check size={12} className="text-emerald-600/80" />
+                      No fluff
+                    </span>
+                  </div>
                   <Link
                     href="/profile?tab=subscription"
                     prefetch={false}
                     className="mt-5 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background"
                   >
                     <Sparkles size={14} />
-                    Subscribe to unlock
+                    Start free trial
                   </Link>
                 </div>
               ) : isContentLoading && !selectedContent?.body ? (

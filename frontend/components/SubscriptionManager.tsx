@@ -50,7 +50,7 @@ const DEFAULT_PRICING_PREVIEW: PricingPreview = {
   countryCode: null,
   countrySource: 'fallback',
   trialDays: 3,
-  priceDisplay: '$4.99/month',
+  priceDisplay: '$2.99/month',
   pricingOffer: 'default',
 };
 

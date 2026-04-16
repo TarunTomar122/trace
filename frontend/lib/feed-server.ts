@@ -4,10 +4,14 @@ import type { FeedItem, TopicTimelineEvent, TrendingTopic, V3UserFeed } from '@/
 const GLOBAL_FEED_LOOKBACK_DOCS = 2;
 const WEB_BOOTSTRAP_CACHE_COLLECTION = 'web_feed_bootstrap_cache';
 const WEB_FULL_FEED_CACHE_COLLECTION = 'web_feed_full_cache';
+const WEB_ITEM_DETAIL_CACHE_COLLECTION = 'web_feed_item_detail_cache';
 const WEB_BOOTSTRAP_CACHE_TTL_MS = 10 * 60 * 1000;
 const WEB_FULL_FEED_CACHE_TTL_MS = 10 * 60 * 1000;
+const WEB_ITEM_DETAIL_CACHE_TTL_MS = 10 * 60 * 1000;
 const WEB_BOOTSTRAP_CACHE_VERSION = 4;
 const WEB_FULL_FEED_CACHE_VERSION = 1;
+const WEB_ITEM_DETAIL_CACHE_VERSION = 1;
+const GUEST_FEED_INTERESTS = ['ai', 'tech', 'startups', 'engineering', 'markets'] as const;
 const MAX_SUMMARY_BODY_CHARS = 2200;
 const MAX_SUMMARY_SUBTITLE_CHARS = 280;
 const MAX_WHY_IT_MATTERS_CHARS = 420;
@@ -53,6 +57,9 @@ function normalizeFeedRole(role?: string | null): string {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DocData = Record<string, any>;
 type FeedBody = Omit<V3UserFeed, 'viewer_profile'>;
+type FeedItemDetailResponse =
+  | { kind: 'article'; item: FeedItem }
+  | { kind: 'topic'; item: TrendingTopic };
 
 function extractRoleBuckets(globalData: DocData, normalizedRole: string) {
   const roleMap = globalData.for_you_roles && typeof globalData.for_you_roles === 'object'
@@ -141,11 +148,179 @@ function getFullFeedCacheDocId(normalizedRole: string) {
   return `latest_${normalizedRole || 'developer'}`;
 }
 
+function getItemDetailCacheRoleDocId(normalizedRole: string) {
+  return `latest_${normalizedRole || 'developer'}`;
+}
+
 function isFreshIsoTimestamp(value: unknown, ttlMs: number) {
   if (typeof value !== 'string') return false;
   const ts = new Date(value).getTime();
   if (!Number.isFinite(ts)) return false;
   return Date.now() - ts < ttlMs;
+}
+
+function isFeedItemDetailResponse(value: unknown): value is FeedItemDetailResponse {
+  if (!value || typeof value !== 'object') return false;
+  const data = value as { kind?: unknown; item?: unknown };
+  if (data.kind !== 'article' && data.kind !== 'topic') return false;
+  return Boolean(data.item && typeof data.item === 'object');
+}
+
+function findFeedItemDetailInFeed(feed: FeedBody, itemId: string): FeedItemDetailResponse | null {
+  const topic = feed.trending_topics?.find((entry) => entry.id === itemId);
+  if (topic) {
+    return { kind: 'topic', item: topic };
+  }
+
+  const articleGroups: FeedItem[][] = [
+    feed.for_you || [],
+    feed.trending || [],
+    feed.pulse || [],
+    feed.community_pulse || [],
+    feed.build_pulse || [],
+    feed.daily_pulse?.tools || [],
+    feed.daily_pulse?.blogs || [],
+    feed.daily_pulse?.discussions || [],
+  ];
+
+  for (const group of articleGroups) {
+    const match = group.find((entry) => entry.id === itemId);
+    if (match) {
+      return { kind: 'article', item: match };
+    }
+  }
+
+  return null;
+}
+
+async function writeItemDetailCacheForRole(normalizedRole: string, feed: FeedBody, generatedAt: string) {
+  if (!adminFirestore) {
+    throw new Error('Server configuration error');
+  }
+
+  const detailByItemId = new Map<string, FeedItemDetailResponse>();
+  for (const topic of feed.trending_topics || []) {
+    detailByItemId.set(topic.id, { kind: 'topic', item: topic });
+  }
+
+  const articleGroups: FeedItem[][] = [
+    feed.for_you || [],
+    feed.trending || [],
+    feed.pulse || [],
+    feed.community_pulse || [],
+    feed.build_pulse || [],
+    feed.daily_pulse?.tools || [],
+    feed.daily_pulse?.blogs || [],
+    feed.daily_pulse?.discussions || [],
+  ];
+
+  for (const group of articleGroups) {
+    for (const article of group) {
+      if (!detailByItemId.has(article.id)) {
+        detailByItemId.set(article.id, { kind: 'article', item: article });
+      }
+    }
+  }
+
+  if (detailByItemId.size === 0) return;
+
+  const roleDocRef = adminFirestore
+    .collection(WEB_ITEM_DETAIL_CACHE_COLLECTION)
+    .doc(getItemDetailCacheRoleDocId(normalizedRole));
+  const writes: Promise<unknown>[] = [];
+
+  for (const [itemId, detail] of detailByItemId.entries()) {
+    writes.push(
+      roleDocRef.collection('items').doc(itemId).set(stripUndefinedDeep({
+        version: WEB_ITEM_DETAIL_CACHE_VERSION,
+        generated_at: generatedAt,
+        detail,
+      }), { merge: true })
+    );
+  }
+
+  await Promise.all(writes);
+}
+
+async function readFeedItemDetailFromCache(
+  normalizedRole: string,
+  itemId: string
+): Promise<FeedItemDetailResponse | null> {
+  if (!adminFirestore) {
+    throw new Error('Server configuration error');
+  }
+
+  const itemSnapshot = await adminFirestore
+    .collection(WEB_ITEM_DETAIL_CACHE_COLLECTION)
+    .doc(getItemDetailCacheRoleDocId(normalizedRole))
+    .collection('items')
+    .doc(itemId)
+    .get();
+
+  if (!itemSnapshot.exists) return null;
+
+  const cacheData = itemSnapshot.data() as {
+    version?: number;
+    generated_at?: string;
+    detail?: unknown;
+  } | undefined;
+
+  if (
+    cacheData?.version !== WEB_ITEM_DETAIL_CACHE_VERSION
+    || !isFreshIsoTimestamp(cacheData.generated_at, WEB_ITEM_DETAIL_CACHE_TTL_MS)
+    || !isFeedItemDetailResponse(cacheData.detail)
+  ) {
+    return null;
+  }
+
+  return cacheData.detail;
+}
+
+async function hydrateFeedItemDetailFromFullCache(
+  normalizedRole: string,
+  itemId: string
+): Promise<FeedItemDetailResponse | null> {
+  if (!adminFirestore) {
+    throw new Error('Server configuration error');
+  }
+
+  const fullCacheSnapshot = await adminFirestore
+    .collection(WEB_FULL_FEED_CACHE_COLLECTION)
+    .doc(getFullFeedCacheDocId(normalizedRole))
+    .get();
+
+  if (!fullCacheSnapshot.exists) return null;
+
+  const fullCacheData = fullCacheSnapshot.data() as {
+    version?: number;
+    generated_at?: string;
+    feed?: FeedBody;
+  } | undefined;
+
+  if (
+    fullCacheData?.version !== WEB_FULL_FEED_CACHE_VERSION
+    || !fullCacheData.feed
+    || !isFreshIsoTimestamp(fullCacheData.generated_at, WEB_FULL_FEED_CACHE_TTL_MS)
+  ) {
+    return null;
+  }
+
+  const detail = findFeedItemDetailInFeed(fullCacheData.feed, itemId);
+  if (!detail) return null;
+
+  const generatedAt = fullCacheData.generated_at || new Date().toISOString();
+  await adminFirestore
+    .collection(WEB_ITEM_DETAIL_CACHE_COLLECTION)
+    .doc(getItemDetailCacheRoleDocId(normalizedRole))
+    .collection('items')
+    .doc(itemId)
+    .set(stripUndefinedDeep({
+      version: WEB_ITEM_DETAIL_CACHE_VERSION,
+      generated_at: generatedAt,
+      detail,
+    }), { merge: true });
+
+  return detail;
 }
 
 function stripUndefinedDeep<T>(value: T): T {
@@ -505,6 +680,13 @@ async function getFullFeedBodyForRole(normalizedRole: string): Promise<FeedBody 
         cacheData.feed &&
         isFreshIsoTimestamp(cacheData.generated_at, WEB_FULL_FEED_CACHE_TTL_MS)
       ) {
+        void writeItemDetailCacheForRole(
+          normalizedRole,
+          cacheData.feed,
+          cacheData.generated_at || new Date().toISOString()
+        ).catch((error) => {
+          console.error('[feed-server] item-detail cache write failed:', error);
+        });
         return cacheData.feed;
       }
     }
@@ -514,19 +696,39 @@ async function getFullFeedBodyForRole(normalizedRole: string): Promise<FeedBody 
 
   const feed = await buildFullFeedBody(normalizedRole);
   if (!feed) return null;
+  const generatedAt = new Date().toISOString();
 
   void cacheRef.set(stripUndefinedDeep({
     version: WEB_FULL_FEED_CACHE_VERSION,
     role: normalizedRole || 'developer',
     date: feed.date,
     assembled_at: feed.assembled_at || null,
-    generated_at: new Date().toISOString(),
+    generated_at: generatedAt,
     feed,
   }), { merge: true }).catch((error) => {
     console.error('[feed-server] full-feed cache write failed:', error);
   });
+  void writeItemDetailCacheForRole(normalizedRole, feed, generatedAt).catch((error) => {
+    console.error('[feed-server] item-detail cache write failed:', error);
+  });
 
   return feed;
+}
+
+function buildBootstrapFeedFromFull(feed: FeedBody): Omit<V3UserFeed, 'viewer_profile'> {
+  // Keep the first few items fully hydrated so the initially-visible article
+  // renders instantly; slim the rest to cut payload size.
+  const INLINE_FULL_COUNT = 3;
+  return {
+    ...feed,
+    for_you: feed.for_you.map((item, i) => i < INLINE_FULL_COUNT ? sanitizeFeedItem(item) : slimFeedItem(item)),
+    trending: feed.trending.map(slimFeedItem),
+    trending_topics: feed.trending_topics?.map((topic, i) => i < INLINE_FULL_COUNT ? sanitizeTrendingTopic(topic) : slimTrendingTopic(topic)),
+    pulse: [],
+    daily_pulse: undefined,
+    community_pulse: [],
+    build_pulse: [],
+  };
 }
 
 export async function getFeedForUid(uid: string, roleFromQuery = ''): Promise<V3UserFeed | null> {
@@ -537,6 +739,25 @@ export async function getFeedForUid(uid: string, roleFromQuery = ''): Promise<V3
   return {
     ...feed,
     viewer_profile: viewerContext.viewerProfile,
+  };
+}
+
+export async function getPublicBootstrapFeed(roleFromQuery = 'developer'): Promise<V3UserFeed | null> {
+  const normalizedRole = normalizeFeedRole(roleFromQuery || 'developer');
+  const feed = await getFullFeedBodyForRole(normalizedRole);
+  if (!feed) return null;
+
+  const bootstrapFeed = buildBootstrapFeedFromFull(feed);
+  return {
+    ...bootstrapFeed,
+    viewer_profile: {
+      role: normalizedRole || 'developer',
+      interests: [...GUEST_FEED_INTERESTS],
+      onboarded: true,
+      subscription_status: 'none',
+      app_subscription_status: 'none',
+      has_access: false,
+    },
   };
 }
 
@@ -551,8 +772,6 @@ export async function getBootstrapFeedForUid(uid: string, roleFromQuery = ''): P
 
   // Run profile fetch + bootstrap cache check in parallel when possible.
   const viewerContextPromise = getViewerContext(uid, roleFromQuery);
-
-  let cachedFeed: Omit<V3UserFeed, 'viewer_profile'> | null = null;
 
   if (earlyRole) {
     // We know the role already — check cache in parallel with profile fetch.
@@ -624,21 +843,7 @@ export async function getBootstrapFeedForUid(uid: string, roleFromQuery = ''): P
 
   const feed = await getFullFeedBodyForRole(viewerContext.normalizedRole);
   if (!feed) return null;
-
-  // Keep the first few items fully hydrated so the initially-visible article
-  // renders instantly; slim the rest to cut payload size.
-  const INLINE_FULL_COUNT = 3;
-
-  const bootstrapFeed: Omit<V3UserFeed, 'viewer_profile'> = {
-    ...feed,
-    for_you: feed.for_you.map((item, i) => i < INLINE_FULL_COUNT ? sanitizeFeedItem(item) : slimFeedItem(item)),
-    trending: feed.trending.map(slimFeedItem),
-    trending_topics: feed.trending_topics?.map((topic, i) => i < INLINE_FULL_COUNT ? sanitizeTrendingTopic(topic) : slimTrendingTopic(topic)),
-    pulse: [],
-    daily_pulse: undefined,
-    community_pulse: [],
-    build_pulse: [],
-  };
+  const bootstrapFeed = buildBootstrapFeedFromFull(feed);
 
   const writeCacheRef = adminFirestore
     .collection(WEB_BOOTSTRAP_CACHE_COLLECTION)
@@ -680,31 +885,11 @@ export async function getFeedItemDetailForUid(
   uid: string,
   itemId: string,
   roleFromQuery = ''
-): Promise<{ kind: 'article'; item: FeedItem } | { kind: 'topic'; item: TrendingTopic } | null> {
-  const feed = await getFeedForUid(uid, roleFromQuery);
-  if (!feed) return null;
+): Promise<FeedItemDetailResponse | null> {
+  const viewerContext = await getViewerContext(uid, roleFromQuery);
 
-  const topic = feed.trending_topics?.find((entry) => entry.id === itemId);
-  if (topic) {
-    return { kind: 'topic', item: topic };
-  }
+  const cached = await readFeedItemDetailFromCache(viewerContext.normalizedRole, itemId);
+  if (cached) return cached;
 
-  const articleGroups: FeedItem[][] = [
-    feed.trending || [],
-    feed.pulse || [],
-    feed.community_pulse || [],
-    feed.build_pulse || [],
-    feed.daily_pulse?.tools || [],
-    feed.daily_pulse?.blogs || [],
-    feed.daily_pulse?.discussions || [],
-  ];
-
-  for (const group of articleGroups) {
-    const match = group.find((entry) => entry.id === itemId);
-    if (match) {
-      return { kind: 'article', item: match };
-    }
-  }
-
-  return null;
+  return hydrateFeedItemDetailFromFullCache(viewerContext.normalizedRole, itemId);
 }

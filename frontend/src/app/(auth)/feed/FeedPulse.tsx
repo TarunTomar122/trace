@@ -146,9 +146,10 @@ function CategoryBadge({ children }: { children: React.ReactNode }) {
 }
 
 const discussionOutboundLink =
-  'inline-flex items-center gap-1.5 text-[13px] font-semibold text-secondary/60 hover:text-foreground transition-colors decoration-border/50 hover:decoration-foreground/40 underline underline-offset-[4px]';
+  'inline-flex items-center gap-1.5 text-[13px] font-semibold text-secondary/80 hover:text-foreground transition-colors decoration-border/50 hover:decoration-foreground/40 underline underline-offset-[4px]';
 
 export function PulseDiscussionCard({ item, rank }: { item: FeedListItem; rank: number }) {
+  const [isExpanded, setIsExpanded] = React.useState(false);
   const url = item.url || item.pulseSources?.[0]?.url;
   const extraLinks = (item.pulseSources || []).filter(
     s => !url || !pulseUrlsMatch(s.url, url)
@@ -157,6 +158,8 @@ export function PulseDiscussionCard({ item, rank }: { item: FeedListItem; rank: 
   const feedItem = item.data as FeedItem;
   const body = feedItem.summary?.short_article?.body || '';
   const isBrief = body ? looksLikeBriefBody(body) : false;
+  const descriptionText = isBrief && body ? stripMarkdown(body) : (item.preview || '');
+  const canExpandDescription = descriptionText.length > 180;
 
   const sourceLower = (item.source || '').toLowerCase();
   const isHN = sourceLower.includes('hacker news');
@@ -169,15 +172,15 @@ export function PulseDiscussionCard({ item, rank }: { item: FeedListItem; rank: 
         {String(rank).padStart(2, '0')}
       </span>
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 max-w-[900px]">
         <div className="flex items-center gap-2 mb-2">
           <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-            isHN ? 'text-[#ff6600] bg-[#ff6600]/8' : isReddit ? 'text-[#ff4500] bg-[#ff4500]/8' : 'text-secondary/60 bg-foreground/[0.04]'
+            isHN ? 'text-[#ff6600] bg-[#ff6600]/8' : isReddit ? 'text-[#ff4500] bg-[#ff4500]/8' : 'text-secondary/80 bg-foreground/[0.04]'
           }`}>
             {item.source || 'Discussion'}
           </span>
           {item.signalCount != null && item.signalCount > 0 && (
-            <span className="text-[11px] font-medium text-secondary/45 tabular-nums">
+            <span className="text-[11px] font-medium text-secondary/65 tabular-nums">
               {item.signalCount.toLocaleString()} points
             </span>
           )}
@@ -196,7 +199,7 @@ export function PulseDiscussionCard({ item, rank }: { item: FeedListItem; rank: 
         )}
 
         {(isBrief && body) || item.preview ? (
-          <div className="text-[14px] leading-[1.7] text-secondary/70 mb-3 line-clamp-3">
+          <div className={`text-[15px] sm:text-[16px] leading-8 text-foreground/75 mb-2 max-w-[82ch] ${isExpanded ? '' : 'line-clamp-3'}`}>
             {isBrief && body ? (
               <BriefBody body={body} />
             ) : (
@@ -204,6 +207,15 @@ export function PulseDiscussionCard({ item, rank }: { item: FeedListItem; rank: 
             )}
           </div>
         ) : null}
+        {canExpandDescription && (
+          <button
+            type="button"
+            onClick={() => setIsExpanded((prev) => !prev)}
+            className="mb-3 text-[12px] font-semibold text-secondary/85 underline decoration-border/60 underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground/35"
+          >
+            {isExpanded ? 'Show less' : 'Read more'}
+          </button>
+        )}
 
         <div className="flex items-center gap-4">
           {url && (
@@ -517,7 +529,7 @@ export function DailyPulseView({
       {tools.length > 0 && (
         <section className="mb-14">
           <PulseSectionHeader title="Trending Tools & Repos" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {tools.map(item => (
               <PulseToolCard key={item.id} item={item} />
             ))}

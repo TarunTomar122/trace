@@ -107,7 +107,7 @@ export default function RootLayout({
         "image": "https://www.yourtrace.online/trace.png",
         "offers": {
           "@type": "Offer",
-          "price": "4.99",
+          "price": "2.99",
           "priceCurrency": "USD",
           "availability": "https://schema.org/InStock",
           "priceValidUntil": "2026-12-31",
@@ -131,7 +131,7 @@ export default function RootLayout({
             "name": "How much does Trace cost?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Trace starts with a free trial, then monthly pricing applies based on your region (for example, ₹19/month in India and $4.99/month in the US). You can cancel anytime from your profile."
+              "text": "Trace starts with a free trial, then monthly pricing applies based on your region (for example, ₹19/month in India and $2.99/month in the US). You can cancel anytime from your profile."
             }
           },
           {
