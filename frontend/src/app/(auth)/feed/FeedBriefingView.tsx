@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import type { FeedItem, TrendingTopic } from '@/lib/firestore';
 import {
@@ -10,6 +10,7 @@ import Link from 'next/link';
 import {
   ArrowLeft,
   ArrowRight,
+  Check,
   ExternalLink,
   Loader2,
   Lock,
@@ -17,6 +18,7 @@ import {
   Minimize2,
   PanelLeft,
   Rows3,
+  Share2,
   Sparkles,
 } from 'lucide-react';
 import { getArticleImage } from '@/lib/fallback-images';
@@ -170,7 +172,67 @@ function getScrollableAncestor(el: HTMLElement | null): Window | HTMLElement {
   return typeof window !== 'undefined' ? window : (el?.ownerDocument?.defaultView as Window) ?? window;
 }
 
-/** Pro expand: visible “we’re fetching the full brief” state */
+/** Pro expand: visible “we're fetching the full brief” state */
+function ShareButton({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async (e) => {
+        e.stopPropagation();
+        try {
+          await navigator.clipboard.writeText(url);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        } catch { /* ignore */ }
+      }}
+      className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold border border-border/30 text-foreground hover:bg-foreground/5 transition-colors"
+    >
+      {copied ? <Check size={14} className="text-green-500" /> : <Share2 size={14} />}
+      {copied ? 'Copied!' : 'Copy link'}
+    </button>
+  );
+}
+
+function ArticleContentSkeleton() {
+  return (
+    <div className="flex-1 overflow-y-auto px-6 sm:px-8 lg:px-10 py-6 sm:py-8 animate-pulse">
+      {/* Meta bar */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="h-2.5 w-16 rounded-full bg-foreground/8 dark:bg-white/10" />
+        <div className="h-2.5 w-12 rounded-full bg-foreground/6 dark:bg-white/8" />
+        <div className="h-2.5 w-20 rounded-full bg-foreground/6 dark:bg-white/8" />
+      </div>
+      {/* Title */}
+      <div className="space-y-2.5 mb-6">
+        <div className="h-6 w-[85%] rounded-lg bg-foreground/10 dark:bg-white/12" />
+        <div className="h-6 w-[60%] rounded-lg bg-foreground/8 dark:bg-white/10" />
+      </div>
+      {/* Subtitle */}
+      <div className="h-4 w-[70%] rounded-md bg-foreground/6 dark:bg-white/8 mb-8" />
+      {/* Body lines */}
+      <div className="space-y-3">
+        <div className="h-3.5 w-full rounded-md bg-foreground/6 dark:bg-white/7" />
+        <div className="h-3.5 w-[97%] rounded-md bg-foreground/6 dark:bg-white/7" />
+        <div className="h-3.5 w-[92%] rounded-md bg-foreground/5 dark:bg-white/6" />
+        <div className="h-3.5 w-full rounded-md bg-foreground/5 dark:bg-white/6" />
+        <div className="h-3.5 w-[88%] rounded-md bg-foreground/5 dark:bg-white/6" />
+        <div className="h-3.5 w-[75%] rounded-md bg-foreground/4 dark:bg-white/5" />
+      </div>
+      {/* Key takeaways block */}
+      <div className="mt-8 rounded-xl border border-foreground/6 dark:border-white/8 p-5">
+        <div className="h-3 w-28 rounded-full bg-foreground/8 dark:bg-white/10 mb-4" />
+        <div className="space-y-2.5">
+          <div className="h-3 w-[90%] rounded-md bg-foreground/5 dark:bg-white/6" />
+          <div className="h-3 w-[80%] rounded-md bg-foreground/4 dark:bg-white/5" />
+          <div className="h-3 w-[85%] rounded-md bg-foreground/4 dark:bg-white/5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 function ScrollFeedBodyLoading() {
   return (
     <div
@@ -252,7 +314,7 @@ function ScrollFeedCard({
   onToggle: () => void;
   content: ContentData | null;
   contentLoading: boolean;
-  /** Tighter top padding so the list doesn’t double-gap under the tab bar */
+  /** Tighter top padding so the list doesn't double-gap under the tab bar */
   isFirst?: boolean;
   isLocked?: boolean;
   articleRef?: React.RefCallback<HTMLElement | null>;
@@ -265,7 +327,7 @@ function ScrollFeedCard({
     Boolean(content?.body?.trim()) || Boolean(content?.keyPoints && content.keyPoints.length > 0);
   const showBodyLoader = contentLoading && !hasRenderableDetail;
   const rowTop = isFirst ? 'pt-5 sm:pt-7' : 'pt-5 sm:pt-6';
-  /** One max height so expand doesn’t reflow the hero image upward */
+  /** One max height so expand doesn't reflow the hero image upward */
   const heroMaxClass = 'max-h-[min(420px,55vh)]';
 
   const showPreviewWhenExpanded =
@@ -325,7 +387,7 @@ function ScrollFeedCard({
             <span className="inline-block text-[15px] text-[#1d9bf0]">Show more</span>
           )}
 
-          {/* Image — same slot collapsed + expanded so layout doesn’t jump up */}
+          {/* Image — same slot collapsed + expanded so layout doesn't jump up */}
           {showImg && (
             <div className="overflow-hidden rounded-2xl border border-[#cfd9de] dark:border-white/15">
               <img
@@ -378,23 +440,28 @@ function ScrollFeedCard({
                   </div>
                 )}
 
-                {/* Original source — subtle, X-style card link */}
-                {content?.url && (
-                  <a
-                    href={content.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-3 p-3 rounded-2xl border border-[#cfd9de] hover:bg-[#f7f9f9] transition-colors dark:border-white/15 dark:hover:bg-white/5"
-                  >
-                    <div className="w-9 h-9 rounded-full bg-[#eff3f4] flex items-center justify-center shrink-0 dark:bg-white/10">
-                      <ExternalLink size={16} className="text-[#536471]" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[13px] text-[#536471] truncate">{(() => { try { return new URL(content.url).hostname.replace('www.',''); } catch { return 'Source'; } })()}</p>
-                      <p className="text-[15px] text-[#0f1419] font-normal truncate dark:text-[#e7e9ea]">Read original article</p>
-                    </div>
-                  </a>
+                {/* Actions row — share + original source */}
+                {(content?.shareUrl || content?.url) && (
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <ShareButton url={content.shareUrl || content.url!} />
+                    {content?.url && (
+                      <a
+                        href={content.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-3 flex-1 min-w-0 p-3 rounded-2xl border border-[#cfd9de] hover:bg-[#f7f9f9] transition-colors dark:border-white/15 dark:hover:bg-white/5"
+                      >
+                        <div className="w-9 h-9 rounded-full bg-[#eff3f4] flex items-center justify-center shrink-0 dark:bg-white/10">
+                          <ExternalLink size={16} className="text-[#536471]" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[13px] text-[#536471] truncate">{(() => { try { return new URL(content.url).hostname.replace('www.',''); } catch { return 'Source'; } })()}</p>
+                          <p className="text-[15px] text-[#0f1419] font-normal truncate dark:text-[#e7e9ea]">Read original article</p>
+                        </div>
+                      </a>
+                    )}
+                  </div>
                 )}
               </>
             )}
@@ -1011,8 +1078,22 @@ function DesktopArticlePageView({
               </Link>
             </div>
           ) : isContentLoading && !selectedContent?.body ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 size={22} className="animate-spin text-secondary/40" />
+            <div className="animate-pulse space-y-4 py-2">
+              <div className="h-[17px] w-full rounded-md bg-foreground/7" />
+              <div className="h-[17px] w-[97%] rounded-md bg-foreground/7" />
+              <div className="h-[17px] w-[92%] rounded-md bg-foreground/6" />
+              <div className="h-[17px] w-full rounded-md bg-foreground/6" />
+              <div className="h-[17px] w-[88%] rounded-md bg-foreground/5" />
+              <div className="h-[17px] w-[74%] rounded-md bg-foreground/5" />
+              <div className="h-[17px] w-[95%] rounded-md bg-foreground/5" />
+              <div className="mt-8 rounded-xl border border-foreground/8 p-5">
+                <div className="h-3 w-32 rounded-full bg-foreground/8 mb-4" />
+                <div className="space-y-3">
+                  <div className="h-3.5 w-[90%] rounded-md bg-foreground/5" />
+                  <div className="h-3.5 w-[82%] rounded-md bg-foreground/5" />
+                  <div className="h-3.5 w-[87%] rounded-md bg-foreground/4" />
+                </div>
+              </div>
             </div>
           ) : (
             <>
@@ -1056,18 +1137,21 @@ function DesktopArticlePageView({
                 </div>
               )}
 
-              {/* Source link */}
-              {selectedContent?.url && (
-                <div className="pt-6 border-t border-border/15">
-                  <a
-                    href={selectedContent.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold bg-foreground text-background hover:bg-foreground/90 transition-colors"
-                  >
-                    Read original source
-                    <ExternalLink size={14} />
-                  </a>
+              {/* Actions — share + source link */}
+              {(selectedContent?.shareUrl || selectedContent?.url) && (
+                <div className="pt-6 border-t border-border/15 flex flex-wrap items-center gap-3">
+                  <ShareButton url={selectedContent.shareUrl || selectedContent.url!} />
+                  {selectedContent?.url && (
+                    <a
+                      href={selectedContent.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold bg-foreground text-background hover:bg-foreground/90 transition-colors"
+                    >
+                      Read original source
+                      <ExternalLink size={14} />
+                    </a>
+                  )}
                 </div>
               )}
             </>
@@ -1197,14 +1281,14 @@ function ScrollFeedPosts({
     expandScrollPreserveRef.current = null;
     const el = cardElByIdRef.current.get(job.id);
     if (!el) return;
-    const afterTop = el.getBoundingClientRect().top;
-    /** Keep the card’s top edge pinned in the viewport (undo scroll anchoring / layout jumps). */
-    const delta = afterTop - job.beforeTop;
-    if (Math.abs(delta) < 0.5) return;
+    // Scroll the expanded card to the top of viewport, just below any sticky header (~120px offset)
+    const headerOffset = 120;
+    const elTop = el.getBoundingClientRect().top;
     if (job.root === window) {
-      window.scrollTo(0, window.scrollY + delta);
+      window.scrollTo({ top: window.scrollY + elTop - headerOffset, behavior: 'smooth' });
     } else {
-      (job.root as HTMLElement).scrollTop += delta;
+      const container = job.root as HTMLElement;
+      container.scrollTo({ top: container.scrollTop + elTop - headerOffset, behavior: 'smooth' });
     }
   }, [expandedIds, filteredList]);
 
@@ -1355,6 +1439,8 @@ export default function FeedBriefingView({
   showPulseTab,
 }: FeedBriefingViewProps) {
   const [lgUp, setLgUp] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+  const mobileArticleRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)');
     const apply = () => setLgUp(mq.matches);
@@ -1362,6 +1448,14 @@ export default function FeedBriefingView({
     mq.addEventListener('change', apply);
     return () => mq.removeEventListener('change', apply);
   }, []);
+
+  // Reset mobile article overlay scroll and share state when switching articles
+  useEffect(() => {
+    if (showMobileContent && mobileArticleRef.current) {
+      mobileArticleRef.current.scrollTop = 0;
+    }
+    setShareCopied(false);
+  }, [selectedId, showMobileContent]);
 
   if (briefingLayout === 'scroll') {
     return (
@@ -1513,13 +1607,11 @@ export default function FeedBriefingView({
               <LockedStoryPanel story={lockedStory} />
             </div>
           ) : selectedContent ? (
-            <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <div key={selectedId} className="flex flex-col flex-1 min-h-0 overflow-hidden">
               <ContentPanel content={selectedContent} isLoadingDetail={isContentLoading || isContentRefreshing} />
             </div>
           ) : isContentLoading ? (
-            <div className="flex-1 flex items-center justify-center">
-              <Loader2 size={24} className="animate-spin text-secondary/40" />
-            </div>
+            <ArticleContentSkeleton key={`skeleton-${selectedId}`} />
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <p className="text-secondary/40 text-sm">Select a story to read</p>
@@ -1528,7 +1620,7 @@ export default function FeedBriefingView({
         </div>
       </div>
 
-      {showMobileContent && (selectedContent || (isLocked && lockedStory)) && (() => {
+      {showMobileContent && (selectedContent || isContentLoading || (isLocked && lockedStory)) && (() => {
         const story = lockedStory;
         const currentIdx = mobileContentList.findIndex((item) => item.id === selectedId);
         const nextItem = currentIdx >= 0 && currentIdx < mobileContentList.length - 1
@@ -1540,7 +1632,7 @@ export default function FeedBriefingView({
         const briefFmt = selectedContent?.body ? looksLikeBriefBody(selectedContent.body) : false;
 
         return (
-          <div className="fixed inset-0 z-[70] bg-background overflow-y-auto md:hidden">
+          <div ref={mobileArticleRef} className="fixed inset-0 z-[70] bg-background overflow-y-auto md:hidden">
             <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/10 flex items-center gap-2 px-4 py-3">
               <button
                 onClick={closeMobileArticle}
@@ -1555,6 +1647,23 @@ export default function FeedBriefingView({
                 ].filter(Boolean).join(' · ')}
                 {selectedContent?.readingTime ? ` · ${selectedContent.readingTime} min read` : ''}
               </span>
+              {(selectedContent?.shareUrl || selectedContent?.url) && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const url = selectedContent?.shareUrl || selectedContent?.url;
+                    if (!url) return;
+                    try {
+                      await navigator.clipboard.writeText(url);
+                      setShareCopied(true);
+                      setTimeout(() => setShareCopied(false), 2000);
+                    } catch { /* ignore */ }
+                  }}
+                  className="p-1.5 -mr-1.5 rounded-lg text-foreground/60 active:bg-foreground/8"
+                >
+                  {shareCopied ? <Check size={18} className="text-green-500" /> : <Share2 size={18} />}
+                </button>
+              )}
             </div>
 
             <div className="px-5 pt-5 pb-12">
@@ -1600,8 +1709,20 @@ export default function FeedBriefingView({
                   </Link>
                 </div>
               ) : isContentLoading && !selectedContent?.body ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 size={20} className="animate-spin text-secondary/40" />
+                <div className="animate-pulse space-y-3 py-2">
+                  <div className="h-3.5 w-full rounded-md bg-foreground/6 dark:bg-white/7" />
+                  <div className="h-3.5 w-[97%] rounded-md bg-foreground/6 dark:bg-white/7" />
+                  <div className="h-3.5 w-[92%] rounded-md bg-foreground/5 dark:bg-white/6" />
+                  <div className="h-3.5 w-full rounded-md bg-foreground/5 dark:bg-white/6" />
+                  <div className="h-3.5 w-[85%] rounded-md bg-foreground/5 dark:bg-white/6" />
+                  <div className="h-3.5 w-[70%] rounded-md bg-foreground/4 dark:bg-white/5" />
+                  <div className="mt-6 rounded-xl border border-foreground/6 dark:border-white/8 p-4">
+                    <div className="h-3 w-28 rounded-full bg-foreground/8 dark:bg-white/10 mb-3" />
+                    <div className="space-y-2">
+                      <div className="h-3 w-[90%] rounded-md bg-foreground/5 dark:bg-white/6" />
+                      <div className="h-3 w-[80%] rounded-md bg-foreground/4 dark:bg-white/5" />
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -1637,16 +1758,40 @@ export default function FeedBriefingView({
                     </div>
                   )}
 
-                  {selectedContent?.url && (
-                    <a
-                      href={selectedContent.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold bg-foreground text-background"
-                    >
-                      Read original source
-                      <ExternalLink size={13} />
-                    </a>
+                  {(selectedContent?.shareUrl || selectedContent?.url) && (
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const url = selectedContent?.shareUrl || selectedContent?.url;
+                          if (!url) return;
+                          try {
+                            await navigator.clipboard.writeText(url);
+                            setShareCopied(true);
+                            setTimeout(() => setShareCopied(false), 2000);
+                          } catch { /* ignore */ }
+                        }}
+                        className="inline-flex items-center gap-2 rounded-full border border-border/25 bg-white px-5 py-2.5 text-sm font-semibold text-foreground active:bg-foreground/5"
+                      >
+                        {shareCopied ? (
+                          <Check size={14} className="text-green-500" />
+                        ) : (
+                          <Share2 size={14} />
+                        )}
+                        {shareCopied ? 'Link copied' : 'Copy link'}
+                      </button>
+                      {selectedContent?.url && (
+                        <a
+                          href={selectedContent.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold bg-foreground text-background"
+                        >
+                          Read original
+                          <ExternalLink size={13} />
+                        </a>
+                      )}
+                    </div>
                   )}
                 </>
               )}

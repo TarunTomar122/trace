@@ -138,6 +138,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     setSelectedId(id);
     setShowMobileContent(true);
     window.history.pushState({ article: id }, '');
+    window.scrollTo({ top: 0 });
   }, []);
 
   const closeMobileArticle = useCallback(() => {

@@ -7,7 +7,7 @@ type FeedPrefetchEntry = {
   promise: Promise<V3UserFeed | null>;
 };
 
-const FEED_PREFETCH_TTL_MS = 90_000;
+const FEED_PREFETCH_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const feedPrefetchByUid = new Map<string, FeedPrefetchEntry>();
 
 function isExpired(entry: FeedPrefetchEntry): boolean {

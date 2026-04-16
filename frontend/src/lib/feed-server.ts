@@ -6,7 +6,7 @@ const WEB_BOOTSTRAP_CACHE_COLLECTION = 'web_feed_bootstrap_cache';
 const WEB_FULL_FEED_CACHE_COLLECTION = 'web_feed_full_cache';
 const WEB_BOOTSTRAP_CACHE_TTL_MS = 10 * 60 * 1000;
 const WEB_FULL_FEED_CACHE_TTL_MS = 10 * 60 * 1000;
-const WEB_BOOTSTRAP_CACHE_VERSION = 3;
+const WEB_BOOTSTRAP_CACHE_VERSION = 4;
 const WEB_FULL_FEED_CACHE_VERSION = 1;
 const MAX_SUMMARY_BODY_CHARS = 2200;
 const MAX_SUMMARY_SUBTITLE_CHARS = 280;
@@ -545,15 +545,30 @@ export async function getBootstrapFeedForUid(uid: string, roleFromQuery = ''): P
     throw new Error('Server configuration error');
   }
 
-  const viewerContext = await getViewerContext(uid, roleFromQuery);
+  // If role is known from query, we can derive normalizedRole without waiting
+  // for the profile read — enabling parallel fetch of profile + cache.
+  const earlyRole = roleFromQuery ? normalizeFeedRole(roleFromQuery) : '';
 
-  const cacheRef = adminFirestore
-    .collection(WEB_BOOTSTRAP_CACHE_COLLECTION)
-    .doc(getBootstrapCacheDocId(viewerContext.normalizedRole));
+  // Run profile fetch + bootstrap cache check in parallel when possible.
+  const viewerContextPromise = getViewerContext(uid, roleFromQuery);
 
-  try {
-    const cacheSnapshot = await cacheRef.get();
-    if (cacheSnapshot.exists) {
+  let cachedFeed: Omit<V3UserFeed, 'viewer_profile'> | null = null;
+
+  if (earlyRole) {
+    // We know the role already — check cache in parallel with profile fetch.
+    const cacheRef = adminFirestore
+      .collection(WEB_BOOTSTRAP_CACHE_COLLECTION)
+      .doc(getBootstrapCacheDocId(earlyRole));
+
+    const [viewerContext, cacheSnapshot] = await Promise.all([
+      viewerContextPromise,
+      cacheRef.get().catch((error) => {
+        console.error('[feed-server] bootstrap cache read failed:', error);
+        return null;
+      }),
+    ]);
+
+    if (cacheSnapshot?.exists) {
       const cacheData = cacheSnapshot.data() as {
         version?: number;
         generated_at?: string;
@@ -570,8 +585,41 @@ export async function getBootstrapFeedForUid(uid: string, roleFromQuery = ''): P
         };
       }
     }
-  } catch (error) {
-    console.error('[feed-server] bootstrap cache read failed:', error);
+
+    // Cache miss — fall through to build feed
+  }
+
+  // If we didn't have earlyRole, wait for viewer context now (profile determines role).
+  const viewerContext = await viewerContextPromise;
+
+  if (!earlyRole) {
+    // No early role — check cache now that we have the role from the profile.
+    const cacheRef = adminFirestore
+      .collection(WEB_BOOTSTRAP_CACHE_COLLECTION)
+      .doc(getBootstrapCacheDocId(viewerContext.normalizedRole));
+
+    try {
+      const cacheSnapshot = await cacheRef.get();
+      if (cacheSnapshot.exists) {
+        const cacheData = cacheSnapshot.data() as {
+          version?: number;
+          generated_at?: string;
+          feed?: Omit<V3UserFeed, 'viewer_profile'>;
+        } | undefined;
+        if (
+          cacheData?.version === WEB_BOOTSTRAP_CACHE_VERSION &&
+          cacheData.feed &&
+          isFreshIsoTimestamp(cacheData.generated_at, WEB_BOOTSTRAP_CACHE_TTL_MS)
+        ) {
+          return {
+            ...cacheData.feed,
+            viewer_profile: viewerContext.viewerProfile,
+          };
+        }
+      }
+    } catch (error) {
+      console.error('[feed-server] bootstrap cache read failed:', error);
+    }
   }
 
   const feed = await getFullFeedBodyForRole(viewerContext.normalizedRole);
@@ -592,7 +640,11 @@ export async function getBootstrapFeedForUid(uid: string, roleFromQuery = ''): P
     build_pulse: [],
   };
 
-  void cacheRef.set(stripUndefinedDeep({
+  const writeCacheRef = adminFirestore
+    .collection(WEB_BOOTSTRAP_CACHE_COLLECTION)
+    .doc(getBootstrapCacheDocId(viewerContext.normalizedRole));
+
+  void writeCacheRef.set(stripUndefinedDeep({
     version: WEB_BOOTSTRAP_CACHE_VERSION,
     role: viewerContext.normalizedRole || 'developer',
     date: bootstrapFeed.date,
