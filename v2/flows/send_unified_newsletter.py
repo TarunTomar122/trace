@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-Send one unified newsletter to all newsletter recipients.
+Send the unified newsletter for a given date.
 
-Recipients = paid/trial opted-in Trace subscribers only.
+Reads the LLM-written draft from unified_newsletters/{date} and sends it to
+opted-in recipients. No personalization, no content filtering.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from datetime import datetime, timedelta, timezone
 from html import escape
@@ -26,36 +26,6 @@ load_dotenv(REPO_ROOT / ".env")
 from v1.storage import FirestoreStore  # noqa: E402
 from v1.tools.brevo_client import send_newsletter_email  # noqa: E402
 
-TYPE_COLORS = {
-    "blog": "#10b981",
-    "discussion": "#f59e0b",
-    "news": "#f97316",
-    "repo": "#8b5cf6",
-    "paper": "#3b82f6",
-    "tweet": "#0ea5e9",
-    "launch": "#d946ef",
-}
-
-INTEREST_ALIASES = {
-    "tech": {"tech", "technology", "ai", "engineering"},
-    "ai": {"ai", "technology", "engineering"},
-    "engineering": {"engineering", "technology", "ai", "open-source", "dev-tools"},
-    "startups": {"startups", "business-market", "products", "fintech", "markets", "marketing"},
-    "products": {"products", "business-market", "technology"},
-    "product-design": {"product-design", "experience", "ux-design"},
-    "ux-design": {"ux-design", "experience", "product-design"},
-    "markets": {"markets", "business-market", "fintech"},
-    "marketing": {"marketing", "business-market", "startups"},
-    "fintech": {"fintech", "business-market", "markets"},
-}
-
-
-def _markdown_inline_to_html(text: str) -> str:
-    out = escape(text or "")
-    out = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", out)
-    out = re.sub(r"\*(.+?)\*", r"<em>\1</em>", out)
-    return out
-
 
 def _today_ist() -> str:
     ist = timezone(timedelta(hours=5, minutes=30))
@@ -69,15 +39,6 @@ def _load_template(name: str) -> str:
     return path.read_text()
 
 
-def _build_recipients(store: FirestoreStore) -> list[str]:
-    subscribed = {
-        (u.get("email") or "").strip().lower()
-        for u in store.get_newsletter_opted_in_users()
-        if u.get("email")
-    }
-    return sorted(subscribed - {""})
-
-
 def _build_recipient_profiles(store: FirestoreStore) -> list[dict[str, Any]]:
     recipients: list[dict[str, Any]] = []
     for profile in store.get_newsletter_opted_in_users():
@@ -89,254 +50,151 @@ def _build_recipient_profiles(store: FirestoreStore) -> list[dict[str, Any]]:
 
 
 def _build_all_signup_recipients(store: FirestoreStore) -> list[str]:
-    """All emails we've ever collected:
-    - every user_profiles email
-    - free newsletter subscribers
-    """
     profile_emails = {
         (u.get("email") or "").strip().lower()
         for u in store.get_all_user_profiles()
         if u.get("email")
     }
     free_emails = set(store.get_all_free_newsletter_emails())
-    recipients = sorted((profile_emails | free_emails) - {""})
-    return recipients
+    return sorted((profile_emails | free_emails) - {""})
 
 
-def _normalize_interest_tokens(raw: list[Any] | None) -> set[str]:
-    tokens: set[str] = set()
-    for interest in raw or []:
-        key = str(interest or "").strip().lower()
-        if not key:
-            continue
-        tokens.add(key)
-        tokens.update(INTEREST_ALIASES.get(key, set()))
-    return tokens
-
-
-def _topic_matches_interests(topic: dict[str, Any], interests: set[str]) -> bool:
-    if not interests:
-        return True
-    topic_tokens: set[str] = set()
-    for field in ("interest_id", "topic_id"):
-        value = str(topic.get(field, "")).strip().lower()
-        if value:
-            topic_tokens.add(value)
-            topic_tokens.update(INTEREST_ALIASES.get(value, set()))
-    for tag in topic.get("tags", []) or []:
-        value = str(tag).strip().lower()
-        if value:
-            topic_tokens.add(value)
-            topic_tokens.update(INTEREST_ALIASES.get(value, set()))
-    return bool(topic_tokens & interests)
-
-
-def _item_matches_interests(item: dict[str, Any], interests: set[str]) -> bool:
-    if not interests:
-        return True
-    item_tokens: set[str] = set()
-    for field in ("topic_id",):
-        value = str(item.get(field, "")).strip().lower()
-        if value:
-            item_tokens.add(value)
-            item_tokens.update(INTEREST_ALIASES.get(value, set()))
-    for tag in item.get("tags", []) or []:
-        value = str(tag).strip().lower()
-        if value:
-            item_tokens.add(value)
-            item_tokens.update(INTEREST_ALIASES.get(value, set()))
-    return bool(item_tokens & interests)
-
-
-def _personalize_newsletter_content(
-    profile: dict[str, Any],
-    *,
-    items: list[dict[str, Any]],
-    top_topics: list[dict[str, Any]],
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    interests = _normalize_interest_tokens(profile.get("interests") or [])
-    if not interests:
-        return items, top_topics
-
-    matched_topics = [topic for topic in top_topics if _topic_matches_interests(topic, interests)]
-    if matched_topics:
-        return items, matched_topics
-
-    matched_items = [item for item in items if _item_matches_interests(item, interests)]
-    if matched_items:
-        return matched_items, []
-
-    return items, top_topics
-
-
-def _generate_topic_html(top_topics: list[dict[str, Any]]) -> str:
-    blocks = ""
-    for idx, topic in enumerate(top_topics, start=1):
-        topic_name = escape(str(topic.get("topic_name", f"Topic {idx}")))
-        overview = _markdown_inline_to_html(
-            str(topic.get("overview", "")).strip() or "Trending now."
+def _paragraphs_to_html(text: str) -> str:
+    """Split plain text on blank lines and wrap each block in a styled <p>."""
+    raw = (text or "").strip()
+    if not raw:
+        return ""
+    blocks = [b.strip() for b in raw.split("\n\n") if b.strip()]
+    html_parts: list[str] = []
+    for block in blocks:
+        html_parts.append(
+            '<p style="margin: 0 0 14px 0; font-size: 16px; line-height: 1.7; '
+            "color: #27272a; font-family: -apple-system, BlinkMacSystemFont, "
+            "'Segoe UI', Roboto, Helvetica, Arial, sans-serif;\">"
+            f"{escape(block)}</p>"
         )
-        image_url = escape(str(topic.get("image_url", "")).strip())
-        article_count = int(topic.get("article_count", 0) or 0)
-        key_points_raw = topic.get("key_points", [])
-        key_points: list[str] = []
-        if isinstance(key_points_raw, list):
-            for point in key_points_raw:
-                if isinstance(point, str) and point.strip():
-                    key_points.append(point.strip())
-                elif isinstance(point, dict):
-                    title = str(point.get("title", "")).strip()
-                    if title:
-                        key_points.append(title)
+    return "".join(html_parts)
+
+
+def _render_intro_html(intro: str) -> str:
+    return _paragraphs_to_html(intro)
+
+
+def _render_stories_html(stories: list[dict[str, Any]], sign_off: str) -> str:
+    parts: list[str] = []
+    for idx, story in enumerate(stories, start=1):
+        title = str(story.get("title") or "").strip() or f"Story {idx}"
+        url = str(story.get("url") or "").strip()
+        body = str(story.get("body") or "").strip()
+        image_url = str(story.get("image_url") or "").strip()
+
+        title_safe = escape(title)
+        if url:
+            title_html = (
+                f'<a href="{escape(url)}" style="color: #18181b; text-decoration: none;">'
+                f"{title_safe}</a>"
+            )
+        else:
+            title_html = title_safe
+
+        body_html = _paragraphs_to_html(body)
 
         image_html = ""
         if image_url:
-            image_html = (
-                f'<img src="{image_url}" alt="" width="576" '
+            img_tag = (
+                f'<img src="{escape(image_url)}" alt="" width="576" '
                 'style="display: block; width: 100%; max-width: 576px; '
                 'height: auto; border-radius: 8px; border: 1px solid #e4e4e7; margin: 0 0 14px 0;" />'
             )
+            if url:
+                image_html = (
+                    f'<a href="{escape(url)}" style="display: block; text-decoration: none;">{img_tag}</a>'
+                )
+            else:
+                image_html = img_tag
 
-        key_points_html = ""
-        for point in key_points[:6]:
-            key_points_html += (
-                '<tr><td style="padding: 0 0 10px 0;">'
-                '<table cellpadding="0" cellspacing="0" border="0"><tr>'
-                '<td style="vertical-align: top; width: 14px; padding-top: 7px;">'
-                '<span style="display: inline-block; width: 6px; height: 6px; border-radius: 999px; background: #d4d4d8;"></span>'
-                '</td>'
-                f'<td style="font-size: 15px; line-height: 1.6; color: #3f3f46; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', sans-serif;">{_markdown_inline_to_html(point)}</td>'
-                '</tr></table>'
-                '</td></tr>'
-            )
-
-        count_html = ""
-        if article_count > 0:
-            count_html = (
-                f'<p style="margin: 0 0 10px 0; font-size: 12px; color: #a1a1aa; '
-                f'font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', sans-serif;">{article_count} related updates today</p>'
-            )
-
-        blocks += (
-            '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 0;">'
-            '<tr><td style="padding: 0 0 24px 0;"><div style="border-top: 1px solid #e4e4e7;"></div></td></tr>'
+        parts.append(
+            '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 8px 0;">'
+            '<tr><td style="padding: 0 0 20px 0;"><div style="border-top: 1px solid #e4e4e7;"></div></td></tr>'
             '<tr><td>'
-            f'<p style="margin: 0 0 8px 0; font-size: 10px; font-weight: 700; color: #f97316; text-transform: uppercase; letter-spacing: 1.2px; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', sans-serif;">Topic {idx}</p>'
-            f'<p style="margin: 0 0 10px 0; font-size: 22px; font-family: Georgia, \'Times New Roman\', serif; font-weight: 700; color: #18181b; line-height: 1.3;">{topic_name}</p>'
-            f"{count_html}"
+            f'<p style="margin: 0 0 12px 0; font-size: 22px; line-height: 1.35; '
+            "font-family: Georgia, 'Times New Roman', serif; font-weight: 700; color: #18181b;\">"
+            f"{idx}. {title_html}</p>"
             f"{image_html}"
-            f'<p style="margin: 0 0 16px 0; font-size: 15px; color: #3f3f46; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', sans-serif; line-height: 1.65;">{overview}</p>'
-            '<p style="margin: 0 0 10px 0; font-size: 11px; color: #71717a; text-transform: uppercase; letter-spacing: 1.1px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', sans-serif;">Key Points</p>'
-            f'<table width="100%" cellpadding="0" cellspacing="0" border="0">{key_points_html}</table>'
-            '</td></tr>'
-            '<tr><td style="height: 18px;"></td></tr>'
-            '</table>'
+            f"{body_html}"
+            "</td></tr>"
+            '<tr><td style="height: 14px;"></td></tr>'
+            "</table>"
         )
-    return blocks
+
+    if sign_off:
+        parts.append(
+            '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 8px 0 0 0;">'
+            '<tr><td style="padding: 16px 0 0 0; border-top: 1px solid #e4e4e7;">'
+            f'<p style="margin: 0; font-size: 15px; line-height: 1.6; color: #52525b; '
+            "font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-style: italic;\">"
+            f"{escape(sign_off.strip())}</p>"
+            "</td></tr></table>"
+        )
+
+    return "".join(parts)
 
 
 def _generate_html(
-    items: list[dict[str, Any]],
     date: str,
-    intro_html: str,
-    top_topics: list[dict[str, Any]] | None = None,
+    intro: str,
+    stories: list[dict[str, Any]],
+    sign_off: str,
 ) -> str:
-    main_tpl = _load_template("free_newsletter.html")
-
-    if top_topics:
-        items_html = _generate_topic_html(top_topics)
-    else:
-        item_tpl = _load_template("newsletter_item.html")
-        items_html = ""
-        for item in items:
-            item_type = item.get("type", "news")
-            color = TYPE_COLORS.get(item_type, "#71717a")
-            label = item_type.upper()
-            thumb = item.get("thumbnail", "")
-            if thumb:
-                image_html = (
-                    f'<a href="{item.get("url", "#")}" '
-                    'style="display: block; margin-bottom: 14px;">'
-                    f'<img src="{thumb}" alt="" width="576" '
-                    'style="display: block; width: 100%; max-width: 576px; '
-                    "height: auto; border-radius: 8px; border: 1px solid "
-                    '#e4e4e7;" />'
-                    "</a>"
-                )
-            else:
-                image_html = ""
-
-            html = item_tpl
-            html = html.replace("{{ITEM_TYPE_COLOR}}", color)
-            html = html.replace("{{ITEM_TYPE_LABEL}}", label)
-            html = html.replace("{{ITEM_URL}}", item.get("url", "#"))
-            html = html.replace("{{ITEM_TITLE}}", item.get("title", "Untitled"))
-            html = html.replace("{{ITEM_IMAGE_HTML}}", image_html)
-            html = html.replace("{{ITEM_SUMMARY}}", item.get("summary", ""))
-            items_html += html
-
+    template = _load_template("free_newsletter.html")
     try:
         display_date = datetime.strptime(date, "%Y-%m-%d").strftime("%B %d, %Y")
     except ValueError:
         display_date = date
 
-    out = main_tpl
+    intro_html = _render_intro_html(intro)
+    items_html = _render_stories_html(stories, sign_off)
+
+    out = template
     out = out.replace("{{DATE}}", display_date)
     out = out.replace("{{USER_NAME_GREETING}}", "")
-    out = out.replace("{{INTRO_HTML}}", intro_html or "")
+    out = out.replace("{{INTRO_HTML}}", intro_html)
     out = out.replace("{{ITEMS_HTML}}", items_html)
     return out
 
 
 def _generate_text(
-    items: list[dict[str, Any]],
     date: str,
-    intro_html: str,
-    top_topics: list[dict[str, Any]] | None = None,
+    intro: str,
+    stories: list[dict[str, Any]],
+    sign_off: str,
 ) -> str:
-    intro = re.sub(r"<[^>]+>", "", intro_html or "").strip()
-    if not intro:
-        intro = "Here are today's top trending stories."
-    lines = [
+    lines: list[str] = [
         "TRACE",
-        f"Daily Newsletter - {date}",
-        "",
-        intro,
-        "",
-        "=" * 40,
+        f"Daily Newsletter — {date}",
         "",
     ]
-    if top_topics:
-        for idx, topic in enumerate(top_topics, start=1):
-            lines.append(f"{idx}. [TOPIC] {topic.get('topic_name', f'Topic {idx}')}")
-            lines.append(f"   Overview: {topic.get('overview', 'Trending now.')}")
-            key_points = topic.get("key_points", []) if isinstance(topic.get("key_points"), list) else []
-            if key_points:
-                lines.append("   Key Points:")
-            for point in key_points:
-                if isinstance(point, str):
-                    text = point.strip()
-                elif isinstance(point, dict):
-                    text = str(point.get("title", "")).strip()
-                else:
-                    text = ""
-                if text:
-                    lines.append(f"   - {text}")
-            lines.append("")
-    else:
-        for idx, item in enumerate(items, start=1):
-            lines.append(f"{idx}. [NEWS] {item.get('title', 'Untitled')}")
-            lines.append(f"   {item.get('summary', '')}")
-            lines.append(f"   Read: {item.get('url', '')}")
-            lines.append("")
-    lines.extend(
-        [
-            "=" * 40,
-            "",
-            "Curated by AI, delivered by Trace",
-            "https://yourtrace.online",
-        ]
-    )
+    if intro.strip():
+        lines.append(intro.strip())
+        lines.append("")
+    lines.append("=" * 40)
+    lines.append("")
+    for idx, story in enumerate(stories, start=1):
+        title = str(story.get("title") or "").strip() or f"Story {idx}"
+        url = str(story.get("url") or "").strip()
+        body = str(story.get("body") or "").strip()
+        lines.append(f"{idx}. {title}")
+        if body:
+            lines.append(body)
+        if url:
+            lines.append(f"Read: {url}")
+        lines.append("")
+    if sign_off.strip():
+        lines.append(sign_off.strip())
+        lines.append("")
+    lines.append("=" * 40)
+    lines.append("Curated by AI, delivered by Trace")
+    lines.append("https://yourtrace.online")
     return "\n".join(lines)
 
 
@@ -346,6 +204,7 @@ def send_unified_newsletter(
     force: bool = False,
     user_id: str = "",
     recipient_mode: str = "newsletter",
+    to_email: str = "",
 ) -> dict[str, Any]:
     store = FirestoreStore()
     target_date = (date or "").strip() or _today_ist()
@@ -365,24 +224,26 @@ def send_unified_newsletter(
             "date": target_date,
         }
 
-    items = data.get("items", []) or []
-    top_topics = data.get("top_topics", []) if isinstance(data.get("top_topics"), list) else []
-    if not items and not top_topics:
+    stories = data.get("stories") or []
+    if not isinstance(stories, list) or not stories:
         return {
             "success": False,
-            "error": "newsletter has no content",
+            "error": "newsletter has no stories",
             "date": target_date,
         }
 
-    if user_id:
+    intro = str(data.get("intro") or "").strip()
+    sign_off = str(data.get("sign_off") or "").strip()
+    subject = str(data.get("email_subject") or "").strip() or f"Trace — {target_date}"
+
+    direct_email = (to_email or "").strip().lower()
+    if direct_email:
+        recipients = [{"email": direct_email}]
+    elif user_id:
         profile = store.get_user_profile(user_id) or {}
         recipients = [profile] if (profile.get("email") or "").strip() else []
     elif recipient_mode == "all_signups":
-        recipients = [
-            {"email": email}
-            for email in _build_all_signup_recipients(store)
-            if email
-        ]
+        recipients = [{"email": email} for email in _build_all_signup_recipients(store) if email]
     else:
         recipients = _build_recipient_profiles(store)
     if not recipients:
@@ -392,48 +253,26 @@ def send_unified_newsletter(
             "date": target_date,
         }
 
-    base_subject = data.get(
-        "email_subject",
-        f"Trace Trends: Top {len(top_topics) if top_topics else len(items)} stories for {target_date}",
-    )
-    intro_html = data.get("intro_html", "")
-
     if dry_run:
         return {
             "success": True,
             "dry_run": True,
             "date": target_date,
             "recipient_count": len(recipients),
-            "top_topic_count": len(top_topics),
+            "story_count": len(stories),
+            "subject": subject,
         }
+
+    html = _generate_html(target_date, intro, stories, sign_off)
+    text = _generate_text(target_date, intro, stories, sign_off)
 
     sent = 0
     failed = 0
     errors: list[str] = []
-    last_html = ""
-    last_text = ""
     for recipient in recipients:
         email = (recipient.get("email") or "").strip().lower()
         if not email:
             continue
-        personalized_items, personalized_topics = _personalize_newsletter_content(
-            recipient,
-            items=items,
-            top_topics=top_topics,
-        )
-        subject = f"Trace Trends: Top {len(personalized_topics) if personalized_topics else len(personalized_items)} topics for {target_date}"
-        html = _generate_html(
-            personalized_items,
-            target_date,
-            intro_html,
-            top_topics=personalized_topics,
-        )
-        text = _generate_text(
-            personalized_items,
-            target_date,
-            intro_html,
-            top_topics=personalized_topics,
-        )
         res = send_newsletter_email(
             to_email=email,
             to_name=None,
@@ -441,8 +280,6 @@ def send_unified_newsletter(
             html_content=html,
             text_content=text,
         )
-        last_html = html
-        last_text = text
         if res.get("success"):
             sent += 1
         else:
@@ -457,9 +294,9 @@ def send_unified_newsletter(
             "sent_count": sent,
             "failed_count": failed,
             "recipient_count": len(recipients),
-            "email_subject": base_subject,
-            "email_html": last_html,
-            "email_text": last_text,
+            "email_subject": subject,
+            "email_html": html,
+            "email_text": text,
         },
         merge=True,
     )
@@ -469,19 +306,18 @@ def send_unified_newsletter(
         "sent": sent,
         "failed": failed,
         "recipient_count": len(recipients),
-        "top_topic_count": len(top_topics),
+        "story_count": len(stories),
         "errors": errors,
     }
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Send unified newsletter to all recipients."
-    )
+    parser = argparse.ArgumentParser(description="Send unified newsletter to recipients.")
     parser.add_argument("--date", default="", help="YYYY-MM-DD")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--user-id", default="", help="Send only to one uid")
+    parser.add_argument("--to-email", default="", help="Send only to one direct email address")
     parser.add_argument(
         "--recipient-mode",
         choices=["newsletter", "all_signups"],
@@ -499,6 +335,7 @@ def main() -> None:
         force=args.force,
         user_id=args.user_id,
         recipient_mode=args.recipient_mode,
+        to_email=args.to_email,
     )
     print(json.dumps(result, indent=2))
 

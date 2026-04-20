@@ -1,27 +1,29 @@
 #!/usr/bin/env python3
 """
-Build one unified newsletter for all users from trending news.
+Build one unified newsletter for all users.
 
-This flow:
-1) Loads trending_news/{date}/topics/*
-2) Selects up to 8 items with topic diversity
-3) Generates subject + intro
-4) Saves draft to unified_newsletters/{date}
+Simple flow:
+1) Pull all trending topics from the last daily global feed
+   (v3_user_feeds/_global/daily/{date})
+2) Ask the LLM to pick the 7-9 most interesting titles
+3) Ask the LLM to write a beautiful, fun-to-read newsletter from
+   the picked stories (title + summary)
+4) Save the result to unified_newsletters/{date}
+
+No hardcoded regex filters. No post-processing of LLM output.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import re
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 
 from dotenv import load_dotenv
-from google.cloud import firestore
 from openai import OpenAI
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -32,20 +34,10 @@ load_dotenv(REPO_ROOT / ".env")
 from v1.storage import FirestoreStore  # noqa: E402
 from v3.lib.store import V3Store  # noqa: E402
 
-MAX_ITEMS_DEFAULT = 6
-TOP_TOPICS_DEFAULT = 5
-TOPIC_KEY_POINTS = 4
-TOPIC_PRIORITY = [
-    "technology",
-    "business-market",
-    "experience",
-]
-TOPIC_TARGET_COUNTS = {
-    "technology": 2,
-    "business-market": 2,
-    "experience": 2,
-}
-MAX_PER_DOMAIN = 2
+MIN_PICKS = 7
+MAX_PICKS = 9
+PICK_MODEL = os.getenv("NEWSLETTER_PICK_MODEL", "gpt-4o-mini")
+WRITE_MODEL = os.getenv("NEWSLETTER_WRITE_MODEL", "gpt-4o-mini")
 
 
 def _today_ist() -> str:
@@ -53,552 +45,313 @@ def _today_ist() -> str:
     return datetime.now(ist).strftime("%Y-%m-%d")
 
 
-def _parse_iso(value: str) -> datetime:
-    text = (value or "").strip()
-    if not text:
-        return datetime.min.replace(tzinfo=timezone.utc)
-    try:
-        dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc)
-    except ValueError:
-        try:
-            return datetime.strptime(text[:10], "%Y-%m-%d").replace(
-                tzinfo=timezone.utc
-            )
-        except ValueError:
-            return datetime.min.replace(tzinfo=timezone.utc)
+def _collect_candidates(v3_store: V3Store, date: str) -> list[dict[str, Any]]:
+    """Return all candidate stories from the global daily feed as a flat list.
 
+    Each candidate has: id, title, summary, url (best-effort), source.
+    We pull from `trending_topics` (curated topic bundles) and fall back to
+    `trending` feed items if topics are sparse.
+    """
+    global_feed = v3_store.load_global_feed(date) or {}
 
-def _collect_trending_articles(
-    store: FirestoreStore,
-    date: str,
-) -> list[dict[str, Any]]:
-    root_doc = store.db.collection("trending_news").document(date).get()
-    if not root_doc.exists:
-        return []
+    candidates: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
 
-    rows: list[dict[str, Any]] = []
-    topic_docs = (
-        store.db.collection("trending_news")
-        .document(date)
-        .collection("topics")
-        .stream()
-    )
-    for topic_doc in topic_docs:
-        topic = topic_doc.to_dict() or {}
-        topic_id = topic.get("topic_id", topic_doc.id)
-        topic_name = topic.get("name", topic_id)
-        for article in topic.get("articles", []) or []:
-            if not isinstance(article, dict):
-                continue
-            url = str(article.get("url", "")).strip()
-            title = str(article.get("title", "")).strip()
-            if not url or not title:
-                continue
-            rows.append(
-                {
-                    "topic_id": topic_id,
-                    "topic_name": topic_name,
-                    "title": title,
-                    "url": url,
-                    "subtitle": str(article.get("subtitle", "")).strip(),
-                    "details": str(article.get("details", "")).strip(),
-                    "thumbnail": str(article.get("thumbnail", "")).strip(),
-                    "published_date": str(
-                        article.get("published_date", "")
-                    ).strip(),
-                }
-            )
-
-    rows.sort(
-        key=lambda x: _parse_iso(x.get("published_date", "")),
-        reverse=True,
-    )
-    return rows
-
-
-def _collect_v3_feed_trending(store: FirestoreStore, date: str) -> list[dict[str, Any]]:
-    """Pull trending items from an existing v3 user feed (already has AI summaries)."""
-    v3 = V3Store()
-    users = v3.get_onboarded_users()
-
-    best_items: list[dict[str, Any]] = []
-    for user in users:
-        uid = user.get("uid", "")
-        if not uid:
-            continue
-        feed = v3.load_feed(uid, date)
-        trending = feed.get("trending", [])
-        if isinstance(trending, list) and trending:
-            best_items = trending
-            break
-
-    rows: list[dict[str, Any]] = []
-    seen: set[str] = set()
-    for item in best_items:
-        if not isinstance(item, dict):
-            continue
-        url = str(item.get("url", "")).strip()
-        title = str(item.get("title", "")).strip()
-        if not url or not title or url in seen:
-            continue
-        seen.add(url)
-
-        summary = item.get("summary", {})
-        short = summary.get("short_article", {}) if isinstance(summary, dict) else {}
-        subtitle = str(short.get("subtitle", "")).strip() if isinstance(short, dict) else ""
-
-        rows.append({
-            "topic_id": str(item.get("interest_id", "")).strip(),
-            "topic_name": "",
-            "title": title,
-            "url": url,
-            "subtitle": subtitle,
-            "details": subtitle,
-            "thumbnail": str(item.get("thumbnail", "")).strip(),
-            "published_date": str(item.get("published_date", "")).strip(),
-            "source_name": str(item.get("source_name", "")).strip(),
-        })
-
-    return rows
-
-
-def _collect_v3_trending_topics(
-    store: FirestoreStore,
-    date: str,
-) -> list[dict[str, Any]]:
-    """Load the same topic payload used by the frontend topic page."""
-    global_daily = (
-        store.db.collection("v3_user_feeds")
-        .document("_global")
-        .collection("daily")
-    )
-    doc = global_daily.document(date).get()
-    data: dict[str, Any] = {}
-    if doc.exists:
-        data = doc.to_dict() or {}
-    else:
-        latest = global_daily.order_by("__name__", direction=firestore.Query.DESCENDING).limit(1).stream()
-        for row in latest:
-            data = row.to_dict() or {}
-            break
-
-    raw_topics = data.get("trending_topics", [])
-    if not isinstance(raw_topics, list):
-        return []
-
-    topics: list[dict[str, Any]] = []
-    for topic in raw_topics:
+    topics = global_feed.get("trending_topics") or []
+    for topic in topics:
         if not isinstance(topic, dict):
             continue
-        title = str(topic.get("title", "")).strip()
-        overview = str(topic.get("summary", "")).strip()
-        if not title or not overview:
+        topic_id = str(topic.get("id") or topic.get("topic_key") or "").strip()
+        title = str(topic.get("title") or "").strip()
+        if not title:
             continue
-
-        points_raw = topic.get("key_points", [])
-        key_points: list[str] = []
-        if isinstance(points_raw, list):
-            key_points = [
-                str(p).strip()
-                for p in points_raw
-                if str(p).strip()
-            ][:6]
-
-        topics.append(
+        if topic_id and topic_id in seen_ids:
+            continue
+        summary = str(topic.get("summary") or "").strip()
+        url = ""
+        image_url = str(topic.get("thumbnail") or "").strip()
+        articles = topic.get("articles") or []
+        if isinstance(articles, list) and articles:
+            first = articles[0] if isinstance(articles[0], dict) else {}
+            url = str(first.get("url") or first.get("link") or "").strip()
+            if not image_url:
+                image_url = str(first.get("thumbnail") or "").strip()
+                if not image_url:
+                    imgs = first.get("images") or []
+                    if isinstance(imgs, list) and imgs:
+                        image_url = str(imgs[0] or "").strip()
+        candidates.append(
             {
-                "topic_id": str(topic.get("id", "")).strip() or str(topic.get("topic_key", "")).strip() or title.lower().replace(" ", "-"),
-                "topic_name": title,
-                "overview": overview,
-                "interest_id": str(topic.get("interest_id", "")).strip(),
-                "tags": [
-                    str(tag).strip()
-                    for tag in (topic.get("tags", []) or [])
-                    if str(tag).strip()
-                ],
-                "key_points": key_points,
-                "article_count": int(topic.get("article_count", 0) or 0),
-                "source_count": int(topic.get("source_count", 0) or 0),
-                "popularity_score": float(topic.get("popularity_score", 0.0) or 0.0),
-                "latest_published_date": str(topic.get("last_updated_at", "")).strip(),
-                "image_url": str(topic.get("thumbnail", "")).strip(),
+                "id": topic_id or f"topic-{len(candidates)}",
+                "title": title,
+                "summary": summary,
+                "url": url,
+                "image_url": image_url,
+                "key_points": topic.get("key_points") or [],
+                "source": "trending_topic",
+            }
+        )
+        if topic_id:
+            seen_ids.add(topic_id)
+
+    if len(candidates) < MIN_PICKS:
+        trending = global_feed.get("trending") or []
+        for item in trending:
+            if not isinstance(item, dict):
+                continue
+            item_id = str(item.get("id") or item.get("url") or "").strip()
+            title = str(item.get("title") or "").strip()
+            if not title or (item_id and item_id in seen_ids):
+                continue
+            image_url = str(item.get("thumbnail") or "").strip()
+            if not image_url:
+                imgs = item.get("images") or []
+                if isinstance(imgs, list) and imgs:
+                    image_url = str(imgs[0] or "").strip()
+            candidates.append(
+                {
+                    "id": item_id or f"item-{len(candidates)}",
+                    "title": title,
+                    "summary": str(item.get("summary") or "").strip(),
+                    "url": str(item.get("url") or "").strip(),
+                    "image_url": image_url,
+                    "key_points": [],
+                    "source": "trending_item",
+                }
+            )
+            if item_id:
+                seen_ids.add(item_id)
+
+    return candidates
+
+
+def _llm_pick_titles(
+    client: OpenAI,
+    candidates: list[dict[str, Any]],
+) -> list[int]:
+    """Ask the LLM to pick 7-9 most interesting indices from the title list."""
+    numbered_titles = "\n".join(
+        f"{idx}. {c['title']}" for idx, c in enumerate(candidates, start=1)
+    )
+    target = min(MAX_PICKS, max(MIN_PICKS, len(candidates)))
+
+    system = (
+        "You are the editor of Trace, a daily briefing that mixes tech, AI, "
+        "markets, world events, UX and engineering. Your taste is sharp: "
+        "you pick the most interesting, important and varied stories."
+    )
+    user = (
+        f"Here are today's candidate story titles (numbered):\n\n"
+        f"{numbered_titles}\n\n"
+        f"Pick the {MIN_PICKS}-{MAX_PICKS} most interesting and diverse stories "
+        f"for today's newsletter. Favor variety across topics. Avoid near-duplicates.\n\n"
+        f"Respond ONLY as JSON: {{\"picks\": [<index>, <index>, ...]}} "
+        f"with {MIN_PICKS}-{MAX_PICKS} indices from the list above."
+    )
+
+    resp = client.chat.completions.create(
+        model=PICK_MODEL,
+        temperature=0.3,
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+    )
+    raw = resp.choices[0].message.content or "{}"
+    data = json.loads(raw)
+    picks_raw = data.get("picks") or []
+    picks: list[int] = []
+    for p in picks_raw:
+        try:
+            idx = int(p)
+        except (TypeError, ValueError):
+            continue
+        if 1 <= idx <= len(candidates) and idx not in picks:
+            picks.append(idx)
+    picks = picks[:MAX_PICKS]
+    return picks
+
+
+def _llm_write_newsletter(
+    client: OpenAI,
+    date: str,
+    picked: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Ask the LLM to write the newsletter body as structured JSON."""
+    briefing = []
+    for idx, c in enumerate(picked, start=1):
+        briefing.append(
+            {
+                "n": idx,
+                "title": c["title"],
+                "summary": c.get("summary") or "",
+                "url": c.get("url") or "",
             }
         )
 
-    topics.sort(
-        key=lambda t: (
-            float(t.get("popularity_score", 0.0)),
-            int(t.get("article_count", 0)),
-        ),
-        reverse=True,
+    system = (
+        "You are the voice of Trace, a daily briefing that is smart, witty, "
+        "and a genuine pleasure to read. You mix tech, AI, markets, world "
+        "events, UX and engineering in a concise, energetic style. You "
+        "write like a sharp friend, not a press release."
     )
-    return topics
-
-
-def _select_diverse(
-    articles: list[dict[str, Any]],
-    max_items: int,
-) -> list[dict[str, Any]]:
-    def _domain(url: str) -> str:
-        return (urlparse(url).hostname or "").lower().replace("www.", "")
-
-    selected: list[dict[str, Any]] = []
-    seen_urls: set[str] = set()
-    domain_counts: dict[str, int] = {}
-
-    for candidate in articles:
-        if len(selected) >= max_items:
-            break
-        url = str(candidate.get("url", "")).strip()
-        if not url or url in seen_urls:
-            continue
-        domain = _domain(url)
-        if domain and domain_counts.get(domain, 0) >= MAX_PER_DOMAIN:
-            continue
-        seen_urls.add(url)
-        selected.append(candidate)
-        if domain:
-            domain_counts[domain] = domain_counts.get(domain, 0) + 1
-
-    return selected
-
-
-def _build_item_summary(item: dict[str, Any]) -> str:
-    details = item.get("details", "")
-    subtitle = item.get("subtitle", "")
-    if details:
-        return details
-    return subtitle
-
-
-def _display_topic_name(topic_id: str, topic_name: str) -> str:
-    if topic_name:
-        return topic_name.strip()
-    if not topic_id:
-        return "General"
-    return " ".join(part.capitalize() for part in topic_id.replace("_", "-").split("-") if part)
-
-
-def _source_name(item: dict[str, Any]) -> str:
-    explicit = str(item.get("source_name", "")).strip()
-    if explicit:
-        return explicit
-    host = (urlparse(str(item.get("url", "")).strip()).hostname or "").lower().replace("www.", "")
-    return host or "Source"
-
-
-def _build_topic_overview(topic_label: str, rows: list[dict[str, Any]]) -> str:
-    if not rows:
-        return f"{topic_label} is trending today."
-    latest = rows[0]
-    base = str(latest.get("details", "")).strip() or str(latest.get("subtitle", "")).strip()
-    if base:
-        return base
-    count = len(rows)
-    if count == 1:
-        return f"{topic_label} is seeing fresh attention with one key update."
-    return f"{topic_label} is seeing sustained momentum with {count} notable updates."
-
-
-def _build_top_topics(
-    articles: list[dict[str, Any]],
-    *,
-    limit: int = TOP_TOPICS_DEFAULT,
-) -> list[dict[str, Any]]:
-    grouped: dict[str, list[dict[str, Any]]] = {}
-    for article in articles:
-        topic_id = str(article.get("topic_id", "")).strip() or "general"
-        grouped.setdefault(topic_id, []).append(article)
-
-    for topic_id in grouped:
-        grouped[topic_id].sort(
-            key=lambda x: _parse_iso(str(x.get("published_date", "")).strip()),
-            reverse=True,
-        )
-
-    ranked = sorted(
-        grouped.items(),
-        key=lambda item: (
-            len(item[1]),
-            _parse_iso(str(item[1][0].get("published_date", "")).strip()) if item[1] else datetime.min.replace(tzinfo=timezone.utc),
-        ),
-        reverse=True,
-    )
-
-    top_topics: list[dict[str, Any]] = []
-    for topic_id, rows in ranked[:limit]:
-        if not rows:
-            continue
-        top = rows[0]
-        topic_label = _display_topic_name(topic_id, str(top.get("topic_name", "")).strip())
-        key_points: list[str] = []
-        for row in rows[:TOPIC_KEY_POINTS]:
-            title = str(row.get("title", "")).strip()
-            if not title:
-                continue
-            source = _source_name(row)
-            key_points.append(f"{title} ({source})")
-
-        image_url = str(top.get("thumbnail", "")).strip()
-        if not image_url:
-            for row in rows[1:]:
-                candidate = str(row.get("thumbnail", "")).strip()
-                if candidate:
-                    image_url = candidate
-                    break
-
-        topic_row: dict[str, Any] = {
-            "topic_id": topic_id,
-            "topic_name": topic_label,
-            "overview": _build_topic_overview(topic_label, rows),
-            "interest_id": topic_id,
-            "tags": [topic_id],
-            "article_count": len(rows),
-            "latest_published_date": str(top.get("published_date", "")).strip(),
-            "key_points": key_points,
-        }
-        if image_url:
-            topic_row["image_url"] = image_url
-        top_topics.append(topic_row)
-
-    return top_topics
-
-
-def _generate_editorial(
-    client: OpenAI,
-    items: list[dict[str, Any]],
-    date: str,
-) -> tuple[str, str]:
-    payload = [
-        {
-            "topic": i.get("topic_name", ""),
-            "title": i.get("title", ""),
-            "subtitle": i.get("subtitle", ""),
-        }
-        for i in items
-    ]
-    prompt = (
-        f"You are editing a concise daily newsletter for {date}. "
-        f"Here are {len(items)} selected items:\n"
-        f"{json.dumps(payload, indent=2)}\n\n"
-        "Return JSON only with keys: subject, intro.\n"
+    user = (
+        "Write today's Trace newsletter from the briefing below. "
+        "Make it fun, punchy, and a joy to read. Each story should feel "
+        "distinct and worth opening.\n\n"
         "Rules:\n"
-        "- subject max 70 chars\n"
-        "- intro 2-3 sentences, plain language, no hype\n"
+        "- Keep the intro to 2-4 sentences. No greetings like 'Good morning'. "
+        "Do not just paraphrase the first story; give a flavor of the whole mix.\n"
+        "- For each story, write a 2-4 sentence body that explains what "
+        "happened and why it matters, in a voice that is lively and specific. "
+        "Do not number the titles yourself; we number them on render.\n"
+        "- Keep the overall tone human, confident, a little playful.\n"
+        "- Use only the information from the briefing; do not invent facts.\n"
+        "- Preserve the provided url for each story exactly.\n\n"
+        f"Briefing (JSON):\n{json.dumps(briefing, ensure_ascii=False)}\n\n"
+        "Respond ONLY as JSON with this exact shape:\n"
+        "{\n"
+        "  \"subject\": \"short, concrete subject line (no prefixes like 'Today:' "
+        "or 'Daily Update:' — just the headline of the day)\",\n"
+        "  \"intro\": \"2-4 sentences of intro text, plain text\",\n"
+        "  \"stories\": [\n"
+        "    {\"title\": \"<same title>\", \"url\": \"<same url>\", "
+        "\"body\": \"2-4 sentences, plain text, paragraphs separated by \\n\\n if needed\"}\n"
+        "  ],\n"
+        "  \"sign_off\": \"one short, fun closing line\"\n"
+        "}"
     )
-    try:
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0.6,
-            max_tokens=220,
-        )
-        parsed = json.loads(resp.choices[0].message.content or "{}")
-        subject = str(parsed.get("subject", "")).strip()
-        intro = str(parsed.get("intro", "")).strip()
-    except Exception:
-        subject = ""
-        intro = ""
 
-    if not subject:
-        subject = f"Trace Daily: AI, Product & Design picks for {date}"
-    if not intro:
-        intro = (
-            "Here are today's best trending picks across AI, Product, and Design. "
-            "Just the essential stories in one quick edition."
-        )
-    intro_html = (
-        '<p style="margin: 0; font-size: 15px; color: #52525b; '
-        "line-height: 1.7; font-family: -apple-system, BlinkMacSystemFont, "
-        f"'Segoe UI', sans-serif;\">{intro}</p>"
+    resp = client.chat.completions.create(
+        model=WRITE_MODEL,
+        temperature=0.7,
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
     )
-    return subject, intro_html
-
-
-def _rewrite_item_blurbs(
-    client: OpenAI,
-    items: list[dict[str, Any]],
-) -> dict[str, str]:
-    payload = [
-        {
-            "url": i.get("url", ""),
-            "topic": i.get("topic_name", ""),
-            "title": i.get("title", ""),
-            "subtitle": i.get("subtitle", ""),
-            "details": i.get("details", ""),
-        }
-        for i in items
-    ]
-    prompt = (
-        "Rewrite each item into one concise, interesting blurb.\n"
-        "Return JSON only as:\n"
-        "{\"items\": [{\"url\": \"...\", \"blurb\": \"...\"}]}\n"
-        "Rules:\n"
-        "- Max 2 sentences per blurb\n"
-        "- Keep it factual and specific\n"
-        "- No clickbait, no hype, no new claims\n"
-        "- Preserve the original URL\n\n"
-        f"Items:\n{json.dumps(payload, indent=2)}"
-    )
-    try:
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0.8,
-            max_tokens=800,
-        )
-        parsed = json.loads(resp.choices[0].message.content or "{}")
-        rows = parsed.get("items", []) if isinstance(parsed, dict) else []
-        mapping: dict[str, str] = {}
-        if isinstance(rows, list):
-            for row in rows:
-                if not isinstance(row, dict):
-                    continue
-                url = str(row.get("url", "")).strip()
-                blurb = str(row.get("blurb", "")).strip()
-                if url and blurb:
-                    mapping[url] = blurb
-        return mapping
-    except Exception:
-        return {}
+    raw = resp.choices[0].message.content or "{}"
+    data = json.loads(raw)
+    return data
 
 
 def build_unified_newsletter(
     date: str | None = None,
-    max_items: int = MAX_ITEMS_DEFAULT,
-    top_topics_count: int = TOP_TOPICS_DEFAULT,
     force: bool = False,
 ) -> dict[str, Any]:
     store = FirestoreStore()
+    v3_store = V3Store()
     target_date = (date or "").strip() or _today_ist()
+
     doc_ref = store.db.collection("unified_newsletters").document(target_date)
     existing = doc_ref.get()
     if existing.exists and not force:
         data = existing.to_dict() or {}
+        if data.get("status") in {"draft", "sent"}:
+            return {
+                "success": True,
+                "skipped": True,
+                "reason": "already built (use --force)",
+                "date": target_date,
+            }
+
+    candidates = _collect_candidates(v3_store, target_date)
+    if not candidates:
         return {
             "success": False,
-            "error": "unified newsletter already exists (use --force)",
-            "date": target_date,
-            "item_count": int(data.get("item_count", 0)),
-        }
-
-    source = "trending_news"
-    source_parts: list[str] = []
-    articles = _collect_trending_articles(store, target_date)
-    if articles:
-        source_parts.append("trending_news")
-    if not articles:
-        articles = _collect_v3_feed_trending(store, target_date)
-        source = "v3_user_feed"
-        if articles:
-            source_parts.append("v3_user_feed")
-    selected = _select_diverse(articles, max_items=max_items) if articles else []
-
-    top_topics = _collect_v3_trending_topics(store, target_date)[: max(1, top_topics_count)]
-    if top_topics:
-        source_parts.append("v3_global_trending_topics")
-    else:
-        top_topics = _build_top_topics(articles, limit=max(1, top_topics_count)) if articles else []
-    if not top_topics:
-        return {
-            "success": False,
-            "error": "no top topics found",
+            "error": "no candidate stories in global feed for date",
             "date": target_date,
         }
 
-    subject = f"Trace Trends: Top {len(top_topics)} topics for {target_date}"
-    intro_html = (
-        '<p style="margin: 0; font-size: 15px; color: #52525b; '
-        "line-height: 1.7; font-family: -apple-system, BlinkMacSystemFont, "
-        f"'Segoe UI', sans-serif;\">"
-        f"Here are today's top {len(top_topics)} trending topics with concise overviews and key points."
-        "</p>"
-    )
-    rewritten_blurbs: dict[str, str] = {}
-
-    newsletter_items = []
-    for idx, item in enumerate(selected, start=1):
-        row = {
-            "id": f"unified_{idx}_{target_date}",
-            "title": item.get("title", ""),
-            "url": item.get("url", ""),
-            "summary": (
-                rewritten_blurbs.get(item.get("url", ""))
-                or _build_item_summary(item)
-            ),
-            "type": "news",
-            "source": source,
-            "tags": [item.get("topic_id", "")],
-            "topic_id": item.get("topic_id", ""),
-            "topic_name": item.get("topic_name", ""),
-            "published_date": item.get("published_date", ""),
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return {
+            "success": False,
+            "error": "OPENAI_API_KEY not set",
+            "date": target_date,
         }
-        thumb = item.get("thumbnail", "")
-        if thumb:
-            row["thumbnail"] = thumb
-        newsletter_items.append(row)
+    client = OpenAI(api_key=api_key)
+
+    picks = _llm_pick_titles(client, candidates)
+    if not picks:
+        return {
+            "success": False,
+            "error": "LLM returned no valid picks",
+            "date": target_date,
+            "pool_size": len(candidates),
+        }
+
+    picked = [candidates[i - 1] for i in picks]
+
+    written = _llm_write_newsletter(client, target_date, picked)
+
+    subject = str(written.get("subject") or "").strip()
+    intro = str(written.get("intro") or "").strip()
+    sign_off = str(written.get("sign_off") or "").strip()
+    raw_stories = written.get("stories") or []
+    stories: list[dict[str, Any]] = []
+    url_to_image = {c["url"]: c.get("image_url", "") for c in picked if c.get("url")}
+    if isinstance(raw_stories, list):
+        for idx, s in enumerate(raw_stories):
+            if not isinstance(s, dict):
+                continue
+            story_url = str(s.get("url") or "").strip()
+            image_url = url_to_image.get(story_url, "")
+            if not image_url and idx < len(picked):
+                image_url = picked[idx].get("image_url", "")
+            stories.append(
+                {
+                    "title": str(s.get("title") or "").strip(),
+                    "url": story_url,
+                    "body": str(s.get("body") or "").strip(),
+                    "image_url": image_url,
+                }
+            )
+
+    if not subject or not stories:
+        return {
+            "success": False,
+            "error": "LLM did not return a valid newsletter payload",
+            "date": target_date,
+            "raw": written,
+        }
 
     payload = {
         "date": target_date,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
         "status": "draft",
-        "format_version": "top_topics_v1",
-        "item_count": len(newsletter_items),
-        "top_topic_count": len(top_topics),
-        "items": newsletter_items,
-        "top_topics": top_topics,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "email_subject": subject,
-        "intro_html": intro_html,
-        "source": f"v2_unified_trending:{','.join(source_parts) if source_parts else source}",
+        "intro": intro,
+        "stories": stories,
+        "sign_off": sign_off,
+        "pool_size": len(candidates),
+        "picked_count": len(stories),
+        "pick_indices": picks,
+        "source": "llm_pick_v1",
     }
-    doc_ref.set(payload, merge=True)
+    doc_ref.set(payload)
+
     return {
         "success": True,
         "date": target_date,
-        "item_count": len(newsletter_items),
-        "top_topic_count": len(top_topics),
+        "pool_size": len(candidates),
+        "picked_count": len(stories),
         "subject": subject,
-        "topics": [t.get("topic_id", "") for t in top_topics],
     }
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Build unified newsletter from trending news."
-    )
-    parser.add_argument("--date", default="", help="YYYY-MM-DD")
-    parser.add_argument(
-        "--max-items",
-        type=int,
-        default=MAX_ITEMS_DEFAULT,
-        help="Target number of items.",
-    )
-    parser.add_argument(
-        "--top-topics",
-        type=int,
-        default=TOP_TOPICS_DEFAULT,
-        help="Number of top topics to include.",
-    )
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Rebuild even if draft exists.",
-    )
+    parser = argparse.ArgumentParser(description="Build unified newsletter.")
+    parser.add_argument("--date", default="", help="YYYY-MM-DD (defaults to today IST)")
+    parser.add_argument("--force", action="store_true", help="Rebuild even if already built")
     return parser.parse_args()
 
 
 def main() -> None:
     args = _parse_args()
-    result = build_unified_newsletter(
-        date=args.date,
-        max_items=args.max_items,
-        top_topics_count=args.top_topics,
-        force=args.force,
-    )
+    result = build_unified_newsletter(date=args.date, force=args.force)
     print(json.dumps(result, indent=2))
 
 
