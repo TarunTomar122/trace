@@ -338,6 +338,7 @@ def main() -> None:
         to_email=args.to_email,
     )
     print(json.dumps(result, indent=2))
+    sys.exit(0 if result.get("success") else 1)
 
 
 if __name__ == "__main__":

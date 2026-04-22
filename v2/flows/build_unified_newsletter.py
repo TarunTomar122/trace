@@ -45,6 +45,27 @@ def _today_ist() -> str:
     return datetime.now(ist).strftime("%Y-%m-%d")
 
 
+def _build_trace_article_url(item: dict[str, Any]) -> str:
+    item_id = str(item.get("id") or "").strip()
+    feed_type = str(
+        item.get("feed_type")
+        or (item.get("metadata") or {}).get("feed_type")
+        or ""
+    ).strip().lower()
+    if not item_id:
+        return ""
+
+    if item_id.startswith("fy_") or item_id.startswith("tr_"):
+        normalized_id = item_id
+    elif feed_type == "for_you":
+        normalized_id = f"fy_{item_id}"
+    elif feed_type == "trending":
+        normalized_id = f"tr_{item_id}"
+    else:
+        return ""
+    return f"https://www.yourtrace.online/articles/{normalized_id}"
+
+
 def _collect_candidates(v3_store: V3Store, date: str) -> list[dict[str, Any]]:
     """Return all candidate stories from the global daily feed as a flat list.
 
@@ -69,11 +90,13 @@ def _collect_candidates(v3_store: V3Store, date: str) -> list[dict[str, Any]]:
             continue
         summary = str(topic.get("summary") or "").strip()
         url = ""
+        trace_url = ""
         image_url = str(topic.get("thumbnail") or "").strip()
         articles = topic.get("articles") or []
         if isinstance(articles, list) and articles:
             first = articles[0] if isinstance(articles[0], dict) else {}
             url = str(first.get("url") or first.get("link") or "").strip()
+            trace_url = _build_trace_article_url(first)
             if not image_url:
                 image_url = str(first.get("thumbnail") or "").strip()
                 if not image_url:
@@ -85,7 +108,9 @@ def _collect_candidates(v3_store: V3Store, date: str) -> list[dict[str, Any]]:
                 "id": topic_id or f"topic-{len(candidates)}",
                 "title": title,
                 "summary": summary,
-                "url": url,
+                "url": trace_url or url,
+                "source_url": url,
+                "trace_url": trace_url,
                 "image_url": image_url,
                 "key_points": topic.get("key_points") or [],
                 "source": "trending_topic",
@@ -108,12 +133,16 @@ def _collect_candidates(v3_store: V3Store, date: str) -> list[dict[str, Any]]:
                 imgs = item.get("images") or []
                 if isinstance(imgs, list) and imgs:
                     image_url = str(imgs[0] or "").strip()
+            source_url = str(item.get("url") or "").strip()
+            trace_url = _build_trace_article_url(item)
             candidates.append(
                 {
                     "id": item_id or f"item-{len(candidates)}",
                     "title": title,
                     "summary": str(item.get("summary") or "").strip(),
-                    "url": str(item.get("url") or "").strip(),
+                    "url": trace_url or source_url,
+                    "source_url": source_url,
+                    "trace_url": trace_url,
                     "image_url": image_url,
                     "key_points": [],
                     "source": "trending_item",
@@ -187,6 +216,7 @@ def _llm_write_newsletter(
                 "title": c["title"],
                 "summary": c.get("summary") or "",
                 "url": c.get("url") or "",
+                "source_url": c.get("source_url") or "",
             }
         )
 
@@ -293,11 +323,14 @@ def build_unified_newsletter(
     raw_stories = written.get("stories") or []
     stories: list[dict[str, Any]] = []
     url_to_image = {c["url"]: c.get("image_url", "") for c in picked if c.get("url")}
+    trace_urls = [str(c.get("url") or "").strip() for c in picked]
     if isinstance(raw_stories, list):
         for idx, s in enumerate(raw_stories):
             if not isinstance(s, dict):
                 continue
             story_url = str(s.get("url") or "").strip()
+            if "yourtrace.online/articles/" not in story_url and idx < len(trace_urls):
+                story_url = trace_urls[idx]
             image_url = url_to_image.get(story_url, "")
             if not image_url and idx < len(picked):
                 image_url = picked[idx].get("image_url", "")
@@ -353,6 +386,7 @@ def main() -> None:
     args = _parse_args()
     result = build_unified_newsletter(date=args.date, force=args.force)
     print(json.dumps(result, indent=2))
+    sys.exit(0 if result.get("success") else 1)
 
 
 if __name__ == "__main__":

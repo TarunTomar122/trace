@@ -370,12 +370,18 @@ def main() -> None:
 
         if run_all or "newsletter" in requested or "newsletter_build" in requested:
             _log("--- Build newsletter ---")
-            _run_module(JOBS["newsletter_build"]["module"], nl_build_args)
+            nl_rc = _run_module(JOBS["newsletter_build"]["module"], nl_build_args)
+            if nl_rc != 0:
+                _log(f"ERROR: newsletter build exited with code {nl_rc}")
+                sys.exit(nl_rc)
 
         if run_all or "newsletter" in requested or "newsletter_send" in requested:
             _log("--- Send newsletter ---")
             nl_send_args = list(nl_build_args)
-            _run_module(JOBS["newsletter_send"]["module"], nl_send_args)
+            nl_send_rc = _run_module(JOBS["newsletter_send"]["module"], nl_send_args)
+            if nl_send_rc != 0:
+                _log(f"ERROR: newsletter send exited with code {nl_send_rc}")
+                sys.exit(nl_send_rc)
 
     elapsed = time.time() - start
     _log(f"=== V3 Pipeline Done ({elapsed:.1f}s) ===")
