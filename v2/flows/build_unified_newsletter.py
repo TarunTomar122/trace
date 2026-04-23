@@ -295,7 +295,7 @@ def build_unified_newsletter(
             "date": target_date,
         }
 
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
     if not api_key:
         return {
             "success": False,
