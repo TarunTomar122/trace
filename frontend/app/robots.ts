@@ -1,5 +1,9 @@
-import { MetadataRoute } from 'next'
- 
+import { MetadataRoute } from 'next';
+
+/**
+ * Public marketing + SEO pages (/, /daily, /trending, /articles, /topics, /research, /compare, /tools, /contact, etc.)
+ * are allowed. Only app-authenticated, API, and internal routes are disallowed.
+ */
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
@@ -8,8 +12,10 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
         disallow: [
           '/api/',
+          /* In-app feed shell (not public /articles/ topic pages) */
           '/feed',
           '/feed/',
+          '/auth/',
           '/profile',
           '/onboarding',
           '/bookmarks',
@@ -18,6 +24,6 @@ export default function robots(): MetadataRoute.Robots {
       },
     ],
     sitemap: 'https://www.yourtrace.online/sitemap.xml',
-  }
+  };
 }
 

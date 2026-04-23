@@ -11,6 +11,8 @@ interface TopicData {
   topic_key: string;
   title: string;
   summary: string;
+  /** ISO date (YYYY-MM-DD) of the global daily or trending doc this topic was resolved from, for internal links. */
+  sourceArchiveDate?: string;
   key_points?: string[];
   thumbnail?: string;
   source_count?: number;
@@ -84,7 +86,9 @@ function hasMeaningfulTopicContent(topic: TopicData | null): topic is TopicData 
   return hasArticles || hasTimeline || hasKeyPoints || hasSources;
 }
 
-async function getTopicFromGlobalFeed(id: string): Promise<TopicData | null> {
+async function getTopicFromGlobalFeed(
+  id: string,
+): Promise<{ topic: TopicData; archiveDate: string } | null> {
   if (!adminFirestore) return null;
 
   const globalFeedRef = adminFirestore
@@ -105,13 +109,15 @@ async function getTopicFromGlobalFeed(id: string): Promise<TopicData | null> {
         normalizeTopicId(topic.id) === id ||
         normalizeTopicId(topic.topic_key) === id
     );
-    if (match) return match;
+    if (match) return { topic: match, archiveDate: doc.id };
   }
 
   return null;
 }
 
-async function getTopicFromTrendingNews(id: string): Promise<TopicData | null> {
+async function getTopicFromTrendingNews(
+  id: string,
+): Promise<{ topic: TopicData; archiveDate: string } | null> {
   if (!adminFirestore) return null;
 
   const latestTrendingSnapshot = await adminFirestore
@@ -123,6 +129,8 @@ async function getTopicFromTrendingNews(id: string): Promise<TopicData | null> {
   if (latestTrendingSnapshot.empty) {
     return null;
   }
+
+  const archiveDate = String(latestTrendingSnapshot.docs[0].id || '');
 
   const topicDoc = await latestTrendingSnapshot.docs[0].ref
     .collection('topics')
@@ -183,15 +191,18 @@ async function getTopicFromTrendingNews(id: string): Promise<TopicData | null> {
   ).size;
 
   return {
-    id,
-    topic_key: id,
-    title: displayTitle,
-    summary: buildFallbackTopicSummary(displayTitle, rawArticles.length),
-    thumbnail: rawArticles.find((article) => article?.thumbnail)?.thumbnail || undefined,
-    source_count: sourceCount,
-    article_count: rawArticles.length,
-    timeline,
-    articles,
+    topic: {
+      id,
+      topic_key: id,
+      title: displayTitle,
+      summary: buildFallbackTopicSummary(displayTitle, rawArticles.length),
+      thumbnail: rawArticles.find((article) => article?.thumbnail)?.thumbnail || undefined,
+      source_count: sourceCount,
+      article_count: rawArticles.length,
+      timeline,
+      articles,
+    },
+    archiveDate,
   };
 }
 
@@ -203,11 +214,22 @@ async function getTopic(id: string): Promise<TopicData | null> {
   const normalizedId = normalizeTopicId(id);
 
   try {
-    const globalTopic = await getTopicFromGlobalFeed(normalizedId);
-    if (hasMeaningfulTopicContent(globalTopic)) return globalTopic;
+    const globalResult = await getTopicFromGlobalFeed(normalizedId);
+    if (globalResult && hasMeaningfulTopicContent(globalResult.topic)) {
+      return {
+        ...globalResult.topic,
+        sourceArchiveDate: globalResult.archiveDate,
+      };
+    }
 
-    const fallbackTopic = await getTopicFromTrendingNews(normalizedId);
-    return hasMeaningfulTopicContent(fallbackTopic) ? fallbackTopic : null;
+    const fallbackResult = await getTopicFromTrendingNews(normalizedId);
+    if (fallbackResult && hasMeaningfulTopicContent(fallbackResult.topic)) {
+      return {
+        ...fallbackResult.topic,
+        sourceArchiveDate: fallbackResult.archiveDate,
+      };
+    }
+    return null;
   } catch (error) {
     console.error('Error fetching topic:', error);
     return null;

@@ -5,7 +5,6 @@ import {
   View,
   RefreshControl,
   Text,
-  ActivityIndicator,
   ScrollView,
   Image,
   Dimensions,
@@ -13,12 +12,12 @@ import {
   Platform,
   InteractionManager,
   FlatList,
+  LayoutChangeEvent,
+  useWindowDimensions,
 } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  useAnimatedScrollHandler,
-  interpolate,
   withRepeat,
   withTiming,
   withSequence,
@@ -26,10 +25,9 @@ import Animated, {
   withSpring,
   Easing,
   FadeIn,
-  Extrapolation,
   runOnJS,
 } from 'react-native-reanimated';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Application from 'expo-application';
@@ -44,9 +42,10 @@ import {
 } from 'lucide-react-native';
 
 import DigestIllus from '@/components/illustrations/DigestIllus';
+import { DeckStoryCard } from '@/components/DeckStoryCard';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors, FontFamily, Typography, FontFamilySerif } from '@/constants/theme';
+import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
@@ -58,18 +57,22 @@ import {
   getAppVersionConfig,
   recordLastActive,
 } from '@/lib/firestore';
-const AnimatedFlatList = Animated.createAnimatedComponent(FlatList) as unknown as typeof FlatList;
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const FEED_ITEM_HEIGHT = 89; // paddingVertical(12*2) + thumb(64) + border(1)
 import { logReadingEvent } from '@/lib/reading-analytics';
 import { setCurrentTopic } from '@/lib/topic-store';
-import { setCurrentArticle, setArticleList } from '@/lib/article-store';
 import { getStreakData, StreakData } from '@/lib/streaks';
 import { consumePrefetchedFeed, getPrefetchPromise } from '@/lib/feed-cache';
 import { maybeRequestReview } from '@/lib/app-review';
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
+/** Deck card: show long narrative from body (scrollable); bullets stripped */
+const DECK_NARRATIVE_MAX_WORDS = 320;
+/** Max width for deck cards (centered; not edge-to-edge) */
+const DECK_CARD_MAX_WIDTH = 392;
+/** Vertical inset around each deck card (extra bottom for breathing room) */
+const DECK_CARD_MARGIN_TOP = 10;
+const DECK_CARD_MARGIN_BOTTOM = 40;
+
 // Figma design colors
-const CARD_COLORS = ['#e8ffc9', '#c9d2ff', '#daf3fa', '#fcdddd'];
 const ACCENT_ORANGE = '#ff8d28';
 const META_GREEN = '#5a6b35'; // Darker olive for better contrast on pastel backgrounds
 
@@ -211,11 +214,88 @@ function stripMarkdown(text?: string): string {
     .trim();
 }
 
+/** Paragraph is mostly bullet / numbered lines — skip on deck */
+function isBulletParagraph(block: string): boolean {
+  const lines = block.split(/\n/).map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) return false;
+  let bulletish = 0;
+  for (const line of lines) {
+    if (/^[-*•◦▪]\s+/.test(line)) bulletish++;
+    else if (/^\d+[.)]\s+/.test(line)) bulletish++;
+  }
+  if (lines.length >= 2 && bulletish >= Math.ceil(lines.length * 0.45)) return true;
+  if (lines.length === 1 && /^[-*•◦▪]\s+/.test(lines[0])) return true;
+  if (/^key\s+takeaways/im.test(block) && bulletish > 0) return true;
+  return false;
+}
+
+/** Prose from short_article.body only; drops bullet blocks and takeaway lists */
+function extractNarrativeFromBody(raw?: string | null): string {
+  const body = stripMarkdown(raw || '');
+  if (!body) return '';
+  const paras = body
+    .split(/\n\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const prose: string[] = [];
+  for (const p of paras) {
+    if (isBulletParagraph(p)) continue;
+    const oneLine = p.replace(/\s+/g, ' ').trim();
+    if (/^(key\s+takeaways|what\s+to\s+watch|the\s+bottom\s+line|sources?|read\s+more)\b/i.test(oneLine)) {
+      continue;
+    }
+    prose.push(oneLine);
+  }
+  if (prose.length > 0) return prose.join('\n\n');
+  const lines = body.split(/\n/).map((l) => l.trim()).filter(Boolean);
+  const keep: string[] = [];
+  for (const line of lines) {
+    if (/^[-*•◦▪]\s+/.test(line) || /^\d+[.)]\s+/.test(line)) break;
+    if (/^#{1,3}\s/.test(line)) continue;
+    keep.push(line);
+  }
+  return keep.join(' ').replace(/\s+/g, ' ').trim();
+}
+
 function extractBodyPreview(item: FeedItem): string {
   const body = stripMarkdown(item.summary?.short_article?.body);
   if (!body) return stripMarkdown(item.summary?.short_article?.subtitle || item.description || '');
   const firstParagraph = body.split(/\n\n+/).map((part) => part.trim()).find(Boolean) || body;
   return firstParagraph.replace(/\s+/g, ' ').trim();
+}
+
+function truncateByWords(raw: string, maxWords: number): string {
+  const t = raw.replace(/\s+/g, ' ').trim();
+  if (!t) return '';
+  const words = t.split(/\s+/);
+  if (words.length <= maxWords) return t;
+  return `${words.slice(0, maxWords).join(' ')}…`;
+}
+
+function getFeedItemOverview(item: FeedItem): string {
+  const bodyNarrative = extractNarrativeFromBody(item.summary?.short_article?.body);
+  if (bodyNarrative.length >= 40) {
+    return truncateByWords(bodyNarrative, DECK_NARRATIVE_MAX_WORDS);
+  }
+  const sa = item.summary?.short_article;
+  const fallback =
+    [sa?.subtitle, sa?.why_it_matters, item.description, extractBodyPreview(item)]
+      .map((s) => stripMarkdown(String(s || '')).replace(/\s+/g, ' ').trim())
+      .find((s) => s.length >= 24) || bodyNarrative;
+  return truncateByWords(fallback, DECK_NARRATIVE_MAX_WORDS);
+}
+
+function getTopicOverviewForDeck(topic: TrendingTopic): string {
+  const display = getTopicDisplay(topic);
+  const fromArticleBody = extractNarrativeFromBody(display.article?.summary?.short_article?.body);
+  if (fromArticleBody.length >= 40) {
+    return truncateByWords(fromArticleBody, DECK_NARRATIVE_MAX_WORDS);
+  }
+  const fromSummary = extractNarrativeFromBody(display.summary);
+  if (fromSummary.length >= 24) {
+    return truncateByWords(fromSummary, DECK_NARRATIVE_MAX_WORDS);
+  }
+  return truncateByWords(stripMarkdown(display.summary).replace(/\s+/g, ' ').trim(), DECK_NARRATIVE_MAX_WORDS);
 }
 
 function isNoisyItem(item: FeedItem): boolean {
@@ -288,7 +368,8 @@ type FeedSection =
   | { type: 'hero'; topic: TrendingTopic }
   | { type: 'trending'; topic: TrendingTopic }
   | { type: 'foryou'; item: FeedItem; label?: string; preview?: string }
-  | { type: 'section-header'; title: string; icon: 'flame' | 'compass' };
+  | { type: 'section-header'; title: string; icon: 'flame' | 'compass' }
+  | { type: 'deck_end' };
 
 function getSectionTimestamp(section: FeedSection): number {
   if (section.type === 'trending') {
@@ -413,90 +494,6 @@ function buildInterleavedFeed(
   return rankSections(sections, interestSet);
 }
 
-/* ─── Memoized feed row components ─── */
-
-const LOCK_IMAGE = require('@/assets/images/lock.png');
-
-const TrendingFeedRow = React.memo(function TrendingFeedRow({
-  topic,
-  colorScheme,
-  onPress,
-  locked,
-}: {
-  topic: TrendingTopic;
-  colorScheme: 'light' | 'dark';
-  onPress: (topic: TrendingTopic) => void;
-  locked?: boolean;
-}) {
-  const display = getTopicDisplay(topic);
-  const sourceCount = topic.source_count ?? 1;
-  const articleCount = topic.article_count ?? 1;
-  return (
-    <Pressable
-      onPress={() => onPress(topic)}
-      style={[styles.ongoingRow, styles.ongoingRowPadded]}>
-      <View style={styles.ongoingBody}>
-        <Text numberOfLines={2} style={[styles.ongoingTitle2, { color: Colors[colorScheme].text }]}>
-          {display.title}
-        </Text>
-        <View style={styles.ongoingMeta}>
-          <Text style={styles.ongoingMetaText}>{sourceCount} Sources</Text>
-          <View style={styles.ongoingMetaDot} />
-          <Text style={styles.ongoingMetaText}>{articleCount} Updates</Text>
-        </View>
-      </View>
-      {locked ? (
-        <Image source={LOCK_IMAGE} style={styles.ongoingThumb} resizeMode="cover" />
-      ) : isRealImage(display.thumbnail) ? (
-        <Image source={{ uri: display.thumbnail! }} style={styles.ongoingThumb} resizeMode="cover" />
-      ) : (
-        <View style={[styles.ongoingThumb, styles.ongoingThumbPlaceholder]} />
-      )}
-    </Pressable>
-  );
-});
-
-const ForYouFeedRow = React.memo(function ForYouFeedRow({
-  item,
-  colorScheme,
-  onPress,
-  locked,
-}: {
-  item: FeedItem;
-  colorScheme: 'light' | 'dark';
-  onPress: (item: FeedItem) => void;
-  locked?: boolean;
-}) {
-  const sourceCount = item.metadata?.source_count || item.sources?.length || 1;
-  const isCurated = item.metadata?.curated === true || item.feed_type === 'curated';
-  const statusLabel = isCurated
-    ? `Curated${item.metadata?.curated_platform ? ` · ${String(item.metadata.curated_platform).toUpperCase()}` : ''}`
-    : 'New';
-  return (
-    <Pressable
-      onPress={() => onPress(item)}
-      style={[styles.ongoingRow, styles.ongoingRowPadded]}>
-      <View style={styles.ongoingBody}>
-        <Text numberOfLines={2} style={[styles.ongoingTitle2, { color: Colors[colorScheme].text }]}>
-          {item.title}
-        </Text>
-        <View style={styles.ongoingMeta}>
-          <Text style={styles.ongoingMetaText}>{sourceCount} Source{sourceCount === 1 ? '' : 's'}</Text>
-          <View style={styles.ongoingMetaDot} />
-          <Text style={styles.ongoingMetaText}>{statusLabel}</Text>
-        </View>
-      </View>
-      {locked ? (
-        <Image source={LOCK_IMAGE} style={styles.ongoingThumb} resizeMode="cover" />
-      ) : isRealImage(item.thumbnail) ? (
-        <Image source={{ uri: item.thumbnail! }} style={styles.ongoingThumb} resizeMode="cover" />
-      ) : (
-        <View style={[styles.ongoingThumb, styles.ongoingThumbPlaceholder]} />
-      )}
-    </Pressable>
-  );
-});
-
 export default function UnifiedFeedScreen() {
   const router = useRouter();
   const { isProUser } = useRevenueCat();
@@ -514,10 +511,12 @@ export default function UnifiedFeedScreen() {
   const [activeFilter, setActiveFilter] = useState<FilterType>('for_you');
   const [streak, setStreak] = useState<StreakData | null>(null);
   const v3FeedRef = useRef<V3UserFeed | null>(null);
-
-  // Scroll animation for sticky header
-  const scrollY = useSharedValue(0);
-  const STICKY_THRESHOLD = 80; // When sticky header appears
+  const deckListRef = useRef<FlatList<FeedSection>>(null);
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  const [deckViewportH, setDeckViewportH] = useState(() => {
+    const chromeGuess = 168 + insets.top + insets.bottom;
+    return Math.max(300, windowHeight - chromeGuess);
+  });
 
   const isOnboarded = profile?.onboarded === true;
   const hasRenderableFeed = !!v3Feed && (
@@ -811,67 +810,14 @@ export default function UnifiedFeedScreen() {
     [trendingTopics, supplementalArticles, activeFilter, userInterestIds]
   );
 
-  // Top 3 stories for carousel (sorted by source_count)
-  const topStories = useMemo(() => {
-    const sorted = [...trendingTopics].sort((a, b) => (b.source_count ?? 0) - (a.source_count ?? 0));
-    return sorted.slice(0, 3);
-  }, [trendingTopics]);
+  const deckSections = useMemo((): FeedSection[] => {
+    if (feedSections.length === 0) return [];
+    return [...feedSections, { type: 'deck_end' as const }];
+  }, [feedSections]);
 
-  // For You items from feed (shuffled on each app open)
-  const forYouItems = useMemo(() => {
-    if (!v3Feed) return [];
-    const filtered = v3Feed.for_you.filter((item) => !isNoisyItem(item));
-    const shuffled = [...filtered];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  }, [v3Feed]);
-
-  // Pre-compute patched items once instead of on every tap
-  const patchedForYouItems = useMemo(
-    () => forYouItems.map(patchForYouItem),
-    [forYouItems],
-  );
-
-  // Scroll handler for sticky header
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
-
-  // Animated style for sticky header
-  const stickyHeaderStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      scrollY.value,
-      [STICKY_THRESHOLD - 20, STICKY_THRESHOLD],
-      [0, 1],
-      Extrapolation.CLAMP
-    );
-    const translateY = interpolate(
-      scrollY.value,
-      [STICKY_THRESHOLD - 20, STICKY_THRESHOLD],
-      [-10, 0],
-      Extrapolation.CLAMP
-    );
-    return {
-      opacity,
-      transform: [{ translateY }],
-    };
-  });
-
-  // Animated style for main header (fade out on scroll)
-  const mainHeaderStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      scrollY.value,
-      [0, STICKY_THRESHOLD],
-      [1, 0],
-      Extrapolation.CLAMP
-    );
-    return { opacity };
-  });
+  useEffect(() => {
+    deckListRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [activeFilter]);
 
   // The first trending topic in the feed is free for non-subscribers
   const firstFreeTrendingId = useMemo(() => {
@@ -937,7 +883,7 @@ export default function UnifiedFeedScreen() {
         feedCategory: patchedItem.metadata?.feed_category || patchedItem.feed_type,
       });
     });
-  }, [patchedForYouItems, router]);
+  }, [router]);
 
   const isEmpty = feedSections.length === 0;
 
@@ -945,130 +891,17 @@ export default function UnifiedFeedScreen() {
 
   const firstName = getFirstName(profile);
 
+  const onDeckViewportLayout = useCallback((e: LayoutChangeEvent) => {
+    const h = e.nativeEvent.layout.height;
+    if (h > 0) setDeckViewportH(h);
+  }, []);
 
-  const scrollContentContainerStyle = useMemo(
-    () => [styles.scrollContent, { paddingTop: insets.top }],
-    [insets.top]
-  );
-
-  // Shared scroll props
-  const scrollProps = {
-    showsVerticalScrollIndicator: false,
-    onScroll: scrollHandler,
-    scrollEventThrottle: 16,
-    refreshControl: (
-      <RefreshControl
-        refreshing={isRefreshing}
-        onRefresh={onRefresh}
-        tintColor={Colors[colorScheme].foreground}
-      />
-    ),
-  } as const;
-
-  const renderHeader = () => (
-    <>
-      {/* Main Header - fades out on scroll */}
-      <Animated.View style={[styles.header, mainHeaderStyle]}>
-        <View style={styles.headerLeft}>
-          <Text style={[styles.headerGreeting, { color: Colors[colorScheme].text }]}>
-            Hi, {firstName}
-          </Text>
-          <Text style={[styles.headerSubtitle, { color: Colors[colorScheme].muted }]}>
-            Trace the stories that move your world.
-          </Text>
-        </View>
-        <View style={styles.headerRight}>
-          <Pressable
-            onPress={() => router.push('/profile')}
-            hitSlop={12}
-            style={[styles.profileButton, { borderColor: Colors[colorScheme].border }]}>
-            <User size={18} color={Colors[colorScheme].text} strokeWidth={1.8} />
-            {streak && streak.currentStreak > 0 && (
-              <View style={styles.profileStreakBadge}>
-                <Flame size={10} color="#fff" fill="#fff" />
-                <Text style={styles.profileStreakText}>{streak.currentStreak}</Text>
-              </View>
-            )}
-          </Pressable>
-        </View>
-      </Animated.View>
-
-      {/* Update Available Banner (Android only — iOS not on App Store yet) */}
-      {Platform.OS === 'android' && showUpdateBanner && (
-        <Pressable
-          onPress={() =>
-            Linking.openURL('https://play.google.com/store/apps/details?id=online.yourtrace.app')
-          }
-          style={[styles.updateBanner, { backgroundColor: Colors[colorScheme].card }]}>
-          <View style={styles.updateBannerContent}>
-            <View style={[styles.updateBannerIcon, { backgroundColor: `${ACCENT_ORANGE}20` }]}>
-              <ArrowUp size={16} color={ACCENT_ORANGE} />
-            </View>
-            <View style={styles.updateBannerText}>
-              <Text style={[styles.updateBannerTitle, { color: Colors[colorScheme].text }]}>
-                Update Available
-              </Text>
-              <Text style={[styles.updateBannerSubtitle, { color: Colors[colorScheme].muted }]}>
-                A new version of Trace is available
-              </Text>
-            </View>
-          </View>
-          <ChevronRight size={18} color={Colors[colorScheme].muted} />
-        </Pressable>
-      )}
-
-      {/* For You Section - Horizontal Carousel */}
-      {!isLoading && forYouItems.length > 0 && (
-        <View style={styles.forYouSection}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.forYouCarouselContainer}
-            snapToInterval={SCREEN_WIDTH - 40 + 14}
-            decelerationRate="fast">
-            {forYouItems.slice(0, 6).map((item, index) => {
-              const sourceName = item.source_name || item.source || '';
-              const preview = extractBodyPreview(item);
-              const cardBg = CARD_COLORS[index % CARD_COLORS.length];
-              const sourceCount = 4;
-              const updateCount = 7;
-              return (
-                <Pressable
-                  key={item.id}
-                  onPress={() => {
-                    setCurrentArticle(item);
-                    router.push('/brief');
-                  }}
-                  style={[styles.forYouCard, { backgroundColor: cardBg }]}>
-                  <View style={styles.forYouCardImageArea}>
-                    {isRealImage(item.thumbnail) ? (
-                      <Image source={{ uri: item.thumbnail! }} style={styles.forYouCardImage} resizeMode="cover" />
-                    ) : (
-                      <View style={styles.forYouCardImagePlaceholder} />
-                    )}
-                  </View>
-                  <View style={styles.forYouCardContent}>
-                    <Text numberOfLines={2} style={styles.forYouCardTitle}>
-                      {item.title}
-                    </Text>
-                    {preview ? (
-                      <Text numberOfLines={2} style={styles.forYouCardPreview}>
-                        {preview}
-                      </Text>
-                    ) : null}
-                    <View style={styles.forYouCardMeta}>
-                      <Text style={styles.forYouCardMetaText}>{sourceCount} Sources</Text>
-                      <View style={styles.forYouCardMetaDot} />
-                      <Text style={styles.forYouCardMetaText}>{updateCount} Updates</Text>
-                    </View>
-                  </View>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
-    </>
+  const refreshControlEl = (
+    <RefreshControl
+      refreshing={isRefreshing}
+      onRefresh={onRefresh}
+      tintColor={Colors[colorScheme].foreground}
+    />
   );
 
   const renderPills = () => (
@@ -1107,118 +940,202 @@ export default function UnifiedFeedScreen() {
     </View>
   );
 
-  const feedKeyExtractor = useCallback((item: FeedSection, index: number) => {
+  const renderDeckChrome = () => (
+    <View style={{ backgroundColor: Colors[colorScheme].background }}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
+        <View style={styles.headerLeft}>
+          <Text style={[styles.headerGreeting, { color: Colors[colorScheme].text }]}>
+            Hi, {firstName}
+          </Text>
+          <Text style={[styles.headerSubtitle, { color: Colors[colorScheme].muted }]}>
+            Trace the stories that move your world.
+          </Text>
+        </View>
+        <View style={styles.headerRight}>
+          <Pressable
+            onPress={() => router.push('/profile')}
+            hitSlop={12}
+            style={[styles.profileButton, { borderColor: Colors[colorScheme].border }]}>
+            <User size={18} color={Colors[colorScheme].text} strokeWidth={1.8} />
+            {streak && streak.currentStreak > 0 && (
+              <View style={styles.profileStreakBadge}>
+                <Flame size={10} color="#fff" fill="#fff" />
+                <Text style={styles.profileStreakText}>{streak.currentStreak}</Text>
+              </View>
+            )}
+          </Pressable>
+        </View>
+      </View>
+
+      {Platform.OS === 'android' && showUpdateBanner && (
+        <Pressable
+          onPress={() =>
+            Linking.openURL('https://play.google.com/store/apps/details?id=online.yourtrace.app')
+          }
+          style={[styles.updateBanner, { backgroundColor: Colors[colorScheme].card }]}>
+          <View style={styles.updateBannerContent}>
+            <View style={[styles.updateBannerIcon, { backgroundColor: `${ACCENT_ORANGE}20` }]}>
+              <ArrowUp size={16} color={ACCENT_ORANGE} />
+            </View>
+            <View style={styles.updateBannerText}>
+              <Text style={[styles.updateBannerTitle, { color: Colors[colorScheme].text }]}>
+                Update Available
+              </Text>
+              <Text style={[styles.updateBannerSubtitle, { color: Colors[colorScheme].muted }]}>
+                A new version of Trace is available
+              </Text>
+            </View>
+          </View>
+          <ChevronRight size={18} color={Colors[colorScheme].muted} />
+        </Pressable>
+      )}
+
+      {renderPills()}
+    </View>
+  );
+
+  const deckKeyExtractor = useCallback((item: FeedSection, index: number) => {
     if (item.type === 'trending') return `t-${item.topic.id}`;
     if (item.type === 'foryou') return `f-${item.item.id}`;
+    if (item.type === 'deck_end') return 'deck-end';
     return `s-${index}`;
   }, []);
 
-  const renderFeedItem = useCallback(({ item: section }: { item: FeedSection }) => {
-    if (section.type === 'trending') {
-      const isLocked = !isProUser && section.topic.id !== firstFreeTrendingId;
-      return <TrendingFeedRow topic={section.topic} colorScheme={colorScheme} onPress={handleTopicPress} locked={isLocked} />;
-    }
-    if (section.type === 'foryou') {
-      return <ForYouFeedRow item={section.item} colorScheme={colorScheme} onPress={handleItemPress} locked={!isProUser} />;
-    }
-    return null;
-  }, [colorScheme, handleTopicPress, handleItemPress, isProUser, firstFreeTrendingId]);
+  const deckRowHeight = useMemo(() => Math.max(240, deckViewportH), [deckViewportH]);
 
-  const getItemLayout = useCallback((_data: any, index: number) => ({
-    length: FEED_ITEM_HEIGHT,
-    offset: FEED_ITEM_HEIGHT * index,
-    index,
-  }), []);
+  const deckCardWidth = useMemo(
+    () => Math.min(DECK_CARD_MAX_WIDTH, windowWidth - 20),
+    [windowWidth],
+  );
 
-  const listHeader = useMemo(() => (
-    <>
-      {renderHeader()}
-      <View style={styles.ongoingHeader}>
-        <Text style={[styles.ongoingTitle, { color: Colors[colorScheme].text }]}>Trending</Text>
-      </View>
-      {renderPills()}
-    </>
-  ), [
-    firstName, colorScheme, showUpdateBanner, isLoading, forYouItems,
-    filterPills, activeFilter, streak, mainHeaderStyle,
-  ]);
+  const getDeckItemLayout = useCallback(
+    (_data: ArrayLike<FeedSection> | null | undefined, index: number) => {
+      const len = Math.max(1, deckRowHeight);
+      return { length: len, offset: len * index, index };
+    },
+    [deckRowHeight],
+  );
+
+  const renderDeckItem = useCallback(
+    ({ item: section }: { item: FeedSection }) => {
+      const rowH = Math.max(1, deckRowHeight);
+      const inset = DECK_CARD_MARGIN_TOP + DECK_CARD_MARGIN_BOTTOM;
+      const cardH = Math.max(220, rowH - inset);
+      const wrap = (child: React.ReactNode) => (
+        <View
+          style={[
+            styles.deckRow,
+            {
+              height: rowH,
+              paddingTop: DECK_CARD_MARGIN_TOP,
+              paddingBottom: DECK_CARD_MARGIN_BOTTOM,
+            },
+          ]}>
+          {child}
+        </View>
+      );
+      if (section.type === 'deck_end') {
+        return wrap(
+          <View style={[styles.deckPage, { height: cardH }]}>
+            <TouchGrassFooter colorScheme={colorScheme} />
+          </View>,
+        );
+      }
+      if (section.type === 'trending') {
+        const isLocked = !isProUser && section.topic.id !== firstFreeTrendingId;
+        const topic = section.topic;
+        const deckOverview = getTopicOverviewForDeck(topic);
+        const primaryArticle = topic.articles?.[0];
+        const bookmarkItem = primaryArticle ? patchForYouItem(primaryArticle) : null;
+        const shareTitle = primaryArticle?.title || topic.title;
+        const shareUrl = primaryArticle?.url || topic.timeline?.[0]?.article_url || '';
+        return wrap(
+          <DeckStoryCard
+            variant="trending"
+            topic={topic}
+            overviewText={deckOverview}
+            colorScheme={colorScheme}
+            height={cardH}
+            cardWidth={deckCardWidth}
+            bookmarkItem={bookmarkItem}
+            shareTitle={shareTitle}
+            shareOverview={deckOverview}
+            shareUrl={shareUrl}
+            onPress={() => handleTopicPress(topic)}
+            locked={isLocked}
+          />,
+        );
+      }
+      if (section.type === 'foryou') {
+        const patched = patchForYouItem(section.item);
+        const deckOverview = getFeedItemOverview(section.item);
+        return wrap(
+          <DeckStoryCard
+            variant="foryou"
+            item={section.item}
+            overviewText={deckOverview}
+            colorScheme={colorScheme}
+            height={cardH}
+            cardWidth={deckCardWidth}
+            bookmarkItem={patched}
+            shareTitle={patched.title}
+            shareOverview={deckOverview}
+            shareUrl={patched.url || ''}
+            onPress={() => handleItemPress(section.item)}
+            locked={!isProUser}
+          />,
+        );
+      }
+      return wrap(<View style={{ height: cardH }} />);
+    },
+    [colorScheme, deckRowHeight, deckCardWidth, firstFreeTrendingId, handleItemPress, handleTopicPress, isProUser],
+  );
 
   const showFeed = !isLoading && hasRenderableFeed && !isEmpty && !(isFeedBuilding && isEmpty);
 
   return (
-    <View style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}>
-      {/* Sticky Header - appears on scroll */}
-      <Animated.View
-        style={[
-          styles.stickyHeader,
-          { paddingTop: insets.top, backgroundColor: Colors[colorScheme].background },
-          stickyHeaderStyle,
-        ]}>
-        <View style={styles.stickyHeaderContent}>
-          <View style={styles.stickyHeaderLeft}>
-            <Image
-              source={require('@/assets/images/trace-logo.png')}
-              style={styles.stickyHeaderLogo}
-              resizeMode="contain"
-            />
-            <Text style={[styles.stickyHeaderTitle, { color: Colors[colorScheme].text }]}>TRACE</Text>
-          </View>
-          <View style={styles.stickyHeaderRight}>
-            <Pressable
-              onPress={() => router.push('/profile')}
-              hitSlop={12}
-              style={[styles.profileButton, { borderColor: Colors[colorScheme].border }]}>
-              <User size={14} color={Colors[colorScheme].text} strokeWidth={1.8} />
-              {streak && streak.currentStreak > 0 && (
-                <View style={styles.profileStreakBadge}>
-                  <Flame size={10} color="#fff" fill="#fff" />
-                  <Text style={styles.profileStreakText}>{streak.currentStreak}</Text>
-                </View>
-              )}
-            </Pressable>
-          </View>
-        </View>
-      </Animated.View>
-
-
+    <View style={[styles.deckRoot, { backgroundColor: Colors[colorScheme].background }]}>
       {showFeed ? (
-        <AnimatedFlatList
-          data={feedSections}
-          keyExtractor={feedKeyExtractor}
-          renderItem={renderFeedItem}
-          getItemLayout={getItemLayout}
-          ListHeaderComponent={listHeader}
-          ListFooterComponent={<TouchGrassFooter colorScheme={colorScheme} />}
-          contentContainerStyle={scrollContentContainerStyle}
-          removeClippedSubviews
-          {...scrollProps}
-        />
+        <>
+          {renderDeckChrome()}
+          <View style={styles.deckListWrap} onLayout={onDeckViewportLayout}>
+            <FlatList
+              ref={deckListRef}
+              data={deckSections}
+              keyExtractor={deckKeyExtractor}
+              renderItem={renderDeckItem}
+              getItemLayout={getDeckItemLayout}
+              extraData={`${deckViewportH}-${deckRowHeight}-${deckCardWidth}`}
+              pagingEnabled
+              decelerationRate="fast"
+              showsVerticalScrollIndicator={false}
+              refreshControl={refreshControlEl}
+            />
+          </View>
+        </>
       ) : (
-        <Animated.ScrollView {...scrollProps} contentContainerStyle={scrollContentContainerStyle}>
-          {renderHeader()}
+        <Animated.ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={refreshControlEl}
+          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top, paddingBottom: 60 }]}>
+          {renderDeckChrome()}
           {(isLoading || !hasRenderableFeed) ? (
             <SkeletonLoader colorScheme={colorScheme} />
           ) : isFeedBuilding && isEmpty ? (
-            <>
-              {renderPills()}
-              <View style={styles.padded}>
-                <FeedBuildingLoader colorScheme={colorScheme} />
-              </View>
-            </>
+            <View style={styles.padded}>
+              <FeedBuildingLoader colorScheme={colorScheme} />
+            </View>
           ) : (
-            <>
-              {renderPills()}
-              <View style={styles.padded}>
-                <View style={styles.emptyState}>
-                  <View style={[styles.emptyIllus, { backgroundColor: colorScheme === 'dark' ? '#1a1a2e' : '#f5f3ff' }]}>
-                    <DigestIllus width={44} height={44} color={Colors[colorScheme].text} />
-                  </View>
-                  <ThemedText style={[styles.emptyText, { color: Colors[colorScheme].muted }]}>
-                    No articles yet. Pull to refresh.
-                  </ThemedText>
+            <View style={styles.padded}>
+              <View style={styles.emptyState}>
+                <View style={[styles.emptyIllus, { backgroundColor: colorScheme === 'dark' ? '#1a1a2e' : '#f5f3ff' }]}>
+                  <DigestIllus width={44} height={44} color={Colors[colorScheme].text} />
                 </View>
+                <ThemedText style={[styles.emptyText, { color: Colors[colorScheme].muted }]}>
+                  No articles yet. Pull to refresh.
+                </ThemedText>
               </View>
-            </>
+            </View>
           )}
         </Animated.ScrollView>
       )}
@@ -1468,42 +1385,13 @@ function SkeletonLoader({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
 
   return (
     <View style={styles.skeletonContainer}>
-      {/* For You Cards Skeleton */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.skeletonCarousel}>
-        {[1, 2].map((i) => (
-          <Animated.View
-            key={i}
-            style={[styles.skeletonCard, { backgroundColor: skeletonBg }, shimmerStyle]}
-          />
-        ))}
-      </ScrollView>
-
-      {/* Pills Skeleton */}
-      <View style={styles.skeletonPills}>
-        {[1, 2, 3, 4].map((i) => (
-          <Animated.View
-            key={i}
-            style={[styles.skeletonPill, { backgroundColor: skeletonBg }, shimmerStyle]}
-          />
-        ))}
-      </View>
-
-      {/* Ongoing List Skeleton */}
-      {[1, 2, 3, 4].map((i) => (
-        <View key={i} style={styles.skeletonRow}>
-          <View style={styles.skeletonRowBody}>
-            <Animated.View
-              style={[styles.skeletonRowTitle, { backgroundColor: skeletonBg }, shimmerStyle]}
-            />
-            <Animated.View
-              style={[styles.skeletonRowMeta, { backgroundColor: skeletonBg }, shimmerStyle]}
-            />
-          </View>
-          <Animated.View
-            style={[styles.skeletonRowThumb, { backgroundColor: skeletonBg }, shimmerStyle]}
-          />
-        </View>
-      ))}
+      <Animated.View
+        style={[
+          styles.skeletonDeckCard,
+          { backgroundColor: skeletonBg },
+          shimmerStyle,
+        ]}
+      />
     </View>
   );
 }
@@ -1511,7 +1399,17 @@ function SkeletonLoader({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
 /* ─── Styles ─── */
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, paddingTop: 24 },
+  deckRoot: { flex: 1 },
+  deckListWrap: { flex: 1 },
+  deckPage: {
+    justifyContent: 'center',
+    alignItems: 'stretch',
+  },
+  deckRow: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   scrollContent: { paddingBottom: 60 },
   padded: { paddingHorizontal: 20, },
 
@@ -1689,7 +1587,7 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   forYouCard: {
-    width: SCREEN_WIDTH - 40,
+    width: SCREEN_WIDTH - 80,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     borderBottomLeftRadius: 16,
@@ -1864,51 +1762,17 @@ const styles = StyleSheet.create({
   },
 
   // Skeleton styles
-  skeletonContainer: { paddingTop: 8 },
-  skeletonCarousel: { marginBottom: 16, paddingHorizontal: 20 },
-  skeletonCard: {
-    width: SCREEN_WIDTH - 40,
-    height: 200,
-    borderRadius: 16,
-  },
-  skeletonPills: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 20,
-    marginBottom: 12,
-  },
-  skeletonPill: {
-    width: 70,
-    height: 32,
-    borderRadius: 20,
-  },
-  skeletonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
-  },
-  skeletonRowBody: {
+  skeletonContainer: {
     flex: 1,
-    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    minHeight: 360,
   },
-  skeletonRowTitle: {
-    width: '80%',
-    height: 16,
-    borderRadius: 6,
-  },
-  skeletonRowMeta: {
-    width: 90,
-    height: 10,
-    borderRadius: 4,
-  },
-  skeletonRowThumb: {
-    width: 64,
-    height: 64,
-    borderRadius: 8,
+  skeletonDeckCard: {
+    flex: 1,
+    minHeight: 420,
+    borderRadius: 20,
+    marginBottom: 12,
   },
 });
 

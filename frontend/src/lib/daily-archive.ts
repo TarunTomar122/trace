@@ -1,5 +1,8 @@
 import { adminFirestore } from '@/lib/firebase-admin';
+import { getTodayIstDate, ISO_DATE_RE } from '@/lib/daily-date-utils';
 import type { FeedItem, TrendingTopic } from '@/lib/firestore';
+
+export { addCalendarDaysIso, getTodayIstDate, getYesterdayIstDate } from '@/lib/daily-date-utils';
 
 type GlobalDailyDoc = {
   date?: unknown;
@@ -22,15 +25,6 @@ export type DailyArchiveFeed = {
   trending: FeedItem[];
   trendingTopics: TrendingTopic[];
 };
-
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-export function getTodayIstDate(): string {
-  const now = new Date();
-  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-  const ist = new Date(utc + 5.5 * 60 * 60 * 1000);
-  return ist.toISOString().slice(0, 10);
-}
 
 function toIsoDate(value: unknown): string | null {
   if (typeof value !== 'string') return null;

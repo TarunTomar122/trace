@@ -248,7 +248,7 @@ export default function ArticlePage() {
         <Toast message={toast || ""} visible={!!toast} />
 
         {/* Chapter breadcrumb bar */}
-        <div className="sticky top-14 bg-background/95 backdrop-blur-md z-40 border-b border-border/10">
+        <div className="sticky top-14 z-40 border-b border-border/10 bg-background">
           <div className="container mx-auto px-4 max-w-3xl flex items-center justify-between h-11">
             <button
               onClick={() => setOpenChapter(null)}

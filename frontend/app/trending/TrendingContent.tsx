@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ExternalLink } from "lucide-react";
+import { RecentDailyArchiveLinkStrip, type RecentArchiveItem } from "@/components/RecentDailyArchiveLinkStrip";
 
 type TrendingItem = {
   id: string;
@@ -242,9 +243,11 @@ function MobileTopicCard({
 export default function TrendingContent({
   topicCards,
   items,
+  recentDailyArchives = [],
 }: {
   topicCards: TopicCard[];
   items: TrendingItem[];
+  recentDailyArchives?: RecentArchiveItem[];
 }) {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
 
@@ -259,22 +262,31 @@ export default function TrendingContent({
 
   if (topicCards.length === 0 && items.length === 0) {
     return (
-      <div className="rounded-[20px] border border-border/[0.06] bg-surface/30 p-12 text-center">
-        <p className="text-[16px] font-semibold">Today&apos;s grouped topics are on the way</p>
-        <p className="mt-2 text-[14px] text-secondary/60">
-          Trace collapses scattered coverage into one clearer view. Check back soon.
-        </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          {FREE_PAGE_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="rounded-full border border-border/[0.08] px-3.5 py-1.5 text-[12px] font-medium text-secondary/60 hover:text-foreground transition-colors"
-            >
-              {link.label}
-            </Link>
-          ))}
+      <div className="space-y-8">
+        <div className="rounded-[20px] border border-border/[0.06] bg-surface/30 p-12 text-center">
+          <p className="text-[16px] font-semibold">Today&apos;s grouped topics are on the way</p>
+          <p className="mt-2 text-[14px] text-secondary/60">
+            Trace collapses scattered coverage into one clearer view. Check back soon.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            {FREE_PAGE_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="rounded-full border border-border/[0.08] px-3.5 py-1.5 text-[12px] font-medium text-secondary/60 hover:text-foreground transition-colors"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
         </div>
+        {recentDailyArchives.length > 0 && (
+          <RecentDailyArchiveLinkStrip
+            items={recentDailyArchives}
+            variant="trending"
+            intro="In the meantime, open a recent full-day snapshot below."
+          />
+        )}
       </div>
     );
   }
@@ -305,6 +317,16 @@ export default function TrendingContent({
             ))}
           </div>
         </div>
+        {recentDailyArchives.length > 0 && (
+          <div className="mt-10 max-w-3xl">
+            <RecentDailyArchiveLinkStrip
+              items={recentDailyArchives}
+              variant="trending"
+              heading="Recent daily snapshots"
+              intro="See what a full day looked like in Trace: stories, topic overviews, and links to adjacent days."
+            />
+          </div>
+        )}
       </section>
 
       {/* Desktop: split panel */}

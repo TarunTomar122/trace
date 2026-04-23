@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, Check, ExternalLink, Mail, Newspaper, MessagesSquare, Rocket, type LucideIcon } from 'lucide-react';
 import { consumePendingPostAuthIntent, getPostAuthDestination, useAuth } from '@/contexts/AuthContext';
 import { trackLandingCTAClicked } from '@/lib/posthog';
+import { RecentDailyArchiveLinkStrip, type RecentArchiveItem } from '@/components/RecentDailyArchiveLinkStrip';
 
 /* ─── scroll-reveal utility ─── */
 
@@ -40,6 +41,24 @@ function Reveal({ children, className = '', delay = 0 }: { children: React.React
     >
       {children}
     </div>
+  );
+}
+
+const reviewStrongClass = 'font-semibold text-foreground/90';
+
+function ReviewQuoteBody({ parts }: { parts: readonly { text: string; strong?: boolean }[] }) {
+  return (
+    <>
+      {parts.map((p, i) =>
+        p.strong ? (
+          <strong key={i} className={reviewStrongClass}>
+            {p.text}
+          </strong>
+        ) : (
+          <span key={i}>{p.text}</span>
+        ),
+      )}
+    </>
   );
 }
 
@@ -78,7 +97,11 @@ function guessClientPricingPreview() {
   return DEFAULT_PRICING_PREVIEW;
 }
 
-export default function LandingPageClient() {
+export default function LandingPageClient({
+  recentDailyArchives = [],
+}: {
+  recentDailyArchives?: RecentArchiveItem[];
+}) {
   const router = useRouter();
   const { user, profile, loading, profileResolved, signInWithGoogle } = useAuth();
   const googlePlayUrl = "/api/affiliate/outbound?target=android_app&next=" + encodeURIComponent("https://play.google.com/store/apps/details?id=online.yourtrace.app");
@@ -179,21 +202,21 @@ export default function LandingPageClient() {
             <div className="max-w-2xl">
               <Reveal>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-secondary/50">
-                  Stories · Conversations · Launches
+                  The daily brief: AI + tech
                 </p>
               </Reveal>
 
               <Reveal delay={80}>
                 <h1 className="mt-6 text-[3rem] font-bold leading-[0.95] tracking-[-0.04em] sm:text-[4rem] lg:text-[4.75rem]">
-                  Your daily<br />
-                  tech, in<br />
-                  <span className="text-foreground/25">one place.</span>
+                  What changed<br />
+                  in AI + tech<br />
+                  <span className="text-foreground/25">since yesterday.</span>
                 </h1>
               </Reveal>
 
               <Reveal delay={160}>
                 <p className="mt-8 max-w-md text-[16px] leading-[1.8] text-secondary">
-                  Trace brings together the biggest stories, the conversations around them, and the products people are building — so you can stay current without bouncing between feeds.
+                  Something big moves every day. Trace is one feed for the top stories, the real discussion, and what launched—so you can catch up in a few minutes instead of a dozen open tabs.
                 </p>
               </Reveal>
 
@@ -203,7 +226,7 @@ export default function LandingPageClient() {
                     onClick={() => handleStartReading('hero')}
                     className="group inline-flex items-center justify-center gap-2.5 rounded-full bg-[#151515] px-7 py-4 text-[15px] font-semibold text-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] transition-all hover:bg-black hover:shadow-[0_8px_30px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98]"
                   >
-                    See today&apos;s tech pulse
+                    Read today
                     <ArrowRight size={18} className="transition-transform group-hover:translate-x-0.5" />
                   </button>
                   <button
@@ -237,20 +260,109 @@ export default function LandingPageClient() {
           </div>
         </section>
 
+        {/* ── Email Preview + Newsletter ── */}
+        <section className="px-4 pt-4 pb-14 sm:px-6 sm:pt-6 sm:pb-20">
+          <Reveal>
+            <div className="mx-auto max-w-7xl rounded-[24px] border border-black/[0.05] bg-white/80 backdrop-blur-sm p-8 sm:p-10 lg:px-8">
+              <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+                <NewsletterPreviewCard />
+                <NewsletterSignup />
+              </div>
+            </div>
+          </Reveal>
+        </section>
+
         {/* ── Social proof quotes ── */}
         <section className="px-4 sm:px-6">
           <Reveal>
             <div className="mx-auto max-w-7xl lg:px-8">
-              <div className="flex flex-col gap-0 divide-y divide-black/[0.04] rounded-2xl border border-black/[0.05] bg-white/50 backdrop-blur-sm sm:flex-row sm:divide-x sm:divide-y-0">
-                {[
-                  { quote: 'Replaced my morning tab routine entirely.', who: 'Senior eng, fintech startup' },
-                  { quote: 'The pulse is the only thing I read before standup.', who: 'Product lead, Series B' },
-                  { quote: 'Finally, one place for all the signals I care about.', who: 'Founding engineer, YC W24' },
-                ].map((t) => (
-                  <div key={t.who} className="flex-1 px-6 py-5 sm:py-6">
-                    <p className="text-[14px] leading-snug text-foreground/70">&ldquo;{t.quote}&rdquo;</p>
-                    <p className="mt-2 text-[12px] text-secondary/40">{t.who}</p>
-                  </div>
+              <p className="mb-5 text-center text-[11px] font-medium uppercase tracking-[0.2em] text-secondary/40">
+                Notes from people who already read with Trace
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
+                {(
+                  [
+                    {
+                      initials: 'MK',
+                      name: 'Maya K.',
+                      line: 'Backend eng · fintech, SF',
+                      parts: [
+                        { text: 'AI is changing so fast it’s ' },
+                        { text: 'hard to stay up to date', strong: true },
+                        { text: '. ' },
+                        { text: 'Trace', strong: true },
+                        {
+                          text: ' helps me get rid of the ',
+                        },
+                        { text: 'FOMO', strong: true },
+                        { text: ' anxiety around it — I can scroll the ' },
+                        { text: 'feed', strong: true },
+                        { text: ' for like ' },
+                        { text: '2 minutes', strong: true },
+                        { text: ' in the morning and I’m ready to talk about everything hehe' },
+                      ] as const,
+                    },
+                    {
+                      initials: 'JL',
+                      name: 'James L.',
+                      line: 'Product · growth-stage SaaS',
+                      parts: [
+                        { text: 'My Slack and group chats are just ' },
+                        { text: 'firehoses of links', strong: true },
+                        { text: ' I never had time to open. I use ' },
+                        { text: 'Trace', strong: true },
+                        { text: ' as my actual ' },
+                        { text: 'filter', strong: true },
+                        { text: ' so I’m not ' },
+                        { text: 'nodding along blind in meetings', strong: true },
+                        { text: ' anymore lol' },
+                      ] as const,
+                    },
+                    {
+                      initials: 'RO',
+                      name: 'Rina O.',
+                      line: 'Founding eng · devtools',
+                      parts: [
+                        { text: 'I’m not trying to be on every trend — I just don’t want to feel dumb when someone brings up a ' },
+                        { text: 'new model or a launch', strong: true },
+                        { text: '. ' },
+                        { text: 'Quick skim of the feed', strong: true },
+                        { text: ' and I at least have a ' },
+                        { text: 'take', strong: true },
+                        { text: '. ' },
+                        { text: 'Life saver', strong: true },
+                        { text: ' honestly' },
+                      ] as const,
+                    },
+                  ] as const
+                ).map((t) => (
+                  <figure
+                    key={t.name}
+                    className="flex gap-4 rounded-2xl border border-black/[0.06] bg-white/55 p-5 text-left shadow-[0_1px_0_rgba(0,0,0,0.04)] sm:flex-col sm:p-6"
+                  >
+                    <div
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tracking-tight text-foreground/80 ring-1 ring-black/[0.06] sm:mx-0 sm:h-9 sm:w-9"
+                      style={{
+                        background:
+                          t.initials === 'MK'
+                            ? 'linear-gradient(135deg, #e8e4dd 0%, #ddd7cc 100%)'
+                            : t.initials === 'JL'
+                              ? 'linear-gradient(135deg, #e0e6ee 0%, #d0d8e4 100%)'
+                              : 'linear-gradient(135deg, #e4e8e0 0%, #d4dcd4 100%)',
+                      }}
+                    >
+                      {t.initials}
+                    </div>
+                    <div className="min-w-0">
+                      <blockquote className="text-[14px] leading-[1.6] text-foreground/80">
+                        <ReviewQuoteBody parts={t.parts} />
+                      </blockquote>
+                      <figcaption className="mt-4 text-[12px] leading-tight text-secondary/55">
+                        <span className="font-medium text-foreground/75">{t.name}</span>
+                        <span className="mt-0.5 block text-[11px] text-secondary/45">{t.line}</span>
+                      </figcaption>
+                    </div>
+                  </figure>
                 ))}
               </div>
             </div>
@@ -424,6 +536,21 @@ export default function LandingPageClient() {
           </div>
         </section>
 
+        {recentDailyArchives.length > 0 && (
+          <section className="px-4 pb-16 sm:px-6 sm:pb-20">
+            <Reveal>
+              <div className="mx-auto max-w-7xl lg:px-8">
+                <RecentDailyArchiveLinkStrip
+                  items={recentDailyArchives}
+                  variant="landing"
+                  heading="Recent daily snapshots"
+                  intro="Browse the last week of full-day tech archives. Each day links to the next so you can move through the week in order."
+                />
+              </div>
+            </Reveal>
+          </section>
+        )}
+
         {/* ── Trace Pro ── */}
         <section className="px-4 pb-20 sm:px-6 sm:pb-28">
           <Reveal>
@@ -577,7 +704,7 @@ export default function LandingPageClient() {
                     onClick={() => handleStartReading('bottom_cta')}
                     className="group inline-flex items-center justify-center gap-2.5 rounded-full bg-white px-7 py-4 text-[15px] font-semibold text-[#151515] transition-all hover:shadow-[0_8px_30px_rgba(255,255,255,0.15)] hover:scale-[1.02] active:scale-[0.98]"
                   >
-                    See today&apos;s tech pulse
+                    Read today
                     <ArrowRight size={18} className="transition-transform group-hover:translate-x-0.5" />
                   </button>
                   <button
@@ -617,48 +744,6 @@ export default function LandingPageClient() {
                   Get on Google Play
                 </a>
               </div>
-            </div>
-          </Reveal>
-        </section>
-
-        {/* ── Email Preview + Newsletter ── */}
-        <section className="px-4 pt-8 pb-20 sm:px-6 sm:pt-10 sm:pb-28">
-          <Reveal>
-            <div className="mx-auto max-w-7xl rounded-[24px] border border-black/[0.05] bg-white/80 backdrop-blur-sm p-8 sm:p-12 lg:px-8">
-              <div className="mb-10">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-secondary/35 text-center mb-6">What you&apos;ll get</p>
-                <div className="mx-auto max-w-lg rounded-2xl border border-black/[0.06] bg-[#faf8f4] p-5 sm:p-6">
-                  <div className="flex items-center gap-3 mb-4 pb-3 border-b border-black/[0.05]">
-                    <div className="h-8 w-8 rounded-lg bg-[#151515] flex items-center justify-center">
-                      <img src="/trace.webp" alt="Trace" className="h-4 w-auto invert" />
-                    </div>
-                    <div>
-                      <p className="text-[13px] font-semibold text-foreground">Your Trace Daily Brief</p>
-                      <p className="text-[11px] text-secondary/40">Every morning · 2 min read</p>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-[10px] font-semibold text-foreground/35 uppercase tracking-[0.15em] mb-1.5">Top stories</p>
-                      <p className="text-[13px] font-semibold text-foreground leading-snug">Google turns Maps into a full AI navigation product</p>
-                      <p className="text-[11px] text-secondary/50 mt-0.5">5 sources · Gemini answers, immersive views, lane-level detail</p>
-                    </div>
-                    <div>
-                      <p className="text-[13px] font-semibold text-foreground leading-snug">Anthropic ships a sharper Claude for long documents</p>
-                      <p className="text-[11px] text-secondary/50 mt-0.5">6 sources · Better reasoning on dense PDFs and spreadsheets</p>
-                    </div>
-                    <div className="pt-2 border-t border-black/[0.05]">
-                      <p className="text-[10px] font-semibold text-foreground/35 uppercase tracking-[0.15em] mb-1.5">Popular today</p>
-                      <p className="text-[12px] text-secondary/60">&ldquo;We replaced our RAG pipeline with one long-context call&rdquo; — r/LocalLLaMA</p>
-                    </div>
-                    <div className="pt-2 border-t border-black/[0.05]">
-                      <p className="text-[10px] font-semibold text-foreground/35 uppercase tracking-[0.15em] mb-1.5">Shipped today</p>
-                      <p className="text-[12px] text-secondary/60">Unkey · sqlite-vec · Trigger.dev v3</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <NewsletterSignup />
             </div>
           </Reveal>
         </section>
@@ -724,6 +809,55 @@ function TopicPreviewCard() {
             <p className="mt-1.5 text-[12px] text-secondary/55">{topic.meta}</p>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function NewsletterPreviewCard() {
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-secondary/35">
+        Newsletter preview
+      </p>
+      <h3 className="mt-4 text-[1.65rem] font-bold tracking-[-0.03em] text-foreground sm:text-[1.9rem]">
+        Real Trace daily style
+      </h3>
+      <p className="mt-3 max-w-md text-[14px] leading-[1.7] text-secondary">
+        This mirrors the actual format we send: one subject, short intro, and a numbered set of stories with direct links.
+      </p>
+
+      <div className="mt-6 rounded-2xl border border-black/[0.06] bg-[#faf8f4] p-5 sm:p-6">
+        <div className="flex items-center gap-3 border-b border-black/[0.05] pb-3">
+          <div className="h-8 w-8 rounded-lg bg-[#151515] flex items-center justify-center">
+            <img src="/trace.webp" alt="Trace" className="h-4 w-auto invert" />
+          </div>
+          <div>
+            <p className="text-[13px] font-semibold text-foreground">Trace</p>
+            <p className="text-[11px] text-secondary/45">AI Chips, Crypto Scams, and Japan&apos;s Hybrid Takeover</p>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-3 text-[12px] leading-[1.65] text-secondary/70">
+          <p>
+            Today&apos;s mix spans frontier chips, policy ripples, and product bets across AI, markets, and engineering.
+          </p>
+          <div className="rounded-lg border border-black/[0.05] bg-white/60 px-3 py-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-foreground/35">1. Top story</p>
+            <a
+              href="https://www.yourtrace.online/articles/tr_example"
+              className="mt-1 inline-flex items-center gap-1 text-[12px] font-semibold text-foreground hover:text-foreground/70"
+            >
+              New model race shifts chip demand
+              <ExternalLink size={11} />
+            </a>
+            <p className="mt-1 text-[11px] text-secondary/60">What happened, why it matters, and where this heads next.</p>
+          </div>
+          <div className="rounded-lg border border-black/[0.05] bg-white/60 px-3 py-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-foreground/35">2. Signals</p>
+            <p className="text-[11px] text-secondary/60">Fast rundown of the next 6-7 links worth your click.</p>
+          </div>
+        </div>
       </div>
     </div>
   );

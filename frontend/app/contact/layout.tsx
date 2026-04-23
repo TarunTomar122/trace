@@ -4,7 +4,7 @@ export const metadata: Metadata = {
   title: 'Contact | Trace',
   description: 'Support and contact information for Trace.',
   robots: {
-    index: false,
+    index: true,
     follow: true,
   },
 };

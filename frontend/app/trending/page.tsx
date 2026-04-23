@@ -4,6 +4,7 @@ import PublicHeader from '@/components/PublicHeader';
 import Footer from '@/components/Footer';
 import ScrollCTABanner from '@/components/ScrollCTABanner';
 import { adminFirestore } from '@/lib/firebase-admin';
+import { getDailyArchiveEntries } from '@/lib/daily-archive';
 import TrendingContent from './TrendingContent';
 
 // Dynamic — fetches fresh data on each request
@@ -507,7 +508,12 @@ async function getTopicCards(limitCount = 6): Promise<TopicCard[]> {
 }
 
 export default async function TrendingPage() {
-  const [items, topicLinks, topicCards] = await Promise.all([getTodaysItems(), getTopicLinks(), getTopicCards()]);
+  const [items, topicLinks, topicCards, recentDailyArchives] = await Promise.all([
+    getTodaysItems(),
+    getTopicLinks(),
+    getTopicCards(),
+    getDailyArchiveEntries(7),
+  ]);
   const itemListSchema = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
@@ -541,7 +547,11 @@ export default async function TrendingPage() {
       <PublicHeader />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        <TrendingContent items={items} topicCards={topicCards} />
+        <TrendingContent
+          items={items}
+          topicCards={topicCards}
+          recentDailyArchives={recentDailyArchives.map((e) => ({ date: e.date, topHeadline: e.topHeadline }))}
+        />
       </main>
       <Footer />
       <ScrollCTABanner />

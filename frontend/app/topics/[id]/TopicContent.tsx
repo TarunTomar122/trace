@@ -40,6 +40,7 @@ interface TopicData {
   topic_key: string;
   title: string;
   summary: string;
+  sourceArchiveDate?: string;
   key_points?: string[];
   thumbnail?: string;
   source_count?: number;
@@ -82,6 +83,18 @@ function getSafeReturnPath(value: string | null, fallback: string): string {
   if (!value) return fallback;
   if (!value.startsWith('/') || value.startsWith('//')) return fallback;
   return value;
+}
+
+function formatLongArchiveDate(iso: string): string {
+  const parsed = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return iso;
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(parsed);
 }
 
 export default function TopicContent({ topic }: { topic: TopicData }) {
@@ -236,6 +249,34 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
           <span>·</span>
           <span>{topic.article_count || 0} updates</span>
         </div>
+
+        {topic.sourceArchiveDate && (
+          <div className="mb-6 rounded-2xl border border-border/30 bg-surface/40 p-4 sm:p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-secondary/40">
+              Daily snapshot
+            </p>
+            <p className="mt-1.5 text-sm text-secondary leading-relaxed">
+              This topic is included in the Trace archive for{' '}
+              <span className="font-medium text-foreground/90">{formatLongArchiveDate(topic.sourceArchiveDate)}</span>.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link
+                href={`/daily/${topic.sourceArchiveDate}`}
+                className="inline-flex items-center gap-1 text-[13px] font-semibold text-foreground underline-offset-2 hover:underline"
+              >
+                Open that day&apos;s full archive
+                <ChevronRight size={14} className="opacity-60" />
+              </Link>
+              <span className="text-secondary/30">·</span>
+              <Link
+                href="/daily"
+                className="text-[13px] font-medium text-secondary/60 hover:text-foreground"
+              >
+                Browse all archive days
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Overview */}
         {topic.summary && (

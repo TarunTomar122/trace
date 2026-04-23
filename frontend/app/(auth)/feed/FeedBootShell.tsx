@@ -10,7 +10,7 @@ function SkeletonLine({ className }: { className: string }) {
 /** Matches `ScrollFeedInterestTabs` chrome */
 function ScrollFeedTabBarSkeleton() {
   return (
-    <div className="sticky top-16 z-30 -mx-4 sm:-mx-6 lg:-mx-8 border-b border-border/20 bg-background/80 backdrop-blur-xl">
+    <div className="sticky top-16 z-30 -mx-4 sm:-mx-6 lg:-mx-8 border-b border-border/20 bg-background">
       <div className="px-4 sm:px-6 lg:px-8 pt-0.5 pb-0">
         <div className="mx-auto mb-0.5 h-3 w-52 max-w-[90%] rounded-full bg-black/[0.06] dark:bg-white/[0.08] animate-pulse" />
       </div>
@@ -170,7 +170,7 @@ export function ScrollFeedLoadingSkeleton({
 export default function FeedBootShell() {
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
             <Link href="/" prefetch={false} className="flex items-center gap-3">

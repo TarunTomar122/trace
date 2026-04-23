@@ -5,6 +5,11 @@
     "enabled": true,
     "include_hn": false,
     "include_youtube": false,
+    "include_aligned_breaking": true,
+    "aligned_breaking_url": "https://alignednews.com/api/news-feed",
+    "aligned_breaking_section": "breaking",
+    "aligned_breaking_limit": 10,
+    "aligned_breaking_include_gated": false,
     "topics": ["openai", "google ai", "nvidia", "startup funding", "cybersecurity"],
     "hn_limit_per_topic": 4,
     "youtube_limit_per_topic": 3

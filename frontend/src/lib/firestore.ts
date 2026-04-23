@@ -495,7 +495,7 @@ export const INTERESTS = [
   { id: 'tech', label: 'Tech' },
   { id: 'startups', label: 'Startups' },
   { id: 'engineering', label: 'Engineering' },
-  { id: 'ux-design', label: 'UX Design' },
+  { id: 'ux-design', label: 'Design' },
   { id: 'markets', label: 'Markets' },
   { id: 'the-world', label: 'The World' },
 ];
@@ -579,7 +579,7 @@ export const ONBOARDING_INTERESTS = [
   { id: 'tech', label: 'Tech' },
   { id: 'startups', label: 'Startups' },
   { id: 'engineering', label: 'Engineering' },
-  { id: 'ux-design', label: 'UX Design' },
+  { id: 'ux-design', label: 'Design' },
   { id: 'markets', label: 'Markets' },
   { id: 'the-world', label: 'The World' },
 ] as const;

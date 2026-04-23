@@ -208,18 +208,33 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     ? (user?.uid ? `feed-session-${user.uid}` : 'feed-session-bootstrap')
     : null;
 
+  // SSR already shipped the bootstrap feed. Don't re-fetch on mount — the
+  // server data is fresh (bootstrap cache TTL is 10 min). mutateFeed() can
+  // still trigger a background revalidation when we explicitly need it
+  // (e.g. after checkout completes).
   const { data: v3Feed, isLoading: feedLoading, mutate: mutateFeed } = useSWR<V3UserFeed | null>(
     feedKey,
     feedFetcher,
     {
       fallbackData: initialFeed ?? undefined,
+      revalidateOnMount: !hasInitialFeed,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
+      revalidateIfStale: false,
       dedupingInterval: 60000,
     }
   );
 
-  const shouldLoadPulse = Boolean(user) && (
+  // Pulse data is already inlined in the bootstrap feed. We only hit
+  // /api/feed/pulse as a safety net for old bootstrap payloads that might
+  // still be cached somewhere without pulse data.
+  const hasInlinePulse = Boolean(
+    (initialFeed?.pulse && initialFeed.pulse.length > 0)
+    || initialFeed?.daily_pulse
+    || (v3Feed?.pulse && v3Feed.pulse.length > 0)
+    || v3Feed?.daily_pulse
+  );
+  const shouldLoadPulse = !hasInlinePulse && Boolean(user) && (
     feedView === 'pulse'
     || (feedView === 'briefing' && activeFilter === BRIEFING_PULSE_TAB_KEY)
   );
@@ -776,7 +791,10 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     !selectedItemHasFullContent &&
     (selectedItemDetailLoading || !detailMatchesSelected);
 
-  // ── Prefetch: seed SWR cache for inline-full items, then background-fetch the rest ──
+  // ── Seed SWR cache with inline detail data ──
+  // Bootstrap now ships every item fully hydrated, so every click should be
+  // instant. We just prime the SWR cache for each item so the detail hook
+  // hits a cache entry instead of firing /api/feed/item.
   const { mutate: globalMutate } = useSWRConfig();
   const prefetchedRef = React.useRef<Set<string>>(new Set());
 
@@ -784,59 +802,33 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     if (!isSubscribed) return;
     if (!effectiveFeed) return;
 
-    // 1. Seed cache for items that arrived with full content from the bootstrap
-    const inlineItems: { id: string; kind: 'article' | 'topic'; item: FeedItem | TrendingTopic }[] = [];
-
-    for (const item of effectiveFeed.for_you || []) {
-      if (item.summary?.short_article?.body) {
-        inlineItems.push({ id: item.id, kind: 'article', item });
-      }
-    }
-    for (const topic of effectiveFeed.trending_topics || []) {
-      if (topic.key_points?.length || topic.timeline?.length) {
-        inlineItems.push({ id: topic.id, kind: 'topic', item: topic });
-      }
-    }
-
-    for (const entry of inlineItems) {
-      if (prefetchedRef.current.has(entry.id)) continue;
-      prefetchedRef.current.add(entry.id);
+    const seed = (id: string, kind: 'article' | 'topic', item: FeedItem | TrendingTopic) => {
+      if (!id || prefetchedRef.current.has(id)) return;
+      prefetchedRef.current.add(id);
       globalMutate(
-        feedItemDetailSwrKey(entry.id),
-        { kind: entry.kind, item: entry.item } as FeedItemDetailResponse,
+        feedItemDetailSwrKey(id),
+        { kind, item } as FeedItemDetailResponse,
         { revalidate: false },
       );
+    };
+
+    const articleBuckets: FeedItem[][] = [
+      effectiveFeed.for_you || [],
+      effectiveFeed.trending || [],
+      effectiveFeed.pulse || [],
+      effectiveFeed.community_pulse || [],
+      effectiveFeed.build_pulse || [],
+      effectiveFeed.daily_pulse?.tools || [],
+      effectiveFeed.daily_pulse?.blogs || [],
+      effectiveFeed.daily_pulse?.discussions || [],
+    ];
+    for (const bucket of articleBuckets) {
+      for (const item of bucket) seed(item.id, 'article', item);
     }
-
-    // 2. Background-fetch remaining visible items so they're cached when clicked
-    const remaining = currentList
-      .filter(item => !prefetchedRef.current.has(item.id))
-      .map(item => item.id);
-
-    if (remaining.length === 0) return;
-
-    let cancelled = false;
-    (async () => {
-      for (const id of remaining) {
-        if (cancelled) break;
-        if (prefetchedRef.current.has(id)) continue;
-        prefetchedRef.current.add(id);
-        try {
-          const detail = await itemDetailFetcher(id);
-          if (cancelled) break;
-          if (detail) {
-            globalMutate(feedItemDetailSwrKey(id), detail, { revalidate: false });
-          }
-        } catch {
-          // non-critical — user can still fetch on click
-        }
-      }
-    })();
-
-    return () => { cancelled = true; };
-  // Only run when the feed or list changes, not on every render
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSubscribed, effectiveFeed, currentList.length, globalMutate, currentList]);
+    for (const topic of effectiveFeed.trending_topics || []) {
+      seed(topic.id, 'topic', topic);
+    }
+  }, [isSubscribed, effectiveFeed, globalMutate]);
 
   const mobileContentList = useMemo(() => {
     if (feedView === 'briefing') return briefingVisibleList;
@@ -844,14 +836,19 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   }, [feedView, briefingVisibleList, pulseVisibleStoryList]);
 
   const hasFeedResponse = typeof v3Feed !== 'undefined';
+  // Any feed payload (SSR or SWR) with at least one rendered section is enough
+  // to paint the UI. Check both initialFeed and v3Feed so that SWR refreshes
+  // don't flash back to the skeleton.
+  const feedForRenderCheck = v3Feed ?? initialFeed;
   const hasRenderableBootstrapFeed = Boolean(
-    initialFeed && (
-      (initialFeed.trending_topics?.length ?? 0) > 0 ||
-      (initialFeed.trending?.length ?? 0) > 0 ||
-      (initialFeed.pulse?.length ?? 0) > 0 ||
-      (initialFeed.daily_pulse?.tools?.length ?? 0) > 0 ||
-      (initialFeed.daily_pulse?.blogs?.length ?? 0) > 0 ||
-      (initialFeed.daily_pulse?.discussions?.length ?? 0) > 0
+    feedForRenderCheck && (
+      (feedForRenderCheck.for_you?.length ?? 0) > 0 ||
+      (feedForRenderCheck.trending_topics?.length ?? 0) > 0 ||
+      (feedForRenderCheck.trending?.length ?? 0) > 0 ||
+      (feedForRenderCheck.pulse?.length ?? 0) > 0 ||
+      (feedForRenderCheck.daily_pulse?.tools?.length ?? 0) > 0 ||
+      (feedForRenderCheck.daily_pulse?.blogs?.length ?? 0) > 0 ||
+      (feedForRenderCheck.daily_pulse?.discussions?.length ?? 0) > 0
     )
   );
   const isLoading = shouldBootstrapFeed && !hasFeedResponse && !hasRenderableBootstrapFeed;
@@ -912,7 +909,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex h-16 items-center justify-between gap-3">
             <div className="flex min-w-0 justify-start">

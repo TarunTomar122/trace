@@ -1,5 +1,6 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from 'react';
 import useSWR from 'swr';
+import { useRouter } from 'next/navigation';
 import type { FeedItem, TrendingTopic } from '@/lib/firestore';
 import {
   fetchFeedItemDetail,
@@ -8,6 +9,7 @@ import {
 } from '@/lib/feed-item-detail-client';
 import Link from 'next/link';
 import {
+  Archive,
   ArrowLeft,
   ArrowRight,
   Check,
@@ -46,6 +48,27 @@ import {
 } from './FeedUi';
 
 type InterestTab = { id: string; label: string };
+
+/** CTA to public daily archive; shows loading while App Router navigates. */
+function BrowsePastDaysCta({ className = '', textAlign: ta = 'center' }: { className?: string; textAlign?: 'left' | 'center' }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  return (
+    <div className={ta === 'center' ? `text-center ${className}`.trim() : className}>
+      <p className="text-[13px] font-semibold text-foreground/90">Older stories and past days</p>
+      <p className="mt-1.5 text-[12px] leading-relaxed text-secondary/55">Browse saved daily roundups in the public archive.</p>
+      <button
+        type="button"
+        disabled={isPending}
+        onClick={() => startTransition(() => router.push('/daily'))}
+        className="mt-4 inline-flex h-10 min-w-[9.5rem] items-center justify-center gap-2 rounded-full border border-border/25 bg-foreground/[0.04] px-4 text-[13px] font-semibold text-foreground transition-colors hover:bg-foreground/10 disabled:pointer-events-none disabled:opacity-60"
+      >
+        {isPending ? <Loader2 size={16} className="shrink-0 animate-spin" aria-hidden /> : <Archive size={16} className="shrink-0 text-secondary/60" aria-hidden />}
+        {isPending ? 'Opening…' : 'Browse past days'}
+      </button>
+    </div>
+  );
+}
 
 /** Reserved interest key: Pulse stream in briefing (scroll + split), before "For You" */
 export const BRIEFING_PULSE_TAB_KEY = '__briefing_pulse__';
@@ -512,7 +535,7 @@ function ScrollFeedInterestTabs({
   ];
 
   return (
-    <div className="sticky top-16 z-30 -mx-4 sm:-mx-6 lg:-mx-8 border-b border-border/20 bg-background/80 backdrop-blur-xl">
+    <div className="sticky top-16 z-30 -mx-4 sm:-mx-6 lg:-mx-8 border-b border-border/20 bg-background">
       <div className="px-4 sm:px-6 lg:px-8 py-0">
         <p className="text-center text-[11px] text-secondary/55 mb-0 leading-tight">
           {getTodayLabel()}
@@ -753,10 +776,11 @@ function DesktopEditorialLayout({
 
   if (filteredList.length === 0) {
     return (
-      <div className="px-4 py-16 text-center">
-        <p className="text-[15px] text-secondary/55">
+      <div className="px-4 pb-12">
+        <p className="py-10 text-center text-[15px] text-secondary/55">
           {activeFilter === BRIEFING_PULSE_TAB_KEY ? 'Nothing in your pulse yet' : 'Nothing here yet'}
         </p>
+        <BrowsePastDaysCta className="pt-2" />
       </div>
     );
   }
@@ -783,7 +807,8 @@ function DesktopEditorialLayout({
   const rightItems = remaining.filter((_, i) => i % 2 !== 0).slice(0, 6);
 
   return (
-    <div className="grid grid-cols-[minmax(200px,1fr)_minmax(0,2.2fr)_minmax(200px,1fr)] gap-8 pt-6 pb-12">
+    <>
+    <div className="grid grid-cols-[minmax(200px,1fr)_minmax(0,2.2fr)_minmax(200px,1fr)] gap-8 pt-6 pb-8">
       {/* Left sidebar — compact headlines */}
       <aside className="min-w-0">
         <div className="mb-4 flex items-center gap-2">
@@ -867,6 +892,10 @@ function DesktopEditorialLayout({
         </div>
       </aside>
     </div>
+    <div className="pb-6">
+      <BrowsePastDaysCta className="border-t border-border/15 pt-8" />
+    </div>
+    </>
   );
 }
 
@@ -885,8 +914,9 @@ function DesktopPulseEditorialLayout({
 
   if (filteredList.length === 0) {
     return (
-      <div className="px-4 py-16 text-center">
-        <p className="text-[15px] text-secondary/55">Nothing in your pulse yet</p>
+      <div className="px-4 pb-12">
+        <p className="py-10 text-center text-[15px] text-secondary/55">Nothing in your pulse yet</p>
+        <BrowsePastDaysCta className="pt-2" />
       </div>
     );
   }
@@ -990,6 +1020,9 @@ function DesktopPulseEditorialLayout({
           </div>
         </section>
       )}
+      <div className="pt-2">
+        <BrowsePastDaysCta className="border-t border-border/15 pt-8" />
+      </div>
     </div>
   );
 }
@@ -1509,10 +1542,11 @@ function ScrollFeedPosts({
 
   if (filteredList.length === 0) {
     return (
-      <div className="px-4 py-16 text-center">
-        <p className="text-[15px] text-secondary/55">
+      <div className="px-4 pb-12">
+        <p className="py-10 text-center text-[15px] text-secondary/55">
           {activeFilter === BRIEFING_PULSE_TAB_KEY ? 'Nothing in your pulse yet' : 'Nothing here yet'}
         </p>
+        <BrowsePastDaysCta className="pt-2" />
       </div>
     );
   }
@@ -1533,6 +1567,9 @@ function ScrollFeedPosts({
           }}
         />
       ))}
+      <div className="px-4 pb-8">
+        <BrowsePastDaysCta className="mt-8 border-t border-border/15 pt-8" />
+      </div>
     </div>
   );
 }
@@ -1677,6 +1714,21 @@ export default function FeedBriefingView({
     }
   }, [selectedId, showMobileContent]);
 
+  const panelNewsListRef = useRef<HTMLDivElement | null>(null);
+  const isFirstActiveFilterEffect = useRef(true);
+
+  /** When switching interest tabs (or Pulse / Suggested), jump back to the top of the feed. */
+  useEffect(() => {
+    if (isFirstActiveFilterEffect.current) {
+      isFirstActiveFilterEffect.current = false;
+      return;
+    }
+    if (typeof window === 'undefined') return;
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    const list = panelNewsListRef.current;
+    if (list) list.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [activeFilter]);
+
   if (briefingLayout === 'scroll') {
     return (
       <>
@@ -1782,38 +1834,48 @@ export default function FeedBriefingView({
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto divide-y divide-border/10">
+            <div
+              ref={panelNewsListRef}
+              className="flex-1 overflow-y-auto divide-y divide-border/10"
+            >
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 size={20} className="animate-spin text-secondary/40" />
                 </div>
-              ) : filteredList.length === 0 ? (
-                <div className="px-5 py-12 text-center">
-                  <p className="text-sm text-secondary/55">
-                    {activeFilter === BRIEFING_PULSE_TAB_KEY
-                      ? 'Nothing in your pulse yet'
-                      : activeFilter === 'suggested'
-                        ? 'No suggested stories right now'
-                        : activeFilter === 'for_you'
-                          ? 'No stories matching your interests'
-                          : `No stories for ${INTEREST_LABEL[activeFilter] || activeFilter} yet`}
-                  </p>
-                </div>
               ) : (
-                filteredList.map((item) => (
-                  <StoryItem
-                    key={item.id}
-                    title={item.title}
-                    preview={item.preview}
-                    timestamp={item.timestamp}
-                    source={item.source}
-                    sourceCount={item.sourceCount}
-                    tag={item.interestId}
-                    thumbnail={item.thumbnail}
-                    selected={selectedId === item.id}
-                    onClick={() => setSelectedId(item.id)}
-                  />
-                ))
+                <>
+                  {filteredList.length === 0 ? (
+                    <div className="px-5 py-10 text-center">
+                      <p className="text-sm text-secondary/55">
+                        {activeFilter === BRIEFING_PULSE_TAB_KEY
+                          ? 'Nothing in your pulse yet'
+                          : activeFilter === 'suggested'
+                            ? 'No suggested stories right now'
+                            : activeFilter === 'for_you'
+                              ? 'No stories matching your interests'
+                              : `No stories for ${INTEREST_LABEL[activeFilter] || activeFilter} yet`}
+                      </p>
+                    </div>
+                  ) : (
+                    filteredList.map((item) => (
+                      <StoryItem
+                        key={item.id}
+                        title={item.title}
+                        preview={item.preview}
+                        timestamp={item.timestamp}
+                        source={item.source}
+                        sourceCount={item.sourceCount}
+                        tag={item.interestId}
+                        thumbnail={item.thumbnail}
+                        selected={selectedId === item.id}
+                        onClick={() => setSelectedId(item.id)}
+                      />
+                    ))
+                  )}
+                  <div className="border-t border-border/15 p-4">
+                    <BrowsePastDaysCta textAlign="left" className="text-left" />
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -1853,7 +1915,7 @@ export default function FeedBriefingView({
 
         return (
           <div ref={mobileArticleRef} className="fixed inset-0 z-[70] bg-background overflow-y-auto md:hidden">
-            <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/10 flex items-center gap-2 px-4 py-3">
+            <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-border/10 bg-background px-4 py-3">
               <button
                 onClick={closeMobileArticle}
                 className="p-1.5 -ml-1.5 rounded-lg text-foreground/60 active:bg-foreground/8"
@@ -2086,32 +2148,38 @@ export default function FeedBriefingView({
             <Loader2 size={20} className="animate-spin text-secondary/40" />
           </div>
         ) : filteredList.length === 0 ? (
-          <div className="px-5 py-12 text-center">
-            <p className="text-sm text-secondary/55">
+          <div className="px-5 pb-10">
+            <p className="py-8 text-center text-sm text-secondary/55">
               {activeFilter === 'suggested'
                 ? 'No suggested stories right now'
                 : activeFilter === 'for_you'
                   ? 'No stories matching your interests'
                   : `No stories for ${INTEREST_LABEL[activeFilter] || activeFilter} yet`}
             </p>
+            <BrowsePastDaysCta />
           </div>
         ) : (
-          <div className="divide-y divide-border/10">
-            {filteredList.map((item) => (
-              <StoryItem
-                key={item.id}
-                title={item.title}
-                preview={item.preview}
-                timestamp={item.timestamp}
-                source={item.source}
-                sourceCount={item.sourceCount}
-                tag={item.interestId}
-                thumbnail={item.thumbnail}
-                selected={false}
-                onClick={() => openMobileArticle(item.id)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="divide-y divide-border/10">
+              {filteredList.map((item) => (
+                <StoryItem
+                  key={item.id}
+                  title={item.title}
+                  preview={item.preview}
+                  timestamp={item.timestamp}
+                  source={item.source}
+                  sourceCount={item.sourceCount}
+                  tag={item.interestId}
+                  thumbnail={item.thumbnail}
+                  selected={false}
+                  onClick={() => openMobileArticle(item.id)}
+                />
+              ))}
+            </div>
+            <div className="border-t border-border/15 px-5 py-8">
+              <BrowsePastDaysCta />
+            </div>
+          </>
         )}
       </div>
     </>

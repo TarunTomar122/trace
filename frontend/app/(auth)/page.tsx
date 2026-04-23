@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import LandingPageClient from "../LandingPageClient";
+import { getDailyArchiveEntries } from "@/lib/daily-archive";
 
 export const metadata: Metadata = {
   title: "Trace — Your daily tech, in one place",
@@ -45,6 +46,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function HomePage() {
-  return <LandingPageClient />;
+export default async function HomePage() {
+  const recent = await getDailyArchiveEntries(7);
+  return (
+    <LandingPageClient
+      recentDailyArchives={recent.map((e) => ({ date: e.date, topHeadline: e.topHeadline }))}
+    />
+  );
 }

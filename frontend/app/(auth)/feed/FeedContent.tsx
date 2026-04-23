@@ -3,6 +3,9 @@ import { Check, ExternalLink, Loader2, Share2 } from 'lucide-react';
 import MarkdownProse from '@/components/MarkdownProse';
 import { FeedItem, TrendingTopic, ONBOARDING_INTERESTS } from '@/lib/firestore';
 import { getArticleImage, isValidThumbnail } from '@/lib/fallback-images';
+import { getArticleSummary, getPreview, stripMarkdown } from '@/lib/feed-article-text';
+
+export { getArticleSummary, getPreview, stripMarkdown };
 
 export function decodeHtml(str: string): string {
   if (!str) return str;
@@ -278,14 +281,6 @@ export function BriefBody({ body }: { body: string }) {
   );
 }
 
-export function stripMarkdown(text: string): string {
-  return (text || "")
-    .replace(/\*\*(.*?)\*\*/g, "$1")
-    .replace(/\*(.*?)\*/g, "$1")
-    .replace(/^\s*#+\s*/gm, "")
-    .trim();
-}
-
 export function getTimeLabel(dateStr?: string): string {
   if (!dateStr) return '';
   const ts = new Date(dateStr).getTime();
@@ -323,22 +318,6 @@ export function getTopicDisplay(topic: TrendingTopic) {
     subtitle: article?.summary?.short_article?.subtitle || topic.summary || '',
     readingTime: article?.summary?.reading_time_minutes,
   };
-}
-
-export function getArticleSummary(item: FeedItem): string {
-  return stripMarkdown(
-    item.summary?.short_article?.body ||
-    item.summary?.short_article?.subtitle ||
-    item.description ||
-    ''
-  );
-}
-
-export function getPreview(text: string, maxLen = 100): string {
-  if (!text) return '';
-  const clean = stripMarkdown(text);
-  if (clean.length <= maxLen) return clean;
-  return clean.slice(0, maxLen).trim() + '...';
 }
 
 export function isProductHuntWidget(url?: string | null): boolean {

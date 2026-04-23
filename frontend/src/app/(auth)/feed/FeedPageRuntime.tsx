@@ -912,7 +912,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex h-16 items-center justify-between gap-3">
             <div className="flex min-w-0 justify-start">

@@ -2,8 +2,11 @@
 """
 Send the unified newsletter for a given date.
 
-Reads the LLM-written draft from unified_newsletters/{date} and sends it to
-opted-in recipients. No personalization, no content filtering.
+Reads the LLM-written draft from unified_newsletters/{date} and sends it to:
+- paid/trial opted-in recipients
+- free newsletter signups (email-only)
+
+No personalization, no content filtering.
 """
 
 from __future__ import annotations
@@ -47,6 +50,27 @@ def _build_recipient_profiles(store: FirestoreStore) -> list[dict[str, Any]]:
             continue
         recipients.append(profile)
     return recipients
+
+
+def _build_default_recipients(store: FirestoreStore) -> list[dict[str, Any]]:
+    """Default audience: paid opted-in users + free email signups."""
+    by_email: dict[str, dict[str, Any]] = {}
+
+    for profile in _build_recipient_profiles(store):
+        email = (profile.get("email") or "").strip().lower()
+        if email:
+            by_email[email] = profile
+
+    for email in store.get_all_free_newsletter_emails():
+        normalized = str(email or "").strip().lower()
+        if not normalized or normalized in by_email:
+            continue
+        by_email[normalized] = {
+            "email": normalized,
+            "source": "free_newsletter_signup",
+        }
+
+    return list(by_email.values())
 
 
 def _build_all_signup_recipients(store: FirestoreStore) -> list[str]:
@@ -108,14 +132,18 @@ def _render_stories_html(stories: list[dict[str, Any]], sign_off: str) -> str:
             )
             if url:
                 image_html = (
-                    f'<a href="{escape(url)}" style="display: block; text-decoration: none;">{img_tag}</a>'
+                f'<a href="{escape(url)}" '
+                f'style="display: block; text-decoration: none;">'
+                f"{img_tag}</a>"
                 )
             else:
                 image_html = img_tag
 
         parts.append(
-            '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 8px 0;">'
-            '<tr><td style="padding: 0 0 20px 0;"><div style="border-top: 1px solid #e4e4e7;"></div></td></tr>'
+            '<table width="100%" cellpadding="0" cellspacing="0" '
+            'border="0" style="margin: 0 0 8px 0;">'
+            '<tr><td style="padding: 0 0 20px 0;"><div '
+            'style="border-top: 1px solid #e4e4e7;"></div></td></tr>'
             '<tr><td>'
             f'<p style="margin: 0 0 12px 0; font-size: 22px; line-height: 1.35; '
             "font-family: Georgia, 'Times New Roman', serif; font-weight: 700; color: #18181b;\">"
@@ -129,8 +157,10 @@ def _render_stories_html(stories: list[dict[str, Any]], sign_off: str) -> str:
 
     if sign_off:
         parts.append(
-            '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 8px 0 0 0;">'
-            '<tr><td style="padding: 16px 0 0 0; border-top: 1px solid #e4e4e7;">'
+            '<table width="100%" cellpadding="0" cellspacing="0" '
+            'border="0" style="margin: 8px 0 0 0;">'
+            '<tr><td style="padding: 16px 0 0 0; '
+            'border-top: 1px solid #e4e4e7;">'
             f'<p style="margin: 0; font-size: 15px; line-height: 1.6; color: #52525b; '
             "font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-style: italic;\">"
             f"{escape(sign_off.strip())}</p>"
@@ -148,7 +178,9 @@ def _generate_html(
 ) -> str:
     template = _load_template("free_newsletter.html")
     try:
-        display_date = datetime.strptime(date, "%Y-%m-%d").strftime("%B %d, %Y")
+        display_date = datetime.strptime(
+            date, "%Y-%m-%d"
+        ).strftime("%B %d, %Y")
     except ValueError:
         display_date = date
 
@@ -234,7 +266,10 @@ def send_unified_newsletter(
 
     intro = str(data.get("intro") or "").strip()
     sign_off = str(data.get("sign_off") or "").strip()
-    subject = str(data.get("email_subject") or "").strip() or f"Trace — {target_date}"
+    subject = (
+        str(data.get("email_subject") or "").strip()
+        or f"Trace — {target_date}"
+    )
 
     direct_email = (to_email or "").strip().lower()
     if direct_email:
@@ -243,9 +278,13 @@ def send_unified_newsletter(
         profile = store.get_user_profile(user_id) or {}
         recipients = [profile] if (profile.get("email") or "").strip() else []
     elif recipient_mode == "all_signups":
-        recipients = [{"email": email} for email in _build_all_signup_recipients(store) if email]
+        recipients = [
+            {"email": email}
+            for email in _build_all_signup_recipients(store)
+            if email
+        ]
     else:
-        recipients = _build_recipient_profiles(store)
+        recipients = _build_default_recipients(store)
     if not recipients:
         return {
             "success": False,
@@ -312,12 +351,18 @@ def send_unified_newsletter(
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Send unified newsletter to recipients.")
+    parser = argparse.ArgumentParser(
+        description="Send unified newsletter to recipients."
+    )
     parser.add_argument("--date", default="", help="YYYY-MM-DD")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--user-id", default="", help="Send only to one uid")
-    parser.add_argument("--to-email", default="", help="Send only to one direct email address")
+    parser.add_argument(
+        "--to-email",
+        default="",
+        help="Send only to one direct email address",
+    )
     parser.add_argument(
         "--recipient-mode",
         choices=["newsletter", "all_signups"],

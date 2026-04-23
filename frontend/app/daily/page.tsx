@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
 import PublicHeader from '@/components/PublicHeader';
 import Footer from '@/components/Footer';
-import { getDailyArchiveEntries } from '@/lib/daily-archive';
+import { getDailyArchiveEntries, type DailyArchiveEntry } from '@/lib/daily-archive';
 
 export const revalidate = 3600;
 
@@ -29,105 +28,110 @@ export const metadata: Metadata = {
   },
 };
 
-function formatDateLabel(value: string): string {
+function formatListDate(value: string): string {
   const parsed = new Date(`${value}T00:00:00Z`);
   if (Number.isNaN(parsed.getTime())) return value;
   return new Intl.DateTimeFormat('en-US', {
-    weekday: 'short',
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
     year: 'numeric',
-    month: 'short',
-    day: 'numeric',
     timeZone: 'UTC',
   }).format(parsed);
 }
 
-function formatShortDate(value: string): string {
-  const parsed = new Date(`${value}T00:00:00Z`);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  }).format(parsed);
+function monthHeadingKey(ym: string): string {
+  const [y, m] = ym.split('-');
+  const d = new Date(Date.UTC(parseInt(y, 10), parseInt(m, 10) - 1, 1));
+  if (Number.isNaN(d.getTime())) return ym;
+  return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(d);
 }
 
-function formatWeekday(value: string): string {
-  const parsed = new Date(`${value}T00:00:00Z`);
-  if (Number.isNaN(parsed.getTime())) return '';
-  return new Intl.DateTimeFormat('en-US', {
-    weekday: 'short',
-    timeZone: 'UTC',
-  }).format(parsed);
+function groupByMonthNewestFirst(entries: DailyArchiveEntry[]): { ym: string; label: string; items: DailyArchiveEntry[] }[] {
+  const map = new Map<string, DailyArchiveEntry[]>();
+  for (const e of entries) {
+    const ym = e.date.slice(0, 7);
+    if (!ym || ym.length !== 7) continue;
+    if (!map.has(ym)) map.set(ym, []);
+    map.get(ym)!.push(e);
+  }
+  return [...map.entries()]
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([ym, items]) => ({
+      ym,
+      label: monthHeadingKey(ym),
+      items: [...items].sort((a, b) => b.date.localeCompare(a.date)),
+    }));
 }
 
 export default async function DailyArchiveIndexPage() {
   const entries = await getDailyArchiveEntries(365);
+  const sections = groupByMonthNewestFirst(entries);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <PublicHeader />
-      <main className="px-4 sm:px-6 lg:px-8">
-        {/* Hero */}
-        <section className="mx-auto max-w-7xl pt-20 pb-14 sm:pt-28 sm:pb-20">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-secondary/35">Trace Archive</p>
-          <h1 className="mt-4 text-[2.5rem] font-bold tracking-[-0.04em] leading-[0.95] sm:text-[3.5rem]">
-            Daily snapshots
-          </h1>
-          <p className="mt-5 max-w-xl text-[16px] leading-[1.8] text-secondary">
-            Every day, Trace captures the full picture — stories, discussions, and launches — and archives it here. Browse any past day to see what shaped the conversation.
+      <main>
+        <div className="mx-auto w-full max-w-2xl px-5 py-10 sm:px-8 sm:py-14">
+          <p className="text-center text-[10px] font-semibold uppercase tracking-[0.45em] text-secondary/50">
+            Trace
           </p>
-          <div className="mt-6 flex flex-wrap items-center gap-2">
-            {[
-              { href: '/trending', label: 'Trending' },
-              { href: '/research', label: 'Research' },
-              { href: '/compare', label: 'Compare' },
-            ].map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="rounded-full border border-border/[0.08] px-3.5 py-1.5 text-[12px] font-medium text-secondary/60 transition-all hover:text-foreground hover:border-border/20"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
-        </section>
+          <h1 className="mt-3 text-center text-2xl font-bold leading-tight tracking-[-0.03em] text-foreground sm:text-[1.75rem]">
+            Daily archive index
+          </h1>
+          <p className="mt-3 text-center text-[14px] leading-relaxed text-secondary/65">
+            Every public daily issue, newest first. Open any date for the full newsletter.
+          </p>
+          <nav className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-y border-border/15 py-3 text-[12px] text-secondary/55" aria-label="Other sections">
+            <Link className="font-medium transition-colors hover:text-foreground" href="/trending">Trending</Link>
+            <span className="text-border/40" aria-hidden>·</span>
+            <Link className="font-medium transition-colors hover:text-foreground" href="/research">Research</Link>
+            <span className="text-border/40" aria-hidden>·</span>
+            <Link className="font-medium transition-colors hover:text-foreground" href="/compare">Compare</Link>
+          </nav>
 
-        {/* Archive list */}
-        <section className="mx-auto max-w-7xl pb-20">
           {entries.length === 0 ? (
-            <div className="rounded-[20px] border border-border/[0.08] bg-surface/30 p-12 text-center">
-              <p className="text-[15px] font-semibold">No archived snapshots yet</p>
-              <p className="mt-2 text-[13px] text-secondary/60">Check back tomorrow for your first daily archive.</p>
-            </div>
+            <p className="mt-12 text-center text-sm text-secondary/50">No archived issues yet.</p>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {entries.map((entry, i) => (
-                <Link
-                  key={entry.date}
-                  href={`/daily/${entry.date}`}
-                  className="group rounded-[16px] border border-border/[0.06] bg-surface/30 p-5 transition-all hover:bg-surface/60 hover:shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:border-border/15"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-[15px] font-semibold tracking-[-0.01em]">{formatShortDate(entry.date)}</p>
-                        <span className="text-[11px] text-secondary/35">{formatWeekday(entry.date)}</span>
-                      </div>
-                      <p className="mt-1.5 text-[12px] text-secondary/50">
-                        {entry.trendingCount} stories · {entry.topicCount} topics
-                      </p>
-                      {entry.topHeadline && (
-                        <p className="mt-2.5 line-clamp-2 text-[13px] leading-relaxed text-secondary/70">{entry.topHeadline}</p>
-                      )}
-                    </div>
-                    <ArrowRight size={14} className="mt-1 shrink-0 text-secondary/20 transition-all group-hover:text-foreground/50 group-hover:translate-x-0.5" />
-                  </div>
-                </Link>
+            <div className="mt-10 space-y-0">
+              {sections.map((section) => (
+                <section key={section.ym} className="border-t border-border/20 pt-10 first:border-0 first:pt-0">
+                  <h2 className="mb-0 px-0 pb-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-secondary/50">
+                    {section.label}
+                  </h2>
+                  <ol className="m-0 list-none border-t border-border/12 p-0" role="list" aria-label={`Issues in ${section.label}`}>
+                    {section.items.map((entry) => (
+                      <li key={entry.date} className="border-b border-border/10 last:border-b-0">
+                        <Link
+                          href={`/daily/${entry.date}`}
+                          className="block py-3.5 no-underline transition-colors hover:bg-foreground/[0.02] sm:py-4 -mx-2 sm:-mx-3 px-2 sm:px-3 rounded-sm group"
+                        >
+                          <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+                            <span className="order-1 text-[15px] font-medium leading-snug text-foreground group-hover:underline group-hover:decoration-foreground/30 group-hover:underline-offset-2">
+                              {formatListDate(entry.date)}
+                            </span>
+                            <span className="order-2 shrink-0 text-[11px] text-secondary/45 sm:order-2 sm:text-right tabular-nums">
+                              {entry.trendingCount} stories · {entry.topicCount} topics
+                            </span>
+                          </div>
+                          {entry.topHeadline ? (
+                            <p className="mt-1.5 pl-0 text-[12px] leading-snug text-secondary/50 line-clamp-2">
+                              {entry.topHeadline}
+                            </p>
+                          ) : null}
+                        </Link>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
               ))}
             </div>
           )}
-        </section>
+
+          <p className="mt-10 text-center text-[11px] text-secondary/40">
+            {entries.length} {entries.length === 1 ? 'issue' : 'issues'} in this index
+          </p>
+        </div>
       </main>
       <Footer />
     </div>
