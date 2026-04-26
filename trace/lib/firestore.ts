@@ -309,12 +309,19 @@ export interface UserFeed {
   };
 }
 
+export interface DailyPulseBucket {
+  tools: FeedItem[];
+  blogs: FeedItem[];
+  discussions: FeedItem[];
+}
+
 export interface V3UserFeed {
   date: string;
-  for_you: FeedItem[];
+  for_you?: FeedItem[];
   curated?: FeedItem[];
   community_pulse?: FeedItem[];
   build_pulse?: FeedItem[];
+  daily_pulse?: DailyPulseBucket;
   trending: FeedItem[];
   trending_topics?: TrendingTopic[];
   merged_feed?: MergedFeedItem[];
@@ -1149,7 +1156,7 @@ export async function getV3UserFeed(
   // Try the mobile API first — plain HTTP is far more reliable than WebChannel on mobile.
   // Falls back to direct Firestore if the API is unreachable.
   const apiFeed = await fetchFeedFromMobileAPI(options?.role);
-  if (apiFeed && (apiFeed.for_you?.length > 0 || apiFeed.trending?.length > 0)) {
+  if (apiFeed && ((apiFeed.trending_topics?.length ?? 0) > 0 || (apiFeed.trending?.length ?? 0) > 0)) {
     console.log('[Feed] Loaded from mobile API');
     await writeCachedFeed(uid, apiFeed);
     return apiFeed;
@@ -1179,6 +1186,7 @@ export async function getV3UserFeed(
     let curated: FeedItem[] = [];
     let communityPulse: FeedItem[] = [];
     let buildPulse: FeedItem[] = [];
+    let dailyPulse: DailyPulseBucket | undefined;
     let feedDate = '';
     let assembledAt: string | undefined;
     let metadata: V3UserFeed['metadata'];
@@ -1245,6 +1253,9 @@ export async function getV3UserFeed(
         const buildRoleMap = globalData.build_pulse_roles && typeof globalData.build_pulse_roles === 'object'
           ? globalData.build_pulse_roles
           : null;
+        const dailyPulseRoleMap = globalData.daily_pulse_roles && typeof globalData.daily_pulse_roles === 'object'
+          ? globalData.daily_pulse_roles
+          : null;
         const curatedGlobal = Array.isArray(globalData.curated)
           ? globalData.curated
           : [];
@@ -1258,6 +1269,9 @@ export async function getV3UserFeed(
         const candidateBuildPulse = normalizedRole && buildRoleMap && Array.isArray(buildRoleMap[normalizedRole])
           ? buildRoleMap[normalizedRole]
           : [];
+        const candidateDailyPulse = normalizedRole && dailyPulseRoleMap?.[normalizedRole] && typeof dailyPulseRoleMap[normalizedRole] === 'object'
+          ? dailyPulseRoleMap[normalizedRole] as { tools: any[]; blogs: any[]; discussions: any[] }
+          : null;
         if (roleBasedForYou.length === 0 && candidateRoleFeed.length > 0) {
           roleBasedForYou = candidateRoleFeed;
           if (!feedDate) {
@@ -1278,6 +1292,16 @@ export async function getV3UserFeed(
         }
         if (buildPulse.length === 0 && candidateBuildPulse.length > 0) {
           buildPulse = candidateBuildPulse;
+          if (!feedDate) {
+            feedDate = globalData.date || globalDoc.id;
+          }
+        }
+        if (!dailyPulse && candidateDailyPulse) {
+          dailyPulse = {
+            tools: Array.isArray(candidateDailyPulse.tools) ? candidateDailyPulse.tools : [],
+            blogs: Array.isArray(candidateDailyPulse.blogs) ? candidateDailyPulse.blogs : [],
+            discussions: Array.isArray(candidateDailyPulse.discussions) ? candidateDailyPulse.discussions : [],
+          };
           if (!feedDate) {
             feedDate = globalData.date || globalDoc.id;
           }
@@ -1307,6 +1331,9 @@ export async function getV3UserFeed(
         const buildRoleMap = latestGlobalData.build_pulse_roles && typeof latestGlobalData.build_pulse_roles === 'object'
           ? latestGlobalData.build_pulse_roles
           : null;
+        const dailyPulseRoleMapFb = latestGlobalData.daily_pulse_roles && typeof latestGlobalData.daily_pulse_roles === 'object'
+          ? latestGlobalData.daily_pulse_roles
+          : null;
         const curatedGlobal = Array.isArray(latestGlobalData.curated)
           ? latestGlobalData.curated
           : [];
@@ -1330,6 +1357,17 @@ export async function getV3UserFeed(
         }
         if (buildPulse.length === 0 && normalizedRole && buildRoleMap && Array.isArray(buildRoleMap[normalizedRole])) {
           buildPulse = buildRoleMap[normalizedRole];
+          if (!feedDate) {
+            feedDate = latestGlobalData.date || globalDocs[0].id;
+          }
+        }
+        if (!dailyPulse && normalizedRole && dailyPulseRoleMapFb?.[normalizedRole] && typeof dailyPulseRoleMapFb[normalizedRole] === 'object') {
+          const dp = dailyPulseRoleMapFb[normalizedRole];
+          dailyPulse = {
+            tools: Array.isArray(dp.tools) ? dp.tools : [],
+            blogs: Array.isArray(dp.blogs) ? dp.blogs : [],
+            discussions: Array.isArray(dp.discussions) ? dp.discussions : [],
+          };
           if (!feedDate) {
             feedDate = latestGlobalData.date || globalDocs[0].id;
           }
@@ -1369,12 +1407,13 @@ export async function getV3UserFeed(
       return null;
     }
 
-    const resolvedFeed = {
+    const resolvedFeed: V3UserFeed = {
       date: feedDate,
       for_you: forYou as FeedItem[],
       curated: curated as FeedItem[],
       community_pulse: communityPulse as FeedItem[],
       build_pulse: buildPulse as FeedItem[],
+      daily_pulse: dailyPulse,
       trending: trending as FeedItem[],
       trending_topics: trendingTopics as TrendingTopic[],
       merged_feed: mergedFeed as MergedFeedItem[],

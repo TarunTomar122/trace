@@ -169,8 +169,26 @@ export async function getNotificationPermissions(): Promise<Notifications.Permis
   return status;
 }
 
+export const STORY_CATEGORY_ID = 'story';
+export const READ_ACTION_ID = 'read';
+
 /**
- * Initialize notifications - sets up Android channel.
+ * Register notification categories so the OS shows a "Read Story" action button.
+ * iOS: appears as a button beneath the notification banner.
+ * Android: shown as an action button on the expanded notification.
+ */
+async function setupNotificationCategories(): Promise<void> {
+  await Notifications.setNotificationCategoryAsync(STORY_CATEGORY_ID, [
+    {
+      identifier: READ_ACTION_ID,
+      buttonTitle: 'Read Story',
+      options: { opensAppToForeground: true },
+    },
+  ]);
+}
+
+/**
+ * Initialize notifications - sets up Android channel and notification categories.
  * Call this early in the app lifecycle.
  */
 export async function initializeNotifications(): Promise<void> {
@@ -182,6 +200,15 @@ export async function initializeNotifications(): Promise<void> {
       lightColor: '#F59E0B',
     });
   }
+  await setupNotificationCategories();
+}
+
+/**
+ * Returns the notification response that launched the app (cold start).
+ * Use this on mount to handle taps that happened before listeners were registered.
+ */
+export async function getLastNotificationResponse(): Promise<Notifications.NotificationResponse | null> {
+  return await Notifications.getLastNotificationResponseAsync();
 }
 
 /**

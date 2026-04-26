@@ -20,8 +20,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronLeft, ChevronRight, Share2, Bookmark } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Share2, ExternalLink } from 'lucide-react-native';
 
 import { Crown, Lock } from 'lucide-react-native';
 
@@ -232,6 +233,7 @@ export default function TopicScreen() {
   const age = formatAge(topic.first_seen_at || topic.last_updated_at);
   const isDark = colorScheme === 'dark';
   const sourceLabel = (primaryArticle?.source_name || primaryArticle?.source || deriveTopicSourceLabel(topic)).trim();
+  const sourceUrl = primaryArticle?.url || topic.timeline?.[0]?.article_url || topic.articles?.[0]?.url || null;
 
   const [isSharing, setIsSharing] = useState(false);
   const shareViewRef = useRef<View>(null);
@@ -475,9 +477,14 @@ export default function TopicScreen() {
               <ChevronLeft size={22} color="#000" strokeWidth={2} />
             </Pressable>
             <View style={styles.headerRight}>
-              <Pressable hitSlop={12} style={styles.headerBtn}>
-                <Bookmark size={20} color="#000" strokeWidth={1.8} />
-              </Pressable>
+              {sourceUrl && (
+                <Pressable
+                  onPress={() => WebBrowser.openBrowserAsync(sourceUrl)}
+                  hitSlop={12}
+                  style={styles.headerBtn}>
+                  <ExternalLink size={18} color="#000" strokeWidth={1.8} />
+                </Pressable>
+              )}
               <Pressable onPress={handleShare} hitSlop={12} style={styles.headerBtn} disabled={isSharing}>
                 {isSharing ? (
                   <ActivityIndicator size="small" color="#000" />

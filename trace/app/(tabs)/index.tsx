@@ -8,7 +8,6 @@ import {
   ScrollView,
   Image,
   Dimensions,
-  Linking,
   Platform,
   InteractionManager,
   FlatList,
@@ -31,6 +30,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Application from 'expo-application';
+import * as WebBrowser from 'expo-web-browser';
 import {
   Flame,
   Compass,
@@ -53,13 +53,14 @@ import {
   TrendingTopic,
   FeedItem,
   V3UserFeed,
+  DailyPulseBucket,
   getV3UserFeed,
   getAppVersionConfig,
   recordLastActive,
 } from '@/lib/firestore';
 import { logReadingEvent } from '@/lib/reading-analytics';
 import { setCurrentTopic } from '@/lib/topic-store';
-import { getStreakData, StreakData } from '@/lib/streaks';
+import { getStreakData, recordAppOpen, StreakData } from '@/lib/streaks';
 import { consumePrefetchedFeed, getPrefetchPromise } from '@/lib/feed-cache';
 import { maybeRequestReview } from '@/lib/app-review';
 
@@ -70,7 +71,7 @@ const DECK_NARRATIVE_MAX_WORDS = 320;
 const DECK_CARD_MAX_WIDTH = 392;
 /** Vertical inset around each deck card (extra bottom for breathing room) */
 const DECK_CARD_MARGIN_TOP = 10;
-const DECK_CARD_MARGIN_BOTTOM = 40;
+const DECK_CARD_MARGIN_BOTTOM = 100;
 
 // Figma design colors
 const ACCENT_ORANGE = '#ff8d28';
@@ -82,11 +83,11 @@ const INTEREST_LABELS: Record<string, string> = {
   tech: 'Tech',
   startups: 'Startups',
   engineering: 'Engineering',
-  'ux-design': 'UX Design',
+  'ux-design': 'Design',
   markets: 'Markets',
   'the-world': 'The World',
   // Legacy labels kept so old stored IDs still display readable names
-  'product-design': 'UX Design',
+  'product-design': 'Design',
   marketing: 'Products',
   fintech: 'Markets',
   technology: 'Tech',
@@ -100,7 +101,8 @@ const INTEREST_LABELS: Record<string, string> = {
   business: 'Markets',
 };
 
-type FilterType = 'all' | 'trending' | 'discover' | string;
+type FilterType = 'pulse' | 'for_you' | 'all' | 'trending' | 'discover' | string;
+const PULSE_COLOR = '#6366f1';
 
 const INTEREST_ALIASES: Record<string, string> = {
   // Canonical aliases
@@ -273,11 +275,13 @@ function truncateByWords(raw: string, maxWords: number): string {
 }
 
 function getFeedItemOverview(item: FeedItem): string {
-  const bodyNarrative = extractNarrativeFromBody(item.summary?.short_article?.body);
+  const sa = item.summary?.short_article as any;
+  const mobile = stripMarkdown(String(sa?.mobile_card_summary || '')).replace(/\s+/g, ' ').trim();
+  if (mobile.length >= 40) return mobile;
+  const bodyNarrative = extractNarrativeFromBody(sa?.body);
   if (bodyNarrative.length >= 40) {
     return truncateByWords(bodyNarrative, DECK_NARRATIVE_MAX_WORDS);
   }
-  const sa = item.summary?.short_article;
   const fallback =
     [sa?.subtitle, sa?.why_it_matters, item.description, extractBodyPreview(item)]
       .map((s) => stripMarkdown(String(s || '')).replace(/\s+/g, ' ').trim())
@@ -287,7 +291,10 @@ function getFeedItemOverview(item: FeedItem): string {
 
 function getTopicOverviewForDeck(topic: TrendingTopic): string {
   const display = getTopicDisplay(topic);
-  const fromArticleBody = extractNarrativeFromBody(display.article?.summary?.short_article?.body);
+  const sa = display.article?.summary?.short_article as any;
+  const mobile = stripMarkdown(String(sa?.mobile_card_summary || '')).replace(/\s+/g, ' ').trim();
+  if (mobile.length >= 40) return mobile;
+  const fromArticleBody = extractNarrativeFromBody(sa?.body);
   if (fromArticleBody.length >= 40) {
     return truncateByWords(fromArticleBody, DECK_NARRATIVE_MAX_WORDS);
   }
@@ -367,8 +374,9 @@ function sleep(ms: number): Promise<void> {
 type FeedSection =
   | { type: 'hero'; topic: TrendingTopic }
   | { type: 'trending'; topic: TrendingTopic }
-  | { type: 'foryou'; item: FeedItem; label?: string; preview?: string }
+  | { type: 'foryou'; item: FeedItem; label?: string; preview?: string; tapUrl?: string }
   | { type: 'section-header'; title: string; icon: 'flame' | 'compass' }
+  | { type: 'pulse_empty' }
   | { type: 'deck_end' };
 
 function getSectionTimestamp(section: FeedSection): number {
@@ -512,6 +520,15 @@ export default function UnifiedFeedScreen() {
   const [streak, setStreak] = useState<StreakData | null>(null);
   const v3FeedRef = useRef<V3UserFeed | null>(null);
   const deckListRef = useRef<FlatList<FeedSection>>(null);
+  const [currentDeckIndex, setCurrentDeckIndex] = useState(0);
+  const onViewableItemsChanged = useCallback(
+    ({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
+      const idx = viewableItems[0]?.index;
+      if (idx != null) setCurrentDeckIndex(idx);
+    },
+    [],
+  );
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 });
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const [deckViewportH, setDeckViewportH] = useState(() => {
     const chromeGuess = 168 + insets.top + insets.bottom;
@@ -521,7 +538,7 @@ export default function UnifiedFeedScreen() {
   const isOnboarded = profile?.onboarded === true;
   const hasRenderableFeed = !!v3Feed && (
     (v3Feed.trending_topics?.length ?? 0) > 0 ||
-    (v3Feed.for_you?.length ?? 0) > 0 ||
+    (v3Feed.trending?.length ?? 0) > 0 ||
     (v3Feed.curated?.length ?? 0) > 0
   );
 
@@ -586,7 +603,7 @@ export default function UnifiedFeedScreen() {
   }, []);
 
   useEffect(() => {
-    getStreakData().then(setStreak);
+    recordAppOpen().then(setStreak);
   }, []);
 
   useFocusEffect(
@@ -617,14 +634,14 @@ export default function UnifiedFeedScreen() {
     const currentFeed = v3FeedRef.current;
     const hasCurrentRenderableFeed = !!currentFeed && (
       (currentFeed.trending_topics?.length ?? 0) > 0 ||
-      (currentFeed.for_you?.length ?? 0) > 0
+      (currentFeed.trending?.length ?? 0) > 0
     );
     if (!isOnboarded && !hasCurrentRenderableFeed) return false;
     try {
       // Always fetch fresh from Firestore
       for (let attempt = 0; attempt < 3; attempt++) {
         const v3 = await getV3UserFeed(user?.uid, { role: profile?.role });
-        if (v3 && ((v3.trending_topics?.length ?? 0) > 0 || (v3.for_you?.length ?? 0) > 0)) {
+        if (v3 && ((v3.trending_topics?.length ?? 0) > 0 || (v3.trending?.length ?? 0) > 0)) {
           setV3Feed(v3);
           return true;
         }
@@ -742,9 +759,28 @@ export default function UnifiedFeedScreen() {
     return feedInterestIds;
   }, [feedInterestIds, v3Feed?.trending_topics, userInterestIds]);
 
-  // Filter pills: All → matched user interests → Suggested (content outside user interests)
+  const dailyPulse: DailyPulseBucket | null = useMemo(() => {
+    const dp = v3Feed?.daily_pulse;
+    if (dp && ((dp.tools?.length ?? 0) + (dp.blogs?.length ?? 0) + (dp.discussions?.length ?? 0)) > 0) {
+      return dp;
+    }
+    // Legacy fallback: treat community + build as "reads"
+    const legacyReads = [...(v3Feed?.community_pulse || []), ...(v3Feed?.build_pulse || [])];
+    if (legacyReads.length > 0) return { tools: [], blogs: legacyReads, discussions: [] };
+    return null;
+  }, [v3Feed?.daily_pulse, v3Feed?.community_pulse, v3Feed?.build_pulse]);
+
+  // reads → discussions → tools
+  const pulseItems = useMemo(() => {
+    if (!dailyPulse) return [];
+    return [...dailyPulse.blogs, ...dailyPulse.discussions, ...dailyPulse.tools];
+  }, [dailyPulse]);
+
+  // Filter pills: Pulse → For You → matched user interests → Suggested
   const filterPills = useMemo(() => {
-    const pills: { id: FilterType; label: string }[] = [{ id: 'for_you', label: 'For You' }];
+    const pills: { id: FilterType; label: string }[] = [];
+    pills.push({ id: 'pulse', label: 'Pulse' });
+    pills.push({ id: 'for_you', label: 'For You' });
 
     for (const interest of availableInterests) {
       const label = INTEREST_LABELS[interest] ||
@@ -805,13 +841,18 @@ export default function UnifiedFeedScreen() {
   }, [curatedItems, uncoveredTrendingArticles]);
 
   // Build interleaved feed
-  const feedSections = useMemo(
-    () => buildInterleavedFeed(trendingTopics, supplementalArticles, activeFilter, userInterestIds),
-    [trendingTopics, supplementalArticles, activeFilter, userInterestIds]
-  );
+  const feedSections = useMemo((): FeedSection[] => {
+    if (activeFilter === 'pulse') {
+      if (pulseItems.length === 0) return [{ type: 'pulse_empty' }];
+      return pulseItems.map((item) => ({ type: 'foryou' as const, item, tapUrl: item.url || undefined }));
+    }
+    return buildInterleavedFeed(trendingTopics, supplementalArticles, activeFilter, userInterestIds);
+  }, [activeFilter, pulseItems, trendingTopics, supplementalArticles, userInterestIds]);
 
   const deckSections = useMemo((): FeedSection[] => {
     if (feedSections.length === 0) return [];
+    const hasPulseEmpty = feedSections.some((s) => s.type === 'pulse_empty');
+    if (hasPulseEmpty) return feedSections;
     return [...feedSections, { type: 'deck_end' as const }];
   }, [feedSections]);
 
@@ -912,22 +953,25 @@ export default function UnifiedFeedScreen() {
         contentContainerStyle={styles.pillsContainer}>
         {filterPills.map((pill) => {
           const isActive = activeFilter === pill.id;
+          const isPulse = pill.id === 'pulse';
+          const accent = isPulse ? PULSE_COLOR : ACCENT_ORANGE;
           return (
             <Pressable
               key={pill.id}
               onPress={() => setActiveFilter(pill.id)}
               style={[
                 styles.pill,
+                isPulse && styles.pillPulse,
                 {
-                  backgroundColor: isActive ? ACCENT_ORANGE : `${ACCENT_ORANGE}15`,
-                  borderColor: isActive ? ACCENT_ORANGE : `${ACCENT_ORANGE}30`,
+                  backgroundColor: isActive ? accent : `${accent}15`,
+                  borderColor: isActive ? accent : `${accent}30`,
                 },
               ]}>
               <Text
                 style={[
                   styles.pillText,
                   {
-                    color: isActive ? '#fff' : Colors[colorScheme].text,
+                    color: isActive ? '#fff' : isPulse ? PULSE_COLOR : Colors[colorScheme].text,
                     fontFamily: isActive ? FontFamily.semiBold : FontFamily.regular,
                   },
                 ]}>
@@ -970,7 +1014,7 @@ export default function UnifiedFeedScreen() {
       {Platform.OS === 'android' && showUpdateBanner && (
         <Pressable
           onPress={() =>
-            Linking.openURL('https://play.google.com/store/apps/details?id=online.yourtrace.app')
+            WebBrowser.openBrowserAsync('https://play.google.com/store/apps/details?id=online.yourtrace.app')
           }
           style={[styles.updateBanner, { backgroundColor: Colors[colorScheme].card }]}>
           <View style={styles.updateBannerContent}>
@@ -998,13 +1042,14 @@ export default function UnifiedFeedScreen() {
     if (item.type === 'trending') return `t-${item.topic.id}`;
     if (item.type === 'foryou') return `f-${item.item.id}`;
     if (item.type === 'deck_end') return 'deck-end';
+    if (item.type === 'pulse_empty') return 'pulse-empty';
     return `s-${index}`;
   }, []);
 
   const deckRowHeight = useMemo(() => Math.max(240, deckViewportH), [deckViewportH]);
 
   const deckCardWidth = useMemo(
-    () => Math.min(DECK_CARD_MAX_WIDTH, windowWidth - 20),
+    () => Math.min(DECK_CARD_MAX_WIDTH, windowWidth - 32),
     [windowWidth],
   );
 
@@ -1017,8 +1062,15 @@ export default function UnifiedFeedScreen() {
   );
 
   const renderDeckItem = useCallback(
-    ({ item: section }: { item: FeedSection }) => {
+    ({ item: section, index }: { item: FeedSection; index: number }) => {
       const rowH = Math.max(1, deckRowHeight);
+      const nextSection = deckSections[index + 1];
+      const nextTitle =
+        nextSection?.type === 'trending'
+          ? nextSection.topic.title
+          : nextSection?.type === 'foryou'
+          ? nextSection.item.title
+          : undefined;
       const inset = DECK_CARD_MARGIN_TOP + DECK_CARD_MARGIN_BOTTOM;
       const cardH = Math.max(220, rowH - inset);
       const wrap = (child: React.ReactNode) => (
@@ -1041,12 +1093,24 @@ export default function UnifiedFeedScreen() {
           </View>,
         );
       }
+      if (section.type === 'pulse_empty') {
+        return wrap(
+          <View style={[styles.deckPage, { height: cardH, justifyContent: 'center', alignItems: 'center', gap: 12, paddingHorizontal: 32 }]}>
+            <Text style={{ fontSize: 36 }}>⚡</Text>
+            <Text style={{ fontFamily: FontFamily.semiBold, fontSize: 17, color: PULSE_COLOR, textAlign: 'center' }}>
+              Pulse drops daily
+            </Text>
+            <Text style={{ fontFamily: FontFamily.regular, fontSize: 14, color: Colors[colorScheme].muted, textAlign: 'center', lineHeight: 21 }}>
+              Top tools, reads, and discussions curated for your morning. Check back tomorrow.
+            </Text>
+          </View>,
+        );
+      }
       if (section.type === 'trending') {
         const isLocked = !isProUser && section.topic.id !== firstFreeTrendingId;
         const topic = section.topic;
         const deckOverview = getTopicOverviewForDeck(topic);
         const primaryArticle = topic.articles?.[0];
-        const bookmarkItem = primaryArticle ? patchForYouItem(primaryArticle) : null;
         const shareTitle = primaryArticle?.title || topic.title;
         const shareUrl = primaryArticle?.url || topic.timeline?.[0]?.article_url || '';
         return wrap(
@@ -1057,18 +1121,22 @@ export default function UnifiedFeedScreen() {
             colorScheme={colorScheme}
             height={cardH}
             cardWidth={deckCardWidth}
-            bookmarkItem={bookmarkItem}
             shareTitle={shareTitle}
             shareOverview={deckOverview}
             shareUrl={shareUrl}
             onPress={() => handleTopicPress(topic)}
+            nextTitle={nextTitle}
             locked={isLocked}
           />,
         );
       }
       if (section.type === 'foryou') {
         const patched = patchForYouItem(section.item);
-        const deckOverview = getFeedItemOverview(section.item);
+        const isPulseCard = !!section.tapUrl;
+        const rawOverview = getFeedItemOverview(section.item);
+        const deckOverview = isPulseCard
+          ? truncateByWords(rawOverview, 80)
+          : rawOverview;
         return wrap(
           <DeckStoryCard
             variant="foryou"
@@ -1077,18 +1145,21 @@ export default function UnifiedFeedScreen() {
             colorScheme={colorScheme}
             height={cardH}
             cardWidth={deckCardWidth}
-            bookmarkItem={patched}
             shareTitle={patched.title}
             shareOverview={deckOverview}
             shareUrl={patched.url || ''}
-            onPress={() => handleItemPress(section.item)}
+            onPress={isPulseCard
+              ? () => WebBrowser.openBrowserAsync(section.tapUrl!)
+              : () => handleItemPress(section.item)}
+            swipeHint={isPulseCard ? 'Tap to read full story' : undefined}
+            nextTitle={nextTitle}
             locked={!isProUser}
           />,
         );
       }
       return wrap(<View style={{ height: cardH }} />);
     },
-    [colorScheme, deckRowHeight, deckCardWidth, firstFreeTrendingId, handleItemPress, handleTopicPress, isProUser],
+    [colorScheme, deckRowHeight, deckCardWidth, firstFreeTrendingId, handleItemPress, handleTopicPress, isProUser, deckSections],
   );
 
   const showFeed = !isLoading && hasRenderableFeed && !isEmpty && !(isFeedBuilding && isEmpty);
@@ -1107,10 +1178,39 @@ export default function UnifiedFeedScreen() {
               getItemLayout={getDeckItemLayout}
               extraData={`${deckViewportH}-${deckRowHeight}-${deckCardWidth}`}
               pagingEnabled
-              decelerationRate="fast"
+              decelerationRate={Platform.OS === 'ios' ? 0.992 : 'fast'}
               showsVerticalScrollIndicator={false}
+              removeClippedSubviews={false}
+              windowSize={7}
+              initialNumToRender={3}
+              maxToRenderPerBatch={3}
+              updateCellsBatchingPeriod={50}
               refreshControl={refreshControlEl}
+              onViewableItemsChanged={onViewableItemsChanged}
+              viewabilityConfig={viewabilityConfig.current}
             />
+            {(() => {
+              const nextSection = deckSections[currentDeckIndex + 1];
+              const nextTitle =
+                nextSection?.type === 'trending'
+                  ? nextSection.topic.title
+                  : nextSection?.type === 'foryou'
+                  ? nextSection.item.title
+                  : null;
+              const isDark = colorScheme === 'dark';
+              return (
+                <View style={[styles.upNextBar, { backgroundColor: isDark ? '#1a1a1a' : '#ebebeb', paddingBottom: 16 + insets.bottom }]}>
+                  {nextTitle ? (
+                    <View style={styles.upNextRow}>
+                      <Text style={[styles.upNextLabel, { color: isDark ? '#8C8C8C' : '#B8B8B8' }]}>Up next</Text>
+                      <Text style={[styles.upNextTitle, { color: isDark ? '#F2F2F2' : '#1B1B1B' }]} numberOfLines={1}>
+                        {nextTitle}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })()}
           </View>
         </>
       ) : (
@@ -1400,7 +1500,34 @@ function SkeletonLoader({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
 
 const styles = StyleSheet.create({
   deckRoot: { flex: 1 },
-  deckListWrap: { flex: 1 },
+  deckListWrap: { flex: 1, position: 'relative' },
+  upNextBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingVertical: 16,
+    paddingHorizontal: 22,
+  },
+  upNextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  upNextLabel: {
+    fontFamily: FontFamily.medium,
+    fontSize: 15,
+    letterSpacing: 0.06,
+    flexShrink: 0,
+  },
+  upNextTitle: {
+    fontFamily: FontFamily.regular,
+    fontSize: 15,
+    lineHeight: 23,
+    letterSpacing: 0.06,
+    flex: 1,
+    minWidth: 0,
+  },
   deckPage: {
     justifyContent: 'center',
     alignItems: 'stretch',
@@ -1410,7 +1537,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  scrollContent: { paddingBottom: 60 },
+  scrollContent: { paddingBottom: 60, flexGrow: 1 },
   padded: { paddingHorizontal: 20, },
 
   syncBanner: {
@@ -1657,6 +1784,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
   },
+  pillPulse: {
+    paddingHorizontal: 16,
+  },
   pillText: {
     fontSize: 13,
   },
@@ -1763,7 +1893,6 @@ const styles = StyleSheet.create({
 
   // Skeleton styles
   skeletonContainer: {
-    flex: 1,
     paddingHorizontal: 16,
     paddingTop: 8,
     minHeight: 360,

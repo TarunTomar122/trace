@@ -114,6 +114,7 @@ def send_push_notification(push_token: str, article: dict):
             },
             "sound": "default",
             "priority": "high",
+            "categoryId": "story",  # Enables "Read Story" action button (iOS + Android)
         },
         headers={"Content-Type": "application/json"}
     )

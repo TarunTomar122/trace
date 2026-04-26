@@ -34,7 +34,6 @@ import {
   MessageCircle,
   Sparkles,
   Newspaper,
-  Bookmark,
   ExternalLink,
   Share2,
   Flame,
@@ -51,11 +50,11 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { isBookmarked as checkBookmarked, toggleBookmark, addSnippet } from '@/lib/bookmarks';
+import { addSnippet } from '@/lib/bookmarks';
 import { getCurrentArticle, getNextArticle, navigateToNext, getArticleList, getCurrentIndex } from '@/lib/article-store';
 import { isFreePreview } from '@/lib/topic-store';
 import { logReadingEvent } from '@/lib/reading-analytics';
-import { updateStreak } from '@/lib/streaks';
+import { recordAppOpen } from '@/lib/streaks';
 import { getArticleImage } from '@/lib/fallback-images';
 
 const ACCENT = '#F59E0B';
@@ -156,7 +155,6 @@ export default function ArticleScreen() {
   const { isProUser, presentPaywall } = useRevenueCat();
   const { user } = useAuth();
 
-  const [bookmarked, setBookmarked] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [articleKey, setArticleKey] = useState(0);
   const [item, setItem] = useState(getCurrentArticle());
@@ -174,15 +172,12 @@ export default function ArticleScreen() {
     if (next) {
       setItem(next);
       setArticleKey((k) => k + 1);
-      setBookmarked(false);
-      checkBookmarked(next.id).then(setBookmarked);
     }
   };
 
   useEffect(() => {
     if (!item) return;
     const handle = InteractionManager.runAfterInteractions(() => {
-      checkBookmarked(item.id).then(setBookmarked);
       void (async () => {
         await logReadingEvent({
           eventType: 'summary_open',
@@ -192,7 +187,7 @@ export default function ArticleScreen() {
           itemType: item.type || item.source,
           feedCategory: item.metadata?.feed_category || item.feed_type,
         });
-        await updateStreak();
+        await recordAppOpen();
       })();
     });
     return () => handle.cancel();
@@ -213,16 +208,6 @@ export default function ArticleScreen() {
       </SafeAreaView>
     );
   }
-
-  const handleToggleBookmark = async () => {
-    if (!isProUser) {
-      presentPaywall();
-      return;
-    }
-    const nowBookmarked = await toggleBookmark(item);
-    setBookmarked(nowBookmarked);
-    showToast(nowBookmarked ? 'Saved' : 'Removed', 'success');
-  };
 
   const handleReadOriginal = () => {
     if (!item.url) return;
@@ -527,14 +512,6 @@ export default function ArticleScreen() {
             <ChevronLeft size={22} color="#000" strokeWidth={2} />
           </Pressable>
           <View style={nStyles.floatingHeaderRight}>
-            <Pressable onPress={handleToggleBookmark} hitSlop={12} style={nStyles.floatingBtn}>
-              <Bookmark
-                size={20}
-                color="#000"
-                strokeWidth={bookmarked ? 2 : 1.8}
-                fill={bookmarked ? '#000' : 'transparent'}
-              />
-            </Pressable>
             {isTrending && (
               <Pressable onPress={handleShare} hitSlop={12} style={nStyles.floatingBtn}>
                 <Share2 size={18} color="#000" strokeWidth={1.8} />

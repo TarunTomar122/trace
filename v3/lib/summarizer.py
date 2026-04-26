@@ -71,7 +71,8 @@ Return JSON with EXACT structure:
   "short_article": {{
     "subtitle": "One sentence capturing the central idea or tension",
     "key_takeaways": ["3-4 concrete points with real specifics from the source"],
-    "body": "Concise summary in markdown (see rules below)"
+    "body": "Concise summary in markdown (see rules below)",
+    "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card. Start with the core idea. Be concrete and punchy."
   }},
   "reading_time_minutes": <estimated int>
 }}
@@ -131,7 +132,8 @@ Return JSON with EXACT structure:
     "subtitle": "One powerful sentence — the core thesis or insight",
     "key_takeaways": ["4-6 specific, actionable takeaways"],
     "body": "Thorough analysis in markdown — see rules below",
-    "why_it_matters": "2-3 sentences on the bigger-picture significance"
+    "why_it_matters": "2-3 sentences on the bigger-picture significance",
+    "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card. Start with the core idea. Be concrete and punchy."
   }},
   "reading_time_minutes": <estimated int>
 }}
@@ -184,6 +186,7 @@ Return JSON with EXACT structure:
       "Slide 3 (optional): A second concrete detail only if it adds real information (20-35 words)"
     ],
     "body": "One short natural paragraph, usually 2-3 sentences, that reads like a concise article lead",
+    "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card. Start with the core news. Be concrete and punchy.",
     "outline": []
   }},
   "reading_time_minutes": <estimated int>
@@ -258,7 +261,8 @@ Return JSON with EXACT structure:
   "short_article": {{
     "subtitle": "One sentence capturing the main point — can use technical terms",
     "key_takeaways": ["3-4 key points — specific, technical, actionable"],
-    "body": "Concise summary in markdown (see rules below)"
+    "body": "Concise summary in markdown (see rules below)",
+    "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card. Start with the core idea. Be concrete and punchy."
   }},
   "reading_time_minutes": <estimated int>
 }}
@@ -292,7 +296,8 @@ Return JSON with EXACT structure:
   "short_article": {{
     "subtitle": "One sentence capturing the main point in plain language",
     "key_takeaways": ["3-4 key points — clear, practical insights"],
-    "body": "Clear summary in markdown (see rules below)"
+    "body": "Clear summary in markdown (see rules below)",
+    "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card. Start with the core idea. Be concrete and punchy."
   }},
   "reading_time_minutes": <estimated int>
 }}

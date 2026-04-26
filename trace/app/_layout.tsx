@@ -28,6 +28,7 @@ import { IBMPlexSerif_700Bold } from '@expo-google-fonts/ibm-plex-serif/700Bold'
 import {
   initializeNotifications,
   addNotificationResponseListener,
+  getLastNotificationResponse,
 } from '@/lib/notifications';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -201,10 +202,7 @@ function RootLayoutNav() {
   useEffect(() => {
     initializeNotifications();
 
-    // Handle notification taps - prefer topic deep links, then fall back to article
-    const subscription = addNotificationResponseListener(async (response) => {
-      const data = response.notification.request.content.data;
-
+    async function handleNotificationResponse(data: Record<string, unknown>) {
       if (data?.topicId) {
         const topic = await getTopicById(String(data.topicId));
         if (topic) {
@@ -213,7 +211,6 @@ function RootLayoutNav() {
           return;
         }
       }
-
       if (data?.articleId) {
         const article = await getArticleById(String(data.articleId));
         if (article) {
@@ -221,6 +218,18 @@ function RootLayoutNav() {
           router.push('/article');
         }
       }
+    }
+
+    // Handle cold-start taps (app was killed when user tapped the notification)
+    getLastNotificationResponse().then((response) => {
+      if (response) {
+        handleNotificationResponse(response.notification.request.content.data as Record<string, unknown>);
+      }
+    });
+
+    // Handle taps while app is running or backgrounded
+    const subscription = addNotificationResponseListener((response) => {
+      handleNotificationResponse(response.notification.request.content.data as Record<string, unknown>);
     });
 
     return () => subscription.remove();

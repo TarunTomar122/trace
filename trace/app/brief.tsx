@@ -16,7 +16,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronLeft, Bookmark, Share2, ExternalLink } from 'lucide-react-native';
+import { ChevronLeft, Share2, ExternalLink } from 'lucide-react-native';
 import { Image } from 'react-native';
 
 import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
@@ -238,9 +238,6 @@ export default function BriefScreen() {
               <ChevronLeft size={22} color={isDark ? '#fff' : '#000'} strokeWidth={2} />
             </Pressable>
             <View style={s.headerRight}>
-              <Pressable hitSlop={12} style={s.headerBtn}>
-                <Bookmark size={20} color={isDark ? '#fff' : '#000'} strokeWidth={1.8} />
-              </Pressable>
               <Pressable hitSlop={12} style={s.headerBtn}>
                 <Share2 size={18} color={isDark ? '#fff' : '#000'} strokeWidth={1.8} />
               </Pressable>

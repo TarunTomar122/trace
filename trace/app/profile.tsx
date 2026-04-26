@@ -10,10 +10,7 @@ import {
   LogOut,
   Mail,
   Star,
-  CreditCard,
   Trash2,
-  Trophy,
-  Calendar,
   Bell,
   HelpCircle,
 } from 'lucide-react-native';
@@ -24,7 +21,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { updateUserProfile } from '@/lib/firestore';
-import { getStreakData, StreakData } from '@/lib/streaks';
+import { getStreakData, recordAppOpen, StreakData } from '@/lib/streaks';
 import { enablePushNotifications, disablePushNotifications } from '@/lib/notifications';
 import * as StoreReview from 'expo-store-review';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -32,6 +29,114 @@ import { useFocusEffect } from '@react-navigation/native';
 
 const STAT_ORANGE = '#FF6B35';
 const ACCENT_ORANGE = '#ff8d28';
+
+const HEATMAP_DAYS = 30;
+const HEATMAP_GAP = 4;
+
+function buildHeatmapDays(history: string[]): { date: string; active: boolean }[] {
+  const historySet = new Set(history);
+  const today = new Date();
+  const days: { date: string; active: boolean }[] = [];
+  for (let i = HEATMAP_DAYS - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    days.push({ date: ds, active: historySet.has(ds) });
+  }
+  return days;
+}
+
+function ActivityHeatmap({ streak, colorScheme }: { streak: StreakData | null; colorScheme: 'light' | 'dark' }) {
+  const isDark = colorScheme === 'dark';
+  const history = streak?.streakHistory ?? [];
+  const days = buildHeatmapDays(history);
+  const currentStreak = streak?.currentStreak ?? 0;
+  const longestStreak = streak?.longestStreak ?? 0;
+
+  const activeDot = STAT_ORANGE;
+  const inactiveDot = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)';
+
+  return (
+    <View style={[heatmapStyles.card, { backgroundColor: isDark ? '#1c1c1c' : '#fff' }]}>
+      <View style={heatmapStyles.header}>
+        <View style={heatmapStyles.streakRow}>
+          <Flame size={16} color={STAT_ORANGE} fill={STAT_ORANGE} />
+          <Text style={[heatmapStyles.streakCount, { color: isDark ? '#fff' : '#000' }]}>
+            {currentStreak}
+          </Text>
+          <Text style={[heatmapStyles.streakLabel, { color: isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)' }]}>
+            day streak
+          </Text>
+        </View>
+        {longestStreak > 0 && (
+          <Text style={[heatmapStyles.best, { color: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)' }]}>
+            best {longestStreak}
+          </Text>
+        )}
+      </View>
+      <View style={heatmapStyles.gridWrap}>
+        {[days.slice(0, 15), days.slice(15)].map((row, ri) => (
+          <View key={ri} style={heatmapStyles.grid}>
+            {row.map((cell, i) => (
+              <View
+                key={i}
+                style={[
+                  heatmapStyles.dot,
+                  { backgroundColor: cell.active ? activeDot : inactiveDot },
+                ]}
+              />
+            ))}
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const heatmapStyles = StyleSheet.create({
+  card: {
+    marginHorizontal: 12,
+    marginBottom: 20,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    gap: 14,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  streakRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  streakCount: {
+    fontSize: 22,
+    fontFamily: FontFamily.bold,
+  },
+  streakLabel: {
+    fontSize: 13,
+    fontFamily: FontFamily.regular,
+  },
+  best: {
+    fontSize: 12,
+    fontFamily: FontFamily.regular,
+  },
+  gridWrap: {
+    gap: HEATMAP_GAP,
+  },
+  grid: {
+    flexDirection: 'row',
+    gap: HEATMAP_GAP,
+  },
+  dot: {
+    flex: 1,
+    aspectRatio: 1,
+    borderRadius: 3,
+  },
+});
 
 function getInitials(name?: string | null): string {
   if (!name) return '?';
@@ -104,7 +209,7 @@ export default function ProfileScreen() {
   }, [refreshCustomerInfo]);
 
   useEffect(() => {
-    getStreakData().then(setStreak);
+    recordAppOpen().then(setStreak);
   }, []);
 
   useEffect(() => {
@@ -119,10 +224,8 @@ export default function ProfileScreen() {
     useCallback(() => {
       let active = true;
 
-      void getStreakData().then((nextStreak) => {
-        if (active) {
-          setStreak(nextStreak);
-        }
+      void recordAppOpen().then((nextStreak) => {
+        if (active) setStreak(nextStreak);
       });
 
       if (!user?.uid) {
@@ -281,28 +384,8 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* Stats Card — white bg, no border, border-radius 20 */}
-        <View style={[styles.statsCard, { backgroundColor: isDark ? '#1c1c1c' : '#FFFFFF' }]}>
-          <View style={styles.statsRow}>
-            <View style={styles.stat}>
-              <Flame size={24} color={STAT_ORANGE} fill={STAT_ORANGE} />
-              <Text style={[styles.statValue, { color: isDark ? '#fff' : '#000000' }]}>{streak?.currentStreak ?? 0}</Text>
-              <Text style={[styles.statLabel, { color: isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.65)' }]}>Current</Text>
-            </View>
-            <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]} />
-            <View style={styles.stat}>
-              <Trophy size={24} color={STAT_ORANGE} />
-              <Text style={[styles.statValue, { color: isDark ? '#fff' : '#000000' }]}>{streak?.longestStreak ?? 0}</Text>
-              <Text style={[styles.statLabel, { color: isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.65)' }]}>Best</Text>
-            </View>
-            <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]} />
-            <View style={styles.stat}>
-              <Calendar size={24} color={STAT_ORANGE} />
-              <Text style={[styles.statValue, { color: isDark ? '#fff' : '#000000' }]}>{streak?.streakHistory.length ?? 0}</Text>
-              <Text style={[styles.statLabel, { color: isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.65)' }]}>Total</Text>
-            </View>
-          </View>
-        </View>
+        {/* Activity Heatmap */}
+        <ActivityHeatmap streak={streak} colorScheme={colorScheme} />
 
         {/* Upgrade card (non-Pro only) */}
         {!isProUser && !rcLoading && !isAccessResolving && (
@@ -361,17 +444,6 @@ export default function ProfileScreen() {
               thumbColor={switchThumbColor(notificationsEnabled)}
             />
           }
-        />
-
-        {/* Subscription */}
-        <Text style={[styles.sectionLabel, { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.45)' }]}>Subscription</Text>
-        <MenuRow
-          icon={CreditCard}
-          label="Manage Subscription"
-          subtitle={(rcLoading || isAccessResolving) ? "Checking your plan..." : "Billing, cancel, or change plan"}
-          colorScheme={colorScheme}
-          onPress={handleManageSubscription}
-          isLast
         />
 
         {/* Support */}
