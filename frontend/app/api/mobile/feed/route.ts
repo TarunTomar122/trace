@@ -36,9 +36,9 @@ export async function GET(request: NextRequest) {
       {
         date: feed.date,
         assembled_at: feed.assembled_at ?? null,
-        for_you: feed.for_you ?? [],
         trending: feed.trending ?? [],
         trending_topics: feed.trending_topics ?? [],
+        daily_pulse: feed.daily_pulse ?? null,
         community_pulse: feed.community_pulse ?? [],
         build_pulse: feed.build_pulse ?? [],
         metadata: feed.metadata ?? null,
