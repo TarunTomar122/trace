@@ -16,7 +16,7 @@ import {
   runTransaction,
 } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { firestore } from './firebase';
+import { firestore, auth } from './firebase';
 
 const FEED_CACHE_PREFIX = 'trace_v3_feed_snapshot_v1:';
 
@@ -1027,8 +1027,9 @@ export async function deleteUserData(uid: string): Promise<void> {
   }
 }
 
-// ─── Web app base URL (same host the Dodo webhook & onboard API live on) ───
+// ─── Web app base URL ───
 const WEB_APP_URL = 'https://www.yourtrace.online';
+const MOBILE_FEED_API = `${WEB_APP_URL}/api/mobile/feed`;
 const FEED_GEN_DEFAULT_COOLDOWN_MS = 45_000;
 const lastFeedGenTriggerAt = new Map<string, number>();
 
@@ -1103,6 +1104,27 @@ export async function getLatestUserFeed(uid: string): Promise<UserFeed | null> {
   }
 }
 
+async function fetchFeedFromMobileAPI(role?: string | null): Promise<V3UserFeed | null> {
+  const currentUser = auth.currentUser;
+  if (!currentUser) return null;
+  try {
+    const token = await currentUser.getIdToken();
+    const url = role
+      ? `${MOBILE_FEED_API}?role=${encodeURIComponent(role)}`
+      : MOBILE_FEED_API;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) {
+      console.warn('[Feed] Mobile API returned', res.status);
+      return null;
+    }
+    const data = await res.json();
+    return data as V3UserFeed | null;
+  } catch (error) {
+    console.warn('[Feed] Mobile API fetch failed, falling back to Firestore:', error);
+    return null;
+  }
+}
+
 export async function getV3UserFeed(
   uid: string,
   options?: { role?: string | null }
@@ -1123,6 +1145,16 @@ export async function getV3UserFeed(
       }
     }
   };
+
+  // Try the mobile API first — plain HTTP is far more reliable than WebChannel on mobile.
+  // Falls back to direct Firestore if the API is unreachable.
+  const apiFeed = await fetchFeedFromMobileAPI(options?.role);
+  if (apiFeed && (apiFeed.for_you?.length > 0 || apiFeed.trending?.length > 0)) {
+    console.log('[Feed] Loaded from mobile API');
+    await writeCachedFeed(uid, apiFeed);
+    return apiFeed;
+  }
+  console.log('[Feed] Mobile API empty or failed, falling back to Firestore');
 
   try {
     const normalizedRole = normalizeFeedRole(options?.role);

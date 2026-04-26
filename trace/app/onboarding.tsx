@@ -284,7 +284,7 @@ export default function OnboardingScreen() {
         throw new Error('Onboarding state was not confirmed by the server');
       }
 
-      router.replace('/paywall?fromOnboarding=true');
+      router.replace('/(tabs)'); // paywall disabled — skip straight to app
     } catch (error) {
       console.error('Error completing onboarding:', error);
       showToast('Could not verify your setup with the server. Please try again.', 'error');

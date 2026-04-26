@@ -456,6 +456,11 @@ export default function PaywallScreen() {
   const { showToast } = useToast();
   const { offerings, purchasePackage, restorePurchases, isProUser, loading: rcLoading } = useRevenueCat();
 
+  // Paywall disabled — redirect all users straight to the app
+  useEffect(() => {
+    router.replace('/(tabs)');
+  }, []);
+
   const fromOnboarding = params.fromOnboarding === 'true';
 
   // Start at step 1 only for the onboarding flow
