@@ -308,6 +308,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.75,
     },
     {
+      url: `${baseUrl}/blog/feedly-alternatives`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.75,
+    },
+    {
       url: `${baseUrl}/blog/how-to-stay-updated-on-tech-without-doomscrolling`,
       lastModified: new Date(),
       changeFrequency: 'monthly' as const,

@@ -32,16 +32,25 @@ export const metadata: Metadata = {
 const blogPosts = [
   {
     slug: "best-ai-news-apps-2026",
-    title: "Best AI News Apps in 2026: Which One Actually Respects Your Time?",
+    title: "Best AI News Apps in 2026 (That Actually Respect Your Time)",
     excerpt:
-      "We tested 10 AI news apps so you don't have to. Here's what actually works for staying informed without the doomscroll.",
+      "Looking for the best AI news app? We tested 10 options including Trace, Feedly, and Ground News. Find the right one for developers and founders.",
     date: "2026-05-04",
-    readTime: "5 min read",
+    readTime: "7 min read",
     category: "Reviews",
   },
   {
+    slug: "feedly-alternatives",
+    title: "Feedly Alternatives: 7 Free Options That Are Actually Better (2026)",
+    excerpt:
+      "Looking for Feedly alternatives? We tested 7 free options including Trace, Inoreader, and NewsBlur. Find the right RSS reader for you.",
+    date: "2026-05-04",
+    readTime: "8 min read",
+    category: "Comparisons",
+  },
+  {
     slug: "how-to-stay-updated-on-tech-without-doomscrolling",
-    title: "How to Stay Updated on Tech Without Doomscrolling",
+    title: "How to Stay Updated on Technology Without Doomscrolling",
     excerpt:
       "The average developer spends 2+ hours daily on news apps. Here's how to cut that to 30 minutes and still know everything that matters.",
     date: "2026-05-02",
@@ -56,15 +65,6 @@ const blogPosts = [
     date: "2026-04-28",
     readTime: "6 min read",
     category: "Guides",
-  },
-  {
-    slug: "why-news-apps-are-designed-to-waste-your-time",
-    title: "Why News Apps Are Designed to Waste Your Time (And What to Use Instead)",
-    excerpt:
-      "Infinite scroll, clickbait, algorithmic rabbit holes. News apps are built for engagement, not your productivity. Here's the alternative.",
-    date: "2026-04-25",
-    readTime: "5 min read",
-    category: "Opinion",
   },
 ];
 
