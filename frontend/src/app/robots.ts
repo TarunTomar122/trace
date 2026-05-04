@@ -12,6 +12,7 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
         disallow: [
           '/api/',
+          /* In-app feed shell (not public /articles/ topic pages) */
           '/feed',
           '/feed/',
           '/auth/',

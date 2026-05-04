@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
+import { StructuredDataList } from "@/components/StructuredData";
+import {
+  SITE_BASE_URL,
+  generateBlogPostingSchema,
+  generateBreadcrumbSchema,
+  generateFAQSchema,
+} from "@/lib/seo";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -8,9 +15,9 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "How to Stay Updated on Tech Without Doomscrolling",
+  title: "How to Stay Updated on Tech Without Doomscrolling | Trace",
   description:
-    "The average developer spends 2+ hours daily on news apps. Here's how to cut that to 30 minutes and still know everything that matters.",
+    "The average developer spends 2+ hours daily on news apps. Here&apos;s how to cut that to 30 minutes and still know everything that matters without the anxiety.",
   keywords: [
     "stay updated tech",
     "developer productivity",
@@ -18,28 +25,119 @@ export const metadata: Metadata = {
     "avoid doomscrolling",
     "tech news efficiency",
     "information overload",
+    "how to stay informed without anxiety",
+    "reduce screen time news",
+    "productive news reading",
+    "Trace AI summaries",
   ],
+  alternates: {
+    canonical: `${SITE_BASE_URL}/blog/how-to-stay-updated-on-tech-without-doomscrolling`,
+  },
   openGraph: {
     type: "article",
     title: "How to Stay Updated on Tech Without Doomscrolling",
     description:
+      "Cut your news consumption from 2 hours to 30 minutes without missing anything important. Practical strategies for developers.",
+    url: `${SITE_BASE_URL}/blog/how-to-stay-updated-on-tech-without-doomscrolling`,
+    siteName: "Trace",
+    locale: "en_US",
+    publishedTime: "2026-05-02T00:00:00Z",
+    modifiedTime: "2026-05-02T00:00:00Z",
+    authors: ["https://x.com/tarat_211"],
+    images: [
+      {
+        url: `${SITE_BASE_URL}/opengraph-image`,
+        width: 1200,
+        height: 630,
+        alt: "How to Stay Updated on Tech Without Doomscrolling — Trace",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "How to Stay Updated on Tech Without Doomscrolling",
+    description:
       "Cut your news consumption from 2 hours to 30 minutes without missing anything important.",
-    url: "https://www.yourtrace.online/blog/how-to-stay-updated-on-tech-without-doomscrolling",
+    images: [`${SITE_BASE_URL}/twitter-image`],
+    creator: "@tarat_211",
   },
 };
 
 export default function BlogPost() {
+  const blogPostSchema = generateBlogPostingSchema({
+    headline: "How to Stay Updated on Tech Without Doomscrolling",
+    description:
+      "Practical strategies for developers and tech professionals to stay informed without falling into the doomscrolling trap. Covers the 30-minute rule, AI summaries, source curation, and habit building.",
+    url: `${SITE_BASE_URL}/blog/how-to-stay-updated-on-tech-without-doomscrolling`,
+    datePublished: "2026-05-02T00:00:00Z",
+    dateModified: "2026-05-02T00:00:00Z",
+    authorName: "Tarun Tomar",
+    authorUrl: "https://x.com/tarat_211",
+  });
+
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Trace", url: SITE_BASE_URL },
+    { name: "Blog", url: `${SITE_BASE_URL}/blog` },
+    { name: "How to Stay Updated on Tech Without Doomscrolling", url: `${SITE_BASE_URL}/blog/how-to-stay-updated-on-tech-without-doomscrolling` },
+  ]);
+
+  const faqSchema = generateFAQSchema([
+    {
+      question: "How do I stop doomscrolling news?",
+      answer:
+        "Set a hard 30-minute daily limit for news consumption. Use AI-powered news apps like Trace that give you 30-second summaries instead of full articles. Schedule specific check-in times (e.g., 9 AM and 5 PM) and never check news outside those windows. Remove infinite-scroll news apps from your phone.",
+    },
+    {
+      question: "How can developers stay updated on tech without wasting time?",
+      answer:
+        "Use AI news aggregators like Trace that summarize tech news from 100+ sources into 30-second reads. Curate 5-10 high-quality sources instead of following 50. Set specific reading times. Use streak trackers to build a consistent habit without overdoing it.",
+    },
+    {
+      question: "What is the best app to avoid doomscrolling?",
+      answer:
+        "Trace is designed specifically to prevent doomscrolling. It delivers AI-powered summaries from trusted sources and has no infinite scroll, no clickbait, and no algorithmic rabbit holes. You get informed in 30 seconds and move on with your day.",
+    },
+    {
+      question: "How much time should I spend on tech news daily?",
+      answer:
+        "30 minutes per day is the sweet spot for staying informed without information overload. Two 15-minute sessions (morning and evening) work well. Use AI summaries to get the key points from 10 articles in the time it would normally take to read 2.",
+    },
+  ]);
+
   return (
     <article className="min-h-screen bg-white dark:bg-gray-950">
+      <StructuredDataList schemas={[blogPostSchema, breadcrumbSchema, faqSchema]} />
+
       <div className="max-w-3xl mx-auto px-4 py-16">
+        {/* Breadcrumb nav */}
+        <nav aria-label="Breadcrumb" className="mb-6">
+          <ol className="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <li>
+              <Link href="/" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                Home
+              </Link>
+            </li>
+            <li aria-hidden="true">/</li>
+            <li>
+              <Link href="/blog" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                Blog
+              </Link>
+            </li>
+            <li aria-hidden="true">/</li>
+            <li className="text-gray-900 dark:text-white font-medium truncate" aria-current="page">
+              Stay Updated Without Doomscrolling
+            </li>
+          </ol>
+        </nav>
+
         <Link
           href="/blog"
-          className="text-blue-600 dark:text-blue-400 hover:underline mb-8 inline-block"
+          className="text-blue-600 dark:text-blue-400 hover:underline mb-6 inline-block"
         >
           ← Back to Blog
         </Link>
 
-        <div className="mb-8">
+        <header className="mb-8">
           <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
             Productivity
           </span>
@@ -49,17 +147,20 @@ export default function BlogPost() {
           >
             How to Stay Updated on Tech Without Doomscrolling
           </h1>
-          <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-500">
-            <span>May 2, 2026</span>
+          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+            <span>
+              <time dateTime="2026-05-02">May 2, 2026</time>
+            </span>
             <span>4 min read</span>
+            <span>By <a href="https://x.com/tarat_211" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 dark:hover:text-blue-400">Tarun Tomar</a></span>
           </div>
-        </div>
+        </header>
 
         <div className="prose prose-lg dark:prose-invert max-w-none">
-          <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
-            You open Twitter "for 5 minutes" and suddenly it's been an hour.
+          <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
+            You open Twitter &quot;for 5 minutes&quot; and suddenly it&apos;s been an hour.
             Sound familiar? The average developer spends 2+ hours daily on news
-            apps. Here's how to cut that to 30 minutes.
+            apps. Here&apos;s how to cut that to 30 minutes.
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
@@ -68,7 +169,7 @@ export default function BlogPost() {
           <p className="text-gray-600 dark:text-gray-400">
             News apps are designed to keep you scrolling. They use infinite
             scroll, clickbait headlines, and algorithmic feeds to maximize
-            engagement. The result? You spend hours scrolling and still don't
+            engagement. The result? You spend hours scrolling and still don&apos;t
             know what actually happened.
           </p>
 
@@ -76,7 +177,7 @@ export default function BlogPost() {
             The 30-Minute Rule
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Set a hard limit: 30 minutes per day for news. Here's how to make
+            Set a hard limit: 30 minutes per day for news. Here&apos;s how to make
             it work:
           </p>
 
@@ -94,7 +195,7 @@ export default function BlogPost() {
           </h3>
           <p className="text-gray-600 dark:text-gray-400">
             Check news at 9 AM and 5 PM. No checking in between. This prevents
-            the "I'll just check one more thing" spiral.
+            the &quot;I&apos;ll just check one more thing&quot; spiral.
           </p>
 
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -109,8 +210,8 @@ export default function BlogPost() {
             4. Use Streak Trackers
           </h3>
           <p className="text-gray-600 dark:text-gray-400">
-            Build a reading habit with streak trackers. The goal isn't to read
-            everything—it's to read the right things consistently.
+            Build a reading habit with streak trackers. The goal isn&apos;t to read
+            everything—it&apos;s to read the right things consistently.
           </p>
 
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -130,7 +231,7 @@ export default function BlogPost() {
             no algorithmic rabbit holes.
           </p>
           <p className="text-gray-600 dark:text-gray-400">
-            <a href="https://play.google.com/store/apps/details?id=online.yourtrace.app" className="text-blue-600 dark:text-blue-400 hover:underline">
+            <a href="https://play.google.com/store/apps/details?id=online.yourtrace.app" className="text-blue-600 dark:text-blue-400 hover:underline font-medium" rel="noopener noreferrer">
               Try Trace free on Android →
             </a>
           </p>
@@ -139,10 +240,35 @@ export default function BlogPost() {
             The Bottom Line
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Staying informed doesn't have to mean doomscrolling. Set limits,
+            Staying informed doesn&apos;t have to mean doomscrolling. Set limits,
             use AI summaries, curate your sources, and build a reading habit.
             Your time is worth more than infinite scroll.
           </p>
+
+          {/* Internal cross-linking */}
+          <hr className="my-10 border-gray-200 dark:border-gray-800" />
+          <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6">
+            <h3 className={`text-lg font-semibold text-gray-900 dark:text-white mb-3 ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
+              Read Next
+            </h3>
+            <ul className="space-y-2">
+              <li>
+                <Link href="/blog/best-ai-news-apps-2026" className="text-blue-600 dark:text-blue-400 hover:underline">
+                  Best AI News Apps in 2026 (That Actually Respect Your Time) →
+                </Link>
+              </li>
+              <li>
+                <Link href="/blog/free-news-aggregators-for-developers" className="text-blue-600 dark:text-blue-400 hover:underline">
+                  Free News Aggregators for Developers: The Complete Guide →
+                </Link>
+              </li>
+              <li>
+                <Link href="/blog/feedly-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">
+                  Feedly Alternatives: 7 Free Options That Are Actually Better →
+                </Link>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
     </article>

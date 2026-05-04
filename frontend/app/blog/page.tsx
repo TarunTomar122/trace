@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
+import { StructuredDataList } from "@/components/StructuredData";
+import { SITE_BASE_URL, generateCollectionPageSchema } from "@/lib/seo";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -20,12 +22,33 @@ export const metadata: Metadata = {
     "AI news summary",
     "tech trends 2026",
   ],
+  alternates: {
+    canonical: `${SITE_BASE_URL}/blog`,
+  },
   openGraph: {
     type: "website",
     title: "Blog — Trace | AI News & Tech Insights",
     description:
       "Stay informed with the latest AI news, tech trends, and productivity tips.",
-    url: "https://www.yourtrace.online/blog",
+    url: `${SITE_BASE_URL}/blog`,
+    siteName: "Trace",
+    locale: "en_US",
+    images: [
+      {
+        url: `${SITE_BASE_URL}/opengraph-image`,
+        width: 1200,
+        height: 630,
+        alt: "Trace Blog — AI News & Tech Insights",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Blog — Trace | AI News & Tech Insights",
+    description:
+      "Stay informed with the latest AI news, tech trends, and productivity tips.",
+    images: [`${SITE_BASE_URL}/twitter-image`],
+    creator: "@tarat_211",
   },
 };
 
@@ -69,10 +92,34 @@ const blogPosts = [
 ];
 
 export default function BlogPage() {
+  const collectionSchema = generateCollectionPageSchema(
+    "Blog — Trace | AI News & Tech Insights",
+    "Stay informed with the latest AI news, tech trends, and productivity tips. Learn how to stay current without the information overload.",
+    `${SITE_BASE_URL}/blog`,
+    blogPosts.map((post) => `${SITE_BASE_URL}/blog/${post.slug}`),
+  );
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
+      <StructuredDataList schemas={[collectionSchema]} />
+
       <div className="max-w-4xl mx-auto px-4 py-16">
-        <div className="mb-12">
+        {/* Breadcrumb nav */}
+        <nav aria-label="Breadcrumb" className="mb-6">
+          <ol className="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <li>
+              <Link href="/" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                Home
+              </Link>
+            </li>
+            <li aria-hidden="true">/</li>
+            <li className="text-gray-900 dark:text-white font-medium" aria-current="page">
+              Blog
+            </li>
+          </ol>
+        </nav>
+
+        <header className="mb-12">
           <h1
             className={`text-4xl font-bold text-gray-900 dark:text-white mb-4 ${spaceGrotesk.variable}`}
             style={{ fontFamily: "var(--font-space-grotesk)" }}
@@ -82,7 +129,7 @@ export default function BlogPage() {
           <p className="text-lg text-gray-600 dark:text-gray-400">
             Stay informed. Stay productive. No fluff.
           </p>
-        </div>
+        </header>
 
         <div className="space-y-8">
           {blogPosts.map((post) => (
@@ -95,7 +142,7 @@ export default function BlogPage() {
                   {post.category}
                 </span>
                 <span className="text-sm text-gray-500 dark:text-gray-500">
-                  {post.date}
+                  <time dateTime={post.date}>{post.date}</time>
                 </span>
                 <span className="text-sm text-gray-500 dark:text-gray-500">
                   {post.readTime}

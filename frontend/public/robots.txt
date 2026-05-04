@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /feed
+Disallow: /feed/
+Disallow: /auth/
+Disallow: /profile
+Disallow: /onboarding
+Disallow: /bookmarks
+Disallow: /dev
+
+Sitemap: https://www.yourtrace.online/sitemap.xml
