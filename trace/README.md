@@ -39,7 +39,13 @@ EXPO_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
 EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
 EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
 EXPO_PUBLIC_FIREBASE_APP_ID=1:123456789:ios:abc123
+
+# PostHog Analytics
+EXPO_PUBLIC_POSTHOG_API_KEY=phc_YOUR_PROJECT_API_KEY
+EXPO_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 ```
+
+> **Note:** PostHog is configured in `lib/posthog.ts`. Replace the placeholder API key with your actual PostHog project key. You can find it in your PostHog project settings under "Project API Key".
 
 ### 3. iOS Setup (Mac only)
 
@@ -100,6 +106,21 @@ trace/
 ├── app.json                     # Expo config
 └── package.json                 # Dependencies
 ```
+
+## 📊 Analytics (PostHog)
+
+The app uses [PostHog](https://posthog.com) for product analytics. It tracks:
+
+- **Automatic screen views** — every screen navigation
+- **User identification** — user profile properties (role, subscription status, etc.)
+- **Reading events** — feed open, article summary open, external article open
+- **Social events** — share initiated, completed, cancelled, failed
+- **Feed interactions** — filter changes, view mode switches (card vs list)
+
+To set up:
+1. Create a PostHog project at https://posthog.com
+2. Copy your Project API Key from Project Settings
+3. Replace `phc_YOUR_PROJECT_API_KEY` in `lib/posthog.ts`
 
 ## 📱 Key Features
 

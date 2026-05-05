@@ -46,7 +46,7 @@ export const metadata: Metadata = {
   },
 };
 
-const TRENDING_STORY_LIMIT = 3;
+const TRENDING_STORY_LIMIT = 8;
 
 type TrendingItem = {
   id: string;
@@ -101,6 +101,7 @@ type GlobalTopic = {
   title?: string;
   article_count?: number;
   source_count?: number;
+  articles?: Array<unknown>;
   timeline?: Array<unknown>;
   key_points?: string[];
 };
@@ -188,6 +189,32 @@ function shortHash(value: string): string {
   return Math.abs(hash).toString(36).slice(0, 8);
 }
 
+function coveredTrendingKeys(topics: GlobalTopic[]): { ids: Set<string>; urls: Set<string> } {
+  const ids = new Set<string>();
+  const urls = new Set<string>();
+  for (const topic of topics) {
+    const articles = Array.isArray(topic.articles) ? topic.articles : [];
+    for (const raw of articles) {
+      if (!raw || typeof raw !== 'object') continue;
+      const article = raw as Record<string, unknown>;
+      const id = String(article.id || '').trim();
+      const url = String(article.url || '').trim();
+      if (id) ids.add(id);
+      if (url) urls.add(url);
+    }
+    const timeline = Array.isArray(topic.timeline) ? topic.timeline : [];
+    for (const raw of timeline) {
+      if (!raw || typeof raw !== 'object') continue;
+      const event = raw as Record<string, unknown>;
+      const id = String(event.id || '').trim();
+      const url = String(event.article_url || '').trim();
+      if (id) ids.add(id);
+      if (url) urls.add(url);
+    }
+  }
+  return { ids, urls };
+}
+
 async function getRecentGlobalFeedDocs(limitCount = 5) {
   if (!adminFirestore) return [];
   const globalFeedRef = adminFirestore
@@ -233,8 +260,16 @@ async function getTodaysItems(): Promise<TrendingItem[]> {
   for (const doc of globalDocs) {
     const globalData = doc.data() || {};
     const trending = Array.isArray(globalData.trending) ? globalData.trending : [];
+    const trendingTopics: GlobalTopic[] = Array.isArray(globalData.trending_topics) ? globalData.trending_topics : [];
     if (trending.length > 0) {
-      const items: TrendingItem[] = trending.map((item: GlobalTrendingItem, idx: number) => {
+      const covered = coveredTrendingKeys(trendingTopics);
+      const items: TrendingItem[] = trending
+        .filter((item: GlobalTrendingItem) => {
+          const id = String(item.id || '').trim();
+          const url = String(item.url || '').trim();
+          return !covered.ids.has(id) && !covered.urls.has(url);
+        })
+        .map((item: GlobalTrendingItem, idx: number) => {
         const rawSlides = item.summary?.short_article?.slides;
         const slides = rawSlides?.length ? cleanSlides(rawSlides) : [];
         const body = item.summary?.short_article?.body || '';
@@ -251,7 +286,9 @@ async function getTodaysItems(): Promise<TrendingItem[]> {
           thumbnail: item.thumbnail || undefined,
         };
       });
-      return items.slice(0, TRENDING_STORY_LIMIT);
+      if (items.length > 0) {
+        return items.slice(0, TRENDING_STORY_LIMIT);
+      }
     }
   }
 
@@ -546,7 +583,7 @@ export default async function TrendingPage() {
       />
       <PublicHeader />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         <TrendingContent
           items={items}
           topicCards={topicCards}

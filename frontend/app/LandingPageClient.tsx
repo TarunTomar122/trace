@@ -2,12 +2,15 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Check, ExternalLink, Mail, Newspaper, MessagesSquare, Rocket, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Check, Newspaper, MessagesSquare, Rocket, Zap, type LucideIcon, Globe, Cpu, Smartphone, TrendingUp, Terminal, FileText, MessageCircle, Cloud, AtSign, Braces, Lightbulb, Github, Eye, FlaskConical, Users, Briefcase, Hash } from 'lucide-react';
 import { consumePendingPostAuthIntent, getPostAuthDestination, useAuth } from '@/contexts/AuthContext';
 import { trackLandingCTAClicked } from '@/lib/posthog';
 import { RecentDailyArchiveLinkStrip, type RecentArchiveItem } from '@/components/RecentDailyArchiveLinkStrip';
+import EmailCaptureSlideIn from '@/components/EmailCaptureSlideIn';
+import { LANDING_PRICING_BULLET_POINTS } from '@/lib/subscription-pricing-bullets';
 
 /* ─── scroll-reveal utility ─── */
 
@@ -72,15 +75,41 @@ const HeroPulsePreview = dynamic(() => import('./HeroPulsePreview'), {
   ),
 });
 
+// ── Source icon mapping ──
+const SOURCE_ICONS: Record<string, LucideIcon> = {
+  TechCrunch: Newspaper, 'The Verge': Zap, 'Ars Technica': Cpu, Wired: Globe,
+  '9to5Google': Smartphone, Reuters: Newspaper, Bloomberg: TrendingUp,
+  'Hacker News': Terminal, 'The Information': FileText,
+  Reddit: MessageCircle, X: Hash, Bluesky: Cloud, Threads: AtSign,
+  Lemmy: Globe, Discord: MessageCircle, 'Stack Overflow': Braces,
+  'Product Hunt': Rocket, 'Indie Hackers': Lightbulb, GitHub: Github,
+  'Show HN': Eye, BetaList: FlaskConical, Peerlist: Users, Wellfound: Briefcase,
+};
+
+const sourceGroups = [
+  {
+    label: 'Stories & reporting',
+    sources: ['TechCrunch', 'The Verge', 'Ars Technica', 'Wired', '9to5Google', 'Reuters', 'Bloomberg', 'Hacker News', 'The Information'],
+  },
+  {
+    label: 'Community pulse',
+    sources: ['Reddit', 'X', 'Bluesky', 'Threads', 'Lemmy', 'Discord', 'Stack Overflow'],
+  },
+  {
+    label: 'Launches & builds',
+    sources: ['Product Hunt', 'Indie Hackers', 'GitHub', 'Show HN', 'BetaList', 'Peerlist', 'Wellfound'],
+  },
+];
+
 const INDIA_PRICING_PREVIEW = {
-  trialDays: 1,
+  trialDays: 0,
   priceDisplay: '₹19/month',
   pricingOffer: 'india' as const,
 };
 
 const DEFAULT_PRICING_PREVIEW = {
-  trialDays: 3,
-  priceDisplay: '$2.99/month',
+  trialDays: 0,
+  priceDisplay: '$4.99/month',
   pricingOffer: 'default' as const,
 };
 
@@ -121,7 +150,11 @@ export default function LandingPageClient({
 
   const handleStartReading = (location = 'hero') => {
     trackLandingCTAClicked('read', location);
-    router.push('/feed');
+    // if (user && profileResolved) {
+      router.push('/feed');
+    // } else {
+    //   router.push('/onboarding?intent=read');
+    // }
   };
 
   const handleStartTrial = (location = 'hero') => {
@@ -134,7 +167,6 @@ export default function LandingPageClient({
   };
 
   const pricingPreview = guessClientPricingPreview();
-  const trialDays = pricingPreview.trialDays;
   const priceDisplay = pricingPreview.priceDisplay;
   const planName = pricingPreview.pricingOffer === 'india'
     ? 'Trace Pro India'
@@ -162,7 +194,7 @@ export default function LandingPageClient({
       <header className="sticky top-0 z-50 bg-[#f4efe7]/80 backdrop-blur-xl border-b border-black/[0.04]">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-3">
-            <img src="/trace.webp" alt="Trace" className="h-5 w-auto" />
+            <Image src="/trace.webp" alt="Trace" width={20} height={20} priority className="h-5 w-auto" />
             <span className="text-[13px] font-semibold tracking-[0.2em]">TRACE</span>
           </Link>
           <nav className="hidden items-center gap-1 sm:flex">
@@ -227,23 +259,19 @@ export default function LandingPageClient({
                     className="group inline-flex items-center justify-center gap-2.5 rounded-full bg-[#151515] px-7 py-4 text-[15px] font-semibold text-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] transition-all hover:bg-black hover:shadow-[0_8px_30px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98]"
                   >
                     Read today
-                    <ArrowRight size={18} className="transition-transform group-hover:translate-x-0.5" />
                   </button>
                   <button
                     onClick={() => handleStartTrial('hero')}
                     className="inline-flex items-center justify-center rounded-full border border-black/10 bg-white/70 backdrop-blur-sm px-7 py-4 text-[15px] font-semibold transition-all hover:bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.06)] hover:scale-[1.02] active:scale-[0.98]"
                   >
                     Start free trial
+                    <ArrowRight size={18} className="transition-transform group-hover:translate-x-0.5" />
                   </button>
                 </div>
               </Reveal>
 
               <Reveal delay={320}>
                 <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px] text-secondary/60">
-                  <span className="flex items-center gap-2">
-                    <Check size={14} className="text-emerald-600/70" />
-                    No credit card needed
-                  </span>
                   <span className="flex items-center gap-2">
                     <Check size={14} className="text-emerald-600/70" />
                     500+ daily readers
@@ -259,17 +287,58 @@ export default function LandingPageClient({
             </Reveal>
           </div>
         </section>
-
-        {/* ── Email Preview + Newsletter ── */}
-        <section className="px-4 pt-4 pb-14 sm:px-6 sm:pt-6 sm:pb-20">
-          <Reveal>
-            <div className="mx-auto max-w-7xl rounded-[24px] border border-black/[0.05] bg-white/80 backdrop-blur-sm p-8 sm:p-10 lg:px-8">
-              <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-                <NewsletterPreviewCard />
-                <NewsletterSignup />
-              </div>
+        {/* ── How your pulse works ── */}
+        <section className="px-4 py-20 sm:px-6 sm:py-28">
+          <div className="mx-auto max-w-7xl lg:px-8">
+            <Reveal>
+              <p className="text-center text-[11px] font-semibold uppercase tracking-[0.3em] text-secondary/35">How it works</p>
+              <h2 className="mx-auto mt-5 max-w-3xl text-center text-[2rem] font-bold tracking-[-0.035em] sm:text-[2.75rem] sm:leading-[1.08]">
+                One pulse. The shape of the day.
+              </h2>
+              <p className="mx-auto mt-6 max-w-lg text-center text-[15px] leading-[1.8] text-secondary">
+                Trace reads the stories, the conversations, and the launches — then gives you one calm, scannable daily briefing.
+              </p>
+            </Reveal>
+            <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  icon: Newspaper,
+                  k: 'What happened',
+                  body: 'The biggest tech stories grouped from many sources into one readable view, anchored by the day\'s lead story.',
+                },
+                {
+                  icon: MessagesSquare,
+                  k: 'What people are saying',
+                  body: 'High-signal discussions from HN, Reddit, and the communities that matter to you — not the noise.',
+                },
+                {
+                  icon: Zap,
+                  k: 'Hot tweets',
+                  body: 'The most discussed tech tweets right now — viral threads, spicy takes, and the conversations driving the day.',
+                },
+                {
+                  icon: Rocket,
+                  k: 'What people are building',
+                  body: 'Launches, repos, changelogs, and tools — the building signals worth knowing about, shipped today.',
+                },
+              ].map((item, i) => (
+                <Reveal key={item.k} delay={i * 90}>
+                  <div className="group h-full rounded-[20px] border border-black/[0.05] bg-white/80 backdrop-blur-sm p-7 transition-all hover:bg-white hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] sm:p-8">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#151515]/[0.04] text-foreground/60 transition-colors group-hover:bg-[#151515]/[0.07]">
+                      <item.icon size={17} />
+                    </div>
+                    <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.2em] text-foreground/40">{item.k}</p>
+                    <p className="mt-3 text-[15px] leading-[1.75] text-secondary">{item.body}</p>
+                  </div>
+                </Reveal>
+              ))}
             </div>
-          </Reveal>
+            <Reveal delay={200}>
+              <p className="mx-auto mt-14 max-w-xl text-center text-[17px] font-medium tracking-[-0.01em] text-foreground/70">
+                Open Trace once, get the shape of the day.
+              </p>
+            </Reveal>
+          </div>
         </section>
 
         {/* ── Social proof quotes ── */}
@@ -373,10 +442,11 @@ export default function LandingPageClient({
         <section className="px-4 pt-20 sm:px-6 sm:pt-28">
           <Reveal>
             <div className="mx-auto max-w-7xl lg:px-8">
-              <div className="grid grid-cols-3 gap-px rounded-2xl bg-black/[0.04] overflow-hidden">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-2xl bg-black/[0.04] overflow-hidden">
                 {[
                   { value: '50+', label: 'topics in a full Pro day' },
                   { value: '10+', label: 'sources folded into top stories' },
+                  { value: '20+', label: 'hot tweets trending daily' },
                   { value: '500+', label: 'people reading with Trace' },
                 ].map((stat) => (
                   <div key={stat.label} className="bg-[#f4efe7] px-4 py-8 text-center sm:px-6 sm:py-10">
@@ -397,35 +467,26 @@ export default function LandingPageClient({
                 Signals we pull from every day
               </p>
               <div className="mx-auto mt-10 max-w-4xl">
-                {[
-                  {
-                    label: 'Stories & reporting',
-                    sources: ['TechCrunch', 'The Verge', 'Ars Technica', 'Wired', '9to5Google', 'Reuters', 'Bloomberg', 'Hacker News', 'The Information'],
-                  },
-                  {
-                    label: 'Community pulse',
-                    sources: ['Reddit', 'X', 'Bluesky', 'Threads', 'Lemmy', 'Discord', 'Stack Overflow'],
-                  },
-                  {
-                    label: 'Launches & builds',
-                    sources: ['Product Hunt', 'Indie Hackers', 'GitHub', 'Show HN', 'BetaList', 'Peerlist', 'Wellfound'],
-                  },
-                ].map((group, gi) => (
+                {sourceGroups.map((group, gi) => (
                   <div key={group.label} className={gi > 0 ? 'mt-8' : ''}>
-                    <div className="flex items-center gap-4 justify-center mb-4">
+                    <div className="flex items-center gap-4 justify-center mb-5">
                       <div className="h-px flex-1 max-w-16 bg-black/[0.06]" />
                       <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-secondary/30">{group.label}</p>
                       <div className="h-px flex-1 max-w-16 bg-black/[0.06]" />
                     </div>
                     <div className="flex flex-wrap items-center justify-center gap-2">
-                      {group.sources.map((s) => (
-                        <span
-                          key={`${group.label}-${s}`}
-                          className="rounded-full border border-black/[0.05] bg-white/40 px-4 py-2 text-[13px] font-medium text-secondary/50 transition-all hover:text-foreground hover:bg-white hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
-                        >
-                          {s}
-                        </span>
-                      ))}
+                      {group.sources.map((s) => {
+                        const Icon = SOURCE_ICONS[s];
+                        return (
+                          <span
+                            key={`${group.label}-${s}`}
+                            className="group inline-flex items-center gap-2 rounded-full border border-black/[0.06] bg-white/60 px-4 py-2.5 text-[13px] font-medium text-secondary/60 transition-all hover:text-foreground hover:bg-white hover:border-foreground/15 hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:scale-[1.03] active:scale-[0.98]"
+                          >
+                            {Icon && <Icon size={14} className="text-secondary/30 group-hover:text-foreground/70 transition-colors" />}
+                            {s}
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
@@ -434,57 +495,9 @@ export default function LandingPageClient({
           </Reveal>
         </section>
 
-        {/* ── How your pulse works ── */}
-        <section className="px-4 py-20 sm:px-6 sm:py-28">
-          <div className="mx-auto max-w-7xl lg:px-8">
-            <Reveal>
-              <p className="text-center text-[11px] font-semibold uppercase tracking-[0.3em] text-secondary/35">How it works</p>
-              <h2 className="mx-auto mt-5 max-w-3xl text-center text-[2rem] font-bold tracking-[-0.035em] sm:text-[2.75rem] sm:leading-[1.08]">
-                One pulse. The shape of the day.
-              </h2>
-              <p className="mx-auto mt-6 max-w-lg text-center text-[15px] leading-[1.8] text-secondary">
-                Trace reads the stories, the conversations, and the launches — then gives you one calm, scannable daily briefing.
-              </p>
-            </Reveal>
-            <div className="mt-14 grid gap-6 lg:grid-cols-3">
-              {[
-                {
-                  icon: Newspaper,
-                  k: 'What happened',
-                  body: 'The biggest tech stories grouped from many sources into one readable view, anchored by the day\'s lead story.',
-                },
-                {
-                  icon: MessagesSquare,
-                  k: 'What people are saying',
-                  body: 'High-signal discussions from HN, Reddit, and the communities that matter to you — not the noise.',
-                },
-                {
-                  icon: Rocket,
-                  k: 'What people are building',
-                  body: 'Launches, repos, changelogs, and tools — the building signals worth knowing about, shipped today.',
-                },
-              ].map((item, i) => (
-                <Reveal key={item.k} delay={i * 90}>
-                  <div className="group h-full rounded-[20px] border border-black/[0.05] bg-white/80 backdrop-blur-sm p-7 transition-all hover:bg-white hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] sm:p-8">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#151515]/[0.04] text-foreground/60 transition-colors group-hover:bg-[#151515]/[0.07]">
-                      <item.icon size={17} />
-                    </div>
-                    <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.2em] text-foreground/40">{item.k}</p>
-                    <p className="mt-3 text-[15px] leading-[1.75] text-secondary">{item.body}</p>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
-            <Reveal delay={200}>
-              <p className="mx-auto mt-14 max-w-xl text-center text-[17px] font-medium tracking-[-0.01em] text-foreground/70">
-                Open Trace once, get the shape of the day.
-              </p>
-            </Reveal>
-          </div>
-        </section>
 
         {/* ── Explore Trace ── */}
-        <section className="px-4 pb-20 sm:px-6 sm:pb-28">
+        <section className="px-4 py-20 sm:px-6 sm:py-28">
           <div className="mx-auto max-w-7xl lg:px-8">
             <Reveal>
               <p className="text-center text-[11px] font-semibold uppercase tracking-[0.3em] text-secondary/35">Explore Trace</p>
@@ -562,16 +575,10 @@ export default function LandingPageClient({
                   advantage in tech
                 </h3>
                 <p className="text-[14px] text-white/40 mb-8 leading-[1.7] max-w-md">
-                  Deeper context, smarter filtering, and signal over noise — in one daily pulse. Try it free for {trialDays} days.
+                  Deeper context, smarter filtering, and signal over noise — in one daily pulse. Subscribe for {priceDisplay}.
                 </p>
                 <div className="space-y-3.5 mb-9">
-                  {[
-                    'A daily pulse tailored to your role and interests',
-                    'Grouped topic pages instead of duplicate links',
-                    'Community signal without endless scrolling',
-                    'Launches and products worth watching',
-                    'A faster way to stay current in tech',
-                  ].map((line) => (
+                  {LANDING_PRICING_BULLET_POINTS.map((line) => (
                     <div key={line} className="flex items-start gap-3">
                       <Check size={13} className="shrink-0 mt-[3px] text-white/30" strokeWidth={2.5} />
                       <p className="text-[13px] font-medium text-white/75 leading-snug">{line}</p>
@@ -582,10 +589,10 @@ export default function LandingPageClient({
                   onClick={() => handleStartTrial('pricing_card')}
                   className="w-full py-3.5 rounded-full text-[13px] font-semibold bg-white text-[#151515] transition-all hover:bg-white/90 hover:scale-[1.01] active:scale-[0.99]"
                 >
-                  Start {trialDays}-Day Free Trial
+                  Subscribe to {planName}
                 </button>
                 <p className="mt-3 text-center text-[12px] leading-snug text-white/35">
-                  {priceDisplay} after {trialDays} days · Cancel anytime
+                  {priceDisplay} · Cancel anytime
                 </p>
               </div>
             </div>
@@ -711,7 +718,7 @@ export default function LandingPageClient({
                     onClick={() => handleStartTrial('bottom_cta')}
                     className="inline-flex items-center justify-center rounded-full border border-white/12 px-7 py-4 text-[15px] font-semibold text-white transition-all hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98]"
                   >
-                    Start free trial
+                    Get Pro
                   </button>
                 </div>
               </div>
@@ -752,7 +759,7 @@ export default function LandingPageClient({
         <footer className="border-t border-black/[0.04] px-4 py-10 sm:px-6">
           <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 sm:flex-row lg:px-8">
             <div className="flex items-center gap-2">
-              <img src="/trace.webp" alt="Trace" className="h-4 w-auto" />
+              <Image src="/trace.webp" alt="Trace" width={16} height={16} className="h-4 w-auto" />
               <span className="text-[11px] font-semibold tracking-[0.18em] text-secondary/50">TRACE</span>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-secondary/50">
@@ -767,6 +774,7 @@ export default function LandingPageClient({
           </div>
         </footer>
       </main>
+      <EmailCaptureSlideIn />
     </div>
   );
 }
@@ -810,110 +818,6 @@ function TopicPreviewCard() {
           </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-function NewsletterPreviewCard() {
-  return (
-    <div>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-secondary/35">
-        Newsletter preview
-      </p>
-      <h3 className="mt-4 text-[1.65rem] font-bold tracking-[-0.03em] text-foreground sm:text-[1.9rem]">
-        Real Trace daily style
-      </h3>
-      <p className="mt-3 max-w-md text-[14px] leading-[1.7] text-secondary">
-        This mirrors the actual format we send: one subject, short intro, and a numbered set of stories with direct links.
-      </p>
-
-      <div className="mt-6 rounded-2xl border border-black/[0.06] bg-[#faf8f4] p-5 sm:p-6">
-        <div className="flex items-center gap-3 border-b border-black/[0.05] pb-3">
-          <div className="h-8 w-8 rounded-lg bg-[#151515] flex items-center justify-center">
-            <img src="/trace.webp" alt="Trace" className="h-4 w-auto invert" />
-          </div>
-          <div>
-            <p className="text-[13px] font-semibold text-foreground">Trace</p>
-            <p className="text-[11px] text-secondary/45">AI Chips, Crypto Scams, and Japan&apos;s Hybrid Takeover</p>
-          </div>
-        </div>
-
-        <div className="mt-4 space-y-3 text-[12px] leading-[1.65] text-secondary/70">
-          <p>
-            Today&apos;s mix spans frontier chips, policy ripples, and product bets across AI, markets, and engineering.
-          </p>
-          <div className="rounded-lg border border-black/[0.05] bg-white/60 px-3 py-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-foreground/35">1. Top story</p>
-            <a
-              href="https://www.yourtrace.online/articles/tr_example"
-              className="mt-1 inline-flex items-center gap-1 text-[12px] font-semibold text-foreground hover:text-foreground/70"
-            >
-              New model race shifts chip demand
-              <ExternalLink size={11} />
-            </a>
-            <p className="mt-1 text-[11px] text-secondary/60">What happened, why it matters, and where this heads next.</p>
-          </div>
-          <div className="rounded-lg border border-black/[0.05] bg-white/60 px-3 py-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-foreground/35">2. Signals</p>
-            <p className="text-[11px] text-secondary/60">Fast rundown of the next 6-7 links worth your click.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function NewsletterSignup() {
-  const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!email || status === 'loading') return;
-    setStatus('loading');
-    try {
-      const response = await fetch('/api/newsletter-subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      if (!response.ok) throw new Error('Failed');
-      setStatus('success');
-      setEmail('');
-    } catch {
-      setStatus('error');
-    }
-  };
-
-  return (
-    <div className="mx-auto max-w-lg text-center">
-      <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-[#151515] text-white">
-        <Mail size={17} />
-      </div>
-      <h3 className="mt-4 text-[1.5rem] font-bold tracking-[-0.03em] text-foreground">Get the daily brief by email</h3>
-      <p className="mx-auto mt-3 max-w-md text-[14px] leading-[1.7] text-secondary">
-        Same Trace signal, delivered every morning. No spam, just the day&apos;s stories, discussions, and launches worth opening.
-      </p>
-      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3 px-2 sm:flex-row sm:px-0">
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@company.com"
-          className="min-h-12 flex-1 rounded-full border border-black/[0.08] bg-[#faf8f4] px-6 py-3.5 text-[15px] outline-none transition-colors placeholder:text-secondary/35 focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 sm:text-[14px]"
-          autoComplete="email"
-          required
-        />
-        <button
-          type="submit"
-          disabled={status === 'loading'}
-          className="inline-flex h-12 items-center justify-center rounded-full bg-[#151515] px-6 text-[13px] font-semibold text-white transition-all hover:bg-black disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {status === 'loading' ? 'Joining...' : 'Join free'}
-        </button>
-      </form>
-      {status === 'success' && <p className="mt-3 text-[13px] text-emerald-700">You&apos;re on the list.</p>}
-      {status === 'error' && <p className="mt-3 text-[13px] text-red-600">Could not subscribe right now.</p>}
     </div>
   );
 }

@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
     const headline = rawHeadline || `${tag}: Top story today`;
     const caption = rawCaption || `${headline}\n\nRead more such stories at yourtrace.online`;
     const sourceImageUrl = (body.imageUrl || '').trim();
-    const format = (body.format || 'square').trim().toLowerCase();
+    const format = (body.format || 'portrait').trim().toLowerCase();
     const fallbackAccessToken = normalizeSecret(
       process.env.INSTAGRAM_ACCESS_TOKEN_DEV ||
       process.env.INSTAGRAM_ACCESS_TOKEN ||

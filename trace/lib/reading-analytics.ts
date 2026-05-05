@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { trackEvent } from './posthog';
 
 const READING_EVENTS_KEY = '@trace_reading_events_v1';
 const MAX_EVENTS = 2500;
@@ -73,6 +74,22 @@ export async function logReadingEvent(event: Omit<ReadingEvent, 'timestamp'>): P
   } catch {
     // best-effort analytics only
   }
+
+  // Also send to PostHog for real-time analysis
+  const posthogEventMap: Record<ReadingEventType, string> = {
+    feed_open: 'feed_opened',
+    summary_open: 'article_summary_opened',
+    external_open: 'article_external_opened',
+  };
+
+  trackEvent(posthogEventMap[event.eventType] || event.eventType, {
+    item_id: event.itemId,
+    title: event.title,
+    url: event.url,
+    tags: event.tags,
+    item_type: event.itemType,
+    feed_category: event.feedCategory,
+  });
 }
 
 export async function getReadingAnalytics(days = 30): Promise<ReadingAnalyticsSnapshot> {

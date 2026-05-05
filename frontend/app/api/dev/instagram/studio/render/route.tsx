@@ -5,9 +5,10 @@ import { isInstagramStudioAuthorized } from '@/lib/instagram-studio-auth';
 
 export const runtime = 'edge';
 
+/** Instagram-friendly sizes: feed square 1:1, feed portrait 4:5, story/reels 9:16 */
 const FORMATS = {
   square: { width: 1080, height: 1080 },
-  portrait: { width: 1024, height: 1536 },
+  portrait: { width: 1080, height: 1350 },
   story: { width: 1080, height: 1920 },
 } as const;
 
@@ -85,6 +86,27 @@ function clean(value: string): string {
     .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function stripSlidePrefixes(text: string): string {
+  let line = String(text || '').trim();
+  for (let i = 0; i < 5; i++) {
+    const next = line
+      .replace(/^slide\s*\d+\s*:\s*/i, '')
+      .replace(/^slide\s*\d+\s*[-–—.)]\s*/i, '')
+      .trim();
+    if (next === line) break;
+    line = next;
+  }
+  return line;
+}
+
+function paragraphs(value: string): string[] {
+  return String(value || '')
+    .split(/\n{2,}/)
+    .map((part) => clean(stripSlidePrefixes(part)))
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
 function resolveFormat(requested: string | null): Format {
   const key = (requested || 'portrait').toLowerCase();
   return key in FORMATS ? (key as Format) : 'portrait';
@@ -139,8 +161,7 @@ function renderCoverSlide({
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <img src={logoUrl} alt="" width={32} height={32} style={{ borderRadius: 8 }} />
-              <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: 3, color: '#fff' }}>TRACE</div>
+              <img src={logoUrl} alt="" width={40} height={40} style={{ borderRadius: 10 }} />
             </div>
             <div style={{
               fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: 'rgba(255,255,255,0.75)',
@@ -155,7 +176,7 @@ function renderCoverSlide({
         <div style={{
           width, height: textZoneH, background: '#000',
           display: 'flex', flexDirection: 'column',
-          paddingLeft: PAD, paddingRight: PAD, paddingBottom: PAD,
+          paddingLeft: PAD, paddingRight: PAD, paddingBottom: 88,
           justifyContent: 'flex-end',
         }}>
           {/* Story count pill */}
@@ -217,8 +238,7 @@ function renderCoverSlide({
         padding: `40px ${PAD}px 0`,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src={logoUrl} alt="" width={32} height={32} style={{ borderRadius: 8 }} />
-          <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: 3, color: '#fff' }}>TRACE</div>
+          <img src={logoUrl} alt="" width={40} height={40} style={{ borderRadius: 10 }} />
         </div>
         <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>
           {kicker}
@@ -230,7 +250,7 @@ function renderCoverSlide({
       {/* Main content */}
       <div style={{
         display: 'flex', flexDirection: 'column', flex: 1,
-        paddingLeft: PAD, paddingRight: PAD, paddingBottom: PAD,
+        paddingLeft: PAD, paddingRight: PAD, paddingBottom: 88,
         justifyContent: 'flex-end',
       }}>
         {/* Story count pill */}
@@ -276,13 +296,10 @@ function renderCoverSlide({
 
 // ─── Story Slide with Image ────────────────────────────────────────────────────
 function renderImageStorySlide({
-  style, kicker, headline, sourceText,
+  headline,
   indexLabel, imageUrl, width, height, logoUrl, hasSans,
 }: {
-  style: CarouselStyle;
-  kicker: string;
   headline: string;
-  sourceText: string;
   indexLabel: string;
   imageUrl: string;
   width: number;
@@ -290,7 +307,6 @@ function renderImageStorySlide({
   logoUrl: string;
   hasSans: boolean;
 }) {
-  const theme = THEMES[style] || THEMES.editorial;
   const PAD = 52;
 
   return (
@@ -320,113 +336,99 @@ function renderImageStorySlide({
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src={logoUrl} alt="" width={28} height={28} style={{ borderRadius: 7 }} />
-          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: 2.5, color: '#fff' }}>TRACE</div>
+          <img src={logoUrl} alt="" width={38} height={38} style={{ borderRadius: 9 }} />
         </div>
         <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>{indexLabel}</div>
       </div>
 
       {/* Bottom text block */}
       <div style={{
-        position: 'absolute', left: PAD, right: PAD, bottom: PAD,
+        position: 'absolute', left: PAD, right: PAD, bottom: 112,
         display: 'flex', flexDirection: 'column',
       }}>
         <div style={{
-          fontSize: 13, fontWeight: 700, letterSpacing: 2.2,
-          textTransform: 'uppercase', color: theme.accent, marginBottom: 16,
-        }}>
-          {kicker}
-        </div>
-        <div style={{
-          fontSize: 76, lineHeight: 1.04,
+          fontSize: 84, lineHeight: 1.03,
           fontFamily: hasSans ? 'Sans' : 'Serif',
           fontWeight: hasSans ? 700 : 400,
           color: '#fff',
         }}>
           {headline}
         </div>
-        {sourceText ? (
-          <div style={{
-            fontSize: 14, color: 'rgba(255,255,255,0.45)',
-            marginTop: 20, letterSpacing: 0.3,
-          }}>
-            {sourceText}
-          </div>
-        ) : null}
+        <div style={{
+          fontSize: 16, color: 'rgba(255,255,255,0.62)',
+          marginTop: 24, letterSpacing: 0.4,
+        }}>
+          read full story at yourtrace.online
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Story Slide without Image ─────────────────────────────────────────────────
-function renderTextStorySlide({
-  style, kicker, headline, sourceText,
+function renderDetailSlide({
+  headline, body,
   indexLabel, width, height, logoUrl, hasSans,
 }: {
-  style: CarouselStyle;
-  kicker: string;
   headline: string;
-  sourceText: string;
+  body: string;
   indexLabel: string;
   width: number;
   height: number;
   logoUrl: string;
   hasSans: boolean;
 }) {
-  const theme = THEMES[style] || THEMES.editorial;
-  const PAD = 56;
-  // For text-only slides, always use dark background for visual punch
-  const isDark = style === 'signal' || style === 'spotlight';
-  const bg = isDark ? theme.bg : '#111110';
-  const textColor = '#FFFFFF';
-  const mutedColor = 'rgba(255,255,255,0.45)';
+  const PAD = 64;
+  const bullets = paragraphs(body).slice(0, 3);
 
   return (
     <div style={{
       width, height, display: 'flex', flexDirection: 'column',
-      background: bg, color: textColor, overflow: 'hidden', position: 'relative',
+      background: '#FAFAF9', color: '#111827', overflow: 'hidden', position: 'relative',
     }}>
-      {/* Subtle accent stripe at top */}
-      <div style={{ width: '100%', height: 3, background: theme.accent, flexShrink: 0 }} />
-
-      {/* Header */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: `40px ${PAD}px 0`,
+        padding: `44px ${PAD}px 0`,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src={logoUrl} alt="" width={28} height={28} style={{ borderRadius: 7 }} />
-          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: 2.5, color: textColor }}>TRACE</div>
-        </div>
-        <div style={{ fontSize: 15, color: mutedColor }}>{indexLabel}</div>
+        <img src={logoUrl} alt="" width={40} height={40} style={{ borderRadius: 10 }} />
+        <div style={{ fontSize: 17, color: '#78716C', fontWeight: 500 }}>{indexLabel}</div>
       </div>
 
-      <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', marginLeft: PAD, marginRight: PAD, marginTop: 24, flexShrink: 0 }} />
-
-      {/* Content centered */}
       <div style={{
         display: 'flex', flexDirection: 'column', flex: 1,
-        paddingLeft: PAD, paddingRight: PAD, paddingBottom: PAD,
-        justifyContent: 'center',
+        justifyContent: 'center', paddingLeft: PAD, paddingRight: PAD,
+        paddingBottom: 52,
       }}>
         <div style={{
-          fontSize: 13, fontWeight: 700, letterSpacing: 2.2,
-          textTransform: 'uppercase', color: theme.accent,
-        }}>
-          {kicker}
-        </div>
-        <div style={{
-          marginTop: 24,
-          fontSize: 95, lineHeight: 1.03,
-          fontFamily: hasSans ? 'Sans' : 'Serif',
-          fontWeight: hasSans ? 700 : 400,
-          color: textColor,
+          fontSize: 36, lineHeight: 1.18, color: '#78716C',
+          fontFamily: hasSans ? 'Sans' : 'sans-serif', fontWeight: 700,
+          marginBottom: 54,
         }}>
           {headline}
         </div>
-        {sourceText ? (
-          <div style={{ fontSize: 15, color: mutedColor, marginTop: 36 }}>{sourceText}</div>
-        ) : null}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 34 }}>
+          {bullets.map((point, idx) => (
+            <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 22 }}>
+              <div style={{
+                width: 12, height: 12, borderRadius: 999, background: '#78716C',
+                marginTop: 20, flexShrink: 0,
+              }} />
+              <div style={{
+                fontSize: 48, lineHeight: 1.16, letterSpacing: -0.8,
+                fontFamily: hasSans ? 'Sans' : 'sans-serif', fontWeight: 700,
+                color: '#111827',
+              }}>
+                {point}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{
+        padding: `0 ${PAD}px 96px`,
+        fontSize: 17, color: '#78716C', letterSpacing: 0.4,
+      }}>
+        read full story at yourtrace.online
       </div>
     </div>
   );
@@ -448,11 +450,13 @@ function renderLegacySingle(headline: string, imageUrl: string, logoUrl: string,
         background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.75) 68%, rgba(0,0,0,0.95) 82%)',
       }} />
       <div style={{ position: 'absolute', top: 48, left: 56, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <img src={logoUrl} alt="" width={30} height={30} style={{ borderRadius: 8 }} />
-        <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: 2.5 }}>TRACE</div>
+        <img src={logoUrl} alt="" width={40} height={40} style={{ borderRadius: 10 }} />
       </div>
-      <div style={{ position: 'absolute', left: 56, right: 56, bottom: 56, fontSize: 80, lineHeight: 1.06, fontFamily: 'Serif' }}>
+      <div style={{ position: 'absolute', left: 56, right: 56, bottom: 112, fontSize: 84, lineHeight: 1.03, fontFamily: 'Serif' }}>
         {headline}
+        <div style={{ fontSize: 16, color: 'rgba(255,255,255,0.62)', marginTop: 24, letterSpacing: 0.4 }}>
+          read full story at yourtrace.online
+        </div>
       </div>
     </div>
   );
@@ -475,7 +479,6 @@ export async function GET(request: NextRequest) {
   if (serifData) fonts.push({ name: 'Serif', data: serifData, weight: 400, style: 'normal' });
   if (sansData) fonts.push({ name: 'Sans', data: sansData, weight: 700, style: 'normal' });
 
-  const hasSerif = !!serifData;
   const hasSans = !!sansData;
 
   // Pre-fetch logo once for all slide types
@@ -488,12 +491,11 @@ export async function GET(request: NextRequest) {
     const style: CarouselStyle = (['editorial', 'signal', 'spotlight'] as const).includes(rawStyle as CarouselStyle)
       ? (rawStyle as CarouselStyle) : 'editorial';
 
-    const slideType = (searchParams.get('slideType') || 'story') as 'cover' | 'story';
+    const slideType = (searchParams.get('slideType') || 'story') as 'cover' | 'story' | 'detail';
     const headline = clean(searchParams.get('headline') || 'Top stories shaping today');
     const kicker = clean(searchParams.get('kicker') || 'Trace');
-    const body = clean(searchParams.get('body') || '');
+    const body = String(searchParams.get('body') || '');
     const rawImageUrl = searchParams.get('imageUrl') || '';
-    const sourceText = clean(searchParams.get('sources') || '');
     const index = searchParams.get('index') || '1';
     const total = searchParams.get('total') || '6';
     const indexLabel = `${index}/${total}`;
@@ -522,9 +524,24 @@ export async function GET(request: NextRequest) {
     // Pre-fetch story image as data URL
     const imageData = rawImageUrl ? await toDataUrl(rawImageUrl) : '';
 
+    if (slideType === 'detail') {
+      return new ImageResponse(
+        renderDetailSlide({
+          headline,
+          body,
+          indexLabel,
+          width,
+          height,
+          logoUrl: logoData,
+          hasSans,
+        }),
+        { width, height, ...(fonts.length ? { fonts } : {}) },
+      );
+    }
+
     return new ImageResponse(
       renderImageStorySlide({
-        style, kicker, headline, sourceText,
+        headline,
         indexLabel, imageUrl: imageData, width, height, logoUrl: logoData, hasSans,
       }),
       { width, height, ...(fonts.length ? { fonts } : {}) },

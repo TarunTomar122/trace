@@ -230,6 +230,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             name: firebaseUser.displayName,
             onboarded: cached?.onboarded || false,
           });
+          void loadProfileInBackground();
           return;
         }
 

@@ -51,7 +51,7 @@ async function getPostizToken(forceRefresh = false): Promise<string> {
 
 type Slide = {
   id: string;
-  slideType: 'cover' | 'story';
+  slideType: 'cover' | 'story' | 'detail';
   style: string;
   headline: string;
   kicker: string;
@@ -60,11 +60,15 @@ type Slide = {
   sourceNames: string[];
 };
 
+type ImageFormat = 'square' | 'portrait' | 'story';
+
 type PostizBody = {
   slides: Slide[];
   caption: string;
   total: number;
   scheduledAt?: string;
+  /** Render canvas: feed 4:5 (default), feed 1:1, or story 9:16 */
+  format?: ImageFormat;
 };
 
 function baseUrlFromRequest(request: NextRequest): string {
@@ -75,10 +79,23 @@ function baseUrlFromRequest(request: NextRequest): string {
   return `${proto}://${host}`;
 }
 
-function buildRenderUrl(baseUrl: string, studioKey: string, slide: Slide, index: number, total: number): string {
+function normalizeFormat(v: unknown): ImageFormat {
+  const s = String(v || 'portrait').trim().toLowerCase();
+  if (s === 'square' || s === 'story') return s;
+  return 'portrait';
+}
+
+function buildRenderUrl(
+  baseUrl: string,
+  studioKey: string,
+  slide: Slide,
+  index: number,
+  total: number,
+  format: ImageFormat,
+): string {
   const params = new URLSearchParams({
     mode: 'carousel',
-    format: 'portrait',
+    format,
     style: slide.style,
     slideType: slide.slideType,
     headline: slide.headline,
@@ -192,6 +209,7 @@ export async function POST(request: NextRequest) {
 
     const body = (await request.json()) as PostizBody;
     const { slides, caption, scheduledAt } = body;
+    const format = normalizeFormat(body.format);
 
     if (!slides?.length) {
       return NextResponse.json({ error: 'No slides provided' }, { status: 400 });
@@ -204,7 +222,7 @@ export async function POST(request: NextRequest) {
     // Step 1: render each slide + upload to Firebase in parallel
     const firebaseUrls = await Promise.all(
       slides.map((slide, i) => {
-        const renderUrl = buildRenderUrl(baseUrl, studioKey, slide, i, slides.length);
+        const renderUrl = buildRenderUrl(baseUrl, studioKey, slide, i, slides.length, format);
         const fileKey = `${Date.now()}-${i + 1}-${runId}`;
         return renderAndUploadToFirebase(renderUrl, fileKey);
       }),

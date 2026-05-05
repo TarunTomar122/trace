@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 
 export const TRACE_SESSION_COOKIE_NAME = 'trace_session';
-export const TRACE_SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+export const TRACE_SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 type TraceSessionPayload = {
   uid: string;

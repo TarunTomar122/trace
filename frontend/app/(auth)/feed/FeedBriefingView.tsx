@@ -14,6 +14,7 @@ import {
   ArrowRight,
   Check,
   ExternalLink,
+  Flame,
   Loader2,
   Lock,
   Maximize2,
@@ -72,6 +73,9 @@ function BrowsePastDaysCta({ className = '', textAlign: ta = 'center' }: { class
 
 /** Reserved interest key: Pulse stream in briefing (scroll + split), before "For You" */
 export const BRIEFING_PULSE_TAB_KEY = '__briefing_pulse__';
+
+/** Hot Tweets tab key — replaces Pulse in scroll layout tabs */
+export const HOT_TWEETS_TAB_KEY = '__hot_tweets__';
 
 /** Compact = scroll feed; Split = classic two-pane (header control) */
 export function BriefingLayoutToggle({
@@ -277,7 +281,7 @@ function ScrollFeedBodyLoading() {
   );
 }
 
-/** Expanded scroll row: blurred “hidden” body + subscribe CTA for free users */
+/** Expanded scroll row: blurred preview + subscribe CTA when content is locked */
 function ScrollFeedUnlockGate() {
   return (
     <div className="relative mt-1 overflow-hidden rounded-2xl border border-[#cfd9de] dark:border-white/15">
@@ -299,7 +303,7 @@ function ScrollFeedUnlockGate() {
             Trace Pro
           </div>
           <p className="text-[16px] font-bold text-[#0f1419] dark:text-[#f7f9f9]">
-            Unlock the full brief in 2 minutes
+            Unlock the full brief
           </p>
           <p className="mt-1 text-[14px] leading-snug text-[#536471] dark:text-[#8b98a5]">
             Get key takeaways, why it matters, and source links for every story.
@@ -317,11 +321,11 @@ function ScrollFeedUnlockGate() {
           <Link
             href="/profile?tab=subscription"
             prefetch={false}
-            onClick={() => trackCheckoutClicked('feed_scroll_expand_unlock', {})}
+            onClick={() => trackCheckoutClicked('feed_scroll_expand_unlock')}
             className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90"
           >
             <Sparkles size={14} />
-            Start free trial
+            Subscribe
           </Link>
         </div>
       </div>
@@ -512,6 +516,40 @@ function ScrollFeedCard({
   );
 }
 
+type HotTweetItemProps = {
+  tweet: { id: string; title: string; url: string; description: string; pubDate: string };
+  compact?: boolean;
+};
+
+function HotTweetItem({ tweet, compact }: HotTweetItemProps) {
+  return (
+    <a
+      href={tweet.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`block ${compact ? 'py-3' : 'py-3.5 px-2 -mx-2'} rounded-lg hover:bg-foreground/[0.04] transition-colors border-b border-border/15 last:border-b-0`}
+    >
+      <h4 className={`font-semibold text-foreground leading-snug tracking-[-0.01em] ${compact ? 'text-[15px]' : 'text-[14px] line-clamp-2'}`}>
+        {tweet.title}
+      </h4>
+      {compact && tweet.description && (
+        <p className="text-secondary/75 leading-relaxed mt-1 text-[13px]">
+          {tweet.description}
+        </p>
+      )}
+      <div className="flex items-center gap-1.5 mt-1">
+        <span className={`text-secondary/50 ${compact ? 'text-[11px]' : 'text-[10px]'}`}>
+          {getTimeLabel(tweet.pubDate)}
+        </span>
+        <span className="text-secondary/25 text-[10px]">·</span>
+        <span className={`font-medium ${compact ? 'text-[11px]' : 'text-[10px]'} text-[#1d9bf0]`}>
+          View on X
+        </span>
+      </div>
+    </a>
+  );
+}
+
 function ScrollFeedInterestTabs({
   activeFilter,
   interestTabs,
@@ -528,10 +566,10 @@ function ScrollFeedInterestTabs({
   showPulseTab: boolean;
 }) {
   const tabs = [
-    ...(showPulseTab ? [{ key: BRIEFING_PULSE_TAB_KEY, label: 'Pulse', pulseAccent: true as const }] : []),
-    { key: 'for_you', label: 'For You' as const, pulseAccent: false as const },
-    ...interestTabs.map((t) => ({ key: t.id, label: t.label, pulseAccent: false as const })),
-    { key: 'suggested', label: 'Suggested' as const, pulseAccent: false as const },
+    ...(showPulseTab ? [{ key: BRIEFING_PULSE_TAB_KEY, label: 'Pulse', pulseAccent: true as const, hotTweetsAccent: false as const }] : []),
+    { key: 'for_you', label: 'For You' as const, pulseAccent: false as const, hotTweetsAccent: false as const },
+    ...interestTabs.map((t) => ({ key: t.id, label: t.label, pulseAccent: false as const, hotTweetsAccent: false as const })),
+    { key: 'suggested', label: 'Suggested' as const, pulseAccent: false as const, hotTweetsAccent: false as const },
   ];
 
   return (
@@ -763,12 +801,14 @@ function DesktopEditorialLayout({
   onSelect,
   activeFilter,
   isLocked,
+  hotTweets,
 }: {
   filteredList: FeedListItem[];
   isLoading: boolean;
   onSelect: (id: string) => void;
   activeFilter: string;
-  isLocked: boolean;
+  isLocked: boolean | ((itemId: string) => boolean);
+  hotTweets: { id: string; title: string; url: string; description: string; pubDate: string; category: string }[];
 }) {
   if (isLoading) {
     return <ScrollFeedLoadingSkeleton editorial />;
@@ -795,46 +835,34 @@ function DesktopEditorialLayout({
     ? topics.slice(1, 5)
     : articles.slice(1, 5);
 
-  // Remaining go to sidebars
+  // Remaining go to right sidebar
   const usedIds = new Set([
     heroItem?.id,
     ...centerGrid.map((item) => item.id),
   ].filter(Boolean));
   const remaining = filteredList.filter((item) => !usedIds.has(item.id));
 
-  // Split remaining between left and right sidebars
-  const leftItems = remaining.filter((_, i) => i % 2 === 0).slice(0, 6);
-  const rightItems = remaining.filter((_, i) => i % 2 !== 0).slice(0, 6);
-
   return (
     <>
     <div className="grid grid-cols-[minmax(200px,1fr)_minmax(0,2.2fr)_minmax(200px,1fr)] gap-8 pt-6 pb-8">
-      {/* Left sidebar — compact headlines */}
+      {/* Left sidebar — Hot Tweets */}
       <aside className="min-w-0">
         <div className="mb-4 flex items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-400">
-            Today&apos;s Picks
+          <Flame size={13} className="shrink-0 text-orange-500" aria-hidden />
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-orange-700 dark:text-orange-400">
+            Hot Tweets
           </span>
           <div className="flex-1 h-px bg-border/25" />
         </div>
-        <div>
-          {leftItems.map((item, i) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onSelect(item.id)}
-              className="block w-full text-left hover:bg-foreground/[0.03] -mx-2 px-2 rounded-lg transition-colors"
-            >
-              <EditorialSidebarItem
-                item={item}
-                showDivider={i < leftItems.length - 1}
-              />
-            </button>
-          ))}
-          {leftItems.length === 0 && (
-            <p className="text-[13px] text-secondary/40 py-4">More stories coming soon</p>
-          )}
-        </div>
+        {hotTweets.length > 0 ? (
+          <div>
+            {hotTweets.map((tweet) => (
+              <HotTweetItem key={tweet.id} tweet={tweet} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-[13px] text-secondary/40 py-4">More stories coming soon</p>
+        )}
       </aside>
 
       {/* Center — hero + grid */}
@@ -864,7 +892,7 @@ function DesktopEditorialLayout({
         )}
       </main>
 
-      {/* Right sidebar — compact headlines */}
+      {/* Right sidebar — Trending Stories (includes remaining items) */}
       <aside className="min-w-0">
         <div className="mb-4 flex items-center gap-2">
           <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-secondary/60">
@@ -873,7 +901,7 @@ function DesktopEditorialLayout({
           <div className="flex-1 h-px bg-border/25" />
         </div>
         <div>
-          {rightItems.map((item, i) => (
+          {remaining.slice(0, 10).map((item, i) => (
             <button
               key={item.id}
               type="button"
@@ -882,11 +910,11 @@ function DesktopEditorialLayout({
             >
               <EditorialSidebarItem
                 item={item}
-                showDivider={i < rightItems.length - 1}
+                showDivider={i < remaining.length - 1}
               />
             </button>
           ))}
-          {rightItems.length === 0 && (
+          {remaining.length === 0 && (
             <p className="text-[13px] text-secondary/40 py-4">More stories coming soon</p>
           )}
         </div>
@@ -1038,6 +1066,7 @@ function DesktopArticlePageView({
   selectedId,
   setSelectedId,
   onBack,
+  isItemLocked,
 }: {
   selectedContent: ContentData | null;
   lockedStory: FeedListItem | null;
@@ -1047,6 +1076,7 @@ function DesktopArticlePageView({
   selectedId: string | null;
   setSelectedId: (id: string) => void;
   onBack: () => void;
+  isItemLocked?: (itemId: string) => boolean;
 }) {
   const story = lockedStory;
   const imageUrl = (selectedContent?.thumbnail || story?.thumbnail)
@@ -1116,18 +1146,17 @@ function DesktopArticlePageView({
 
   return (
     <div className="pt-6 pb-16">
-      {/* Back to feed */}
-      <button
-        onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-[13px] text-secondary/60 hover:text-foreground transition-colors mb-6"
-      >
-        <ArrowLeft size={16} />
-        <span>Back to feed</span>
-      </button>
-
-      <div className="grid grid-cols-[1fr_300px] xl:grid-cols-[1fr_340px] gap-10 xl:gap-14">
+      <div className="grid grid-cols-[1fr_300px] xl:grid-cols-[1fr_340px] gap-10 xl:gap-14 items-start">
         {/* Main article content */}
         <article className="min-w-0">
+          {/* Back to feed */}
+          <button
+            onClick={onBack}
+            className="inline-flex items-center gap-1.5 text-[13px] text-secondary/60 hover:text-foreground transition-colors mb-6"
+          >
+            <ArrowLeft size={16} />
+            <span>Back to feed</span>
+          </button>
           {/* Meta bar */}
           <div className="flex items-center gap-2 text-[12px] text-secondary/55 mb-4">
             {selectedContent?.source || story?.source ? (
@@ -1204,7 +1233,7 @@ function DesktopArticlePageView({
                 className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background"
               >
                 <Sparkles size={14} />
-                Start free trial
+                Subscribe
               </Link>
             </div>
           ) : isContentLoading && !selectedContent?.body ? (
@@ -1291,6 +1320,7 @@ function DesktopArticlePageView({
           {desktopLoadedIds.map((id) => {
             const listItem = filteredList.find((entry) => entry.id === id);
             if (!listItem) return null;
+            const streamLocked = isItemLocked ? isItemLocked(id) : false;
             const detail = desktopDetailCache[id];
             const hydrated =
               detail?.item?.id === listItem.id
@@ -1334,7 +1364,39 @@ function DesktopArticlePageView({
                 <h2 className="text-[2rem] xl:text-[2.2rem] font-bold text-foreground leading-[1.12] tracking-[-0.03em] mb-6">
                   {content?.title || listItem.title}
                 </h2>
-                {!hasBody ? (
+                {streamLocked ? (
+                  <div className="rounded-2xl border border-border/15 bg-surface-secondary/30 p-6">
+                    <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-amber-900/80 dark:text-amber-200/90">
+                      <Lock size={12} />
+                      Trace Pro story
+                    </div>
+                    {listItem.preview && (
+                      <p className="text-[15px] leading-7 text-secondary/65">{listItem.preview}</p>
+                    )}
+                    <p className="mt-5 text-[17px] font-semibold text-foreground">Unlock the full brief</p>
+                    <p className="mt-1 text-[14px] leading-6 text-secondary/60">
+                      You've used your free reads for today. Upgrade to Pro for unlimited access.
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-secondary/70">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground/6 px-2.5 py-1">
+                        <Check size={12} className="text-emerald-600/80" />
+                        Daily signal
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground/6 px-2.5 py-1">
+                        <Check size={12} className="text-emerald-600/80" />
+                        No fluff
+                      </span>
+                    </div>
+                    <Link
+                      href="/profile?tab=subscription"
+                      prefetch={false}
+                      className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background"
+                    >
+                      <Sparkles size={14} />
+                      Subscribe
+                    </Link>
+                  </div>
+                ) : !hasBody ? (
                   <div className="animate-pulse space-y-4 py-2">
                     <div className="h-[17px] w-full rounded-md bg-foreground/7" />
                     <div className="h-[17px] w-[97%] rounded-md bg-foreground/7" />
@@ -1426,8 +1488,7 @@ function DesktopArticlePageView({
         </article>
 
         {/* Right sidebar — Most Popular */}
-        <aside className="min-w-0">
-          <div className="sticky top-20">
+        <aside className="min-w-0 sticky top-20 self-start">
             <div className="mb-5 flex items-center gap-2">
               <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-foreground/70">
                 Most Popular
@@ -1467,7 +1528,6 @@ function DesktopArticlePageView({
             {sidebarItems.length === 0 && (
               <p className="text-[13px] text-secondary/40 py-4">No other stories right now</p>
             )}
-          </div>
         </aside>
       </div>
     </div>
@@ -1485,8 +1545,10 @@ function ScrollFeedPosts({
   isLoading: boolean;
   onSelect: (id: string) => void;
   activeFilter: string;
-  isLocked: boolean;
+  isLocked: boolean | ((itemId: string) => boolean);
 }) {
+  const getItemLocked = (id: string) =>
+    typeof isLocked === 'function' ? isLocked(id) : isLocked;
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const cardElByIdRef = useRef<Map<string, HTMLElement>>(new Map());
   const expandScrollPreserveRef = useRef<{
@@ -1560,7 +1622,7 @@ function ScrollFeedPosts({
           expanded={expandedIds.has(item.id)}
           onToggle={() => handleToggle(item.id)}
           isFirst={index === 0}
-          isLocked={isLocked}
+          isLocked={getItemLocked(item.id)}
           articleRef={(node) => {
             if (node) cardElByIdRef.current.set(item.id, node);
             else cardElByIdRef.current.delete(item.id);
@@ -1589,7 +1651,8 @@ type FeedBriefingViewProps = {
   selectedId: string | null;
   setSelectedId: (id: string) => void;
   selectedContent: ContentData | null;
-  isLocked: boolean;
+  isLocked: boolean | ((itemId: string) => boolean);
+  isItemLocked?: (itemId: string) => boolean;
   lockedStory: FeedListItem | null;
   mobileContentList: FeedListItem[];
   showMobileContent: boolean;
@@ -1597,6 +1660,9 @@ type FeedBriefingViewProps = {
   closeMobileArticle: () => void;
   briefingLayout: 'panel' | 'scroll';
   showPulseTab: boolean;
+  hotTweets?: { id: string; title: string; url: string; description: string; pubDate: string; category: string }[];
+  /** When true, subscribe overlay blocks feed body but tab filters stay clickable (z-index above overlay). */
+  interactionLocked?: boolean;
 };
 
 function LockedStoryPanel({ story }: { story: FeedListItem }) {
@@ -1663,7 +1729,7 @@ function LockedStoryPanel({ story }: { story: FeedListItem }) {
               className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90"
             >
               <Sparkles size={14} />
-              Start free trial
+              Subscribe
             </Link>
           </div>
         </div>
@@ -1688,6 +1754,7 @@ export default function FeedBriefingView({
   setSelectedId,
   selectedContent,
   isLocked,
+  isItemLocked,
   lockedStory,
   mobileContentList,
   showMobileContent,
@@ -1695,7 +1762,11 @@ export default function FeedBriefingView({
   closeMobileArticle,
   briefingLayout,
   showPulseTab,
+  hotTweets = [],
+  interactionLocked = false,
 }: FeedBriefingViewProps) {
+  const resolvedIsItemLocked = isItemLocked ?? (typeof isLocked === 'function' ? isLocked : () => isLocked);
+  const selectedIsLocked = selectedId ? resolvedIsItemLocked(selectedId) : false;
   const [lgUp, setLgUp] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const mobileArticleRef = useRef<HTMLDivElement>(null);
@@ -1732,54 +1803,60 @@ export default function FeedBriefingView({
   if (briefingLayout === 'scroll') {
     return (
       <>
-        <ScrollFeedInterestTabs
-          activeFilter={activeFilter}
-          interestTabs={interestTabs}
-          filterCounts={filterCounts}
-          setActiveFilter={setActiveFilter}
-          storyCount={storyCount}
-          showPulseTab={showPulseTab}
-        />
-        {activeFilter === BRIEFING_PULSE_TAB_KEY ? (
-          <DesktopPulseEditorialLayout
-            filteredList={filteredList}
-            isLoading={isLoading}
+        <div className={interactionLocked ? 'relative z-[90]' : undefined}>
+          <ScrollFeedInterestTabs
+            activeFilter={activeFilter}
+            interestTabs={interestTabs}
+            filterCounts={filterCounts}
+            setActiveFilter={setActiveFilter}
+            storyCount={storyCount}
+            showPulseTab={showPulseTab}
           />
-        ) : lgUp ? (
-          showMobileContent && (selectedContent || (isLocked && lockedStory)) ? (
-            <DesktopArticlePageView
-              selectedContent={selectedContent}
-              lockedStory={lockedStory}
-              isLocked={isLocked}
-              isContentLoading={isContentLoading}
+        </div>
+        <div inert={interactionLocked ? true : undefined}>
+          {activeFilter === BRIEFING_PULSE_TAB_KEY ? (
+            <DesktopPulseEditorialLayout
               filteredList={filteredList}
-              selectedId={selectedId}
-              setSelectedId={setSelectedId}
-              onBack={closeMobileArticle}
+              isLoading={isLoading}
             />
+          ) : lgUp ? (
+            showMobileContent && (selectedContent || (selectedIsLocked && lockedStory)) ? (
+              <DesktopArticlePageView
+                selectedContent={selectedContent}
+                lockedStory={lockedStory}
+                isLocked={selectedIsLocked}
+                isContentLoading={isContentLoading}
+                filteredList={filteredList}
+                selectedId={selectedId}
+                setSelectedId={setSelectedId}
+                onBack={closeMobileArticle}
+                isItemLocked={resolvedIsItemLocked}
+              />
+            ) : (
+              <DesktopEditorialLayout
+                filteredList={filteredList}
+                isLoading={isLoading}
+                onSelect={(id) => { setSelectedId(id); openMobileArticle(id); }}
+                activeFilter={activeFilter}
+                isLocked={resolvedIsItemLocked}
+                hotTweets={hotTweets}
+              />
+            )
           ) : (
-            <DesktopEditorialLayout
-              filteredList={filteredList}
-              isLoading={isLoading}
-              onSelect={(id) => { setSelectedId(id); openMobileArticle(id); }}
-              activeFilter={activeFilter}
-              isLocked={isLocked}
-            />
-          )
-        ) : (
-          <div
-            className="mx-auto w-full max-w-[min(43rem,100%)] min-h-[calc(100vh-11rem)]"
-            style={{ overflowAnchor: 'none' }}
-          >
-            <ScrollFeedPosts
-              filteredList={filteredList}
-              isLoading={isLoading}
-              onSelect={setSelectedId}
-              activeFilter={activeFilter}
-              isLocked={isLocked}
-            />
-          </div>
-        )}
+            <div
+              className="mx-auto w-full max-w-[min(43rem,100%)] min-h-[calc(100vh-11rem)]"
+              style={{ overflowAnchor: 'none' }}
+            >
+              <ScrollFeedPosts
+                filteredList={filteredList}
+                isLoading={isLoading}
+                onSelect={setSelectedId}
+                activeFilter={activeFilter}
+                isLocked={resolvedIsItemLocked}
+              />
+            </div>
+          )}
+        </div>
       </>
     );
   }
@@ -1792,7 +1869,11 @@ export default function FeedBriefingView({
           style={isExpanded ? undefined : { height: 'calc(100vh - 120px)', minHeight: '500px' }}
         >
           <div className="w-[340px] shrink-0 border-r border-border/20 flex flex-col">
-            <div className="px-5 pt-5 pb-3 border-b border-border/20">
+            <div
+              className={`px-5 pt-5 pb-3 border-b border-border/20 ${
+                interactionLocked ? 'relative z-[90]' : ''
+              }`}
+            >
               <div className="flex items-center justify-between">
                 <h2 className="text-[15px] font-bold text-foreground tracking-[-0.01em]">News</h2>
                 <button
@@ -1836,6 +1917,7 @@ export default function FeedBriefingView({
 
             <div
               ref={panelNewsListRef}
+              inert={interactionLocked ? true : undefined}
               className="flex-1 overflow-y-auto divide-y divide-border/10"
             >
               {isLoading ? (
@@ -1880,11 +1962,15 @@ export default function FeedBriefingView({
             </div>
           </div>
 
+          <div
+            inert={interactionLocked ? true : undefined}
+            className="flex min-h-0 min-w-0 flex-1 flex-col"
+          >
           {isLoading ? (
             <div className="flex-1 flex items-center justify-center">
               <Loader2 size={24} className="animate-spin text-secondary/40" />
             </div>
-          ) : isLocked && lockedStory ? (
+          ) : selectedIsLocked && lockedStory ? (
             <div className="flex-1 min-h-0 overflow-hidden">
               <LockedStoryPanel story={lockedStory} />
             </div>
@@ -1899,10 +1985,11 @@ export default function FeedBriefingView({
               <p className="text-secondary/40 text-sm">Select a story to read</p>
             </div>
           )}
+          </div>
         </div>
       </div>
 
-      {showMobileContent && (selectedContent || isContentLoading || (isLocked && lockedStory)) && (() => {
+      {showMobileContent && (selectedContent || isContentLoading || (selectedIsLocked && lockedStory)) && (() => {
         const story = lockedStory;
         const currentIdx = mobileContentList.findIndex((item) => item.id === selectedId);
         const nextItem = currentIdx >= 0 && currentIdx < mobileContentList.length - 1
@@ -1968,7 +2055,7 @@ export default function FeedBriefingView({
                 </div>
               )}
 
-              {isLocked && story ? (
+              {selectedIsLocked && story ? (
                 <div className="rounded-[28px] border border-border/15 bg-surface-secondary/30 p-5">
                   <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-amber-900/80 dark:text-amber-200/90">
                     <Lock size={12} />
@@ -1997,7 +2084,7 @@ export default function FeedBriefingView({
                     className="mt-5 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background"
                   >
                     <Sparkles size={14} />
-                    Start free trial
+                    Subscribe
                   </Link>
                 </div>
               ) : isContentLoading && !selectedContent?.body ? (
@@ -2112,41 +2199,68 @@ export default function FeedBriefingView({
       })()}
 
       <div className="md:hidden bg-background">
-        <div className="px-5 pt-6 pb-4">
-          <p className="text-[10px] font-semibold text-secondary/40 uppercase tracking-[0.2em] mb-1">{getTodayLabel()}</p>
-          <div className="flex items-end justify-between">
-            <div>
-              <h1 className="text-[1.6rem] font-bold text-foreground tracking-[-0.025em] leading-tight">News</h1>
-              {storyCount > 0 && <span className="text-[12px] text-secondary/45 mb-0.5">{storyCount} stories</span>}
+        <div className={interactionLocked ? 'relative z-[90]' : undefined}>
+          <div className="px-5 pt-6 pb-4">
+            <p className="text-[10px] font-semibold text-secondary/40 uppercase tracking-[0.2em] mb-1">{getTodayLabel()}</p>
+            <div className="flex items-end justify-between">
+              <div>
+                <h1 className="text-[1.6rem] font-bold text-foreground tracking-[-0.025em] leading-tight">News</h1>
+                {activeFilter === HOT_TWEETS_TAB_KEY ? (
+                  hotTweets.length > 0 && <span className="text-[12px] text-secondary/45 mb-0.5">{hotTweets.length} tweets</span>
+                ) : (
+                  storyCount > 0 && <span className="text-[12px] text-secondary/45 mb-0.5">{storyCount} stories</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="min-w-0 max-w-full overflow-x-auto overflow-y-hidden scrollbar-hide border-b border-border/15 touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+            <div className="inline-flex w-max max-w-none items-center gap-2 px-5 pb-3">
+              {([
+                { key: HOT_TWEETS_TAB_KEY, label: 'Hot Tweets', special: true as const },
+                { key: 'for_you', label: 'For You' },
+                ...interestTabs.map((item) => ({ key: item.id, label: item.label })),
+                { key: 'suggested', label: 'Suggested' },
+              ]).map(({ key, label, special }) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveFilter(key)}
+                  className={`px-3.5 py-1.5 rounded-full text-[12px] font-medium whitespace-nowrap transition-colors ${
+                    special
+                      ? activeFilter === key
+                        ? 'bg-[#1d9bf0] text-white'
+                        : 'text-[#1d9bf0]/70 hover:text-[#1d9bf0] bg-[#1d9bf0]/5'
+                      : activeFilter === key
+                        ? 'bg-foreground text-background'
+                        : 'bg-foreground/8 text-secondary/70'
+                  }`}
+                >
+                  {special && <Flame size={11} className="inline mr-1 -mt-px" aria-hidden />}
+                  {label}
+                  {(key === HOT_TWEETS_TAB_KEY ? hotTweets.length : (filterCounts[key] || 0)) > 0 ? ` (${key === HOT_TWEETS_TAB_KEY ? hotTweets.length : filterCounts[key]})` : ''}
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
-        <div className="min-w-0 max-w-full overflow-x-auto overflow-y-hidden scrollbar-hide border-b border-border/15 touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch]">
-          <div className="inline-flex w-max max-w-none items-center gap-2 px-5 pb-3">
-            {([
-              { key: 'for_you', label: 'For You' },
-              ...interestTabs.map((item) => ({ key: item.id, label: item.label })),
-              { key: 'suggested', label: 'Suggested' },
-            ]).map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => setActiveFilter(key)}
-                className={`px-3.5 py-1.5 rounded-full text-[12px] font-medium whitespace-nowrap transition-colors ${
-                  activeFilter === key ? 'bg-foreground text-background' : 'bg-foreground/8 text-secondary/70'
-                }`}
-              >
-                {label}
-                {(filterCounts[key] || 0) > 0 ? ` (${filterCounts[key]})` : ''}
-              </button>
-            ))}
-          </div>
-        </div>
-
+        <div inert={interactionLocked ? true : undefined}>
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 size={20} className="animate-spin text-secondary/40" />
           </div>
+        ) : activeFilter === HOT_TWEETS_TAB_KEY ? (
+          hotTweets.length > 0 ? (
+            <div className="px-5 pt-4 pb-10">
+              {hotTweets.map((tweet) => (
+                <HotTweetItem key={tweet.id} tweet={tweet} compact />
+              ))}
+            </div>
+          ) : (
+            <div className="px-5 py-10 text-center">
+              <p className="text-sm text-secondary/55">No hot tweets right now</p>
+            </div>
+          )
         ) : filteredList.length === 0 ? (
           <div className="px-5 pb-10">
             <p className="py-8 text-center text-sm text-secondary/55">
@@ -2181,6 +2295,7 @@ export default function FeedBriefingView({
             </div>
           </>
         )}
+        </div>
       </div>
     </>
   );

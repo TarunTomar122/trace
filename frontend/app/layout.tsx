@@ -12,11 +12,14 @@ import { Analytics } from "@vercel/analytics/next"
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
   subsets: ["latin"],
+  display: "swap",
+  preload: true,
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -24,10 +27,17 @@ export const metadata: Metadata = {
   description:
     "The biggest stories, the conversations around them, and what people are building — one daily pulse, not ten feeds.",
   keywords: ["AI summaries", "trending news", "content curation", "daily briefing", "topic overviews", "RSS alternative"],
-  authors: [{ name: "Trace" }],
+  authors: [{ name: "Trace", url: "https://www.yourtrace.online" }],
+  creator: "Trace",
+  publisher: "Trace",
+  applicationName: "Trace",
+  category: "Technology",
   metadataBase: new URL('https://www.yourtrace.online'),
   alternates: {
     canonical: 'https://www.yourtrace.online/',
+    languages: {
+      'en-US': 'https://www.yourtrace.online/',
+    },
   },
   openGraph: {
     type: "website",
@@ -37,12 +47,21 @@ export const metadata: Metadata = {
     title: "Trace — Your daily tech, in one place",
     description:
       "The biggest stories, the conversations around them, and what people are building — one daily pulse, not ten feeds.",
+    images: [
+      {
+        url: "https://www.yourtrace.online/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Trace — Your daily tech, in one place",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Trace — Your daily tech, in one place",
     description:
       "Stories, conversations & launches. Stay current without bouncing between feeds.",
+    images: ["https://www.yourtrace.online/twitter-image"],
   },
   robots: {
     index: true,
@@ -63,6 +82,11 @@ export const metadata: Metadata = {
   },
   manifest: "/site.webmanifest",
   themeColor: "#000000",
+  appleWebApp: {
+    capable: true,
+    title: "Trace",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export default function RootLayout({
@@ -107,7 +131,7 @@ export default function RootLayout({
         "image": "https://www.yourtrace.online/trace.png",
         "offers": {
           "@type": "Offer",
-          "price": "2.99",
+          "price": "4.99",
           "priceCurrency": "USD",
           "availability": "https://schema.org/InStock",
           "priceValidUntil": "2026-12-31",
@@ -131,7 +155,7 @@ export default function RootLayout({
             "name": "How much does Trace cost?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Trace starts with a free trial, then monthly pricing applies based on your region (for example, ₹19/month in India and $2.99/month in the US). You can cancel anytime from your profile."
+              "text": "Trace costs $4.99/month in the US (pricing varies by region, e.g. ₹19/month in India). You can cancel anytime from your profile."
             }
           },
           {
@@ -149,6 +173,14 @@ export default function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://www.googleapis.com" />
+        <link rel="preconnect" href="https://apis.google.com" />
+        <link rel="preconnect" href="https://accounts.google.com" />
+        <link rel="preconnect" href="https://firestore.googleapis.com" />
+        <link rel="preconnect" href="https://us-assets.i.posthog.com" />
+        <link rel="dns-prefetch" href="https://datafa.st" />
+      </head>
       <body
         suppressHydrationWarning
         className={`${spaceGrotesk.variable} ${geistMono.variable} antialiased`}

@@ -11,7 +11,7 @@ type CarouselMode = 'smart' | 'browse' | 'auto';
 
 type Slide = {
   id: string;
-  slideType: 'cover' | 'story';
+  slideType: 'cover' | 'story' | 'detail';
   style: Exclude<CarouselStyle, 'mixed'>;
   headline: string;
   kicker: string;
@@ -53,6 +53,24 @@ function cleanSentence(value: string): string {
     .replace(/\s+/g, ' ').trim();
 }
 
+/** Remove summarizer prefixes like "Slide 1:" / "slide2:" from bullet lines */
+function stripSlidePrefixes(text: string): string {
+  let line = String(text || '').trim();
+  for (let i = 0; i < 5; i++) {
+    const next = line
+      .replace(/^slide\s*\d+\s*:\s*/i, '')
+      .replace(/^slide\s*\d+\s*[-–—.)]\s*/i, '')
+      .trim();
+    if (next === line) break;
+    line = next;
+  }
+  return line;
+}
+
+function deckLine(raw: string): string {
+  return cleanSentence(stripSlidePrefixes(String(raw || '')));
+}
+
 function clampSlides(value: number): number {
   if (!Number.isFinite(value)) return 6;
   return Math.max(4, Math.min(8, Math.round(value)));
@@ -60,15 +78,32 @@ function clampSlides(value: number): number {
 
 function paragraphize(topic: Topic): string {
   const parts: string[] = [];
-  const summary = cleanSentence(String(topic.summary || topic.overview || ''));
+  const summary = deckLine(String(topic.summary || topic.overview || ''));
   if (summary) parts.push(summary);
   const keyPoints = Array.isArray(topic.key_points) ? topic.key_points : [];
   for (const raw of keyPoints.slice(0, 2)) {
-    const point = cleanSentence(String(raw || ''));
+    const point = deckLine(String(raw || ''));
     if (point) parts.push(point);
   }
   if (!parts.length) parts.push('This story is gaining momentum across multiple sources and signals today.');
   return parts.slice(0, 3).join('\n\n');
+}
+
+function detailPoints(topic: Topic): string[] {
+  const keyPoints = Array.isArray(topic.key_points) ? topic.key_points : [];
+  const points = keyPoints
+    .map((raw) => deckLine(String(raw || '')))
+    .filter(Boolean)
+    .slice(0, 3);
+  if (points.length > 0) return points;
+
+  const fallback = deckLine(String(topic.summary || topic.overview || ''));
+  if (!fallback) return ['This story is gaining momentum across multiple sources and signals today.'];
+  return fallback
+    .split(/(?<=[.!?])\s+/)
+    .map((part) => deckLine(part.trim()))
+    .filter(Boolean)
+    .slice(0, 3);
 }
 
 function inferCategory(topic: Topic): Exclude<CarouselCategory, 'all'> {
@@ -93,6 +128,93 @@ function sourceNames(topic: Topic): string[] {
     names.push(name);
   }
   return names.slice(0, 5);
+}
+
+function coveredTrendingKeys(topics: Topic[]): { ids: Set<string>; urls: Set<string> } {
+  const ids = new Set<string>();
+  const urls = new Set<string>();
+  for (const topic of topics) {
+    const articles = Array.isArray(topic.articles) ? topic.articles : [];
+    for (const raw of articles) {
+      if (!raw || typeof raw !== 'object') continue;
+      const article = raw as Record<string, unknown>;
+      const id = String(article.id || '').trim();
+      const url = String(article.url || '').trim();
+      if (id) ids.add(id);
+      if (url) urls.add(url);
+    }
+    const timeline = Array.isArray(topic.timeline) ? topic.timeline : [];
+    for (const raw of timeline) {
+      if (!raw || typeof raw !== 'object') continue;
+      const event = raw as Record<string, unknown>;
+      const id = String(event.id || '').trim();
+      const url = String(event.article_url || '').trim();
+      if (id) ids.add(id);
+      if (url) urls.add(url);
+    }
+  }
+  return { ids, urls };
+}
+
+function shortArticle(item: Topic): Record<string, unknown> {
+  const summary = item.summary;
+  if (!summary || typeof summary !== 'object') return {};
+  const nested = (summary as Record<string, unknown>).short_article;
+  return nested && typeof nested === 'object' ? nested as Record<string, unknown> : {};
+}
+
+function trendingItemSummary(item: Topic): string {
+  const short = shortArticle(item);
+  const slides = Array.isArray(short.slides)
+    ? short.slides.map((slide) => deckLine(String(slide || ''))).filter(Boolean)
+    : [];
+  const body = deckLine(String(short.body || ''));
+  const subtitle = deckLine(String(short.subtitle || ''));
+  return slides.join(' ') || body || subtitle || deckLine(String(item.description || ''));
+}
+
+function trendingItemKeyPoints(item: Topic): string[] {
+  const short = shortArticle(item);
+  const keyPoints = Array.isArray(short.key_points) ? short.key_points : [];
+  const fromKeys = keyPoints.map((point) => deckLine(String(point || ''))).filter(Boolean).slice(0, 3);
+  if (fromKeys.length) return fromKeys;
+  const slides = Array.isArray(short.slides) ? short.slides : [];
+  const fromSlides = slides.map((slide) => deckLine(String(slide || ''))).filter(Boolean).slice(0, 3);
+  if (fromSlides.length) return fromSlides;
+  const fallback = trendingItemSummary(item);
+  return fallback
+    .split(/(?<=[.!?])\s+/)
+    .map((part) => deckLine(part.trim()))
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
+function standaloneTrendingTopic(item: Topic, index: number): Topic {
+  const rawId = String(item.id || item.url || `trending-item-${index}`);
+  const sourceName = cleanSentence(String(item.source_name || item.source || ''));
+  return {
+    ...item,
+    id: rawId,
+    title: cleanSentence(String(item.title || '')),
+    summary: trendingItemSummary(item),
+    key_points: trendingItemKeyPoints(item),
+    article_count: 1,
+    source_count: sourceName ? 1 : 0,
+    timeline: sourceName ? [{ id: rawId, source_name: sourceName, article_url: item.url }] : [],
+    __studio_kind: 'item',
+  };
+}
+
+function storyCandidates(topics: Topic[], trending: Topic[]): Topic[] {
+  const covered = coveredTrendingKeys(topics);
+  const uncoveredItems = trending
+    .filter((item) => {
+      const id = String(item.id || '').trim();
+      const url = String(item.url || '').trim();
+      return norm(item.title) && !covered.ids.has(id) && !covered.urls.has(url);
+    })
+    .map(standaloneTrendingTopic);
+  return [...topics, ...uncoveredItems];
 }
 
 function pickStoryStyle(mode: CarouselStyle, index: number): Exclude<CarouselStyle, 'mixed'> {
@@ -148,6 +270,20 @@ function timeOfDayLabel(): string {
   return 'afternoon';
 }
 
+function titlePromptContext(topic: Topic, index: number): string {
+  const summary = cleanSentence(String(topic.summary || topic.overview || '')).slice(0, 420);
+  const points = detailPoints(topic)
+    .slice(0, 3)
+    .map((point, pointIndex) => `  - ${pointIndex + 1}. ${point}`)
+    .join('\n');
+
+  return [
+    `${index} | ${inferCategory(topic).toUpperCase()} | ${norm(String(topic.title || ''))}`,
+    summary ? `Summary: ${summary}` : '',
+    points ? `Key points:\n${points}` : '',
+  ].filter(Boolean).join('\n');
+}
+
 async function aiSmartPickAndRewrite(
   topics: Topic[],
   count: number,
@@ -159,14 +295,17 @@ async function aiSmartPickAndRewrite(
   const prompt = `You are a social media editor for Trace, a bold AI/tech news app. Pick the ${count} most juicy, surprising stories from this list and rewrite their headlines to be punchy and fun.
 
 PICK: most surprising, specific, dramatic. Real names, numbers, shocking twists beat vague stories.
+Use the summary/key points to find the weirdest or most specific hook. Do not merely shorten the original title.
 
 HEADLINE RULES:
 - 5-8 words max. Short = bold.
 - Conversational and punchy — write like a friend texting you breaking news
 - Use strong active verbs: fired, dropped, banned, bought, leaked, killed, exposed
 - Make it feel urgent or surprising. Raise eyebrows.
+- Prefer concrete details from key points: dollars, percentages, names, deadlines, product names, surprising comparisons
 - NO purpose clauses ("to improve X", "in order to Y")
 - NO boring filler ("enhances", "improves", "advances", "updates", "boosts")
+- If the key points contain a better hook than the original title, use that.
 
 GREAT EXAMPLES:
 - "Google quietly killed your favorite Chrome feature"
@@ -180,8 +319,8 @@ BAD (avoid):
 - "OpenAI advances its AI assistant capabilities" (bland)
 - "Anthropic launches Claude Design to boost visual creation" (too long, filler)
 
-Stories (index | category | original title):
-${eligible.map((t, i) => `${i} | ${inferCategory(t).toUpperCase()} | ${norm(String(t.title || ''))}`).join('\n')}
+Stories:
+${eligible.map((t, i) => titlePromptContext(t, i)).join('\n\n')}
 
 Return JSON: {"picks": [{"i": 0, "h": "rewritten"}, ...]} with exactly ${count} items, most important first.`;
 
@@ -225,6 +364,8 @@ RULES:
 - Conversational — write like a friend texting you breaking news
 - Strong active verbs: fired, dropped, banned, bought, leaked, killed, exposed
 - Make it feel urgent or surprising
+- Use summary/key points to find the funniest, weirdest, or most specific detail
+- Prefer numbers, names, sharp comparisons, and stakes over generic product wording
 - NO filler: no "enhances", "improves", "advances", "updates", "boosts", "to do X"
 
 GREAT EXAMPLES:
@@ -233,8 +374,8 @@ GREAT EXAMPLES:
 - "This AI just beat every human at coding"
 - "Meta is reading your WhatsApp messages now"
 
-Headlines (index | original):
-${topics.map((t, i) => `${i} | ${norm(String(t.title || ''))}`).join('\n')}
+Stories:
+${topics.map((t, i) => titlePromptContext(t, i)).join('\n\n')}
 
 Return JSON: {"rewrites": [{"i": 0, "h": "rewritten"}, ...]} for all ${topics.length} items.`;
 
@@ -266,66 +407,6 @@ Return JSON: {"rewrites": [{"i": 0, "h": "rewritten"}, ...]} for all ${topics.le
       }
     }
     return map;
-  } catch {
-    return null;
-  }
-}
-
-async function generateCoverHeadline(
-  headlines: string[],
-): Promise<{ title: string; tagline: string } | null> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey || !headlines.length) return null;
-
-  const rest = headlines.length - 1;
-  const prompt = `Write a punchy cover headline for a Trace Instagram carousel. There are ${headlines.length} stories inside.
-
-Stories:
-${headlines.map((h, i) => `${i + 1}. ${h}`).join('\n')}
-
-RULES:
-1. Lead with the most shocking/specific story — use a real name, number, or bold action.
-2. End with a short count tag like "— +${rest} more" or "& ${rest} others" (max 3 words for the tag).
-3. Total: 8-14 words. Bold, declarative. No filler endings like "you need to know" or "you need to see".
-4. Strong action verbs: dropped, fired, banned, bought, revealed, launched.
-
-GOOD:
-- "Google just killed its AI search deal — +${rest} more"
-- "Sam Altman doubles OpenAI's valuation to $300B — +${rest} inside"
-- "Apple bans 14 apps overnight & ${rest} other stories"
-
-BAD:
-- "stories you need to know today" (no subject, filler)
-- "the top AI stories you need to see" (no verb, no name)
-
-Return ONLY the headline, one line, no quotes.`;
-
-  try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'gpt-4.1-nano',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 100,
-        temperature: 0.95,
-      }),
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const text: string = data.choices?.[0]?.message?.content?.trim() || '';
-    if (!text) return null;
-    const title = text.split('\n')[0].trim().replace(/^["']|["']$/g, '');
-    if (title.length < 10) return null;
-    const tod2 = timeOfDayLabel();
-    const taglines = [
-      `Your ${tod2} catch-up in ${headlines.length} slides`,
-      `The ${tod2} rundown — swipe through`,
-      `${headlines.length} stories, explained`,
-    ];
-    const tagline = taglines[Math.floor(Math.random() * taglines.length)];
-    return { title, tagline };
   } catch {
     return null;
   }
@@ -363,8 +444,8 @@ function buildDeckMessaging(category: CarouselCategory): DeckMessaging {
   };
 }
 
-async function loadLatestTopics(): Promise<{ date: string; topics: Topic[] }> {
-  if (!adminDb) return { date: '', topics: [] };
+async function loadLatestFeed(): Promise<{ date: string; topics: Topic[]; trending: Topic[] }> {
+  if (!adminDb) return { date: '', topics: [], trending: [] };
   const snap = await adminDb
     .collection('v3_user_feeds')
     .doc('_global')
@@ -372,12 +453,13 @@ async function loadLatestTopics(): Promise<{ date: string; topics: Topic[] }> {
     .orderBy(FieldPath.documentId(), 'desc')
     .limit(1)
     .get();
-  if (snap.empty) return { date: '', topics: [] };
+  if (snap.empty) return { date: '', topics: [], trending: [] };
   const doc = snap.docs[0];
   const data = doc.data() || {};
   return {
     date: doc.id,
     topics: Array.isArray(data.trending_topics) ? (data.trending_topics as Topic[]) : [],
+    trending: Array.isArray(data.trending) ? (data.trending as Topic[]) : [],
   };
 }
 
@@ -407,11 +489,8 @@ function selectTopics(topics: Topic[], category: CarouselCategory, storyCount: n
 
 function buildSlides(
   origin: string,
-  date: string,
-  category: CarouselCategory,
   styleMode: CarouselStyle,
   topicList: Topic[],
-  messaging: DeckMessaging,
   headlineOverrides?: Map<string, string>,
 ): Slide[] {
   const slides: Slide[] = [];
@@ -421,20 +500,33 @@ function buildSlides(
     const topicId = String(topic.id || `topic-${index + 1}`);
     const headline =
       headlineOverrides?.get(topicId) ?? cleanSentence(String(topic.title || `Story ${index + 1}`));
-    slides.push({
-      id: topicId,
-      slideType: 'story',
-      style: pickStoryStyle(styleMode, index),
+    const style = pickStoryStyle(styleMode, index);
+    const common = {
+      style,
       headline,
       kicker: topicCategory.toUpperCase(),
-      body: paragraphize(topic),
-      imageUrl: String(topic.thumbnail || ''),
       category: topicCategory,
       sourceNames: sourceNames(topic),
       articleCount: Number(topic.article_count || 0),
       sourceCount: Number(topic.source_count || 0),
       topicId,
-      storyUrl: `${origin}/topics/${encodeURIComponent(topicId)}`,
+      storyUrl: topic.__studio_kind === 'item'
+        ? String(topic.url || '')
+        : `${origin}/topics/${encodeURIComponent(topicId)}`,
+    };
+    slides.push({
+      ...common,
+      id: `${topicId}-intro`,
+      slideType: 'story',
+      body: paragraphize(topic),
+      imageUrl: String(topic.thumbnail || ''),
+    });
+    slides.push({
+      ...common,
+      id: `${topicId}-detail`,
+      slideType: 'detail',
+      body: detailPoints(topic).join('\n\n'),
+      imageUrl: '',
     });
   });
 
@@ -466,9 +558,10 @@ export async function GET(request: NextRequest) {
 
     const slideCount = clampSlides(Number(searchParams.get('slides') || '6'));
 
-    const { date, topics } = await loadLatestTopics();
-    if (!topics.length) {
-      return NextResponse.json({ error: 'No trending topics available' }, { status: 404 });
+    const { date, topics, trending } = await loadLatestFeed();
+    const candidates = storyCandidates(topics, trending);
+    if (!candidates.length) {
+      return NextResponse.json({ error: 'No trending stories available' }, { status: 404 });
     }
 
     let selectedTopics: Topic[];
@@ -483,10 +576,10 @@ export async function GET(request: NextRequest) {
       }
       // Preserve user's selection order
       const idOrder = (searchParams.get('topicIds') || '').split(',').map((s) => s.trim()).filter(Boolean);
-      const topicMap = new Map(topics.map((t) => [String(t.id || ''), t]));
+      const topicMap = new Map(candidates.map((t) => [String(t.id || ''), t]));
       selectedTopics = idOrder.map((id) => topicMap.get(id)).filter((t): t is Topic => !!t);
       if (!selectedTopics.length) {
-        return NextResponse.json({ error: 'None of the selected topics were found' }, { status: 404 });
+        return NextResponse.json({ error: 'None of the selected stories were found' }, { status: 404 });
       }
       const rewrites = await aiRewriteHeadlines(selectedTopics);
       if (rewrites) headlineOverrides = rewrites;
@@ -494,8 +587,8 @@ export async function GET(request: NextRequest) {
     } else if (carouselMode === 'smart') {
       const storyCount = slideCount;
       const pool = category !== 'all'
-        ? topics.filter((t) => norm(t.title) && inferCategory(t) === category)
-        : topics.filter((t) => norm(t.title));
+        ? candidates.filter((t) => norm(t.title) && inferCategory(t) === category)
+        : candidates.filter((t) => norm(t.title));
       const aiPicks = await aiSmartPickAndRewrite(pool, storyCount);
       if (aiPicks && aiPicks.length > 0) {
         selectedTopics = aiPicks.map((p) => p.topic);
@@ -503,17 +596,17 @@ export async function GET(request: NextRequest) {
           aiPicks.map((p) => [String(p.topic.id || ''), p.headline]),
         );
       } else {
-        selectedTopics = selectTopics(topics, category, storyCount);
+        selectedTopics = selectTopics(candidates, category, storyCount);
       }
 
     } else {
       // legacy auto mode — original behavior
-      selectedTopics = selectTopics(topics, category, slideCount);
+      selectedTopics = selectTopics(candidates, category, slideCount);
     }
 
     const messaging = buildDeckMessaging(category);
-    const rawSlides = buildSlides(origin, date, category, style, selectedTopics, messaging, headlineOverrides);
-    const slides = rawSlides.slice(0, carouselMode === 'browse' ? rawSlides.length : slideCount);
+    const rawSlides = buildSlides(origin, style, selectedTopics, headlineOverrides);
+    const slides = rawSlides;
 
     return NextResponse.json({
       ok: true,

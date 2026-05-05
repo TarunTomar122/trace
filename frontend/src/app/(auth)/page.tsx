@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import LandingPageClient from "../LandingPageClient";
+import ScrollLaunchBadge from "@/components/ScrollLaunchBadge";
 
 export const metadata: Metadata = {
   title: "Trace — Your daily tech, in one place",
@@ -46,5 +47,17 @@ export const metadata: Metadata = {
 };
 
 export default function HomePage() {
-  return <LandingPageClient />;
+  return (
+    <>
+      <LandingPageClient />
+      <section
+        className="border-t border-black/4 bg-[#f4efe7] px-4 py-8 sm:px-6"
+        aria-label="Featured on ScrollLaunch"
+      >
+        <div className="mx-auto flex max-w-7xl justify-center lg:px-8">
+          <ScrollLaunchBadge />
+        </div>
+      </section>
+    </>
+  );
 }

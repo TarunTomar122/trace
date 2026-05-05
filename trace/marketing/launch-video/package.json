@@ -1,0 +1,27 @@
+{
+  "name": "launch-video",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts TracePromo out/trace-promo.mp4",
+    "build": "remotion render src/index.ts TracePromo out/trace-promo.mp4 --codec=h264"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@remotion/cli": "^4.0.454",
+    "@remotion/google-fonts": "^4.0.454",
+    "@remotion/transitions": "^4.0.454",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "remotion": "^4.0.454"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.3"
+  }
+}

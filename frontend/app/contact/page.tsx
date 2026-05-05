@@ -1,7 +1,23 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Mail } from 'lucide-react';
 import PublicHeader from '@/components/PublicHeader';
 import Footer from '@/components/Footer';
+
+export const metadata: Metadata = {
+  title: 'Contact — Trace',
+  description:
+    'Get in touch with the Trace team. Have questions, feedback, or need help with your subscription? We are here to help.',
+  alternates: {
+    canonical: 'https://www.yourtrace.online/contact',
+  },
+  openGraph: {
+    title: 'Contact — Trace',
+    description:
+      'Get in touch with the Trace team. Have questions, feedback, or need help with your subscription? We are here to help.',
+    url: 'https://www.yourtrace.online/contact',
+  },
+};
 
 export default function ContactPage() {
   return (

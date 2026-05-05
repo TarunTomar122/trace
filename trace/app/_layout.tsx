@@ -36,6 +36,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { RevenueCatProvider } from '@/contexts/RevenueCatContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { PostHogProvider } from '@/contexts/PostHogContext';
 import { Colors, FontFamily, Typography } from '@/constants/theme';
 import { getAppVersionConfig, getArticleById, getTopicById } from '@/lib/firestore';
 import { setCurrentArticle } from '@/lib/article-store';
@@ -297,15 +298,17 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <ToastProvider>
-          <RevenueCatProvider>
-            <ForceUpdateGate>
-              <AuthGate>
-                <RootLayoutNav />
-              </AuthGate>
-            </ForceUpdateGate>
-          </RevenueCatProvider>
-        </ToastProvider>
+        <PostHogProvider>
+          <ToastProvider>
+            <RevenueCatProvider>
+              <ForceUpdateGate>
+                <AuthGate>
+                  <RootLayoutNav />
+                </AuthGate>
+              </ForceUpdateGate>
+            </RevenueCatProvider>
+          </ToastProvider>
+        </PostHogProvider>
       </AuthProvider>
     </ThemeProvider>
   );

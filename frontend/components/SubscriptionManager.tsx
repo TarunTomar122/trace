@@ -41,7 +41,7 @@ interface PricingPreview {
 const INDIA_PRICING_PREVIEW: PricingPreview = {
   countryCode: 'IN',
   countrySource: 'fallback',
-  trialDays: 1,
+  trialDays: 0,
   priceDisplay: '₹19/month',
   pricingOffer: 'india',
 };
@@ -49,8 +49,8 @@ const INDIA_PRICING_PREVIEW: PricingPreview = {
 const DEFAULT_PRICING_PREVIEW: PricingPreview = {
   countryCode: null,
   countrySource: 'fallback',
-  trialDays: 3,
-  priceDisplay: '$2.99/month',
+  trialDays: 0,
+  priceDisplay: '$4.99/month',
   pricingOffer: 'default',
 };
 
@@ -452,7 +452,7 @@ export default function SubscriptionManager() {
           <h2 className="text-xl font-bold text-foreground tracking-[-0.02em] leading-snug mb-1.5">
             The news habit that<br />doesn't waste your time.
           </h2>
-          <p className="text-[13px] text-secondary/50">Try free for {trialDays} days. No charge until the trial ends.</p>
+          <p className="text-[13px] text-secondary/50">{priceDisplay}. Cancel anytime.</p>
         </div>
 
         <div className="space-y-4 pb-7 border-b border-border/15">
@@ -479,13 +479,13 @@ export default function SubscriptionManager() {
             className="w-full bg-foreground text-background py-3.5 rounded-full text-[13px] font-semibold hover:bg-foreground/90 transition-all hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {isCreatingCheckout ? (
-              <><Loader2 className="animate-spin" size={15} />Setting up your trial...</>
+              <><Loader2 className="animate-spin" size={15} />Setting up...</>
             ) : (
-              <>Start {trialDays}-Day Free Trial</>
+              <>Subscribe to {planName}</>
             )}
           </button>
           <p className="text-[11px] text-secondary/35 mt-2 text-center">
-            {priceDisplay} after trial · Cancel anytime
+            {priceDisplay} · Cancel anytime
           </p>
         </div>
 

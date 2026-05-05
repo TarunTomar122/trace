@@ -5,9 +5,10 @@ import { isInstagramStudioAuthorized } from '@/lib/instagram-studio-auth';
 
 export const runtime = 'edge';
 
+/** Instagram-friendly sizes: feed square 1:1, feed portrait 4:5, story/reels 9:16 */
 const FORMATS = {
   square: { width: 1080, height: 1080 },
-  portrait: { width: 1024, height: 1536 },
+  portrait: { width: 1080, height: 1350 },
   story: { width: 1080, height: 1920 },
 } as const;
 
@@ -66,10 +67,23 @@ function clean(value: string): string {
     .trim();
 }
 
+function stripSlidePrefixes(text: string): string {
+  let line = String(text || '').trim();
+  for (let i = 0; i < 5; i++) {
+    const next = line
+      .replace(/^slide\s*\d+\s*:\s*/i, '')
+      .replace(/^slide\s*\d+\s*[-–—.)]\s*/i, '')
+      .trim();
+    if (next === line) break;
+    line = next;
+  }
+  return line;
+}
+
 function paragraphs(value: string): string[] {
   return String(value || '')
     .split(/\n{2,}/)
-    .map((part) => clean(part))
+    .map((part) => clean(stripSlidePrefixes(part)))
     .filter(Boolean)
     .slice(0, 2);
 }
@@ -110,19 +124,17 @@ function renderCarouselSlide({
   headline,
   body,
   imageUrl,
-  sourceText,
   indexLabel,
   width,
   height,
   logoUrl,
 }: {
   style: CarouselStyle;
-  slideType: 'cover' | 'story';
+  slideType: 'cover' | 'story' | 'detail';
   kicker: string;
   headline: string;
   body: string;
   imageUrl: string;
-  sourceText: string;
   indexLabel: string;
   width: number;
   height: number;
@@ -173,18 +185,8 @@ function renderCarouselSlide({
             <img
               src={logoUrl}
               alt=""
-              style={{ width: 30, height: 30, borderRadius: 8 }}
+              style={{ width: 40, height: 40, borderRadius: 10 }}
             />
-            <div
-              style={{
-                fontSize: 19,
-                fontWeight: 700,
-                letterSpacing: 2.5,
-                color: theme.text,
-              }}
-            >
-              TRACE
-            </div>
           </div>
           <div
             style={{
@@ -271,7 +273,7 @@ function renderCarouselSlide({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'flex-end',
-            padding: `0 ${PAD}px ${PAD}px`,
+            padding: `0 ${PAD}px 88px`,
             gap: 12,
           }}
         >
@@ -295,6 +297,102 @@ function renderCarouselSlide({
           >
             →
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (slideType === 'detail') {
+    const bullets = bodyParts.slice(0, 3);
+    return (
+      <div
+        style={{
+          width,
+          height,
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#FAFAF9',
+          color: '#111827',
+          overflow: 'hidden',
+          position: 'relative',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: `44px ${PAD}px 0`,
+          }}
+        >
+          <img
+            src={logoUrl}
+            alt=""
+            style={{ width: 40, height: 40, borderRadius: 10 }}
+          />
+          <div style={{ fontSize: 17, color: '#78716C', fontWeight: 500 }}>{indexLabel}</div>
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            flex: 1,
+            justifyContent: 'center',
+            paddingLeft: PAD,
+            paddingRight: PAD,
+            paddingBottom: 52,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 36,
+              lineHeight: 1.18,
+              color: '#78716C',
+              fontFamily: 'Serif',
+              marginBottom: 54,
+            }}
+          >
+            {headline}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 34 }}>
+            {bullets.map((point, idx) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 22 }}>
+                <div
+                  style={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: 999,
+                    background: '#78716C',
+                    marginTop: 20,
+                    flexShrink: 0,
+                  }}
+                />
+                <div
+                  style={{
+                    fontSize: 48,
+                    lineHeight: 1.16,
+                    letterSpacing: -0.8,
+                    fontFamily: 'Serif',
+                    color: '#111827',
+                  }}
+                >
+                  {point}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div
+          style={{
+            padding: `0 ${PAD}px 96px`,
+            fontSize: 17,
+            color: '#78716C',
+            letterSpacing: 0.4,
+          }}
+        >
+          read full story at yourtrace.online
         </div>
       </div>
     );
@@ -354,18 +452,8 @@ function renderCarouselSlide({
             <img
               src={logoUrl}
               alt=""
-              style={{ width: 30, height: 30, borderRadius: 8 }}
+              style={{ width: 40, height: 40, borderRadius: 10 }}
             />
-            <div
-              style={{
-                fontSize: 19,
-                fontWeight: 700,
-                letterSpacing: 2.5,
-                color: theme.text,
-              }}
-            >
-              TRACE
-            </div>
           </div>
           <div style={{ fontSize: 17, color: theme.muted }}>{indexLabel}</div>
         </div>
@@ -376,72 +464,36 @@ function renderCarouselSlide({
             position: 'absolute',
             left: PAD,
             right: PAD,
-            bottom: PAD,
+            bottom: 112,
             display: 'flex',
             flexDirection: 'column',
           }}
         >
-          {theme.kickerBg ? (
-            <div style={{ display: 'flex', marginBottom: 18 }}>
-              <div
-                style={{
-                  background: theme.kickerBg,
-                  color: '#FFFFFF',
-                  fontSize: 15,
-                  fontWeight: 700,
-                  letterSpacing: 2,
-                  textTransform: 'uppercase',
-                  paddingLeft: 14,
-                  paddingRight: 14,
-                  paddingTop: 8,
-                  paddingBottom: 8,
-                  borderRadius: 6,
-                }}
-              >
-                {kicker}
-              </div>
-            </div>
-          ) : (
-            <div
-              style={{
-                fontSize: 16,
-                fontWeight: 600,
-                letterSpacing: 2.5,
-                textTransform: 'uppercase',
-                color: theme.accent,
-                marginBottom: 14,
-              }}
-            >
-              {kicker}
-            </div>
-          )}
           <div
             style={{
-              fontSize: 80,
-              lineHeight: 1.06,
+              fontSize: 88,
+              lineHeight: 1.03,
               fontFamily: 'Serif',
               color: theme.text,
             }}
           >
             {headline}
           </div>
-          {sourceText ? (
-            <div
-              style={{
-                fontSize: 17,
-                color: theme.muted,
-                marginTop: 22,
-              }}
-            >
-              {sourceText}
-            </div>
-          ) : null}
+          <div
+            style={{
+              fontSize: 17,
+              color: theme.muted,
+              marginTop: 24,
+              letterSpacing: 0.4,
+            }}
+          >
+            read full story at yourtrace.online
+          </div>
         </div>
       </div>
     );
   }
 
-  const storyBody = (bodyParts[0] || '').slice(0, 220);
   return (
     <div
       style={{
@@ -467,18 +519,8 @@ function renderCarouselSlide({
           <img
             src={logoUrl}
             alt=""
-            style={{ width: 30, height: 30, borderRadius: 8 }}
+            style={{ width: 40, height: 40, borderRadius: 10 }}
           />
-          <div
-            style={{
-              fontSize: 19,
-              fontWeight: 700,
-              letterSpacing: 2.5,
-              color: theme.text,
-            }}
-          >
-            TRACE
-          </div>
         </div>
         <div style={{ fontSize: 17, color: theme.muted }}>{indexLabel}</div>
       </div>
@@ -502,78 +544,30 @@ function renderCarouselSlide({
           flex: 1,
           paddingLeft: PAD,
           paddingRight: PAD,
-          paddingBottom: PAD,
+          paddingBottom: 96,
           justifyContent: 'center',
         }}
       >
-        {theme.kickerBg ? (
-          <div style={{ display: 'flex', marginBottom: 18 }}>
-            <div
-              style={{
-                background: theme.kickerBg,
-                color: '#FFFFFF',
-                fontSize: 15,
-                fontWeight: 700,
-                letterSpacing: 2,
-                textTransform: 'uppercase',
-                paddingLeft: 14,
-                paddingRight: 14,
-                paddingTop: 8,
-                paddingBottom: 8,
-                borderRadius: 6,
-              }}
-            >
-              {kicker}
-            </div>
-          </div>
-        ) : (
-          <div
-            style={{
-              fontSize: 17,
-              fontWeight: 600,
-              letterSpacing: 2.5,
-              textTransform: 'uppercase',
-              color: theme.accent,
-            }}
-          >
-            {kicker}
-          </div>
-        )}
         <div
           style={{
-            marginTop: theme.kickerBg ? 0 : 22,
-            fontSize: 100,
-            lineHeight: 1.04,
+            fontSize: 108,
+            lineHeight: 1.02,
             fontFamily: 'Serif',
             color: theme.text,
           }}
         >
           {headline}
         </div>
-        {storyBody ? (
-          <div
-            style={{
-              marginTop: 32,
-              fontSize: 26,
-              lineHeight: 1.5,
-              color: theme.muted,
-              maxWidth: 840,
-            }}
-          >
-            {storyBody}
-          </div>
-        ) : null}
-        {sourceText ? (
-          <div
-            style={{
-              fontSize: 16,
-              color: theme.muted,
-              marginTop: 40,
-            }}
-          >
-            {sourceText}
-          </div>
-        ) : null}
+        <div
+          style={{
+            fontSize: 17,
+            color: theme.muted,
+            marginTop: 34,
+            letterSpacing: 0.4,
+          }}
+        >
+          read full story at yourtrace.online
+        </div>
       </div>
     </div>
   );
@@ -634,24 +628,24 @@ function renderLegacySingle(
         <img
           src={logoUrl}
           alt=""
-          style={{ width: 30, height: 30, borderRadius: 8 }}
+          style={{ width: 40, height: 40, borderRadius: 10 }}
         />
-        <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: 2.5 }}>
-          TRACE
-        </div>
       </div>
       <div
         style={{
           position: 'absolute',
           left: 56,
           right: 56,
-          bottom: 56,
-          fontSize: 80,
-          lineHeight: 1.06,
+          bottom: 112,
+          fontSize: 84,
+          lineHeight: 1.03,
           fontFamily: 'Serif',
         }}
       >
         {headline}
+        <div style={{ fontSize: 16, color: 'rgba(255,255,255,0.62)', marginTop: 24, letterSpacing: 0.4 }}>
+          read full story at yourtrace.online
+        </div>
       </div>
     </div>
   );
@@ -687,7 +681,8 @@ export async function GET(request: NextRequest) {
       : 'editorial';
     const slideType = (searchParams.get('slideType') || 'story').toLowerCase() as
       | 'cover'
-      | 'story';
+      | 'story'
+      | 'detail';
     const headline = clean(
       searchParams.get('headline') || 'Top stories shaping today',
     );
@@ -695,7 +690,6 @@ export async function GET(request: NextRequest) {
     const body = String(searchParams.get('body') || '');
     const rawImageUrl = searchParams.get('imageUrl') || '';
     const imageUrl = rawImageUrl && (await isImageReachable(rawImageUrl)) ? rawImageUrl : '';
-    const sourceText = clean(searchParams.get('sources') || '');
     const index = searchParams.get('index') || '1';
     const total = searchParams.get('total') || '6';
 
@@ -707,7 +701,6 @@ export async function GET(request: NextRequest) {
         headline,
         body,
         imageUrl,
-        sourceText,
         indexLabel: `${index}/${total}`,
         width,
         height,

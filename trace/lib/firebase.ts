@@ -1,5 +1,5 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, getFirestore } from 'firebase/firestore';
 import { initializeAuth, getAuth, getReactNativePersistence, Auth } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -18,17 +18,24 @@ let auth: Auth;
 
 if (getApps().length === 0) {
   app = initializeApp(firebaseConfig);
-  // Use AsyncStorage persistence for session persistence across app restarts
   const persistence = getReactNativePersistence(AsyncStorage);
   console.log('[Firebase] Initializing auth with persistence...');
-  auth = initializeAuth(app, {
-    persistence,
-  });
+  auth = initializeAuth(app, { persistence });
   console.log('[Firebase] Auth initialized.');
 } else {
   app = getApps()[0];
   auth = getAuth(app);
 }
 
-export const firestore = getFirestore(app);
-export { auth, app };
+// experimentalAutoDetectLongPolling lets Firebase pick WebSockets over
+// long-polling when available — much more reliable on mobile WiFi.
+// initializeFirestore can only be called once per app instance.
+let firestore: ReturnType<typeof getFirestore>;
+try {
+  firestore = initializeFirestore(app, {
+    experimentalAutoDetectLongPolling: true,
+  });
+} catch {
+  firestore = getFirestore(app);
+}
+export { firestore, auth, app };

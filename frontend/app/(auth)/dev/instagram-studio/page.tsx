@@ -7,9 +7,12 @@ type CarouselCategory = "all" | "ai" | "tech" | "world";
 type CarouselStyle = "mixed" | "editorial" | "signal" | "spotlight";
 type CarouselMode = "smart" | "browse";
 
+/** Matches `/api/dev/instagram/studio/render` FORMATS */
+type StudioImageFormat = "square" | "portrait" | "story";
+
 type Slide = {
   id: string;
-  slideType: "cover" | "story";
+  slideType: "cover" | "story" | "detail";
   style: Exclude<CarouselStyle, "mixed">;
   headline: string;
   kicker: string;
@@ -44,6 +47,7 @@ type BrowseTopic = {
   category: "ai" | "tech" | "world";
   sourceCount: number;
   articleCount: number;
+  kind?: "group" | "item";
 };
 
 const KEY = "trace_instagram_studio_key";
@@ -56,6 +60,12 @@ const TEMPLATES: Array<{ value: CarouselStyle; label: string; desc: string }> = 
 ];
 
 const COUNTS = [4, 5, 6, 7, 8];
+
+const IMAGE_FORMAT_OPTIONS: Array<{ value: StudioImageFormat; label: string; hint: string }> = [
+  { value: "square", label: "Square", hint: "1080×1080 feed" },
+  { value: "portrait", label: "4:5", hint: "1080×1350 feed" },
+  { value: "story", label: "Story", hint: "1080×1920" },
+];
 
 const CATEGORY_COLORS: Record<string, string> = {
   ai: "bg-violet-100 text-violet-700",
@@ -72,6 +82,12 @@ function catTag(v: string) {
   return v === "ai" ? "AI" : v === "world" ? "World" : "Tech";
 }
 
+function slideKindLabel(slide: Slide) {
+  if (slide.slideType === "cover") return "Cover";
+  if (slide.slideType === "detail") return `${catTag(slide.category)} · Detail`;
+  return `${catTag(slide.category)} · Intro`;
+}
+
 export default function InstagramStudioPage() {
   const [keyInput, setKeyInput] = useState("");
   const [studioKey, setStudioKey] = useState("");
@@ -85,6 +101,7 @@ export default function InstagramStudioPage() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [imageFormat, setImageFormat] = useState<StudioImageFormat>("portrait");
 
   // posting
   const [posting, setPosting] = useState(false);
@@ -129,10 +146,10 @@ export default function InstagramStudioPage() {
   }, [studioKey, withAuth]);
 
   useEffect(() => {
-    if (studioKey && mode === "browse" && !browseTopics.length) {
+    if (studioKey && mode === "browse") {
       void loadBrowseTopics();
     }
-  }, [studioKey, mode, browseTopics.length, loadBrowseTopics]);
+  }, [studioKey, mode, loadBrowseTopics]);
 
   const toggleTopic = (id: string) => {
     setSelectedTopicIds((prev) => {
@@ -206,7 +223,7 @@ export default function InstagramStudioPage() {
     if (!selected || !studioKey || !deck) return "";
     const params = new URLSearchParams({
       mode: "carousel",
-      format: "portrait",
+      format: imageFormat,
       style: selected.style,
       slideType: selected.slideType,
       headline: selected.headline,
@@ -220,7 +237,7 @@ export default function InstagramStudioPage() {
       t: String(Date.now()),
     });
     return `/api/dev/instagram/studio/render?${params}`;
-  }, [deck, selected, studioKey]);
+  }, [deck, imageFormat, selected, studioKey]);
 
   const copyCaption = async () => {
     if (!deck?.caption) return;
@@ -240,7 +257,7 @@ export default function InstagramStudioPage() {
   const buildSlideUrl = useCallback((slide: Slide, index: number) => {
     if (!deck || !studioKey) return "";
     const params = new URLSearchParams({
-      mode: "carousel", format: "portrait",
+      mode: "carousel", format: imageFormat,
       style: slide.style, slideType: slide.slideType,
       headline: slide.headline, kicker: slide.kicker,
       body: slide.body, imageUrl: slide.imageUrl || "",
@@ -249,7 +266,7 @@ export default function InstagramStudioPage() {
       key: studioKey,
     });
     return `/api/dev/instagram/studio/render?${params}`;
-  }, [deck, studioKey]);
+  }, [deck, imageFormat, studioKey]);
 
   const fetchAllSlideBlobs = useCallback(async (): Promise<File[]> => {
     if (!deck?.slides?.length) return [];
@@ -290,6 +307,7 @@ export default function InstagramStudioPage() {
         slides: deck.slides,
         caption: deck.caption,
         total: deck.slides.length,
+        format: imageFormat,
       };
       if (scheduledAt) body.scheduledAt = new Date(scheduledAt).toISOString();
       const res = await fetch("/api/dev/instagram/studio/postiz", withAuth({
@@ -305,7 +323,7 @@ export default function InstagramStudioPage() {
     } finally {
       setPosting(false);
     }
-  }, [deck, scheduledAt, withAuth]);
+  }, [deck, imageFormat, scheduledAt, withAuth]);
 
   const canShare = typeof navigator !== "undefined" && !!navigator.share && !!navigator.canShare;
 
@@ -427,11 +445,38 @@ export default function InstagramStudioPage() {
             </div>
           </div>
 
+          {/* Export / Instagram canvas size */}
+          <div>
+            <label className="text-[11px] font-medium text-stone-400 uppercase tracking-wider">
+              Canvas
+            </label>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {IMAGE_FORMAT_OPTIONS.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => setImageFormat(o.value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    imageFormat === o.value
+                      ? "bg-stone-900 text-white"
+                      : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                  }`}
+                  title={o.hint}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-stone-400 mt-1.5 leading-relaxed">
+              Default is 4:5 portrait feed. Pick Square for 1:1 or Story for 9:16.
+            </p>
+          </div>
+
           {/* Smart mode: slide count */}
           {mode === "smart" && (
             <div>
               <label className="text-[11px] font-medium text-stone-400 uppercase tracking-wider">
-                Slides
+                Stories
               </label>
               <div className="flex gap-1.5 mt-2">
                 {COUNTS.map((n) => (
@@ -508,6 +553,9 @@ export default function InstagramStudioPage() {
                               <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${CATEGORY_COLORS[topic.category] || "bg-stone-100 text-stone-600"}`}>
                                 {catTag(topic.category)}
                               </span>
+                              <span className="text-[10px] text-stone-400">
+                                {topic.kind === "item" ? "Item" : "Group"}
+                              </span>
                               {topic.sourceCount > 0 && (
                                 <span className="text-[10px] text-stone-400">
                                   {topic.sourceCount} sources
@@ -561,7 +609,7 @@ export default function InstagramStudioPage() {
               ? "Generate with AI"
               : selectedTopicIds.size === 0
               ? "Select stories first"
-              : `Generate ${selectedTopicIds.size} slides`}
+              : `Generate ${selectedTopicIds.size} stories`}
           </button>
 
           {error && <p className="text-red-600 text-xs">{error}</p>}
@@ -596,7 +644,7 @@ export default function InstagramStudioPage() {
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className={`text-[11px] ${active ? "text-stone-400" : "text-stone-500"}`}>
-                            {slide.slideType === "cover" ? "Cover" : catTag(slide.category)}
+                            {slideKindLabel(slide)}
                           </div>
                           <div className="text-[13px] font-medium truncate mt-0.5">
                             {slide.headline}
@@ -616,11 +664,19 @@ export default function InstagramStudioPage() {
           {selected && previewUrl ? (
             <>
               <div className={`rounded-2xl border border-stone-200 bg-white p-3 sm:p-4 transition-opacity ${loading ? "opacity-50" : ""}`}>
-                <div className="max-w-[440px] mx-auto aspect-4/5 rounded-xl overflow-hidden border border-stone-100 relative bg-stone-50">
+                <div
+                  className={`max-w-[440px] mx-auto rounded-xl overflow-hidden border border-stone-100 relative bg-stone-50 ${
+                    imageFormat === "square"
+                      ? "aspect-square"
+                      : imageFormat === "story"
+                        ? "aspect-9/16"
+                        : "aspect-4/5"
+                  }`}
+                >
                   <img
                     src={previewUrl}
                     alt={selected.headline}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                     onError={(e) => {
                       const img = e.currentTarget;
                       const url = new URL(img.src, window.location.origin);
@@ -734,7 +790,7 @@ export default function InstagramStudioPage() {
                       <button
                         onClick={() => void postToInstagram()}
                         disabled={posting || !deck?.slides?.length}
-                        className="w-full rounded-lg bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400
+                        className="w-full rounded-lg bg-linear-to-r from-purple-600 via-pink-500 to-orange-400
                                    text-white text-xs font-semibold py-2.5 px-4 disabled:opacity-50
                                    hover:opacity-90 transition-opacity"
                       >
@@ -801,7 +857,7 @@ export default function InstagramStudioPage() {
               </div>
             </>
           ) : (
-            <div className="rounded-2xl border border-stone-200 bg-white aspect-4/5 max-w-[440px] mx-auto flex flex-col items-center justify-center gap-3 text-center px-6">
+            <div className="rounded-2xl border border-stone-200 bg-white aspect-square max-w-[440px] mx-auto flex flex-col items-center justify-center gap-3 text-center px-6">
               {loading ? (
                 <>
                   <div className="w-6 h-6 border-2 border-stone-200 border-t-stone-800 rounded-full animate-spin" />

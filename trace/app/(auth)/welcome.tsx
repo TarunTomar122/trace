@@ -21,6 +21,10 @@ import {
   Twitter,
   Instagram,
   Sparkles,
+  Zap,
+  Cpu,
+  Newspaper,
+  Layers,
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -30,12 +34,337 @@ import { useAuth } from '@/contexts/AuthContext';
 import { saveReferralSource } from '@/lib/firestore';
 import { TRACE_PRIVACY_POLICY_URL, TRACE_TERMS_URL } from '@/constants/contact';
 
-export const ILLUS_PALETTE = {
-  coral: { light: '#FEF2F2', dark: '#1a1212' },
-  olive: { light: '#FEF9E7', dark: '#1a1708' },
-  lavender: { light: '#F0F9FF', dark: '#0a1218' },
-  gold: { light: '#FFFBEB', dark: '#1a1608' },
-};
+/* ═══════════════════════════════════════════════════════════════
+   Mock card components for the intro screens (no images)
+   ═══════════════════════════════════════════════════════════════ */
+
+function MockStoryCard({
+  title,
+  source,
+  tag,
+  colorScheme,
+}: {
+  title: string;
+  source?: string;
+  tag?: string;
+  colorScheme: 'light' | 'dark';
+}) {
+  const bg = colorScheme === 'dark' ? '#1a1a1a' : '#fff';
+  const border = colorScheme === 'dark' ? '#2a2a2a' : '#e8e8e8';
+  const textCol = Colors[colorScheme].text;
+  const mutedCol = Colors[colorScheme].muted;
+  return (
+    <View style={[mStyles.card, { backgroundColor: bg, borderColor: border }]}>
+      <View style={mStyles.cardTop}>
+        {source && (
+          <View style={mStyles.badge}>
+            <Text style={mStyles.badgeText}>{source}</Text>
+          </View>
+        )}
+        {tag && (
+          <View style={[mStyles.tag, { backgroundColor: colorScheme === 'dark' ? '#1a1200' : '#FFF7ED' }]}>
+            <Text style={[mStyles.tagText, { color: '#F59E0B' }]}>{tag}</Text>
+          </View>
+        )}
+      </View>
+      <Text style={[mStyles.cardTitle, { color: textCol }]} numberOfLines={2}>
+        {title}
+      </Text>
+    </View>
+  );
+}
+
+function BlankCard({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
+  const bg = colorScheme === 'dark' ? '#1a1a1a' : '#fff';
+  const border = colorScheme === 'dark' ? '#2a2a2a' : '#e8e8e8';
+  return (
+    <View style={[mStyles.blankCard, { backgroundColor: bg, borderColor: border }]}>
+      <View style={[mStyles.blankLine, { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#e8e8e8' }]} />
+      <View style={[mStyles.blankLineShort, { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#e8e8e8' }]} />
+    </View>
+  );
+}
+
+function MockSourceChip({ label, colorScheme }: { label: string; colorScheme: 'light' | 'dark' }) {
+  const bg = colorScheme === 'dark' ? '#1a1a1a' : '#f5f5f5';
+  const border = colorScheme === 'dark' ? '#2a2a2a' : '#e8e8e8';
+  return (
+    <View style={[mStyles.chip, { backgroundColor: bg, borderColor: border }]}>
+      <Text style={[mStyles.chipText, { color: Colors[colorScheme].text }]}>{label}</Text>
+    </View>
+  );
+}
+
+/* ─── Floating card stack for each intro slide ─── */
+
+function SlideMockCards({
+  index,
+  colorScheme,
+}: {
+  index: number;
+  colorScheme: 'light' | 'dark';
+}) {
+  if (index === 0) {
+    // Slide 1: "30 seconds" — a story card with a time tag
+    return (
+      <View style={mStyles.stackContainer}>
+        <View style={[mStyles.backCard, { transform: [{ rotate: '-8deg' }] }]}>
+          <BlankCard colorScheme={colorScheme} />
+        </View>
+        <View style={[mStyles.backCard2, { transform: [{ rotate: '6deg' }] }]}>
+          <BlankCard colorScheme={colorScheme} />
+        </View>
+        <View style={mStyles.frontCard}>
+          <MockStoryCard
+            title="Google DeepMind's latest breakthrough in reasoning"
+            source="Ars Technica"
+            tag="30 sec"
+            colorScheme={colorScheme}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  if (index === 1) {
+    // Slide 2: "Tech & AI" — cards with category emphasis
+    return (
+      <View style={mStyles.stackContainer}>
+        <View style={[mStyles.backCard, { transform: [{ rotate: '-6deg' }] }]}>
+          <BlankCard colorScheme={colorScheme} />
+        </View>
+        <View style={[mStyles.backCard2, { transform: [{ rotate: '5deg' }] }]}>
+          <BlankCard colorScheme={colorScheme} />
+        </View>
+        <View style={mStyles.frontCard}>
+          <View style={[mStyles.categoryCard, { backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#fff', borderColor: colorScheme === 'dark' ? '#2a2a2a' : '#e8e8e8' }]}>
+            <View style={mStyles.catRow}>
+              <View style={[mStyles.catIcon, { backgroundColor: colorScheme === 'dark' ? '#0a1a0a' : '#F0FDF4' }]}>
+                <Cpu size={16} color="#22c55e" />
+              </View>
+              <Text style={[mStyles.catLabel, { color: Colors[colorScheme].text }]}>Artificial Intelligence</Text>
+            </View>
+            <View style={mStyles.catRow}>
+              <View style={[mStyles.catIcon, { backgroundColor: colorScheme === 'dark' ? '#0a0a1a' : '#EFF6FF' }]}>
+                <Zap size={16} color="#3b82f6" />
+              </View>
+              <Text style={[mStyles.catLabel, { color: Colors[colorScheme].text }]}>Developer Tools</Text>
+            </View>
+            <View style={mStyles.catRow}>
+              <View style={[mStyles.catIcon, { backgroundColor: colorScheme === 'dark' ? '#1a0a0a' : '#FEF2F2' }]}>
+                <Newspaper size={16} color="#ef4444" />
+              </View>
+              <Text style={[mStyles.catLabel, { color: Colors[colorScheme].text }]}>Big Tech</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // Slide 3: "100+ sources" — grid of source chips
+  return (
+    <View style={mStyles.stackContainer}>
+      <View style={[mStyles.backCard, { transform: [{ rotate: '-5deg' }] }]}>
+        <BlankCard colorScheme={colorScheme} />
+      </View>
+      <View style={mStyles.frontCard}>
+        <View style={[mStyles.sourcesCard, { backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#fff', borderColor: colorScheme === 'dark' ? '#2a2a2a' : '#e8e8e8' }]}>
+          <View style={mStyles.sourcesHeader}>
+            <Layers size={14} color={Colors[colorScheme].muted} />
+            <Text style={[mStyles.sourcesHeaderText, { color: Colors[colorScheme].muted }]}>Sources today</Text>
+          </View>
+          <View style={mStyles.chipGrid}>
+            {['TechCrunch', 'The Verge', 'HN', 'Reddit', 'Wired', 'Ars', 'Reuters', 'Bloomberg', '9to5', 'TC', 'X', 'Discord'].map((s) => (
+              <MockSourceChip key={s} label={s} colorScheme={colorScheme} />
+            ))}
+            <View style={[mStyles.moreChip, { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#f0f0f0' }]}>
+              <Text style={[mStyles.moreChipText, { color: Colors[colorScheme].muted }]}>+90 more</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const mStyles = StyleSheet.create({
+  stackContainer: {
+    width: 300,
+    height: 320,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backCard: {
+    position: 'absolute',
+    width: 250,
+    opacity: 0.45,
+    top: 12,
+  },
+  backCard2: {
+    position: 'absolute',
+    width: 250,
+    opacity: 0.3,
+    top: 36,
+  },
+  frontCard: {
+    width: 280,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  blankCard: {
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    gap: 12,
+    height: 120,
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  blankLine: {
+    height: 10,
+    borderRadius: 4,
+    width: '80%',
+  },
+  blankLineShort: {
+    height: 10,
+    borderRadius: 4,
+    width: '50%',
+  },
+  card: {
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  badge: {
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  badgeText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 10,
+    color: '#6f6f6f',
+    letterSpacing: 0.3,
+  },
+  tag: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  tagText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 10,
+    letterSpacing: 0.3,
+  },
+  cardTitle: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 15,
+    lineHeight: 21,
+    letterSpacing: -0.2,
+  },
+  categoryCard: {
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  catRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  catIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catLabel: {
+    fontFamily: FontFamily.medium,
+    fontSize: 13,
+    letterSpacing: -0.2,
+  },
+  sourcesCard: {
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  sourcesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  sourcesHeaderText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 10,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  chipGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  chip: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+  },
+  chipText: {
+    fontFamily: FontFamily.medium,
+    fontSize: 11,
+    letterSpacing: -0.2,
+  },
+  moreChip: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  moreChipText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 11,
+    letterSpacing: -0.2,
+  },
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   Main Welcome Screen
+   ═══════════════════════════════════════════════════════════════ */
 
 type ReferralSource = 'friend' | 'youtube' | 'twitter' | 'instagram' | 'other';
 
@@ -49,23 +378,14 @@ const REFERRAL_OPTIONS: { id: ReferralSource; label: string; icon: typeof Users 
 
 const INTRO_PAGES = [
   {
-    title: 'Relevant to your interests',
-    subtitle: 'Daily tech and AI news.',
-    body: 'Pick your interests. We fetch the latest news, group it into topics, and update it hourly.',
-    image: require('@/assets/images/slide1.png'),
+    headline: 'News in 30 seconds',
   },
   {
-    title: '1 app, 100+ sources',
-    subtitle: 'Keep up without checking all day.',
-    body: 'Trace pulls from 100+ places and groups overlapping coverage into one clean story.',
-    image: require('@/assets/images/slide2.png'),
+    headline: 'Built for people in tech and AI',
   },
   {
-    title: 'Your daily pulse',
-    subtitle: 'The conversations worth knowing today.',
-    body: 'Trace groups conversations and highlights from HN, Reddit, and the communities that matter to you.',
-    image: require('@/assets/images/slide3.png'),
-  },  
+    headline: 'One app, 100+ sources',
+  },
 ];
 
 // ─── Page dots ──────────────────────────────────────────────────────────────
@@ -265,11 +585,8 @@ export default function WelcomeScreen() {
             <ThemedText style={styles.landingTitle}>
               Welcome to Trace
             </ThemedText>
-            <Text style={[styles.landingSubtitleBold, { color: Colors[colorScheme].text }]}>
-              Your Interests. Your News.
-            </Text>
             <Text style={[styles.landingSubtitle, { color: Colors[colorScheme].muted }]}>
-              The fastest way to stay on top of tech and AI news.
+              Get your daily brief in 30 seconds. That&apos;s it.
             </Text>
           </View>
 
@@ -321,7 +638,7 @@ export default function WelcomeScreen() {
     );
   }
 
-  // Intro pages - image slides with text below
+  // Intro pages - floating mock cards + minimal headline
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: Colors[colorScheme].background }]}
@@ -348,20 +665,13 @@ export default function WelcomeScreen() {
           {INTRO_PAGES.map((introPage, i) => (
             <View key={i} style={[styles.slideContainer, { width: screenWidth }]}>
               <View style={styles.slideInner}>
-                <ThemedText style={styles.introTitle}>{introPage.title}</ThemedText>
+                {/* Floating mock cards — centered */}
+                <View style={styles.cardsArea}>
+                  <SlideMockCards index={i} colorScheme={colorScheme} />
+                </View>
 
-                <Image
-                  source={introPage.image}
-                  style={styles.slideImage}
-                  resizeMode="contain"
-                />
-
-                <Text style={[styles.introSubtitle, { color: Colors[colorScheme].text }]}>
-                  {introPage.subtitle}
-                </Text>
-                <Text style={[styles.introBody, { color: Colors[colorScheme].muted }]}>
-                  {introPage.body}
-                </Text>
+                {/* Minimal headline — bottom */}
+                <ThemedText style={styles.introHeadline}>{introPage.headline}</ThemedText>
               </View>
             </View>
           ))}
@@ -415,17 +725,28 @@ const styles = StyleSheet.create({
   },
   slideContainer: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
   },
   slideInner: {
     alignItems: 'center',
     width: '100%',
+    paddingHorizontal: 24,
+    flex: 1,
+    paddingBottom: 24,
   },
-  slideImage: {
-    width: 260,
-    height: 260,
-    marginBottom: 28,
+  cardsArea: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
+  introHeadline: {
+    fontSize: 30,
+    textAlign: 'center',
+    letterSpacing: -0.8,
+    lineHeight: 38,
+    fontFamily: FontFamilySerif.bold,
+    paddingHorizontal: 32,
   },
   fixedFooter: {
     paddingHorizontal: 20,
@@ -437,32 +758,6 @@ const styles = StyleSheet.create({
   landingPageContent: {
     flex: 1,
     paddingHorizontal: 20,
-  },
-
-  // Intro page elements
-  introTitle: {
-    fontSize: 26,
-    textAlign: 'center',
-    letterSpacing: -0.5,
-    lineHeight: 38,
-    marginBottom: 16,
-    fontFamily: FontFamilySerif.bold,
-  },
-  introSubtitle: {
-    fontSize: 15,
-    textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 20,
-    marginBottom: 6,
-    fontFamily: FontFamily.bold,
-  },
-  introBody: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 21,
-    paddingHorizontal: 32,
-    marginBottom: 8,
-    fontFamily: FontFamily.regular,
   },
 
   // Dots & buttons

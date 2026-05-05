@@ -1,5 +1,6 @@
 "use client";
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { User, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -39,7 +40,7 @@ export default function Header({
             </Link>
           ) : (
             <Link href="/feed" className="flex items-center gap-2">
-              <img src="/trace.webp" alt="Trace" className="h-6 w-auto" />
+              <Image src="/trace.webp" alt="Trace" width={24} height={24} className="h-6 w-auto" />
               <span className="text-sm font-semibold tracking-[0.12em] text-foreground">TRACE</span>
             </Link>
           )}
@@ -48,7 +49,7 @@ export default function Header({
             {user && (
               <Link href="/profile" className="p-1">
                 {user.photoURL ? (
-                  <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" />
+                    <Image src={user.photoURL} alt="Profile" width={32} height={32} className="w-8 h-8 rounded-full" unoptimized />
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-surface-secondary flex items-center justify-center">
                     <User size={16} className="text-secondary/40" />

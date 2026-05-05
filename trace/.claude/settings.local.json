@@ -36,7 +36,18 @@
       "Bash(find /Users/ttomar/Documents/personal/claudia/trace/node_modules/@expo/ -name AppDelegate*)",
       "Bash(find /Users/ttomar/Documents/personal/claudia/trace/node_modules/ -path */template/ios/*AppDelegate*)",
       "Bash(git:*)",
-      "Bash(eas build:*)"
+      "Bash(eas build:*)",
+      "Bash(mkdir -p /Users/ttomar/Documents/personal/claudia/trace/marketing/launch-video/src)",
+      "Bash(npm init *)",
+      "Bash(npm install *)",
+      "Bash(npx remotion *)",
+      "Bash(curl -s http://localhost:3020)",
+      "Bash(./node_modules/.bin/remotion studio *)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(node_modules/.bin/remotion studio *)",
+      "Bash(grep -E \"\\\\.\\(png|jpg|jpeg|svg|gif\\)$\")",
+      "Bash(grep -E \"\\\\.\\(png|jpg|jpeg\\)$\")",
+      "Bash(curl -s http://localhost:3030)"
     ]
   }
 }

@@ -1,10 +1,11 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
 export default function Footer() {
   const googlePlayUrl = "/api/affiliate/outbound?target=android_app&next=" + encodeURIComponent("https://play.google.com/store/apps/details?id=online.yourtrace.app");
   return (
-    <footer className="border-t border-border/[0.06] mt-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+    <footer className="border-t border-border/[0.06] mt-28">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 pb-20">
         {/* Android App Callout */}
         <div className="mb-14 flex flex-col items-start justify-between gap-6 rounded-[20px] border border-border/[0.08] bg-surface/50 p-6 sm:flex-row sm:items-center sm:p-8">
           <div className="flex items-center gap-4">
@@ -137,7 +138,7 @@ export default function Footer() {
 
         <div className="pt-8 border-t border-border/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <img src="/trace.webp" alt="Trace" className="h-4 w-auto" />
+            <Image src="/trace.webp" alt="Trace" width={16} height={16} className="h-4 w-auto" />
             <span className="text-[11px] font-semibold tracking-[0.18em] text-secondary/40">TRACE</span>
           </div>
           <p className="text-[11px] text-secondary/30">

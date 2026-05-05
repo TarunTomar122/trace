@@ -9,7 +9,7 @@ export default function WIPPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-serif flex items-center justify-center px-4">
+    <main className="min-h-screen bg-background text-foreground font-serif flex items-center justify-center px-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -53,7 +53,7 @@ export default function WIPPage() {
           </div>
         </div>
       </motion.div>
-    </div>
+    </main>
   );
 }
 

@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { ExternalLink } from 'lucide-react';
-import { PulseBetaBadge } from '@/components/PulseBetaBadge';
+import { ExternalLink, Flame } from 'lucide-react';
 
 function HeroDemoFeedToggle({
   view,
@@ -44,11 +43,12 @@ export default function HeroPulsePreview() {
       title: 'Google turns Maps into an AI navigation product',
       preview:
         'Gemini answers, immersive route views, and richer driver context — a shift toward conversational navigation.',
+      category: 'AI & Machine Learning',
       meta: '42m ago · 5 sources',
       keyTakeaways: [
         'Gemini is woven into turn-by-turn guidance so drivers can ask plain-language questions without leaving navigation.',
         'Immersive previews and lane-level detail are pitched as reducing wrong exits in complex interchanges.',
-        'Google is framing Maps as an “AI surface” alongside Search and Workspace, not just a utility.',
+        'Google is framing Maps as an "AI surface" alongside Search and Workspace, not just a utility.',
       ],
       timeline: [
         {
@@ -75,6 +75,7 @@ export default function HeroPulsePreview() {
       title: 'Meta confirms major workforce reduction',
       preview:
         'The company is restructuring teams while doubling down on AI infrastructure and core products.',
+      category: 'Big Tech',
       meta: '3h ago · 3 sources',
       keyTakeaways: [
         'Cuts are concentrated in middle management and duplicated product roles, per internal talking points.',
@@ -86,7 +87,7 @@ export default function HeroPulsePreview() {
           when: 'Tue 9:00 AM',
           source: 'WSJ',
           title: 'Meta prepares another round of layoffs',
-          summary: 'Sources cite a focus on “flattening” org charts after rapid hiring in 2021–22.',
+          summary: 'Sources cite a focus on "flattening" org charts after rapid hiring in 2021–22.',
         },
         {
           when: 'Tue 11:22 AM',
@@ -106,6 +107,7 @@ export default function HeroPulsePreview() {
       title: 'Anthropic ships a sharper Claude for long documents',
       preview:
         'Better reasoning on dense PDFs and spreadsheets, with clearer citations for enterprise workflows.',
+      category: 'AI & Machine Learning',
       meta: 'Yesterday · 6 sources',
       keyTakeaways: [
         'Long-context performance is tuned for contracts, security reviews, and financial filings.',
@@ -135,11 +137,97 @@ export default function HeroPulsePreview() {
     },
   ];
 
+  const hotTweets = [
+    {
+      title: '"We replaced our entire RAG pipeline with a single long-context call — accuracy jumped from 72% to 94%"',
+      description: 'Team at a legal-tech startup shares benchmarks after switching from chunked retrieval to long-context prompting. Cost went up 3x but error rate on contract review dropped dramatically.',
+      time: '2h ago',
+      url: '#',
+    },
+    {
+      title: 'The mass exodus from X to Bluesky is real — 30M users and the vibe has shifted',
+      description: "It's less about features and more about who is already there. Engineers, journalists, and academics are rebuilding their networks from scratch.",
+      time: '5h ago',
+      url: '#',
+    },
+    {
+      title: 'Stop calling everything an "AI agent" — a rant that turned into an actual taxonomy',
+      description: "If it's just a prompt chain with a for loop it's not an agent. Thread proposes a 4-level classification that's gaining traction in ML circles.",
+      time: '8h ago',
+      url: '#',
+    },
+    {
+      title: 'Why senior devs are leaving FAANG for 4-person startups — a thread of exit stories',
+      description: 'Compensation is still high but the work feels like maintaining someone else\'s legacy. "I went from shipping zero to shipping every day."',
+      time: '12h ago',
+      url: '#',
+    },
+  ];
+
+  const buildItems = [
+    {
+      title: 'Unkey — API key management',
+      preview: 'Open-source rate limiting and key auth for serverless APIs.',
+      src: 'Product Hunt',
+      signals: '342 upvotes',
+      emoji: '🔑',
+    },
+    {
+      title: 'sqlite-vec',
+      preview: 'Vector search extension for SQLite — no external DB needed.',
+      src: 'GitHub Trending',
+      signals: '1.2k stars today',
+      emoji: '📦',
+    },
+    {
+      title: 'Dub.co link analytics',
+      preview: 'Open-source link management with built-in conversion tracking.',
+      src: 'Product Hunt',
+      signals: '218 upvotes',
+      emoji: '🔗',
+    },
+    {
+      title: 'Trigger.dev v3',
+      preview: 'Background jobs for TypeScript with long-running task support.',
+      src: 'Show HN',
+      signals: '187 points',
+      emoji: '⚡',
+    },
+  ];
+
+  const discussionItems = [
+    {
+      title: '"We replaced our entire RAG pipeline with a single long-context call"',
+      preview: 'Cost went up 3x but accuracy jumped from 72% to 94% — team argues it was worth it for legal docs.',
+      src: 'r/LocalLLaMA',
+      signals: '847 points',
+    },
+    {
+      title: 'The mass exodus from X to Bluesky is real now',
+      preview: 'Bluesky crossed 30M users. The shift is less about features and more about who is already there.',
+      src: 'Hacker News',
+      signals: '423 points',
+    },
+    {
+      title: 'Stop calling everything an "AI agent"',
+      preview: 'If it\'s just a prompt chain with a for loop, it\'s not an agent. A rant that turned into a real taxonomy.',
+      src: 'r/ExperiencedDevs',
+      signals: '612 points',
+    },
+    {
+      title: 'Why senior devs are mass-quitting FAANG for 4-person startups',
+      preview: 'Compensation is still high but the work feels like maintaining someone else\'s legacy. Thread of exit stories.',
+      src: 'Hacker News',
+      signals: '389 points',
+    },
+  ];
+
   const preventNav = (e: React.MouseEvent) => e.preventDefault();
 
   return (
     <div className="relative overflow-x-clip">
       <div className="relative z-10 overflow-hidden rounded-2xl border border-border/15 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] ring-1 ring-black/4">
+        {/* Header bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/15 px-4 py-3 sm:px-5">
           <p className="text-[10px] font-semibold text-secondary/45 uppercase tracking-[0.18em]">{todayLabel}</p>
           <HeroDemoFeedToggle view={demoView} onChange={setDemoView} />
@@ -147,53 +235,78 @@ export default function HeroPulsePreview() {
 
         <div className="h-[min(28rem,75vh)]">
           {demoView === 'pulse' ? (
-            <div className="h-full overflow-y-auto overscroll-contain px-4 py-5 sm:px-5 sm:py-6">
-              <div className="mb-6 border-b border-border/10 pb-4">
-                <div className="mb-2 flex items-center gap-2">
-                  <p className="text-[10px] font-semibold text-foreground/35 uppercase tracking-[0.22em]">Daily Pulse</p>
-                  <PulseBetaBadge />
+            <div className="h-full overflow-y-auto overscroll-contain">
+              {/* Hot Tweets section */}
+              <div className="px-4 pt-5 pb-3 sm:px-5 sm:pt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Flame size={14} className="text-orange-500" />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-orange-700/70">
+                    Hot Tweets
+                  </span>
+                  <div className="flex-1 h-px bg-border/20" />
                 </div>
-                <h3 className="text-[1.25rem] font-bold text-foreground tracking-[-0.025em] leading-tight sm:text-[1.4rem]">
-                  {todayLabel}
-                </h3>
-                <p className="mt-1 text-[11px] text-secondary/50">12 picks curated for you</p>
+                <div className="space-y-0">
+                  {hotTweets.map((tweet) => (
+                    <a
+                      key={tweet.title}
+                      href={tweet.url}
+                      onClick={preventNav}
+                      className="block py-3 rounded-lg hover:bg-foreground/[0.03] transition-colors border-b border-border/10 last:border-b-0"
+                    >
+                      <p className="text-[14px] font-semibold text-foreground leading-snug tracking-[-0.01em] line-clamp-2">
+                        {tweet.title}
+                      </p>
+                      <p className="text-[11px] text-secondary/60 leading-relaxed mt-1 line-clamp-2">
+                        {tweet.description}
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <span className="text-[10px] text-secondary/50">{tweet.time}</span>
+                        <span className="text-secondary/25 text-[10px]">·</span>
+                        <span className="text-[10px] font-medium text-[#1d9bf0]">View on X</span>
+                      </div>
+                    </a>
+                  ))}
+                </div>
               </div>
 
-              <section className="mb-8">
+              {/* What People Are Saying */}
+              <div className="px-4 pt-2 pb-4 sm:px-5">
+                <p className="mb-3 text-[10px] font-semibold text-foreground/50 uppercase tracking-[0.2em]">
+                  What People Are Saying
+                </p>
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  {discussionItems.map((row) => (
+                    <a
+                      key={row.title}
+                      href="#"
+                      onClick={preventNav}
+                      className="group flex h-full flex-col overflow-hidden rounded-xl border border-border/20 bg-white p-3 transition-all hover:border-border/40 hover:shadow-sm"
+                    >
+                      <div className="mb-1.5 flex items-center gap-1.5">
+                        <span className="text-[9px] font-semibold text-foreground/40 uppercase tracking-[0.12em]">{row.src}</span>
+                        <span className="text-foreground/20">·</span>
+                        <span className="text-[9px] text-secondary/60">{row.signals}</span>
+                      </div>
+                      <p className="mb-1.5 text-[12px] font-semibold text-foreground leading-snug decoration-foreground/30 underline-offset-2 group-hover:underline">
+                        {row.title}
+                      </p>
+                      <p className="mb-2 line-clamp-3 text-[11px] text-secondary/65 leading-relaxed">{row.preview}</p>
+                      <div className="mt-auto flex items-center justify-end gap-1 border-t border-border/10 pt-2 text-[10px] font-semibold text-secondary/55 transition-colors group-hover:text-foreground/75">
+                        <span>Open thread</span>
+                        <ExternalLink size={10} className="shrink-0 text-secondary/45 group-hover:text-foreground/60" aria-hidden />
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+
+              {/* What People Are Building */}
+              <div className="px-4 pt-1 pb-5 sm:px-5">
                 <p className="mb-3 text-[10px] font-semibold text-foreground/50 uppercase tracking-[0.2em]">
                   What People Are Building
                 </p>
                 <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                  {[
-                    {
-                      title: 'Unkey — API key management',
-                      preview: 'Open-source rate limiting and key auth for serverless APIs.',
-                      src: 'Product Hunt',
-                      signals: '342 upvotes',
-                      emoji: '🔑',
-                    },
-                    {
-                      title: 'sqlite-vec',
-                      preview: 'Vector search extension for SQLite — no external DB needed.',
-                      src: 'GitHub Trending',
-                      signals: '1.2k stars today',
-                      emoji: '📦',
-                    },
-                    {
-                      title: 'Dub.co link analytics',
-                      preview: 'Open-source link management with built-in conversion tracking.',
-                      src: 'Product Hunt',
-                      signals: '218 upvotes',
-                      emoji: '🔗',
-                    },
-                    {
-                      title: 'Trigger.dev v3',
-                      preview: 'Background jobs for TypeScript with long-running task support.',
-                      src: 'Show HN',
-                      signals: '187 points',
-                      emoji: '⚡',
-                    },
-                  ].map((row) => (
+                  {buildItems.map((row) => (
                     <a
                       key={row.title}
                       href="#"
@@ -205,7 +318,9 @@ export default function HeroPulsePreview() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-1.5">
-                          <p className="line-clamp-1 text-[12px] font-semibold text-foreground leading-snug decoration-foreground/30 underline-offset-2 group-hover:underline">{row.title}</p>
+                          <p className="line-clamp-1 text-[12px] font-semibold text-foreground leading-snug decoration-foreground/30 underline-offset-2 group-hover:underline">
+                            {row.title}
+                          </p>
                           <ExternalLink size={10} className="mt-0.5 shrink-0 text-secondary/30 transition-colors group-hover:text-secondary/60" aria-hidden />
                         </div>
                         <p className="mt-0.5 line-clamp-2 text-[11px] text-secondary/60 leading-snug">{row.preview}</p>
@@ -218,97 +333,7 @@ export default function HeroPulsePreview() {
                     </a>
                   ))}
                 </div>
-              </section>
-
-              <section className="mb-8">
-                <p className="mb-3 text-[10px] font-semibold text-foreground/50 uppercase tracking-[0.2em]">
-                  What Happened Today
-                </p>
-                <div className="space-y-3">
-                  {[
-                    {
-                      title: 'OpenAI releases GPT-5 with native tool use and longer context',
-                      preview: 'The flagship model ships function calling as a first-class primitive, with 1M token windows for enterprise tiers.',
-                      src: 'AI & Machine Learning',
-                      time: '3h ago',
-                    },
-                    {
-                      title: 'EU Digital Markets Act forces Apple to allow sideloading in iOS 19',
-                      preview: 'Starting this fall, EU users can install apps outside the App Store — Apple responds with a new notarization flow.',
-                      src: 'Big Tech & Regulation',
-                      time: '5h ago',
-                    },
-                  ].map((row) => (
-                    <div key={row.title} className="overflow-hidden rounded-xl border border-border/15 bg-white">
-                      <div className="p-4">
-                        <div className="mb-2 flex items-center gap-2">
-                          <span className="text-[10px] font-semibold text-foreground/55 uppercase tracking-[0.12em]">{row.src}</span>
-                          <span className="text-foreground/20 text-[9px]">·</span>
-                          <span className="text-[10px] text-secondary/55">{row.time}</span>
-                        </div>
-                        <h4 className="mb-2 text-[14px] font-bold text-foreground leading-snug tracking-[-0.01em]">{row.title}</h4>
-                        <p className="mb-2.5 text-[12px] text-secondary/70 leading-relaxed">{row.preview}</p>
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-foreground/50">
-                          Read original <ExternalLink size={10} />
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <section className="mb-4">
-                <p className="mb-3 text-[10px] font-semibold text-foreground/50 uppercase tracking-[0.2em]">
-                  What People Are Saying
-                </p>
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                  {[
-                    {
-                      title: '"We replaced our entire RAG pipeline with a single long-context call"',
-                      preview: 'Cost went up 3x but accuracy jumped from 72% to 94% — team argues it was worth it for legal docs.',
-                      src: 'r/LocalLLaMA',
-                      signals: '847 points',
-                    },
-                    {
-                      title: 'The mass exodus from X to Bluesky is real now',
-                      preview: 'Bluesky crossed 30M users. The shift is less about features and more about who is already there.',
-                      src: 'Hacker News',
-                      signals: '423 points',
-                    },
-                    {
-                      title: 'Stop calling everything an "AI agent"',
-                      preview: 'If it\'s just a prompt chain with a for loop, it\'s not an agent. A rant that turned into a real taxonomy.',
-                      src: 'r/ExperiencedDevs',
-                      signals: '612 points',
-                    },
-                    {
-                      title: 'Why senior devs are mass-quitting FAANG for 4-person startups',
-                      preview: 'Compensation is still high but the work feels like maintaining someone else\'s legacy. Thread of exit stories.',
-                      src: 'Hacker News',
-                      signals: '389 points',
-                    },
-                  ].map((row) => (
-                    <a
-                      key={row.title}
-                      href="#"
-                      onClick={preventNav}
-                      className="group flex h-full flex-col overflow-hidden rounded-xl border border-border/20 bg-white p-3 transition-all hover:border-border/40 hover:shadow-sm"
-                    >
-                      <div className="mb-1.5 flex items-center gap-1.5">
-                        <span className="text-[9px] font-semibold text-foreground/40 uppercase tracking-[0.12em]">{row.src}</span>
-                        <span className="text-foreground/20">·</span>
-                        <span className="text-[9px] text-secondary/60">{row.signals}</span>
-                      </div>
-                      <p className="mb-1.5 text-[12px] font-semibold text-foreground leading-snug decoration-foreground/30 underline-offset-2 group-hover:underline">{row.title}</p>
-                      <p className="mb-2 line-clamp-3 text-[11px] text-secondary/65 leading-relaxed">{row.preview}</p>
-                      <div className="mt-auto flex items-center justify-end gap-1 border-t border-border/10 pt-2 text-[10px] font-semibold text-secondary/55 transition-colors group-hover:text-foreground/75">
-                        <span>Open thread</span>
-                        <ExternalLink size={10} className="shrink-0 text-secondary/45 group-hover:text-foreground/60" aria-hidden />
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </section>
+              </div>
             </div>
           ) : (
             <div className="flex h-full min-h-0 flex-row">
@@ -356,7 +381,7 @@ export default function HeroPulsePreview() {
               <div className="hidden min-h-0 flex-1 overflow-y-auto bg-[#fbfaf7] px-5 py-5 sm:block sm:px-6">
                 <div className="mx-auto max-w-xl">
                   <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-secondary/40">
-                    <span>For You</span>
+                    <span>{newsStories[newsPick].category}</span>
                     <span className="text-foreground/20">·</span>
                     <span>{newsStories[newsPick].meta}</span>
                   </div>

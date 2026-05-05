@@ -20,8 +20,8 @@ import {
 } from '@/lib/feed-item-detail-client';
 import { consumePrefetchedFeed } from '@/lib/feed-prefetch';
 import FeedBootShell from './FeedBootShell';
-import FeedBriefingView, { BRIEFING_PULSE_TAB_KEY } from './FeedBriefingView';
-import { InlineUnlockBanner } from './FeedPaywall';
+import FeedBriefingView, { BRIEFING_PULSE_TAB_KEY, HOT_TWEETS_TAB_KEY } from './FeedBriefingView';
+import { FeedSubscribeClickLock } from './FeedPaywall';
 import {
   ContentData,
   DailyPulseView,
@@ -107,6 +107,23 @@ const trendingFetcher = async () => {
   }));
 };
 
+export type HotTweet = {
+  id: string;
+  title: string;
+  url: string;
+  description: string;
+  pubDate: string;
+  category: string;
+};
+
+const hotTweetsFetcher = async (): Promise<HotTweet[]> => {
+  const res = await fetch('/api/hot-tweets');
+  if (!res.ok) return [];
+  const data = await res.json();
+  if (!Array.isArray(data.items)) return [];
+  return data.items;
+};
+
 function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -149,13 +166,6 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     const onPopState = () => setShowMobileContent(false);
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, []);
-
-  const openMobileArticle = useCallback((id: string) => {
-    setSelectedId(id);
-    setShowMobileContent(true);
-    window.history.pushState({ article: id }, '');
-    window.scrollTo({ top: 0 });
   }, []);
 
   const closeMobileArticle = useCallback(() => {
@@ -236,7 +246,6 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   );
   const shouldLoadPulse = !hasInlinePulse && Boolean(user) && (
     feedView === 'pulse'
-    || (feedView === 'briefing' && activeFilter === BRIEFING_PULSE_TAB_KEY)
   );
   const { data: pulseFeed, isLoading: pulseLoading } = useSWR<Partial<V3UserFeed> | null>(
     shouldLoadPulse ? 'feed-pulse' : null,
@@ -274,6 +283,12 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
 
+  const { data: hotTweets = [] } = useSWR<HotTweet[]>(
+    'hot-tweets',
+    hotTweetsFetcher,
+    { revalidateOnFocus: false, dedupingInterval: 600000 },
+  );
+
   const isSubscribedFromProfile = profile?.subscriptionStatus === 'active' || profile?.subscriptionStatus === 'trial'
     || profile?.appSubscriptionStatus === 'active' || profile?.appSubscriptionStatus === 'trial';
   const isSubscribedFromFeed = effectiveFeed?.viewer_profile?.has_access === true
@@ -282,6 +297,21 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     || effectiveFeed?.viewer_profile?.app_subscription_status === 'active'
     || effectiveFeed?.viewer_profile?.app_subscription_status === 'trial';
   const isSubscribed = isSubscribedFromProfile || isSubscribedFromFeed;
+
+  /** Logged-in users without Pro, and unauthenticated users: any tap opens sign-in/upgrade modal. */
+  const feedInteractionLocked = (!user || !isSubscribed) && !loading;
+
+  const isItemLocked = useCallback(
+    (_itemId: string) => !isSubscribed,
+    [isSubscribed],
+  );
+
+  const wrappedOpenMobileArticle = useCallback((id: string) => {
+    setSelectedId(id);
+    setShowMobileContent(true);
+    window.history.pushState({ article: id }, '');
+    window.scrollTo({ top: 0 });
+  }, []);
 
   useLayoutEffect(() => {
     const mq = window.matchMedia('(min-width: 768px)');
@@ -617,7 +647,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   }, [(effectiveFeed?.daily_pulse), pulseSectionFilter, pulseStoryList]);
 
   const filteredList = useMemo(() => {
-    if (activeFilter === BRIEFING_PULSE_TAB_KEY) {
+    if (activeFilter === BRIEFING_PULSE_TAB_KEY || activeFilter === HOT_TWEETS_TAB_KEY) {
       return [];
     }
     if (activeFilter === 'for_you') {
@@ -688,6 +718,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   useEffect(() => {
     if (feedView !== 'briefing') return;
     if (activeFilter === BRIEFING_PULSE_TAB_KEY) return;
+    if (activeFilter === HOT_TWEETS_TAB_KEY) return;
     const forYouCount = filterCounts.for_you || 0;
     const suggestedCount = filterCounts.suggested || 0;
     if (activeFilter === 'for_you' && forYouCount === 0 && suggestedCount > 0) {
@@ -738,8 +769,14 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
       || null;
   }, [currentList, pulseStoryList, effectiveSelectedId]);
 
+  const canReadSelected = useMemo(() => {
+    if (isSubscribed) return true;
+    if (!effectiveSelectedId) return false;
+    return !isItemLocked(effectiveSelectedId);
+  }, [isSubscribed, effectiveSelectedId, isItemLocked]);
+
   const { data: selectedItemDetail, isLoading: selectedItemDetailLoading } = useSWR<FeedItemDetailResponse | null>(
-    isSubscribed && effectiveSelectedId ? feedItemDetailSwrKey(effectiveSelectedId) : null,
+    canReadSelected && effectiveSelectedId ? feedItemDetailSwrKey(effectiveSelectedId) : null,
     () => itemDetailFetcher(effectiveSelectedId!),
     {
       revalidateOnFocus: false,
@@ -750,7 +787,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
 
   // True when the feed item itself already has full content (shipped inline from bootstrap)
   const selectedItemHasFullContent = useMemo(() => {
-    if (!isSubscribed) return false;
+    if (!canReadSelected) return false;
     if (!selectedItem) return false;
     if (selectedItem.type === 'article') {
       return Boolean((selectedItem.data as FeedItem).summary?.short_article?.body);
@@ -760,7 +797,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
       return Boolean(topic.key_points?.length || topic.timeline?.length);
     }
     return false;
-  }, [isSubscribed, selectedItem]);
+  }, [canReadSelected, selectedItem]);
 
   const detailMatchesSelected = useMemo(() => {
     if (selectedItemHasFullContent) return true; // already have full content, no fetch needed
@@ -782,11 +819,11 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   }, [selectedItem, selectedItemDetail, detailMatchesSelected]);
 
   const selectedContent = useMemo((): ContentData | null => {
-    if (!isSubscribed) return null;
+    if (!canReadSelected) return null;
     return getContentFromFeedListItem(hydratedSelectedItem);
-  }, [isSubscribed, hydratedSelectedItem]);
+  }, [canReadSelected, hydratedSelectedItem]);
   const selectedContentLoading =
-    isSubscribed &&
+    canReadSelected &&
     Boolean(effectiveSelectedId) &&
     !selectedItemHasFullContent &&
     (selectedItemDetailLoading || !detailMatchesSelected);
@@ -937,70 +974,74 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-0 py-0 sm:px-6 sm:pt-2 sm:pb-5 lg:px-8 lg:pt-3 lg:pb-8">
-        {checkoutReturned && (
-          <div className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
-            <div className="flex items-center gap-3">
-              <Loader2 size={16} className={`text-amber-600 ${isSubscribed ? '' : 'animate-spin'}`} />
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  {isSubscribed ? 'Trace Pro is active.' : 'Activating your Pro access...'}
-                </p>
-                <p className="text-xs text-secondary/50">
-                  {isSubscribed
-                    ? 'Your full feed is unlocked.'
-                    : 'Your payment went through. Your full feed should unlock in a moment.'}
-                </p>
+      <div className="relative max-w-7xl mx-auto px-0 py-0 sm:px-6 sm:pt-2 sm:pb-5 lg:px-8 lg:pt-3 lg:pb-8">
+        <div>
+          {checkoutReturned && (
+            <div className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+              <div className="flex items-center gap-3">
+                <Loader2 size={16} className={`text-amber-600 ${isSubscribed ? '' : 'animate-spin'}`} />
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {isSubscribed ? 'Trace Pro is active.' : 'Activating your Pro access...'}
+                  </p>
+                  <p className="text-xs text-secondary/50">
+                    {isSubscribed
+                      ? 'Your full feed is unlocked.'
+                      : 'Your payment went through. Your full feed should unlock in a moment.'}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {isSubscribed && feedView === 'pulse' && (
-          isPulseViewLoading ? (
-            <div className={`${PULSE_MAIN_SHELL} flex items-center justify-center py-20`}>
-              <Loader2 size={20} className="animate-spin text-secondary/40" />
-            </div>
-          ) : (
-            <div className={PULSE_MAIN_SHELL}>
-              <DailyPulseView
-                pulseSections={pulseSections}
-                hasDailyPulse={Boolean(effectiveFeed?.daily_pulse)}
-                pulseStoryCount={pulseStoryList.length}
-              />
-            </div>
-          )
-        )}
+          {isSubscribed && feedView === 'pulse' && (
+            isPulseViewLoading ? (
+              <div className={`${PULSE_MAIN_SHELL} flex items-center justify-center py-20`}>
+                <Loader2 size={20} className="animate-spin text-secondary/40" />
+              </div>
+            ) : (
+              <div className={PULSE_MAIN_SHELL}>
+                <DailyPulseView
+                  pulseSections={pulseSections}
+                  hasDailyPulse={Boolean(effectiveFeed?.daily_pulse)}
+                  pulseStoryCount={pulseStoryList.length}
+                />
+              </div>
+            )
+          )}
 
-        {feedView === 'briefing' && (
-          <FeedBriefingView
-            isExpanded={isExpanded}
-            setIsExpanded={setIsExpanded}
-            storyCount={storyCount}
-            interestTabs={interestTabs}
-            filterCounts={briefingFilterCounts}
-            activeFilter={activeFilter}
-            setActiveFilter={setActiveFilter}
-            isLoading={isLoading || isBriefingPulseLoading}
-            isContentLoading={selectedContentLoading}
-            isContentRefreshing={isSubscribed && Boolean(selectedContent) && Boolean(effectiveSelectedId) && detailMatchesSelected && selectedItemDetailLoading}
-            filteredList={briefingVisibleList}
-            selectedId={selectedId}
-            setSelectedId={setSelectedId}
-            selectedContent={selectedContent}
-            isLocked={!isSubscribed}
-            lockedStory={selectedItem}
-            mobileContentList={mobileContentList}
-            showMobileContent={showMobileContent}
-            openMobileArticle={openMobileArticle}
-            closeMobileArticle={closeMobileArticle}
-            briefingLayout={effectiveBriefingLayout}
-            showPulseTab={isSubscribed}
-          />
-        )}
+          {feedView === 'briefing' && (
+            <FeedBriefingView
+              isExpanded={isExpanded}
+              setIsExpanded={setIsExpanded}
+              storyCount={storyCount}
+              interestTabs={interestTabs}
+              filterCounts={briefingFilterCounts}
+              activeFilter={activeFilter}
+              setActiveFilter={setActiveFilter}
+              isLoading={isLoading || isBriefingPulseLoading}
+              isContentLoading={selectedContentLoading}
+              isContentRefreshing={canReadSelected && Boolean(selectedContent) && Boolean(effectiveSelectedId) && detailMatchesSelected && selectedItemDetailLoading}
+              filteredList={briefingVisibleList}
+              selectedId={selectedId}
+              setSelectedId={setSelectedId}
+              selectedContent={selectedContent}
+              isLocked={!isSubscribed}
+              isItemLocked={isItemLocked}
+              lockedStory={selectedItem}
+              mobileContentList={mobileContentList}
+              showMobileContent={showMobileContent}
+              openMobileArticle={wrappedOpenMobileArticle}
+              closeMobileArticle={closeMobileArticle}
+              briefingLayout={effectiveBriefingLayout}
+              showPulseTab={isSubscribed}
+              hotTweets={hotTweets}
+              interactionLocked={feedInteractionLocked}
+            />
+          )}
+        </div>
 
-        {!isSubscribed && !isLoading && <InlineUnlockBanner storyCount={currentList.length} />}
-
+        <FeedSubscribeClickLock active={feedInteractionLocked} />
       </div>
     </div>
   );

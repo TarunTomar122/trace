@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { Mail, Sparkles, ArrowRight } from "lucide-react";
 import Footer from "@/components/Footer";
@@ -44,10 +45,10 @@ export default function ToolsPage() {
         <div className="container mx-auto px-4 max-w-4xl">
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center gap-2">
-              <img src="/trace.webp" alt="Trace" className="h-7" />
+              <Image src="/trace.webp" alt="Trace" width={28} height={28} className="h-7 w-auto" />
               <span className="font-semibold text-lg">Trace</span>
             </Link>
-            <div className="flex items-center gap-4 text-sm">
+            <nav className="flex items-center gap-4 text-sm" aria-label="Quick links">
               <Link
                 href="/daily"
                 className="text-secondary/60 hover:text-foreground transition-colors"
@@ -78,7 +79,7 @@ export default function ToolsPage() {
               >
                 Home
               </Link>
-            </div>
+            </nav>
           </div>
         </div>
       </header>

@@ -322,11 +322,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      const result = await withTimeout(
-        signInWithCredentialRetry(credential),
-        30000,
-        'Firebase sign-in timed out. Check your connection and try again.',
-      );
+      const result = await signInWithCredentialRetry(credential);
 
       if (result.user) {
         await fetchProfile(result.user, { allowCreate: true });
@@ -364,11 +360,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         rawNonce: credential.authorizationCode ?? undefined,
       });
 
-      const result = await withTimeout(
-        signInWithCredential(auth, firebaseCredential),
-        30000,
-        'Firebase sign-in timed out. Check your connection and try again.',
-      );
+      const result = await signInWithCredentialRetry(firebaseCredential);
 
       if (result.user) {
         // Apple only sends name on first sign-in — persist it
@@ -457,13 +449,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       throw error;
     }
-  };
-
-  const withTimeout = async <T,>(promise: Promise<T>, ms: number, message: string): Promise<T> => {
-    let tid: ReturnType<typeof setTimeout> | null = null;
-    const tp = new Promise<never>((_, reject) => { tid = setTimeout(() => reject(new Error(message)), ms); });
-    try { return await Promise.race([promise, tp]); }
-    finally { if (tid) clearTimeout(tid); }
   };
 
   return (

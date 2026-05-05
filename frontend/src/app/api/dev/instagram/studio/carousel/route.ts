@@ -10,7 +10,7 @@ type CarouselStyle = 'mixed' | 'editorial' | 'signal' | 'spotlight';
 
 type Slide = {
   id: string;
-  slideType: 'cover' | 'story';
+  slideType: 'cover' | 'story' | 'detail';
   style: Exclude<CarouselStyle, 'mixed'>;
   headline: string;
   kicker: string;
@@ -62,6 +62,24 @@ function cleanSentence(value: string): string {
     .trim();
 }
 
+/** Remove summarizer prefixes like "Slide 1:" / "slide2:" from bullet lines */
+function stripSlidePrefixes(text: string): string {
+  let line = String(text || '').trim();
+  for (let i = 0; i < 5; i++) {
+    const next = line
+      .replace(/^slide\s*\d+\s*:\s*/i, '')
+      .replace(/^slide\s*\d+\s*[-–—.)]\s*/i, '')
+      .trim();
+    if (next === line) break;
+    line = next;
+  }
+  return line;
+}
+
+function deckLine(raw: string): string {
+  return cleanSentence(stripSlidePrefixes(String(raw || '')));
+}
+
 function clampSlides(value: number): number {
   if (!Number.isFinite(value)) return 6;
   return Math.max(4, Math.min(8, Math.round(value)));
@@ -69,12 +87,12 @@ function clampSlides(value: number): number {
 
 function paragraphize(topic: Topic): string {
   const parts: string[] = [];
-  const summary = cleanSentence(String(topic.summary || topic.overview || ''));
+  const summary = deckLine(String(topic.summary || topic.overview || ''));
   if (summary) parts.push(summary);
 
   const keyPoints = Array.isArray(topic.key_points) ? topic.key_points : [];
   for (const raw of keyPoints.slice(0, 2)) {
-    const point = cleanSentence(String(raw || ''));
+    const point = deckLine(String(raw || ''));
     if (point) parts.push(point);
   }
 
@@ -83,6 +101,23 @@ function paragraphize(topic: Topic): string {
   }
 
   return parts.slice(0, 3).join('\n\n');
+}
+
+function detailPoints(topic: Topic): string[] {
+  const keyPoints = Array.isArray(topic.key_points) ? topic.key_points : [];
+  const points = keyPoints
+    .map((raw) => deckLine(String(raw || '')))
+    .filter(Boolean)
+    .slice(0, 3);
+  if (points.length > 0) return points;
+
+  const fallback = deckLine(String(topic.summary || topic.overview || ''));
+  if (!fallback) return ['This story is gaining momentum across multiple sources and signals today.'];
+  return fallback
+    .split(/(?<=[.!?])\s+/)
+    .map((part) => deckLine(part.trim()))
+    .filter(Boolean)
+    .slice(0, 3);
 }
 
 function inferCategory(topic: Topic): Exclude<CarouselCategory, 'all'> {
@@ -108,6 +143,93 @@ function sourceNames(topic: Topic): string[] {
     names.push(name);
   }
   return names.slice(0, 5);
+}
+
+function coveredTrendingKeys(topics: Topic[]): { ids: Set<string>; urls: Set<string> } {
+  const ids = new Set<string>();
+  const urls = new Set<string>();
+  for (const topic of topics) {
+    const articles = Array.isArray(topic.articles) ? topic.articles : [];
+    for (const raw of articles) {
+      if (!raw || typeof raw !== 'object') continue;
+      const article = raw as Record<string, unknown>;
+      const id = String(article.id || '').trim();
+      const url = String(article.url || '').trim();
+      if (id) ids.add(id);
+      if (url) urls.add(url);
+    }
+    const timeline = Array.isArray(topic.timeline) ? topic.timeline : [];
+    for (const raw of timeline) {
+      if (!raw || typeof raw !== 'object') continue;
+      const event = raw as Record<string, unknown>;
+      const id = String(event.id || '').trim();
+      const url = String(event.article_url || '').trim();
+      if (id) ids.add(id);
+      if (url) urls.add(url);
+    }
+  }
+  return { ids, urls };
+}
+
+function shortArticle(item: Topic): Record<string, unknown> {
+  const summary = item.summary;
+  if (!summary || typeof summary !== 'object') return {};
+  const nested = (summary as Record<string, unknown>).short_article;
+  return nested && typeof nested === 'object' ? nested as Record<string, unknown> : {};
+}
+
+function trendingItemSummary(item: Topic): string {
+  const short = shortArticle(item);
+  const slides = Array.isArray(short.slides)
+    ? short.slides.map((slide) => deckLine(String(slide || ''))).filter(Boolean)
+    : [];
+  const body = deckLine(String(short.body || ''));
+  const subtitle = deckLine(String(short.subtitle || ''));
+  return slides.join(' ') || body || subtitle || deckLine(String(item.description || ''));
+}
+
+function trendingItemKeyPoints(item: Topic): string[] {
+  const short = shortArticle(item);
+  const keyPoints = Array.isArray(short.key_points) ? short.key_points : [];
+  const fromKeys = keyPoints.map((point) => deckLine(String(point || ''))).filter(Boolean).slice(0, 3);
+  if (fromKeys.length) return fromKeys;
+  const slides = Array.isArray(short.slides) ? short.slides : [];
+  const fromSlides = slides.map((slide) => deckLine(String(slide || ''))).filter(Boolean).slice(0, 3);
+  if (fromSlides.length) return fromSlides;
+  const fallback = trendingItemSummary(item);
+  return fallback
+    .split(/(?<=[.!?])\s+/)
+    .map((part) => deckLine(part.trim()))
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
+function standaloneTrendingTopic(item: Topic, index: number): Topic {
+  const rawId = String(item.id || item.url || `trending-item-${index}`);
+  const sourceName = cleanSentence(String(item.source_name || item.source || ''));
+  return {
+    ...item,
+    id: rawId,
+    title: cleanSentence(String(item.title || '')),
+    summary: trendingItemSummary(item),
+    key_points: trendingItemKeyPoints(item),
+    article_count: 1,
+    source_count: sourceName ? 1 : 0,
+    timeline: sourceName ? [{ id: rawId, source_name: sourceName, article_url: item.url }] : [],
+    __studio_kind: 'item',
+  };
+}
+
+function storyCandidates(topics: Topic[], trending: Topic[]): Topic[] {
+  const covered = coveredTrendingKeys(topics);
+  const uncoveredItems = trending
+    .filter((item) => {
+      const id = String(item.id || '').trim();
+      const url = String(item.url || '').trim();
+      return norm(item.title) && !covered.ids.has(id) && !covered.urls.has(url);
+    })
+    .map(standaloneTrendingTopic);
+  return [...topics, ...uncoveredItems];
 }
 
 function pickStoryStyle(mode: CarouselStyle, index: number): Exclude<CarouselStyle, 'mixed'> {
@@ -162,7 +284,6 @@ function timeOfDayLabel(): string {
 
 async function generateCoverHeadline(
   headlines: string[],
-  category: CarouselCategory,
 ): Promise<{ title: string; tagline: string } | null> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey || !headlines.length) return null;
@@ -277,8 +398,8 @@ function buildDeckMessaging(category: CarouselCategory): DeckMessaging {
   };
 }
 
-async function loadLatestTopics(): Promise<{ date: string; topics: Topic[] }> {
-  if (!adminDb) return { date: '', topics: [] };
+async function loadLatestFeed(): Promise<{ date: string; topics: Topic[]; trending: Topic[] }> {
+  if (!adminDb) return { date: '', topics: [], trending: [] };
   const snap = await adminDb
     .collection('v3_user_feeds')
     .doc('_global')
@@ -286,12 +407,13 @@ async function loadLatestTopics(): Promise<{ date: string; topics: Topic[] }> {
     .orderBy(FieldPath.documentId(), 'desc')
     .limit(1)
     .get();
-  if (snap.empty) return { date: '', topics: [] };
+  if (snap.empty) return { date: '', topics: [], trending: [] };
   const doc = snap.docs[0];
   const data = doc.data() || {};
   return {
     date: doc.id,
     topics: Array.isArray(data.trending_topics) ? (data.trending_topics as Topic[]) : [],
+    trending: Array.isArray(data.trending) ? (data.trending as Topic[]) : [],
   };
 }
 
@@ -363,44 +485,42 @@ async function validateImageUrl(url: string): Promise<string> {
 
 function buildSlides(
   origin: string,
-  date: string,
-  category: CarouselCategory,
   styleMode: CarouselStyle,
   topicList: Topic[],
-  messaging: DeckMessaging,
 ): Slide[] {
-  const coverStyle: Exclude<CarouselStyle, 'mixed'> = styleMode === 'mixed' ? 'editorial' : styleMode;
-  const slides: Slide[] = [
-    {
-      id: `cover-${date}`,
-      slideType: 'cover',
-      style: coverStyle,
-      headline: messaging.title,
-      kicker: `Trace · ${date}`,
-      body: `${messaging.tagline}\n\n${messaging.supportLine}`,
-      imageUrl: '',
-      category: category === 'all' ? 'tech' : category,
-      sourceNames: [],
-    },
-  ];
+  const slides: Slide[] = [];
 
   topicList.forEach((topic, index) => {
     const topicCategory = inferCategory(topic);
     const sourceList = sourceNames(topic);
-    slides.push({
-      id: String(topic.id || `topic-${index + 1}`),
-      slideType: 'story',
-      style: pickStoryStyle(styleMode, index),
+    const topicId = String(topic.id || `topic-${index + 1}`);
+    const style = pickStoryStyle(styleMode, index);
+    const common = {
+      style,
       headline: cleanSentence(String(topic.title || `Story ${index + 1}`)),
       kicker: topicCategory.toUpperCase(),
-      body: paragraphize(topic),
-      imageUrl: String(topic.thumbnail || ''),
       category: topicCategory,
       sourceNames: sourceList,
       articleCount: Number(topic.article_count || 0),
       sourceCount: Number(topic.source_count || 0),
-      topicId: String(topic.id || ''),
-      storyUrl: `${origin}/topics/${encodeURIComponent(String(topic.id || ''))}`,
+      topicId,
+      storyUrl: topic.__studio_kind === 'item'
+        ? String(topic.url || '')
+        : `${origin}/topics/${encodeURIComponent(topicId)}`,
+    };
+    slides.push({
+      ...common,
+      id: `${topicId}-intro`,
+      slideType: 'story',
+      body: paragraphize(topic),
+      imageUrl: String(topic.thumbnail || ''),
+    });
+    slides.push({
+      ...common,
+      id: `${topicId}-detail`,
+      slideType: 'detail',
+      body: detailPoints(topic).join('\n\n'),
+      imageUrl: '',
     });
   });
 
@@ -427,22 +547,23 @@ export async function GET(request: NextRequest) {
       : 'mixed';
     const slideCount = clampSlides(Number(searchParams.get('slides') || '6'));
 
-    const { date, topics } = await loadLatestTopics();
-    if (!topics.length) {
-      return NextResponse.json({ error: 'No trending topics available' }, { status: 404 });
+    const { date, topics, trending } = await loadLatestFeed();
+    const candidates = storyCandidates(topics, trending);
+    if (!candidates.length) {
+      return NextResponse.json({ error: 'No trending stories available' }, { status: 404 });
     }
 
-    const selectedTopics = selectTopics(topics, category, slideCount - 1);
+    const selectedTopics = selectTopics(candidates, category, slideCount);
     const messaging = buildDeckMessaging(category);
 
     const storyHeadlines = selectedTopics.map((t) => cleanSentence(String(t.title || '')));
-    const aiCover = await generateCoverHeadline(storyHeadlines, category);
+    const aiCover = await generateCoverHeadline(storyHeadlines);
     if (aiCover) {
       messaging.title = aiCover.title;
       messaging.tagline = aiCover.tagline;
     }
 
-    const slides = buildSlides(origin, date, category, style, selectedTopics, messaging).slice(0, slideCount);
+    const slides = buildSlides(origin, style, selectedTopics);
 
     await Promise.all(
       slides.map(async (slide) => {

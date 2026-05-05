@@ -9,6 +9,7 @@ import {
   Share,
   Platform,
 } from 'react-native';
+import { trackEvent } from '@/lib/posthog';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Share2 } from 'lucide-react-native';
 import { captureRef } from 'react-native-view-shot';
@@ -36,6 +37,12 @@ const INS_DARK = {
   sub: '#8C8C8C',
 };
 
+
+function truncateWords(text: string, limit: number): { text: string; truncated: boolean } {
+  const words = text.trim().split(/\s+/);
+  if (words.length <= limit) return { text, truncated: false };
+  return { text: words.slice(0, limit).join(' ') + '...', truncated: true };
+}
 
 function isRealImage(url?: string | null): boolean {
   if (!url) return false;
@@ -114,7 +121,7 @@ export function DeckStoryCard({
     isRealImage(thumbnail) ? (thumbnail as string) : getArticleImage(thumbnail, title),
   );
 
-  const imageHeight = Math.min(248, Math.max(156, Math.round(height * 0.32)));
+  const imageHeight = Math.min(280, Math.max(170, Math.round(height * 0.38)));
 
 
   const [shareBusy, setShareBusy] = useState(false);
@@ -126,9 +133,16 @@ export function DeckStoryCard({
     const t = he.decode(shareTitle).trim();
     const message = `${(shareOverview || '').trim().slice(0, 300)}\n\nRead more at yourtrace.online`;
     setShareBusy(true);
+    trackEvent('share_initiated', {
+      title: shareTitle,
+      url: shareUrl,
+      variant,
+      has_thumbnail: !!thumbnail,
+    });
     try {
       if (!thumbnail) {
         await Share.share(Platform.OS === 'ios' ? { message } : { message, title: t.slice(0, 80) });
+        trackEvent('share_completed', { title: shareTitle, url: shareUrl, variant, method: 'text_only' });
         return;
       }
       // Mount the share view, wait a frame for it to render, then capture
@@ -143,6 +157,9 @@ export function DeckStoryCard({
     } catch (error: any) {
       if (error?.message !== 'User did not share') {
         console.error('[Share] error:', error);
+        trackEvent('share_failed', { title: shareTitle, url: shareUrl, variant, error: error?.message });
+      } else {
+        trackEvent('share_cancelled', { title: shareTitle, url: shareUrl, variant });
       }
     } finally {
       setShareBusy(false);
@@ -209,7 +226,9 @@ export function DeckStoryCard({
                 showsVerticalScrollIndicator={false}
                 nestedScrollEnabled={true}
                 scrollEventThrottle={16}>
-                <Text style={[styles.newsBody, { color: ins.textBody }]}>{overview}</Text>
+                <Text style={[styles.newsBody, { color: ins.textBody }]}>
+                  {truncateWords(overview, 70).text}
+                </Text>
               </ScrollView>
             ) : null}
             <Text style={[styles.swipeHint, { color: ins.sub }]}>{swipeHint ?? 'Swipe up for next story'}</Text>

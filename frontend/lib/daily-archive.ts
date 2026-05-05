@@ -94,6 +94,40 @@ export async function getAdjacentDailyArchiveNeighbours(
   };
 }
 
+/**
+ * Fetch today's (or the most recent) global feed snapshot.
+ * Unlike getDailyArchiveFeed, this does NOT exclude today's date.
+ * Returns the latest non-empty global daily feed.
+ */
+export async function getTodaysFeed(): Promise<DailyArchiveFeed | null> {
+  if (!adminFirestore) return null;
+
+  const snapshot = await adminFirestore
+    .collection('v3_user_feeds')
+    .doc('_global')
+    .collection('daily')
+    .orderBy('__name__', 'desc')
+    .limit(5)
+    .get();
+
+  for (const doc of snapshot.docs) {
+    const data = (doc.data() || {}) as GlobalDailyDoc;
+    const date = toIsoDate(data.date) || toIsoDate(doc.id);
+    if (!date) continue;
+    const trending = asFeedItems(data.trending);
+    const trendingTopics = asTrendingTopics(data.trending_topics);
+    if (trending.length === 0 && trendingTopics.length === 0) continue;
+    return {
+      date,
+      assembledAt: typeof data.assembled_at === 'string' ? data.assembled_at : undefined,
+      trending,
+      trendingTopics,
+    };
+  }
+
+  return null;
+}
+
 export async function getDailyArchiveFeed(date: string): Promise<DailyArchiveFeed | null> {
   if (!adminFirestore) return null;
   const normalized = toIsoDate(date);

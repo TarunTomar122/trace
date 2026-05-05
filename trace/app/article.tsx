@@ -54,6 +54,7 @@ import { addSnippet } from '@/lib/bookmarks';
 import { getCurrentArticle, getNextArticle, navigateToNext, getArticleList, getCurrentIndex } from '@/lib/article-store';
 import { isFreePreview } from '@/lib/topic-store';
 import { logReadingEvent } from '@/lib/reading-analytics';
+import { trackEvent } from '@/lib/posthog';
 import { recordAppOpen } from '@/lib/streaks';
 import { getArticleImage } from '@/lib/fallback-images';
 
@@ -228,6 +229,12 @@ export default function ArticleScreen() {
   const handleShare = useCallback(async () => {
     if (!shareCardRef.current || isSharing) return;
     setIsSharing(true);
+    trackEvent('share_initiated', {
+      title: item.title,
+      url: item.url,
+      screen: 'article',
+      has_thumbnail: !!item.thumbnail,
+    });
 
     // Build share message with overview text
     const overview = item.summary?.short_article?.subtitle
@@ -241,6 +248,7 @@ export default function ArticleScreen() {
       if (!uri) {
         // Fallback to text only
         await Share.share({ message: shareMessage });
+        trackEvent('share_completed', { title: item.title, url: item.url, screen: 'article', method: 'text_only' });
         return;
       }
 
@@ -257,9 +265,13 @@ export default function ArticleScreen() {
           type: 'image/png',
         });
       }
+      trackEvent('share_completed', { title: item.title, url: item.url, screen: 'article', method: 'image' });
     } catch (e: any) {
       if (e?.message !== 'User did not share') {
         console.warn('Share failed:', e);
+        trackEvent('share_failed', { title: item.title, url: item.url, screen: 'article', error: e?.message });
+      } else {
+        trackEvent('share_cancelled', { title: item.title, url: item.url, screen: 'article' });
       }
     } finally {
       setIsSharing(false);

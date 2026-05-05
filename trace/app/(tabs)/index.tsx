@@ -39,6 +39,8 @@ import {
   User,
   ArrowUp,
   ChevronRight,
+  LayoutGrid,
+  List,
 } from 'lucide-react-native';
 
 import DigestIllus from '@/components/illustrations/DigestIllus';
@@ -49,6 +51,7 @@ import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   TrendingTopic,
   FeedItem,
@@ -58,7 +61,11 @@ import {
   getAppVersionConfig,
   recordLastActive,
 } from '@/lib/firestore';
+import { getArticleImage } from '@/lib/fallback-images';
+
+const VIEW_MODE_KEY = '@trace:feed_view_mode';
 import { logReadingEvent } from '@/lib/reading-analytics';
+import { trackEvent, setUserProperty } from '@/lib/posthog';
 import { setCurrentTopic } from '@/lib/topic-store';
 import { getStreakData, recordAppOpen, StreakData } from '@/lib/streaks';
 import { consumePrefetchedFeed, getPrefetchPromise } from '@/lib/feed-cache';
@@ -517,9 +524,11 @@ export default function UnifiedFeedScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterType>('for_you');
+  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   const [streak, setStreak] = useState<StreakData | null>(null);
   const v3FeedRef = useRef<V3UserFeed | null>(null);
   const deckListRef = useRef<FlatList<FeedSection>>(null);
+  const listRef = useRef<FlatList<FeedSection>>(null);
   const [currentDeckIndex, setCurrentDeckIndex] = useState(0);
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
@@ -622,6 +631,21 @@ export default function UnifiedFeedScreen() {
     }, [])
   );
 
+  // Load saved view mode preference
+  useEffect(() => {
+    AsyncStorage.getItem(VIEW_MODE_KEY).then((saved) => {
+      if (saved === 'list' || saved === 'card') {
+        setViewMode(saved);
+        setUserProperty({ preferred_view_mode: saved });
+      }
+    });
+  }, []);
+
+  // Save view mode preference when it changes
+  useEffect(() => {
+    AsyncStorage.setItem(VIEW_MODE_KEY, viewMode);
+  }, [viewMode]);
+
   // Request app store review for returning users (streak >= 2)
   useEffect(() => {
     if (user && profile && streak && streak.currentStreak >= 2) {
@@ -718,6 +742,7 @@ export default function UnifiedFeedScreen() {
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
+    trackEvent('feed_pull_to_refresh');
     await refreshProfile();
     await loadFeed();
     setIsRefreshing(false);
@@ -776,10 +801,9 @@ export default function UnifiedFeedScreen() {
     return [...dailyPulse.blogs, ...dailyPulse.discussions, ...dailyPulse.tools];
   }, [dailyPulse]);
 
-  // Filter pills: Pulse → For You → matched user interests → Suggested
+  // Filter pills: For You → matched user interests → Suggested
   const filterPills = useMemo(() => {
     const pills: { id: FilterType; label: string }[] = [];
-    pills.push({ id: 'pulse', label: 'Pulse' });
     pills.push({ id: 'for_you', label: 'For You' });
 
     for (const interest of availableInterests) {
@@ -858,6 +882,7 @@ export default function UnifiedFeedScreen() {
 
   useEffect(() => {
     deckListRef.current?.scrollToOffset({ offset: 0, animated: false });
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, [activeFilter]);
 
   // The first trending topic in the feed is free for non-subscribers
@@ -958,7 +983,10 @@ export default function UnifiedFeedScreen() {
           return (
             <Pressable
               key={pill.id}
-              onPress={() => setActiveFilter(pill.id)}
+              onPress={() => {
+                setActiveFilter(pill.id);
+                trackEvent('feed_filter_changed', { filter: pill.id, label: pill.label });
+              }}
               style={[
                 styles.pill,
                 isPulse && styles.pillPulse,
@@ -981,6 +1009,42 @@ export default function UnifiedFeedScreen() {
           );
         })}
       </ScrollView>
+      <View style={[styles.viewToggleWrap, { backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#f0f0f0' }]}>
+        <Pressable
+          onPress={() => {
+            setViewMode('card');
+            trackEvent('feed_view_mode_changed', { mode: 'card' });
+            setUserProperty({ preferred_view_mode: 'card' });
+          }}
+          style={[
+            styles.viewToggleBtn,
+            viewMode === 'card' && { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#fff' },
+          ]}>
+          <LayoutGrid
+            size={16}
+            color={Colors[colorScheme].text}
+            strokeWidth={2}
+            opacity={viewMode === 'card' ? 1 : 0.55}
+          />
+        </Pressable>
+        <Pressable
+          onPress={() => {
+            setViewMode('list');
+            trackEvent('feed_view_mode_changed', { mode: 'list' });
+            setUserProperty({ preferred_view_mode: 'list' });
+          }}
+          style={[
+            styles.viewToggleBtn,
+            viewMode === 'list' && { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#fff' },
+          ]}>
+          <List
+            size={16}
+            color={Colors[colorScheme].text}
+            strokeWidth={2}
+            opacity={viewMode === 'list' ? 1 : 0.55}
+          />
+        </Pressable>
+      </View>
     </View>
   );
 
@@ -1169,58 +1233,89 @@ export default function UnifiedFeedScreen() {
       {showFeed ? (
         <>
           {renderDeckChrome()}
-          <View style={styles.deckListWrap} onLayout={onDeckViewportLayout}>
+          {viewMode === 'list' ? (
             <FlatList
-              ref={deckListRef}
+              ref={listRef}
               data={deckSections}
               keyExtractor={deckKeyExtractor}
-              renderItem={renderDeckItem}
-              getItemLayout={getDeckItemLayout}
-              extraData={`${deckViewportH}-${deckRowHeight}-${deckCardWidth}`}
-              pagingEnabled
-              decelerationRate={Platform.OS === 'ios' ? 0.992 : 'fast'}
+              renderItem={({ item: section }) => {
+                let onPress = () => {};
+                if (section.type === 'trending') {
+                  onPress = () => handleTopicPress(section.topic);
+                } else if (section.type === 'foryou') {
+                  const isPulseCard = !!section.tapUrl;
+                  onPress = isPulseCard
+                    ? () => WebBrowser.openBrowserAsync(section.tapUrl!)
+                    : () => handleItemPress(section.item);
+                }
+                return (
+                  <ListStoryItem
+                    section={section}
+                    colorScheme={colorScheme}
+                    onPress={onPress}
+                  />
+                );
+              }}
               showsVerticalScrollIndicator={false}
-              removeClippedSubviews={false}
-              windowSize={7}
-              initialNumToRender={3}
-              maxToRenderPerBatch={3}
-              updateCellsBatchingPeriod={50}
               refreshControl={refreshControlEl}
-              onViewableItemsChanged={onViewableItemsChanged}
-              viewabilityConfig={viewabilityConfig.current}
+              contentContainerStyle={{ paddingBottom: 20 + insets.bottom }}
             />
-            {(() => {
-              const nextSection = deckSections[currentDeckIndex + 1];
-              const nextTitle =
-                nextSection?.type === 'trending'
-                  ? nextSection.topic.title
-                  : nextSection?.type === 'foryou'
-                  ? nextSection.item.title
-                  : null;
-              const isDark = colorScheme === 'dark';
-              return (
-                <View style={[styles.upNextBar, { backgroundColor: isDark ? '#1a1a1a' : '#ebebeb', paddingBottom: 16 + insets.bottom }]}>
-                  {nextTitle ? (
-                    <View style={styles.upNextRow}>
-                      <Text style={[styles.upNextLabel, { color: isDark ? '#8C8C8C' : '#B8B8B8' }]}>Up next</Text>
-                      <Text style={[styles.upNextTitle, { color: isDark ? '#F2F2F2' : '#1B1B1B' }]} numberOfLines={1}>
-                        {nextTitle}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-              );
-            })()}
-          </View>
+          ) : (
+            <View style={styles.deckListWrap} onLayout={onDeckViewportLayout}>
+              <FlatList
+                ref={deckListRef}
+                data={deckSections}
+                keyExtractor={deckKeyExtractor}
+                renderItem={renderDeckItem}
+                getItemLayout={getDeckItemLayout}
+                extraData={`${deckViewportH}-${deckRowHeight}-${deckCardWidth}`}
+                snapToInterval={deckRowHeight}
+                snapToAlignment="start"
+                decelerationRate="fast"
+                disableIntervalMomentum
+                showsVerticalScrollIndicator={false}
+                removeClippedSubviews={false}
+                windowSize={7}
+                initialNumToRender={3}
+                maxToRenderPerBatch={3}
+                updateCellsBatchingPeriod={50}
+                refreshControl={refreshControlEl}
+                onViewableItemsChanged={onViewableItemsChanged}
+                viewabilityConfig={viewabilityConfig.current}
+              />
+              {(() => {
+                const nextSection = deckSections[currentDeckIndex + 1];
+                const nextTitle =
+                  nextSection?.type === 'trending'
+                    ? nextSection.topic.title
+                    : nextSection?.type === 'foryou'
+                    ? nextSection.item.title
+                    : null;
+                const isDark = colorScheme === 'dark';
+                return (
+                  <View style={[styles.upNextBar, { backgroundColor: isDark ? '#1a1a1a' : '#ebebeb', paddingBottom: 16 + insets.bottom }]}>
+                    {nextTitle ? (
+                      <View style={styles.upNextRow}>
+                        <Text style={[styles.upNextLabel, { color: isDark ? '#8C8C8C' : '#B8B8B8' }]}>Up next</Text>
+                        <Text style={[styles.upNextTitle, { color: isDark ? '#F2F2F2' : '#1B1B1B' }]} numberOfLines={1}>
+                          {nextTitle}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })()}
+            </View>
+          )}
         </>
       ) : (
         <Animated.ScrollView
           showsVerticalScrollIndicator={false}
           refreshControl={refreshControlEl}
-          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top, paddingBottom: 60 }]}>
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 }]}>
           {renderDeckChrome()}
           {(isLoading || !hasRenderableFeed) ? (
-            <SkeletonLoader colorScheme={colorScheme} />
+            <SkeletonLoader colorScheme={colorScheme} viewMode={viewMode} />
           ) : isFeedBuilding && isEmpty ? (
             <View style={styles.padded}>
               <FeedBuildingLoader colorScheme={colorScheme} />
@@ -1383,6 +1478,88 @@ function FloatingEmoji({ emoji, index, onComplete }: { emoji: string; index: num
   );
 }
 
+function ListStoryItem({
+  section,
+  colorScheme,
+  onPress,
+}: {
+  section: FeedSection;
+  colorScheme: 'light' | 'dark';
+  onPress: () => void;
+}) {
+  if (section.type === 'deck_end') {
+    return (
+      <View style={styles.listItem}>
+        <TouchGrassFooter colorScheme={colorScheme} />
+      </View>
+    );
+  }
+
+  let sourceName = '';
+  let title = '';
+  let timeAgo = '';
+  let imageUrl: string | null = null;
+
+  if (section.type === 'trending') {
+    const topic = section.topic;
+    const primaryArticle = topic.articles?.[0];
+    sourceName = primaryArticle?.source_name || primaryArticle?.source || 'Sources';
+    title = primaryArticle?.title || topic.title;
+    timeAgo = getTimeAgo(topic.last_updated_at || topic.first_seen_at);
+    imageUrl = getArticleImage(topic.thumbnail || primaryArticle?.thumbnail, title);
+  } else if (section.type === 'foryou') {
+    const item = section.item;
+    sourceName = item.source_name || item.source || '';
+    title = item.title;
+    timeAgo = getTimeAgo(item.published_date);
+    imageUrl = getArticleImage(item.thumbnail, title);
+  } else if (section.type === 'pulse_empty') {
+    return (
+      <View style={[styles.listItem, styles.listPulseEmpty]}>
+        <Text style={{ fontSize: 28 }}>⚡</Text>
+        <Text style={[styles.listPulseTitle, { color: PULSE_COLOR }]}>
+          Pulse drops daily
+        </Text>
+        <Text style={[styles.listPulseSub, { color: Colors[colorScheme].muted }]}>
+          Top tools, reads, and discussions curated for your morning. Check back tomorrow.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <Pressable onPress={onPress} style={styles.listItem}>
+      <View style={styles.listContent}>
+        <View style={styles.listTextCol}>
+          <View style={styles.listSourceRow}>
+            <Text style={[styles.listSourceText, { color: Colors[colorScheme].muted }]}>
+              {sourceName}
+            </Text>
+            {timeAgo ? (
+              <>
+                <Text style={[styles.listDot, { color: Colors[colorScheme].border }]}> · </Text>
+                <Text style={[styles.listTimeText, { color: Colors[colorScheme].muted }]}>
+                  {timeAgo}
+                </Text>
+              </>
+            ) : null}
+          </View>
+          <Text style={[styles.listTitle, { color: Colors[colorScheme].text }]} numberOfLines={2}>
+            {title}
+          </Text>
+        </View>
+        {imageUrl && (
+          <Image
+            source={{ uri: imageUrl }}
+            style={styles.listThumb}
+            resizeMode="cover"
+          />
+        )}
+      </View>
+    </Pressable>
+  );
+}
+
 function TouchGrassFooter({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
   const [emojis, setEmojis] = useState<{ id: number; emoji: string }[]>([]);
   const [celebrating, setCelebrating] = useState(false);
@@ -1435,7 +1612,13 @@ function TouchGrassFooter({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
           ))}
         </View>
         <Animated.View style={textAnimatedStyle}>
-          <ThemedText style={[styles.endText, { color: Colors[colorScheme].muted }]}>
+          <ThemedText style={[styles.congratsTitle, { color: Colors[colorScheme].text }]}>
+            You're all caught up! 🎉
+          </ThemedText>
+          <ThemedText style={[styles.congratsSub, { color: Colors[colorScheme].muted }]}>
+            Congratulations, you've completed all the stories for now.
+          </ThemedText>
+          <ThemedText style={[styles.endText, { color: Colors[colorScheme].muted, marginTop: 16 }]}>
             Time to touch some grass 🌱
           </ThemedText>
         </Animated.View>
@@ -1447,6 +1630,9 @@ function TouchGrassFooter({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
 const grassStyles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
+    paddingVertical: 48,
+    minHeight: 320,
+    justifyContent: 'center',
   },
   pressable: {
     alignItems: 'center',
@@ -1463,7 +1649,7 @@ const grassStyles = StyleSheet.create({
   },
 });
 
-function SkeletonLoader({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
+function SkeletonLoader({ colorScheme, viewMode }: { colorScheme: 'light' | 'dark'; viewMode: 'card' | 'list' }) {
   const shimmerOpacity = useSharedValue(0.3);
 
   useEffect(() => {
@@ -1482,6 +1668,22 @@ function SkeletonLoader({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
   }));
 
   const skeletonBg = colorScheme === 'dark' ? '#2a2a2a' : '#e8e8e8';
+
+  if (viewMode === 'list') {
+    return (
+      <View style={styles.skeletonContainer}>
+        {[1, 2, 3, 4, 5].map((i) => (
+          <View key={i} style={[styles.skeletonListItem, { borderBottomColor: colorScheme === 'dark' ? '#1a1a1a' : '#f0f0f0' }]}>
+            <View style={{ flex: 1, gap: 8 }}>
+              <Animated.View style={[{ width: 80, height: 10, borderRadius: 4, backgroundColor: skeletonBg }, shimmerStyle]} />
+              <Animated.View style={[{ width: '90%', height: 14, borderRadius: 4, backgroundColor: skeletonBg }, shimmerStyle]} />
+            </View>
+            <Animated.View style={[{ width: 72, height: 72, borderRadius: 10, backgroundColor: skeletonBg }, shimmerStyle]} />
+          </View>
+        ))}
+      </View>
+    );
+  }
 
   return (
     <View style={styles.skeletonContainer}>
@@ -1528,6 +1730,71 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
+
+  // List view styles
+  listItem: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.04)',
+  },
+  listContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  listTextCol: {
+    flex: 1,
+    gap: 5,
+  },
+  listSourceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  listSourceText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 11,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  listDot: {
+    fontSize: 11,
+  },
+  listTimeText: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11,
+  },
+  listTitle: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 15,
+    lineHeight: 21,
+    letterSpacing: -0.2,
+  },
+  listThumb: {
+    width: 72,
+    height: 72,
+    borderRadius: 10,
+    backgroundColor: '#f0f0f0',
+  },
+  listPulseEmpty: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    gap: 10,
+  },
+  listPulseTitle: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  listPulseSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 32,
+  },
+
   deckPage: {
     justifyContent: 'center',
     alignItems: 'stretch',
@@ -1773,6 +2040,9 @@ const styles = StyleSheet.create({
   pillsSection: {
     marginTop: 4,
     marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 16,
   },
   pillsContainer: {
     paddingHorizontal: 20,
@@ -1789,6 +2059,22 @@ const styles = StyleSheet.create({
   },
   pillText: {
     fontSize: 13,
+  },
+  viewToggleWrap: {
+    marginLeft: 8,
+    flexShrink: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 10,
+    padding: 2,
+    gap: 2,
+  },
+  viewToggleBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Ongoing Section - Figma style
@@ -1890,6 +2176,21 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     paddingVertical: 32,
   },
+  congratsTitle: {
+    textAlign: 'center',
+    fontSize: 20,
+    fontFamily: FontFamily.semiBold,
+    letterSpacing: -0.3,
+    lineHeight: 28,
+    marginBottom: 8,
+  },
+  congratsSub: {
+    textAlign: 'center',
+    fontSize: 14,
+    fontFamily: FontFamily.regular,
+    lineHeight: 20,
+    paddingHorizontal: 24,
+  },
 
   // Skeleton styles
   skeletonContainer: {
@@ -1902,6 +2203,14 @@ const styles = StyleSheet.create({
     minHeight: 420,
     borderRadius: 20,
     marginBottom: 12,
+  },
+  skeletonListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    gap: 14,
+    borderBottomWidth: 1,
   },
 });
 

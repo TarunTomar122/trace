@@ -2,14 +2,18 @@ import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { adminStorage } from '@/lib/firebase-admin';
 
+type ImageFormat = 'square' | 'portrait' | 'story';
+
 type CarouselRequest = {
   topic?: string;
   slides?: number;
+  /** Render size for Instagram: portrait 4:5 (default), square 1:1, story 9:16 */
+  format?: ImageFormat;
 };
 
 type StudioSlide = {
   id: string;
-  slideType: 'cover' | 'story';
+  slideType: 'cover' | 'story' | 'detail';
   style: 'editorial' | 'signal' | 'spotlight';
   headline: string;
   kicker: string;
@@ -137,11 +141,23 @@ async function loadDeck(request: NextRequest, slides: number, category: 'all' | 
   return (await res.json()) as StudioDeck;
 }
 
-function buildRenderUrl(request: NextRequest, deck: StudioDeck, slide: StudioSlide, index: number): string {
+function normalizeImageFormat(v: unknown): ImageFormat {
+  const s = String(v || 'portrait').trim().toLowerCase();
+  if (s === 'square' || s === 'story') return s;
+  return 'portrait';
+}
+
+function buildRenderUrl(
+  request: NextRequest,
+  deck: StudioDeck,
+  slide: StudioSlide,
+  index: number,
+  format: ImageFormat,
+): string {
   const baseUrl = baseUrlFromRequest(request);
   const params = new URLSearchParams({
     mode: 'carousel',
-    format: 'portrait',
+    format,
     style: slide.style,
     slideType: slide.slideType,
     headline: slide.headline,
@@ -167,11 +183,12 @@ export async function POST(request: NextRequest) {
     const body = (await request.json().catch(() => ({}))) as CarouselRequest;
     const topic = String(body.topic || '').trim();
     const slides = clampSlides(body.slides);
+    const imageFormat = normalizeImageFormat(body.format);
     const category = inferCategoryFromTopic(topic);
     const deck = await loadDeck(request, slides, category);
 
     const uploadPromises = deck.slides.map(async (slide, index) => {
-      const renderUrl = buildRenderUrl(request, deck, slide, index);
+      const renderUrl = buildRenderUrl(request, deck, slide, index, imageFormat);
       const fileKey = `${deck.date}-${index + 1}-${randomUUID().slice(0, 8)}`;
       return renderAndUploadToFirebase(renderUrl, fileKey);
     });

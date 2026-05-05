@@ -167,6 +167,14 @@ export function trackCheckoutClicked(source: string, props?: Record<string, unkn
   });
 }
 
+/** Feed full-screen subscribe modal (logged-out-of-content click lock on /feed). */
+export function trackFeedSubscribeDialogShown(properties?: Record<string, unknown>) {
+  posthog.capture("feed_subscribe_dialog_shown", {
+    surface: "feed_click_lock",
+    ...properties,
+  });
+}
+
 export function trackLandingCTAClicked(variant: string, location: string) {
   posthog.capture("landing_cta_clicked", { variant, location });
 }

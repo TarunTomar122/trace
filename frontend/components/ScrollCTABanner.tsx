@@ -34,14 +34,14 @@ export default function ScrollCTABanner() {
           </button>
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-semibold text-foreground leading-snug">
-              Get this delivered to your inbox every morning
+              Get the full daily pulse — stories, topics, and key takeaways
             </p>
             <p className="text-[12px] text-secondary/60 mt-0.5">
-              One short email with the biggest tech topics of the day.
+              Subscribe to Trace Pro for your personalized feed.
             </p>
           </div>
           <Link
-            href="/#newsletter"
+            href="/profile?tab=subscription"
             onClick={() => setDismissed(true)}
             className="shrink-0 rounded-full bg-[#151515] px-5 py-2.5 text-[13px] font-semibold text-white transition-all hover:bg-black hover:shadow-lg"
           >

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Image from 'next/image';
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -102,7 +103,7 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
               href="/"
               className="flex items-center gap-2 md:absolute md:left-1/2 md:-translate-x-1/2"
             >
-              <img src="/trace.webp" alt="Trace" width={120} height={32} className="h-6 w-auto md:h-7" />
+              <Image src="/trace.webp" alt="Trace" width={28} height={28} className="h-6 w-auto md:h-7" />
               <span className="text-sm md:text-base font-semibold tracking-[0.12em] text-foreground">TRACE</span>
             </Link>
 

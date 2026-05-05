@@ -28,6 +28,7 @@ import { Crown, Lock } from 'lucide-react-native';
 
 import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { trackEvent } from '@/lib/posthog';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { getCurrentTopic, isFreePreview } from '@/lib/topic-store';
 import { setCurrentArticle } from '@/lib/article-store';
@@ -242,10 +243,17 @@ export default function TopicScreen() {
     // Build share message with overview text
     const overview = splitBody.first || displayBody.slice(0, 300);
     const shareMessage = `${overview}\n\nRead more such stories at yourtrace.online`;
+    trackEvent('share_initiated', {
+      title: topic.title,
+      url: sourceUrl,
+      screen: 'topic',
+      has_thumbnail: !!displayThumbnail,
+    });
 
     // No thumbnail - share text only
     if (!displayThumbnail) {
       await Share.share({ message: shareMessage });
+      trackEvent('share_completed', { title: topic.title, url: sourceUrl, screen: 'topic', method: 'text_only' });
       return;
     }
 
@@ -270,10 +278,14 @@ export default function TopicScreen() {
           type: 'image/png',
         });
       }
+      trackEvent('share_completed', { title: topic.title, url: sourceUrl, screen: 'topic', method: 'image' });
     } catch (error: any) {
       // User cancelled share is not an error
       if (error?.message !== 'User did not share') {
         console.error('Error sharing:', error);
+        trackEvent('share_failed', { title: topic.title, url: sourceUrl, screen: 'topic', error: error?.message });
+      } else {
+        trackEvent('share_cancelled', { title: topic.title, url: sourceUrl, screen: 'topic' });
       }
     } finally {
       setIsSharing(false);
@@ -404,12 +416,14 @@ export default function TopicScreen() {
 
                         {/* Summary */}
                         {summaryData.text ? (
-                          <Text style={[styles.timelineSummary, { color: Colors[colorScheme].muted }]} selectable>
-                            {summaryData.text}
+                          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                            <Text style={[styles.timelineSummary, { color: Colors[colorScheme].muted }]} selectable>
+                              {summaryData.text}
+                            </Text>
                             {summaryData.truncated && hasArticle && (
-                              <Text style={styles.readMore}>read more...</Text>
+                              <Text style={[styles.readMore, { color: ACCENT }]}> read more...</Text>
                             )}
-                          </Text>
+                          </View>
                         ) : null}
                       </View>
 

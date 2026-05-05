@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Link from "next/link";
@@ -106,7 +107,7 @@ export default function ArticleContent({ article }: Props) {
       <header className="sticky top-0 z-40 border-b border-border/10 bg-background/92 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2.5">
-            <img src="/trace.webp" alt="Trace" width={28} height={28} className="h-7 w-7 rounded-md" />
+            <Image src="/trace.webp" alt="Trace" width={28} height={28} className="h-7 w-7 rounded-md" />
             <span className="text-[15px] font-semibold tracking-[0.14em] text-foreground">TRACE</span>
           </Link>
           <Link

@@ -1,6 +1,22 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import PublicHeader from '@/components/PublicHeader';
 import Footer from '@/components/Footer';
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy — Trace',
+  description:
+    'Learn how Trace collects, uses, and protects your personal data. Our privacy policy explains your rights and how we safeguard your information.',
+  alternates: {
+    canonical: 'https://www.yourtrace.online/privacy-policy',
+  },
+  openGraph: {
+    title: 'Privacy Policy — Trace',
+    description:
+      'Learn how Trace collects, uses, and protects your personal data. Our privacy policy explains your rights and how we safeguard your information.',
+    url: 'https://www.yourtrace.online/privacy-policy',
+  },
+};
 
 export default function PrivacyPolicyPage() {
   return (
@@ -144,10 +160,6 @@ export default function PrivacyPolicyPage() {
               <p className="mb-4">
                 Trace offers paid subscription plans that unlock personalized feed access and AI summaries.
                 All billing is handled securely through the respective platform (Google Play or Stripe/Dodo Payments for web).
-              </p>
-              <p className="mb-4">
-                <strong>Free Trial:</strong> We offer a free trial period for new subscribers. No charge is made during the trial.
-                If you do not cancel before the trial ends, your subscription will automatically begin and payment will be charged.
               </p>
               <p className="mb-4">
                 <strong>Cancellation:</strong> You may cancel your subscription at any time through your Google Play account settings

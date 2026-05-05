@@ -1,8 +1,24 @@
 import React from 'react';
 import Link from 'next/link';
-import { Check, Loader2, Lock, Sparkles } from 'lucide-react';
+import { Check, Loader2, Lock, Sparkles, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { trackCheckoutClicked } from '@/lib/posthog';
+import { trackCheckoutClicked, trackFeedSubscribeDialogShown } from '@/lib/posthog';
+import { LANDING_PRICING_BULLET_POINTS } from '@/lib/subscription-pricing-bullets';
+
+const INDIA_PRICING = { trialDays: 0, priceDisplay: '₹19/month', pricingOffer: 'india' as const };
+const DEFAULT_PRICING = { trialDays: 0, priceDisplay: '$4.99/month', pricingOffer: 'default' as const };
+
+function guessClientPricing() {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz === 'Asia/Kolkata') return INDIA_PRICING;
+    const lang = (navigator.language || '').toLowerCase();
+    if (lang === 'en-in' || lang.endsWith('-in')) return INDIA_PRICING;
+  } catch {
+    /* ignore */
+  }
+  return DEFAULT_PRICING;
+}
 
 /* ─── Upgrade CTA Card ─── */
 function UpgradeCard({ lockedCount }: { lockedCount: number }) {
@@ -24,13 +40,227 @@ function UpgradeCard({ lockedCount }: { lockedCount: number }) {
         className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-sm font-semibold bg-foreground text-background transition-all hover:bg-foreground/90 hover:shadow-lg hover:shadow-black/10 hover:scale-[1.02] active:scale-[0.98]"
       >
         <Sparkles size={14} />
-        Start Free Trial
+        Upgrade to Pro
       </Link>
     </div>
   );
 }
 
-export function InlineUnlockBanner({ storyCount }: { storyCount: number }) {
+/** Full-viewport click shield below the feed header: opens subscribe modal (logged-in, not subscribed) or sign-in prompt (unauthenticated). */
+export function FeedSubscribeClickLock({ active }: { active: boolean }) {
+  const { user, signInWithGoogle } = useAuth();
+  const [open, setOpen] = React.useState(false);
+  const [checkoutLoading, setCheckoutLoading] = React.useState(false);
+  const [signInLoading, setSignInLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [pricingPreview, setPricingPreview] = React.useState<typeof INDIA_PRICING | typeof DEFAULT_PRICING>(DEFAULT_PRICING);
+
+  React.useEffect(() => {
+    if (!active) return;
+    setPricingPreview(guessClientPricing());
+    let cancelled = false;
+    const confirm = async () => {
+      try {
+        const token = await user?.getIdToken();
+        const response = await fetch('/api/subscription/pricing', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!cancelled) setPricingPreview(data);
+      } catch {
+        /* non-fatal */
+      }
+    };
+    void confirm();
+    return () => {
+      cancelled = true;
+    };
+  }, [active, user]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const handleSubscribe = async () => {
+    if (!user) return;
+    setCheckoutLoading(true);
+    setError(null);
+    trackCheckoutClicked('feed_subscribe_click_lock');
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/subscription/create-checkout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create checkout');
+      window.location.href = data.checkoutUrl;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setCheckoutLoading(false);
+    }
+  };
+
+  const handleSignInToSubscribe = async () => {
+    setSignInLoading(true);
+    setError(null);
+    const result = await signInWithGoogle('checkout', { rememberIntent: true });
+    if (result.status === 'success') {
+      // Sign-in succeeded, redirect to profile/subscription or let the post-auth redirect handle it
+      window.location.href = '/profile?tab=subscription';
+    } else if (result.status === 'redirecting') {
+      // Redirect-based sign-in in progress — page will reload
+      return;
+    } else {
+      setError(result.message || 'Sign-in failed. Please try again.');
+      setSignInLoading(false);
+    }
+  };
+
+  if (!active) return null;
+
+  return (
+    <>
+      {/* Covers viewport below sticky header (h-16); blocks all interaction with the feed. */}
+      <div
+        className="pointer-events-auto fixed inset-x-0 bottom-0 top-16 z-[80] cursor-pointer touch-none"
+        aria-hidden
+        onPointerDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          trackFeedSubscribeDialogShown({
+            pricing_offer: pricingPreview.pricingOffer,
+            price_display: pricingPreview.priceDisplay,
+          });
+          setOpen(true);
+        }}
+      />
+      {open && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px] dark:bg-black/70 sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="feed-subscribe-lock-heading"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.18)] ring-1 ring-foreground/8 dark:ring-foreground/15"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="absolute right-3 top-3 rounded-full p-1.5 text-secondary/60 transition hover:bg-foreground/5 hover:text-foreground"
+              aria-label="Close"
+              onClick={() => setOpen(false)}
+            >
+              <X size={18} />
+            </button>
+
+            {!user ? (
+              <>
+                <p className="pr-10 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary/40">
+                  {pricingPreview.pricingOffer === 'india' ? 'Trace Pro India' : 'Trace Pro'}
+                </p>
+                <h2 id="feed-subscribe-lock-heading" className="mt-2 text-xl font-bold tracking-tight text-foreground">
+                  Sign in to unlock
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-secondary/60">
+                  Sign in, then subscribe for {pricingPreview.priceDisplay}. Full briefings, unlimited reads, cancel anytime.
+                </p>
+                <div className="mt-5 max-h-[min(40vh,16rem)] space-y-3 overflow-y-auto pr-0.5 sm:max-h-none sm:overflow-visible">
+                  {LANDING_PRICING_BULLET_POINTS.map((line) => (
+                    <div key={line} className="flex items-start gap-3">
+                      <Check size={13} className="shrink-0 mt-[3px] text-foreground/35" strokeWidth={2.5} />
+                      <p className="text-[13px] font-medium leading-snug text-foreground/85">{line}</p>
+                    </div>
+                  ))}
+                </div>
+                {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+                <button
+                  type="button"
+                  onClick={handleSignInToSubscribe}
+                  disabled={signInLoading}
+                  className="mt-6 flex w-full items-center justify-center rounded-full bg-foreground py-3.5 text-sm font-semibold text-background transition hover:bg-foreground/90 disabled:opacity-60"
+                >
+                  {signInLoading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Signing in...
+                    </>
+                  ) : (
+                    'Sign in with Google'
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="mt-3 w-full py-2 text-sm text-secondary/60 transition hover:text-foreground"
+                  onClick={() => setOpen(false)}
+                >
+                  Maybe later
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="pr-10 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary/40">
+                  {pricingPreview.pricingOffer === 'india' ? 'Trace Pro India' : 'Trace Pro'}
+                </p>
+                <h2 id="feed-subscribe-lock-heading" className="mt-2 text-xl font-bold tracking-tight text-foreground">
+                  Unlock your feed
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-secondary/60">
+                  Subscribe for {pricingPreview.priceDisplay}. Full briefings, unlimited reads, cancel anytime.
+                </p>
+                <div className="mt-5 max-h-[min(40vh,16rem)] space-y-3 overflow-y-auto pr-0.5 sm:max-h-none sm:overflow-visible">
+                  {LANDING_PRICING_BULLET_POINTS.map((line) => (
+                    <div key={line} className="flex items-start gap-3">
+                      <Check size={13} className="shrink-0 mt-[3px] text-foreground/35" strokeWidth={2.5} />
+                      <p className="text-[13px] font-medium leading-snug text-foreground/85">{line}</p>
+                    </div>
+                  ))}
+                </div>
+                {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+                <button
+                  type="button"
+                  onClick={handleSubscribe}
+                  disabled={checkoutLoading}
+                  className="mt-6 flex w-full items-center justify-center rounded-full bg-foreground py-3.5 text-sm font-semibold text-background transition hover:bg-foreground/90 disabled:opacity-60"
+                >
+                  {checkoutLoading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Setting up...
+                    </>
+                  ) : (
+                    `Subscribe to ${pricingPreview.pricingOffer === 'india' ? 'Trace Pro India' : 'Trace Pro'}`
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="mt-3 w-full py-2 text-sm text-secondary/60 transition hover:text-foreground"
+                  onClick={() => setOpen(false)}
+                >
+                  Maybe later
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+export function InlineUnlockBanner({ storyCount, freeReadsUsed = 0 }: { storyCount: number; freeReadsUsed?: number }) {
+  const limitReached = freeReadsUsed >= 3;
   return (
     <div className="mb-4 rounded-2xl border border-border/20 bg-white px-4 py-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sm:px-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -40,21 +270,25 @@ export function InlineUnlockBanner({ storyCount }: { storyCount: number }) {
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">
-              Browse {storyCount} stories. Unlock the full brief to read the details.
+              {limitReached
+                ? `You've read your 3 free articles today. ${storyCount - 3 > 0 ? `${storyCount - 3} more waiting for you.` : ''}`
+                : `Browse ${storyCount} stories. Unlock the full brief to read the details.`}
             </p>
             <p className="mt-0.5 text-xs text-secondary/55">
-              Free users can scan the feed. Pro unlocks summaries, key takeaways, and source links.
+              {limitReached
+                ? 'Upgrade to Pro for unlimited articles, key takeaways, and source links.'
+                : `Free users can read 3 articles per day. You've read ${freeReadsUsed} of 3 today.`}
             </p>
           </div>
         </div>
         <Link
           href="/profile?tab=subscription"
           prefetch={false}
-          onClick={() => trackCheckoutClicked('feed_inline_unlock_banner', { story_count: storyCount })}
+          onClick={() => trackCheckoutClicked('feed_inline_unlock_banner', { story_count: storyCount, free_reads_used: freeReadsUsed })}
           className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90"
         >
           <Sparkles size={14} />
-          Subscribe to unlock
+          {limitReached ? 'Upgrade to keep reading' : 'Subscribe to unlock'}
         </Link>
       </div>
     </div>
@@ -62,19 +296,6 @@ export function InlineUnlockBanner({ storyCount }: { storyCount: number }) {
 }
 
 /* ─── Full-width Paywall Gate ─── */
-const INDIA_PRICING = { trialDays: 1, priceDisplay: '₹19/month', pricingOffer: 'india' as const };
-const DEFAULT_PRICING = { trialDays: 3, priceDisplay: '$2.99/month', pricingOffer: 'default' as const };
-
-function guessClientPricing() {
-  try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (tz === 'Asia/Kolkata') return INDIA_PRICING;
-    const lang = (navigator.language || '').toLowerCase();
-    if (lang === 'en-in' || lang.endsWith('-in')) return INDIA_PRICING;
-  } catch {}
-  return DEFAULT_PRICING;
-}
-
 export function PaywallGate() {
   const { user } = useAuth();
   const [loading, setLoading] = React.useState(false);
@@ -151,7 +372,7 @@ export function PaywallGate() {
           The news habit that<br />doesn't waste your time.
         </h2>
         <p className="text-[14px] text-secondary/50 mb-10 leading-relaxed">
-          Try it free for {trialDays} {trialDays === 1 ? 'day' : 'days'}. No charge until the trial ends.
+          {priceDisplay}. Cancel anytime.
         </p>
 
         <div className="space-y-5 mb-10">
@@ -172,9 +393,9 @@ export function PaywallGate() {
           disabled={loading}
           className="flex items-center justify-center gap-2 w-full py-3.5 rounded-full text-[13px] font-semibold bg-foreground text-background transition-all hover:bg-foreground/90 hover:shadow-md hover:shadow-black/10 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:scale-100"
         >
-          {loading ? <><Loader2 size={14} className="animate-spin" />Setting up your trial...</> : `Start ${trialDays}-Day Free Trial`}
+          {loading ? <><Loader2 size={14} className="animate-spin" />Setting up...</> : `Subscribe to ${planName}`}
         </button>
-        <p className="text-[11px] text-secondary/35 mt-2.5 text-center">{priceDisplay} after {trialDays} {trialDays === 1 ? 'day' : 'days'} · Cancel anytime</p>
+        <p className="text-[11px] text-secondary/35 mt-2.5 text-center">{priceDisplay} · Cancel anytime</p>
       </div>
     </div>
   );

@@ -1,6 +1,22 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import PublicHeader from '@/components/PublicHeader';
 import Footer from '@/components/Footer';
+
+export const metadata: Metadata = {
+  title: 'Terms of Service — Trace',
+  description:
+    'Read the Terms of Service for Trace, including acceptable use, subscriptions, intellectual property, and disclaimers.',
+  alternates: {
+    canonical: 'https://www.yourtrace.online/terms',
+  },
+  openGraph: {
+    title: 'Terms of Service — Trace',
+    description:
+      'Read the Terms of Service for Trace, including acceptable use, subscriptions, intellectual property, and disclaimers.',
+    url: 'https://www.yourtrace.online/terms',
+  },
+};
 
 export default function TermsOfServicePage() {
   return (
@@ -143,13 +159,9 @@ export default function TermsOfServicePage() {
               <p className="mb-3">Trace offers the following paid subscription plans:</p>
               <ul className="list-disc pl-5 space-y-1 mb-4">
                 <li>Weekly plan at $1.99/week</li>
-                <li>Monthly plan at $6.99/month</li>
+                <li>Monthly plan at $4.99/month</li>
                 <li>Yearly plan at $59.99/year</li>
               </ul>
-              <p className="mb-4">
-                <strong>Free Trial:</strong> New subscribers may be eligible for a free trial. If you do not cancel
-                before the trial period ends, you will be charged the applicable subscription fee.
-              </p>
               <p className="mb-4">
                 <strong>Billing:</strong> Subscriptions are billed in advance on a recurring basis. All payments are
                 processed through Google Play Billing (Android) or our web payment processor.
