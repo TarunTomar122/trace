@@ -176,7 +176,7 @@ export default async function CompareDetailPage({ params }: PageProps) {
           <section className="mt-8">
             <div className="flex flex-wrap gap-2 text-sm">
               <Link href="/compare" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">More comparisons</Link>
-              <Link href="/research" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">Research</Link>
+              <Link href="/blog" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">Blog</Link>
               <Link href="/tools" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">Free tools</Link>
             </div>
           </section>

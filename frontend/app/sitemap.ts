@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next'
-import { researchPosts } from './research/content'
+import { blogPosts } from './blog/content'
 import { adminFirestore } from '@/lib/firebase-admin'
 import { comparePages } from './compare/content'
 import { getDailyArchiveEntries } from '@/lib/daily-archive'
@@ -244,7 +244,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.5,
     },
     {
-      url: `${baseUrl}/research`,
+      url: `${baseUrl}/blog`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
@@ -270,8 +270,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.75,
   }))
 
-  const researchPages: MetadataRoute.Sitemap = researchPosts.map((post) => ({
-    url: `${baseUrl}/research/${post.slug}`,
+  const blogPages: MetadataRoute.Sitemap = blogPosts.map((post) => ({
+    url: `${baseUrl}/blog/${post.slug}`,
     lastModified: new Date(),
     changeFrequency: 'monthly' as const,
     priority: 0.7,
@@ -303,7 +303,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...staticPages,
     ...topicPages,
-    ...researchPages,
+    ...blogPages,
     ...comparePagesIndex,
     ...compareDetailPages,
     ...articlePages,

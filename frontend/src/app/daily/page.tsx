@@ -79,7 +79,7 @@ export default async function DailyArchiveIndexPage() {
           <div className="mt-6 flex flex-wrap items-center gap-2">
             {[
               { href: '/trending', label: 'Trending' },
-              { href: '/research', label: 'Research' },
+              { href: '/blog', label: 'Blog' },
               { href: '/compare', label: 'Compare' },
             ].map((link) => (
               <Link

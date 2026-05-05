@@ -174,7 +174,7 @@ export default function LandingPageClient() {
               Daily
             </Link>
             <Link
-              href="/research"
+              href="/blog"
               className="rounded-full px-4 py-1.5 text-[13px] text-secondary/70 transition-colors hover:text-foreground"
             >
               Research
@@ -508,11 +508,11 @@ export default function LandingPageClient() {
                   cta: 'See daily snapshots',
                 },
                 {
-                  href: '/research',
-                  label: 'Research',
-                  title: 'Deep dives on the ideas shaping how we build',
-                  body: 'Long-form analysis on attention, information overload, and the tools changing how teams stay current.',
-                  cta: 'Read research',
+                  href: '/blog',
+                  label: 'Blog',
+                  title: 'Guides & insights on smarter tech reading',
+                  body: 'Expert guides on tech news aggregation, productivity, and building better information diets.',
+                  cta: 'Read the blog',
                 },
               ].map((item, i) => (
                 <Reveal key={item.href} delay={i * 90}>
@@ -738,7 +738,7 @@ export default function LandingPageClient() {
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-secondary/50">
               <Link href="/trending" className="transition-colors hover:text-foreground">Trending</Link>
               <Link href="/daily" className="transition-colors hover:text-foreground">Daily</Link>
-              <Link href="/research" className="transition-colors hover:text-foreground">Research</Link>
+              <Link href="/blog" className="transition-colors hover:text-foreground">Blog</Link>
               <Link href="/compare" className="transition-colors hover:text-foreground">Compare</Link>
               <Link href="/privacy-policy" className="transition-colors hover:text-foreground">Privacy</Link>
               <Link href="/terms" className="transition-colors hover:text-foreground">Terms</Link>

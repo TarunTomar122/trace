@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next';
 
 /**
- * Public marketing + SEO pages (/, /daily, /trending, /articles, /topics, /research, /compare, /tools, /contact, etc.)
+ * Public marketing + SEO pages (/, /daily, /trending, /articles, /topics, /blog, /compare, /tools, /contact, etc.)
  * are allowed. Only app-authenticated, API, and internal routes are disallowed.
  */
 export default function robots(): MetadataRoute.Robots {

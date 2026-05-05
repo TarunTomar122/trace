@@ -63,7 +63,7 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2.5">
               <li>
-                <Link href="/research" className="text-[13px] text-secondary/60 hover:text-foreground transition-colors">
+                <Link href="/blog" className="text-[13px] text-secondary/60 hover:text-foreground transition-colors">
                   Research
                 </Link>
               </li>

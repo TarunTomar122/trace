@@ -61,7 +61,7 @@ export default function ToolsPage() {
                 Trending
               </Link>
               <Link
-                href="/research"
+                href="/blog"
                 className="hidden text-secondary/60 hover:text-foreground transition-colors sm:inline"
               >
                 Research

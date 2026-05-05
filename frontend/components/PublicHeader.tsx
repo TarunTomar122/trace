@@ -40,10 +40,10 @@ export default function PublicHeader({
               Daily
             </Link>
             <Link
-              href="/research"
+              href="/blog"
               className="rounded-full px-4 py-1.5 text-[13px] text-secondary/70 transition-colors hover:text-foreground"
             >
-              Research
+              Blog
             </Link>
             <div className="ml-3 h-4 w-px bg-border/10" />
           </nav>
