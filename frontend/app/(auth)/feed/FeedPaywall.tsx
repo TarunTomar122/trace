@@ -122,8 +122,11 @@ export function FeedSubscribeClickLock({ active }: { active: boolean }) {
     } else if (result.status === 'redirecting') {
       // Redirect-based sign-in in progress — page will reload
       return;
-    } else {
+    } else if (result.status === 'error') {
       setError(result.message || 'Sign-in failed. Please try again.');
+      setSignInLoading(false);
+    } else {
+      setError('Sign-in failed. Please try again.');
       setSignInLoading(false);
     }
   };
