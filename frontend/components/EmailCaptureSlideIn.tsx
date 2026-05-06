@@ -1,17 +1,37 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Mail, ArrowRight, Check } from "lucide-react";
+import { Mail, ArrowRight, Check, X } from "lucide-react";
+
+const DISMISS_STORAGE_KEY = "trace-email-capture-dismissed";
 
 export default function EmailCaptureSlideIn() {
   const [visible, setVisible] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
   useEffect(() => {
+    try {
+      if (localStorage.getItem(DISMISS_STORAGE_KEY) === "1") {
+        setDismissed(true);
+        return;
+      }
+    } catch {
+      /* ignore */
+    }
     const isDesktop = window.matchMedia("(min-width: 768px)").matches;
     if (isDesktop) setVisible(true);
   }, []);
+
+  const handleDismiss = () => {
+    setDismissed(true);
+    try {
+      localStorage.setItem(DISMISS_STORAGE_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +51,8 @@ export default function EmailCaptureSlideIn() {
     }
   };
 
+  if (dismissed) return null;
+
   return (
     <div
       className="transition-all duration-500 ease-out"
@@ -48,6 +70,15 @@ export default function EmailCaptureSlideIn() {
       <div className="relative rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)] dark:bg-[#1a1a22] py-8 px-6 overflow-hidden" style={{ boxShadow: '0 0 0 1.5px rgba(245,158,11,0.25), 0 20px 60px rgba(0,0,0,0.15)' }}>
         <div className="absolute inset-x-0 top-0 h-[3px]" />
 
+        <button
+          type="button"
+          onClick={handleDismiss}
+          aria-label="Dismiss newsletter signup"
+          className="absolute right-3 top-3 z-10 rounded-full p-1.5 text-secondary/45 transition-colors hover:bg-foreground/8 hover:text-foreground"
+        >
+          <X size={18} strokeWidth={2} />
+        </button>
+
         {status === "success" ? (
           <div className="py-8 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
@@ -58,7 +89,7 @@ export default function EmailCaptureSlideIn() {
           </div>
         ) : (
           <>
-            <div className="mb-7">
+            <div className="mb-7 pr-8">
               <div className="flex items-start gap-4">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-foreground/6">
                   <Mail size={18} className="text-foreground/60" />

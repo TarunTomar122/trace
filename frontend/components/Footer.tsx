@@ -145,6 +145,21 @@ export default function Footer() {
             {new Date().getFullYear()} Trace. Many sources, one story view.
           </p>
         </div>
+
+        <div className="flex justify-center pt-8">
+          <a
+            href="https://www.aidirectori.es"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block opacity-90 transition-opacity hover:opacity-100"
+          >
+            <img
+              src="https://cdn.aidirectori.es/ai-tools/badges/light-mode.png"
+              alt="AI Directories Badge"
+              className="h-auto max-h-14 w-auto"
+            />
+          </a>
+        </div>
       </div>
     </footer>
   );

@@ -757,19 +757,35 @@ export default function LandingPageClient({
 
         {/* ── Footer ── */}
         <footer className="border-t border-black/[0.04] px-4 py-10 sm:px-6">
-          <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 sm:flex-row lg:px-8">
-            <div className="flex items-center gap-2">
-              <Image src="/trace.webp" alt="Trace" width={16} height={16} className="h-4 w-auto" />
-              <span className="text-[11px] font-semibold tracking-[0.18em] text-secondary/50">TRACE</span>
+          <div className="mx-auto max-w-7xl lg:px-8">
+            <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+              <div className="flex items-center gap-2">
+                <Image src="/trace.webp" alt="Trace" width={16} height={16} className="h-4 w-auto" />
+                <span className="text-[11px] font-semibold tracking-[0.18em] text-secondary/50">TRACE</span>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-secondary/50">
+                <Link href="/trending" className="transition-colors hover:text-foreground">Trending</Link>
+                <Link href="/daily" className="transition-colors hover:text-foreground">Daily</Link>
+                <Link href="/blog" className="transition-colors hover:text-foreground">Blog</Link>
+                <Link href="/compare" className="transition-colors hover:text-foreground">Compare</Link>
+                <Link href="/privacy-policy" className="transition-colors hover:text-foreground">Privacy</Link>
+                <Link href="/terms" className="transition-colors hover:text-foreground">Terms</Link>
+                <Link href="/contact" className="transition-colors hover:text-foreground">Contact</Link>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-secondary/50">
-              <Link href="/trending" className="transition-colors hover:text-foreground">Trending</Link>
-              <Link href="/daily" className="transition-colors hover:text-foreground">Daily</Link>
-              <Link href="/blog" className="transition-colors hover:text-foreground">Blog</Link>
-              <Link href="/compare" className="transition-colors hover:text-foreground">Compare</Link>
-              <Link href="/privacy-policy" className="transition-colors hover:text-foreground">Privacy</Link>
-              <Link href="/terms" className="transition-colors hover:text-foreground">Terms</Link>
-              <Link href="/contact" className="transition-colors hover:text-foreground">Contact</Link>
+            <div className="flex justify-center pt-8">
+              <a
+                href="https://www.aidirectori.es"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block opacity-90 transition-opacity hover:opacity-100"
+              >
+                <img
+                  src="https://cdn.aidirectori.es/ai-tools/badges/light-mode.png"
+                  alt="AI Directories Badge"
+                  className="h-auto max-h-14 w-auto"
+                />
+              </a>
             </div>
           </div>
         </footer>

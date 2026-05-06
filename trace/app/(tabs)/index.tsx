@@ -14,6 +14,8 @@ import {
   LayoutChangeEvent,
   useWindowDimensions,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { Image as ExpoImage } from 'expo-image';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -528,7 +530,7 @@ export default function UnifiedFeedScreen() {
   const [streak, setStreak] = useState<StreakData | null>(null);
   const v3FeedRef = useRef<V3UserFeed | null>(null);
   const deckListRef = useRef<FlatList<FeedSection>>(null);
-  const listRef = useRef<FlatList<FeedSection>>(null);
+  const listRef = useRef<any>(null);
   const [currentDeckIndex, setCurrentDeckIndex] = useState(0);
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
@@ -1226,6 +1228,30 @@ export default function UnifiedFeedScreen() {
     [colorScheme, deckRowHeight, deckCardWidth, firstFreeTrendingId, handleItemPress, handleTopicPress, isProUser, deckSections],
   );
 
+  const renderListItem = useCallback(
+    ({ item: section }: { item: FeedSection }) => {
+      let onPress = () => {};
+      if (section.type === 'trending') {
+        onPress = () => handleTopicPress(section.topic);
+      } else if (section.type === 'foryou') {
+        const isPulseCard = !!section.tapUrl;
+        onPress = isPulseCard
+          ? () => WebBrowser.openBrowserAsync(section.tapUrl!)
+          : () => handleItemPress(section.item);
+      }
+      return (
+        <MemoizedListStoryItem
+          section={section}
+          colorScheme={colorScheme}
+          onPress={onPress}
+        />
+      );
+    },
+    [colorScheme, handleItemPress, handleTopicPress],
+  );
+
+  const getListItemType = useCallback((section: FeedSection) => section.type, []);
+
   const showFeed = !isLoading && hasRenderableFeed && !isEmpty && !(isFeedBuilding && isEmpty);
 
   return (
@@ -1234,30 +1260,16 @@ export default function UnifiedFeedScreen() {
         <>
           {renderDeckChrome()}
           {viewMode === 'list' ? (
-            <FlatList
+            <FlashList
               ref={listRef}
-              data={deckSections}
+              data={feedSections}
               keyExtractor={deckKeyExtractor}
-              renderItem={({ item: section }) => {
-                let onPress = () => {};
-                if (section.type === 'trending') {
-                  onPress = () => handleTopicPress(section.topic);
-                } else if (section.type === 'foryou') {
-                  const isPulseCard = !!section.tapUrl;
-                  onPress = isPulseCard
-                    ? () => WebBrowser.openBrowserAsync(section.tapUrl!)
-                    : () => handleItemPress(section.item);
-                }
-                return (
-                  <ListStoryItem
-                    section={section}
-                    colorScheme={colorScheme}
-                    onPress={onPress}
-                  />
-                );
-              }}
+              renderItem={renderListItem}
+              getItemType={getListItemType}
+              drawDistance={320}
               showsVerticalScrollIndicator={false}
-              refreshControl={refreshControlEl}
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
               contentContainerStyle={{ paddingBottom: 20 + insets.bottom }}
             />
           ) : (
@@ -1549,16 +1561,24 @@ function ListStoryItem({
           </Text>
         </View>
         {imageUrl && (
-          <Image
-            source={{ uri: imageUrl }}
+          <ExpoImage
+            source={imageUrl}
             style={styles.listThumb}
-            resizeMode="cover"
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            recyclingKey={imageUrl}
+            transition={80}
           />
         )}
       </View>
     </Pressable>
   );
 }
+
+const MemoizedListStoryItem = React.memo(
+  ListStoryItem,
+  (prev, next) => prev.section === next.section && prev.colorScheme === next.colorScheme,
+);
 
 function TouchGrassFooter({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
   const [emojis, setEmojis] = useState<{ id: number; emoji: string }[]>([]);
