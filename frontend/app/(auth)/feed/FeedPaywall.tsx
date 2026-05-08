@@ -60,7 +60,8 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
       setOpen(true);
     }, 800);
     return () => clearTimeout(t);
-  }, [active, defaultOpen, pricingPreview]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, defaultOpen]);
   const [checkoutLoading, setCheckoutLoading] = React.useState(false);
   const [signInLoading, setSignInLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
