@@ -28,12 +28,6 @@ export default function PublicHeader({
 
           <nav className="hidden items-center gap-1 sm:flex">
             <Link
-              href="/trending"
-              className="rounded-full px-4 py-1.5 text-[13px] text-secondary/70 transition-colors hover:text-foreground"
-            >
-              Trending
-            </Link>
-            <Link
               href="/daily"
               className="rounded-full px-4 py-1.5 text-[13px] text-secondary/70 transition-colors hover:text-foreground"
             >

@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
           allow_discount_code: offer.isIndiaOffer,
         },
         subscription_data: {
-          trial_period_days: 0,
+          trial_period_days: offer.trialDays,
         },
         customer: {
           email: email,

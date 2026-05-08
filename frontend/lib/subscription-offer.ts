@@ -90,7 +90,7 @@ export function resolveSubscriptionOfferFromHeaders(headers: HeaderReader, profi
     priceDisplay: isIndiaOffer
       ? (process.env.SUBSCRIPTION_PRICE_DISPLAY_INDIA || '₹19/month')
       : (process.env.SUBSCRIPTION_PRICE_DISPLAY_DEFAULT || '$4.99/month'),
-    trialDays: 0,
+    trialDays: 3,
   };
 }
 

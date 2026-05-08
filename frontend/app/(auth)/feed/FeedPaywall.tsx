@@ -5,8 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { trackCheckoutClicked, trackFeedSubscribeDialogShown, trackFeedProWelcomeShown } from '@/lib/posthog';
 import { LANDING_PRICING_BULLET_POINTS } from '@/lib/subscription-pricing-bullets';
 
-const INDIA_PRICING = { trialDays: 0, priceDisplay: '₹19/month', pricingOffer: 'india' as const };
-const DEFAULT_PRICING = { trialDays: 0, priceDisplay: '$4.99/month', pricingOffer: 'default' as const };
+const INDIA_PRICING = { trialDays: 3, priceDisplay: '₹19/month', pricingOffer: 'india' as const };
+const DEFAULT_PRICING = { trialDays: 3, priceDisplay: '$4.99/month', pricingOffer: 'default' as const };
 
 function guessClientPricing() {
   try {
@@ -184,21 +184,15 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
 
             {!user ? (
               <>
-                <p className="pr-10 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary/40">
-                  {pricingPreview.pricingOffer === 'india' ? 'Trace Pro India' : 'Trace Pro'}
-                </p>
-                <h2 id="feed-subscribe-lock-heading" className="mt-2 text-xl font-bold tracking-tight text-foreground">
-                  Sign in to unlock
+                <h2 id="feed-subscribe-lock-heading" className="text-[1.35rem] font-bold tracking-tight text-foreground leading-snug">
+                  Try Trace Pro free<br />for 3 days
                 </h2>
-                <p className="mt-2 text-sm leading-relaxed text-secondary/60">
-                  Sign in, then subscribe for {pricingPreview.priceDisplay}. Full briefings, unlimited reads, cancel anytime.
+                <p className="mt-2.5 text-[13px] leading-relaxed text-secondary/55">
+                  Sign in to start your trial. Love it? Stay at {pricingPreview.priceDisplay}. Don&apos;t? Cancel before day 3 — you pay nothing.
                 </p>
-                <div className="mt-5 max-h-[min(40vh,16rem)] space-y-3 overflow-y-auto pr-0.5 sm:max-h-none sm:overflow-visible">
+                <div className="mt-5 space-y-2.5">
                   {LANDING_PRICING_BULLET_POINTS.map((line) => (
-                    <div key={line} className="flex items-start gap-3">
-                      <Check size={13} className="shrink-0 mt-[3px] text-foreground/35" strokeWidth={2.5} />
-                      <p className="text-[13px] font-medium leading-snug text-foreground/85">{line}</p>
-                    </div>
+                    <p key={line} className="text-[13px] font-medium leading-snug text-foreground/75">{line}</p>
                   ))}
                 </div>
                 {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
@@ -206,19 +200,19 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
                   type="button"
                   onClick={handleSignInToSubscribe}
                   disabled={signInLoading}
-                  className="mt-6 flex w-full items-center justify-center rounded-full bg-foreground py-3.5 text-sm font-semibold text-background transition hover:bg-foreground/90 disabled:opacity-60"
+                  className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-foreground py-3.5 text-sm font-semibold text-background transition hover:bg-foreground/90 disabled:opacity-60"
                 >
                   {signInLoading ? (
                     <>
                       <Loader2 size={16} className="animate-spin" /> Signing in...
                     </>
                   ) : (
-                    'Sign in with Google'
+                    'Start my free 3-day trial →'
                   )}
                 </button>
                 <button
                   type="button"
-                  className="mt-3 w-full py-2 text-sm text-secondary/60 transition hover:text-foreground"
+                  className="mt-3 w-full py-2 text-[13px] text-secondary/45 transition hover:text-foreground"
                   onClick={() => setOpen(false)}
                 >
                   Maybe later
@@ -226,21 +220,15 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
               </>
             ) : (
               <>
-                <p className="pr-10 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary/40">
-                  {pricingPreview.pricingOffer === 'india' ? 'Trace Pro India' : 'Trace Pro'}
-                </p>
-                <h2 id="feed-subscribe-lock-heading" className="mt-2 text-xl font-bold tracking-tight text-foreground">
-                  Unlock your feed
+                <h2 id="feed-subscribe-lock-heading" className="text-[1.35rem] font-bold tracking-tight text-foreground leading-snug">
+                  Try Trace Pro free<br />for 3 days
                 </h2>
-                <p className="mt-2 text-sm leading-relaxed text-secondary/60">
-                  Subscribe for {pricingPreview.priceDisplay}. Full briefings, unlimited reads, cancel anytime.
+                <p className="mt-2.5 text-[13px] leading-relaxed text-secondary/55">
+                  Love it? Stay at {pricingPreview.priceDisplay}. Don&apos;t? Cancel before day 3 — you pay nothing.
                 </p>
-                <div className="mt-5 max-h-[min(40vh,16rem)] space-y-3 overflow-y-auto pr-0.5 sm:max-h-none sm:overflow-visible">
+                <div className="mt-5 space-y-2.5">
                   {LANDING_PRICING_BULLET_POINTS.map((line) => (
-                    <div key={line} className="flex items-start gap-3">
-                      <Check size={13} className="shrink-0 mt-[3px] text-foreground/35" strokeWidth={2.5} />
-                      <p className="text-[13px] font-medium leading-snug text-foreground/85">{line}</p>
-                    </div>
+                    <p key={line} className="text-[13px] font-medium leading-snug text-foreground/75">{line}</p>
                   ))}
                 </div>
                 {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
@@ -248,19 +236,19 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
                   type="button"
                   onClick={handleSubscribe}
                   disabled={checkoutLoading}
-                  className="mt-6 flex w-full items-center justify-center rounded-full bg-foreground py-3.5 text-sm font-semibold text-background transition hover:bg-foreground/90 disabled:opacity-60"
+                  className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-foreground py-3.5 text-sm font-semibold text-background transition hover:bg-foreground/90 disabled:opacity-60"
                 >
                   {checkoutLoading ? (
                     <>
                       <Loader2 size={16} className="animate-spin" /> Setting up...
                     </>
                   ) : (
-                    `Subscribe to ${pricingPreview.pricingOffer === 'india' ? 'Trace Pro India' : 'Trace Pro'}`
+                    'Start my free 3-day trial →'
                   )}
                 </button>
                 <button
                   type="button"
-                  className="mt-3 w-full py-2 text-sm text-secondary/60 transition hover:text-foreground"
+                  className="mt-3 w-full py-2 text-[13px] text-secondary/45 transition hover:text-foreground"
                   onClick={() => setOpen(false)}
                 >
                   Maybe later
@@ -387,7 +375,7 @@ export function PaywallGate() {
           The news habit that<br />doesn't waste your time.
         </h2>
         <p className="text-[14px] text-secondary/50 mb-10 leading-relaxed">
-          {priceDisplay}. Cancel anytime.
+          Free for 3 days · then {priceDisplay} · Cancel anytime.
         </p>
 
         <div className="space-y-5 mb-10">
@@ -408,9 +396,9 @@ export function PaywallGate() {
           disabled={loading}
           className="flex items-center justify-center gap-2 w-full py-3.5 rounded-full text-[13px] font-semibold bg-foreground text-background transition-all hover:bg-foreground/90 hover:shadow-md hover:shadow-black/10 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:scale-100"
         >
-          {loading ? <><Loader2 size={14} className="animate-spin" />Setting up...</> : `Subscribe to ${planName}`}
+          {loading ? <><Loader2 size={14} className="animate-spin" />Setting up...</> : 'Start my free 3-day trial'}
         </button>
-        <p className="text-[11px] text-secondary/35 mt-2.5 text-center">{priceDisplay} · Cancel anytime</p>
+        <p className="text-[11px] text-secondary/35 mt-2.5 text-center">Free for 3 days · then {priceDisplay} · Cancel anytime</p>
       </div>
     </div>
   );
@@ -421,24 +409,72 @@ export function PaywallGate() {
  * Renders after the last free item in a column. Shows blurred placeholder rows,
  * a gradient fade, and an inline subscribe CTA.
  */
+const FAKE_STORY_TITLES = [
+  'OpenAI quietly ships new reasoning model that beats o3 on key benchmarks',
+  'Google DeepMind researchers publish landmark paper on agent memory',
+  'Apple reportedly building its own AI chip for data centers',
+  'Anthropic raises $2B at $40B valuation as AI race intensifies',
+  'Meta releases Llama 4 with 128K context window and native tool use',
+  'Sam Altman says AGI could arrive "sooner than most people expect"',
+  'NVIDIA unveils next-gen GPU architecture designed for inference at scale',
+  'Microsoft integrates Copilot into every Office app with new reasoning layer',
+  'Perplexity launches enterprise tier with SOC2 compliance and private search',
+  'Y Combinator backs 12 new AI infra startups in its biggest batch ever',
+  'AWS announces 40% price cut on GPU instances amid cloud AI wars',
+  'Cloudflare launches AI Gateway to rate-limit and cache LLM calls',
+  "xAI's Grok 3 reportedly outperforms GPT-4o on coding benchmarks",
+  'Stripe adds AI fraud detection that reduced chargebacks by 30%',
+  'GitHub Copilot now writes entire PRs autonomously with test coverage',
+];
+
+const FAKE_TWEET_SNIPPETS = [
+  "This new model just wrote a working compiler in 4 minutes. I'm speechless.",
+  "Hot take: context windows will make RAG obsolete within 18 months.",
+  "Just shipped a full SaaS product solo using Claude + Cursor. 3 days. No joke.",
+  "The AI hype cycle is real but so is the underlying capability jump.",
+  "Everyone building AI wrappers will be replaced by the model itself soon.",
+  "Nobody talks about how much inference costs dropped in the last 6 months.",
+  "The best engineers I know are 10x-ing their output with AI. The rest are in denial.",
+  "Andrej just dropped another banger explainer thread. Go read it now.",
+  "We're at the 'electricity will never power a house' stage of AI skepticism.",
+];
+
 export function FreeBlurGate({ hiddenCount, noun = 'stories' }: { hiddenCount: number; noun?: string }) {
   if (hiddenCount <= 0) return null;
+
+  const isTweets = noun === 'tweets';
+  const pool = isTweets ? FAKE_TWEET_SNIPPETS : FAKE_STORY_TITLES;
+  // Show 5 fake items so the fade looks full of content
+  const fakes = [pool[0], pool[2], pool[5], pool[8], pool[11 % pool.length]];
+
   return (
     <div className="relative mt-1 select-none" aria-hidden="true">
-      {/* Blurred ghost rows */}
-      <div className="space-y-3 pointer-events-none">
-        {[0.55, 0.35, 0.18].map((opacity, i) => (
-          <div
-            key={i}
-            className="h-11 rounded-lg bg-foreground/8"
-            style={{ filter: `blur(${3 + i * 2}px)`, opacity }}
-          />
-        ))}
+      {/* Blurred fake titles — barely blurred at top, very blurred at bottom */}
+      <div className="space-y-2 pointer-events-none">
+        {fakes.map((title, i) => {
+          const blurPx = 2 + i * 2.5;
+          const op = 0.75 - i * 0.12;
+          return (
+            <div
+              key={i}
+              className="flex items-start gap-2.5 py-0.5"
+              style={{ filter: `blur(${blurPx}px)`, opacity: op }}
+            >
+              <div className="shrink-0 w-8 h-8 rounded-md bg-foreground/10" />
+              <div className="flex-1 min-w-0 space-y-1.5">
+                <div className="text-[13px] font-medium text-foreground leading-snug line-clamp-2">
+                  {title}
+                </div>
+                <div className="h-[9px] w-20 rounded bg-foreground/8" />
+              </div>
+            </div>
+          );
+        })}
       </div>
-      {/* Gradient fade to background */}
-      <div className="absolute inset-x-0 top-0 h-full bg-gradient-to-b from-transparent via-background/70 to-background pointer-events-none" />
-      {/* CTA */}
-      <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 pt-4 pb-1 pointer-events-auto">
+      {/* Gradient: starts transparent so top items are readable, then fades hard */}
+      <div className="absolute inset-x-0 top-0 h-full bg-gradient-to-b from-transparent from-10% via-background/60 via-50% to-background pointer-events-none" />
+      {/* CTA pinned at bottom */}
+      <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 pb-1 pointer-events-auto">
         <p className="text-[11px] text-secondary/45">+{hiddenCount} more {noun}</p>
         <Link
           href="/profile?tab=subscription"

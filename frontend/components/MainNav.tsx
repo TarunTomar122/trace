@@ -90,12 +90,6 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
                   Your Feed
                 </a>
               )}
-              <a
-                href="/trending"
-                className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-              >
-                Trending
-              </a>
             </div>
 
             {/* Logo - Centered */}
@@ -197,13 +191,6 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
                       Your Feed
                     </a>
                   )}
-                  <a
-                    href="/trending"
-                    className="px-3 py-2.5 text-sm font-medium text-secondary hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Trending
-                  </a>
                   {user ? (
                     <button
                       onClick={() => {

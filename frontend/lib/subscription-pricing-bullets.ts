@@ -1,9 +1,8 @@
 /** Trace Pro bullets — keep aligned with the homepage pricing section (`LandingPageClient`). */
 export const LANDING_PRICING_BULLET_POINTS = [
-  'A daily pulse tailored to your role and interests',
-  'Grouped topic pages instead of duplicate links',
-  'Hot tweets from the tech conversation',
-  'Community signal without endless scrolling',
-  'Launches and products worth watching',
-  'A faster way to stay current in tech',
+  '🗞️  Daily pulse tailored to your role & interests',
+  '🧵  Hot tweets from the tech conversation',
+  '🔍  Grouped topics — no duplicate links',
+  '🚀  Launches and products worth watching',
+  '✨  Community signal without the noise',
 ] as const;

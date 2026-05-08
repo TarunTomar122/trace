@@ -148,13 +148,13 @@ const sourceGroups = [
 ];
 
 const INDIA_PRICING_PREVIEW = {
-  trialDays: 0,
+  trialDays: 3,
   priceDisplay: '₹19/month',
   pricingOffer: 'india' as const,
 };
 
 const DEFAULT_PRICING_PREVIEW = {
-  trialDays: 0,
+  trialDays: 3,
   priceDisplay: '$4.99/month',
   pricingOffer: 'default' as const,
 };
@@ -248,12 +248,6 @@ export default function LandingPageClient({
             <span className="text-[13px] font-semibold tracking-[0.2em]">TRACE</span>
           </Link>
           <nav className="hidden items-center gap-1 sm:flex">
-            <Link
-              href="/trending"
-              className="rounded-full px-4 py-1.5 text-[13px] text-secondary/70 transition-colors hover:text-foreground"
-            >
-              Trending
-            </Link>
             <Link
               href="/daily"
               className="rounded-full px-4 py-1.5 text-[13px] text-secondary/70 transition-colors hover:text-foreground"
@@ -562,7 +556,7 @@ export default function LandingPageClient({
                   advantage in tech
                 </h3>
                 <p className="text-[14px] text-white/40 mb-8 leading-[1.7] max-w-md">
-                  Deeper context, smarter filtering, and signal over noise — in one daily pulse. Subscribe for {priceDisplay}.
+                  Try free for 3 days. Love it? Stay at {priceDisplay}. Don't? Cancel before day 3 — you pay nothing.
                 </p>
                 <div className="space-y-3.5 mb-9">
                   {LANDING_PRICING_BULLET_POINTS.map((line) => (
@@ -576,10 +570,10 @@ export default function LandingPageClient({
                   onClick={() => handleStartTrial('pricing_card')}
                   className="w-full py-3.5 rounded-full text-[13px] font-semibold bg-white text-[#151515] transition-all hover:bg-white/90 hover:scale-[1.01] active:scale-[0.99]"
                 >
-                  Subscribe to {planName}
+                  Start my free 3-day trial
                 </button>
                 <p className="mt-3 text-center text-[12px] leading-snug text-white/35">
-                  {priceDisplay} · Cancel anytime
+                  Free for 3 days · then {priceDisplay} · Cancel anytime
                 </p>
               </div>
             </div>
@@ -705,7 +699,7 @@ export default function LandingPageClient({
                     onClick={() => handleStartTrial('bottom_cta')}
                     className="inline-flex items-center justify-center rounded-full border border-white/12 px-7 py-4 text-[15px] font-semibold text-white transition-all hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98]"
                   >
-                    Get Pro
+                    Try free for 3 days
                   </button>
                 </div>
               </div>
@@ -751,7 +745,6 @@ export default function LandingPageClient({
                 <span className="text-[11px] font-semibold tracking-[0.18em] text-secondary/50">TRACE</span>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-secondary/50">
-                <Link href="/trending" className="transition-colors hover:text-foreground">Trending</Link>
                 <Link href="/daily" className="transition-colors hover:text-foreground">Daily</Link>
                 <Link href="/blog" className="transition-colors hover:text-foreground">Blog</Link>
                 <Link href="/compare" className="transition-colors hover:text-foreground">Compare</Link>

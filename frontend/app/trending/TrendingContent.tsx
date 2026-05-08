@@ -353,9 +353,9 @@ export default function TrendingContent({
             </div>
             <Link href="/profile?tab=subscription" prefetch={false} onClick={() => trackCheckoutClicked("trending_unlock_cta")}
               className="mt-6 inline-flex items-center rounded-full bg-white px-8 py-3.5 text-[14px] font-semibold text-[#151515] transition-all hover:bg-white/90">
-              Subscribe to Trace Pro
+              Start my free 3-day trial
             </Link>
-            <p className="mt-3 text-[12px] text-white/30">$4.99/month · Cancel anytime</p>
+            <p className="mt-3 text-[12px] text-white/30">Free for 3 days · then $4.99/month · Cancel anytime</p>
           </div>
         </div>
       )}
