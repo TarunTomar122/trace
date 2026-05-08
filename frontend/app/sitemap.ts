@@ -270,12 +270,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.75,
   }))
 
-  const blogPages: MetadataRoute.Sitemap = blogPosts.map((post) => ({
-    url: `${baseUrl}/blog/${post.slug}`,
-    lastModified: new Date(),
-    changeFrequency: 'monthly' as const,
-    priority: 0.7,
-  }));
+  const blogPages: MetadataRoute.Sitemap = [
+    ...blogPosts.map((post) => ({
+      url: `${baseUrl}/blog/${post.slug}`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    })),
+    // Standalone SEO blog posts (not in content.ts)
+    { url: `${baseUrl}/blog/best-ai-news-apps-2026`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.75 },
+    { url: `${baseUrl}/blog/how-to-stay-updated-on-tech-without-doomscrolling`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.75 },
+    { url: `${baseUrl}/blog/free-news-aggregators-for-developers`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.75 },
+  ];
 
   const comparePagesIndex: MetadataRoute.Sitemap = [
     {
