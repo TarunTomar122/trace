@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Check, Loader2, Lock, Sparkles, X } from 'lucide-react';
+import { ArrowRight, Check, Loader2, Lock, Sparkles, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { trackCheckoutClicked, trackFeedSubscribeDialogShown, trackFeedProWelcomeShown } from '@/lib/posthog';
 import { LANDING_PRICING_BULLET_POINTS } from '@/lib/subscription-pricing-bullets';
@@ -411,6 +411,45 @@ export function PaywallGate() {
           {loading ? <><Loader2 size={14} className="animate-spin" />Setting up...</> : `Subscribe to ${planName}`}
         </button>
         <p className="text-[11px] text-secondary/35 mt-2.5 text-center">{priceDisplay} · Cancel anytime</p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Free-tier blur gate ─── */
+/**
+ * Renders after the last free item in a column. Shows blurred placeholder rows,
+ * a gradient fade, and an inline subscribe CTA.
+ */
+export function FreeBlurGate({ hiddenCount, noun = 'stories' }: { hiddenCount: number; noun?: string }) {
+  if (hiddenCount <= 0) return null;
+  return (
+    <div className="relative mt-1 select-none" aria-hidden="true">
+      {/* Blurred ghost rows */}
+      <div className="space-y-3 pointer-events-none">
+        {[0.55, 0.35, 0.18].map((opacity, i) => (
+          <div
+            key={i}
+            className="h-11 rounded-lg bg-foreground/8"
+            style={{ filter: `blur(${3 + i * 2}px)`, opacity }}
+          />
+        ))}
+      </div>
+      {/* Gradient fade to background */}
+      <div className="absolute inset-x-0 top-0 h-full bg-gradient-to-b from-transparent via-background/70 to-background pointer-events-none" />
+      {/* CTA */}
+      <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 pt-4 pb-1 pointer-events-auto">
+        <p className="text-[11px] text-secondary/45">+{hiddenCount} more {noun}</p>
+        <Link
+          href="/profile?tab=subscription"
+          onClick={() => {
+            try { import('@/lib/posthog').then(({ trackCheckoutClicked }) => trackCheckoutClicked('feed_blur_gate', { noun })); } catch { /* ignore */ }
+          }}
+          className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-5 py-2.5 text-[12px] font-semibold text-background transition-all hover:bg-foreground/90 hover:scale-[1.02] active:scale-[0.98] shadow-[0_2px_12px_rgba(0,0,0,0.15)]"
+        >
+          Unlock full feed
+          <ArrowRight size={12} strokeWidth={2.5} />
+        </Link>
       </div>
     </div>
   );

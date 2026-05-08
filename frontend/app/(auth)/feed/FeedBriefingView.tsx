@@ -27,6 +27,7 @@ import {
 import { getArticleImage } from '@/lib/fallback-images';
 import { trackCheckoutClicked } from '@/lib/posthog';
 import { ScrollFeedLoadingSkeleton } from './FeedBootShell';
+import { FreeBlurGate } from './FeedPaywall';
 import {
   BriefBody,
   ContentData,
@@ -856,9 +857,10 @@ function DesktopEditorialLayout({
         </div>
         {hotTweets.length > 0 ? (
           <div>
-            {hotTweets.map((tweet) => (
+            {(isLocked ? hotTweets.slice(0, 3) : hotTweets).map((tweet) => (
               <HotTweetItem key={tweet.id} tweet={tweet} />
             ))}
+            {isLocked && <FreeBlurGate hiddenCount={Math.max(0, hotTweets.length - 3)} noun="tweets" />}
           </div>
         ) : (
           <p className="text-[13px] text-secondary/40 py-4">More stories coming soon</p>
@@ -877,18 +879,21 @@ function DesktopEditorialLayout({
           </button>
         )}
         {centerGrid.length > 0 && (
-          <div className="grid grid-cols-2 gap-6">
-            {centerGrid.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onSelect(item.id)}
-                className="block w-full text-left hover:opacity-95 transition-opacity"
-              >
-                <EditorialMediumCard item={item} />
-              </button>
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-6">
+              {(isLocked ? centerGrid.slice(0, 2) : centerGrid).map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onSelect(item.id)}
+                  className="block w-full text-left hover:opacity-95 transition-opacity"
+                >
+                  <EditorialMediumCard item={item} />
+                </button>
+              ))}
+            </div>
+            {isLocked && <FreeBlurGate hiddenCount={Math.max(0, centerGrid.length - 2 + remaining.length)} noun="stories" />}
+          </>
         )}
       </main>
 
@@ -901,7 +906,7 @@ function DesktopEditorialLayout({
           <div className="flex-1 h-px bg-border/25" />
         </div>
         <div>
-          {remaining.slice(0, 10).map((item, i) => (
+          {(isLocked ? remaining.slice(0, 3) : remaining.slice(0, 10)).map((item, i) => (
             <button
               key={item.id}
               type="button"
@@ -910,10 +915,11 @@ function DesktopEditorialLayout({
             >
               <EditorialSidebarItem
                 item={item}
-                showDivider={i < remaining.length - 1}
+                showDivider={i < (isLocked ? Math.min(remaining.length, 3) : remaining.length) - 1}
               />
             </button>
           ))}
+          {isLocked && <FreeBlurGate hiddenCount={Math.max(0, remaining.length - 3)} noun="stories" />}
           {remaining.length === 0 && (
             <p className="text-[13px] text-secondary/40 py-4">More stories coming soon</p>
           )}
