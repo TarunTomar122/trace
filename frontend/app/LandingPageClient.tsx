@@ -11,6 +11,8 @@ import { trackLandingCTAClicked } from '@/lib/posthog';
 import { RecentDailyArchiveLinkStrip, type RecentArchiveItem } from '@/components/RecentDailyArchiveLinkStrip';
 import EmailCaptureSlideIn from '@/components/EmailCaptureSlideIn';
 import { LANDING_PRICING_BULLET_POINTS } from '@/lib/subscription-pricing-bullets';
+import HeroFomoTicker from './HeroFomoTicker';
+import type { HeroHeadline } from '@/lib/hero-headlines';
 
 /* ─── scroll-reveal utility ─── */
 
@@ -48,6 +50,50 @@ function Reveal({ children, className = '', delay = 0 }: { children: React.React
 }
 
 const reviewStrongClass = 'font-semibold text-foreground/90';
+
+type QuotePart = { text: string; strong?: boolean };
+
+const TESTIMONIALS: { id: string; line: string; parts: QuotePart[] }[] = [
+  {
+    id: 'mk',
+    line: 'Backend eng · fintech, SF',
+    parts: [
+      { text: 'AI is changing so fast it’s ' },
+      { text: 'hard to stay up to date', strong: true },
+      { text: '. Trace helps me get rid of the ' },
+      { text: 'FOMO', strong: true },
+      { text: ' anxiety — I can scroll the feed for like ' },
+      { text: '2 minutes', strong: true },
+      { text: ' in the morning and I’m ready to talk about everything hehe' },
+    ],
+  },
+  {
+    id: 'jl',
+    line: 'Product · growth-stage SaaS',
+    parts: [
+      { text: 'My Slack and group chats are just ' },
+      { text: 'firehoses of links', strong: true },
+      { text: ' I never had time to open. I use Trace as my actual ' },
+      { text: 'filter', strong: true },
+      { text: ' so I’m not ' },
+      { text: 'nodding along blind in meetings', strong: true },
+      { text: ' anymore lol' },
+    ],
+  },
+  {
+    id: 'ro',
+    line: 'Founding eng · devtools',
+    parts: [
+      { text: 'I don’t want to feel dumb when someone brings up a ' },
+      { text: 'new model or a launch', strong: true },
+      { text: '. ' },
+      { text: 'Quick skim of the feed', strong: true },
+      { text: ' and I at least have a ' },
+      { text: 'take', strong: true },
+      { text: '. Life saver honestly' },
+    ],
+  },
+];
 
 function ReviewQuoteBody({ parts }: { parts: readonly { text: string; strong?: boolean }[] }) {
   return (
@@ -128,8 +174,10 @@ function guessClientPricingPreview() {
 
 export default function LandingPageClient({
   recentDailyArchives = [],
+  heroHeadlines = [],
 }: {
   recentDailyArchives?: RecentArchiveItem[];
+  heroHeadlines?: HeroHeadline[];
 }) {
   const router = useRouter();
   const { user, profile, loading, profileResolved, signInWithGoogle } = useAuth();
@@ -149,12 +197,14 @@ export default function LandingPageClient({
   }, [user, loading, profileResolved, profile, router]);
 
   const handleStartReading = (location = 'hero') => {
-    trackLandingCTAClicked('read', location);
-    // if (user && profileResolved) {
+    if (user && profileResolved) {
+      trackLandingCTAClicked('read', location, { destination: 'feed' });
       router.push('/feed');
-    // } else {
-    //   router.push('/onboarding?intent=read');
-    // }
+    } else {
+      trackLandingCTAClicked('read', location, { destination: 'onboarding' });
+      try { sessionStorage.setItem('trace-show-pro-welcome', '1'); } catch { /* ignore */ }
+      router.push('/onboarding?intent=read');
+    }
   };
 
   const handleStartTrial = (location = 'hero') => {
@@ -229,58 +279,66 @@ export default function LandingPageClient({
 
       <main>
         {/* ── Hero ── */}
-        <section className="px-4 pt-20 pb-16 sm:px-6 sm:pt-28 sm:pb-24 lg:pt-32">
-          <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1fr_1.1fr] lg:items-center lg:px-8">
-            <div className="max-w-2xl">
-              <Reveal>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-secondary/50">
-                  The daily brief: AI + tech
-                </p>
-              </Reveal>
+        <section className="relative overflow-hidden px-4 pt-14 pb-14 sm:px-6 sm:pt-36 sm:pb-32 lg:pt-44">
+          {/* Soft amber halo behind the headline area */}
+          <div
+            className="absolute inset-x-0 top-1/4 -z-10 h-[60%] pointer-events-none"
+            style={{
+              background:
+                'radial-gradient(ellipse 60% 50% at 50% 40%, rgba(251, 191, 36, 0.10), transparent 70%)',
+            }}
+          />
 
-              <Reveal delay={80}>
-                <h1 className="mt-6 text-[3rem] font-bold leading-[0.95] tracking-[-0.04em] sm:text-[4rem] lg:text-[4.75rem]">
-                  What changed<br />
-                  in AI + tech<br />
-                  <span className="text-foreground/25">since yesterday.</span>
-                </h1>
-              </Reveal>
-
-              <Reveal delay={160}>
-                <p className="mt-8 max-w-md text-[16px] leading-[1.8] text-secondary">
-                  Something big moves every day. Trace is one feed for the top stories, the real discussion, and what launched—so you can catch up in a few minutes instead of a dozen open tabs.
-                </p>
-              </Reveal>
-
-              <Reveal delay={240}>
-                <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <button
-                    onClick={() => handleStartReading('hero')}
-                    className="group inline-flex items-center justify-center gap-2.5 rounded-full bg-[#151515] px-7 py-4 text-[15px] font-semibold text-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] transition-all hover:bg-black hover:shadow-[0_8px_30px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98]"
-                  >
-                    Read today
-                  </button>
-                  <button
-                    onClick={() => handleStartTrial('hero')}
-                    className="inline-flex items-center justify-center rounded-full border border-black/10 bg-white/70 backdrop-blur-sm px-7 py-4 text-[15px] font-semibold transition-all hover:bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.06)] hover:scale-[1.02] active:scale-[0.98]"
-                  >
-                    Start free trial
-                    <ArrowRight size={18} className="transition-transform group-hover:translate-x-0.5" />
-                  </button>
-                </div>
-              </Reveal>
-
-              <Reveal delay={320}>
-                <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px] text-secondary/60">
-                  <span className="flex items-center gap-2">
-                    <Check size={14} className="text-emerald-600/70" />
-                    500+ daily readers
-                  </span>
-                </div>
-              </Reveal>
+          {/* Floating decorative icons — scattered around the hero text (lg screens only) */}
+          <div className="pointer-events-none absolute inset-0 hidden lg:block" aria-hidden="true">
+            {/* Left cluster */}
+            <div className="animate-float absolute" style={{ left: 'calc(50% - 440px)', top: '12%', animationDelay: '0s', animationDuration: '7s' }}>
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/70 shadow-[0_2px_12px_rgba(0,0,0,0.07)] ">
+                <Cpu size={20} className="text-foreground/30" />
+              </div>
             </div>
+            <div className="animate-float absolute" style={{ left: 'calc(50% - 500px)', top: '48%', animationDelay: '1.4s', animationDuration: '8.5s' }}>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/60 shadow-[0_2px_10px_rgba(0,0,0,0.05)]">
+                <Terminal size={17} className="text-foreground/25" />
+              </div>
+            </div>
+            <div className="animate-float absolute" style={{ left: 'calc(50% - 380px)', top: '76%', animationDelay: '0.7s', animationDuration: '6.5s' }}>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/55 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+                <Braces size={15} className="text-foreground/22" />
+              </div>
+            </div>
+            {/* Right cluster */}
+            <div className="animate-float absolute" style={{ right: 'calc(50% - 440px)', top: '18%', animationDelay: '0.5s', animationDuration: '7.5s' }}>
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/70 shadow-[0_2px_12px_rgba(0,0,0,0.07)] ">
+                <Rocket size={20} className="text-foreground/30" />
+              </div>
+            </div>
+            <div className="animate-float absolute" style={{ right: 'calc(50% - 510px)', top: '54%', animationDelay: '2s', animationDuration: '9s' }}>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/60 shadow-[0_2px_10px_rgba(0,0,0,0.05)]">
+                <Globe size={17} className="text-foreground/25" />
+              </div>
+            </div>
+            <div className="animate-float absolute" style={{ right: 'calc(50% - 420px)', top: '74%', animationDelay: '1s', animationDuration: '7s' }}>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/55 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+                <Zap size={15} className="text-foreground/22" />
+              </div>
+            </div>
+          </div>
 
-            <Reveal delay={200}>
+          <div className="relative mx-auto max-w-3xl text-center">
+            <Reveal>
+              <HeroFomoTicker initialHeadlines={heroHeadlines} onCtaClick={() => handleStartReading('hero')} />
+            </Reveal>
+          </div>
+        </section>
+
+        {/* ── Product preview ── */}
+        <section className="px-4 pb-20 sm:px-6 sm:pb-28">
+          <div className="mx-auto max-w-4xl lg:px-8">
+            <Reveal>
+              <p className="mb-6 text-center text-[11px] font-semibold uppercase tracking-[0.3em] text-secondary/35">
+                What you get every day
+              </p>
               <div className="animate-float">
                 <HeroPulsePreview />
               </div>
@@ -349,88 +407,17 @@ export default function LandingPageClient({
                 Notes from people who already read with Trace
               </p>
               <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
-                {(
-                  [
-                    {
-                      initials: 'MK',
-                      name: 'Maya K.',
-                      line: 'Backend eng · fintech, SF',
-                      parts: [
-                        { text: 'AI is changing so fast it’s ' },
-                        { text: 'hard to stay up to date', strong: true },
-                        { text: '. ' },
-                        { text: 'Trace', strong: true },
-                        {
-                          text: ' helps me get rid of the ',
-                        },
-                        { text: 'FOMO', strong: true },
-                        { text: ' anxiety around it — I can scroll the ' },
-                        { text: 'feed', strong: true },
-                        { text: ' for like ' },
-                        { text: '2 minutes', strong: true },
-                        { text: ' in the morning and I’m ready to talk about everything hehe' },
-                      ] as const,
-                    },
-                    {
-                      initials: 'JL',
-                      name: 'James L.',
-                      line: 'Product · growth-stage SaaS',
-                      parts: [
-                        { text: 'My Slack and group chats are just ' },
-                        { text: 'firehoses of links', strong: true },
-                        { text: ' I never had time to open. I use ' },
-                        { text: 'Trace', strong: true },
-                        { text: ' as my actual ' },
-                        { text: 'filter', strong: true },
-                        { text: ' so I’m not ' },
-                        { text: 'nodding along blind in meetings', strong: true },
-                        { text: ' anymore lol' },
-                      ] as const,
-                    },
-                    {
-                      initials: 'RO',
-                      name: 'Rina O.',
-                      line: 'Founding eng · devtools',
-                      parts: [
-                        { text: 'I’m not trying to be on every trend — I just don’t want to feel dumb when someone brings up a ' },
-                        { text: 'new model or a launch', strong: true },
-                        { text: '. ' },
-                        { text: 'Quick skim of the feed', strong: true },
-                        { text: ' and I at least have a ' },
-                        { text: 'take', strong: true },
-                        { text: '. ' },
-                        { text: 'Life saver', strong: true },
-                        { text: ' honestly' },
-                      ] as const,
-                    },
-                  ] as const
-                ).map((t) => (
+                {TESTIMONIALS.map((t) => (
                   <figure
-                    key={t.name}
-                    className="flex gap-4 rounded-2xl border border-black/[0.06] bg-white/55 p-5 text-left shadow-[0_1px_0_rgba(0,0,0,0.04)] sm:flex-col sm:p-6"
+                    key={t.id}
+                    className="rounded-2xl border border-black/[0.06] bg-white/55 p-5 text-left shadow-[0_1px_0_rgba(0,0,0,0.04)] sm:p-6"
                   >
-                    <div
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tracking-tight text-foreground/80 ring-1 ring-black/[0.06] sm:mx-0 sm:h-9 sm:w-9"
-                      style={{
-                        background:
-                          t.initials === 'MK'
-                            ? 'linear-gradient(135deg, #e8e4dd 0%, #ddd7cc 100%)'
-                            : t.initials === 'JL'
-                              ? 'linear-gradient(135deg, #e0e6ee 0%, #d0d8e4 100%)'
-                              : 'linear-gradient(135deg, #e4e8e0 0%, #d4dcd4 100%)',
-                      }}
-                    >
-                      {t.initials}
-                    </div>
-                    <div className="min-w-0">
-                      <blockquote className="text-[14px] leading-[1.6] text-foreground/80">
-                        <ReviewQuoteBody parts={t.parts} />
-                      </blockquote>
-                      <figcaption className="mt-4 text-[12px] leading-tight text-secondary/55">
-                        <span className="font-medium text-foreground/75">{t.name}</span>
-                        <span className="mt-0.5 block text-[11px] text-secondary/45">{t.line}</span>
-                      </figcaption>
-                    </div>
+                    <blockquote className="text-[14px] leading-[1.7] text-foreground/80">
+                      <ReviewQuoteBody parts={t.parts} />
+                    </blockquote>
+                    <figcaption className="mt-4 text-[11px] text-secondary/40">
+                      {t.line}
+                    </figcaption>
                   </figure>
                 ))}
               </div>

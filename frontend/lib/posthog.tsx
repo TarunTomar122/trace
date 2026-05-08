@@ -175,6 +175,14 @@ export function trackFeedSubscribeDialogShown(properties?: Record<string, unknow
   });
 }
 
-export function trackLandingCTAClicked(variant: string, location: string) {
-  posthog.capture("landing_cta_clicked", { variant, location });
+export function trackLandingCTAClicked(variant: string, location: string, props?: Record<string, unknown>) {
+  posthog.capture("landing_cta_clicked", { variant, location, ...props });
+}
+
+/** Pro welcome modal auto-shown on /feed after a new user completes onboarding. */
+export function trackFeedProWelcomeShown(props?: Record<string, unknown>) {
+  posthog.capture("feed_pro_welcome_shown", {
+    surface: "feed_pro_welcome",
+    ...props,
+  });
 }

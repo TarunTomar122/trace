@@ -233,7 +233,7 @@ export default function HeroPulsePreview() {
           <HeroDemoFeedToggle view={demoView} onChange={setDemoView} />
         </div>
 
-        <div className="h-[min(28rem,75vh)]">
+        <div className="h-[min(36rem,80vh)]">
           {demoView === 'pulse' ? (
             <div className="h-full overflow-y-auto overscroll-contain">
               {/* Hot Tweets section */}

@@ -55,7 +55,7 @@ export default function EmailCaptureSlideIn() {
 
   return (
     <div
-      className="transition-all duration-500 ease-out"
+      className="hidden sm:block transition-all duration-500 ease-out"
       style={{
         position: "fixed",
         bottom: "24px",

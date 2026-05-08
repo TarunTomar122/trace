@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import LandingPageClient from "../LandingPageClient";
 import { getDailyArchiveEntries } from "@/lib/daily-archive";
+import { getHeroHeadlines } from "@/lib/hero-headlines";
 
 export const metadata: Metadata = {
   title: "Trace — Your daily tech, in one place",
@@ -47,10 +48,14 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const recent = await getDailyArchiveEntries(7);
+  const [recent, heroHeadlines] = await Promise.all([
+    getDailyArchiveEntries(7),
+    getHeroHeadlines().catch(() => []),
+  ]);
   return (
     <LandingPageClient
       recentDailyArchives={recent.map((e) => ({ date: e.date, topHeadline: e.topHeadline }))}
+      heroHeadlines={heroHeadlines}
     />
   );
 }

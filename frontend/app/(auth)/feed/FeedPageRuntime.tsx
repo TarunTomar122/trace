@@ -132,6 +132,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   const trackedPaywalls = React.useRef<Set<string>>(new Set());
   const trackedCheckoutSuccess = React.useRef(false);
 
+  const [showProWelcome, setShowProWelcome] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showMobileContent, setShowMobileContent] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>('for_you');
@@ -421,6 +422,16 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
       trackSubscriptionStarted('pro_monthly');
     }
   }, [checkoutReturned, isSubscribed]);
+
+  useEffect(() => {
+    if (!profileResolved || isSubscribed) return;
+    try {
+      if (sessionStorage.getItem('trace-show-pro-welcome') === '1') {
+        sessionStorage.removeItem('trace-show-pro-welcome');
+        setShowProWelcome(true);
+      }
+    } catch { /* ignore */ }
+  }, [profileResolved, isSubscribed]);
 
   const currentList = useMemo(() => {
     const list: {
@@ -1041,7 +1052,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
           )}
         </div>
 
-        <FeedSubscribeClickLock active={feedInteractionLocked} />
+        <FeedSubscribeClickLock active={feedInteractionLocked} defaultOpen={showProWelcome} />
       </div>
     </div>
   );

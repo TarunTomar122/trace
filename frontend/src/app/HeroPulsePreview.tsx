@@ -139,13 +139,13 @@ export default function HeroPulsePreview() {
 
   return (
     <div className="relative overflow-x-clip">
-      <div className="relative z-10 overflow-hidden rounded-2xl border border-border/15 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] ring-1 ring-black/4">
+      <div className="relative z-10 rounded-2xl border border-border/15 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] ring-1 ring-black/4">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/15 px-4 py-3 sm:px-5">
           <p className="text-[10px] font-semibold text-secondary/45 uppercase tracking-[0.18em]">{todayLabel}</p>
           <HeroDemoFeedToggle view={demoView} onChange={setDemoView} />
         </div>
 
-        <div className="h-[min(28rem,75vh)]">
+        <div className="h-[min(40rem,80vh)]">
           {demoView === 'pulse' ? (
             <div className="h-full overflow-y-auto overscroll-contain px-4 py-5 sm:px-5 sm:py-6">
               <div className="mb-6 border-b border-border/10 pb-4">

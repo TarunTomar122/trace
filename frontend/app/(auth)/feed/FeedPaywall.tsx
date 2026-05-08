@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Check, Loader2, Lock, Sparkles, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { trackCheckoutClicked, trackFeedSubscribeDialogShown } from '@/lib/posthog';
+import { trackCheckoutClicked, trackFeedSubscribeDialogShown, trackFeedProWelcomeShown } from '@/lib/posthog';
 import { LANDING_PRICING_BULLET_POINTS } from '@/lib/subscription-pricing-bullets';
 
 const INDIA_PRICING = { trialDays: 0, priceDisplay: '₹19/month', pricingOffer: 'india' as const };
@@ -47,9 +47,20 @@ function UpgradeCard({ lockedCount }: { lockedCount: number }) {
 }
 
 /** Full-viewport click shield below the feed header: opens subscribe modal (logged-in, not subscribed) or sign-in prompt (unauthenticated). */
-export function FeedSubscribeClickLock({ active }: { active: boolean }) {
+export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active: boolean; defaultOpen?: boolean }) {
   const { user, signInWithGoogle } = useAuth();
   const [open, setOpen] = React.useState(false);
+  const hasAutoOpened = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!active || !defaultOpen || hasAutoOpened.current) return;
+    hasAutoOpened.current = true;
+    const t = setTimeout(() => {
+      trackFeedProWelcomeShown({ pricing_offer: pricingPreview.pricingOffer, price_display: pricingPreview.priceDisplay });
+      setOpen(true);
+    }, 800);
+    return () => clearTimeout(t);
+  }, [active, defaultOpen, pricingPreview]);
   const [checkoutLoading, setCheckoutLoading] = React.useState(false);
   const [signInLoading, setSignInLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);

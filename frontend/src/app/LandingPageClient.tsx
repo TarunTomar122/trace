@@ -746,20 +746,6 @@ export default function LandingPageClient() {
                 <Link href="/contact" className="transition-colors hover:text-foreground">Contact</Link>
               </div>
             </div>
-            <div className="flex justify-center pt-8">
-              <a
-                href="https://www.aidirectori.es"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block opacity-90 transition-opacity hover:opacity-100"
-              >
-                <img
-                  src="https://cdn.aidirectori.es/ai-tools/badges/dark-mode.png"
-                  alt="AI Directories Badge"
-                  className="max-w-2"
-                />
-              </a>
-            </div>
           </div>
         </footer>
       </main>
