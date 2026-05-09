@@ -230,6 +230,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             name: firebaseUser.displayName,
             onboarded: cached?.onboarded || false,
           });
+          // Still verify subscription status from Firestore — the cache can be stale
+          // (e.g. subscription granted after last login). Don't gate Pro access on a stale cache.
+          const cachedSub = cached?.subscriptionStatus;
+          const cachedAppSub = cached?.appSubscriptionStatus;
+          if (!['active', 'trial'].includes(cachedSub ?? '') && !['active', 'trial'].includes(cachedAppSub ?? '')) {
+            void loadProfileInBackground();
+          }
           return;
         }
 

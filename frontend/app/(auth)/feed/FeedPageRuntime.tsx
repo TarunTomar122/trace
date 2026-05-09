@@ -148,7 +148,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   >('all');
   const refreshProfileRef = React.useRef(refreshProfile);
   const phasePerfRef = React.useRef({
-    startedAt: performance.now(),
+    startedAt: 0,
     authReady: false,
     listReady: false,
     detailReadyForId: '' as string,
@@ -177,6 +177,10 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   useEffect(() => {
     refreshProfileRef.current = refreshProfile;
   }, [refreshProfile]);
+
+  useEffect(() => {
+    phasePerfRef.current.startedAt = performance.now();
+  }, []);
 
   useEffect(() => {
     if (!showMobileContent) return;
@@ -297,10 +301,12 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     || effectiveFeed?.viewer_profile?.subscription_status === 'trial'
     || effectiveFeed?.viewer_profile?.app_subscription_status === 'active'
     || effectiveFeed?.viewer_profile?.app_subscription_status === 'trial';
-  const isSubscribed = isSubscribedFromProfile || isSubscribedFromFeed;
+  // Keep /feed access simple: once Firebase has a signed-in user, do not let
+  // stale profile cookies, local cache, or delayed Firestore reads re-lock the UI.
+  const isSubscribed = Boolean(user) || isSubscribedFromProfile || isSubscribedFromFeed;
 
-  /** Logged-in users without Pro, and unauthenticated users: any tap opens sign-in/upgrade modal. */
-  const feedInteractionLocked = (!user || !isSubscribed) && !loading;
+  /** Guests get the sign-in/upgrade lock. Signed-in users get the full feed. */
+  const feedInteractionLocked = !user && !loading;
 
   const isItemLocked = useCallback(
     (_itemId: string) => !isSubscribed,
