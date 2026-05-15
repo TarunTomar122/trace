@@ -1,6 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminFirestore } from '@/lib/firebase-admin';
 import { getBootstrapFeedForUid } from '@/lib/feed-server';
+import type { FeedItem, TrendingTopic } from '@/lib/firestore';
+
+function isFeedItem(value: unknown): value is FeedItem {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === 'string' &&
+    typeof candidate.title === 'string' &&
+    typeof candidate.url === 'string'
+  );
+}
+
+function isTrendingTopic(value: unknown): value is TrendingTopic {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === 'string' &&
+    typeof candidate.title === 'string' &&
+    typeof candidate.topic_key === 'string'
+  );
+}
 
 // Mobile-only feed endpoint. Intentionally separate from /api/feed so web
 // refactors never accidentally break the mobile contract.
@@ -46,12 +67,16 @@ export async function GET(request: NextRequest) {
         .limit(lookbackDays)
         .get();
 
-      const allTrending: Array<Record<string, unknown>> = [];
-      const allTopics: Array<Record<string, unknown>> = [];
+      const allTrending: FeedItem[] = [];
+      const allTopics: TrendingTopic[] = [];
       for (const docSnap of globalSnapshot.docs) {
         const data = docSnap.data() as Record<string, unknown>;
-        if (Array.isArray(data.trending)) allTrending.push(...data.trending);
-        if (Array.isArray(data.trending_topics)) allTopics.push(...data.trending_topics);
+        if (Array.isArray(data.trending)) {
+          allTrending.push(...data.trending.filter(isFeedItem));
+        }
+        if (Array.isArray(data.trending_topics)) {
+          allTopics.push(...data.trending_topics.filter(isTrendingTopic));
+        }
       }
 
       const seenArticle = new Set<string>();
