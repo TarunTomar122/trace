@@ -64,6 +64,7 @@ import {
   recordLastActive,
 } from '@/lib/firestore';
 import { getArticleImage } from '@/lib/fallback-images';
+import { decodeHtmlEntities } from '@/lib/text-decode';
 
 const VIEW_MODE_KEY = '@trace:feed_view_mode';
 import { logReadingEvent } from '@/lib/reading-analytics';
@@ -511,6 +512,57 @@ function buildInterleavedFeed(
   return rankSections(sections, interestSet);
 }
 
+function normalizeStoryTitle(value?: string | null): string {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function storyKeyFromSection(section: FeedSection): string {
+  if (section.type === 'trending') {
+    const topic = section.topic;
+    const primary = topic.articles?.[0];
+    const url = String(primary?.url || topic.timeline?.[0]?.article_url || '').trim();
+    if (url) return `url:${url}`;
+    const source = String(primary?.source_name || primary?.source || topic.timeline?.[0]?.source_name || '').trim().toLowerCase();
+    const title = normalizeStoryTitle(primary?.title || topic.title);
+    if (source || title) return `st:${source}|${title}`;
+    return `topic:${String(topic.id || topic.topic_key || '').trim()}`;
+  }
+  if (section.type === 'foryou') {
+    const item = section.item;
+    const url = String(item.url || '').trim();
+    if (url) return `url:${url}`;
+    const source = String(item.source_name || item.source || '').trim().toLowerCase();
+    const title = normalizeStoryTitle(item.title);
+    if (source || title) return `st:${source}|${title}`;
+    return `item:${String(item.id || '').trim()}`;
+  }
+  return '';
+}
+
+function dedupeFeedSections(sections: FeedSection[]): FeedSection[] {
+  const seen = new Set<string>();
+  const out: FeedSection[] = [];
+  for (const section of sections) {
+    if (section.type !== 'trending' && section.type !== 'foryou') {
+      out.push(section);
+      continue;
+    }
+    const key = storyKeyFromSection(section);
+    if (!key) {
+      out.push(section);
+      continue;
+    }
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(section);
+  }
+  return out;
+}
+
 export default function UnifiedFeedScreen() {
   const router = useRouter();
   const { isProUser } = useRevenueCat();
@@ -581,8 +633,10 @@ export default function UnifiedFeedScreen() {
         const readyFeed = consumePrefetchedFeed(user?.uid);
         if (readyFeed) {
           setV3Feed(readyFeed);
-          setIsLoading(false);
+        } else {
+          console.log('[Feed] Prefetch resolved empty; continuing with direct fetch');
         }
+        setIsLoading(false);
       })
       .catch(() => {});
 
@@ -666,7 +720,7 @@ export default function UnifiedFeedScreen() {
     try {
       // Always fetch fresh from Firestore
       for (let attempt = 0; attempt < 3; attempt++) {
-        const v3 = await getV3UserFeed(user?.uid, { role: profile?.role });
+        const v3 = await getV3UserFeed(user?.uid);
         if (v3 && ((v3.trending_topics?.length ?? 0) > 0 || (v3.trending?.length ?? 0) > 0)) {
           setV3Feed(v3);
           return true;
@@ -680,7 +734,7 @@ export default function UnifiedFeedScreen() {
       console.error('Error loading feed:', error);
       return false;
     }
-  }, [user?.uid, isOnboarded, profile?.role]);
+  }, [user?.uid, isOnboarded]);
 
   const isFeedBuilding = (() => {
     if (profile?.feedBuildStatus !== 'building') return false;
@@ -870,9 +924,13 @@ export default function UnifiedFeedScreen() {
   const feedSections = useMemo((): FeedSection[] => {
     if (activeFilter === 'pulse') {
       if (pulseItems.length === 0) return [{ type: 'pulse_empty' }];
-      return pulseItems.map((item) => ({ type: 'foryou' as const, item, tapUrl: item.url || undefined }));
+      return dedupeFeedSections(
+        pulseItems.map((item) => ({ type: 'foryou' as const, item, tapUrl: item.url || undefined }))
+      );
     }
-    return buildInterleavedFeed(trendingTopics, supplementalArticles, activeFilter, userInterestIds);
+    return dedupeFeedSections(
+      buildInterleavedFeed(trendingTopics, supplementalArticles, activeFilter, userInterestIds)
+    );
   }, [activeFilter, pulseItems, trendingTopics, supplementalArticles, userInterestIds]);
 
   const deckSections = useMemo((): FeedSection[] => {
@@ -1516,13 +1574,13 @@ function ListStoryItem({
     const topic = section.topic;
     const primaryArticle = topic.articles?.[0];
     sourceName = primaryArticle?.source_name || primaryArticle?.source || 'Sources';
-    title = primaryArticle?.title || topic.title;
+    title = decodeHtmlEntities(primaryArticle?.title || topic.title);
     timeAgo = getTimeAgo(topic.last_updated_at || topic.first_seen_at);
     imageUrl = getArticleImage(topic.thumbnail || primaryArticle?.thumbnail, title);
   } else if (section.type === 'foryou') {
     const item = section.item;
     sourceName = item.source_name || item.source || '';
-    title = item.title;
+    title = decodeHtmlEntities(item.title);
     timeAgo = getTimeAgo(item.published_date);
     imageUrl = getArticleImage(item.thumbnail, title);
   } else if (section.type === 'pulse_empty') {
@@ -1633,10 +1691,10 @@ function TouchGrassFooter({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
         </View>
         <Animated.View style={textAnimatedStyle}>
           <ThemedText style={[styles.congratsTitle, { color: Colors[colorScheme].text }]}>
-            You're all caught up! 🎉
+            You&apos;re all caught up! 🎉
           </ThemedText>
           <ThemedText style={[styles.congratsSub, { color: Colors[colorScheme].muted }]}>
-            Congratulations, you've completed all the stories for now.
+            Congratulations, you&apos;ve completed all the stories for now.
           </ThemedText>
           <ThemedText style={[styles.endText, { color: Colors[colorScheme].muted, marginTop: 16 }]}>
             Time to touch some grass 🌱

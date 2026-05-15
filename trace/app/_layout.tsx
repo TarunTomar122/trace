@@ -124,18 +124,26 @@ function checkVersion(current: string, target: string): boolean {
 }
 
 function AuthGate({ children }: { children: ReactNode }) {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, onboardingStatus, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   const [appReady, setAppReady] = useState(false);
+  const [lottieFinished, setLottieFinished] = useState(false);
+  const [showSlowNetworkHint, setShowSlowNetworkHint] = useState(false);
+  const authDecisionPending = loading || (user && onboardingStatus === 'unknown');
 
   useEffect(() => {
-    if (loading) return;
+    if (!authDecisionPending) return;
+    setAppReady(false);
+    setLottieFinished(false);
+  }, [authDecisionPending]);
+
+  useEffect(() => {
+    if (authDecisionPending) return;
 
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboarding = segments[0] === 'onboarding';
-    const inEarlyAdopter = segments[0] === 'early-adopter';
 
     if (!user) {
       // Not signed in → welcome
@@ -144,24 +152,42 @@ function AuthGate({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (!profile || profile.onboarded !== true) {
-      // Signed in but not onboarded → onboarding
+    if (onboardingStatus === 'needs_onboarding') {
+      // Signed in, and the server/create path explicitly confirmed onboarding is needed.
+      console.log('[AuthGate] Routing to onboarding', {
+        uid: user.uid,
+        hasProfile: !!profile,
+        onboarded: profile?.onboarded,
+        onboardingStatus,
+      });
       if (!inOnboarding) router.replace('/onboarding');
       else setAppReady(true);
       return;
     }
 
     // Signed in + onboarded → main app
-    if (inAuthGroup || inOnboarding || inEarlyAdopter) {
+    if (onboardingStatus === 'onboarded' && (inAuthGroup || inOnboarding)) {
+      console.log('[AuthGate] Routing onboarded user to tabs', {
+        uid: user.uid,
+        onboarded: profile?.onboarded,
+      });
       router.replace('/(tabs)');
       return;
     }
 
     setAppReady(true);
-  }, [loading, user, profile, segments, router]);
+  }, [authDecisionPending, user, profile, onboardingStatus, segments, router]);
 
-  const [lottieFinished, setLottieFinished] = useState(false);
   const splashVisible = !appReady || !lottieFinished;
+
+  useEffect(() => {
+    if (!(user && onboardingStatus === 'unknown')) {
+      setShowSlowNetworkHint(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowSlowNetworkHint(true), 2500);
+    return () => clearTimeout(timer);
+  }, [user, onboardingStatus]);
 
   useEffect(() => {
     SplashScreen.hideAsync();
@@ -173,7 +199,7 @@ function AuthGate({ children }: { children: ReactNode }) {
 
   return (
     <>
-      {children}
+      {!authDecisionPending && children}
       {splashVisible && (
         <View
           style={[
@@ -189,6 +215,11 @@ function AuthGate({ children }: { children: ReactNode }) {
             resizeMode="cover"
             style={{ position: 'absolute', top: '-10%', left: '-10%', width: '120%', height: '120%' }}
           />
+          {showSlowNetworkHint ? (
+            <Text style={styles.networkHintText}>
+              Network is slow. Retrying profile sync...
+            </Text>
+          ) : null}
         </View>
       )}
     </>
@@ -247,7 +278,6 @@ function RootLayoutNav() {
       >
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="early-adopter" options={{ presentation: 'fullScreenModal', animation: 'none' }} />
         <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal', animation: 'none' }} />
         <Stack.Screen name="preferences" options={{ presentation: 'card', animation: 'default' }} />
         <Stack.Screen name="article" options={{ presentation: 'card', animation: 'default' }} />
@@ -356,5 +386,17 @@ const styles = StyleSheet.create({
   updateButtonText: {
     fontFamily: FontFamily.bold,
     fontSize: 16,
+  },
+  networkHintText: {
+    position: 'absolute',
+    bottom: 56,
+    alignSelf: 'center',
+    color: '#fff',
+    fontFamily: FontFamily.medium,
+    fontSize: 14,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
   },
 });

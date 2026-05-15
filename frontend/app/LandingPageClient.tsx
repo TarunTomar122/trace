@@ -751,6 +751,7 @@ export default function LandingPageClient({
                 <Link href="/privacy-policy" className="transition-colors hover:text-foreground">Privacy</Link>
                 <Link href="/terms" className="transition-colors hover:text-foreground">Terms</Link>
                 <Link href="/contact" className="transition-colors hover:text-foreground">Contact</Link>
+                <Link href="/delete-account" className="transition-colors hover:text-foreground">Delete Account</Link>
               </div>
             </div>
             <div className="flex justify-center pt-8">

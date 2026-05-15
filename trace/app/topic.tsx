@@ -33,6 +33,7 @@ import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { getCurrentTopic, isFreePreview } from '@/lib/topic-store';
 import { setCurrentArticle } from '@/lib/article-store';
 import type { FeedItem, TopicTimelineEvent } from '@/lib/firestore';
+import { decodeHtmlEntities } from '@/lib/text-decode';
 
 function RichText({ children, style, selectable = true }: { children: string; style?: any; selectable?: boolean }) {
   const parts = children.split(/(\*\*.*?\*\*|\*.*?\*)/g);
@@ -223,7 +224,7 @@ export default function TopicScreen() {
   const isSingletonTopic = (topic.source_count ?? 0) <= 1 || (topic.article_count ?? 0) <= 1;
   const primaryArticle = isSingletonTopic ? (topic.articles?.[0] ?? null) : null;
   const primaryShort = primaryArticle?.summary?.short_article;
-  const displayTitle = primaryArticle?.title || topic.title;
+  const displayTitle = decodeHtmlEntities(primaryArticle?.title || topic.title);
   const displayThumbnail = primaryArticle?.thumbnail || topic.thumbnail;
   const displayBody = primaryShort?.body || topic.summary || '';
   const splitBody = useMemo(() => splitSummaryParagraphs(displayBody), [displayBody]);
@@ -392,7 +393,7 @@ export default function TopicScreen() {
                     !!event.article_url && articlesByUrl.has(event.article_url) &&
                     Object.keys(articlesByUrl.get(event.article_url)?.summary ?? {}).length > 0;
                   const sourceName = event.source_name || 'Source';
-                  const summaryData = truncateText(event.summary || '', 100);
+                  const summaryData = truncateText(decodeHtmlEntities(event.summary || ''), 100);
 
                   return (
                     <Pressable
@@ -411,7 +412,7 @@ export default function TopicScreen() {
 
                         {/* Title */}
                         <Text style={[styles.timelineTitle, { color: Colors[colorScheme].text }]} selectable>
-                          {event.title}
+                          {decodeHtmlEntities(event.title)}
                         </Text>
 
                         {/* Summary */}

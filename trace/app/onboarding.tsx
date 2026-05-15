@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -40,7 +40,6 @@ import {
   CAREER_GOALS,
   completeOnboarding,
 } from '@/lib/firestore';
-import { writeCachedProfileInterests } from '@/lib/profile-cache';
 
 const ACCENT = '#F59E0B';
 const ACCENT_BG_DARK = '#1a1408';
@@ -181,7 +180,7 @@ function InterestChip({
 // ─── Main Onboarding Screen ───
 export default function OnboardingScreen() {
   const router = useRouter();
-  const { user, refreshProfile } = useAuth();
+  const { user, profile, onboardingStatus, markOnboardingComplete } = useAuth();
   const { showToast } = useToast();
   const colorScheme = useColorScheme() ?? 'light';
 
@@ -201,6 +200,12 @@ export default function OnboardingScreen() {
 
   // Step 4
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (onboardingStatus === 'onboarded' || profile?.onboarded === true) {
+      router.replace('/(tabs)');
+    }
+  }, [onboardingStatus, profile?.onboarded, router]);
 
   // ─── Toggles ───
   const toggleInterest = useCallback((id: string) => {
@@ -233,6 +238,10 @@ export default function OnboardingScreen() {
     }
     return counts;
   }, [selectedSources]);
+
+  if (onboardingStatus === 'onboarded' || profile?.onboarded === true) {
+    return null;
+  }
 
   // ─── Navigation ───
   const progressWidth = `${(step / TOTAL_STEPS) * 100}%`;
@@ -272,18 +281,14 @@ export default function OnboardingScreen() {
         careerGoals: selectedGoals,
       });
 
-      await writeCachedProfileInterests(user.uid, selectedInterests);
-      let confirmed: Awaited<ReturnType<typeof refreshProfile>> = null;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        confirmed = await refreshProfile();
-        if (confirmed?.onboarded) break;
-        await new Promise((resolve) => setTimeout(resolve, 700));
-      }
-
-      if (!confirmed?.onboarded) {
-        throw new Error('Onboarding state was not confirmed by the server');
-      }
-
+      await markOnboardingComplete({
+        name: user.displayName || '',
+        role: selectedRole,
+        seniority: selectedSeniority,
+        interests: selectedInterests,
+        selectedLearningSources: selectedSources,
+        careerGoals: selectedGoals,
+      });
       router.replace('/(tabs)'); // paywall disabled — skip straight to app
     } catch (error) {
       console.error('Error completing onboarding:', error);
@@ -330,9 +335,9 @@ export default function OnboardingScreen() {
           {/* ═══════ STEP 1: Role + Experience ═══════ */}
           {step === 1 && (
             <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)}>
-              <ThemedText style={styles.title}>What's your role?</ThemedText>
+              <ThemedText style={styles.title}>What&apos;s your role?</ThemedText>
               <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
-                We'll tailor articles and learning cards to your perspective.
+                We&apos;ll tailor articles and learning cards to your perspective.
               </ThemedText>
 
               <View style={styles.gridTwo}>
@@ -515,9 +520,9 @@ export default function OnboardingScreen() {
           {/* ═══════ STEP 3: Goals ═══════ */}
           {step === 3 && (
             <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(200)}>
-              <ThemedText style={styles.title}>What's your next move?</ThemedText>
+              <ThemedText style={styles.title}>What&apos;s your next move?</ThemedText>
               <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
-                Pick 1-2 goals. We'll surface articles and deep dives that help you get there.
+                Pick 1-2 goals. We&apos;ll surface articles and deep dives that help you get there.
               </ThemedText>
 
               <View style={styles.goalList}>

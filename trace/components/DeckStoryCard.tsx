@@ -14,11 +14,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Share2 } from 'lucide-react-native';
 import { captureRef } from 'react-native-view-shot';
 import RNShare from 'react-native-share';
-import he from 'he';
 
 import { FontFamily } from '@/constants/theme';
 import { FeedItem, TrendingTopic } from '@/lib/firestore';
 import { getArticleImage } from '@/lib/fallback-images';
+import { decodeHtmlEntities } from '@/lib/text-decode';
 
 const LOCK_IMAGE = require('@/assets/images/lock.png');
 
@@ -130,7 +130,7 @@ export function DeckStoryCard({
 
   const onShare = useCallback(async () => {
     if (shareBusy) return;
-    const t = he.decode(shareTitle).trim();
+    const t = decodeHtmlEntities(shareTitle).trim();
     const message = `${(shareOverview || '').trim().slice(0, 300)}\n\nRead more at yourtrace.online`;
     setShareBusy(true);
     trackEvent('share_initiated', {
@@ -178,7 +178,7 @@ export function DeckStoryCard({
         return `${sourceCount} source${sourceCount === 1 ? '' : 's'} · ${statusLabel}`;
       })();
 
-  const titleDecoded = he.decode(title);
+  const titleDecoded = decodeHtmlEntities(title);
 
   return (
     <View style={[styles.shell, { height, width: cardWidth, backgroundColor: ins.canvas }]}>

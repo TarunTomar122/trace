@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import he from 'he';
 import {
   Pressable,
   ScrollView,
@@ -57,6 +56,7 @@ import { logReadingEvent } from '@/lib/reading-analytics';
 import { trackEvent } from '@/lib/posthog';
 import { recordAppOpen } from '@/lib/streaks';
 import { getArticleImage } from '@/lib/fallback-images';
+import { decodeHtmlEntities } from '@/lib/text-decode';
 
 const ACCENT = '#F59E0B';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -288,7 +288,7 @@ export default function ArticleScreen() {
   const body = (isTrending && slides.length)
     ? slides.join('\n\n')
     : (rawBody.length > 100 ? rawBody : (slides.length ? slides.join('\n\n') : rawBody));
-  const subtitle = item.summary?.short_article?.subtitle;
+  const subtitle = decodeHtmlEntities(item.summary?.short_article?.subtitle);
   const keyTakeaways = item.summary?.short_article?.key_takeaways;
   const whyItMatters = item.summary?.short_article?.why_it_matters;
   const hasAccess = isProUser || isFreePreview();
@@ -392,7 +392,7 @@ export default function ArticleScreen() {
         {/* Title section below hero */}
         <View style={nStyles.titleSection}>
           <Text numberOfLines={4} style={[nStyles.title, { color: Colors[colorScheme].text }]}>
-            {he.decode(item.title)}
+            {decodeHtmlEntities(item.title)}
           </Text>
           {timeAgo !== '' && (
             <View style={nStyles.ageBadge}>
@@ -467,7 +467,7 @@ export default function ArticleScreen() {
                           {src.name}
                         </Text>
                         <Text style={[nStyles.inlineSourceTitle, { color: mutedColor }]} numberOfLines={2}>
-                          {he.decode(src.title ?? '')}
+                          {decodeHtmlEntities(src.title ?? '')}
                         </Text>
                       </View>
                       <ExternalLink size={16} color={mutedColor} strokeWidth={1.5} />
@@ -550,7 +550,7 @@ export default function ArticleScreen() {
               style={nStyles.shareCardGradient}
             />
             <View style={nStyles.shareCardContent}>
-              <Text style={nStyles.shareCardTitle} numberOfLines={3}>{item.title}</Text>
+              <Text style={nStyles.shareCardTitle} numberOfLines={3}>{decodeHtmlEntities(item.title)}</Text>
               <View style={nStyles.shareCardMeta}>
                 <Text style={nStyles.shareCardSource}>{sourceName}</Text>
                 <Text style={nStyles.shareCardBrand}>via Trace</Text>

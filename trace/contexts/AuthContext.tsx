@@ -3,7 +3,6 @@ import { Platform } from 'react-native';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Image } from 'expo-image';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   AuthCredential,
   GoogleAuthProvider,
@@ -11,6 +10,7 @@ import {
   signInWithCredential,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  updateProfile,
   User,
 } from 'firebase/auth';
 import { app, auth } from '@/lib/firebase';
@@ -25,109 +25,53 @@ import {
 import { enablePushNotifications } from '@/lib/notifications';
 import { setPrefetchedFeed, setPrefetchPromise, clearFeedCache } from '@/lib/feed-cache';
 import {
+  clearCachedBootProfile,
   clearCachedProfileInterests,
+  readCachedBootProfile,
+  writeCachedBootProfile,
   writeCachedProfileInterests,
 } from '@/lib/profile-cache';
 
 // ─── Public interface ───────────────────────────────────────────────────────
 
+interface OnboardingCompletion {
+  name: string;
+  role: string;
+  seniority: string;
+  interests: string[];
+  selectedLearningSources: string[];
+  careerGoals: string[];
+}
+
+type OnboardingStatus = 'unknown' | 'onboarded' | 'needs_onboarding';
+
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
+  onboardingStatus: OnboardingStatus;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signInWithApple: () => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   refreshProfile: () => Promise<UserProfile | null>;
+  markOnboardingComplete: (completion: OnboardingCompletion) => Promise<UserProfile | null>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
+  onboardingStatus: 'unknown',
   loading: true,
   signInWithGoogle: async () => {},
   signInWithApple: async () => {},
   signOut: async () => {},
   deleteAccount: async () => {},
   refreshProfile: async () => null,
+  markOnboardingComplete: async () => null,
 });
 
 export const useAuth = () => useContext(AuthContext);
-
-// ─── AsyncStorage profile cache ─────────────────────────────────────────────
-
-const PROFILE_CACHE_KEY = 'trace_profile_v2:';
-
-function cacheKey(uid: string) {
-  return `${PROFILE_CACHE_KEY}${uid}`;
-}
-
-function serialize(profile: UserProfile): UserProfile {
-  return {
-    uid: profile.uid,
-    email: profile.email || '',
-    displayName: profile.displayName || '',
-    photoURL: profile.photoURL ?? null,
-    onboarded: !!profile.onboarded,
-    name: profile.name || '',
-    role: profile.role || '',
-    seniority: profile.seniority,
-    interests: Array.isArray(profile.interests) ? profile.interests : [],
-    selectedLearningSources: Array.isArray(profile.selectedLearningSources) ? profile.selectedLearningSources : [],
-    careerGoals: Array.isArray(profile.careerGoals) ? profile.careerGoals : [],
-    summaryStyle: profile.summaryStyle,
-    company: profile.company,
-    interestQueries: profile.interestQueries,
-    hobbies: Array.isArray(profile.hobbies) ? profile.hobbies : [],
-    skills: Array.isArray(profile.skills) ? profile.skills : [],
-    dislikedTopics: Array.isArray(profile.dislikedTopics) ? profile.dislikedTopics : [],
-    sourcePreferences: profile.sourcePreferences || {
-      youtube: 0, articles: 0, papers: 0,
-      repos: 0, tweets: 0, discussions: 0,
-    },
-    contentDepth: profile.contentDepth || null,
-    goals: profile.goals,
-    subscriptionStatus: profile.subscriptionStatus || 'none',
-    appSubscriptionStatus: profile.appSubscriptionStatus,
-    isEarlyAdopter: profile.isEarlyAdopter,
-    earlyAdopterOfferSeen: profile.earlyAdopterOfferSeen,
-    newsletterOptIn: profile.newsletterOptIn,
-    pushNotificationsEnabled: profile.pushNotificationsEnabled,
-    pushToken: profile.pushToken,
-    pushTokenUpdatedAt: profile.pushTokenUpdatedAt,
-    feedBuildStatus: profile.feedBuildStatus,
-    feedBuildRequestedAt: profile.feedBuildRequestedAt,
-    referralSource: profile.referralSource,
-    timezone: profile.timezone,
-    locale: profile.locale,
-    hasRequestedReview: profile.hasRequestedReview,
-    reviewRequestedAt: profile.reviewRequestedAt,
-    createdAt: profile.createdAt ?? null,
-    updatedAt: profile.updatedAt ?? null,
-    onboardedAt: profile.onboardedAt ?? null,
-    lastActiveAt: profile.lastActiveAt ?? null,
-  };
-}
-
-async function readCache(uid: string): Promise<UserProfile | null> {
-  try {
-    const raw = await AsyncStorage.getItem(cacheKey(uid));
-    return raw ? (JSON.parse(raw) as UserProfile) : null;
-  } catch { return null; }
-}
-
-async function writeCache(profile: UserProfile): Promise<void> {
-  try {
-    await AsyncStorage.setItem(cacheKey(profile.uid), JSON.stringify(serialize(profile)));
-  } catch { /* non-critical */ }
-}
-
-async function clearCache(uid: string): Promise<void> {
-  try {
-    await AsyncStorage.removeItem(cacheKey(uid));
-  } catch { /* non-critical */ }
-}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -152,68 +96,145 @@ function mergeIdentity(
   };
 }
 
+function hasCompletedOnboarding(profile: UserProfile | null): boolean {
+  if (!profile) return false;
+  return profile.onboarded === true;
+}
+
+function applyOnboardingCompletion(
+  profile: UserProfile | null,
+  firebaseUser: User,
+  completion: OnboardingCompletion,
+): UserProfile {
+  return {
+    ...(profile || {
+      uid: firebaseUser.uid,
+      email: firebaseUser.email || '',
+      displayName: firebaseUser.displayName || '',
+      photoURL: firebaseUser.photoURL,
+      createdAt: null,
+      updatedAt: null,
+      onboardedAt: null,
+    } as UserProfile),
+    uid: firebaseUser.uid,
+    email: pickString(profile?.email, firebaseUser.email),
+    displayName: pickString(profile?.displayName, profile?.name, firebaseUser.displayName),
+    photoURL: pickString(profile?.photoURL, firebaseUser.photoURL) || null,
+    onboarded: true,
+    name: pickString(completion.name, profile?.name, profile?.displayName, firebaseUser.displayName),
+    role: completion.role || profile?.role || '',
+    seniority: completion.seniority || profile?.seniority,
+    interests: completion.interests.length ? completion.interests : (profile?.interests || []),
+    selectedLearningSources: completion.selectedLearningSources.length
+      ? completion.selectedLearningSources
+      : (profile?.selectedLearningSources || []),
+    careerGoals: completion.careerGoals.length ? completion.careerGoals : (profile?.careerGoals || []),
+  };
+}
+
 // ─── Provider ───────────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus>('unknown');
   const [loading, setLoading] = useState(true);
 
   const signInInFlightRef = useRef(false);
   const profileRef = useRef<UserProfile | null>(null);
+  const lastUidRef = useRef<string | null>(null);
 
   useEffect(() => { profileRef.current = profile; }, [profile]);
 
-  // ── commit helper: merges identity + updates state + writes cache ──
+  // ── commit helper: merges identity + updates state ──
 
-  const commit = (next: UserProfile | null, firebaseUser: User | null): UserProfile | null => {
+  const commit = (
+    next: UserProfile | null,
+    firebaseUser: User | null,
+  ): UserProfile | null => {
     if (!next) return null;
     const merged = mergeIdentity(next, firebaseUser, profileRef.current);
     profileRef.current = merged;
     setProfile(merged);
-    void writeCache(merged);
     void writeCachedProfileInterests(merged.uid, merged.interests || []);
+    void writeCachedBootProfile(merged.uid, merged.onboarded === true, merged.interests || []);
     return merged;
   };
 
-  // ── fetch profile from server, fall back to cache ──
+  const prefetchFeed = (uid: string): void => {
+    const feedPromise = getV3UserFeed(uid)
+      .then((feed) => {
+        if (feed) setPrefetchedFeed(uid, feed);
+        return feed;
+      })
+      .catch(() => null);
+    setPrefetchPromise(feedPromise);
+  };
+
+  // ── fetch profile from server only; this is the routing source of truth ──
 
   const fetchProfile = async (
     firebaseUser: User,
     opts?: { allowCreate?: boolean },
   ): Promise<UserProfile | null> => {
     const allowCreate = opts?.allowCreate ?? false;
-    try {
-      let serverProfile: UserProfile | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        let serverProfile: UserProfile | null = null;
 
-      if (allowCreate) {
-        serverProfile = await getOrCreateUserProfile(
-          firebaseUser.uid,
-          firebaseUser.email || '',
-          firebaseUser.displayName || '',
-          firebaseUser.photoURL,
-        );
-      } else {
-        const result = await getUserProfileWithSource(firebaseUser.uid);
-        serverProfile = result.profile;
-      }
+        if (allowCreate) {
+          serverProfile = await getOrCreateUserProfile(
+            firebaseUser.uid,
+            firebaseUser.email || '',
+            firebaseUser.displayName || '',
+            firebaseUser.photoURL,
+          );
+          setOnboardingStatus(hasCompletedOnboarding(serverProfile) ? 'onboarded' : 'needs_onboarding');
+        } else {
+          const result = await getUserProfileWithSource(firebaseUser.uid, { serverOnly: true });
+          serverProfile = result.profile;
 
-      const resolved = commit(serverProfile, firebaseUser);
+          if (result.source === 'server_no_profile') {
+            profileRef.current = null;
+            setProfile(null);
+            setOnboardingStatus('needs_onboarding');
+            return null;
+          }
 
-      if (resolved?.onboarded && resolved.pushNotificationsEnabled !== false) {
-        enablePushNotifications(firebaseUser.uid).catch(() => {});
+          if (result.source === 'server') {
+            setOnboardingStatus(hasCompletedOnboarding(serverProfile) ? 'onboarded' : 'needs_onboarding');
+          } else {
+            throw new Error('No authoritative server profile');
+          }
+        }
+
+        const resolved = commit(serverProfile, firebaseUser);
+
+        if (resolved?.onboarded && resolved.pushNotificationsEnabled !== false) {
+          enablePushNotifications(firebaseUser.uid).catch(() => {});
+        }
+        if (resolved) {
+          void syncUserTimezone(resolved.uid, resolved);
+        }
+        if (firebaseUser.photoURL) {
+          Image.prefetch(firebaseUser.photoURL).catch(() => {});
+        }
+        return resolved;
+      } catch (error) {
+        const isLastAttempt = attempt === 2;
+        if (isLastAttempt) {
+          console.error('[Auth] fetchProfile retries exhausted:', error);
+          // Keep the last known onboarding status if any, to avoid false routing.
+          // If there is no known status yet, remain unknown so splash can keep waiting.
+          if (onboardingStatus !== 'onboarded' && onboardingStatus !== 'needs_onboarding') {
+            setOnboardingStatus('unknown');
+          }
+          return null;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 900));
       }
-      if (resolved) {
-        void syncUserTimezone(resolved.uid, resolved);
-      }
-      if (firebaseUser.photoURL) {
-        Image.prefetch(firebaseUser.photoURL).catch(() => {});
-      }
-      return resolved;
-    } catch (error) {
-      console.error('[Auth] fetchProfile error:', error);
-      return profileRef.current;
     }
+    return null;
   };
 
   // ── refreshProfile (public) ──
@@ -221,6 +242,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshProfile = async (): Promise<UserProfile | null> => {
     if (!user) return null;
     return fetchProfile(user);
+  };
+
+  const markOnboardingComplete = async (
+    completion: OnboardingCompletion,
+  ): Promise<UserProfile | null> => {
+    if (!user) return null;
+    await writeCachedProfileInterests(user.uid, completion.interests);
+
+    const completed = applyOnboardingCompletion(
+      profileRef.current,
+      user,
+      completion,
+    );
+
+    const resolved = commit(completed, user);
+    setOnboardingStatus('onboarded');
+    return resolved;
   };
 
   // ── Startup: wait for auth, then load profile ──
@@ -249,28 +287,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(firebaseUser);
 
       if (firebaseUser) {
-        // 2a. Instant: show cached profile while server fetch is in flight
-        const cached = await readCache(firebaseUser.uid);
-        if (cached && !cancelled) {
-          commit(cached, firebaseUser);
+        const cachedBoot = await readCachedBootProfile(firebaseUser.uid);
+        const hasFastOnboardedCache = !!cachedBoot && cachedBoot.onboarded === true && cachedBoot.interests.length > 0;
+
+        if (hasFastOnboardedCache) {
+          const fastProfile = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            displayName: firebaseUser.displayName || '',
+            name: firebaseUser.displayName || '',
+            photoURL: firebaseUser.photoURL || null,
+            interests: cachedBoot.interests,
+            onboarded: true,
+          } as UserProfile;
+          commit(fastProfile, firebaseUser);
+          setOnboardingStatus('onboarded');
+          setLoading(false);
         }
 
-        // 2b. Server fetch (updates profile + cache in background)
-        if (!cancelled) {
-          await fetchProfile(firebaseUser);
-        }
+        const profileRequest = fetchProfile(firebaseUser);
+        prefetchFeed(firebaseUser.uid);
+        await profileRequest;
 
-        // 2c. Prefetch feed for fast first paint
-        if (!cancelled) {
-          const role = profileRef.current?.role || null;
-          const feedPromise = getV3UserFeed(firebaseUser.uid, { role })
-            .then((feed) => { if (feed) setPrefetchedFeed(firebaseUser.uid, feed); return feed; })
-            .catch(() => null);
-          setPrefetchPromise(feedPromise);
+        if (!hasFastOnboardedCache) {
+          setLoading(false);
         }
       }
-
-      if (!cancelled) setLoading(false);
+      if (!firebaseUser && !cancelled) setLoading(false);
     };
 
     void boot().then(() => {
@@ -279,11 +322,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return onAuthStateChanged(auth, async (firebaseUser) => {
         if (cancelled || signInInFlightRef.current) return;
         if (firebaseUser) {
+          setUser(firebaseUser);
+          const isUidChanged = lastUidRef.current !== firebaseUser.uid;
+          lastUidRef.current = firebaseUser.uid;
+          if (isUidChanged) {
+            const cachedBoot = await readCachedBootProfile(firebaseUser.uid);
+            const hasFastOnboardedCache = !!cachedBoot && cachedBoot.onboarded === true && cachedBoot.interests.length > 0;
+            if (hasFastOnboardedCache) {
+              const fastProfile = {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email || '',
+                displayName: firebaseUser.displayName || '',
+                name: firebaseUser.displayName || '',
+                photoURL: firebaseUser.photoURL || null,
+                interests: cachedBoot.interests,
+                onboarded: true,
+              } as UserProfile;
+              commit(fastProfile, firebaseUser);
+              setOnboardingStatus('onboarded');
+            } else {
+              setOnboardingStatus('unknown');
+            }
+          }
+          prefetchFeed(firebaseUser.uid);
           await fetchProfile(firebaseUser);
-          if (!cancelled) setUser(firebaseUser);
         } else {
           profileRef.current = null;
           setProfile(null);
+          setOnboardingStatus('unknown');
           setUser(null);
           clearFeedCache();
         }
@@ -325,7 +391,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await signInWithCredentialRetry(credential);
 
       if (result.user) {
-        await fetchProfile(result.user, { allowCreate: true });
+        const profileRequest = fetchProfile(result.user, { allowCreate: true });
+        prefetchFeed(result.user.uid);
+        await profileRequest;
         setUser(result.user);
       }
     } catch (error) {
@@ -370,10 +438,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ].filter(Boolean).join(' ');
 
         if (fullName && !result.user.displayName) {
-          await result.user.updateProfile({ displayName: fullName });
+          await updateProfile(result.user, { displayName: fullName });
         }
 
-        await fetchProfile(result.user, { allowCreate: true });
+        const profileRequest = fetchProfile(result.user, { allowCreate: true });
+        prefetchFeed(result.user.uid);
+        await profileRequest;
         setUser(result.user);
       }
     } catch (error: any) {
@@ -392,12 +462,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const uid = user?.uid;
       await GoogleSignin.signOut();
       if (uid) {
-        await clearCache(uid);
         await clearCachedProfileInterests(uid);
+        await clearCachedBootProfile(uid);
       }
       await firebaseSignOut(auth);
       profileRef.current = null;
       setProfile(null);
+      setOnboardingStatus('unknown');
       setUser(null);
       clearFeedCache();
     } catch (error) {
@@ -422,11 +493,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       await deleteUserData(currentUser.uid);
       await GoogleSignin.signOut();
-      await clearCache(currentUser.uid);
       await clearCachedProfileInterests(currentUser.uid);
+      await clearCachedBootProfile(currentUser.uid);
       await auth.currentUser?.delete();
       profileRef.current = null;
       setProfile(null);
+      setOnboardingStatus('unknown');
       setUser(null);
       clearFeedCache();
     } catch (error) {
@@ -452,7 +524,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, signInWithApple, signOut, deleteAccount, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, onboardingStatus, loading, signInWithGoogle, signInWithApple, signOut, deleteAccount, refreshProfile, markOnboardingComplete }}>
       {children}
     </AuthContext.Provider>
   );

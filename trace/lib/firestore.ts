@@ -16,7 +16,7 @@ import {
   runTransaction,
 } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { firestore, auth } from './firebase';
+import { firestore } from './firebase';
 
 const FEED_CACHE_PREFIX = 'trace_v3_feed_snapshot_v1:';
 
@@ -84,6 +84,79 @@ function normalizeFeedRole(role?: string | null): string {
     return 'founder';
   }
   return normalized;
+}
+
+function canonicalUrlKey(url?: string | null): string {
+  const raw = String(url || '').trim();
+  if (!raw) return '';
+  try {
+    const parsed = new URL(raw);
+    parsed.hash = '';
+    const trackingParams = [
+      'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id',
+      'gclid', 'fbclid',
+    ];
+    for (const p of trackingParams) parsed.searchParams.delete(p);
+    const normalizedPath = parsed.pathname.replace(/\/+$/, '') || '/';
+    const query = parsed.searchParams.toString();
+    return `${parsed.hostname.toLowerCase()}${normalizedPath}${query ? `?${query}` : ''}`;
+  } catch {
+    return raw
+      .replace(/#.*$/, '')
+      .replace(/[?&](utm_[^=&]+|gclid|fbclid)=[^&]*/g, '')
+      .replace(/[?&]$/, '')
+      .trim();
+  }
+}
+
+function normalizeTitle(value?: string | null): string {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function sourceTitleKey(item: FeedItem): string {
+  const source = String(item.source_name || item.source || '').trim().toLowerCase();
+  const title = normalizeTitle(item.title);
+  if (!title) return '';
+  return `${source}|${title}`;
+}
+
+function dedupeFeedItems(items: FeedItem[]): FeedItem[] {
+  const seenUrl = new Set<string>();
+  const seenId = new Set<string>();
+  const seenSourceTitle = new Set<string>();
+  const out: FeedItem[] = [];
+  for (const item of items) {
+    const urlKey = canonicalUrlKey(item.url);
+    const idKey = String(item.id || '').trim();
+    const sourceTitle = sourceTitleKey(item);
+
+    if (urlKey && seenUrl.has(urlKey)) continue;
+    if (idKey && seenId.has(idKey)) continue;
+    if (sourceTitle && seenSourceTitle.has(sourceTitle)) continue;
+
+    if (urlKey) seenUrl.add(urlKey);
+    if (idKey) seenId.add(idKey);
+    if (sourceTitle) seenSourceTitle.add(sourceTitle);
+    out.push(item);
+  }
+  return out;
+}
+
+function dedupeTrendingTopics(items: TrendingTopic[]): TrendingTopic[] {
+  const seen = new Set<string>();
+  const out: TrendingTopic[] = [];
+  for (const topic of items) {
+    const titleKey = normalizeTitle(topic.title);
+    const key = String(topic.topic_key || topic.id || '').trim() || titleKey;
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(topic);
+  }
+  return out;
 }
 
 // ============ Types ============
@@ -1036,7 +1109,6 @@ export async function deleteUserData(uid: string): Promise<void> {
 
 // ─── Web app base URL ───
 const WEB_APP_URL = 'https://www.yourtrace.online';
-const MOBILE_FEED_API = `${WEB_APP_URL}/api/mobile/feed`;
 const FEED_GEN_DEFAULT_COOLDOWN_MS = 45_000;
 const lastFeedGenTriggerAt = new Map<string, number>();
 
@@ -1111,27 +1183,6 @@ export async function getLatestUserFeed(uid: string): Promise<UserFeed | null> {
   }
 }
 
-async function fetchFeedFromMobileAPI(role?: string | null): Promise<V3UserFeed | null> {
-  const currentUser = auth.currentUser;
-  if (!currentUser) return null;
-  try {
-    const token = await currentUser.getIdToken();
-    const url = role
-      ? `${MOBILE_FEED_API}?role=${encodeURIComponent(role)}`
-      : MOBILE_FEED_API;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) {
-      console.warn('[Feed] Mobile API returned', res.status);
-      return null;
-    }
-    const data = await res.json();
-    return data as V3UserFeed | null;
-  } catch (error) {
-    console.warn('[Feed] Mobile API fetch failed, falling back to Firestore:', error);
-    return null;
-  }
-}
-
 export async function getV3UserFeed(
   uid: string,
   options?: { role?: string | null }
@@ -1152,16 +1203,6 @@ export async function getV3UserFeed(
       }
     }
   };
-
-  // Try the mobile API first — plain HTTP is far more reliable than WebChannel on mobile.
-  // Falls back to direct Firestore if the API is unreachable.
-  const apiFeed = await fetchFeedFromMobileAPI(options?.role);
-  if (apiFeed && ((apiFeed.trending_topics?.length ?? 0) > 0 || (apiFeed.trending?.length ?? 0) > 0)) {
-    console.log('[Feed] Loaded from mobile API');
-    await writeCachedFeed(uid, apiFeed);
-    return apiFeed;
-  }
-  console.log('[Feed] Mobile API empty or failed, falling back to Firestore');
 
   try {
     const normalizedRole = normalizeFeedRole(options?.role);
@@ -1374,6 +1415,15 @@ export async function getV3UserFeed(
         }
       }
 
+      // Expand timeframe for mobile by merging in the previous daily doc as well.
+      if (globalDocs.length > 1) {
+        const secondGlobalData = globalDocs[1].data() as any;
+        const secondTrending = Array.isArray(secondGlobalData.trending) ? secondGlobalData.trending : [];
+        const secondTopics = Array.isArray(secondGlobalData.trending_topics) ? secondGlobalData.trending_topics : [];
+        trending = dedupeFeedItems([...trending, ...secondTrending]);
+        trendingTopics = dedupeTrendingTopics([...trendingTopics, ...secondTopics]);
+      }
+
       console.log(
         '[Feed] Global trending doc:',
         selectedGlobalDocId,
@@ -1407,15 +1457,22 @@ export async function getV3UserFeed(
       return null;
     }
 
+    const dedupedForYou = dedupeFeedItems(forYou as FeedItem[]);
+    const dedupedCurated = dedupeFeedItems(curated as FeedItem[]);
+    const dedupedCommunityPulse = dedupeFeedItems(communityPulse as FeedItem[]);
+    const dedupedBuildPulse = dedupeFeedItems(buildPulse as FeedItem[]);
+    const dedupedTrending = dedupeFeedItems(trending as FeedItem[]);
+    const dedupedTrendingTopics = dedupeTrendingTopics(trendingTopics as TrendingTopic[]);
+
     const resolvedFeed: V3UserFeed = {
       date: feedDate,
-      for_you: forYou as FeedItem[],
-      curated: curated as FeedItem[],
-      community_pulse: communityPulse as FeedItem[],
-      build_pulse: buildPulse as FeedItem[],
+      for_you: dedupedForYou,
+      curated: dedupedCurated,
+      community_pulse: dedupedCommunityPulse,
+      build_pulse: dedupedBuildPulse,
       daily_pulse: dailyPulse,
-      trending: trending as FeedItem[],
-      trending_topics: trendingTopics as TrendingTopic[],
+      trending: dedupedTrending,
+      trending_topics: dedupedTrendingTopics,
       merged_feed: mergedFeed as MergedFeedItem[],
       assembled_at: assembledAt,
       metadata,

@@ -27,17 +27,56 @@ export async function GET(request: NextRequest) {
   }
 
   const role = request.nextUrl.searchParams.get('role') ?? '';
+  const daysParam = Number(request.nextUrl.searchParams.get('days') || '1');
+  const lookbackDays = Number.isFinite(daysParam) ? Math.max(1, Math.min(2, daysParam)) : 1;
 
   try {
     const feed = await getBootstrapFeedForUid(uid, role);
     if (!feed) return NextResponse.json(null);
 
+    let mergedTrending = feed.trending ?? [];
+    let mergedTrendingTopics = feed.trending_topics ?? [];
+
+    if (lookbackDays > 1) {
+      const globalSnapshot = await adminFirestore
+        .collection('v3_user_feeds')
+        .doc('_global')
+        .collection('daily')
+        .orderBy('__name__', 'desc')
+        .limit(lookbackDays)
+        .get();
+
+      const allTrending: Array<Record<string, unknown>> = [];
+      const allTopics: Array<Record<string, unknown>> = [];
+      for (const docSnap of globalSnapshot.docs) {
+        const data = docSnap.data() as Record<string, unknown>;
+        if (Array.isArray(data.trending)) allTrending.push(...data.trending);
+        if (Array.isArray(data.trending_topics)) allTopics.push(...data.trending_topics);
+      }
+
+      const seenArticle = new Set<string>();
+      mergedTrending = allTrending.filter((item) => {
+        const key = String(item?.url || item?.id || '').trim();
+        if (!key || seenArticle.has(key)) return false;
+        seenArticle.add(key);
+        return true;
+      });
+
+      const seenTopic = new Set<string>();
+      mergedTrendingTopics = allTopics.filter((topic) => {
+        const key = String(topic?.id || topic?.topic_key || '').trim();
+        if (!key || seenTopic.has(key)) return false;
+        seenTopic.add(key);
+        return true;
+      });
+    }
+
     return NextResponse.json(
       {
         date: feed.date,
         assembled_at: feed.assembled_at ?? null,
-        trending: feed.trending ?? [],
-        trending_topics: feed.trending_topics ?? [],
+        trending: mergedTrending,
+        trending_topics: mergedTrendingTopics,
         daily_pulse: feed.daily_pulse ?? null,
         community_pulse: feed.community_pulse ?? [],
         build_pulse: feed.build_pulse ?? [],

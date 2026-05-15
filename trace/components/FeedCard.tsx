@@ -1,5 +1,4 @@
 import { useState, useRef } from 'react';
-import he from 'he';
 import {
   Pressable,
   StyleSheet,
@@ -22,6 +21,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { FeedItem } from '@/lib/firestore';
 import { getArticleImage } from '@/lib/fallback-images';
+import { decodeHtmlEntities } from '@/lib/text-decode';
 
 /* ─── Shared utilities ────────────────────────────────────── */
 
@@ -137,7 +137,7 @@ export function TrendingStoryCard({ item, colorScheme, onPress }: CardProps) {
           )}
         </View>
         <Text style={csStyles.title} numberOfLines={3}>
-          {he.decode(item.title)}
+          {decodeHtmlEntities(item.title)}
         </Text>
       </View>
     </Pressable>
@@ -282,7 +282,7 @@ export function TrendingCard({ item, colorScheme, onPress, accentColor = '#F9731
               </View>
               {/* Title */}
               <Text style={tStyles.titleOverlay} numberOfLines={4}>
-                {he.decode(item.title)}
+                {decodeHtmlEntities(item.title)}
               </Text>
               {/* Headline hook */}
               {headline !== '' && (
@@ -551,7 +551,7 @@ export function ForYouCard({ item, colorScheme, onPress, accentColor = ACCENT }:
       <Text
         style={[fyStyles.title, { color: Colors[colorScheme].text }]}
         numberOfLines={3}>
-        {item.title}
+        {decodeHtmlEntities(item.title)}
       </Text>
 
       {/* Snippet */}
@@ -749,7 +749,7 @@ export function DeepDiveCard({ item, colorScheme, onPress, accentColor = '#0EA5E
       <Text
         style={[ddStyles.title, { color: Colors[colorScheme].text }]}
         numberOfLines={3}>
-        {item.title}
+        {decodeHtmlEntities(item.title)}
       </Text>
 
       {/* Snippet */}
@@ -891,7 +891,7 @@ export function FeedCard({ item, colorScheme, onPress }: CardProps) {
           {sourceName || 'Article'}
         </ThemedText>
         <ThemedText style={legacyStyles.title} numberOfLines={3}>
-          {he.decode(item.title)}
+          {decodeHtmlEntities(item.title)}
         </ThemedText>
         {snippet !== '' && (
           <ThemedText
