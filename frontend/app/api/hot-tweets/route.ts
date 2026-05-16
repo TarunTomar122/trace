@@ -63,16 +63,6 @@ export async function GET() {
 
       if (!title || !link) continue;
 
-      // Only include news categories (skip jobs, events, scoble personal posts)
-      const newsCategories = [
-        'ten-things',
-        'papers',
-        'policy',
-        'tips',
-        'videos',
-      ];
-      if (category && !newsCategories.includes(category.toLowerCase())) continue;
-
       items.push({
         id: Buffer.from(link).toString('base64url').slice(0, 14),
         title: decodeHtmlEntities(title),
