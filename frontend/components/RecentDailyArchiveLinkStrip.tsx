@@ -35,12 +35,12 @@ export function RecentDailyArchiveLinkStrip({
 
   const card =
     variant === 'landing'
-      ? 'rounded-[16px] border border-black/[0.06] bg-white/70 p-4 transition-all hover:border-black/10 hover:bg-white sm:p-5'
+      ? 'rounded-2xl border border-[#e5e7eb] bg-[#f9fafb] p-4 transition-all hover:border-[#d1d5db] hover:bg-white sm:p-5'
       : 'rounded-[16px] border border-border/[0.08] bg-surface/25 p-4 transition-all hover:border-border/20 hover:bg-surface/40 sm:p-5';
 
-  const kicker = variant === 'landing' ? 'text-secondary/45' : 'text-secondary/35';
-  const sub = variant === 'landing' ? 'text-secondary/50' : 'text-secondary/55';
-  const hl = variant === 'landing' ? 'text-secondary/60' : 'text-secondary/55';
+  const kicker = variant === 'landing' ? 'text-[#9ca3af]' : 'text-secondary/35';
+  const sub = variant === 'landing' ? 'text-[#6b7280]' : 'text-secondary/55';
+  const hl = variant === 'landing' ? 'text-[#374151]' : 'text-secondary/55';
 
   return (
     <section

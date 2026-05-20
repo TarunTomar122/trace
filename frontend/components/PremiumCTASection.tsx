@@ -5,11 +5,29 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 import { trackCheckoutClicked } from "@/lib/posthog";
 import { LANDING_PRICING_BULLET_POINTS } from "@/lib/subscription-pricing-bullets";
+import {
+  SUBSCRIPTION_COMPARE_AT_DEFAULT,
+  SUBSCRIPTION_PRICE_DEFAULT,
+  SUBSCRIPTION_PRICE_INDIA,
+} from "@/lib/subscription-pricing";
+import SubscriptionPrice from "@/components/SubscriptionPrice";
 
-const INDIA_PRICING = { priceDisplay: "₹19/month", pricingOffer: "india" as const };
-const DEFAULT_PRICING = { priceDisplay: "$4.99/month", pricingOffer: "default" as const };
+const INDIA_PRICING = {
+  priceDisplay: SUBSCRIPTION_PRICE_INDIA,
+  compareAtPriceDisplay: null as string | null,
+  pricingOffer: "india" as const,
+};
+const DEFAULT_PRICING = {
+  priceDisplay: SUBSCRIPTION_PRICE_DEFAULT,
+  compareAtPriceDisplay: SUBSCRIPTION_COMPARE_AT_DEFAULT,
+  pricingOffer: "default" as const,
+};
 
-type PricingInfo = { priceDisplay: string; pricingOffer: "india" | "default" };
+type PricingInfo = {
+  priceDisplay: string;
+  compareAtPriceDisplay: string | null;
+  pricingOffer: "india" | "default";
+};
 
 function guessClientPricing(): PricingInfo {
   try {
@@ -35,6 +53,7 @@ export default function PremiumCTASection({
 
   const planName =
     pricing.pricingOffer === "india" ? "Trace Pro India" : "Trace Pro";
+  const priceTone = variant === "dark" ? "dark" : "light";
 
   if (variant === "light") {
     return (
@@ -50,9 +69,23 @@ export default function PremiumCTASection({
             <br className="hidden sm:block" />
             advantage in tech
           </h3>
+          <div className="mt-3">
+            <SubscriptionPrice
+              price={pricing.priceDisplay}
+              compareAt={pricing.compareAtPriceDisplay}
+              size="lg"
+            />
+          </div>
           <p className="mt-3 text-[14px] text-secondary/50 leading-[1.7] max-w-md">
             Deeper context, smarter filtering, and signal over noise — in one
-            daily pulse. Try free for 3 days, then {pricing.priceDisplay}.
+            daily pulse. Try free for 3 days, then{" "}
+            <SubscriptionPrice
+              price={pricing.priceDisplay}
+              compareAt={pricing.compareAtPriceDisplay}
+              size="sm"
+              tone={priceTone}
+            />
+            .
           </p>
           <div className="mt-6 space-y-3">
             {LANDING_PRICING_BULLET_POINTS.map((line) => (
@@ -77,7 +110,14 @@ export default function PremiumCTASection({
             Start my free 3-day trial
           </Link>
           <p className="mt-3 text-[12px] leading-snug text-secondary/40">
-            Free for 3 days · then {pricing.priceDisplay} · Cancel anytime
+            Free for 3 days · then{" "}
+            <SubscriptionPrice
+              price={pricing.priceDisplay}
+              compareAt={pricing.compareAtPriceDisplay}
+              size="sm"
+              tone={priceTone}
+            />{" "}
+            · Cancel anytime
           </p>
         </div>
       </section>
@@ -97,9 +137,24 @@ export default function PremiumCTASection({
           <br className="hidden sm:block" />
           advantage in tech
         </h3>
+        <div className="mt-3">
+          <SubscriptionPrice
+            price={pricing.priceDisplay}
+            compareAt={pricing.compareAtPriceDisplay}
+            size="lg"
+            tone="dark"
+          />
+        </div>
         <p className="mt-3 text-[14px] text-white/40 leading-[1.7] max-w-md">
           Deeper context, smarter filtering, and signal over noise — in one
-          daily pulse. Try free for 3 days, then {pricing.priceDisplay}.
+          daily pulse. Try free for 3 days, then{" "}
+          <SubscriptionPrice
+            price={pricing.priceDisplay}
+            compareAt={pricing.compareAtPriceDisplay}
+            size="sm"
+            tone="dark"
+          />
+          .
         </p>
         <div className="mt-6 space-y-3">
           {LANDING_PRICING_BULLET_POINTS.map((line) => (
@@ -124,7 +179,14 @@ export default function PremiumCTASection({
           Start my free 3-day trial
         </Link>
         <p className="mt-3 text-center text-[12px] leading-snug text-white/35">
-          Free for 3 days · then {pricing.priceDisplay} · Cancel anytime
+          Free for 3 days · then{" "}
+          <SubscriptionPrice
+            price={pricing.priceDisplay}
+            compareAt={pricing.compareAtPriceDisplay}
+            size="sm"
+            tone="dark"
+          />{" "}
+          · Cancel anytime
         </p>
       </div>
     </section>

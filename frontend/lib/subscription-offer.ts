@@ -1,4 +1,9 @@
 import type { NextRequest } from 'next/server';
+import {
+  SUBSCRIPTION_COMPARE_AT_DEFAULT,
+  SUBSCRIPTION_PRICE_DEFAULT,
+  SUBSCRIPTION_PRICE_INDIA,
+} from '@/lib/subscription-pricing';
 
 type UserProfileLike = {
   location?: string | null;
@@ -12,6 +17,7 @@ export interface SubscriptionOffer {
   isIndiaOffer: boolean;
   productId: string;
   priceDisplay: string;
+  compareAtPriceDisplay: string | null;
   trialDays: number;
 }
 
@@ -88,8 +94,11 @@ export function resolveSubscriptionOfferFromHeaders(headers: HeaderReader, profi
     isIndiaOffer,
     productId,
     priceDisplay: isIndiaOffer
-      ? (process.env.SUBSCRIPTION_PRICE_DISPLAY_INDIA || '₹19/month')
-      : (process.env.SUBSCRIPTION_PRICE_DISPLAY_DEFAULT || '$4.99/month'),
+      ? (process.env.SUBSCRIPTION_PRICE_DISPLAY_INDIA || SUBSCRIPTION_PRICE_INDIA)
+      : (process.env.SUBSCRIPTION_PRICE_DISPLAY_DEFAULT || SUBSCRIPTION_PRICE_DEFAULT),
+    compareAtPriceDisplay: isIndiaOffer
+      ? null
+      : (process.env.SUBSCRIPTION_COMPARE_AT_DISPLAY_DEFAULT || SUBSCRIPTION_COMPARE_AT_DEFAULT),
     trialDays: 3,
   };
 }

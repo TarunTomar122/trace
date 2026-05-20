@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowRight, Clock, Calendar } from "lucide-react";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
@@ -44,19 +43,19 @@ export default function BlogPage() {
   const remainingPosts = blogPosts.slice(1);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <PublicHeader />
+    <div className="landing-page landing-grid-bg min-h-screen">
+      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
 
       {/* Hero */}
       <section className="px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl pt-16 pb-10 sm:pt-24 sm:pb-14">
+        <div className="mx-auto max-w-7xl pt-12 pb-10 sm:pt-20 sm:pb-14">
           <div className="max-w-3xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-secondary/35">Blog</p>
-            <h1 className="mt-4 text-[2.5rem] font-bold tracking-[-0.04em] leading-[0.95] sm:text-[3.75rem]">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.15em] text-[#2563eb]">Blog</p>
+            <h1 className="mt-4 text-[2.5rem] font-bold tracking-[-0.04em] leading-[0.95] text-[#111827] sm:text-[3.75rem]">
               Guides & insights for<br className="hidden sm:block" />
               smarter tech reading
             </h1>
-            <p className="mt-5 max-w-xl text-[16px] leading-[1.8] text-secondary">
+            <p className="mt-5 max-w-xl text-[16px] leading-[1.8] landing-muted">
               Expert guides on tech news aggregation, productivity, AI tools, and building better information diets.
               Written for developers, founders, and anyone drowning in tabs.
             </p>
@@ -69,7 +68,7 @@ export default function BlogPage() {
         <div className="mx-auto max-w-7xl">
           <Link
             href={`/blog/${featuredPost.slug}`}
-            className="group relative block overflow-hidden rounded-[24px] border border-border/[0.08] bg-surface/30 transition-all hover:border-border/15 hover:shadow-[0_8px_40px_rgba(0,0,0,0.06)]"
+            className="group landing-card relative block overflow-hidden transition-all hover:shadow-[0_8px_40px_rgba(0,0,0,0.08)]"
           >
             <div className="grid md:grid-cols-2">
               <div className="relative aspect-[16/10] md:aspect-auto overflow-hidden">
@@ -79,28 +78,28 @@ export default function BlogPage() {
                   alt={featuredPost.title}
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-background/20 md:hidden" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-white/30 md:hidden" />
               </div>
               <div className="flex flex-col justify-center p-6 sm:p-10">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-secondary/30 mb-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#2563eb] mb-3">
                   {featuredPost.tag}
                 </p>
-                <h2 className="text-[1.5rem] font-bold tracking-[-0.025em] leading-tight sm:text-[1.75rem]">
+                <h2 className="text-[1.5rem] font-bold tracking-[-0.025em] leading-tight text-[#111827] sm:text-[1.75rem]">
                   {featuredPost.title}
                 </h2>
-                <p className="mt-3 text-[15px] leading-[1.7] text-secondary line-clamp-3">
+                <p className="mt-3 text-[15px] leading-[1.7] landing-muted line-clamp-3">
                   {featuredPost.excerpt}
                 </p>
                 <div className="mt-5 flex items-center gap-4">
-                  <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-foreground/60 transition-colors group-hover:text-foreground">
+                  <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#2563eb] transition-colors group-hover:text-[#1d4ed8]">
                     Read article
                     <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
                   </span>
-                  <span className="flex items-center gap-1 text-[11px] text-secondary/30">
+                  <span className="flex items-center gap-1 text-[11px] text-[#9ca3af]">
                     <Clock size={11} />
                     {featuredPost.readTime}
                   </span>
-                  <span className="flex items-center gap-1 text-[11px] text-secondary/30">
+                  <span className="flex items-center gap-1 text-[11px] text-[#9ca3af]">
                     <Calendar size={11} />
                     {featuredPost.date}
                   </span>
@@ -119,7 +118,7 @@ export default function BlogPage() {
               <Link
                 key={cat.key}
                 href={cat.key === "all" ? "/blog" : `/blog?category=${cat.key}`}
-                className="rounded-full border border-border/[0.08] px-4 py-2 text-[13px] font-medium text-secondary/60 transition-all hover:text-foreground hover:border-border/20"
+                className="rounded-full border border-[#e5e7eb] bg-white px-4 py-2 text-[13px] font-medium text-[#6b7280] transition-all hover:text-[#111827] hover:border-[#d1d5db] hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
               >
                 {cat.label}
               </Link>
@@ -136,7 +135,7 @@ export default function BlogPage() {
               <Link
                 key={post.slug}
                 href={`/blog/${post.slug}`}
-                className="group flex flex-col overflow-hidden rounded-[20px] border border-border/[0.06] bg-surface/30 transition-all hover:bg-surface/60 hover:shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:border-border/15"
+                className="group landing-card flex flex-col overflow-hidden transition-all hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]"
               >
                 <div className="relative aspect-[16/10] overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -149,22 +148,22 @@ export default function BlogPage() {
                 </div>
                 <div className="flex flex-1 flex-col p-5">
                   <div className="flex items-center gap-2 mb-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-secondary/30">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#2563eb]">
                       {post.tag}
                     </p>
                   </div>
-                  <h2 className="text-[1.1rem] font-bold tracking-[-0.015em] leading-snug text-foreground transition-colors group-hover:text-foreground/80">
+                  <h2 className="text-[1.1rem] font-bold tracking-[-0.015em] leading-snug text-[#111827]">
                     {post.title}
                   </h2>
-                  <p className="mt-2 flex-1 text-[13px] leading-[1.7] text-secondary line-clamp-3">
+                  <p className="mt-2 flex-1 text-[13px] leading-[1.7] landing-muted line-clamp-3">
                     {post.excerpt}
                   </p>
-                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-border/[0.04]">
-                    <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-foreground/60 transition-colors group-hover:text-foreground">
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-[#e5e7eb]">
+                    <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#2563eb] transition-colors group-hover:text-[#1d4ed8]">
                       Read article
                       <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
                     </span>
-                    <span className="flex items-center gap-1 text-[11px] text-secondary/25">
+                    <span className="flex items-center gap-1 text-[11px] text-[#9ca3af]">
                       <Clock size={10} />
                       {post.readTime}
                     </span>
@@ -178,32 +177,26 @@ export default function BlogPage() {
 
       {/* Newsletter CTA */}
       <section className="px-4 pb-24 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-3xl rounded-[24px] border border-border/[0.08] bg-surface/50 p-10 text-center sm:p-14">
-          <h2 className="text-[1.5rem] font-bold tracking-[-0.025em] sm:text-[1.75rem]">
+        <div className="mx-auto max-w-3xl landing-card p-10 text-center sm:p-14">
+          <h2 className="text-[1.5rem] font-bold tracking-[-0.025em] text-[#111827] sm:text-[1.75rem]">
             Get the latest posts in your inbox
           </h2>
-          <p className="mt-3 text-[15px] leading-[1.7] text-secondary">
+          <p className="mt-3 text-[15px] leading-[1.7] landing-muted">
             Weekly guides on tech news, productivity, and AI tools. No spam, just useful stuff.
           </p>
           <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
             <Link
               href="/profile?tab=subscription"
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-8 py-3 text-[14px] font-semibold text-background transition-all hover:bg-foreground/90 hover:shadow-lg hover:shadow-black/10"
+              className="landing-btn landing-btn-primary landing-btn-lg inline-flex"
             >
               Subscribe to Trace
               <ArrowRight size={14} />
-            </Link>
-            <Link
-              href="/trending"
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-border/[0.12] px-8 py-3 text-[14px] font-semibold text-foreground transition-all hover:bg-surface"
-            >
-              Browse trending topics
             </Link>
           </div>
         </div>
       </section>
 
-      <Footer />
+      <Footer variant="landing" />
     </div>
   );
 }

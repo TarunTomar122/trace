@@ -1,7 +1,24 @@
 import type { NextConfig } from "next";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+// Keep Turbopack rooted at frontend/ — avoids picking up /Users/ttomar/package-lock.json
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
   trailingSlash: false,
+  turbopack: {
+    root: projectRoot,
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'randomuser.me',
+        pathname: '/api/portraits/**',
+      },
+    ],
+  },
   experimental: {
     optimizePackageImports: ['lucide-react'],
   },

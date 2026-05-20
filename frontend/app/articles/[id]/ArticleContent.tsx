@@ -1,14 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, ExternalLink, Clock, Share2, Check, Loader2, Sparkles } from "lucide-react";
-
-const ACCENT = "#F59E0B";
+import { Clock, Share2, Check, Loader2, ExternalLink } from "lucide-react";
+import StoryPageShell, { getStoryBackLabel } from "@/components/StoryPageShell";
+import { ArticleImage } from "@/components/ArticleImage";
 
 interface ArticleData {
   id: string;
@@ -85,9 +84,9 @@ export default function ArticleContent({ article }: Props) {
     : [];
   const whyItMatters = normalizeText(shortArticle?.why_it_matters);
   const readingTime = article.summary?.reading_time_minutes || 3;
-  const hasImage = typeof article.thumbnail === "string" && article.thumbnail.length > 10;
-  const returnHref = getSafeReturnPath(searchParams.get("from"), "/trending");
-  const backLabel = returnHref.startsWith("/daily/") ? "Back to daily" : "Back";
+  const returnHref = getSafeReturnPath(searchParams.get("from"), "/feed");
+  const backLabel = getStoryBackLabel(returnHref);
+  const isFromFeed = returnHref.startsWith("/feed");
 
   const handleShare = async () => {
     setSharing(true);
@@ -103,171 +102,113 @@ export default function ArticleContent({ article }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-40 border-b border-border/10 bg-background/92 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2.5">
-            <Image src="/trace.webp" alt="Trace" width={28} height={28} className="h-7 w-7 rounded-md" />
-            <span className="text-[15px] font-semibold tracking-[0.14em] text-foreground">TRACE</span>
-          </Link>
-          <Link
-            href="/feed"
-            className="text-sm font-semibold transition-colors hover:opacity-80"
-            style={{ color: ACCENT }}
-          >
-            Get your feed
-          </Link>
+    <StoryPageShell
+      backHref={returnHref}
+      backLabel={backLabel}
+      mode={isFromFeed ? "app" : "public"}
+      ctaHref="/feed"
+      ctaLabel="Open feed"
+      shareButton={
+        <button
+          type="button"
+          onClick={handleShare}
+          disabled={sharing}
+          className="story-page-share"
+        >
+          {sharing ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : copied ? (
+            <Check size={14} className="text-green-500" />
+          ) : (
+            <Share2 size={14} />
+          )}
+          {sharing ? "Copying..." : copied ? "Link copied" : "Share"}
+        </button>
+      }
+    >
+      <div className="story-page-meta mb-4">
+        {article.source_name && <span>{article.source_name}</span>}
+        {article.source_name && <span>·</span>}
+        <span className="inline-flex items-center gap-1">
+          <Clock size={13} />
+          {readingTime} min read
+        </span>
+      </div>
+
+      <h1 className="story-page-title">{article.title}</h1>
+
+      {hasMeaningfulSubtitle(article) && (
+        <p className="story-page-dek">{subtitle}</p>
+      )}
+
+      <div className="story-page-hero">
+        <ArticleImage thumbnail={article.thumbnail} title={article.title} />
+      </div>
+
+      {bodyContent ? (
+        <div className="story-page-body mb-8">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{bodyContent}</ReactMarkdown>
         </div>
-      </header>
+      ) : (
+        <p className="mb-8 text-sm text-[#6b7280]">
+          No summary available. Read the original source.
+        </p>
+      )}
 
-      <main className="mx-auto max-w-3xl px-4 pt-5 pb-10">
-        <div className="mb-5">
-          <Link
-            href={returnHref}
-            className="inline-flex items-center gap-1.5 text-sm text-secondary/55 transition-colors hover:text-foreground"
-          >
-            <ArrowLeft size={15} />
-            {backLabel}
-          </Link>
+      {keyTakeaways.length > 0 && (
+        <div className="mb-8">
+          <h2 className="story-page-section-title">Key takeaways</h2>
+          <div className="space-y-3">
+            {keyTakeaways.map((point, index) => (
+              <div key={index} className="story-page-key-point">
+                <span className="story-page-key-point-dot" />
+                <div className="story-page-body text-[15px]">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{point}</ReactMarkdown>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+      )}
 
-        <div className="mb-7 flex items-center gap-2 text-xs text-secondary/45">
-          {article.source_name && <span>{article.source_name}</span>}
-          {article.source_name && <span>·</span>}
-          <span className="inline-flex items-center gap-1">
-            <Clock size={13} />
-            {readingTime} min read
-          </span>
+      {whyItMatters && (
+        <div className="story-page-card mb-8">
+          <h2 className="story-page-section-title">Why it matters</h2>
+          <div className="story-page-body text-[15px]">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{whyItMatters}</ReactMarkdown>
+          </div>
         </div>
+      )}
 
-        <h1 className="mb-5 text-[2.1rem] font-bold leading-[1.06] tracking-[-0.045em] text-foreground sm:text-[2.6rem]">
-          {article.title}
-        </h1>
+      <div className="story-page-actions">
+        <a
+          href={article.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="story-page-btn-primary"
+        >
+          Read original source
+          <ExternalLink size={14} />
+        </a>
+      </div>
 
-        {hasMeaningfulSubtitle(article) && (
-          <p className="mb-6 max-w-2xl text-[16px] leading-relaxed text-secondary/72">
-            {subtitle}
+      {!isFromFeed && (
+        <div className="story-page-promo">
+          <h2 className="story-page-promo-title">Get your personalized feed</h2>
+          <p className="story-page-promo-copy">
+            Trace groups the biggest stories, videos, and discussions into one feed so you can stay current without scanning ten tabs.
           </p>
-        )}
-
-        {hasImage && (
-          <div className="mb-7 overflow-hidden rounded-[24px] bg-surface-secondary">
-            <img
-              src={article.thumbnail!}
-              alt=""
-              className="max-h-[360px] w-full object-cover"
-            />
-          </div>
-        )}
-
-        {bodyContent ? (
-          <div className="prose prose-base max-w-none text-[17px] leading-[1.95] text-secondary dark:prose-invert mb-8">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{bodyContent}</ReactMarkdown>
-          </div>
-        ) : (
-          <p className="mb-8 text-sm text-secondary/50">
-            No summary available. Read the original source.
-          </p>
-        )}
-
-        {keyTakeaways.length > 0 && (
-          <div className="mb-8">
-            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary/40">
-              Key Takeaways
-            </p>
-            <ul className="space-y-2.5">
-              {keyTakeaways.map((point, index) => (
-                <li key={index} className="flex items-start gap-3 text-sm">
-                  <span className="mt-0.5 font-mono text-xs text-secondary/30">{index + 1}.</span>
-                  <span className="prose prose-sm text-secondary/80 dark:prose-invert [&>p]:m-0 [&>p]:inline">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{point}</ReactMarkdown>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {whyItMatters && (
-          <div className="mb-8 border-l-2 border-border/20 pl-5">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary/40">
-              Why It Matters
-            </p>
-            <div className="prose prose-sm max-w-none text-secondary/75 dark:prose-invert">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{whyItMatters}</ReactMarkdown>
-            </div>
-          </div>
-        )}
-
-        <div className="mt-8 border-t border-border/10 pt-5">
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={handleShare}
-              disabled={sharing}
-              className="inline-flex items-center gap-2 rounded-full border border-border/20 bg-white px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-foreground/5 disabled:opacity-60"
-            >
-              {sharing ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : copied ? (
-                <Check size={14} className="text-green-500" />
-              ) : (
-                <Share2 size={14} />
-              )}
-              {sharing ? "Copying..." : copied ? "Link copied" : "Copy link"}
-            </button>
-            <a
-              href={article.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: ACCENT }}
-            >
-              Read original source <ExternalLink size={14} />
-            </a>
-          </div>
-        </div>
-
-        <div className="mt-8 flex flex-wrap gap-2 text-sm">
-          <Link href="/trending" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
-            Trending
-          </Link>
-          <Link href="/daily" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
-            Daily archive
-          </Link>
-          <Link href="/blog" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
-            Research
-          </Link>
-          <Link href="/compare" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
-            Compare
+          <Link href="/feed" className="story-page-btn-primary">
+            Open your feed
           </Link>
         </div>
+      )}
 
-        <div className="mt-12 rounded-[24px] border border-[color:rgba(245,158,11,0.18)] bg-[linear-gradient(135deg,rgba(255,251,235,0.95),rgba(255,247,237,0.95))] p-6">
-          <div className="flex items-start gap-3">
-            <div
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-              style={{ backgroundColor: ACCENT }}
-            >
-              <Sparkles size={18} className="text-white" />
-            </div>
-            <div className="flex-1">
-              <h3 className="mb-1 text-lg font-semibold text-foreground">
-                Get your personalized feed
-              </h3>
-              <p className="mb-4 text-sm leading-relaxed text-secondary/70">
-                Trace groups the biggest stories, videos, and discussions into one feed so you can stay current without scanning ten tabs.
-              </p>
-              <Link
-                href="/feed"
-                className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: ACCENT }}
-              >
-                Try Trace free
-              </Link>
-            </div>
-          </div>
+      {!isFromFeed && (
+        <div className="story-page-link-row">
+          <Link href="/blog" className="story-page-btn-secondary">Blog</Link>
         </div>
-      </main>
-    </div>
+      )}
+    </StoryPageShell>
   );
 }

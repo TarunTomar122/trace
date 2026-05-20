@@ -51,7 +51,7 @@ from v3.lib.diversity import (  # noqa: E402
 
 CONFIG_PATH = "v3/config/trending_sources.json"
 DEFAULT_LIMIT_PER_SOURCE = 10
-DEFAULT_MAX_AGE_HOURS = 48  # Show news from last 48 hours for fuller feed
+DEFAULT_MAX_AGE_HOURS = 4
 DEFAULT_MAX_FEED_ITEMS = 24
 DEFAULT_DISCOVERY_TOPICS = [
     "openai",
@@ -308,6 +308,22 @@ def _parse_dt(value: str) -> datetime | None:
         return dt
     except (ValueError, TypeError):
         return None
+
+
+def _filter_by_max_age_hours(
+    items: list[dict[str, Any]],
+    max_age_hours: int,
+) -> list[dict[str, Any]]:
+    cutoff = datetime.now(timezone.utc).timestamp() - (max_age_hours * 3600)
+    filtered: list[dict[str, Any]] = []
+    for item in items:
+        dt = _parse_dt(
+            str(item.get("published_date", "") or item.get("fetched_at", ""))
+        )
+        if not dt or dt.timestamp() < cutoff:
+            continue
+        filtered.append(item)
+    return filtered
 
 
 def _looks_promotional(title: str, content: str = "") -> bool:
@@ -1851,7 +1867,7 @@ def build_global_feed(
     This is much more efficient than per-user generation.
     """
     target_date = args.date.strip() or _today_ist()
-    max_age_hours = args.max_age_hours
+    max_age_hours = int(config.get("max_age_hours") or args.max_age_hours or DEFAULT_MAX_AGE_HOURS)
     max_age_days = max(1, max_age_hours // 24 + 1)
     previous_global_feed = store.load_global_feed(target_date)
     previous_topics = previous_global_feed.get("trending_topics", [])
@@ -1884,18 +1900,12 @@ def build_global_feed(
 
     # Filter low-quality/promos and sort by recency (latest first)
     ranked = _rank_candidates(all_candidates, source_weights)
+    ranked = _filter_by_max_age_hours(ranked, max_age_hours)
+    _log(f"After {max_age_hours}h freshness filter: {len(ranked)} articles")
 
-    # For topic clustering, keep the full ranked set (before story-dedup)
-    # but strictly filter to 24h so topics only contain today's news.
-    cutoff = datetime.now(timezone.utc).timestamp() - (max_age_hours * 3600)
-    ranked_for_topics = [
-        item for item in ranked
-        if (
-            _parse_dt(str(item.get("published_date", "") or item.get("fetched_at", "")))
-            or datetime.fromtimestamp(0, tz=timezone.utc)
-        ).timestamp() >= cutoff
-    ]
-    _log(f"Topic clustering input: {len(ranked_for_topics)} articles (strict {max_age_hours}h window)")
+    # Topic clustering uses the pre-dedup freshness window (multiple sources per story).
+    ranked_for_topics = ranked
+    _log(f"Topic clustering input: {len(ranked_for_topics)} articles ({max_age_hours}h window)")
 
     # Story-level dedupe (latest wins) + per-source cap.
     ranked, dedupe_stats = dedupe_trending_latest_story(
@@ -2000,7 +2010,7 @@ def build_global_feed(
     _log(f"Built {len(feed_items)} feed items")
 
     # Build grouped topics from the pre-dedup set (multiple articles per story
-    # are needed for clustering) but filtered to strict 24h window.
+    # are needed for clustering) within the freshness window.
     trending_topics, topic_stats = _build_trending_topics_payload(
         store=store,
         ranked_items=ranked_for_topics,

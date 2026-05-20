@@ -866,6 +866,101 @@ function buildTopicShareUrl(topic: TrendingTopic): string | null {
   return `https://www.yourtrace.online/topics/${encodeURIComponent(topicSlug)}`;
 }
 
+const FEED_RETURN_PATH = '/feed';
+export const FEED_RELATED_POOL_KEY = 'trace_feed_related_pool';
+const RAIL_STORY_COUNT = 4;
+
+function storyTimestamp(item: FeedListItem): number {
+  const ts = item.timestamp ? new Date(item.timestamp).getTime() : 0;
+  return Number.isNaN(ts) ? 0 : ts;
+}
+
+function scoreRelatedStory(candidate: FeedListItem, current: FeedListItem): number {
+  let score = 0;
+  if (current.interestId) {
+    if (candidate.interestId === current.interestId) score += 4;
+    if (candidate.tags?.includes(current.interestId)) score += 2;
+  }
+  if (current.tags?.length) {
+    const overlap = candidate.tags?.filter((tag) => current.tags?.includes(tag)).length ?? 0;
+    score += overlap * 2;
+  }
+  if (candidate.type === current.type) score += 1;
+  if (candidate.pulseSection && candidate.pulseSection === current.pulseSection) score += 1;
+  return score;
+}
+
+export function storeFeedRelatedPool(pool: FeedListItem[]): void {
+  if (typeof window === 'undefined' || pool.length === 0) return;
+  sessionStorage.setItem(FEED_RELATED_POOL_KEY, JSON.stringify(pool));
+}
+
+export function getFeedRelatedPool(): FeedListItem[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = sessionStorage.getItem(FEED_RELATED_POOL_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as FeedListItem[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function rankFeedRelatedStories(
+  pool: FeedListItem[],
+  currentId: string,
+  current?: FeedListItem,
+): FeedListItem[] {
+  const others = pool.filter((item) => item.id !== currentId);
+  if (others.length === 0) return [];
+
+  return current
+    ? [...others].sort((a, b) => {
+        const scoreDiff = scoreRelatedStory(b, current) - scoreRelatedStory(a, current);
+        if (scoreDiff !== 0) return scoreDiff;
+        return storyTimestamp(b) - storyTimestamp(a);
+      })
+    : [...others].sort((a, b) => storyTimestamp(b) - storyTimestamp(a));
+}
+
+export function pickFeedRelatedStories(
+  pool: FeedListItem[],
+  currentId: string,
+  current?: FeedListItem,
+  options?: { offset?: number; limit?: number },
+): FeedListItem[] {
+  const offset = options?.offset ?? 0;
+  const limit = options?.limit ?? RAIL_STORY_COUNT;
+  const ranked = rankFeedRelatedStories(pool, currentId, current);
+  return ranked.slice(offset, offset + limit);
+}
+
+/** In-app story page — always stay inside the authenticated feed experience. */
+export function getFeedStoryPath(item: FeedListItem): string {
+  const params = new URLSearchParams({
+    returnTo: FEED_RETURN_PATH,
+    story: item.id,
+  });
+  return `/feed/article?${params.toString()}`;
+}
+
+/** Session storage prep for /feed/article (articles and grouped topics). */
+export function prepareFeedStoryNavigation(
+  item: FeedListItem,
+  relatedPool?: FeedListItem[],
+): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem('trace_feed_story', JSON.stringify(item));
+  sessionStorage.setItem('trace_article_returnTo', FEED_RETURN_PATH);
+  if (item.type === 'article') {
+    sessionStorage.setItem('trace_article', JSON.stringify(item.data));
+  }
+  if (relatedPool?.length) {
+    storeFeedRelatedPool(relatedPool);
+  }
+}
+
 export function getContentFromFeedListItem(item: FeedListItem | null): ContentData | null {
   if (!item) return null;
 

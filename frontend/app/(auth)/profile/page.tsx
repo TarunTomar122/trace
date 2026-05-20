@@ -3,28 +3,14 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  Check,
-  ChevronDown,
-  LogOut,
-
-  Shield,
-  FileText,
-  Mail,
-  Loader2,
-  User,
-  Settings,
-  CreditCard,
-  ExternalLink,
-  ArrowLeft,
+  Check, ChevronDown, LogOut, Shield, FileText, Mail,
+  Loader2, User, Settings, CreditCard, ExternalLink, ArrowLeft,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  updateUserProfile,
-  ROLES,
-  SENIORITY_LEVELS,
-  ONBOARDING_INTERESTS,
-  CAREER_GOALS,
+  updateUserProfile, ROLES, SENIORITY_LEVELS,
+  ONBOARDING_INTERESTS, CAREER_GOALS,
 } from '@/lib/firestore';
 import { isAlphaMode } from '@/lib/alpha';
 import SubscriptionManager from '@/components/SubscriptionManager';
@@ -42,6 +28,57 @@ const TAB_CONFIG: { key: ProfileTab; label: string; icon: React.ElementType }[] 
   { key: 'subscription', label: 'Subscription', icon: CreditCard },
 ];
 
+function PrefRow({ label, value, isOpen, onToggle }: {
+  label: string; value: string; isOpen?: boolean; onToggle?: () => void;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      className="flex items-center gap-3 px-5 py-4 w-full text-left hover:bg-[#f9fafb] transition-colors border-b border-[#e5e7eb] last:border-0"
+    >
+      <div className="flex-1 min-w-0">
+        <p className="text-[14px] font-medium text-[#111827]">{label}</p>
+        {value && <p className="text-[12px] text-[#9ca3af] truncate mt-0.5">{value}</p>}
+      </div>
+      <ChevronDown size={16} className={`text-[#9ca3af] transition-transform shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+    </button>
+  );
+}
+
+function EditActions({ saving, onCancel, onSave, disabled }: {
+  saving: boolean; onCancel: () => void; onSave: () => void; disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2 pt-2">
+      <button
+        onClick={onCancel}
+        className="px-4 py-2 rounded-full text-[12px] font-medium text-[#6b7280] bg-[#f3f4f6] hover:bg-[#e5e7eb] transition-colors"
+      >
+        Cancel
+      </button>
+      <button
+        onClick={onSave}
+        disabled={saving || disabled}
+        className="px-4 py-2 rounded-full text-[12px] font-semibold bg-[#111827] text-white hover:bg-[#1f2937] transition-colors disabled:opacity-40"
+      >
+        {saving ? 'Saving...' : 'Save'}
+      </button>
+    </div>
+  );
+}
+
+function Toggle({ enabled, onChange, disabled }: { enabled: boolean; onChange: () => void; disabled?: boolean }) {
+  return (
+    <button
+      onClick={onChange}
+      disabled={disabled}
+      className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${enabled ? 'bg-[#111827]' : 'bg-[#e5e7eb]'} ${disabled ? 'opacity-50' : ''}`}
+    >
+      <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${enabled ? 'left-6' : 'left-1'}`} />
+    </button>
+  );
+}
+
 function ProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -53,7 +90,6 @@ function ProfileContent() {
   const [editRole, setEditRole] = useState('');
   const [editSeniority, setEditSeniority] = useState('');
   const [editInterests, setEditInterests] = useState<string[]>([]);
-
   const [editGoals, setEditGoals] = useState<string[]>([]);
   const [newsletterEnabled, setNewsletterEnabled] = useState(true);
   const [savingNewsletter, setSavingNewsletter] = useState(false);
@@ -93,7 +129,6 @@ function ProfileContent() {
     setEditRole(profile.role || '');
     setEditSeniority(profile.seniority || '');
     setEditInterests(profile.interests || []);
-
     setEditGoals(profile.careerGoals || []);
     setEditing(key);
   };
@@ -123,7 +158,6 @@ function ProfileContent() {
     .map((id: string) => lookupLabel(ONBOARDING_INTERESTS as unknown as { id: string; label: string }[], id))
     .join(', ');
 
-
   const goalsValue = (profile?.careerGoals || [])
     .map((id: string) => lookupLabel(CAREER_GOALS as unknown as { id: string; label: string }[], id))
     .join(', ');
@@ -135,79 +169,73 @@ function ProfileContent() {
 
   if (loading || !user) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 size={24} className="animate-spin text-secondary/40" />
+      <div className="min-h-screen bg-[#f9f9f7] flex items-center justify-center">
+        <Loader2 size={24} className="animate-spin text-[#9ca3af]" />
       </div>
     );
   }
 
-  /* ─── Tab content (shared between desktop + mobile) ─── */
   const tabContent = (
     <>
       {activeTab === 'account' && (
-        <div className="max-w-xl">
-          <h1 className="text-xl font-bold text-foreground tracking-[-0.02em] mb-6">Account Settings</h1>
-
-          <div className="p-5 rounded-xl bg-surface-secondary/60 mb-5">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold text-sm text-foreground">
-                {isSubscribed ? 'Pro Account' : 'Free Account'}
-              </h3>
-              <button
-                onClick={() => setActiveTab('subscription')}
-                className="text-xs text-secondary/60 hover:text-foreground transition-colors"
-              >
-                Manage →
-              </button>
-            </div>
-            <p className="text-sm text-secondary/60">
-              {isSubscribed
-                ? 'Full access to all content and features.'
-                : 'Upgrade to unlock unlimited articles and your full feed.'}
-            </p>
-          </div>
-
-          <div className="p-5 rounded-xl bg-surface-secondary/60">
-            <div className="flex items-center gap-4">
-              <Mail size={20} className="text-secondary/50 shrink-0" />
-              <div className="flex-1">
-                <p className="font-medium text-sm text-foreground">Daily Newsletter</p>
-                <p className="text-xs text-secondary/55">Curated digest every morning</p>
+        <div className="max-w-xl space-y-5">
+          {/* Plan status */}
+          <div className="rounded-2xl border border-[#e5e7eb] bg-white p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#9ca3af] mb-1">
+                  {isSubscribed ? 'Pro' : 'Free plan'}
+                </p>
+                <p className="text-[14px] text-[#6b7280]">
+                  {isSubscribed
+                    ? 'Full access to all content and features.'
+                    : 'Upgrade to unlock unlimited articles and your full feed.'}
+                </p>
               </div>
               <button
-                onClick={toggleNewsletter}
-                disabled={savingNewsletter}
-                className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${
-                  newsletterEnabled ? 'bg-foreground' : 'bg-secondary/20'
-                } ${savingNewsletter ? 'opacity-50' : ''}`}
+                onClick={() => setActiveTab('subscription')}
+                className="shrink-0 rounded-full border border-[#e5e7eb] px-3.5 py-1.5 text-[12px] font-medium text-[#374151] hover:bg-[#f9fafb] transition-colors"
               >
-                <span className={`absolute top-1 w-4 h-4 bg-surface rounded-full shadow transition-transform ${
-                  newsletterEnabled ? 'left-6' : 'left-1'
-                }`} />
+                Manage
               </button>
             </div>
           </div>
 
-          <div className="mt-6 space-y-1">
+          {/* Newsletter */}
+          <div className="rounded-2xl border border-[#e5e7eb] bg-white p-5">
+            <div className="flex items-center gap-4">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f3f4f6]">
+                <Mail size={16} className="text-[#6b7280]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-medium text-[#111827]">Daily Newsletter</p>
+                <p className="text-[12px] text-[#9ca3af]">Curated digest every morning</p>
+              </div>
+              <Toggle enabled={newsletterEnabled} onChange={toggleNewsletter} disabled={savingNewsletter} />
+            </div>
+          </div>
+
+          {/* Links */}
+          <div className="rounded-2xl border border-[#e5e7eb] bg-white overflow-hidden">
             <a
               href="https://www.yourtrace.online/privacy-policy"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-surface-secondary/50 transition-colors"
+              className="flex items-center gap-3 px-5 py-4 border-b border-[#e5e7eb] hover:bg-[#f9fafb] transition-colors"
             >
-              <Shield size={16} className="text-secondary/50" />
-              <span className="text-sm text-secondary/70">Privacy Policy</span>
-              <ExternalLink size={12} className="text-secondary/35 ml-auto" />
+              <Shield size={15} className="text-[#9ca3af]" />
+              <span className="flex-1 text-[14px] text-[#374151]">Privacy Policy</span>
+              <ExternalLink size={12} className="text-[#d1d5db]" />
             </a>
             <a
               href="https://www.yourtrace.online/terms"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-surface-secondary/50 transition-colors"
+              className="flex items-center gap-3 px-5 py-4 hover:bg-[#f9fafb] transition-colors"
             >
-              <FileText size={16} className="text-secondary/50" />
-              <span className="text-sm text-secondary/70">Terms of Service</span>
-              <ExternalLink size={12} className="text-secondary/35 ml-auto" />
+              <FileText size={15} className="text-[#9ca3af]" />
+              <span className="flex-1 text-[14px] text-[#374151]">Terms of Service</span>
+              <ExternalLink size={12} className="text-[#d1d5db]" />
             </a>
           </div>
         </div>
@@ -215,13 +243,9 @@ function ProfileContent() {
 
       {activeTab === 'preferences' && (
         <div className="max-w-xl">
-          <h1 className="text-xl font-bold text-foreground tracking-[-0.02em] mb-1">Feed Preferences</h1>
-          <p className="text-sm text-secondary/55 mb-6">
-            Changes take effect on your next daily feed refresh.
-          </p>
+          <p className="text-[12px] text-[#9ca3af] mb-5">Changes take effect on your next daily feed refresh.</p>
 
-          <div className="space-y-px rounded-xl bg-surface-secondary/40 overflow-hidden">
-            {/* Role */}
+          <div className="rounded-2xl border border-[#e5e7eb] bg-white overflow-hidden">
             <PrefRow
               label="Role & Experience"
               value={roleValue}
@@ -229,18 +253,18 @@ function ProfileContent() {
               onToggle={() => editing === 'role' ? cancelEditing() : startEditing('role')}
             />
             {editing === 'role' && (
-              <div className="px-5 py-4 border-t border-border/15 space-y-4 bg-white">
+              <div className="px-5 py-4 border-b border-[#e5e7eb] space-y-4 bg-[#f9fafb]">
                 <div>
-                  <p className="text-xs font-medium text-secondary/60 mb-3">Role</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9ca3af] mb-3">Role</p>
                   <div className="grid grid-cols-2 gap-2">
                     {ROLES.map((r) => (
                       <button
                         key={r.id}
                         onClick={() => setEditRole(r.id)}
-                        className={`p-3 rounded-xl text-left text-sm font-medium transition-all border-2 ${
+                        className={`p-3 rounded-xl text-left text-[13px] font-medium transition-all border ${
                           editRole === r.id
-                            ? 'border-foreground bg-surface-secondary'
-                            : 'border-transparent bg-surface-secondary/40 hover:bg-surface-secondary/70'
+                            ? 'border-[#111827] bg-white text-[#111827]'
+                            : 'border-[#e5e7eb] bg-white text-[#6b7280] hover:border-[#d1d5db]'
                         }`}
                       >
                         {r.label}
@@ -249,16 +273,16 @@ function ProfileContent() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-secondary/60 mb-3">Experience</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9ca3af] mb-3">Experience</p>
                   <div className="grid grid-cols-2 gap-2">
                     {SENIORITY_LEVELS.map((s) => (
                       <button
                         key={s.id}
                         onClick={() => setEditSeniority(s.id)}
-                        className={`p-3 rounded-xl text-left text-sm font-medium transition-all border-2 ${
+                        className={`p-3 rounded-xl text-left text-[13px] font-medium transition-all border ${
                           editSeniority === s.id
-                            ? 'border-foreground bg-surface-secondary'
-                            : 'border-transparent bg-surface-secondary/40 hover:bg-surface-secondary/70'
+                            ? 'border-[#111827] bg-white text-[#111827]'
+                            : 'border-[#e5e7eb] bg-white text-[#6b7280] hover:border-[#d1d5db]'
                         }`}
                       >
                         {s.label}
@@ -270,7 +294,6 @@ function ProfileContent() {
               </div>
             )}
 
-            {/* Interests */}
             <PrefRow
               label="Interests"
               value={interestValue}
@@ -278,8 +301,8 @@ function ProfileContent() {
               onToggle={() => editing === 'interests' ? cancelEditing() : startEditing('interests')}
             />
             {editing === 'interests' && (
-              <div className="px-5 py-4 border-t border-border/15 space-y-3 bg-white">
-                <p className="text-xs text-secondary/55">Pick 3-5 topics</p>
+              <div className="px-5 py-4 border-b border-[#e5e7eb] space-y-3 bg-[#f9fafb]">
+                <p className="text-[12px] text-[#9ca3af]">Pick 3–5 topics</p>
                 <div className="flex flex-wrap gap-2">
                   {ONBOARDING_INTERESTS.map((interest) => {
                     const selected = editInterests.includes(interest.id);
@@ -289,14 +312,14 @@ function ProfileContent() {
                         key={interest.id}
                         disabled={disabled}
                         onClick={() => setEditInterests(toggleIn(editInterests, interest.id, 5))}
-                        className={`px-3.5 py-2 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
+                        className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-medium transition-all ${
                           selected
-                            ? 'bg-foreground text-background'
-                            : 'bg-surface-secondary/60 text-foreground/80 hover:bg-surface-secondary'
+                            ? 'bg-[#111827] text-white'
+                            : 'bg-[#f3f4f6] text-[#374151] hover:bg-[#e5e7eb]'
                         } ${disabled ? 'opacity-30 cursor-not-allowed' : ''}`}
                       >
                         {interest.label}
-                        {selected && <Check size={12} />}
+                        {selected && <Check size={11} />}
                       </button>
                     );
                   })}
@@ -305,7 +328,6 @@ function ProfileContent() {
               </div>
             )}
 
-            {/* Goals */}
             <PrefRow
               label="Career Goals"
               value={goalsValue}
@@ -313,8 +335,8 @@ function ProfileContent() {
               onToggle={() => editing === 'goals' ? cancelEditing() : startEditing('goals')}
             />
             {editing === 'goals' && (
-              <div className="px-5 py-4 border-t border-border/15 space-y-3 bg-white">
-                <p className="text-xs text-secondary/55">Pick up to 3</p>
+              <div className="px-5 py-4 bg-[#f9fafb] space-y-3">
+                <p className="text-[12px] text-[#9ca3af]">Pick up to 3</p>
                 <div className="grid gap-2">
                   {CAREER_GOALS.map((goal) => {
                     const selected = editGoals.includes(goal.id);
@@ -324,14 +346,14 @@ function ProfileContent() {
                         key={goal.id}
                         disabled={disabled}
                         onClick={() => setEditGoals(toggleIn(editGoals, goal.id, 3))}
-                        className={`p-3 rounded-xl text-left transition-all border-2 ${
+                        className={`p-3 rounded-xl text-left transition-all border ${
                           selected
-                            ? 'border-foreground bg-surface-secondary'
-                            : 'border-transparent bg-surface-secondary/40 hover:bg-surface-secondary/70'
+                            ? 'border-[#111827] bg-white'
+                            : 'border-[#e5e7eb] bg-white hover:border-[#d1d5db]'
                         } ${disabled ? 'opacity-30 cursor-not-allowed' : ''}`}
                       >
-                        <div className="font-medium text-sm">{goal.label}</div>
-                        <div className={`text-xs mt-0.5 ${selected ? 'text-secondary/65' : 'text-secondary/55'}`}>{goal.subtitle}</div>
+                        <p className="text-[13px] font-medium text-[#111827]">{goal.label}</p>
+                        <p className="text-[12px] text-[#9ca3af] mt-0.5">{goal.subtitle}</p>
                       </button>
                     );
                   })}
@@ -345,7 +367,6 @@ function ProfileContent() {
 
       {activeTab === 'subscription' && (
         <div className="max-w-xl">
-          <h1 className="text-xl font-bold text-foreground tracking-[-0.02em] mb-6">Subscription</h1>
           <SubscriptionManager />
         </div>
       )}
@@ -353,58 +374,45 @@ function ProfileContent() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#f9f9f7]">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/10">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center gap-3">
-              <img src="/trace.webp" alt="Trace" className="h-6 w-auto" />
-              <span className="text-sm font-semibold tracking-[0.18em]">TRACE</span>
-            </Link>
-            <Link
-              href="/feed"
-              className="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium text-secondary hover:text-foreground transition-colors"
-            >
-              <ArrowLeft size={14} />
-              Back to feed
-            </Link>
-          </div>
+      <header className="sticky top-0 z-50 border-b border-[#e5e7eb] bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
+          <Link href="/feed" prefetch={false} className="flex items-center gap-2.5 no-underline">
+            <img src="/trace.webp" alt="Trace" className="h-5 w-auto" />
+            <span className="text-[13px] font-bold tracking-[0.12em] text-[#111827]">TRACE</span>
+          </Link>
+          <Link
+            href="/feed"
+            prefetch={false}
+            className="flex items-center gap-1.5 text-[13px] font-medium text-[#6b7280] hover:text-[#111827] transition-colors"
+          >
+            <ArrowLeft size={14} />
+            Back to feed
+          </Link>
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 lg:py-12">
-        {/* Desktop: full-width grid layout */}
-        <div className="hidden md:grid md:grid-cols-[240px_1fr] lg:grid-cols-[280px_1fr] gap-10 lg:gap-16">
-          {/* Left nav */}
+      <div className="mx-auto max-w-6xl px-5 py-8 sm:px-6 lg:py-12">
+        {/* Desktop: sidebar + content */}
+        <div className="hidden md:grid md:grid-cols-[240px_1fr] lg:grid-cols-[260px_1fr] gap-10 lg:gap-16">
           <aside className="min-w-0">
             <div className="sticky top-24">
               {/* User card */}
-              <div className="mb-8">
-                <div className="flex items-center gap-3.5 mb-3">
-                  {user.photoURL ? (
-                    <img src={user.photoURL} alt="" className="w-14 h-14 rounded-full" />
-                  ) : (
-                    <div className="w-14 h-14 rounded-full bg-foreground/8 flex items-center justify-center text-xl font-bold text-secondary/50">
-                      {user.displayName?.charAt(0) || '?'}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-[15px] font-bold text-foreground truncate">
-                      {profile?.name || user.displayName || 'User'}
-                    </h2>
-                    <p className="text-[12px] text-secondary/45 truncate">{user.email}</p>
-                  </div>
-                </div>
-                {roleValue && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {roleValue.split(' · ').map((badge) => (
-                      <span key={badge} className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-foreground/[0.04] text-secondary/55">
-                        {badge}
-                      </span>
-                    ))}
+              <div className="mb-8 flex items-center gap-3.5">
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="" className="h-12 w-12 rounded-full ring-2 ring-white shadow-sm" />
+                ) : (
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#2563eb] text-white shadow-[0_4px_14px_rgba(37,99,235,0.25)]">
+                    <span className="text-base font-bold">{user.displayName?.charAt(0) || user.email?.[0]?.toUpperCase() || 'U'}</span>
                   </div>
                 )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[15px] font-semibold text-[#111827] truncate">
+                    {profile?.name || user.displayName || 'User'}
+                  </p>
+                  <p className="text-[12px] text-[#9ca3af] truncate">{user.email}</p>
+                </div>
               </div>
 
               {/* Nav */}
@@ -413,76 +421,67 @@ function ProfileContent() {
                   <button
                     key={tab.key}
                     onClick={() => { setActiveTab(tab.key); setEditing(null); }}
-                    className={`flex items-center gap-3 w-full px-3.5 py-2.5 rounded-lg text-[14px] font-medium transition-colors ${
+                    className={`flex items-center gap-2.5 w-full rounded-lg px-3.5 py-2.5 text-[13px] font-medium transition-colors ${
                       activeTab === tab.key
-                        ? 'bg-foreground/[0.06] text-foreground'
-                        : 'text-secondary/55 hover:text-foreground hover:bg-foreground/[0.03]'
+                        ? 'bg-[#111827] text-white'
+                        : 'text-[#6b7280] hover:text-[#111827] hover:bg-[#f3f4f6]'
                     }`}
                   >
-                    <tab.icon size={16} strokeWidth={activeTab === tab.key ? 2.5 : 2} />
+                    <tab.icon size={15} />
                     {tab.label}
                   </button>
                 ))}
               </nav>
 
-              <div className="border-t border-border/15 pt-4">
+              <div className="border-t border-[#e5e7eb] pt-4">
                 <button
                   onClick={handleSignOut}
-                  className="flex items-center gap-3 px-3.5 py-2.5 w-full rounded-lg text-[14px] text-secondary/45 hover:text-foreground hover:bg-foreground/[0.03] transition-colors"
+                  className="flex items-center gap-2.5 w-full rounded-lg px-3.5 py-2.5 text-[13px] text-[#9ca3af] hover:text-[#111827] hover:bg-[#f3f4f6] transition-colors"
                 >
-                  <LogOut size={16} />
+                  <LogOut size={15} />
                   Sign out
                 </button>
               </div>
             </div>
           </aside>
 
-          {/* Content */}
           <main className="min-w-0 pb-16">
+            <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#111827] mb-6">
+              {activeTab === 'account' ? 'Account' : activeTab === 'preferences' ? 'Feed Preferences' : 'Subscription'}
+            </h1>
             {tabContent}
           </main>
         </div>
 
         {/* Mobile */}
         <div className="md:hidden">
-          {/* User card */}
-          <div className="mb-6">
-            <div className="flex items-center gap-3 mb-2">
-              {user.photoURL ? (
-                <img src={user.photoURL} alt="" className="w-12 h-12 rounded-full" />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-foreground/8 flex items-center justify-center text-lg font-bold text-secondary/50">
-                  {user.displayName?.charAt(0) || '?'}
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <h2 className="text-[15px] font-bold text-foreground truncate">
-                  {profile?.name || user.displayName || 'User'}
-                </h2>
-                <p className="text-[12px] text-secondary/45 truncate">{user.email}</p>
-              </div>
-            </div>
-            {roleValue && (
-              <div className="flex flex-wrap gap-1.5">
-                {roleValue.split(' · ').map((badge) => (
-                  <span key={badge} className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-foreground/[0.04] text-secondary/55">
-                    {badge}
-                  </span>
-                ))}
+          {/* User row */}
+          <div className="mb-6 flex items-center gap-3">
+            {user.photoURL ? (
+              <img src={user.photoURL} alt="" className="h-11 w-11 rounded-full ring-2 ring-white shadow-sm" />
+            ) : (
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#2563eb] text-white shadow-[0_4px_14px_rgba(37,99,235,0.25)]">
+                <span className="text-sm font-bold">{user.displayName?.charAt(0) || user.email?.[0]?.toUpperCase() || 'U'}</span>
               </div>
             )}
+            <div className="flex-1 min-w-0">
+              <p className="text-[15px] font-semibold text-[#111827] truncate">
+                {profile?.name || user.displayName || 'User'}
+              </p>
+              <p className="text-[12px] text-[#9ca3af] truncate">{user.email}</p>
+            </div>
           </div>
 
-          {/* Tab pills */}
-          <div className="flex items-center gap-1.5 mb-6 pb-4 border-b border-border/15 overflow-x-auto scrollbar-hide">
+          {/* Tab bar */}
+          <div className="mb-6 flex gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
             {TAB_CONFIG.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => { setActiveTab(tab.key); setEditing(null); }}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[12px] font-medium whitespace-nowrap transition-colors ${
+                className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[12px] font-medium transition-colors ${
                   activeTab === tab.key
-                    ? 'bg-foreground text-background'
-                    : 'bg-foreground/[0.06] text-secondary/60 hover:bg-foreground/10'
+                    ? 'bg-[#111827] text-white'
+                    : 'bg-[#f3f4f6] text-[#6b7280] hover:bg-[#e5e7eb]'
                 }`}
               >
                 <tab.icon size={13} />
@@ -491,14 +490,13 @@ function ProfileContent() {
             ))}
           </div>
 
-          {/* Content */}
           {tabContent}
 
           {activeTab === 'account' && (
-            <div className="mt-8 pt-5 border-t border-border/15">
+            <div className="mt-8 border-t border-[#e5e7eb] pt-5">
               <button
                 onClick={handleSignOut}
-                className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm text-secondary/45 hover:text-foreground hover:bg-foreground/[0.03] transition-colors"
+                className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[13px] text-[#9ca3af] hover:text-[#111827] hover:bg-[#f3f4f6] transition-colors"
               >
                 <LogOut size={15} />
                 Sign out
@@ -511,44 +509,11 @@ function ProfileContent() {
   );
 }
 
-function PrefRow({ label, value, isOpen, onToggle }: {
-  label: string; value: string; isOpen?: boolean; onToggle?: () => void;
-}) {
-  return (
-    <button onClick={onToggle} className="flex items-center gap-3 px-5 py-4 w-full text-left hover:bg-surface-secondary/30 transition-colors">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground">{label}</p>
-        {value && <p className="text-xs text-secondary/50 truncate mt-0.5">{value}</p>}
-      </div>
-      <ChevronDown size={16} className={`text-secondary/40 transition-transform shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
-    </button>
-  );
-}
-
-function EditActions({ saving, onCancel, onSave, disabled }: {
-  saving: boolean; onCancel: () => void; onSave: () => void; disabled?: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-2 pt-2">
-      <button onClick={onCancel} className="px-4 py-2 rounded-full text-xs font-medium text-secondary/60 bg-surface-secondary/60 hover:bg-surface-secondary transition-colors">
-        Cancel
-      </button>
-      <button
-        onClick={onSave}
-        disabled={saving || disabled}
-        className="px-4 py-2 rounded-full text-xs font-semibold bg-foreground text-background transition-all hover:bg-foreground/90 hover:shadow-md hover:shadow-black/10 disabled:opacity-40"
-      >
-        {saving ? 'Saving...' : 'Save'}
-      </button>
-    </div>
-  );
-}
-
 export default function ProfilePage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 size={24} className="animate-spin text-secondary/40" />
+      <div className="min-h-screen bg-[#f9f9f7] flex items-center justify-center">
+        <Loader2 size={24} className="animate-spin text-[#9ca3af]" />
       </div>
     }>
       <ProfileContent />

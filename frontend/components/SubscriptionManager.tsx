@@ -17,6 +17,12 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { auth } from '@/lib/firebase';
 import { trackCheckoutClicked, trackPaywallShown, trackSubscriptionStarted } from '@/lib/posthog';
+import {
+  SUBSCRIPTION_COMPARE_AT_DEFAULT,
+  SUBSCRIPTION_PRICE_DEFAULT,
+  SUBSCRIPTION_PRICE_INDIA,
+} from '@/lib/subscription-pricing';
+import SubscriptionPrice from '@/components/SubscriptionPrice';
 
 interface SubscriptionStatus {
   subscriptionStatus: string;
@@ -35,6 +41,7 @@ interface PricingPreview {
   countrySource: 'header' | 'profile' | 'fallback';
   trialDays: number;
   priceDisplay: string;
+  compareAtPriceDisplay?: string | null;
   pricingOffer: 'india' | 'default';
 }
 
@@ -42,7 +49,8 @@ const INDIA_PRICING_PREVIEW: PricingPreview = {
   countryCode: 'IN',
   countrySource: 'fallback',
   trialDays: 0,
-  priceDisplay: '₹19/month',
+  priceDisplay: SUBSCRIPTION_PRICE_INDIA,
+  compareAtPriceDisplay: null,
   pricingOffer: 'india',
 };
 
@@ -50,7 +58,8 @@ const DEFAULT_PRICING_PREVIEW: PricingPreview = {
   countryCode: null,
   countrySource: 'fallback',
   trialDays: 0,
-  priceDisplay: '$4.99/month',
+  priceDisplay: SUBSCRIPTION_PRICE_DEFAULT,
+  compareAtPriceDisplay: SUBSCRIPTION_COMPARE_AT_DEFAULT,
   pricingOffer: 'default',
 };
 
@@ -406,6 +415,8 @@ export default function SubscriptionManager() {
   const fallbackPricing = guessClientPricingPreview();
   const trialDays = pricingPreview?.trialDays ?? fallbackPricing.trialDays;
   const priceDisplay = pricingPreview?.priceDisplay ?? fallbackPricing.priceDisplay;
+  const compareAtPriceDisplay =
+    pricingPreview?.compareAtPriceDisplay ?? fallbackPricing.compareAtPriceDisplay ?? null;
   const planName = (pricingPreview?.pricingOffer ?? fallbackPricing.pricingOffer) === 'india'
     ? 'Trace Pro India'
     : 'Trace Pro';
@@ -452,7 +463,10 @@ export default function SubscriptionManager() {
           <h2 className="text-xl font-bold text-foreground tracking-[-0.02em] leading-snug mb-1.5">
             The news habit that<br />doesn't waste your time.
           </h2>
-          <p className="text-[13px] text-secondary/50">{priceDisplay}. Cancel anytime.</p>
+          <p className="text-[13px] text-secondary/50">
+            <SubscriptionPrice price={priceDisplay} compareAt={compareAtPriceDisplay} size="sm" />
+            . Cancel anytime.
+          </p>
         </div>
 
         <div className="space-y-4 pb-7 border-b border-border/15">
@@ -485,7 +499,8 @@ export default function SubscriptionManager() {
             )}
           </button>
           <p className="text-[11px] text-secondary/35 mt-2 text-center">
-            {priceDisplay} · Cancel anytime
+            <SubscriptionPrice price={priceDisplay} compareAt={compareAtPriceDisplay} size="sm" />
+            {' '}· Cancel anytime
           </p>
         </div>
 
@@ -557,7 +572,8 @@ export default function SubscriptionManager() {
           <div className="flex items-center gap-3 text-sm">
             <CreditCard size={16} className="text-secondary" />
             <span className="text-secondary">
-              Plan: <span className="text-foreground font-medium">{priceDisplay}</span>
+              Plan:{' '}
+              <SubscriptionPrice price={priceDisplay} compareAt={compareAtPriceDisplay} size="sm" />
             </span>
           </div>
         </div>

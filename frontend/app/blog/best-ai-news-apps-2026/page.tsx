@@ -230,7 +230,7 @@ export default function BlogPost() {
             1. Trace — Best AI News App for Developers
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            <strong>Price:</strong> Free (Android) | $4.99/month (Web)
+            <strong>Price:</strong> Free (Android) | $2.99/month (Web)
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             Trace is the best AI news app for developers and founders who need

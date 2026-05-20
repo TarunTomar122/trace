@@ -3,6 +3,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, ArrowLeft, ArrowRight } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -39,24 +40,19 @@ function OnboardingPageContent() {
   const [hasTracked, setHasTracked] = useState(false);
   const checkoutIntent = searchParams.get('intent') === 'checkout';
 
-  // Handle post-auth routing and redirect-based sign-in recovery
   useEffect(() => {
     if (!isAlphaMode()) {
       router.push(user ? '/waitlist' : '/');
       return;
     }
 
-    // Wait until auth + profile are resolved
     if (loading || !profileResolved) return;
 
-    // Already onboarded → straight to feed
     if (user && profile?.onboarded) {
       router.push('/feed');
       return;
     }
 
-    // Redirect sign-in recovery: user just returned from Google OAuth redirect
-    // and we have pending onboarding data saved in localStorage
     if (user && !profile?.onboarded) {
       const pendingRaw = localStorage.getItem(PENDING_ONBOARDING_KEY);
       if (pendingRaw) {
@@ -107,7 +103,7 @@ function OnboardingPageContent() {
     if (step === 1) return !!role;
     if (step === 2) return interests.length >= 3;
     if (step === 3) return careerGoals.length >= 1;
-    if (step === 4) return true; // sign-in step — always ready
+    if (step === 4) return true;
     return false;
   })();
 
@@ -136,7 +132,6 @@ function OnboardingPageContent() {
     }
   };
 
-  // Called once we have a confirmed Firebase user (popup or already signed-in)
   const finishOnboarding = async (uid: string, displayName: string | null) => {
     await completeOnboarding(uid, {
       name: displayName || '',
@@ -150,11 +145,9 @@ function OnboardingPageContent() {
     router.push(checkoutIntent ? '/profile?tab=subscription&intent=checkout' : '/feed');
   };
 
-  // Step 4 action: sign in (or complete directly if already signed in)
   const handleSignInAndComplete = async () => {
     setIsSubmitting(true);
 
-    // Already signed in (e.g. arrived here via nav sign-in or dev flow)
     if (user) {
       try {
         await finishOnboarding(user.uid, user.displayName);
@@ -165,7 +158,6 @@ function OnboardingPageContent() {
       return;
     }
 
-    // Save selections so we can recover them after a redirect-based sign-in
     localStorage.setItem(
       PENDING_ONBOARDING_KEY,
       JSON.stringify({ role, seniority, interests, careerGoals, checkoutIntent }),
@@ -174,7 +166,6 @@ function OnboardingPageContent() {
     const result = await signInWithGoogle(checkoutIntent ? 'checkout' : 'read');
 
     if (result.status === 'success') {
-      // Popup flow: we have the user right here
       localStorage.removeItem(PENDING_ONBOARDING_KEY);
       try {
         await finishOnboarding(result.user.uid, result.user.displayName);
@@ -183,19 +174,26 @@ function OnboardingPageContent() {
         setIsSubmitting(false);
       }
     } else if (result.status === 'redirecting') {
-      // Redirect flow: page will reload; useEffect above handles completion
+      /* useEffect handles completion */
     } else {
-      // Cancelled / error — clean up
       localStorage.removeItem(PENDING_ONBOARDING_KEY);
       setIsSubmitting(false);
     }
   };
 
-  // Only block render during the very first auth check
+  const optionCardClass = (selected: boolean, disabled = false) =>
+    [
+      'relative rounded-2xl border p-4 text-left transition-all',
+      selected
+        ? 'border-[#2563eb] bg-white ring-2 ring-[#2563eb]/30 shadow-[0_4px_20px_rgba(37,99,235,0.12)]'
+        : 'landing-card border-[#e5e7eb] bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.06)]',
+      disabled ? 'opacity-30 cursor-not-allowed' : '',
+    ].join(' ');
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f4efe7] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin" />
+      <div className="landing-page landing-grid-bg flex min-h-screen items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#2563eb]/20 border-t-[#2563eb]" />
       </div>
     );
   }
@@ -203,63 +201,53 @@ function OnboardingPageContent() {
   const meta = STEP_META[step - 1];
 
   return (
-    <div className="min-h-screen bg-[#f4efe7] text-foreground">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#f4efe7]/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-3">
-            <img src="/trace.webp" alt="Trace" className="h-6 w-auto" />
-            <span className="text-sm font-semibold tracking-[0.18em]">TRACE</span>
+    <div className="landing-page landing-grid-bg min-h-screen text-[#111827]">
+      <header className="sticky top-0 z-50 border-b border-[#e5e7eb] bg-white/90 px-4 backdrop-blur-xl sm:px-6">
+        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5 no-underline" style={{ color: 'inherit' }}>
+            <Image src="/trace.webp" alt="Trace" width={22} height={22} priority className="h-[22px] w-auto" />
+            <span className="text-[13px] font-bold tracking-[0.12em]">TRACE</span>
           </Link>
-          <span className="text-xs text-secondary/50">Step {step} of {TOTAL_STEPS}</span>
+          <span className="text-[12px] font-medium text-[#9ca3af]">
+            Step {step} of {TOTAL_STEPS}
+          </span>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 sm:px-6 pt-8 sm:pt-14 pb-32">
-        {/* Progress bar */}
-        <div className="h-1 rounded-full bg-black/6 mb-10">
+      <main className="mx-auto max-w-3xl px-4 pb-32 pt-8 sm:px-6 sm:pt-12">
+        <div className="mb-10 h-1 overflow-hidden rounded-full bg-[#e5e7eb]">
           <div
-            className="h-full rounded-full bg-foreground transition-all duration-500 ease-out"
+            className="h-full rounded-full bg-[#2563eb] transition-all duration-500 ease-out"
             style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
           />
         </div>
 
-        {/* Title */}
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-[-0.03em] leading-tight">
+        <h1 className="text-3xl font-bold leading-tight tracking-[-0.03em] sm:text-4xl">
           {meta.title}
         </h1>
-        <p className="mt-3 text-[15px] text-secondary/70 max-w-lg">
+        <p className="mt-3 max-w-lg text-[15px] leading-relaxed landing-muted">
           {meta.subtitle}
         </p>
 
-        {/* Content */}
         <div className="mt-10">
-
-          {/* Step 1: Role & Seniority */}
           {step === 1 && (
             <div className="space-y-10">
               <div>
-                <p className="text-[11px] font-semibold text-secondary/40 uppercase tracking-[0.12em] mb-4">Your role</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#2563eb]">
+                  Your role
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {ROLES.map((r) => {
                     const sel = role === r.id;
                     return (
-                      <button
-                        key={r.id}
-                        onClick={() => setRole(r.id)}
-                        className={`relative p-4 rounded-2xl text-left transition-all ${
-                          sel
-                            ? 'bg-white ring-2 ring-foreground shadow-sm'
-                            : 'bg-white/60 hover:bg-white hover:shadow-sm'
-                        }`}
-                      >
+                      <button key={r.id} type="button" onClick={() => setRole(r.id)} className={optionCardClass(sel)}>
                         {sel && (
-                          <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-foreground flex items-center justify-center">
+                          <div className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-[#2563eb]">
                             <Check size={12} className="text-white" />
                           </div>
                         )}
-                        <div className="font-semibold text-sm">{r.label}</div>
-                        <div className="text-xs text-secondary/50 mt-0.5">{r.subtitle}</div>
+                        <div className="text-sm font-semibold text-[#111827]">{r.label}</div>
+                        <div className="mt-0.5 text-xs landing-muted">{r.subtitle}</div>
                       </button>
                     );
                   })}
@@ -268,22 +256,16 @@ function OnboardingPageContent() {
 
               {role && (
                 <div>
-                  <p className="text-[11px] font-semibold text-secondary/40 uppercase tracking-[0.12em] mb-4">Experience level</p>
+                  <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#2563eb]">
+                    Experience level
+                  </p>
                   <div className="grid grid-cols-2 gap-3">
                     {SENIORITY_LEVELS.map((s) => {
                       const sel = seniority === s.id;
                       return (
-                        <button
-                          key={s.id}
-                          onClick={() => setSeniority(s.id)}
-                          className={`p-4 rounded-2xl text-left transition-all ${
-                            sel
-                              ? 'bg-white ring-2 ring-foreground shadow-sm'
-                              : 'bg-white/60 hover:bg-white hover:shadow-sm'
-                          }`}
-                        >
-                          <div className="font-semibold text-sm">{s.label}</div>
-                          <div className="text-xs text-secondary/50 mt-0.5">{s.subtitle}</div>
+                        <button key={s.id} type="button" onClick={() => setSeniority(s.id)} className={optionCardClass(sel)}>
+                          <div className="text-sm font-semibold text-[#111827]">{s.label}</div>
+                          <div className="mt-0.5 text-xs landing-muted">{s.subtitle}</div>
                         </button>
                       );
                     })}
@@ -293,7 +275,6 @@ function OnboardingPageContent() {
             </div>
           )}
 
-          {/* Step 2: Interests */}
           {step === 2 && (
             <div>
               <div className="flex flex-wrap gap-2.5">
@@ -303,13 +284,14 @@ function OnboardingPageContent() {
                   return (
                     <button
                       key={interest.id}
+                      type="button"
                       onClick={() => toggleInterest(interest.id)}
                       disabled={disabled}
-                      className={`px-5 py-3 rounded-full text-sm font-semibold transition-all ${
+                      className={`rounded-full px-5 py-3 text-sm font-semibold transition-all ${
                         selected
-                          ? 'bg-foreground text-white shadow-sm'
-                          : 'bg-white/70 text-foreground hover:bg-white hover:shadow-sm'
-                      } ${disabled ? 'opacity-30 cursor-not-allowed' : ''}`}
+                          ? 'bg-[#2563eb] text-white shadow-[0_4px_16px_rgba(37,99,235,0.25)]'
+                          : 'border border-[#e5e7eb] bg-white text-[#111827] hover:border-[#d1d5db] hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]'
+                      } ${disabled ? 'cursor-not-allowed opacity-30' : ''}`}
                     >
                       <span className="flex items-center gap-2">
                         {interest.label}
@@ -320,92 +302,75 @@ function OnboardingPageContent() {
                 })}
               </div>
               {interests.length > 0 && (
-                <p className="text-xs text-secondary/50 mt-5">
-                  {interests.length}/5 selected{interests.length < 3 ? ` — pick ${3 - interests.length} more` : interests.length === 5 ? ' (max)' : ''}
+                <p className="mt-5 text-xs text-[#9ca3af]">
+                  {interests.length}/5 selected
+                  {interests.length < 3 ? ` — pick ${3 - interests.length} more` : interests.length === 5 ? ' (max)' : ''}
                 </p>
               )}
             </div>
           )}
 
-          {/* Step 3: Career Goals */}
           {step === 3 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {CAREER_GOALS.map((goal) => {
                 const selected = careerGoals.includes(goal.id);
                 const disabled = !selected && careerGoals.length >= 3;
                 return (
                   <button
                     key={goal.id}
+                    type="button"
                     onClick={() => toggleGoal(goal.id)}
                     disabled={disabled}
-                    className={`relative p-4 rounded-2xl text-left transition-all ${
-                      selected
-                        ? 'bg-white ring-2 ring-foreground shadow-sm'
-                        : 'bg-white/60 hover:bg-white hover:shadow-sm'
-                    } ${disabled ? 'opacity-30 cursor-not-allowed' : ''}`}
+                    className={optionCardClass(selected, disabled)}
                   >
                     {selected && (
-                      <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-foreground flex items-center justify-center">
+                      <div className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-[#2563eb]">
                         <Check size={12} className="text-white" />
                       </div>
                     )}
-                    <div className="font-semibold text-sm">{goal.label}</div>
-                    <div className="text-xs text-secondary/50 mt-0.5">{goal.subtitle}</div>
+                    <div className="text-sm font-semibold text-[#111827]">{goal.label}</div>
+                    <div className="mt-0.5 text-xs landing-muted">{goal.subtitle}</div>
                   </button>
                 );
               })}
             </div>
           )}
 
-          {/* Step 4: Sign in */}
           {step === 4 && (
             <div className="space-y-6">
-              {/* Summary of selections */}
-              <div className="rounded-2xl bg-white/60 p-5 space-y-3">
-                <p className="text-[11px] font-semibold text-secondary/40 uppercase tracking-[0.12em] mb-4">Your profile</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-foreground flex items-center justify-center flex-shrink-0">
-                    <Check size={12} className="text-white" />
+              <div className="landing-card space-y-3 p-5">
+                <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#2563eb]">
+                  Your profile
+                </p>
+                {[
+                  `${ROLES.find((r) => r.id === role)?.label ?? role}${seniority ? ` · ${SENIORITY_LEVELS.find((s) => s.id === seniority)?.label}` : ''}`,
+                  `${interests.length} topic${interests.length !== 1 ? 's' : ''} selected`,
+                  `${careerGoals.length} goal${careerGoals.length !== 1 ? 's' : ''} set`,
+                ].map((line) => (
+                  <div key={line} className="flex items-center gap-3">
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2563eb]">
+                      <Check size={12} className="text-white" />
+                    </div>
+                    <span className="text-sm font-medium text-[#374151]">{line}</span>
                   </div>
-                  <span className="text-sm font-medium">
-                    {ROLES.find((r) => r.id === role)?.label ?? role}
-                    {seniority ? ` · ${SENIORITY_LEVELS.find((s) => s.id === seniority)?.label}` : ''}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-foreground flex items-center justify-center flex-shrink-0">
-                    <Check size={12} className="text-white" />
-                  </div>
-                  <span className="text-sm font-medium">
-                    {interests.length} topic{interests.length !== 1 ? 's' : ''} selected
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-foreground flex items-center justify-center flex-shrink-0">
-                    <Check size={12} className="text-white" />
-                  </div>
-                  <span className="text-sm font-medium">
-                    {careerGoals.length} goal{careerGoals.length !== 1 ? 's' : ''} set
-                  </span>
-                </div>
+                ))}
               </div>
 
-              <p className="text-sm text-secondary/55 text-center px-4">
+              <p className="px-4 text-center text-sm landing-muted">
                 Your personalized feed is ready — sign in to save your profile and start reading.
               </p>
             </div>
           )}
-
         </div>
       </main>
 
-      {/* Fixed footer */}
-      <div className="fixed bottom-0 inset-x-0 bg-[#f4efe7]/80 backdrop-blur-xl">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 py-5 flex items-center justify-between">
+      <div className="fixed inset-x-0 bottom-0 border-t border-[#e5e7eb] bg-white/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-5 sm:px-6">
           <button
+            type="button"
             onClick={handleBack}
             disabled={step === 1}
-            className="flex items-center gap-2 text-sm text-secondary/50 hover:text-foreground disabled:opacity-0 transition-all"
+            className="flex items-center gap-2 text-sm font-medium text-[#6b7280] transition-colors hover:text-[#111827] disabled:opacity-0"
           >
             <ArrowLeft size={16} />
             Back
@@ -413,18 +378,22 @@ function OnboardingPageContent() {
 
           {step < TOTAL_STEPS ? (
             <button
+              type="button"
               onClick={handleNext}
               disabled={!canContinue}
-              className="flex items-center gap-2.5 rounded-full bg-foreground px-7 py-3.5 text-[15px] font-semibold text-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] transition-all hover:bg-black hover:shadow-[0_8px_30px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
+              className={`landing-btn landing-btn-lg flex items-center gap-2 ${
+                canContinue ? 'landing-btn-primary' : 'landing-btn-secondary cursor-not-allowed opacity-50'
+              }`}
             >
               Continue
               <ArrowRight size={16} />
             </button>
           ) : (
             <button
+              type="button"
               onClick={handleSignInAndComplete}
               disabled={isSubmitting}
-              className="flex items-center gap-2.5 rounded-full bg-foreground px-7 py-3.5 text-[15px] font-semibold text-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] transition-all hover:bg-black hover:shadow-[0_8px_30px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
+              className="landing-btn landing-btn-primary landing-btn-lg flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSubmitting ? (
                 'Saving...'
@@ -432,7 +401,7 @@ function OnboardingPageContent() {
                 "Let's go"
               ) : (
                 <>
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
                     <path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                     <path fill="rgba(255,255,255,0.7)" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                     <path fill="rgba(255,255,255,0.7)" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
@@ -451,11 +420,13 @@ function OnboardingPageContent() {
 
 export default function OnboardingPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#f4efe7] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="landing-page landing-grid-bg flex min-h-screen items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#2563eb]/20 border-t-[#2563eb]" />
+        </div>
+      }
+    >
       <OnboardingPageContent />
     </Suspense>
   );

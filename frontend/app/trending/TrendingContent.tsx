@@ -355,7 +355,11 @@ export default function TrendingContent({
               className="mt-6 inline-flex items-center rounded-full bg-white px-8 py-3.5 text-[14px] font-semibold text-[#151515] transition-all hover:bg-white/90">
               Start my free 3-day trial
             </Link>
-            <p className="mt-3 text-[12px] text-white/30">Free for 3 days · then $4.99/month · Cancel anytime</p>
+            <p className="mt-3 text-[12px] text-white/30">
+              Free for 3 days · then{' '}
+              <span className="line-through text-white/25">$4.99/month</span>{' '}
+              <span className="text-white/50">$2.99/month</span> · Cancel anytime
+            </p>
           </div>
         </div>
       )}

@@ -50,18 +50,6 @@ export default function ToolsPage() {
             </Link>
             <nav className="flex items-center gap-4 text-sm" aria-label="Quick links">
               <Link
-                href="/daily"
-                className="text-secondary/60 hover:text-foreground transition-colors"
-              >
-                Daily
-              </Link>
-              <Link
-                href="/trending"
-                className="text-secondary/60 hover:text-foreground transition-colors"
-              >
-                Trending
-              </Link>
-              <Link
                 href="/blog"
                 className="hidden text-secondary/60 hover:text-foreground transition-colors sm:inline"
               >

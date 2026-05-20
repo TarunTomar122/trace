@@ -45,12 +45,6 @@ export default function CompareHubPage() {
               and other ways of keeping up. The idea is simple: less scrolling, more context.
             </p>
             <div className="mt-6 flex flex-wrap gap-2 text-sm">
-              <Link href="/daily" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
-                Daily archive
-              </Link>
-              <Link href="/trending" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
-                Trending
-              </Link>
               <Link href="/blog" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
                 Research
               </Link>

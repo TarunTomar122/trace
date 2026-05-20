@@ -4,9 +4,25 @@ import { ArrowRight, Check, Loader2, Lock, Sparkles, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { trackCheckoutClicked, trackFeedSubscribeDialogShown, trackFeedProWelcomeShown } from '@/lib/posthog';
 import { LANDING_PRICING_BULLET_POINTS } from '@/lib/subscription-pricing-bullets';
+import {
+  SUBSCRIPTION_COMPARE_AT_DEFAULT,
+  SUBSCRIPTION_PRICE_DEFAULT,
+  SUBSCRIPTION_PRICE_INDIA,
+} from '@/lib/subscription-pricing';
+import SubscriptionPrice from '@/components/SubscriptionPrice';
 
-const INDIA_PRICING = { trialDays: 3, priceDisplay: '₹19/month', pricingOffer: 'india' as const };
-const DEFAULT_PRICING = { trialDays: 3, priceDisplay: '$4.99/month', pricingOffer: 'default' as const };
+const INDIA_PRICING = {
+  trialDays: 3,
+  priceDisplay: SUBSCRIPTION_PRICE_INDIA,
+  compareAtPriceDisplay: null as string | null,
+  pricingOffer: 'india' as const,
+};
+const DEFAULT_PRICING = {
+  trialDays: 3,
+  priceDisplay: SUBSCRIPTION_PRICE_DEFAULT,
+  compareAtPriceDisplay: SUBSCRIPTION_COMPARE_AT_DEFAULT,
+  pricingOffer: 'default' as const,
+};
 
 function guessClientPricing() {
   try {
@@ -188,7 +204,13 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
                   Try Trace Pro free<br />for 3 days
                 </h2>
                 <p className="mt-2.5 text-[13px] leading-relaxed text-secondary/55">
-                  Sign in to start your trial. Love it? Stay at {pricingPreview.priceDisplay}. Don&apos;t? Cancel before day 3 — you pay nothing.
+                  Sign in to start your trial. Love it? Stay at{' '}
+                  <SubscriptionPrice
+                    price={pricingPreview.priceDisplay}
+                    compareAt={pricingPreview.compareAtPriceDisplay}
+                    size="sm"
+                  />
+                  . Don&apos;t? Cancel before day 3 — you pay nothing.
                 </p>
                 <div className="mt-5 space-y-2.5">
                   {LANDING_PRICING_BULLET_POINTS.map((line) => (
@@ -224,7 +246,13 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
                   Try Trace Pro free<br />for 3 days
                 </h2>
                 <p className="mt-2.5 text-[13px] leading-relaxed text-secondary/55">
-                  Love it? Stay at {pricingPreview.priceDisplay}. Don&apos;t? Cancel before day 3 — you pay nothing.
+                  Love it? Stay at{' '}
+                  <SubscriptionPrice
+                    price={pricingPreview.priceDisplay}
+                    compareAt={pricingPreview.compareAtPriceDisplay}
+                    size="sm"
+                  />
+                  . Don&apos;t? Cancel before day 3 — you pay nothing.
                 </p>
                 <div className="mt-5 space-y-2.5">
                   {LANDING_PRICING_BULLET_POINTS.map((line) => (
@@ -366,6 +394,7 @@ export function PaywallGate() {
   ];
   const trialDays = pricingPreview.trialDays;
   const priceDisplay = pricingPreview.priceDisplay;
+  const compareAtPriceDisplay = pricingPreview.compareAtPriceDisplay ?? null;
   const planName = pricingPreview.pricingOffer === 'india' ? 'Trace Pro India' : 'Trace Pro';
   return (
     <div className="w-full sm:rounded-2xl sm:bg-surface sm:shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
@@ -375,7 +404,9 @@ export function PaywallGate() {
           The news habit that<br />doesn't waste your time.
         </h2>
         <p className="text-[14px] text-secondary/50 mb-10 leading-relaxed">
-          Free for 3 days · then {priceDisplay} · Cancel anytime.
+          Free for 3 days · then{' '}
+          <SubscriptionPrice price={priceDisplay} compareAt={compareAtPriceDisplay} size="sm" />
+          {' '}· Cancel anytime.
         </p>
 
         <div className="space-y-5 mb-10">
@@ -398,7 +429,11 @@ export function PaywallGate() {
         >
           {loading ? <><Loader2 size={14} className="animate-spin" />Setting up...</> : 'Start my free 3-day trial'}
         </button>
-        <p className="text-[11px] text-secondary/35 mt-2.5 text-center">Free for 3 days · then {priceDisplay} · Cancel anytime</p>
+        <p className="text-[11px] text-secondary/35 mt-2.5 text-center">
+          Free for 3 days · then{' '}
+          <SubscriptionPrice price={priceDisplay} compareAt={compareAtPriceDisplay} size="sm" />
+          {' '}· Cancel anytime
+        </p>
       </div>
     </div>
   );

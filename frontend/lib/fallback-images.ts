@@ -185,3 +185,27 @@ export function getArticleImage(thumbnail: string | undefined | null, title: str
   }
   return getFallbackImage(title);
 }
+
+/**
+ * Deterministic placeholder from picsum.photos (no API key).
+ * Used when the primary thumbnail and curated Unsplash fallback both fail to load.
+ */
+export function getPicsumFallbackImage(title: string, width = 800, height = 500): string {
+  return `https://picsum.photos/seed/${hashString(title)}/${width}/${height}`;
+}
+
+/**
+ * Ordered image candidates: real thumbnail (if any), curated Unsplash, then picsum.
+ */
+export function getArticleImageCandidates(
+  thumbnail: string | undefined | null,
+  title: string,
+  width = 800,
+  height = 500,
+): string[] {
+  const candidates: string[] = [];
+  if (isValidThumbnail(thumbnail)) candidates.push(thumbnail!);
+  candidates.push(getFallbackImage(title));
+  candidates.push(getPicsumFallbackImage(title, width, height));
+  return candidates;
+}

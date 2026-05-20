@@ -94,12 +94,12 @@ export default async function BlogPostPage({ params }: PageProps) {
     .slice(0, 3);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="landing-page landing-grid-bg min-h-screen">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
-      <PublicHeader />
+      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
 
       {/* Hero Image */}
       <div className="relative w-full h-[280px] sm:h-[400px] overflow-hidden">
@@ -109,33 +109,33 @@ export default async function BlogPostPage({ params }: PageProps) {
           alt={post.title}
           className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-white via-white/60 to-transparent" />
       </div>
 
       <article className="px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl pb-20 sm:pb-28">
           {/* Breadcrumb */}
-          <Link href="/blog" className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.25em] text-secondary/40 transition-colors hover:text-foreground">
+          <Link href="/blog" className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.25em] text-[#9ca3af] transition-colors hover:text-[#111827]">
             <ArrowLeft size={12} />
             Blog
           </Link>
 
           {/* Post meta */}
           <div className="mt-6 mb-12">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-secondary/30 mb-4">{post.tag}</p>
-            <h1 className="text-[2rem] font-bold tracking-[-0.035em] leading-[1.08] text-foreground sm:text-[2.75rem]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#2563eb] mb-4">{post.tag}</p>
+            <h1 className="text-[2rem] font-bold tracking-[-0.035em] leading-[1.08] text-[#111827] sm:text-[2.75rem]">
               {post.title}
             </h1>
-            <p className="mt-4 text-[16px] leading-[1.8] text-secondary">
+            <p className="mt-4 text-[16px] leading-[1.8] landing-muted">
               {post.subtitle}
             </p>
             <div className="mt-4 flex items-center gap-4">
-              <span className="text-[12px] text-secondary/50">{post.author}</span>
-              <span className="flex items-center gap-1 text-[12px] text-secondary/40">
+              <span className="text-[12px] text-[#6b7280]">{post.author}</span>
+              <span className="flex items-center gap-1 text-[12px] text-[#9ca3af]">
                 <Clock size={11} />
                 {post.readTime}
               </span>
-              <span className="flex items-center gap-1 text-[12px] text-secondary/40">
+              <span className="flex items-center gap-1 text-[12px] text-[#9ca3af]">
                 <Calendar size={11} />
                 {post.date}
               </span>
@@ -147,14 +147,14 @@ export default async function BlogPostPage({ params }: PageProps) {
             {post.sections.map((section, index) => (
               <section key={`${post.slug}-section-${index}`} className="flex flex-col gap-4">
                 {section.heading && (
-                  <h2 className="text-[1.35rem] font-bold tracking-[-0.02em] text-foreground sm:text-[1.5rem]">
+                  <h2 className="text-[1.35rem] font-bold tracking-[-0.02em] text-[#111827] sm:text-[1.5rem]">
                     {section.heading}
                   </h2>
                 )}
                 {section.paragraphs?.map((paragraph, paragraphIndex) => (
                   <p
                     key={`${post.slug}-section-${index}-paragraph-${paragraphIndex}`}
-                    className="text-[16px] leading-[1.8] text-secondary"
+                    className="text-[16px] leading-[1.8] landing-muted"
                   >
                     {paragraph}
                   </p>
@@ -163,8 +163,8 @@ export default async function BlogPostPage({ params }: PageProps) {
                   <ul className="space-y-3 pl-0">
                     {section.bullets.map((bullet, bulletIndex) => (
                       <li key={`${post.slug}-section-${index}-bullet-${bulletIndex}`} className="flex gap-3">
-                        <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-secondary/25" />
-                        <span className="text-[15px] leading-[1.8] text-secondary">{bullet}</span>
+                        <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2563eb]/40" />
+                        <span className="text-[15px] leading-[1.8] landing-muted">{bullet}</span>
                       </li>
                     ))}
                   </ul>
@@ -175,8 +175,8 @@ export default async function BlogPostPage({ params }: PageProps) {
 
           {/* Sources */}
           {post.sources.length > 0 && (
-            <section className="mt-14 pt-8 border-t border-border/[0.06]">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-secondary/30 mb-5">Sources & Further Reading</h2>
+            <section className="mt-14 pt-8 border-t border-[#e5e7eb]">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#9ca3af] mb-5">Sources & Further Reading</h2>
               <div className="space-y-2.5">
                 {post.sources.map((source) => (
                   <a
@@ -184,12 +184,12 @@ export default async function BlogPostPage({ params }: PageProps) {
                     href={source.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group flex items-start gap-2 text-[14px] text-secondary transition-colors hover:text-foreground"
+                    className="group flex items-start gap-2 text-[14px] landing-muted transition-colors hover:text-[#111827]"
                   >
-                    <ExternalLink size={13} className="mt-1 shrink-0 text-secondary/30 group-hover:text-foreground/50" />
+                    <ExternalLink size={13} className="mt-1 shrink-0 text-[#9ca3af] group-hover:text-[#2563eb]" />
                     <span>
                       {source.title}
-                      {source.publisher ? <span className="text-secondary/40"> — {source.publisher}</span> : ""}
+                      {source.publisher ? <span className="text-[#9ca3af]"> — {source.publisher}</span> : ""}
                     </span>
                   </a>
                 ))}
@@ -198,30 +198,18 @@ export default async function BlogPostPage({ params }: PageProps) {
           )}
 
           {/* CTA */}
-          <section className="mt-14 overflow-hidden rounded-[20px] bg-[#151515] p-8 text-white sm:p-10">
-            <h2 className="text-[1.35rem] font-bold tracking-[-0.02em]">
+          <section className="mt-14 overflow-hidden rounded-3xl border border-[#e5e7eb] bg-gradient-to-br from-[#eff6ff] to-white p-8 shadow-[0_8px_40px_rgba(0,0,0,0.08)] sm:p-10">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.15em] text-[#2563eb]">Trace</p>
+            <h2 className="mt-3 text-[1.35rem] font-bold tracking-[-0.02em] text-[#111827]">
               Stay informed without the overwhelm
             </h2>
-            <p className="mt-4 max-w-xl text-[14px] leading-[1.7] text-white/40">
+            <p className="mt-4 max-w-xl text-[14px] leading-[1.7] landing-muted">
               Trace groups related stories from 50+ sources into one clean daily briefing. AI summaries, key points, and community context so you catch up in minutes, not hours.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                href="/trending"
-                className="group inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2.5 text-[13px] font-semibold text-[#151515] transition-all hover:bg-white/90"
-              >
-                See grouped topics
-                <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
-              </Link>
-              <Link
-                href="/daily"
-                className="rounded-full border border-white/12 px-5 py-2.5 text-[13px] font-semibold text-white transition-all hover:bg-white/10"
-              >
-                Browse daily archive
-              </Link>
-              <Link
                 href="/profile?tab=subscription"
-                className="rounded-full border border-white/12 px-5 py-2.5 text-[13px] font-semibold text-white transition-all hover:bg-white/10"
+                className="landing-btn landing-btn-primary landing-btn-sm"
               >
                 Start with Trace
               </Link>
@@ -230,18 +218,18 @@ export default async function BlogPostPage({ params }: PageProps) {
 
           {/* Related posts */}
           {relatedPosts.length > 0 && (
-            <section className="mt-14 pt-8 border-t border-border/[0.06]">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-secondary/30 mb-5">Related Articles</h2>
+            <section className="mt-14 pt-8 border-t border-[#e5e7eb]">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#9ca3af] mb-5">Related Articles</h2>
               <div className="grid gap-4 sm:grid-cols-3">
                 {relatedPosts.map((related) => (
                   <Link
                     key={related.slug}
                     href={`/blog/${related.slug}`}
-                    className="group block rounded-[16px] border border-border/[0.06] bg-surface/30 p-5 transition-all hover:bg-surface/60 hover:border-border/15"
+                    className="group landing-card block p-5 transition-all hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]"
                   >
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-secondary/30">{related.tag}</p>
-                    <h3 className="mt-2 text-[14px] font-semibold leading-snug">{related.title}</h3>
-                    <p className="mt-2 text-[12px] leading-[1.6] text-secondary line-clamp-2">{related.excerpt}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#2563eb]">{related.tag}</p>
+                    <h3 className="mt-2 text-[14px] font-semibold leading-snug text-[#111827]">{related.title}</h3>
+                    <p className="mt-2 text-[12px] leading-[1.6] landing-muted line-clamp-2">{related.excerpt}</p>
                   </Link>
                 ))}
               </div>
@@ -259,7 +247,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               <Link
                 key={link.href}
                 href={link.href}
-                className="rounded-full border border-border/[0.08] px-3.5 py-1.5 text-[12px] font-medium text-secondary/60 transition-all hover:text-foreground hover:border-border/20"
+                className="rounded-full border border-[#e5e7eb] bg-white px-3.5 py-1.5 text-[12px] font-medium text-[#6b7280] transition-all hover:text-[#111827] hover:border-[#d1d5db]"
               >
                 {link.label}
               </Link>
@@ -268,7 +256,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         </div>
       </article>
 
-      <Footer />
+      <Footer variant="landing" />
     </div>
   );
 }

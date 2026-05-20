@@ -53,12 +53,6 @@ export default function TermsOfServicePage() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-[-0.02em] text-foreground mb-2">Terms of Service</h1>
           <p className="text-xs text-secondary/50 mb-8">Last Updated: February 17, 2026</p>
           <div className="mb-8 flex flex-wrap gap-2 text-sm">
-            <Link href="/daily" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
-              Daily archive
-            </Link>
-            <Link href="/trending" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
-              Trending
-            </Link>
             <Link href="/blog" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
               Research
             </Link>
@@ -159,7 +153,7 @@ export default function TermsOfServicePage() {
               <p className="mb-3">Trace offers the following paid subscription plans:</p>
               <ul className="list-disc pl-5 space-y-1 mb-4">
                 <li>Weekly plan at $1.99/week</li>
-                <li>Monthly plan at $4.99/month</li>
+                <li>Monthly plan at $2.99/month (regularly $4.99/month)</li>
                 <li>Yearly plan at $59.99/year</li>
               </ul>
               <p className="mb-4">

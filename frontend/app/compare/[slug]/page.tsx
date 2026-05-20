@@ -141,18 +141,6 @@ export default async function CompareDetailPage({ params }: PageProps) {
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                href="/trending"
-                className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#151515]"
-              >
-                See sample topics
-              </Link>
-              <Link
-                href="/daily"
-                className="rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white"
-              >
-                Browse daily archive
-              </Link>
-              <Link
                 href="/"
                 className="rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white"
               >

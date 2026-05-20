@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import LandingPageClient from "../LandingPageClient";
-import { getDailyArchiveEntries } from "@/lib/daily-archive";
+import { blogPosts } from "@/app/blog/content";
 import { getHeroHeadlines } from "@/lib/hero-headlines";
 
 export const metadata: Metadata = {
@@ -48,14 +48,15 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const [recent, heroHeadlines] = await Promise.all([
-    getDailyArchiveEntries(7),
-    getHeroHeadlines().catch(() => []),
-  ]);
+  const heroHeadlines = await getHeroHeadlines().catch(() => []);
   return (
     <LandingPageClient
-      recentDailyArchives={recent.map((e) => ({ date: e.date, topHeadline: e.topHeadline }))}
       heroHeadlines={heroHeadlines}
+      recentBlogPosts={blogPosts.slice(0, 3).map((post) => ({
+        href: `/blog/${post.slug}`,
+        date: post.date,
+        title: post.title,
+      }))}
     />
   );
 }

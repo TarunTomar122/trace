@@ -3,14 +3,20 @@
 import React, { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   ArrowLeft, ExternalLink, Bookmark, GraduationCap,
   ChevronLeft, ChevronRight, Loader2, Share2, Check, Download,
 } from "lucide-react";
+import StoryPageShell, { getStoryBackLabel } from "@/components/StoryPageShell";
+import { StoryRelatedRailsLayout, feedStoryCategoryLabel, storyEyebrow } from "@/components/StoryRelatedRails";
+import { ArticleImage } from "@/components/ArticleImage";
 import Header from "@/components/Header";
-import { FeedItem } from "@/lib/firestore";
+import { FeedItem, TrendingTopic } from "@/lib/firestore";
 import { getArticleImage } from "@/lib/fallback-images";
+import FeedStoryTopic from "../FeedStoryTopic";
+import { type FeedListItem, getTopicDisplay } from "../FeedUi";
 
 
 const CARD_TYPE_LABELS: Record<string, string> = {
@@ -42,6 +48,7 @@ type DeepDiveContent = {
 
 type SourceRef = { name: string; title: string; url: string };
 const ARTICLE_RETURN_TO_KEY = "trace_article_returnTo";
+const FEED_STORY_KEY = "trace_feed_story";
 
 function cleanSlides(slides: string[]): string[] {
   return slides.map(s => s.replace(/^Slide\s*\d+:\s*/i, ''));
@@ -133,25 +140,62 @@ function buildShareUrl(item: FeedItem): string | null {
 
 export default function ArticlePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [item, setItem] = useState<FeedItem | null>(null);
+  const [activeFeedStory, setActiveFeedStory] = useState<FeedListItem | null>(null);
   const [savedSections, setSavedSections] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const [openChapter, setOpenChapter] = useState<number | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
 
+  const storyId = searchParams.get("story");
+
   useEffect(() => {
-    // always start from the top when this page loads
     window.scrollTo(0, 0);
-    const returnToFromUrl = getSafeReturnTo(
-      new URLSearchParams(window.location.search).get("returnTo")
-    );
+    setOpenChapter(null);
+
+    const returnToFromUrl = getSafeReturnTo(searchParams.get("returnTo"));
+    const expectedStoryId = storyId?.trim() || null;
+
     try {
+      const feedStoryRaw = sessionStorage.getItem(FEED_STORY_KEY);
+      if (feedStoryRaw) {
+        const feedStory = JSON.parse(feedStoryRaw) as FeedListItem;
+        if (expectedStoryId && feedStory.id !== expectedStoryId) {
+          setItem(null);
+          setActiveFeedStory(null);
+          router.replace(returnToFromUrl || "/feed");
+          return;
+        }
+        if (feedStory.type === "topic") {
+          const topic = feedStory.data as TrendingTopic;
+          const display = getTopicDisplay(topic);
+          setActiveFeedStory(feedStory);
+          if (display.isSingleton && display.article) {
+            setItem(display.article);
+            return;
+          }
+          setItem(null);
+          return;
+        }
+        if (feedStory.type === "article") {
+          setItem(feedStory.data as FeedItem);
+          setActiveFeedStory(feedStory);
+          return;
+        }
+      }
+
       const raw = sessionStorage.getItem("trace_article");
-      if (raw) setItem(JSON.parse(raw));
-      else router.replace(returnToFromUrl || "/feed");
-    } catch { router.replace(returnToFromUrl || "/feed"); }
-  }, [router]);
+      if (raw) {
+        setItem(JSON.parse(raw));
+        return;
+      }
+      router.replace(returnToFromUrl || "/feed");
+    } catch {
+      router.replace(returnToFromUrl || "/feed");
+    }
+  }, [router, storyId]);
 
   useEffect(() => {
     if (!item) return;
@@ -205,6 +249,15 @@ export default function ArticlePage() {
     }
   };
 
+  if (activeFeedStory && activeFeedStory.type === "topic") {
+    const topic = activeFeedStory.data as TrendingTopic;
+    const display = getTopicDisplay(topic);
+    if (!display.isSingleton || !display.article) {
+      const returnHref = getSafeReturnTo(searchParams.get("returnTo")) || "/feed";
+      return <FeedStoryTopic item={activeFeedStory} returnHref={returnHref} />;
+    }
+  }
+
   if (!item) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -226,8 +279,10 @@ export default function ArticlePage() {
   const isChapterDeepDive = deepDive?.chapters && deepDive.chapters.length > 0;
   const sources = item.sources as SourceRef[] | undefined;
   const readingTime = item.summary?.reading_time_minutes || 3;
+  const returnHref = getSafeReturnTo(searchParams.get("returnTo")) || "/feed";
+  const backLabel = getStoryBackLabel(returnHref);
   const hasImage = item.thumbnail && typeof item.thumbnail === 'string' && item.thumbnail.length > 10;
-  const imageUrl = hasImage ? item.thumbnail! : getArticleImage(null, item.title);
+  const imageUrl = getArticleImage(item.thumbnail, item.title);
 
   /* ═══════════════════════════════════════════════════════
      Deep Dive — Chapter detail view
@@ -487,77 +542,115 @@ export default function ArticlePage() {
   }
 
   /* ═══════════════════════════════════════════════════════
-     For You / Traditional article
+     For You / Traditional article — clean mobile layout
      ═══════════════════════════════════════════════════════ */
+  const sourceCount = activeFeedStory?.sourceCount ?? (item.sources?.length ?? 1);
+  const metaLine = [
+    item.source_name,
+    sourceCount > 1 ? `${sourceCount} sources` : null,
+    `${readingTime} min read`,
+  ].filter(Boolean).join(' · ');
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-[#f9f9f7]">
       <Toast message={toast || ""} visible={!!toast} />
 
-      <main className="container mx-auto px-4 max-w-3xl pt-5 pb-8">
-        <div className="flex items-center gap-2 text-xs text-secondary/45 mb-7">
-          <button
-            onClick={handleBack}
-            className="flex items-center justify-center w-6 h-6 -ml-1 text-secondary/55 hover:text-foreground transition-colors"
+      {/* header */}
+      <header className="sticky top-0 z-40 border-b border-[#e5e7eb]/60 bg-[#f9f9f7] px-5 py-3">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
+          <Link
+            href={returnHref}
+            prefetch={false}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white shadow-[0_1px_4px_rgba(0,0,0,0.08)] text-[#374151] hover:text-[#111827]"
           >
             <ArrowLeft size={16} />
+          </Link>
+          <p className="flex-1 truncate text-center text-[12px] font-medium text-[#9ca3af]">
+            {metaLine}
+          </p>
+          <button
+            onClick={handleShare}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white shadow-[0_1px_4px_rgba(0,0,0,0.08)] text-[#374151] hover:text-[#111827] transition-colors"
+            aria-label="Share"
+          >
+            {shareCopied ? <Check size={15} className="text-green-500" /> : <Share2 size={15} />}
           </button>
-          {item.source_name && <span>{item.source_name}</span>}
-          {item.source_name && <span>·</span>}
-          <span>{readingTime} min read</span>
         </div>
+      </header>
 
-        <h1 className="text-[2.35rem] sm:text-[2.65rem] font-bold text-foreground leading-[1.06] tracking-[-0.045em] mb-6">
+      <main className="mx-auto max-w-2xl px-5 pb-12 pt-6">
+        {/* headline */}
+        <h1 className="text-[24px] font-bold tracking-[-0.02em] text-[#111827] leading-[1.22]">
           {item.title}
         </h1>
 
-        {imageUrl && (
-          <div className="mb-7 rounded-[24px] overflow-hidden bg-surface-secondary">
-            <img src={imageUrl} alt="" className="w-full max-h-[360px] object-cover" />
+        {/* hero image */}
+        {hasImage && (
+          <div className="mt-5 overflow-hidden rounded-2xl bg-[#e5e7eb]">
+            <ArticleImage
+              thumbnail={item.thumbnail}
+              title={item.title}
+              fallbackWidth={800}
+              fallbackHeight={500}
+              className="w-full aspect-[16/10] object-cover"
+            />
           </div>
         )}
 
+        {/* body */}
         {hasLearningCards ? (
-          <ArticleSections cards={learningCards!} />
+          <div className="mt-6">
+            <ArticleSections cards={learningCards!} />
+          </div>
         ) : (
           <>
             {body ? (
-              <div className="prose prose-base dark:prose-invert max-w-none mb-8 text-[17px] leading-[1.95]">
+              <div className="mt-6 text-[16px] leading-[1.72] text-[#4b5563]">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{body}</ReactMarkdown>
               </div>
             ) : (
-              <p className="text-sm text-secondary/50 mb-6">
-                No summary available. Read the original article.
-              </p>
+              <p className="mt-6 text-[15px] text-[#9ca3af]">No summary available.</p>
             )}
 
-            {!isTrending && keyTakeaways && keyTakeaways.length > 0 && (
-              <div className="mb-6">
-                <p className="text-[11px] font-semibold text-secondary/40 uppercase tracking-[0.18em] mb-3">
-                  Key Takeaways
+            {keyTakeaways && keyTakeaways.length > 0 && (
+              <div className="mt-8">
+                <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.18em] text-[#9ca3af]">
+                  Key takeaways
                 </p>
-                <ul className="space-y-2">
+                <ol className="space-y-3.5">
                   {keyTakeaways.map((t: string, i: number) => (
-                    <li key={i} className="flex gap-3 items-start text-sm">
-                      <span className="text-secondary/30 font-mono text-xs mt-0.5">{i + 1}.</span>
-                      <span className="prose prose-sm dark:prose-invert [&>p]:m-0 [&>p]:inline text-secondary/80">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{t}</ReactMarkdown>
+                    <li key={i} className="flex items-start gap-3">
+                      <span className="shrink-0 tabular-nums text-[13px] font-bold text-[#d1d5db] mt-0.5">
+                        {i + 1}.
                       </span>
+                      <div className="text-[14.5px] leading-relaxed text-[#374151]">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{t}</ReactMarkdown>
+                      </div>
                     </li>
                   ))}
-                </ul>
+                </ol>
               </div>
             )}
           </>
         )}
 
-        <div className="border-t border-border/10 pt-5 mt-8">
+        {/* action buttons */}
+        <div className="mt-8 flex gap-3">
+          <button
+            onClick={handleShare}
+            className="flex flex-1 items-center justify-center gap-2 rounded-full border border-[#e5e7eb] bg-white py-3 text-[14px] font-semibold text-[#374151] shadow-[0_1px_3px_rgba(0,0,0,0.05)] hover:bg-[#f9fafb] transition-colors"
+          >
+            <Share2 size={15} />
+            Copy link
+          </button>
           <a
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-5 py-3 rounded-full text-sm font-semibold bg-foreground text-background hover:bg-foreground/90 transition-colors"
+            className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#111827] py-3 text-[14px] font-semibold text-white hover:bg-[#1f2937] transition-colors"
           >
-            Read original source <ExternalLink size={14} />
+            Read original
+            <ExternalLink size={14} />
           </a>
         </div>
       </main>

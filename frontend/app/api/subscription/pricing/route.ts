@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
       countrySource: offer.countrySource,
       trialDays: offer.trialDays,
       priceDisplay: offer.priceDisplay,
+      compareAtPriceDisplay: offer.compareAtPriceDisplay,
       pricingOffer: offer.isIndiaOffer ? 'india' : 'default',
     });
   } catch (error) {

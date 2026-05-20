@@ -1,7 +1,9 @@
 import { adminFirestore } from '@/lib/firebase-admin';
+import { applyFeedFreshnessAndDedupe } from '@/lib/feed-dedupe';
 import type { FeedItem, TopicTimelineEvent, TrendingTopic, V3UserFeed } from '@/lib/firestore';
 
-const GLOBAL_FEED_LOOKBACK_DOCS = 2;
+/** Latest global edition only — freshness is enforced by rolling hour window. */
+const GLOBAL_FEED_LOOKBACK_DOCS = 1;
 const WEB_FULL_FEED_CACHE_COLLECTION = 'web_feed_full_cache';
 const WEB_ITEM_DETAIL_CACHE_COLLECTION = 'web_feed_item_detail_cache';
 // Fresh-window for the web full-feed cache. After this the entry is still
@@ -593,7 +595,7 @@ async function buildFullFeedBody(normalizedRole: string): Promise<FeedBody | nul
     return null;
   }
 
-  return {
+  const body: FeedBody = {
     date: feedDate,
     for_you: forYou.map(sanitizeFeedItem),
     pulse: pulse.map(sanitizeFeedItem),
@@ -605,6 +607,8 @@ async function buildFullFeedBody(normalizedRole: string): Promise<FeedBody | nul
     assembled_at: assembledAt,
     metadata,
   };
+
+  return applyFeedFreshnessAndDedupe(body);
 }
 
 // In-memory dedupe for background rebuilds. If several concurrent requests

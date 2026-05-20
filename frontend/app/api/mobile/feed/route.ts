@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminFirestore } from '@/lib/firebase-admin';
+import { applyFeedFreshnessAndDedupe } from '@/lib/feed-dedupe';
 import { getBootstrapFeedForUid } from '@/lib/feed-server';
 import type { FeedItem, TrendingTopic } from '@/lib/firestore';
 
@@ -96,12 +97,17 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const fresh = applyFeedFreshnessAndDedupe({
+      trending: mergedTrending,
+      trending_topics: mergedTrendingTopics,
+    });
+
     return NextResponse.json(
       {
         date: feed.date,
         assembled_at: feed.assembled_at ?? null,
-        trending: mergedTrending,
-        trending_topics: mergedTrendingTopics,
+        trending: fresh.trending,
+        trending_topics: fresh.trending_topics,
         daily_pulse: feed.daily_pulse ?? null,
         community_pulse: feed.community_pulse ?? [],
         build_pulse: feed.build_pulse ?? [],

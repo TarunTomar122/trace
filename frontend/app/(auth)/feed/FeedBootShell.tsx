@@ -1,4 +1,177 @@
-import Link from 'next/link';
+function Skel({ className = '' }: { className?: string }) {
+  return <div className={`wire-skel ${className}`.trim()} aria-hidden />;
+}
+
+function WireMastheadSkeleton() {
+  return (
+    <header className="wire-masthead">
+      <Skel className="h-3 w-28" />
+      <Skel className="mt-3 h-9 w-full max-w-md" />
+      <Skel className="mt-2 h-4 w-40" />
+    </header>
+  );
+}
+
+function WireHeroSkeleton() {
+  return (
+    <section className="wire-module wire-module--hero">
+      <div className="wire-hero-grid">
+        <div className="wire-hero-lead">
+          <Skel className="aspect-[16/10] w-full rounded-none" />
+          <div className="wire-hero-lead-copy space-y-2.5 pt-4">
+            <Skel className="h-7 w-full max-w-[95%]" />
+            <Skel className="h-7 w-[75%]" />
+            <Skel className="h-3 w-36" />
+          </div>
+        </div>
+        <div className="wire-hero-sidebar">
+          {[0, 1].map((i) => (
+            <div className="wire-hero-side" key={i}>
+              <Skel className="aspect-[16/10] w-full rounded-none" />
+              <div className="wire-hero-side-copy space-y-2 pt-3">
+                <Skel className="h-4 w-full" />
+                <Skel className="h-4 w-[85%]" />
+                <Skel className="h-2.5 w-24" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function WireSectionHeadSkeleton() {
+  return (
+    <div className="wire-section-head">
+      <Skel className="h-6 w-16 rounded-sm" />
+      <span className="wire-section-rule bg-[#e5e7eb]" aria-hidden />
+    </div>
+  );
+}
+
+function WireSectionSkeleton({ cards = 4 }: { cards?: number }) {
+  return (
+    <section className="wire-module">
+      <WireSectionHeadSkeleton />
+      <div className="wire-section-grid">
+        {Array.from({ length: cards }, (_, i) => (
+          <div className="wire-section-card pointer-events-none" key={i}>
+            <div className="wire-section-card-media">
+              <Skel className="wire-section-card-skel-img" />
+            </div>
+            <div className="wire-section-card-copy space-y-2">
+              <Skel className="h-4 w-full" />
+              <Skel className="h-4 w-[80%]" />
+              <Skel className="h-2.5 w-20" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function WireLatestSkeleton({ rows = 5 }: { rows?: number }) {
+  return (
+    <section className="wire-module wire-module--latest">
+      <WireSectionHeadSkeleton />
+      <div className="wire-latest-list">
+        {Array.from({ length: rows }, (_, i) => (
+          <div key={i} className="wire-latest-row pointer-events-none">
+            <div className="wire-latest-thumb">
+              <Skel className="h-full w-full rounded-none" />
+            </div>
+            <div className="wire-latest-copy space-y-2">
+              <Skel className="h-4 w-full max-w-[98%]" />
+              <Skel className="h-4 w-[70%]" />
+              <Skel className="h-2.5 w-28" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Two-pane feed skeleton — matches FeedTwoPaneLayout. */
+export function WireFeedLoadingSkeleton() {
+  return (
+    <div className="flex h-full flex-col overflow-hidden">
+      {/* tab bar */}
+      <div className="shrink-0 border-b border-[#e5e7eb] bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 pt-3 pb-3">
+          <div className="flex items-center gap-6">
+            <Skel className="h-3 w-10 rounded-full" />
+            <Skel className="h-3 w-10 rounded-full" />
+          </div>
+          <Skel className="h-2.5 w-28 rounded-full" />
+        </div>
+      </div>
+
+      {/* panes */}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 overflow-hidden">
+          {/* left pane */}
+          <div className="flex w-full flex-col sm:w-[360px] sm:shrink-0 sm:border-r sm:border-[#e5e7eb]">
+            {/* left header */}
+            <div className="shrink-0 border-b border-[#e5e7eb] bg-white px-6 py-4">
+              <div className="flex items-baseline justify-between">
+                <Skel className="h-3.5 w-24 rounded-full" />
+                <Skel className="h-2.5 w-14 rounded-full" />
+              </div>
+              {/* pills */}
+              <div className="mt-3 flex gap-1.5">
+                {[40, 52, 44, 44, 52].map((w, i) => (
+                  <div
+                    key={i}
+                    style={{ width: w }}
+                    className="h-6 shrink-0 rounded-full animate-pulse bg-[#f3f4f6]"
+                  />
+                ))}
+              </div>
+            </div>
+            {/* story rows */}
+            <div className="flex-1 min-h-0 overflow-hidden bg-white">
+              {Array.from({ length: 9 }, (_, i) => (
+                <div key={i} className="flex gap-4 border-b border-[#e5e7eb]/40 px-6 py-4">
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <Skel className={`h-3.5 rounded-full ${i % 3 === 0 ? 'w-full' : i % 3 === 1 ? 'w-[85%]' : 'w-[92%]'}`} />
+                    <Skel className={`h-3.5 rounded-full ${i % 2 === 0 ? 'w-[70%]' : 'w-[80%]'}`} />
+                    <Skel className="h-2.5 w-28 rounded-full" />
+                  </div>
+                  <Skel className="h-[68px] w-[68px] shrink-0 rounded-md" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* right pane — hidden on mobile */}
+          <div className="hidden sm:flex flex-1 flex-col overflow-y-auto bg-white px-10 py-10">
+            <Skel className="h-3 w-32 rounded-full" />
+            <Skel className="mt-4 h-7 w-full max-w-[90%] rounded-full" />
+            <Skel className="mt-2.5 h-7 w-[72%] rounded-full" />
+            <Skel className="mt-3 h-2.5 w-36 rounded-full" />
+            <Skel className="mt-6 aspect-[16/9] w-full rounded-2xl" />
+            <div className="mt-8 space-y-3">
+              {[98, 92, 96, 85, 90].map((w, i) => (
+                <Skel key={i} className={`h-3.5 w-[${w}%] rounded-full`} />
+              ))}
+            </div>
+            <div className="mt-8 rounded-2xl border border-[#e5e7eb] p-5 space-y-3">
+              <Skel className="h-2.5 w-24 rounded-full" />
+              {[90, 80, 85].map((w, i) => (
+                <Skel key={i} className={`h-3 w-[${w}%] rounded-full`} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Legacy scroll / briefing skeletons (FeedBriefingView) ─── */
 
 const sk = 'animate-pulse rounded-full bg-black/[0.07] dark:bg-white/[0.09]';
 const skBlock = 'animate-pulse rounded-md bg-black/[0.08] dark:bg-white/[0.10]';
@@ -7,7 +180,6 @@ function SkeletonLine({ className }: { className: string }) {
   return <div className={`${sk} ${className}`} />;
 }
 
-/** Matches `ScrollFeedInterestTabs` chrome */
 function ScrollFeedTabBarSkeleton() {
   return (
     <div className="sticky top-16 z-30 -mx-4 sm:-mx-6 lg:-mx-8 border-b border-border/20 bg-background">
@@ -31,7 +203,6 @@ function ScrollFeedTabBarSkeleton() {
   );
 }
 
-/** One row aligned with `ScrollFeedCard` (avatar only sm+) */
 function ScrollFeedStorySkeleton({ withImage, isFirst = false }: { withImage: boolean; isFirst?: boolean }) {
   const rowTop = isFirst ? 'pt-2 sm:pt-3' : 'pt-5 sm:pt-6';
   return (
@@ -68,8 +239,6 @@ function SkeletonRows({ rows }: { rows: number }) {
   );
 }
 
-/* ─── Editorial Grid Skeleton (desktop lg+) ─── */
-
 function EditorialSidebarItemSkeleton() {
   return (
     <div className="py-3.5 border-b border-border/10 last:border-0">
@@ -86,7 +255,6 @@ function EditorialSidebarItemSkeleton() {
 function EditorialGridSkeleton() {
   return (
     <div className="grid grid-cols-[minmax(200px,1fr)_minmax(0,2.2fr)_minmax(200px,1fr)] gap-8 pt-6 pb-12">
-      {/* Left sidebar */}
       <div>
         <div className="mb-4 flex items-center gap-2">
           <div className={`${sk} h-2.5 w-20`} />
@@ -96,24 +264,16 @@ function EditorialGridSkeleton() {
           <EditorialSidebarItemSkeleton key={i} />
         ))}
       </div>
-
-      {/* Center — hero + grid */}
       <div>
-        {/* Hero image */}
         <div className="rounded-xl bg-black/[0.05] dark:bg-white/[0.06] animate-pulse h-[280px] mb-4" />
-        {/* Hero meta */}
         <div className="flex items-center gap-2 mb-2">
           <div className={`${sk} h-2.5 w-20`} />
           <div className={`${sk} h-2.5 w-12`} />
         </div>
-        {/* Hero title */}
         <div className={`${skBlock} h-7 w-[90%] mb-2`} />
         <div className={`${skBlock} h-7 w-[70%] mb-3`} />
-        {/* Hero preview */}
         <div className={`${sk} h-3.5 w-full mb-1.5`} />
         <div className={`${sk} h-3.5 w-[85%] mb-8`} />
-
-        {/* Medium cards grid */}
         <div className="grid grid-cols-2 gap-6">
           {Array.from({ length: 4 }, (_, i) => (
             <div key={i}>
@@ -128,8 +288,6 @@ function EditorialGridSkeleton() {
           ))}
         </div>
       </div>
-
-      {/* Right sidebar */}
       <div>
         <div className="mb-4 flex items-center gap-2">
           <div className={`${sk} h-2.5 w-24`} />
@@ -143,7 +301,7 @@ function EditorialGridSkeleton() {
   );
 }
 
-/** Shown while stories load. Use `embedded` inside `FeedBriefingView` (parent already sets column + top padding). */
+/** Shown while stories load. Use `embedded` inside `FeedBriefingView`. */
 export function ScrollFeedLoadingSkeleton({
   rows = 6,
   embedded = false,
@@ -151,7 +309,6 @@ export function ScrollFeedLoadingSkeleton({
 }: {
   rows?: number;
   embedded?: boolean;
-  /** Show the 3-column editorial grid skeleton instead of scroll cards */
   editorial?: boolean;
 }) {
   if (editorial) {
@@ -160,37 +317,29 @@ export function ScrollFeedLoadingSkeleton({
   if (embedded) {
     return <SkeletonRows rows={rows} />;
   }
+  return <WireFeedLoadingSkeleton />;
+}
+
+function FeedNavSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-[min(43rem,100%)] min-h-[calc(100vh-11rem)]">
-      <SkeletonRows rows={rows} />
-    </div>
+    <header className="shrink-0 border-b border-[#e5e7eb] bg-white px-6 py-3.5">
+      <div className="mx-auto flex max-w-6xl items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <Skel className="h-5 w-5 rounded-sm" />
+          <Skel className="h-3 w-14 rounded-full" />
+        </div>
+        <Skel className="h-8 w-8 rounded-full" />
+      </div>
+    </header>
   );
 }
 
 export default function FeedBootShell() {
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16">
-            <Link href="/" prefetch={false} className="flex items-center gap-3">
-              <img src="/trace.webp" alt="Trace" className="h-6 w-auto" />
-              <span className="text-sm font-semibold tracking-[0.18em]">TRACE</span>
-            </Link>
-            <div className="h-8 w-8 rounded-full bg-black/[0.08] dark:bg-white/[0.10] animate-pulse" />
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto px-0 py-0 sm:px-6 sm:pt-2 sm:pb-5 lg:px-8 lg:pt-3 lg:pb-8">
-        <ScrollFeedTabBarSkeleton />
-        {/* Editorial grid on desktop, scroll cards on mobile */}
-        <div className="hidden lg:block">
-          <ScrollFeedLoadingSkeleton editorial />
-        </div>
-        <div className="lg:hidden">
-          <ScrollFeedLoadingSkeleton rows={5} />
-        </div>
+    <div className="min-h-screen bg-white">
+      <FeedNavSkeleton />
+      <div className="relative mx-auto max-w-6xl">
+        <WireFeedLoadingSkeleton />
       </div>
     </div>
   );

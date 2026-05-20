@@ -6,10 +6,33 @@ import Link from 'next/link';
 export default function PublicHeader({
   ctaLabel = 'Subscribe',
   ctaHref = '/profile?tab=subscription',
+  variant = 'default',
 }: {
   ctaLabel?: string;
   ctaHref?: string;
+  variant?: 'default' | 'landing';
 } = {}) {
+  if (variant === 'landing') {
+    return (
+      <header className="sticky top-0 z-50 bg-transparent px-4 pt-4 sm:px-6">
+        <div className="landing-nav">
+          <Link href="/" className="flex items-center gap-2.5 no-underline" style={{ color: 'inherit' }}>
+            <Image src="/trace.webp" alt="Trace" width={22} height={22} priority className="h-[22px] w-auto" />
+            <span className="text-[13px] font-bold tracking-[0.12em]">TRACE</span>
+          </Link>
+          <nav className="landing-nav-links">
+            <Link href="/blog" className="landing-nav-link">
+              Blog
+            </Link>
+          </nav>
+          <Link href={ctaHref} className="landing-btn landing-btn-primary landing-btn-sm">
+            {ctaLabel}
+          </Link>
+        </div>
+      </header>
+    );
+  }
+
   return (
     <header className="sticky top-0 z-50 border-b border-border/[0.06] bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -27,12 +50,6 @@ export default function PublicHeader({
           </Link>
 
           <nav className="hidden items-center gap-1 sm:flex">
-            <Link
-              href="/daily"
-              className="rounded-full px-4 py-1.5 text-[13px] text-secondary/70 transition-colors hover:text-foreground"
-            >
-              Daily
-            </Link>
             <Link
               href="/blog"
               className="rounded-full px-4 py-1.5 text-[13px] text-secondary/70 transition-colors hover:text-foreground"

@@ -56,12 +56,6 @@ export default function ContactPage() {
             Have a question, feedback, or need help with your subscription? We&apos;re here to help.
           </p>
           <div className="mb-8 flex flex-wrap gap-2 text-sm">
-            <Link href="/daily" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
-              Daily archive
-            </Link>
-            <Link href="/trending" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
-              Trending
-            </Link>
             <Link href="/blog" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
               Research
             </Link>
