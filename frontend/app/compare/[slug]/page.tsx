@@ -76,34 +76,34 @@ export default async function CompareDetailPage({ params }: PageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="landing-page landing-grid-bg min-h-screen">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
-      <PublicHeader />
+      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
       <main className="px-4 sm:px-6">
-        <article className="mx-auto max-w-5xl pt-24 pb-20 sm:pt-32">
+        <article className="mx-auto max-w-5xl pt-16 pb-20 sm:pt-24">
           <div className="max-w-3xl">
-            <p className="text-[11px] uppercase tracking-[0.26em] text-secondary/40">
+            <p className="text-[11px] uppercase tracking-[0.26em] text-[#9ca3af]">
               Comparison Guide
             </p>
-            <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+            <h1 className="mt-4 text-[2.5rem] font-bold tracking-[-0.04em] leading-[0.95] text-[#111827] sm:text-[3.25rem]">
               {page.heroTitle}
             </h1>
-            <p className="mt-5 text-lg leading-8 text-secondary">
+            <p className="mt-5 text-[16px] leading-[1.8] text-[#6b7280] sm:text-[17px]">
               {page.heroDescription}
             </p>
           </div>
 
-          <div className="mt-10 rounded-3xl border border-border/20 bg-white p-7 shadow-sm dark:bg-gray-950">
-            <p className="text-base leading-8 text-secondary">{page.intro}</p>
+          <div className="mt-10 landing-card p-7">
+            <p className="text-base leading-8 text-[#6b7280]">{page.intro}</p>
           </div>
 
-          <section className="mt-10 rounded-3xl border border-border/20 bg-white p-7 shadow-sm dark:bg-gray-950">
-            <h2 className="text-2xl font-semibold tracking-tight">{page.comparisonTitle}</h2>
-            <div className="mt-6 overflow-hidden rounded-2xl border border-border/20">
-              <div className="grid grid-cols-[1.1fr_1fr_1fr] bg-muted/40 px-4 py-3 text-sm font-semibold">
+          <section className="mt-8 landing-card p-7">
+            <h2 className="text-2xl font-semibold tracking-tight text-[#111827]">{page.comparisonTitle}</h2>
+            <div className="mt-6 overflow-hidden rounded-2xl border border-[#e5e7eb]">
+              <div className="grid grid-cols-[1.1fr_1fr_1fr] bg-[#f9fafb] px-4 py-3 text-sm font-semibold text-[#111827]">
                 <div>Comparison</div>
                 <div>Trace</div>
                 <div>Alternative</div>
@@ -111,29 +111,29 @@ export default async function CompareDetailPage({ params }: PageProps) {
               {page.comparisonRows.map((row) => (
                 <div
                   key={row.label}
-                  className="grid grid-cols-[1.1fr_1fr_1fr] border-t border-border/20 px-4 py-4 text-sm leading-6"
+                  className="grid grid-cols-[1.1fr_1fr_1fr] border-t border-[#e5e7eb] px-4 py-4 text-sm leading-6"
                 >
-                  <div className="font-medium text-foreground">{row.label}</div>
-                  <div className="text-secondary">{row.trace}</div>
-                  <div className="text-secondary">{row.alternative}</div>
+                  <div className="font-medium text-[#111827]">{row.label}</div>
+                  <div className="text-[#6b7280]">{row.trace}</div>
+                  <div className="text-[#6b7280]">{row.alternative}</div>
                 </div>
               ))}
             </div>
           </section>
 
-          <section className="mt-10 grid gap-6 md:grid-cols-2">
+          <section className="mt-8 grid gap-6 md:grid-cols-2">
             {page.sections.map((section) => (
               <div
                 key={section.title}
-                className="rounded-3xl border border-border/20 bg-white p-7 shadow-sm dark:bg-gray-950"
+                className="landing-card p-7"
               >
-                <h2 className="text-2xl font-semibold tracking-tight">{section.title}</h2>
-                <p className="mt-4 text-sm leading-7 text-secondary">{section.body}</p>
+                <h2 className="text-2xl font-semibold tracking-tight text-[#111827]">{section.title}</h2>
+                <p className="mt-4 text-sm leading-7 text-[#6b7280]">{section.body}</p>
               </div>
             ))}
           </section>
 
-          <section className="mt-10 rounded-3xl bg-[#151515] p-8 text-white">
+          <section className="mt-10 rounded-[1.5rem] bg-[#111827] p-8 text-white">
             <h2 className="text-2xl font-semibold tracking-tight">If you want the workflow, not just the idea</h2>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-white/60">
               These public pages explain the category. The actual value of Trace is still inside the product:
@@ -141,21 +141,22 @@ export default async function CompareDetailPage({ params }: PageProps) {
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                href="/"
-                className="rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white"
+                href="/onboarding"
+                className="rounded-full bg-[#2563eb] px-5 py-3 text-sm font-semibold text-white"
+                style={{ boxShadow: "0 10px 24px rgba(37, 99, 235, 0.22)" }}
               >
-                Start with Trace
+                Start with Trace →
               </Link>
             </div>
           </section>
 
-          <section className="mt-10 rounded-3xl border border-border/20 bg-white p-7 shadow-sm dark:bg-gray-950">
-            <h2 className="text-2xl font-semibold tracking-tight">FAQ</h2>
+          <section className="mt-10 landing-card p-7">
+            <h2 className="text-2xl font-semibold tracking-tight text-[#111827]">FAQ</h2>
             <div className="mt-6 space-y-5">
               {page.faq.map((item) => (
                 <div key={item.question}>
-                  <h3 className="text-base font-semibold">{item.question}</h3>
-                  <p className="mt-2 text-sm leading-7 text-secondary">{item.answer}</p>
+                  <h3 className="text-base font-semibold text-[#111827]">{item.question}</h3>
+                  <p className="mt-2 text-sm leading-7 text-[#6b7280]">{item.answer}</p>
                 </div>
               ))}
             </div>
@@ -163,9 +164,9 @@ export default async function CompareDetailPage({ params }: PageProps) {
 
           <section className="mt-8">
             <div className="flex flex-wrap gap-2 text-sm">
-              <Link href="/compare" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">More comparisons</Link>
-              <Link href="/blog" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">Blog</Link>
-              <Link href="/tools" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">Free tools</Link>
+              <Link href="/compare" className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-[#6b7280] transition-colors hover:text-[#111827]">More comparisons</Link>
+              <Link href="/blog" className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-[#6b7280] transition-colors hover:text-[#111827]">Blog</Link>
+              <Link href="/tools" className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-[#6b7280] transition-colors hover:text-[#111827]">Free tools</Link>
             </div>
           </section>
         </article>

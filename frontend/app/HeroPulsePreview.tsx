@@ -193,7 +193,7 @@ function DemoPulseTab({
 }
 
 export default function HeroPulsePreview() {
-  const [demoView, setDemoView] = useState<'pulse' | 'briefing'>('pulse');
+  const [demoView, setDemoView] = useState<'pulse' | 'briefing'>('briefing');
   const [newsPick, setNewsPick] = useState(0);
   const todayLabel = new Date()
     .toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
@@ -204,16 +204,14 @@ export default function HeroPulsePreview() {
       title: 'Google turns Maps into an AI navigation product',
       preview: 'Gemini answers, immersive route views, and richer driver context — a shift toward conversational navigation.',
       overview:
-        'Google is repositioning Maps as a conversational AI surface, not just a routing utility. A Gemini chip now sits above the turn-by-turn card in beta, letting drivers ask plain-language questions — "Is there parking near the restaurant?" — without leaving navigation. Immersive 3D previews and lane-level detail are meant to cut wrong exits in complex interchanges, while summarized business reviews along a corridor replace scrolling through dozens of listings. The move mirrors how Search and Workspace absorbed Gemini: Maps becomes another daily touchpoint where Google can prove model utility on-device. Regulators and privacy advocates are already asking how location history feeds model tuning, which could shape rollout beyond the initial Android cohort.',
+        'Google is turning Maps into a conversational product, not just directions. In beta, a Gemini chip sits above navigation so drivers can ask questions like nearby parking without switching apps. Add immersive lane previews and route-level review summaries, and Maps starts to feel like an AI assistant for movement. The open question: how far Google can push location-personalized answers before privacy scrutiny slows the rollout.',
       category: 'AI & Machine Learning',
       meta: '42m ago · 5 sources',
       img: 'https://images.unsplash.com/photo-1573804633927-bfcbcd909acd?w=120&q=60',
       keyTakeaways: [
         'Gemini is woven into turn-by-turn guidance so drivers can ask plain-language questions without leaving navigation.',
         'Immersive previews and lane-level detail are pitched as reducing wrong exits in complex interchanges.',
-        'Summarized POI reviews along a route replace scrolling individual listings while driving.',
-        'Google is framing Maps as an "AI surface" alongside Search and Workspace, not just a utility.',
-        'Location data used for model tuning is drawing early regulatory scrutiny from EU and US privacy groups.',
+        'Location-personalized answers are likely to trigger deeper privacy scrutiny as rollout expands.',
       ],
       timeline: [
         {
@@ -243,16 +241,14 @@ export default function HeroPulsePreview() {
       title: 'Meta confirms major workforce reduction',
       preview: 'The company is restructuring teams while doubling down on AI infrastructure and core products.',
       overview:
-        'Meta confirmed another round of layoffs focused on flattening middle management and eliminating overlapping product roles left over from the 2021–22 hiring surge. Internal talking points seen by reporters stress that cuts are not a retreat from AI: CapEx guidance still points up for GPUs, networking, and data-center leases through next year. Reality Labs spending is being re-phased rather than eliminated — wearables and smart glasses remain public priorities, but metaverse worlds get less airtime in earnings scripts. Investors reacted cautiously: efficiency wins praise, but questions remain whether Advantage+ ads can grow fast enough to offset slower Reality Labs revenue and the cost of training frontier models.',
+        'Meta is cutting layers of management and duplicated teams, but this is not an AI pullback. GPU and data-center spend is still climbing, and leadership is framing the layoffs as focus, not retreat. Reality Labs is being reshaped rather than shut down, with glasses getting priority over metaverse storytelling. Investors like the efficiency narrative, but now want proof that AI ad products can outrun the compute bill.',
       category: 'Big Tech',
       meta: '3h ago · 3 sources',
       img: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=120&q=60',
       keyTakeaways: [
         'Cuts target middle management and duplicated product roles rather than core engineering on ads and AI infra.',
         'CapEx guidance still points upward for GPUs and data-center leases through next year.',
-        'Reality Labs spending is being re-phased; wearables remain a public priority while metaverse worlds get less emphasis.',
-        'Affected employees are expected to hear by end of week with severance packages similar to prior rounds.',
-        'Wall Street wants proof that AI-driven ads can offset slower Reality Labs revenue growth.',
+        'Investors now want proof that AI ad gains can outpace rising infrastructure costs.',
       ],
       timeline: [
         {
@@ -282,16 +278,14 @@ export default function HeroPulsePreview() {
       title: 'Anthropic ships a sharper Claude for long documents',
       preview: 'Better reasoning on dense PDFs and spreadsheets, with clearer citations for enterprise workflows.',
       overview:
-        'Anthropic rolled out a document-focused upgrade to Claude tuned for contracts, security reviews, and financial filings — the kinds of PDFs enterprises actually upload, not toy benchmarks. The model returns inline citations tied to page regions so legal and compliance teams can audit answers without re-reading hundred-page files. Spreadsheet ingestion improved enough that finance teams are piloting variance explanations across multi-tab workbooks. Pricing pushes larger customers toward annual commits with higher rate limits, which procurement teams prefer over unpredictable per-seat metering. Rival vendors immediately disputed benchmark methodology, arguing their long-doc suites were omitted — a familiar script as every lab races for enterprise due-diligence workflows.',
+        'Anthropic shipped a Claude upgrade aimed at real enterprise docs: contracts, security reviews, and financial filings. The headline feature is citation trails tied to exact page regions, so legal teams can verify answers fast instead of re-reading entire files. Spreadsheet handling also improved for multi-tab variance analysis, making finance workflows more realistic. Competitors are already disputing the benchmark framing, which is quickly becoming the new enterprise AI battleground.',
       category: 'AI & Machine Learning',
       meta: 'Yesterday · 6 sources',
       img: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=120&q=60',
       keyTakeaways: [
         'Long-context performance is tuned for contracts, security reviews, and financial filings — not headline benchmarks.',
         'Inline citations link back to page regions so teams can audit answers without re-reading entire files.',
-        'Spreadsheet tools support multi-tab variance explanations for finance and ops workflows.',
-        'Pricing tiers nudge enterprises toward annual commits with higher rate limits.',
-        'Competitors are challenging benchmark claims, saying long-doc test suites do not reflect customer workloads.',
+        'Benchmark credibility is becoming a core battleground as rivals dispute enterprise eval methodology.',
       ],
       timeline: [
         {
@@ -353,26 +347,26 @@ export default function HeroPulsePreview() {
   const discussions: DemoDiscussion[] = [
     {
       id: 'd1',
-      title: '"We replaced our entire RAG pipeline with a single long-context call"',
-      preview: 'Cost went up 3x but accuracy jumped from 72% to 94%. Team argues it was worth it for legal docs.',
-      source: 'r/LocalLLaMA',
-      signals: '847 pts',
+      title: 'Show HN: We open-sourced a tiny incident runbook format that cut on-call handoff time',
+      preview: 'Team shares the template they now use for every prod incident. Threads discuss what details are mandatory versus noise.',
+      source: 'Hacker News',
+      signals: '512 pts',
       url: '#',
     },
     {
       id: 'd2',
-      title: 'The mass exodus from X to Bluesky is real now',
-      preview: 'Bluesky crossed 30M users. The shift is less about features and more about who is already there.',
-      source: 'Hacker News',
-      signals: '423 pts',
+      title: 'We moved our CI from 28 minutes to 9 by deleting half the workflow',
+      preview: 'Maintainers break down cache strategy, job fan-out, and what they removed. Great thread on reliability vs speed tradeoffs.',
+      source: 'r/devops',
+      signals: '689 pts',
       url: '#',
     },
     {
       id: 'd3',
-      title: 'Stop calling everything an "AI agent"',
-      preview: "If it's just a prompt chain with a for loop, it's not an agent. A rant that turned into a real taxonomy.",
+      title: 'Senior engineers: what changed most in how you review AI-generated PRs?',
+      preview: 'Discussion centers on test quality, silent logic bugs, and why review checklists are changing across teams.',
       source: 'r/ExperiencedDevs',
-      signals: '612 pts',
+      signals: '441 pts',
       url: '#',
     },
   ];

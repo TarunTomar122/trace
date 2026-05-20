@@ -167,6 +167,30 @@ export default function RootLayout({
             }
           }
         ]
+      },
+      {
+        "@type": "CollectionPage",
+        "@id": "https://www.yourtrace.online/solutions",
+        "name": "Trace Solutions Hub",
+        "url": "https://www.yourtrace.online/solutions",
+        "description": "Solutions for every tech reading workflow problem — from information overload to building a daily digest habit.",
+        "isPartOf": { "@id": "https://www.yourtrace.online/#website" }
+      },
+      {
+        "@type": "CollectionPage",
+        "@id": "https://www.yourtrace.online/use-cases",
+        "name": "Trace Use Cases",
+        "url": "https://www.yourtrace.online/use-cases",
+        "description": "See how founders, developers, PMs, designers, investors, and other tech professionals use Trace to stay current.",
+        "isPartOf": { "@id": "https://www.yourtrace.online/#website" }
+      },
+      {
+        "@type": "CollectionPage",
+        "@id": "https://www.yourtrace.online/newsletters",
+        "name": "Tech Newsletter Reviews",
+        "url": "https://www.yourtrace.online/newsletters",
+        "description": "Honest reviews of popular tech newsletters — rated, compared, and ranked.",
+        "isPartOf": { "@id": "https://www.yourtrace.online/#website" }
       }
     ]
   };

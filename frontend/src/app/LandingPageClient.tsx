@@ -737,10 +737,12 @@ export default function LandingPageClient() {
                 <span className="text-[11px] font-semibold tracking-[0.18em] text-secondary/50">TRACE</span>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-secondary/50">
-                <Link href="/trending" className="transition-colors hover:text-foreground">Trending</Link>
-                <Link href="/daily" className="transition-colors hover:text-foreground">Daily</Link>
-                <Link href="/blog" className="transition-colors hover:text-foreground">Blog</Link>
                 <Link href="/compare" className="transition-colors hover:text-foreground">Compare</Link>
+                <Link href="/solutions" className="transition-colors hover:text-foreground">Solutions</Link>
+                <Link href="/use-cases" className="transition-colors hover:text-foreground">Use Cases</Link>
+                <Link href="/resources" className="transition-colors hover:text-foreground">Resources</Link>
+                <Link href="/blog" className="transition-colors hover:text-foreground">Blog</Link>
+                <Link href="/onboarding?intent=read" className="transition-colors hover:text-foreground">Sign in</Link>
                 <Link href="/privacy-policy" className="transition-colors hover:text-foreground">Privacy</Link>
                 <Link href="/terms" className="transition-colors hover:text-foreground">Terms</Link>
                 <Link href="/contact" className="transition-colors hover:text-foreground">Contact</Link>

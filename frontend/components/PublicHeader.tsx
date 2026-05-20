@@ -21,6 +21,18 @@ export default function PublicHeader({
             <span className="text-[13px] font-bold tracking-[0.12em]">TRACE</span>
           </Link>
           <nav className="landing-nav-links">
+            <Link href="/compare" className="landing-nav-link">
+              Compare
+            </Link>
+            <Link href="/solutions" className="landing-nav-link">
+              Solutions
+            </Link>
+            <Link href="/use-cases" className="landing-nav-link">
+              Use Cases
+            </Link>
+            <Link href="/resources" className="landing-nav-link">
+              Resources
+            </Link>
             <Link href="/blog" className="landing-nav-link">
               Blog
             </Link>
@@ -50,6 +62,30 @@ export default function PublicHeader({
           </Link>
 
           <nav className="hidden items-center gap-1 sm:flex">
+            <Link
+              href="/compare"
+              className="rounded-full px-4 py-1.5 text-[13px] text-secondary/70 transition-colors hover:text-foreground"
+            >
+              Compare
+            </Link>
+            <Link
+              href="/solutions"
+              className="rounded-full px-4 py-1.5 text-[13px] text-secondary/70 transition-colors hover:text-foreground"
+            >
+              Solutions
+            </Link>
+            <Link
+              href="/use-cases"
+              className="rounded-full px-4 py-1.5 text-[13px] text-secondary/70 transition-colors hover:text-foreground"
+            >
+              Use Cases
+            </Link>
+            <Link
+              href="/resources"
+              className="rounded-full px-4 py-1.5 text-[13px] text-secondary/70 transition-colors hover:text-foreground"
+            >
+              Resources
+            </Link>
             <Link
               href="/blog"
               className="rounded-full px-4 py-1.5 text-[13px] text-secondary/70 transition-colors hover:text-foreground"

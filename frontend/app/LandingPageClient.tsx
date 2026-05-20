@@ -73,6 +73,10 @@ const READER_AVATARS = [
 ] as const;
 
 const NAV_LINKS = [
+  { href: '/compare', label: 'Compare' },
+  { href: '/solutions', label: 'Solutions' },
+  { href: '/use-cases', label: 'Use Cases' },
+  { href: '/resources', label: 'Resources' },
   { href: '/blog', label: 'Blog' },
 ] as const;
 
@@ -354,11 +358,11 @@ export default function LandingPageClient({
                 )}
 
                 <h1 className="landing-hero-title">
-                  Your daily tech,<br className="hidden sm:block" />
-                  in one place
+                  F*ck the algorithms.<br />
+                  Build your own feed
                 </h1>
                 <p className="mx-auto mt-6 max-w-xl text-[16px] leading-[1.7] landing-muted sm:text-[17px]">
-                  Stories, conversations, and launches from 50+ sources, grouped into one scannable daily pulse so you stay current without the tab stack.
+                  We scan 50+ sources, remove the duplicate noise, and give you one clear daily pulse with the stories, reactions, and launches that actually matter.
                 </p>
 
                 <div className="landing-hero-actions">
@@ -367,14 +371,8 @@ export default function LandingPageClient({
                     onClick={() => handleStartReading('hero')}
                     className="landing-btn landing-btn-primary landing-btn-lg"
                   >
-                    Read today
+                    Read today's brief
                   </button>
-                  <a
-                    href="#preview"
-                    className="landing-btn landing-btn-secondary landing-btn-lg"
-                  >
-                    See the pulse
-                  </a>
                 </div>
                 <p className="mt-4 text-[13px]" style={{ color: '#9ca3af' }}>Free to read · No credit card</p>
               </Reveal>
@@ -408,10 +406,10 @@ export default function LandingPageClient({
                 <div className="text-center">
                   <span className="landing-badge">How it works</span>
                   <h2 className="landing-section-title mt-6">
-                    One pulse. The shape of the day.
+                    One brief. Zero tab chaos.
                   </h2>
                   <p className="mx-auto mt-4 max-w-lg text-[16px] landing-muted">
-                    Trace reads the stories, the conversations, and the launches, then gives you one calm, scannable briefing.
+                    Trace pulls in the biggest stories, what people are saying, and what shipped today, then turns it into a short brief you can skim in minutes.
                   </p>
                 </div>
               </Reveal>

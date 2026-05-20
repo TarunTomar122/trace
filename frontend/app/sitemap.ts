@@ -3,6 +3,9 @@ import { blogPosts } from './blog/content'
 import { adminFirestore } from '@/lib/firebase-admin'
 import { comparePages } from './compare/content'
 import { getDailyArchiveEntries } from '@/lib/daily-archive'
+import { solutionsContent } from './solutions/content'
+import { useCasesContent } from './use-cases/content'
+import { newslettersContent } from './newsletters/content'
 
 const FALLBACK_TOPICS: string[] = []
 
@@ -220,6 +223,42 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1,
     },
     {
+      url: `${baseUrl}/compare`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/solutions`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/use-cases`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/resources`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.85,
+    },
+    {
+      url: `${baseUrl}/newsletters`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.85,
+    },
+    {
+      url: `${baseUrl}/how-it-works`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
       url: `${baseUrl}/trending`,
       lastModified: new Date(),
       changeFrequency: 'daily',
@@ -289,17 +328,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/blog/free-news-aggregators-for-developers`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.75 },
   ];
 
-  const comparePagesIndex: MetadataRoute.Sitemap = [
-    {
-      url: `${baseUrl}/compare`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.75,
-    },
-  ];
-
   const compareDetailPages: MetadataRoute.Sitemap = comparePages.map((page) => ({
     url: `${baseUrl}/compare/${page.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.72,
+  }));
+
+  const solutionsDetailPages: MetadataRoute.Sitemap = solutionsContent.map((page) => ({
+    url: `${baseUrl}/solutions/${page.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.72,
+  }));
+
+  const useCasesDetailPages: MetadataRoute.Sitemap = useCasesContent.map((page) => ({
+    url: `${baseUrl}/use-cases/${page.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.72,
+  }));
+
+  const newslettersDetailPages: MetadataRoute.Sitemap = newslettersContent.map((page) => ({
+    url: `${baseUrl}/newsletters/${page.slug}`,
     lastModified: new Date(),
     changeFrequency: 'weekly' as const,
     priority: 0.72,
@@ -316,8 +367,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...staticPages,
     ...topicPages,
     ...blogPages,
-    ...comparePagesIndex,
     ...compareDetailPages,
+    ...solutionsDetailPages,
+    ...useCasesDetailPages,
+    ...newslettersDetailPages,
     ...articlePages,
     ...dailyArchivePages,
   ];

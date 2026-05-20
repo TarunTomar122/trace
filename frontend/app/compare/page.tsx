@@ -29,26 +29,27 @@ export const metadata: Metadata = {
 
 export default function CompareHubPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <PublicHeader />
+    <div className="landing-page landing-grid-bg min-h-screen">
+      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
       <main className="px-4 sm:px-6">
-        <section className="mx-auto max-w-6xl pt-24 pb-12 sm:pt-32 sm:pb-16">
+        <section className="mx-auto max-w-6xl pt-16 pb-10 sm:pt-24 sm:pb-14">
           <div className="max-w-3xl">
-            <p className="text-[11px] uppercase tracking-[0.26em] text-secondary/40">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.15em] text-[#2563eb]">
               Comparison Guides
             </p>
-            <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
-              Better ways to follow tech news without building another reading backlog
+            <h1 className="mt-4 text-[2.5rem] font-bold tracking-[-0.04em] leading-[0.95] text-[#111827] sm:text-[3.75rem]">
+              Better ways to follow tech news<br className="hidden sm:block" />
+              without building another reading backlog
             </h1>
-            <p className="mt-5 text-base leading-8 text-secondary sm:text-lg">
+            <p className="mt-5 max-w-xl text-[16px] leading-[1.8] text-[#6b7280]">
               These pages are for people comparing Trace with RSS readers, traditional news apps,
               and other ways of keeping up. The idea is simple: less scrolling, more context.
             </p>
             <div className="mt-6 flex flex-wrap gap-2 text-sm">
-              <Link href="/blog" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+              <Link href="/blog" className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-[#6b7280] transition-colors hover:text-[#111827]">
                 Research
               </Link>
-              <Link href="/tools" className="rounded-full border border-border/25 px-3 py-1.5 text-secondary hover:text-foreground">
+              <Link href="/tools" className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-[#6b7280] transition-colors hover:text-[#111827]">
                 Tools
               </Link>
             </div>
@@ -61,18 +62,19 @@ export default function CompareHubPage() {
               <Link
                 key={page.slug}
                 href={`/compare/${page.slug}`}
-                className="rounded-3xl border border-border/20 bg-white p-7 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md dark:bg-gray-950"
+                className="landing-card p-7 transition-all hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]"
+                style={{ textDecoration: "none", color: "inherit" }}
               >
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-secondary/40">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#9ca3af]">
                   Comparison
                 </div>
-                <h2 className="mt-4 text-2xl font-semibold tracking-tight">
+                <h2 className="mt-4 text-2xl font-semibold tracking-tight text-[#111827]">
                   {page.heroTitle}
                 </h2>
-                <p className="mt-4 text-sm leading-7 text-secondary">
+                <p className="mt-4 text-sm leading-7 text-[#6b7280]">
                   {page.description}
                 </p>
-                <div className="mt-6 text-sm font-semibold text-foreground">
+                <div className="mt-6 text-sm font-semibold text-[#2563eb]">
                   Read guide →
                 </div>
               </Link>
