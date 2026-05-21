@@ -78,6 +78,19 @@ export const BRIEFING_PULSE_TAB_KEY = '__briefing_pulse__';
 /** Hot Tweets tab key — replaces Pulse in scroll layout tabs */
 export const HOT_TWEETS_TAB_KEY = '__hot_tweets__';
 
+function isMarketsFilter(key: string): boolean {
+  return key.trim().toLowerCase() === 'markets';
+}
+
+function stocksBrewUrl(storyId?: string): string {
+  const url = new URL('https://stocksbrew.online/');
+  url.searchParams.set('utm_source', 'trace');
+  url.searchParams.set('utm_medium', 'feed');
+  url.searchParams.set('utm_campaign', 'market_story');
+  if (storyId) url.searchParams.set('utm_content', storyId);
+  return url.toString();
+}
+
 /** Compact = scroll feed; Split = classic two-pane (header control) */
 export function BriefingLayoutToggle({
   layout,
@@ -588,34 +601,45 @@ function ScrollFeedInterestTabs({
             {tabs.map(({ key, label, pulseAccent }) => {
               const selected = activeFilter === key;
               return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setActiveFilter(key)}
-                  className={`relative shrink-0 px-3.5 py-1.5 text-[15px] font-medium whitespace-nowrap transition-colors ${
-                    pulseAccent
-                      ? selected
-                        ? 'font-bold text-foreground'
-                        : 'text-amber-800/80 dark:text-amber-400/90 hover:text-foreground'
-                      : selected
-                        ? 'font-bold text-foreground'
-                        : 'text-secondary/65 hover:text-foreground'
-                  }`}
-                >
-                  {label}
-                  {key !== BRIEFING_PULSE_TAB_KEY && (filterCounts[key] || 0) > 0 && (
-                    <span className={`ml-1 text-[13px] font-normal ${selected ? 'text-secondary/55' : 'text-secondary/45'}`}>
-                      {filterCounts[key]}
-                    </span>
+                <div key={key} className="inline-flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveFilter(key)}
+                    className={`relative shrink-0 px-3.5 py-1.5 text-[15px] font-medium whitespace-nowrap transition-colors ${
+                      pulseAccent
+                        ? selected
+                          ? 'font-bold text-foreground'
+                          : 'text-amber-800/80 dark:text-amber-400/90 hover:text-foreground'
+                        : selected
+                          ? 'font-bold text-foreground'
+                          : 'text-secondary/65 hover:text-foreground'
+                    }`}
+                  >
+                    {label}
+                    {key !== BRIEFING_PULSE_TAB_KEY && (filterCounts[key] || 0) > 0 && (
+                      <span className={`ml-1 text-[13px] font-normal ${selected ? 'text-secondary/55' : 'text-secondary/45'}`}>
+                        {filterCounts[key]}
+                      </span>
+                    )}
+                    {selected && (
+                      <span
+                        className={`absolute bottom-0 left-1/2 h-[3px] w-12 -translate-x-1/2 rounded-full ${
+                          pulseAccent ? 'bg-amber-600 dark:bg-amber-500' : 'bg-foreground'
+                        }`}
+                      />
+                    )}
+                  </button>
+                  {isMarketsFilter(key) && (
+                    <a
+                      href={stocksBrewUrl()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="whitespace-nowrap text-[11px] font-semibold text-[#2563eb] hover:underline"
+                    >
+                      Research in StocksBrew
+                    </a>
                   )}
-                  {selected && (
-                    <span
-                      className={`absolute bottom-0 left-1/2 h-[3px] w-12 -translate-x-1/2 rounded-full ${
-                        pulseAccent ? 'bg-amber-600 dark:bg-amber-500' : 'bg-foreground'
-                      }`}
-                    />
-                  )}
-                </button>
+                </div>
               );
             })}
           </div>
@@ -1088,6 +1112,7 @@ function DesktopArticlePageView({
   onBack: () => void;
   isItemLocked?: (itemId: string) => boolean;
 }) {
+  const desktopArticlePageRef = useRef<HTMLDivElement | null>(null);
   const story = lockedStory;
   const imageUrl = (selectedContent?.thumbnail || story?.thumbnail)
     ? getArticleImage(selectedContent?.thumbnail || story?.thumbnail || null, selectedContent?.title || story?.title || '')
@@ -1096,6 +1121,11 @@ function DesktopArticlePageView({
 
   // Build sidebar: exclude current article, take up to 8
   const sidebarItems = filteredList.filter((item) => item.id !== selectedId).slice(0, 8);
+  const selectedListItem = useMemo(
+    () => filteredList.find((item) => item.id === selectedId) ?? null,
+    [filteredList, selectedId]
+  );
+  const showStocksBrewCta = isMarketsFilter(selectedListItem?.interestId || selectedListItem?.tags?.[0] || '');
   const currentIdx = filteredList.findIndex((item) => item.id === selectedId);
   const [desktopStreamState, setDesktopStreamState] = useState<{ anchorId: string | null; loadedIds: string[] }>({
     anchorId: null,
@@ -1154,8 +1184,20 @@ function DesktopArticlePageView({
     }
   }, [desktopLoadedIds, desktopDetailCache, isLocked]);
 
+  // Reset the active scroll container when switching stories so the new article starts at the top.
+  useEffect(() => {
+    const root = desktopArticlePageRef.current;
+    if (!root) return;
+    const scroller = getScrollableAncestor(root);
+    if (scroller instanceof Window) {
+      scroller.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      return;
+    }
+    scroller.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [selectedId]);
+
   return (
-    <div className="pt-6 pb-16">
+    <div ref={desktopArticlePageRef} className="pt-6 pb-16">
       <div className="grid grid-cols-[1fr_300px] xl:grid-cols-[1fr_340px] gap-10 xl:gap-14 items-start">
         {/* Main article content */}
         <article className="min-w-0">
@@ -1303,6 +1345,19 @@ function DesktopArticlePageView({
                     Why It Matters
                   </h3>
                   <p className="text-[15px] text-secondary/75 leading-relaxed">{stripMarkdown(selectedContent.whyItMatters)}</p>
+                </div>
+              )}
+              {showStocksBrewCta && (
+                <div className="mb-8">
+                  <a
+                    href={stocksBrewUrl(selectedId ?? undefined)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-[#2563eb]/25 bg-[#2563eb]/5 px-4 py-2 text-[13px] font-semibold text-[#2563eb] transition-colors hover:bg-[#2563eb]/10"
+                  >
+                    Need deeper stock context? Open in StocksBrew
+                    <ExternalLink size={13} />
+                  </a>
                 </div>
               )}
 

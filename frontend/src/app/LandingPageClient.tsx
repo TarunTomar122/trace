@@ -742,6 +742,7 @@ export default function LandingPageClient() {
                 <Link href="/use-cases" className="transition-colors hover:text-foreground">Use Cases</Link>
                 <Link href="/resources" className="transition-colors hover:text-foreground">Resources</Link>
                 <Link href="/blog" className="transition-colors hover:text-foreground">Blog</Link>
+                <a href="https://stocksbrew.online/?utm_source=trace&utm_medium=homepage_footer&utm_campaign=cross_product_nav" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-foreground">StocksBrew</a>
                 <Link href="/onboarding?intent=read" className="transition-colors hover:text-foreground">Sign in</Link>
                 <Link href="/privacy-policy" className="transition-colors hover:text-foreground">Privacy</Link>
                 <Link href="/terms" className="transition-colors hover:text-foreground">Terms</Link>

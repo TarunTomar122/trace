@@ -630,6 +630,7 @@ export default function LandingPageClient({
                 <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] landing-muted">
                   <Link href="/blog" className="hover:text-[#111827]">Blog</Link>
                   <Link href="/compare" className="hover:text-[#111827]">Compare</Link>
+                  <a href="https://stocksbrew.online/?utm_source=trace&utm_medium=homepage_footer&utm_campaign=cross_product_nav" target="_blank" rel="noopener noreferrer" className="hover:text-[#111827]">StocksBrew</a>
                   <Link href="/privacy-policy" className="hover:text-[#111827]">Privacy</Link>
                   <Link href="/terms" className="hover:text-[#111827]">Terms</Link>
                   <Link href="/contact" className="hover:text-[#111827]">Contact</Link>

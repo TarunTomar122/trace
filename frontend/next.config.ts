@@ -25,6 +25,17 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'yourtrace.online' }],
+        destination: 'https://www.yourtrace.online/:path*',
+        permanent: true,
+      },
+      {
+        source: '/daily/:date',
+        destination: '/daily',
+        permanent: true,
+      },
+      {
         source: "/:path+/",
         destination: "/:path+",
         permanent: true,

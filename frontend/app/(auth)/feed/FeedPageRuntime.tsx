@@ -149,11 +149,13 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     feedFetcher,
     {
       fallbackData: initialFeed ?? undefined,
-      revalidateOnMount: !hasInitialFeed,
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      revalidateIfStale: false,
+      revalidateOnMount: true,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      revalidateIfStale: true,
       dedupingInterval: 60000,
+      refreshInterval: 120000,
+      refreshWhenHidden: false,
     }
   );
 
@@ -176,7 +178,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   const { data: hotTweets = [] } = useSWR<HotTweet[]>(
     'hot-tweets',
     hotTweetsFetcher,
-    { revalidateOnFocus: false, dedupingInterval: 600000 },
+    { revalidateOnFocus: true, revalidateOnReconnect: true, dedupingInterval: 10800000 },
   );
 
   const isSubscribedFromProfile = profile?.subscriptionStatus === 'active' || profile?.subscriptionStatus === 'trial'
@@ -638,6 +640,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-[#9ca3af]">
               <Link href="/blog" className="hover:text-[#111827] transition-colors">Blog</Link>
               <Link href="/compare" className="hover:text-[#111827] transition-colors">Compare</Link>
+              <a href="https://stocksbrew.online/?utm_source=trace&utm_medium=feed_footer&utm_campaign=cross_product_nav" target="_blank" rel="noopener noreferrer" className="hover:text-[#111827] transition-colors">StocksBrew</a>
               <Link href="/privacy-policy" className="hover:text-[#111827] transition-colors">Privacy</Link>
               <Link href="/terms" className="hover:text-[#111827] transition-colors">Terms</Link>
               <Link href="/contact" className="hover:text-[#111827] transition-colors">Contact</Link>

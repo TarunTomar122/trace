@@ -8,8 +8,8 @@ const WEB_FULL_FEED_CACHE_COLLECTION = 'web_feed_full_cache';
 const WEB_ITEM_DETAIL_CACHE_COLLECTION = 'web_feed_item_detail_cache';
 // Fresh-window for the web full-feed cache. After this the entry is still
 // served (stale-while-revalidate) while a background rebuild refreshes it.
-const WEB_FULL_FEED_CACHE_TTL_MS = 30 * 60 * 1000;
-const WEB_ITEM_DETAIL_CACHE_TTL_MS = 10 * 60 * 1000;
+const WEB_FULL_FEED_CACHE_TTL_MS = 3 * 60 * 1000;
+const WEB_ITEM_DETAIL_CACHE_TTL_MS = 3 * 60 * 1000;
 const WEB_FULL_FEED_CACHE_VERSION = 1;
 const WEB_ITEM_DETAIL_CACHE_VERSION = 1;
 const GUEST_FEED_INTERESTS = ['ai', 'tech', 'startups', 'engineering', 'markets'] as const;

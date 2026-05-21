@@ -213,9 +213,13 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     feedFetcher,
     {
       fallbackData: initialFeed ?? undefined,
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
+      revalidateOnMount: true,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      revalidateIfStale: true,
       dedupingInterval: 60000,
+      refreshInterval: 120000,
+      refreshWhenHidden: false,
     }
   );
 
@@ -227,9 +231,12 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     shouldLoadPulse ? 'feed-pulse' : null,
     pulseFetcher,
     {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      revalidateIfStale: true,
       dedupingInterval: 300000,
+      refreshInterval: 120000,
+      refreshWhenHidden: false,
     }
   );
 

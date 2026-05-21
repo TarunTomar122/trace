@@ -57,6 +57,15 @@ function getCategory(item: FeedListItem): string {
   return (INTEREST_LABEL[id] ?? id.replace(/-/g, ' ')).toUpperCase();
 }
 
+function stocksBrewUrl(storyId?: string): string {
+  const url = new URL('https://stocksbrew.online/');
+  url.searchParams.set('utm_source', 'trace');
+  url.searchParams.set('utm_medium', 'feed');
+  url.searchParams.set('utm_campaign', 'market_story');
+  if (storyId) url.searchParams.set('utm_content', storyId);
+  return url.toString();
+}
+
 function formatTimestamp(ts: string): string {
   try {
     const d = new Date(ts);
@@ -220,6 +229,7 @@ function RightPane({ item, isItemLocked }: { item: FeedListItem; isItemLocked: (
     item.timestamp ? getTimeLabel(item.timestamp) : null,
     item.sourceCount > 1 ? `${item.sourceCount} sources` : null,
   ].filter(Boolean).join('  ·  ');
+  const showStocksBrewCta = (item.interestId ?? item.tags?.[0] ?? '').toLowerCase() === 'markets';
 
   return (
     <div className="hidden min-h-0 flex-1 overflow-y-auto bg-white sm:block">
@@ -308,6 +318,18 @@ function RightPane({ item, isItemLocked }: { item: FeedListItem; isItemLocked: (
         {/* read original */}
         {url && (
           <div className="mt-10 border-t border-[#e5e7eb] pt-6">
+            {showStocksBrewCta && (
+              <div className="mb-3">
+                <a
+                  href={stocksBrewUrl(item.id)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#2563eb] hover:underline underline-offset-2"
+                >
+                  Need deeper stock context? Open in StocksBrew <ExternalLink size={13} />
+                </a>
+              </div>
+            )}
             <a
               href={url}
               target="_blank"
@@ -465,6 +487,11 @@ function PulseTab({
                   <div className="space-y-4">
                     {tools.slice(0, 5).map(item => {
                       const url = getItemUrl(item);
+                      const signalLabel = item.source === 'GitHub Trending'
+                        ? 'stars'
+                        : item.source === 'Product Hunt'
+                          ? 'upvotes'
+                          : 'points';
                       return (
                         <a
                           key={item.id}
@@ -480,8 +507,16 @@ function PulseTab({
                             <p className="text-[13px] font-semibold leading-snug text-[#111827] group-hover:underline underline-offset-2 decoration-[#111827]/20">
                               {item.title}
                             </p>
-                            {item.source && (
-                              <p className="mt-0.5 text-[11px] text-[#9ca3af]">{item.source}</p>
+                            <p className="mt-0.5 text-[11px] text-[#9ca3af]">
+                              {item.source || 'Source'}
+                              {item.signalCount != null && item.signalCount > 0
+                                ? ` · ${item.signalCount.toLocaleString()} ${signalLabel}`
+                                : ''}
+                            </p>
+                            {item.preview && (
+                              <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-[#6b7280]">
+                                {item.preview}
+                              </p>
                             )}
                           </div>
                           <ExternalLink size={11} className="mt-0.5 shrink-0 text-[#d1d5db] transition-colors group-hover:text-[#9ca3af]" />

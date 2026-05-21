@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-export const revalidate = 600;
+export const revalidate = 10800;
 
 export type HotTweet = {
   id: string;
@@ -39,7 +39,7 @@ export async function GET() {
   try {
     const res = await fetch('https://alignednews.com/feed.xml', {
       headers: { 'User-Agent': 'TraceHotTweets/1.0 (+https://trace.app)' },
-      next: { revalidate: 600 },
+      next: { revalidate: 10800 },
     });
 
     if (!res.ok) {
@@ -77,7 +77,7 @@ export async function GET() {
       { items: items.slice(0, 12) },
       {
         headers: {
-          'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=3600',
+          'Cache-Control': 'public, s-maxage=10800, stale-while-revalidate=3600',
         },
       },
     );
