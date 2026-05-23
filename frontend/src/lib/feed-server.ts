@@ -519,6 +519,30 @@ function sanitizePulseBucket(
   };
 }
 
+function dedupeTrendingItems(items: FeedItem[]): FeedItem[] {
+  const seen = new Set<string>();
+  const out: FeedItem[] = [];
+  for (const item of items) {
+    const key = String(item?.url || item?.id || '').trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
+function dedupeTrendingTopics(topics: TrendingTopic[]): TrendingTopic[] {
+  const seen = new Set<string>();
+  const out: TrendingTopic[] = [];
+  for (const topic of topics) {
+    const key = String(topic?.id || topic?.topic_key || '').trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(topic);
+  }
+  return out;
+}
+
 async function getViewerContext(uid: string, roleFromQuery = '') {
   if (!adminFirestore) {
     throw new Error('Server configuration error');
@@ -627,6 +651,19 @@ async function buildFullFeedBody(normalizedRole: string): Promise<FeedBody | nul
       }
       if (communityPulse.length === 0 && buckets.communityFeed.length > 0) communityPulse = buckets.communityFeed;
       if (buildPulse.length === 0 && buckets.buildFeed.length > 0) buildPulse = buckets.buildFeed;
+    }
+
+    // Match mobile behavior: merge previous daily global snapshot too.
+    if (globalSnapshot.docs.length > 1) {
+      const previousGlobalData = globalSnapshot.docs[1].data();
+      const previousTrending = Array.isArray(previousGlobalData.trending)
+        ? previousGlobalData.trending
+        : [];
+      const previousTopics = Array.isArray(previousGlobalData.trending_topics)
+        ? previousGlobalData.trending_topics
+        : [];
+      trending = dedupeTrendingItems([...(trending as FeedItem[]), ...(previousTrending as FeedItem[])]);
+      trendingTopics = dedupeTrendingTopics([...(trendingTopics as TrendingTopic[]), ...(previousTopics as TrendingTopic[])]);
     }
   }
 

@@ -40,7 +40,9 @@ JOBS = {
     },
     "trending": {
         "module": "v3.build_trending",
-        "pool_cadence_days": 1,  # Trending should refresh daily for fresh news
+        # Trending uses a tight freshness window (hours), so pool refresh must
+        # run every execution to avoid starving the feed with stale pool data.
+        "pool_cadence_days": 0,
         "description": "Trending (latest news across topics)",
     },
     "pulse": {

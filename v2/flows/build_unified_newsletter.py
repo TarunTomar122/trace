@@ -45,6 +45,19 @@ def _today_ist() -> str:
     return datetime.now(ist).strftime("%Y-%m-%d")
 
 
+def _yesterday_ist(date_str: str) -> str:
+    dt = datetime.strptime(date_str, "%Y-%m-%d")
+    return (dt - timedelta(days=1)).strftime("%Y-%m-%d")
+
+
+def _normalize_url(url: str) -> str:
+    return str(url or "").strip().lower()
+
+
+def _normalize_title(title: str) -> str:
+    return " ".join(str(title or "").strip().lower().split())
+
+
 def _build_trace_article_url(item: dict[str, Any]) -> str:
     item_id = str(item.get("id") or "").strip()
     feed_type = str(
@@ -154,6 +167,128 @@ def _collect_candidates(v3_store: V3Store, date: str) -> list[dict[str, Any]]:
     return candidates
 
 
+def _collect_from_role_sections(global_feed: dict[str, Any]) -> list[dict[str, Any]]:
+    """Collect additional candidates from today's role-based feed sections."""
+    candidates: list[dict[str, Any]] = []
+
+    def _append_item(item: dict[str, Any], source: str) -> None:
+        title = str(item.get("title") or "").strip()
+        if not title:
+            return
+        source_url = str(item.get("url") or "").strip()
+        summary_obj = item.get("summary") or {}
+        summary = ""
+        if isinstance(summary_obj, dict):
+            short = summary_obj.get("short_article") or {}
+            if isinstance(short, dict):
+                summary = str(short.get("subtitle") or short.get("body") or "").strip()
+            if not summary:
+                summary = str(summary_obj.get("why_it_matters") or "").strip()
+        if not summary:
+            summary = str(item.get("subtitle") or item.get("description") or "").strip()
+        image_url = str(item.get("thumbnail") or "").strip()
+        item_id = str(item.get("id") or source_url or title).strip()
+        candidates.append(
+            {
+                "id": item_id,
+                "title": title,
+                "summary": summary,
+                "url": source_url,
+                "source_url": source_url,
+                "trace_url": "",
+                "image_url": image_url,
+                "key_points": [],
+                "source": source,
+            }
+        )
+
+    for section in ("for_you_roles", "pulse_roles", "community_pulse_roles", "build_pulse_roles"):
+        role_map = global_feed.get(section) or {}
+        if not isinstance(role_map, dict):
+            continue
+        for role_items in role_map.values():
+            if not isinstance(role_items, list):
+                continue
+            for item in role_items:
+                if isinstance(item, dict):
+                    _append_item(item, section)
+
+    daily_pulse_roles = global_feed.get("daily_pulse_roles") or {}
+    if isinstance(daily_pulse_roles, dict):
+        for role_bucket in daily_pulse_roles.values():
+            if not isinstance(role_bucket, dict):
+                continue
+            for key in ("tools", "blogs", "discussions"):
+                rows = role_bucket.get(key) or []
+                if not isinstance(rows, list):
+                    continue
+                for row in rows:
+                    if isinstance(row, dict):
+                        _append_item(row, f"daily_pulse_roles.{key}")
+
+    return candidates
+
+
+def _dedupe_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    deduped: list[dict[str, Any]] = []
+    seen_urls: set[str] = set()
+    seen_titles: set[str] = set()
+    for c in candidates:
+        norm_url = _normalize_url(str(c.get("url") or c.get("source_url") or ""))
+        norm_title = _normalize_title(str(c.get("title") or ""))
+        if norm_url and norm_url in seen_urls:
+            continue
+        # Title dedupe only when URL is missing.
+        if not norm_url and norm_title and norm_title in seen_titles:
+            continue
+        if norm_url:
+            seen_urls.add(norm_url)
+        if not norm_url and norm_title:
+            seen_titles.add(norm_title)
+        deduped.append(c)
+    return deduped
+
+
+def _load_previous_newsletter_story_keys(store: FirestoreStore, date: str) -> tuple[set[str], set[str]]:
+    prev_date = _yesterday_ist(date)
+    doc = store.db.collection("unified_newsletters").document(prev_date).get()
+    if not doc.exists:
+        return set(), set()
+    data = doc.to_dict() or {}
+    stories = data.get("stories") or []
+    urls: set[str] = set()
+    titles: set[str] = set()
+    if isinstance(stories, list):
+        for story in stories:
+            if not isinstance(story, dict):
+                continue
+            norm_url = _normalize_url(str(story.get("url") or ""))
+            norm_title = _normalize_title(str(story.get("title") or ""))
+            if norm_url:
+                urls.add(norm_url)
+            if norm_title:
+                titles.add(norm_title)
+    return urls, titles
+
+
+def _exclude_previous_story_keys(
+    candidates: list[dict[str, Any]],
+    prev_urls: set[str],
+    prev_titles: set[str],
+) -> list[dict[str, Any]]:
+    filtered: list[dict[str, Any]] = []
+    for c in candidates:
+        norm_url = _normalize_url(str(c.get("url") or c.get("source_url") or ""))
+        norm_title = _normalize_title(str(c.get("title") or ""))
+        if norm_url and norm_url in prev_urls:
+            continue
+        # Title fallback only when URL is missing.
+        if not norm_url and norm_title and norm_title in prev_titles:
+            continue
+        filtered.append(c)
+    return filtered
+
+
 def _llm_pick_titles(
     client: OpenAI,
     candidates: list[dict[str, Any]],
@@ -172,10 +307,10 @@ def _llm_pick_titles(
     user = (
         f"Here are today's candidate story titles (numbered):\n\n"
         f"{numbered_titles}\n\n"
-        f"Pick the {MIN_PICKS}-{MAX_PICKS} most interesting and diverse stories "
+        f"Pick the {target} most interesting and diverse stories "
         f"for today's newsletter. Favor variety across topics. Avoid near-duplicates.\n\n"
         f"Respond ONLY as JSON: {{\"picks\": [<index>, <index>, ...]}} "
-        f"with {MIN_PICKS}-{MAX_PICKS} indices from the list above."
+        f"with exactly {target} indices from the list above."
     )
 
     resp = client.chat.completions.create(
@@ -287,7 +422,22 @@ def build_unified_newsletter(
                 "date": target_date,
             }
 
+    global_feed = v3_store.load_global_feed(target_date) or {}
     candidates = _collect_candidates(v3_store, target_date)
+    candidates.extend(_collect_from_role_sections(global_feed))
+    candidates = _dedupe_candidates(candidates)
+    previous_urls, previous_titles = _load_previous_newsletter_story_keys(store, target_date)
+    if previous_urls or previous_titles:
+        filtered_candidates = _exclude_previous_story_keys(candidates, previous_urls, previous_titles)
+        if not filtered_candidates:
+            return {
+                "success": False,
+                "error": "all today's candidates were already sent yesterday",
+                "date": target_date,
+                "pool_size": len(candidates),
+            }
+        candidates = filtered_candidates
+
     if not candidates:
         return {
             "success": False,
