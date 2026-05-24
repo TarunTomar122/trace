@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { FieldPath } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import { isInstagramStudioAuthorized } from '@/lib/instagram-studio-auth';
+import { loadStudioNewsFeed, markCoveredKeys } from '@/lib/instagram-studio-feed';
 
 type Topic = Record<string, unknown>;
 
@@ -53,23 +53,8 @@ function coveredTrendingKeys(topics: Topic[]): { ids: Set<string>; urls: Set<str
   return { ids, urls };
 }
 
-async function loadLatestFeed(): Promise<{ date: string; topics: Topic[]; trending: Topic[] }> {
-  if (!adminDb) return { date: '', topics: [], trending: [] };
-  const snap = await adminDb
-    .collection('v3_user_feeds')
-    .doc('_global')
-    .collection('daily')
-    .orderBy(FieldPath.documentId(), 'desc')
-    .limit(1)
-    .get();
-  if (snap.empty) return { date: '', topics: [], trending: [] };
-  const doc = snap.docs[0];
-  const data = doc.data() || {};
-  return {
-    date: doc.id,
-    topics: Array.isArray(data.trending_topics) ? (data.trending_topics as Topic[]) : [],
-    trending: Array.isArray(data.trending) ? (data.trending as Topic[]) : [],
-  };
+async function loadLatestFeed() {
+  return loadStudioNewsFeed('developer');
 }
 
 export async function GET(request: NextRequest) {
@@ -81,10 +66,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Server Firebase Admin not configured' }, { status: 500 });
     }
 
-    const { date, topics, trending } = await loadLatestFeed();
-    if (!topics.length && !trending.length) {
+    const { date, forYou, topics, trending } = await loadLatestFeed();
+    if (!forYou.length && !topics.length && !trending.length) {
       return NextResponse.json({ error: 'No trending stories available' }, { status: 404 });
     }
+
+    const shapedForYou = forYou
+      .filter((item) => norm(item.title))
+      .map((item, index) => ({
+        id: String(item.id || item.url || `for-you-${index}`),
+        title: norm(item.title),
+        thumbnail: String(item.thumbnail || ''),
+        category: inferCategory(item),
+        sourceCount: 1,
+        articleCount: 1,
+        kind: 'item' as const,
+      }))
+      .filter((t) => t.id && t.title);
 
     const shapedTopics = topics
       .filter((t) => norm(t.title))
@@ -100,6 +98,7 @@ export async function GET(request: NextRequest) {
       .filter((t) => t.id && t.title);
 
     const covered = coveredTrendingKeys(topics);
+    markCoveredKeys(covered, forYou);
     const shapedItems = trending
       .filter((item) => {
         const itemId = String(item.id || '').trim();
@@ -117,7 +116,7 @@ export async function GET(request: NextRequest) {
       }))
       .filter((t) => t.id && t.title);
 
-    return NextResponse.json({ ok: true, date, topics: [...shapedTopics, ...shapedItems] });
+    return NextResponse.json({ ok: true, date, topics: [...shapedForYou, ...shapedTopics, ...shapedItems] });
   } catch (error) {
     console.error('instagram studio topics error:', error);
     return NextResponse.json(

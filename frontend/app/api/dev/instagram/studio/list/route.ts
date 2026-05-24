@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { FieldPath } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import { isInstagramStudioAuthorized } from '@/lib/instagram-studio-auth';
+import { loadStudioNewsFeed } from '@/lib/instagram-studio-feed';
 
 type FeedItem = Record<string, unknown>;
 
@@ -127,18 +128,13 @@ function collectFromDoc(docData: Record<string, unknown>, interest: string, feed
 }
 
 async function loadGlobalTrendingFeed(interest: string): Promise<Array<{ section: string; item: FeedItem }>> {
-  if (!adminDb) return [];
-  const snap = await adminDb
-    .collection('v3_user_feeds')
-    .doc('_global')
-    .collection('daily')
-    .orderBy(FieldPath.documentId(), 'desc')
-    .limit(1)
-    .get();
-  if (snap.empty) return [];
-  const data = snap.docs[0].data() || {};
-  const trending = Array.isArray(data.trending) ? data.trending : [];
+  const { forYou, trending } = await loadStudioNewsFeed('developer');
   const out: Array<{ section: string; item: FeedItem }> = [];
+  for (const raw of forYou) {
+    if (!raw || typeof raw !== 'object') continue;
+    const item = raw as FeedItem;
+    if (matchesInterest(item, interest)) out.push({ section: 'for_you', item });
+  }
   for (const raw of trending) {
     if (!raw || typeof raw !== 'object') continue;
     const item = raw as FeedItem;

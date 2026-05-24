@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { FieldPath } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import { isInstagramStudioAuthorized } from '@/lib/instagram-studio-auth';
+import { loadStudioNewsFeed, markCoveredKeys } from '@/lib/instagram-studio-feed';
 
 type Topic = Record<string, unknown>;
 
@@ -205,16 +205,20 @@ function standaloneTrendingTopic(item: Topic, index: number): Topic {
   };
 }
 
-function storyCandidates(topics: Topic[], trending: Topic[]): Topic[] {
+function storyCandidates(forYou: Topic[], topics: Topic[], trending: Topic[]): Topic[] {
   const covered = coveredTrendingKeys(topics);
+  markCoveredKeys(covered, forYou);
+  const forYouItems = forYou
+    .filter((item) => norm(item.title))
+    .map((item, index) => standaloneTrendingTopic(item, index));
   const uncoveredItems = trending
     .filter((item) => {
       const id = String(item.id || '').trim();
       const url = String(item.url || '').trim();
       return norm(item.title) && !covered.ids.has(id) && !covered.urls.has(url);
     })
-    .map(standaloneTrendingTopic);
-  return [...topics, ...uncoveredItems];
+    .map((item, index) => standaloneTrendingTopic(item, forYouItems.length + index));
+  return [...forYouItems, ...topics.filter((t) => norm(t.title)), ...uncoveredItems];
 }
 
 function pickStoryStyle(mode: CarouselStyle, index: number): Exclude<CarouselStyle, 'mixed'> {
@@ -444,23 +448,8 @@ function buildDeckMessaging(category: CarouselCategory): DeckMessaging {
   };
 }
 
-async function loadLatestFeed(): Promise<{ date: string; topics: Topic[]; trending: Topic[] }> {
-  if (!adminDb) return { date: '', topics: [], trending: [] };
-  const snap = await adminDb
-    .collection('v3_user_feeds')
-    .doc('_global')
-    .collection('daily')
-    .orderBy(FieldPath.documentId(), 'desc')
-    .limit(1)
-    .get();
-  if (snap.empty) return { date: '', topics: [], trending: [] };
-  const doc = snap.docs[0];
-  const data = doc.data() || {};
-  return {
-    date: doc.id,
-    topics: Array.isArray(data.trending_topics) ? (data.trending_topics as Topic[]) : [],
-    trending: Array.isArray(data.trending) ? (data.trending as Topic[]) : [],
-  };
+async function loadLatestFeed() {
+  return loadStudioNewsFeed('developer');
 }
 
 function selectTopics(topics: Topic[], category: CarouselCategory, storyCount: number): Topic[] {
@@ -558,8 +547,8 @@ export async function GET(request: NextRequest) {
 
     const slideCount = clampSlides(Number(searchParams.get('slides') || '6'));
 
-    const { date, topics, trending } = await loadLatestFeed();
-    const candidates = storyCandidates(topics, trending);
+    const { date, forYou, topics, trending } = await loadLatestFeed();
+    const candidates = storyCandidates(forYou, topics, trending);
     if (!candidates.length) {
       return NextResponse.json({ error: 'No trending stories available' }, { status: 404 });
     }
