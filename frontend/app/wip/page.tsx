@@ -1,59 +1,37 @@
 "use client";
 
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Construction, Home } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Construction } from 'lucide-react';
+import PublicHeader from '@/components/PublicHeader';
+import Footer from '@/components/Footer';
 
 export default function WIPPage() {
-  const router = useRouter();
-
   return (
-    <main className="min-h-screen bg-background text-foreground font-serif flex items-center justify-center px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="max-w-xl w-full text-center space-y-8"
-      >
-        {/* Logo */}
-        <div className="text-lg text-foreground uppercase flex items-center justify-center gap-3 tracking-[0.15em] font-serif font-black mb-8">
-          <div className="flex flex-col gap-1">
-            <div className="w-5 h-[2px] bg-primary"></div>
-            <div className="w-6 h-[2px] bg-primary/30"></div>
+    <div className="landing-page landing-grid-bg min-h-screen flex flex-col">
+      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
+      <main className="flex flex-1 items-center justify-center px-4 py-16">
+        <div className="max-w-xl w-full text-center">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#eff6ff]">
+            <Construction className="text-[#2563eb]" size={40} />
           </div>
-          TRACE
-        </div>
-
-        {/* Icon */}
-        <div className="flex justify-center mb-6">
-          <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center">
-            <Construction className="text-primary" size={48} />
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="space-y-6">
-          <h1 className="text-4xl md:text-5xl font-serif font-light tracking-tight uppercase">
-            Work <span className="text-primary">In</span> Progress
-          </h1>
-          
-          <p className="text-lg text-secondary font-mono max-w-md mx-auto">
-            This feature is currently being built. Check back soon!
+          <p className="text-[12px] font-semibold uppercase tracking-[0.15em] text-[#2563eb]">
+            Work in progress
           </p>
-
-          <div className="pt-8">
-            <button
-              onClick={() => router.push('/')}
-              className="px-8 py-4 bg-primary text-primary-foreground text-sm font-mono uppercase tracking-wider hover:tracking-[0.3em] transition-all flex items-center gap-2 mx-auto"
-            >
-              <Home size={16} />
-              Back to Home
-            </button>
+          <h1 className="mt-4 text-[2.5rem] font-bold tracking-[-0.04em] leading-[0.95] text-[#111827] sm:text-[3.25rem]">
+            Coming soon
+          </h1>
+          <p className="mt-5 text-[16px] leading-[1.8] text-[#6b7280]">
+            This feature is currently being built. Check back soon.
+          </p>
+          <div className="mt-8">
+            <Link href="/" className="landing-btn landing-btn-primary landing-btn-sm">
+              Back to home
+            </Link>
           </div>
         </div>
-      </motion.div>
-    </main>
+      </main>
+      <Footer />
+    </div>
   );
 }
-

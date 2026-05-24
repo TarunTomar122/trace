@@ -112,17 +112,15 @@ export function dedupeTrendingTopics(items: TrendingTopic[]): TrendingTopic[] {
   return out;
 }
 
-export function applyFeedFreshnessAndDedupe<
+export function applyFeedDedupe<
   T extends {
     for_you?: FeedItem[];
     trending?: FeedItem[];
     trending_topics?: TrendingTopic[];
   },
 >(feed: T): T {
-  const forYou = dedupeFeedItems(filterFeedItemsByMaxAge(feed.for_you || []));
-  const trendingTopics = dedupeTrendingTopics(
-    filterTrendingTopicsByMaxAge(feed.trending_topics || []),
-  );
+  const forYou = dedupeFeedItems(feed.for_you || []);
+  const trendingTopics = dedupeTrendingTopics(feed.trending_topics || []);
   const topicArticleUrls = new Set<string>();
   for (const topic of trendingTopics) {
     for (const article of topic.articles || []) {
@@ -144,9 +142,7 @@ export function applyFeedFreshnessAndDedupe<
     return true;
   });
 
-  const trendingFiltered = dedupeFeedItems(
-    filterFeedItemsByMaxAge(feed.trending || []),
-  ).filter((item) => {
+  const trendingFiltered = dedupeFeedItems(feed.trending || []).filter((item) => {
     const urlKey = canonicalUrlKey(item.url);
     return !urlKey || !topicArticleUrls.has(urlKey);
   });
@@ -165,4 +161,20 @@ export function applyFeedFreshnessAndDedupe<
     trending: trendingDeduped,
     trending_topics: trendingTopics,
   };
+}
+
+/** Age filter + dedupe — use on mobile/API paths that need a rolling window. */
+export function applyFeedFreshnessAndDedupe<
+  T extends {
+    for_you?: FeedItem[];
+    trending?: FeedItem[];
+    trending_topics?: TrendingTopic[];
+  },
+>(feed: T): T {
+  return applyFeedDedupe({
+    ...feed,
+    for_you: filterFeedItemsByMaxAge(feed.for_you || []),
+    trending: filterFeedItemsByMaxAge(feed.trending || []),
+    trending_topics: filterTrendingTopicsByMaxAge(feed.trending_topics || []),
+  });
 }

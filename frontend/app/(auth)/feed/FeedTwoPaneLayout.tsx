@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ExternalLink, Flame } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
@@ -19,6 +19,11 @@ const MD_COMPONENTS: Components = {
 import { WireFeedLoadingSkeleton } from './FeedBootShell';
 import { organizeEditionFeed } from './FeedEditionOrganizer';
 import { FeedListItem, INTEREST_LABEL, getTimeLabel } from './FeedUi';
+import {
+  FEED_LIST_SCROLL_KEY,
+  FEED_RESTORE_SCROLL_KEY,
+  FEED_SELECTED_STORY_KEY,
+} from './FeedPulse';
 import type { FeedItem, TrendingTopic, TopicTimelineEvent } from '@/lib/firestore';
 import type { HotTweet } from './FeedOneScreen';
 import { ArticleImage } from '@/components/ArticleImage';
@@ -107,6 +112,7 @@ function LeftPane({
   selectedId,
   onSelect,
   isItemLocked,
+  listScrollRef,
 }: {
   edition: ReturnType<typeof organizeEditionFeed>;
   allStories: FeedListItem[];
@@ -115,6 +121,7 @@ function LeftPane({
   selectedId: string | null;
   onSelect: (item: FeedListItem) => void;
   isItemLocked: (id: string) => boolean;
+  listScrollRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const interestPills = useMemo(() => {
     const counts = new Map<string, number>();
@@ -174,7 +181,7 @@ function LeftPane({
       </div>
 
       {/* story list */}
-      <div className="flex-1 min-h-0 overflow-y-auto bg-white">
+      <div ref={listScrollRef} className="flex-1 min-h-0 overflow-y-auto bg-white">
         {visibleStories.map((item) => {
           const selected = item.id === effectiveSelected;
           const meta = [
@@ -560,6 +567,8 @@ export default function FeedTwoPaneLayout({
   const [tab, setTab] = useState<'news' | 'pulse'>('news');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeInterest, setActiveInterest] = useState<string | null>(null);
+  const listScrollRef = useRef<HTMLDivElement>(null);
+  const restoredScrollRef = useRef(false);
 
   const edition = useMemo(
     () => organizeEditionFeed(storyList, interestOrder),
@@ -572,6 +581,32 @@ export default function FeedTwoPaneLayout({
     ...edition.latest,
   ], [edition]);
 
+  useEffect(() => {
+    if (restoredScrollRef.current || typeof window === 'undefined') return;
+    if (sessionStorage.getItem(FEED_RESTORE_SCROLL_KEY) !== '1') return;
+    if (allStories.length === 0) return;
+
+    restoredScrollRef.current = true;
+    sessionStorage.removeItem(FEED_RESTORE_SCROLL_KEY);
+
+    const savedId = sessionStorage.getItem(FEED_SELECTED_STORY_KEY);
+    if (savedId && allStories.some((story) => story.id === savedId)) {
+      setSelectedId(savedId);
+    }
+
+    const savedScroll = sessionStorage.getItem(FEED_LIST_SCROLL_KEY);
+    if (!savedScroll) return;
+
+    const top = Number.parseInt(savedScroll, 10);
+    if (!Number.isFinite(top) || top <= 0) return;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        listScrollRef.current?.scrollTo({ top, behavior: 'auto' });
+      });
+    });
+  }, [allStories]);
+
   const effectiveSelectedId = selectedId ?? allStories[0]?.id ?? null;
   const selectedItem = useMemo(
     () => allStories.find(s => s.id === effectiveSelectedId) ?? null,
@@ -581,6 +616,9 @@ export default function FeedTwoPaneLayout({
   const handleSelect = (item: FeedListItem) => {
     setSelectedId(item.id);
     if (typeof window !== 'undefined' && window.innerWidth < 640) {
+      sessionStorage.setItem(FEED_LIST_SCROLL_KEY, String(listScrollRef.current?.scrollTop ?? 0));
+      sessionStorage.setItem(FEED_SELECTED_STORY_KEY, item.id);
+      sessionStorage.setItem(FEED_RESTORE_SCROLL_KEY, '1');
       onSelectStory(item);
     }
   };
@@ -614,6 +652,7 @@ export default function FeedTwoPaneLayout({
                 selectedId={effectiveSelectedId}
                 onSelect={handleSelect}
                 isItemLocked={isItemLocked}
+                listScrollRef={listScrollRef}
               />
               {selectedItem && (
                 <RightPane item={selectedItem} isItemLocked={isItemLocked} />

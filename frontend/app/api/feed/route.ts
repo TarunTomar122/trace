@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(feed, {
       headers: {
-        'Cache-Control': 'private, max-age=60, stale-while-revalidate=300',
+        'Cache-Control': 'private, no-store, no-cache, must-revalidate',
         'Server-Timing': serverTiming,
       },
     });

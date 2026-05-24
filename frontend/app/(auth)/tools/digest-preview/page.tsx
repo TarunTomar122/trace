@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { consumePendingPostAuthIntent, getPostAuthDestination, useAuth } from "@/contexts/AuthContext";
 import { getArticleImage } from "@/lib/fallback-images";
+import PublicHeader from "@/components/PublicHeader";
+import Footer from "@/components/Footer";
 
 // Interest options
 const INTERESTS = [
@@ -253,24 +255,8 @@ export default function DigestPreviewPage() {
   })();
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Header */}
-      <header className="border-b border-border/40">
-        <div className="container mx-auto px-4 max-w-4xl">
-          <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center gap-2">
-              <img src="/trace.webp" alt="Trace" className="h-7" />
-              <span className="font-semibold text-lg">Trace</span>
-            </Link>
-            <Link
-              href="/"
-              className="text-sm text-secondary/60 hover:text-foreground transition-colors"
-            >
-              Back to home
-            </Link>
-          </div>
-        </div>
-      </header>
+    <div className="landing-page landing-grid-bg min-h-screen">
+      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
 
       <main className="container mx-auto px-4 max-w-4xl py-12">
         <AnimatePresence mode="wait">
@@ -387,6 +373,7 @@ export default function DigestPreviewPage() {
           )}
         </AnimatePresence>
       </main>
+      <Footer />
     </div>
   );
 }

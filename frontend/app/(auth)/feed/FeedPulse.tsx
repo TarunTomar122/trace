@@ -868,6 +868,19 @@ function buildTopicShareUrl(topic: TrendingTopic): string | null {
 
 const FEED_RETURN_PATH = '/feed';
 export const FEED_RELATED_POOL_KEY = 'trace_feed_related_pool';
+export const FEED_LIST_SCROLL_KEY = 'trace_feed_list_scroll';
+export const FEED_SELECTED_STORY_KEY = 'trace_feed_selected_id';
+export const FEED_RESTORE_SCROLL_KEY = 'trace_feed_should_restore';
+
+/** Pop feed from history when possible — avoids remounting /feed as a fresh route. */
+export function goBackToFeed(router: { back: () => void; replace: (href: string) => void }) {
+  if (typeof window !== 'undefined' && window.history.length > 1) {
+    router.back();
+    return;
+  }
+  router.replace(FEED_RETURN_PATH);
+}
+
 const RAIL_STORY_COUNT = 4;
 
 function storyTimestamp(item: FeedListItem): number {

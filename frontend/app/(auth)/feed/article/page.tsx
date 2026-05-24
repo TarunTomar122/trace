@@ -17,6 +17,7 @@ import { FeedItem, TrendingTopic } from "@/lib/firestore";
 import { getArticleImage } from "@/lib/fallback-images";
 import FeedStoryTopic from "../FeedStoryTopic";
 import { type FeedListItem, getTopicDisplay } from "../FeedUi";
+import { goBackToFeed } from "../FeedPulse";
 
 
 const CARD_TYPE_LABELS: Record<string, string> = {
@@ -220,17 +221,8 @@ export default function ArticlePage() {
   };
 
   const handleBack = () => {
-    const returnToFromUrl = getSafeReturnTo(
-      new URLSearchParams(window.location.search).get("returnTo")
-    );
-    const storedReturnTo = getSafeReturnTo(sessionStorage.getItem(ARTICLE_RETURN_TO_KEY));
-    const returnTo = storedReturnTo || returnToFromUrl;
-    if (returnTo) {
-      sessionStorage.removeItem(ARTICLE_RETURN_TO_KEY);
-      router.replace(returnTo);
-    } else {
-      router.back();
-    }
+    sessionStorage.removeItem(ARTICLE_RETURN_TO_KEY);
+    goBackToFeed(router);
   };
 
   const handleShare = async () => {
@@ -558,13 +550,14 @@ export default function ArticlePage() {
       {/* header */}
       <header className="sticky top-0 z-40 border-b border-[#e5e7eb]/60 bg-[#f9f9f7] px-5 py-3">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
-          <Link
-            href={returnHref}
-            prefetch={false}
+          <button
+            type="button"
+            onClick={handleBack}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white shadow-[0_1px_4px_rgba(0,0,0,0.08)] text-[#374151] hover:text-[#111827]"
+            aria-label="Back to feed"
           >
             <ArrowLeft size={16} />
-          </Link>
+          </button>
           <p className="flex-1 truncate text-center text-[12px] font-medium text-[#9ca3af]">
             {metaLine}
           </p>

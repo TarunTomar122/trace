@@ -575,13 +575,13 @@ export default async function TrendingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="landing-page landing-grid-bg min-h-screen">
       <Script
         id="trending-collection-schema"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
       />
-      <PublicHeader />
+      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         <TrendingContent

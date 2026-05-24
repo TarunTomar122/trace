@@ -1,16 +1,16 @@
 import { adminFirestore } from '@/lib/firebase-admin';
-import { applyFeedFreshnessAndDedupe } from '@/lib/feed-dedupe';
+import { applyFeedDedupe } from '@/lib/feed-dedupe';
 import type { FeedItem, TopicTimelineEvent, TrendingTopic, V3UserFeed } from '@/lib/firestore';
 
-/** Latest global edition only — freshness is enforced by rolling hour window. */
-const GLOBAL_FEED_LOOKBACK_DOCS = 1;
+/** Today + yesterday's global edition; pipeline handles source freshness. */
+const GLOBAL_FEED_LOOKBACK_DOCS = 2;
 const WEB_FULL_FEED_CACHE_COLLECTION = 'web_feed_full_cache';
 const WEB_ITEM_DETAIL_CACHE_COLLECTION = 'web_feed_item_detail_cache';
 // Fresh-window for the web full-feed cache. After this the entry is still
 // served (stale-while-revalidate) while a background rebuild refreshes it.
 const WEB_FULL_FEED_CACHE_TTL_MS = 3 * 60 * 1000;
 const WEB_ITEM_DETAIL_CACHE_TTL_MS = 3 * 60 * 1000;
-const WEB_FULL_FEED_CACHE_VERSION = 1;
+const WEB_FULL_FEED_CACHE_VERSION = 2;
 const WEB_ITEM_DETAIL_CACHE_VERSION = 1;
 const GUEST_FEED_INTERESTS = ['ai', 'tech', 'startups', 'engineering', 'markets'] as const;
 const MAX_SUMMARY_BODY_CHARS = 2200;
@@ -645,7 +645,7 @@ async function buildFullFeedBody(normalizedRole: string): Promise<FeedBody | nul
     metadata,
   };
 
-  return applyFeedFreshnessAndDedupe(body);
+  return applyFeedDedupe(body);
 }
 
 // In-memory dedupe for background rebuilds. If several concurrent requests
@@ -672,27 +672,6 @@ async function rebuildAndCacheFullFeed(normalizedRole: string): Promise<FeedBody
     console.error('[feed-server] item-detail cache write failed:', error);
   });
   return feed;
-}
-
-function triggerBackgroundRebuild(normalizedRole: string) {
-  if (inflightRebuilds.has(normalizedRole)) return;
-  const rebuildStart = Date.now();
-  const promise = rebuildAndCacheFullFeed(normalizedRole)
-    .then((result) => {
-      console.log(
-        `[perf][feed-server] bg rebuild done role=${normalizedRole} `
-        + `ms=${Date.now() - rebuildStart} success=${Boolean(result)}`
-      );
-      return result;
-    })
-    .catch((error) => {
-      console.error('[feed-server] bg rebuild failed:', error);
-      return null;
-    })
-    .finally(() => {
-      inflightRebuilds.delete(normalizedRole);
-    });
-  inflightRebuilds.set(normalizedRole, promise);
 }
 
 async function getFullFeedBodyForRole(normalizedRole: string): Promise<FeedBody | null> {
@@ -729,11 +708,23 @@ async function getFullFeedBodyForRole(normalizedRole: string): Promise<FeedBody 
             + `topics=${f.trending_topics?.length ?? 0}`
           );
         } catch {}
-        // Stale-while-revalidate: always return the cached feed, but kick off
-        // a background rebuild if it's past its fresh window. The user never
-        // waits for buildFullFeedBody on the hot path.
+        // Past fresh window: rebuild on the request path so /feed always gets
+        // today's edition instead of silently serving stale while rebuilding.
         if (!isFresh) {
-          triggerBackgroundRebuild(normalizedRole);
+          const existing = inflightRebuilds.get(normalizedRole);
+          const rebuildPromise = existing ?? (() => {
+            const promise = rebuildAndCacheFullFeed(normalizedRole).finally(() => {
+              inflightRebuilds.delete(normalizedRole);
+            });
+            inflightRebuilds.set(normalizedRole, promise);
+            return promise;
+          })();
+          try {
+            const rebuilt = await rebuildPromise;
+            if (rebuilt) return rebuilt;
+          } catch (error) {
+            console.error('[feed-server] stale cache rebuild failed:', error);
+          }
         }
         void writeItemDetailCacheForRole(
           normalizedRole,

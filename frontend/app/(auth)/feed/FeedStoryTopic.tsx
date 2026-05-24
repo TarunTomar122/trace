@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useMemo, useCallback } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -14,6 +13,7 @@ import {
   getFeedStoryPath,
   getFeedRelatedPool,
 } from "./FeedUi";
+import { goBackToFeed } from "./FeedPulse";
 
 const MD_COMPONENTS = {
   p: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
@@ -118,13 +118,14 @@ export default function FeedStoryTopic({
       {/* header */}
       <header className="sticky top-0 z-40 border-b border-[#e5e7eb]/60 bg-[#f9f9f7] px-5 py-3">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
-          <Link
-            href={returnHref}
-            prefetch={false}
+          <button
+            type="button"
+            onClick={() => goBackToFeed(router)}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white shadow-[0_1px_4px_rgba(0,0,0,0.08)] text-[#374151] hover:text-[#111827]"
+            aria-label="Back to feed"
           >
             <ArrowLeft size={16} />
-          </Link>
+          </button>
           {metaLine && (
             <p className="flex-1 truncate text-center text-[12px] font-medium text-[#9ca3af]">
               {metaLine}

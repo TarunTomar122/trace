@@ -57,7 +57,7 @@ function TrendingClickLock({ children, active }: { children: React.ReactNode; ac
           onClick={() => setOpen(false)}
         >
           <div
-            className="relative w-full max-w-sm rounded-2xl border border-border bg-surface p-6 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.18)]"
+            className="relative w-full max-w-sm rounded-2xl border border-[#e5e7eb] bg-white p-6 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.18)]"
             onClick={(e) => e.stopPropagation()}
           >
             <button

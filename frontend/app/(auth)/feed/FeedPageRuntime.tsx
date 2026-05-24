@@ -14,9 +14,7 @@ import {
 } from '@/lib/firestore';
 import { trackPaywallShown, trackSubscriptionStarted } from '@/lib/posthog';
 import Image from 'next/image';
-import { applyFeedFreshnessAndDedupe } from '@/lib/feed-dedupe';
-import { dedupeByStoryTitle } from '@/lib/feed-story-dedupe';
-import { consumePrefetchedFeed } from '@/lib/feed-prefetch';
+import { clearFeedPrefetch } from '@/lib/feed-prefetch';
 import FeedBootShell from './FeedBootShell';
 import { normalizeInterestOrder } from './FeedEditionOrganizer';
 import { type HotTweet } from './FeedOneScreen';
@@ -31,6 +29,7 @@ import {
   getTopicDisplay,
   prepareFeedStoryNavigation,
 } from './FeedUi';
+import { FEED_RESTORE_SCROLL_KEY } from './FeedPulse';
 import {
   feedItemDetailSwrKey,
   type FeedItemDetailResponse,
@@ -52,11 +51,13 @@ async function fetchWithAuthFallback<T>(path: string): Promise<T | null> {
   const startedAt = performance.now();
   const res = await fetch(path, {
     credentials: 'same-origin',
+    cache: 'no-store',
   });
   if (res.status === 401 && auth.currentUser) {
     const token = await auth.currentUser.getIdToken();
     const fallbackRes = await fetch(path, {
       credentials: 'same-origin',
+      cache: 'no-store',
       headers: { Authorization: `Bearer ${token}` },
     });
     feedDebugLog('request', path, {
@@ -80,9 +81,7 @@ async function fetchWithAuthFallback<T>(path: string): Promise<T | null> {
 
 const feedFetcher = async (): Promise<V3UserFeed | null> => {
   if (auth.currentUser) {
-    const token = await auth.currentUser.getIdToken();
-    const prefetched = consumePrefetchedFeed(auth.currentUser.uid, token);
-    if (prefetched) return prefetched;
+    clearFeedPrefetch(auth.currentUser.uid);
   }
   return fetchWithAuthFallback('/api/feed');
 };
@@ -139,22 +138,22 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   const feedKey = shouldBootstrapFeed
     ? (user?.uid ? `feed-session-${user.uid}` : 'feed-session-bootstrap')
     : null;
+  const returningFromArticle = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem(FEED_RESTORE_SCROLL_KEY) === '1';
+  }, []);
 
-  // SSR already shipped the bootstrap feed. Don't re-fetch on mount — the
-  // server data is fresh (bootstrap cache TTL is 10 min). mutateFeed() can
-  // still trigger a background revalidation when we explicitly need it
-  // (e.g. after checkout completes).
   const { data: v3Feed, isLoading: feedLoading, mutate: mutateFeed } = useSWR<V3UserFeed | null>(
     feedKey,
     feedFetcher,
     {
       fallbackData: initialFeed ?? undefined,
-      revalidateOnMount: true,
-      revalidateOnFocus: true,
+      revalidateOnMount: !returningFromArticle,
+      revalidateOnFocus: !returningFromArticle,
       revalidateOnReconnect: true,
-      revalidateIfStale: true,
-      dedupingInterval: 60000,
-      refreshInterval: 120000,
+      revalidateIfStale: !returningFromArticle,
+      dedupingInterval: returningFromArticle ? 30000 : 0,
+      refreshInterval: 0,
       refreshWhenHidden: false,
     }
   );
@@ -300,16 +299,6 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     } catch { /* ignore */ }
   }, [profileResolved, isSubscribed]);
 
-  const freshNewsSlices = useMemo(
-    () =>
-      applyFeedFreshnessAndDedupe({
-        for_you: effectiveFeed?.for_you || [],
-        trending: effectiveFeed?.trending || [],
-        trending_topics: effectiveFeed?.trending_topics || [],
-      }),
-    [effectiveFeed?.for_you, effectiveFeed?.trending, effectiveFeed?.trending_topics],
-  );
-
   const currentList = useMemo(() => {
     const list: {
       id: string;
@@ -327,7 +316,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
 
     const coveredArticleIds = new Set<string>();
 
-    const roleBasedForYou = freshNewsSlices.for_you || [];
+    const roleBasedForYou = effectiveFeed?.for_you || [];
     for (const item of roleBasedForYou) {
       list.push({
         id: item.id,
@@ -345,7 +334,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
       coveredArticleIds.add(item.id);
     }
 
-    const freshTopics = freshNewsSlices.trending_topics || [];
+    const freshTopics = effectiveFeed?.trending_topics || [];
     for (const topic of freshTopics) {
       const articles = topic.articles || [];
       if (articles.length === 0) continue;
@@ -392,7 +381,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
       }
     }
 
-    const allTrending = freshNewsSlices.trending || [];
+    const allTrending = effectiveFeed?.trending || [];
     const remaining = allTrending.filter(item => !coveredArticleIds.has(item.id));
     for (const item of remaining) {
       list.push({
@@ -411,9 +400,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     }
 
     if (list.length === 0) {
-      const freshFallback =
-        applyFeedFreshnessAndDedupe({ trending: fallbackTrending }).trending || [];
-      for (const item of freshFallback) {
+      for (const item of fallbackTrending) {
         list.push({
           id: item.id,
           type: 'article',
@@ -436,8 +423,8 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
       return tb - ta;
     });
 
-    return dedupeByStoryTitle(sorted);
-  }, [freshNewsSlices, fallbackTrending]);
+    return sorted;
+  }, [effectiveFeed?.for_you, effectiveFeed?.trending, effectiveFeed?.trending_topics, fallbackTrending]);
 
   const newsFeedList = useMemo(
     () => currentList.filter((item) => !isTraceBriefFeedItem(item)),

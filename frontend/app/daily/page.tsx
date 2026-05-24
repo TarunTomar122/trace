@@ -43,8 +43,8 @@ export default async function DailyPage() {
   const initialFeed = latestDate ? await getDailyArchiveFeed(latestDate) : null;
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <PublicHeader />
+    <div className="landing-page landing-grid-bg min-h-screen">
+      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         <DailyFeedView
           archiveDates={toFeedItems(entries)}

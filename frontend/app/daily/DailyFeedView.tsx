@@ -180,7 +180,7 @@ function DatePickerTabs({
   onSelect: (date: string) => void;
 }) {
   return (
-    <div className="sticky top-14 z-30 -mx-4 sm:-mx-6 lg:-mx-8 border-b border-border/20 bg-background">
+    <div className="sticky top-14 z-30 -mx-4 sm:-mx-6 lg:-mx-8 border-b border-[#e5e7eb] bg-white/95 backdrop-blur-sm">
       <div className="px-4 sm:px-6 lg:px-8 py-2">
         <p className="text-center text-[11px] text-secondary/55 mb-1.5 leading-tight">
           Select a date to view its feed

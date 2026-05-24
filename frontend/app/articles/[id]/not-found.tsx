@@ -1,41 +1,36 @@
 import Link from "next/link";
 import { FileQuestion } from "lucide-react";
-
-const ACCENT = "#F59E0B";
+import PublicHeader from "@/components/PublicHeader";
+import Footer from "@/components/Footer";
 
 export default function ArticleNotFound() {
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      {/* Minimal header */}
-      <header className="border-b border-gray-100 dark:border-gray-800">
-        <div className="container mx-auto px-4 max-w-2xl h-14 flex items-center">
-          <Link href="/" className="font-bold text-lg tracking-tight">
-            Trace
-          </Link>
-        </div>
-      </header>
+    <div className="landing-page landing-grid-bg min-h-screen flex flex-col">
+      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
 
-      <main className="flex-1 flex items-center justify-center px-4">
+      <main className="flex flex-1 items-center justify-center px-4 py-16">
         <div className="text-center max-w-md">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
-            style={{ backgroundColor: `${ACCENT}15` }}
-          >
-            <FileQuestion size={32} style={{ color: ACCENT }} />
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#eff6ff]">
+            <FileQuestion size={32} className="text-[#2563eb]" />
           </div>
-          <h1 className="text-2xl font-bold mb-2">Article not found</h1>
-          <p className="text-secondary/60 mb-6">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.15em] text-[#2563eb]">
+            Not found
+          </p>
+          <h1 className="mt-4 text-[2rem] font-bold tracking-[-0.03em] text-[#111827]">
+            Article not found
+          </h1>
+          <p className="mt-4 text-[16px] leading-[1.8] text-[#6b7280]">
             This article may have been removed or the link might be incorrect.
           </p>
-          <Link
-            href="/feed"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: ACCENT }}
-          >
-            Explore your feed
-          </Link>
+          <div className="mt-8">
+            <Link href="/feed" className="landing-btn landing-btn-primary landing-btn-sm">
+              Explore your feed
+            </Link>
+          </div>
         </div>
       </main>
+
+      <Footer />
     </div>
   );
 }
