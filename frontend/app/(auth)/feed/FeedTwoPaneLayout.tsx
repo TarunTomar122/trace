@@ -559,6 +559,7 @@ export default function FeedTwoPaneLayout({
   interestOrder,
   onSelectStory,
   isItemLocked,
+  onTabChange,
 }: {
   isLoading: boolean;
   storyList: FeedListItem[];
@@ -568,8 +569,14 @@ export default function FeedTwoPaneLayout({
   interestOrder: string[];
   onSelectStory: (item: FeedListItem) => void;
   isItemLocked: (id: string) => boolean;
+  onTabChange?: (tab: 'news' | 'pulse') => void;
 }) {
   const [tab, setTab] = useState<'news' | 'pulse'>('news');
+
+  const handleTabChange = (next: 'news' | 'pulse') => {
+    setTab(next);
+    onTabChange?.(next);
+  };
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeInterest, setActiveInterest] = useState<string | null>(null);
   const listScrollRef = useRef<HTMLDivElement>(null);
@@ -637,7 +644,7 @@ export default function FeedTwoPaneLayout({
       {/* tab bar */}
       <div className="shrink-0 border-b border-[#e5e7eb] bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 pt-3">
-          <Toggle tab={tab} onChange={setTab} />
+          <Toggle tab={tab} onChange={handleTabChange} />
           <p className="pb-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-[#9ca3af]">
             {getTodayLabel()}
           </p>

@@ -14,7 +14,7 @@ import {
 } from '@/lib/firestore';
 import { trackPaywallShown, trackSubscriptionStarted } from '@/lib/posthog';
 import Image from 'next/image';
-import { clearFeedPrefetch } from '@/lib/feed-prefetch';
+import { consumePrefetchedFeed } from '@/lib/feed-prefetch';
 import FeedBootShell from './FeedBootShell';
 import { normalizeInterestOrder } from './FeedEditionOrganizer';
 import { type HotTweet } from './FeedOneScreen';
@@ -81,7 +81,12 @@ async function fetchWithAuthFallback<T>(path: string): Promise<T | null> {
 
 const feedFetcher = async (): Promise<V3UserFeed | null> => {
   if (auth.currentUser) {
-    clearFeedPrefetch(auth.currentUser.uid);
+    const token = await auth.currentUser.getIdToken();
+    const prefetched = consumePrefetchedFeed(auth.currentUser.uid, token);
+    if (prefetched) {
+      const cached = await prefetched;
+      if (cached) return cached;
+    }
   }
   return fetchWithAuthFallback('/api/feed');
 };
@@ -118,6 +123,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   const trackedCheckoutSuccess = React.useRef(false);
 
   const [showProWelcome, setShowProWelcome] = useState(false);
+  const [pulseTabActive, setPulseTabActive] = useState(false);
   const refreshProfileRef = React.useRef(refreshProfile);
   const phasePerfRef = React.useRef({
     startedAt: 0,
@@ -148,7 +154,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     feedFetcher,
     {
       fallbackData: initialFeed ?? undefined,
-      revalidateOnMount: !returningFromArticle,
+      revalidateOnMount: !hasInitialFeed && !returningFromArticle,
       revalidateOnFocus: !returningFromArticle,
       revalidateOnReconnect: true,
       revalidateIfStale: !returningFromArticle,
@@ -175,9 +181,9 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   );
 
   const { data: hotTweets = [] } = useSWR<HotTweet[]>(
-    'hot-tweets',
+    pulseTabActive ? 'hot-tweets' : null,
     hotTweetsFetcher,
-    { revalidateOnFocus: true, revalidateOnReconnect: true, dedupingInterval: 10800000 },
+    { revalidateOnFocus: false, revalidateOnReconnect: true, dedupingInterval: 10800000 },
   );
 
   const isSubscribedFromProfile = profile?.subscriptionStatus === 'active' || profile?.subscriptionStatus === 'trial'
@@ -607,6 +613,9 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
           interestOrder={effectiveInterests}
           onSelectStory={handleSelectStory}
           isItemLocked={isItemLocked}
+          onTabChange={(tab) => {
+            if (tab === 'pulse') setPulseTabActive(true);
+          }}
         />
         <FeedSubscribeClickLock active={feedInteractionLocked} defaultOpen={showProWelcome} />
       </div>

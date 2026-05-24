@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminFirestore } from '@/lib/firebase-admin';
 import { TRACE_SESSION_COOKIE_NAME, verifyTraceSession } from '@/lib/server-session';
-import { getBootstrapFeedForUid } from '@/lib/feed-server';
+import { getBootstrapFeedForUid, getBootstrapFeedFromProfile } from '@/lib/feed-server';
 
 export async function GET(request: NextRequest) {
   const requestStartedAt = performance.now();
@@ -17,10 +17,11 @@ export async function GET(request: NextRequest) {
     const sessionCookie = request.cookies.get(TRACE_SESSION_COOKIE_NAME)?.value;
 
     let uid = '';
+    let sessionProfile: ReturnType<typeof verifyTraceSession> = null;
     if (sessionCookie) {
-      const decodedSession = verifyTraceSession(sessionCookie);
-      if (decodedSession) {
-        uid = decodedSession.uid;
+      sessionProfile = verifyTraceSession(sessionCookie);
+      if (sessionProfile) {
+        uid = sessionProfile.uid;
       }
     } else if (authHeader?.startsWith('Bearer ')) {
       if (!adminAuth) {
@@ -38,7 +39,16 @@ export async function GET(request: NextRequest) {
     authDoneAt = performance.now();
 
     const roleFromQuery = request.nextUrl.searchParams.get('role') || '';
-    const feed = await getBootstrapFeedForUid(uid, roleFromQuery);
+    const feed = sessionProfile?.profile
+      ? await getBootstrapFeedFromProfile(sessionProfile.profile.role || roleFromQuery || 'developer', {
+          role: sessionProfile.profile.role || 'developer',
+          interests: sessionProfile.profile.interests || [],
+          onboarded: sessionProfile.profile.onboarded ?? true,
+          subscription_status: sessionProfile.profile.subscriptionStatus || 'none',
+          app_subscription_status: sessionProfile.profile.appSubscriptionStatus || 'none',
+          has_access: sessionProfile.profile.hasAccess ?? false,
+        })
+      : await getBootstrapFeedForUid(uid, roleFromQuery);
     readsDoneAt = performance.now();
 
     if (!feed) {
