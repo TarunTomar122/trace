@@ -226,6 +226,7 @@ function LeftPane({
 // ── right pane ────────────────────────────────────────────────────────────────
 
 function RightPane({ item, isItemLocked }: { item: FeedListItem; isItemLocked: (id: string) => boolean }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
   const keyPoints = getKeyPoints(item);
   const body = getBody(item);
   const timeline = getTimeline(item);
@@ -238,8 +239,12 @@ function RightPane({ item, isItemLocked }: { item: FeedListItem; isItemLocked: (
   ].filter(Boolean).join('  ·  ');
   const showStocksBrewCta = (item.interestId ?? item.tags?.[0] ?? '').toLowerCase() === 'markets';
 
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+  }, [item.id]);
+
   return (
-    <div className="hidden min-h-0 flex-1 overflow-y-auto bg-white sm:block">
+    <div ref={scrollRef} className="hidden min-h-0 flex-1 overflow-y-auto bg-white sm:block">
       <article className="mx-auto w-full max-w-[720px] px-10 py-10">
         {/* meta */}
         {meta && (
