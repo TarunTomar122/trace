@@ -16,7 +16,7 @@ const MD_COMPONENTS: Components = {
     </a>
   ),
 };
-import { WireFeedLoadingSkeleton } from './FeedBootShell';
+import { WireFeedLoadingSkeleton, PulseLoadingSkeleton } from './FeedBootShell';
 import { organizeEditionFeed } from './FeedEditionOrganizer';
 import { FeedListItem, INTEREST_LABEL, getTimeLabel } from './FeedUi';
 import {
@@ -27,6 +27,7 @@ import {
 import type { FeedItem, TrendingTopic, TopicTimelineEvent } from '@/lib/firestore';
 import type { HotTweet } from './FeedOneScreen';
 import { ArticleImage } from '@/components/ArticleImage';
+import { MediumPaywallGate, FeedListPaywallCta, PulseLockedPreview } from './FeedPaywall';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,15 @@ function getBody(item: FeedListItem): string {
   if (item.type === 'topic') return (item.data as TrendingTopic).summary ?? '';
   const sa = (item.data as FeedItem).summary?.short_article;
   return sa?.body ?? sa?.subtitle ?? item.preview ?? '';
+}
+
+function getPaywallTeaser(item: FeedListItem): string {
+  const raw = getBody(item) || item.preview || '';
+  const plain = raw.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1').replace(/[#>`]/g, '').trim();
+  if (plain.length <= 220) return plain;
+  const cut = plain.slice(0, 220);
+  const lastSpace = cut.lastIndexOf(' ');
+  return `${(lastSpace > 120 ? cut.slice(0, lastSpace) : cut).trim()}…`;
 }
 
 function getTimeline(item: FeedListItem): TopicTimelineEvent[] {
@@ -142,6 +152,89 @@ function LeftPane({
 
   const effectiveSelected = selectedId ?? allStories[0]?.id;
 
+  const renderStoryRow = (
+    item: FeedListItem,
+    opts?: { blurPx?: number; opacity?: number; locked?: boolean },
+  ) => {
+    const selected = !opts?.locked && item.id === effectiveSelected;
+    const meta = [
+      item.sourceCount > 1 ? `${item.sourceCount} sources` : item.source,
+      item.timestamp ? getTimeLabel(item.timestamp) : null,
+    ].filter(Boolean).join(' · ');
+    const blurred = typeof opts?.blurPx === 'number';
+    const rowClass = `flex w-full gap-4 border-b border-[#e5e7eb]/40 px-6 py-4 text-left ${
+      opts?.locked
+        ? 'cursor-default select-none bg-white'
+        : selected
+          ? 'bg-[#eff6ff]/50'
+          : 'bg-white hover:bg-[#fafafa]'
+    }`;
+
+    const inner = (
+      <div
+        className="flex w-full gap-4"
+        style={blurred ? { filter: `blur(${opts.blurPx}px)`, opacity: opts.opacity } : undefined}
+      >
+        <div className="min-w-0 flex-1">
+          <p className="text-[14px] font-semibold leading-snug text-[#111827] line-clamp-3">
+            {item.title}
+          </p>
+          {meta && (
+            <p className="mt-2 text-[11px] font-medium text-[#9ca3af]">{meta}</p>
+          )}
+        </div>
+        <div className="shrink-0 h-[68px] w-[68px] overflow-hidden rounded-md bg-[#f3f4f6]">
+          <ArticleImage
+            thumbnail={item.thumbnail}
+            title={item.title}
+            fallbackWidth={144}
+            fallbackHeight={144}
+            className="h-full w-full object-cover"
+          />
+        </div>
+      </div>
+    );
+
+    if (opts?.locked) {
+      return (
+        <div className={rowClass} aria-hidden>
+          {inner}
+        </div>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={() => onSelect(item)}
+        className={`group ${rowClass} transition-colors`}
+      >
+        {inner}
+      </button>
+    );
+  };
+
+  const firstLockedIndex = visibleStories.findIndex((item) => isItemLocked(item.id));
+  const lockedRankById = useMemo(() => {
+    const ranks = new Map<string, number>();
+    let rank = 0;
+    for (const item of visibleStories) {
+      if (isItemLocked(item.id)) ranks.set(item.id, ++rank);
+    }
+    return ranks;
+  }, [visibleStories, isItemLocked]);
+  const tailAllLocked = firstLockedIndex >= 0
+    && visibleStories.slice(firstLockedIndex).every((item) => isItemLocked(item.id));
+
+  const renderLockedRow = (item: FeedListItem) => {
+    const rank = lockedRankById.get(item.id) ?? 1;
+    return renderStoryRow(item, {
+      locked: true,
+      blurPx: Math.min(1.5 + (rank - 1) * 1.4, 6),
+      opacity: Math.max(0.5, 0.95 - (rank - 1) * 0.08),
+    });
+  };
+
   return (
     <div className="flex min-h-0 w-full flex-col sm:w-[360px] sm:shrink-0 sm:flex-none sm:border-r sm:border-[#e5e7eb]">
       {/* left header */}
@@ -181,43 +274,35 @@ function LeftPane({
       </div>
 
       {/* story list */}
-      <div ref={listScrollRef} className="flex-1 min-h-0 overflow-y-auto bg-white">
-        {visibleStories.map((item) => {
-          const selected = item.id === effectiveSelected;
-          const meta = [
-            item.sourceCount > 1 ? `${item.sourceCount} sources` : item.source,
-            item.timestamp ? getTimeLabel(item.timestamp) : null,
-          ].filter(Boolean).join(' · ');
-
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onSelect(item)}
-              className={`group flex w-full gap-4 border-b border-[#e5e7eb]/40 px-6 py-4 text-left transition-colors ${
-                selected ? 'bg-[#eff6ff]/50' : 'bg-white hover:bg-[#fafafa]'
-              }`}
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-[14px] font-semibold leading-snug text-[#111827] line-clamp-3">
-                  {item.title}
-                </p>
-                {meta && (
-                  <p className="mt-2 text-[11px] font-medium text-[#9ca3af]">{meta}</p>
-                )}
-              </div>
-              <div className="shrink-0 h-[68px] w-[68px] overflow-hidden rounded-md bg-[#f3f4f6]">
-                <ArticleImage
-                  thumbnail={item.thumbnail}
-                  title={item.title}
-                  fallbackWidth={144}
-                  fallbackHeight={144}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-            </button>
-          );
-        })}
+      <div ref={listScrollRef} className="relative flex-1 min-h-0 overflow-y-auto bg-white">
+        {tailAllLocked ? (
+          <>
+            {visibleStories.slice(0, firstLockedIndex).map((item) => (
+              <React.Fragment key={item.id}>{renderStoryRow(item)}</React.Fragment>
+            ))}
+            <FeedListPaywallCta />
+            <div className="relative pointer-events-none">
+              {visibleStories.slice(firstLockedIndex).map((item) => (
+                <React.Fragment key={item.id}>{renderLockedRow(item)}</React.Fragment>
+              ))}
+              <div
+                className="absolute inset-x-0 top-0 h-full bg-gradient-to-b from-transparent via-white/70 to-white"
+                aria-hidden
+              />
+            </div>
+          </>
+        ) : (
+          visibleStories.map((item, index) => {
+            const locked = isItemLocked(item.id);
+            const isFirstLocked = locked && index === firstLockedIndex;
+            return (
+              <React.Fragment key={item.id}>
+                {isFirstLocked && <FeedListPaywallCta />}
+                {locked ? renderLockedRow(item) : renderStoryRow(item)}
+              </React.Fragment>
+            );
+          })
+        )}
       </div>
     </div>
   );
@@ -227,8 +312,10 @@ function LeftPane({
 
 function RightPane({ item, isItemLocked }: { item: FeedListItem; isItemLocked: (id: string) => boolean }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const keyPoints = getKeyPoints(item);
+  const locked = isItemLocked(item.id);
   const body = getBody(item);
+  const teaser = getPaywallTeaser(item);
+  const keyPoints = getKeyPoints(item);
   const timeline = getTimeline(item);
   const url = getItemUrl(item);
   const category = getCategory(item);
@@ -271,6 +358,17 @@ function RightPane({ item, isItemLocked }: { item: FeedListItem; isItemLocked: (
           </div>
         )}
 
+        {locked ? (
+          <>
+            {teaser && (
+              <p className="mt-7 text-[15.5px] leading-[1.7] text-[#374151]">
+                {teaser}
+              </p>
+            )}
+            <MediumPaywallGate trackingId="feed_detail_paywall" />
+          </>
+        ) : (
+          <>
         {/* body */}
         {body && (
           <p className="mt-7 text-[15.5px] leading-[1.7] text-[#374151]">
@@ -352,12 +450,108 @@ function RightPane({ item, isItemLocked }: { item: FeedListItem; isItemLocked: (
             </a>
           </div>
         )}
+          </>
+        )}
       </article>
     </div>
   );
 }
 
 // ── pulse tab ─────────────────────────────────────────────────────────────────
+
+const PULSE_TWEET_MAX = 15;
+const PULSE_SIDEBAR_MAX = 5;
+
+function PulseSidebarSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <div className="space-y-4">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="space-y-2">
+          <div className="h-2 w-20 animate-pulse rounded-full bg-[#f3f4f6]" />
+          <div className={`h-3.5 animate-pulse rounded-full bg-[#f3f4f6] ${i % 2 === 0 ? 'w-full' : 'w-[90%]'}`} />
+          <div className="h-3 w-[75%] animate-pulse rounded-full bg-[#f3f4f6]" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PulseSidebar({
+  discussions,
+  tools,
+  blogs,
+  discussionsLoading,
+  toolsLoading,
+  renderSidebarItem,
+}: {
+  discussions: FeedListItem[];
+  tools: FeedListItem[];
+  blogs: FeedListItem[];
+  discussionsLoading?: boolean;
+  toolsLoading?: boolean;
+  renderSidebarItem: (
+    item: FeedListItem,
+    opts?: { sectionSource?: 'hacker' | 'github'; signalLabel?: string },
+  ) => React.ReactNode;
+}) {
+  const sidebarHasContent = discussions.length > 0 || tools.length > 0 || blogs.length > 0
+    || discussionsLoading || toolsLoading;
+  if (!sidebarHasContent) return null;
+
+  return (
+    <div className="w-full space-y-8 sm:w-[300px] sm:shrink-0">
+      {(discussions.length > 0 || discussionsLoading) && (
+        <div>
+          <div className="mb-4 border-b border-[#e5e7eb] pb-3">
+            <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9ca3af]">
+              Hacker News
+            </span>
+          </div>
+          {discussionsLoading && discussions.length === 0 ? (
+            <PulseSidebarSkeleton />
+          ) : (
+            <div className="space-y-4">
+              {discussions.slice(0, PULSE_SIDEBAR_MAX).map((item) => renderSidebarItem(item, { sectionSource: 'hacker' }))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {(tools.length > 0 || toolsLoading) && (
+        <div>
+          <div className="mb-4 border-b border-[#e5e7eb] pb-3">
+            <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9ca3af]">
+              GitHub Trending
+            </span>
+          </div>
+          {toolsLoading && tools.length === 0 ? (
+            <PulseSidebarSkeleton />
+          ) : (
+            <div className="space-y-4">
+              {tools.slice(0, PULSE_SIDEBAR_MAX).map((item) => renderSidebarItem(item, {
+                sectionSource: 'github',
+                signalLabel: item.source === 'Product Hunt' ? 'upvotes' : 'stars today',
+              }))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {blogs.length > 0 && (
+        <div>
+          <div className="mb-4 border-b border-[#e5e7eb] pb-3">
+            <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9ca3af]">
+              Top blogs
+            </span>
+          </div>
+          <div className="space-y-4">
+            {blogs.slice(0, PULSE_SIDEBAR_MAX).map((item) => renderSidebarItem(item))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── X / Twitter icon ─────────────────────────────────────────────────────────
 function XIcon({ className }: { className?: string }) {
@@ -372,12 +566,40 @@ function PulseTab({
   hotTweets,
   discussions,
   tools,
+  blogs,
+  isSubscribed,
+  pulseRole,
+  pulseInterests,
+  tweetsLoading,
+  discussionsLoading,
+  toolsLoading,
 }: {
   hotTweets: HotTweet[];
   discussions: FeedListItem[];
   tools: FeedListItem[];
+  blogs: FeedListItem[];
+  isSubscribed: boolean;
+  pulseRole?: string;
+  pulseInterests?: string[];
+  tweetsLoading?: boolean;
+  discussionsLoading?: boolean;
+  toolsLoading?: boolean;
 }) {
-  const isEmpty = !hotTweets.length && !discussions.length && !tools.length;
+  if (!isSubscribed) {
+    return (
+      <div className="flex min-h-0 w-full flex-1 overflow-hidden">
+        <PulseLockedPreview role={pulseRole} interests={pulseInterests} />
+      </div>
+    );
+  }
+
+  if (tweetsLoading && hotTweets.length === 0) {
+    return <PulseLoadingSkeleton />;
+  }
+
+  const sidebarHasContent = discussions.length > 0 || tools.length > 0 || blogs.length > 0
+    || discussionsLoading || toolsLoading;
+  const isEmpty = !hotTweets.length && !sidebarHasContent && !tweetsLoading;
 
   if (isEmpty) {
     return (
@@ -387,161 +609,102 @@ function PulseTab({
     );
   }
 
+  const renderTweet = (tweet: HotTweet) => (
+    <a
+      key={tweet.id}
+      href={tweet.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group flex gap-3.5 border-b border-[#f3f4f6] py-4 transition-colors last:border-b-0 hover:bg-transparent"
+    >
+      <XIcon className="mt-[3px] h-[14px] w-[14px] shrink-0 text-[#d1d5db] transition-colors group-hover:text-[#1d9bf0]" />
+      <div className="min-w-0 flex-1">
+        <p className="text-[14px] font-semibold leading-snug text-[#111827] line-clamp-2">
+          {tweet.title}
+        </p>
+        {tweet.description && (
+          <p className="mt-1.5 line-clamp-3 text-[13px] leading-relaxed text-[#6b7280]">
+            {tweet.description}
+          </p>
+        )}
+        <div className="mt-2 flex items-center gap-2">
+          <span className="text-[11px] text-[#9ca3af]">{getTimeLabel(tweet.pubDate)}</span>
+          <span className="text-[11px] font-medium text-[#1d9bf0] opacity-0 transition-opacity group-hover:opacity-100">
+            View on X →
+          </span>
+        </div>
+      </div>
+    </a>
+  );
+
+  const renderSidebarItem = (
+    item: FeedListItem,
+    opts: { sectionSource?: 'hacker' | 'github'; signalLabel?: string } = {},
+  ) => {
+    const url = getItemUrl(item);
+    const hideRedundantTag = opts.sectionSource
+      && item.source?.toLowerCase().includes(opts.sectionSource);
+    const showSourceTag = item.source && !hideRedundantTag;
+
+    return (
+      <a
+        key={item.id}
+        href={url || '#'}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group block"
+      >
+        {(showSourceTag || (item.signalCount != null && item.signalCount > 0)) && (
+          <div className="mb-1 flex items-center gap-1.5">
+            {showSourceTag && (
+              <span className="rounded bg-[#f3f4f6] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#6b7280]">
+                {item.source}
+              </span>
+            )}
+            {item.signalCount != null && item.signalCount > 0 && (
+              <span className="text-[11px] font-medium text-[#9ca3af]">
+                {item.signalCount.toLocaleString()} {opts.signalLabel ?? 'pts'}
+              </span>
+            )}
+          </div>
+        )}
+        <p className="text-[13px] font-semibold leading-snug text-[#111827] group-hover:underline underline-offset-2 decoration-[#111827]/20">
+          {item.title}
+        </p>
+        {item.preview && (
+          <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-[#6b7280]">
+            {item.preview}
+          </p>
+        )}
+      </a>
+    );
+  };
+
   return (
     <div className="h-full overflow-y-auto overscroll-contain bg-white">
       <div className="mx-auto max-w-6xl px-5 py-6 sm:px-8 sm:py-8">
         <div className="flex flex-col gap-10 sm:flex-row">
-
-          {/* ── Left: X / Hot Tweets ── */}
-          {hotTweets.length > 0 && (
+          {(hotTweets.length > 0 || tweetsLoading) && (
             <div className="min-w-0 flex-1">
-              {/* section header */}
               <div className="mb-5 flex items-center gap-2 border-b border-[#e5e7eb] pb-3">
                 <Flame size={14} className="text-orange-500" />
                 <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-600/70">
                   Hot on X
                 </span>
               </div>
-
               <div className="space-y-0">
-                {hotTweets.slice(0, 8).map(tweet => (
-                  <a
-                    key={tweet.id}
-                    href={tweet.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group flex gap-3.5 border-b border-[#f3f4f6] py-4 transition-colors last:border-b-0 hover:bg-transparent"
-                  >
-                    <XIcon className="mt-[3px] h-[14px] w-[14px] shrink-0 text-[#d1d5db] transition-colors group-hover:text-[#1d9bf0]" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[14px] font-semibold leading-snug text-[#111827] line-clamp-2">
-                        {tweet.title}
-                      </p>
-                      {tweet.description && (
-                        <p className="mt-1.5 line-clamp-3 text-[13px] leading-relaxed text-[#6b7280]">
-                          {tweet.description}
-                        </p>
-                      )}
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-[11px] text-[#9ca3af]">{getTimeLabel(tweet.pubDate)}</span>
-                        <span className="text-[11px] font-medium text-[#1d9bf0] opacity-0 transition-opacity group-hover:opacity-100">
-                          View on X →
-                        </span>
-                      </div>
-                    </div>
-                  </a>
-                ))}
+                {hotTweets.slice(0, PULSE_TWEET_MAX).map((tweet) => renderTweet(tweet))}
               </div>
             </div>
           )}
-
-          {/* ── Right: Community + Building ── */}
-          {(discussions.length > 0 || tools.length > 0) && (
-            <div className="w-full sm:w-[300px] sm:shrink-0 space-y-8">
-
-              {/* Discussions */}
-              {discussions.length > 0 && (
-                <div>
-                  <div className="mb-4 border-b border-[#e5e7eb] pb-3">
-                    <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9ca3af]">
-                      Community
-                    </span>
-                  </div>
-                  <div className="space-y-4">
-                    {discussions.slice(0, 5).map(item => {
-                      const url = getItemUrl(item);
-                      const isHN = item.source?.toLowerCase().includes('hacker');
-                      return (
-                        <a
-                          key={item.id}
-                          href={url || '#'}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="group block"
-                        >
-                          <div className="flex items-center gap-1.5 mb-1">
-                            {item.source && (
-                              <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
-                                isHN ? 'bg-orange-50 text-orange-600' : 'bg-[#f3f4f6] text-[#6b7280]'
-                              }`}>
-                                {item.source}
-                              </span>
-                            )}
-                            {item.signalCount != null && item.signalCount > 0 && (
-                              <span className="text-[11px] font-medium text-[#9ca3af]">
-                                {item.signalCount.toLocaleString()} pts
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[13px] font-semibold leading-snug text-[#111827] group-hover:underline underline-offset-2 decoration-[#111827]/20">
-                            {item.title}
-                          </p>
-                          {item.preview && (
-                            <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-[#6b7280]">
-                              {item.preview}
-                            </p>
-                          )}
-                        </a>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Building / Tools */}
-              {tools.length > 0 && (
-                <div>
-                  <div className="mb-4 border-b border-[#e5e7eb] pb-3">
-                    <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9ca3af]">
-                      What&rsquo;s being built
-                    </span>
-                  </div>
-                  <div className="space-y-4">
-                    {tools.slice(0, 5).map(item => {
-                      const url = getItemUrl(item);
-                      const signalLabel = item.source === 'GitHub Trending'
-                        ? 'stars'
-                        : item.source === 'Product Hunt'
-                          ? 'upvotes'
-                          : 'points';
-                      return (
-                        <a
-                          key={item.id}
-                          href={url || '#'}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="group flex gap-3"
-                        >
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#f7f3eb] text-[13px]">
-                            🚀
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[13px] font-semibold leading-snug text-[#111827] group-hover:underline underline-offset-2 decoration-[#111827]/20">
-                              {item.title}
-                            </p>
-                            <p className="mt-0.5 text-[11px] text-[#9ca3af]">
-                              {item.source || 'Source'}
-                              {item.signalCount != null && item.signalCount > 0
-                                ? ` · ${item.signalCount.toLocaleString()} ${signalLabel}`
-                                : ''}
-                            </p>
-                            {item.preview && (
-                              <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-[#6b7280]">
-                                {item.preview}
-                              </p>
-                            )}
-                          </div>
-                          <ExternalLink size={11} className="mt-0.5 shrink-0 text-[#d1d5db] transition-colors group-hover:text-[#9ca3af]" />
-                        </a>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-            </div>
-          )}
-
+          <PulseSidebar
+            discussions={discussions}
+            tools={tools}
+            blogs={blogs}
+            discussionsLoading={discussionsLoading}
+            toolsLoading={toolsLoading}
+            renderSidebarItem={renderSidebarItem}
+          />
         </div>
       </div>
     </div>
@@ -556,6 +719,13 @@ export default function FeedTwoPaneLayout({
   hotTweets = [],
   discussions = [],
   tools = [],
+  blogs = [],
+  isSubscribed = false,
+  pulseRole,
+  pulseInterests = [],
+  pulseTweetsLoading = false,
+  pulseDiscussionsLoading = false,
+  pulseToolsLoading = false,
   interestOrder,
   onSelectStory,
   isItemLocked,
@@ -566,6 +736,13 @@ export default function FeedTwoPaneLayout({
   hotTweets?: HotTweet[];
   discussions?: FeedListItem[];
   tools?: FeedListItem[];
+  blogs?: FeedListItem[];
+  isSubscribed?: boolean;
+  pulseRole?: string;
+  pulseInterests?: string[];
+  pulseTweetsLoading?: boolean;
+  pulseDiscussionsLoading?: boolean;
+  pulseToolsLoading?: boolean;
   interestOrder: string[];
   onSelectStory: (item: FeedListItem) => void;
   isItemLocked: (id: string) => boolean;
@@ -671,7 +848,18 @@ export default function FeedTwoPaneLayout({
               )}
             </>
           ) : (
-            <PulseTab hotTweets={hotTweets} discussions={discussions} tools={tools} />
+            <PulseTab
+              hotTweets={hotTweets}
+              discussions={discussions}
+              tools={tools}
+              blogs={blogs}
+              isSubscribed={isSubscribed}
+              pulseRole={pulseRole}
+              pulseInterests={pulseInterests}
+              tweetsLoading={pulseTweetsLoading}
+              discussionsLoading={pulseDiscussionsLoading}
+              toolsLoading={pulseToolsLoading}
+            />
           )}
         </div>
       </div>

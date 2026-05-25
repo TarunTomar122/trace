@@ -962,10 +962,16 @@ export function getFeedStoryPath(item: FeedListItem): string {
 export function prepareFeedStoryNavigation(
   item: FeedListItem,
   relatedPool?: FeedListItem[],
+  options?: { locked?: boolean },
 ): void {
   if (typeof window === 'undefined') return;
   sessionStorage.setItem('trace_feed_story', JSON.stringify(item));
   sessionStorage.setItem('trace_article_returnTo', FEED_RETURN_PATH);
+  if (options?.locked) {
+    sessionStorage.setItem('trace_feed_story_locked', '1');
+  } else {
+    sessionStorage.removeItem('trace_feed_story_locked');
+  }
   if (item.type === 'article') {
     sessionStorage.setItem('trace_article', JSON.stringify(item.data));
   }

@@ -1,15 +1,65 @@
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, Check, Loader2, Lock, Sparkles, X } from 'lucide-react';
+import { ArrowRight, BookOpen, Check, Flame, Github, Loader2, Lock, MessageSquare, Sparkles, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { trackCheckoutClicked, trackFeedSubscribeDialogShown, trackFeedProWelcomeShown } from '@/lib/posthog';
 import { LANDING_PRICING_BULLET_POINTS } from '@/lib/subscription-pricing-bullets';
+import { ONBOARDING_INTERESTS, ROLES } from '@/lib/firestore';
 import {
   SUBSCRIPTION_COMPARE_AT_DEFAULT,
   SUBSCRIPTION_PRICE_DEFAULT,
   SUBSCRIPTION_PRICE_INDIA,
 } from '@/lib/subscription-pricing';
 import SubscriptionPrice from '@/components/SubscriptionPrice';
+
+function pricingBulletText(line: string): string {
+  return line.replace(/^[\s\S]*?\s{2,}/, '').trim() || line;
+}
+
+function ProPaywallCard({
+  trackingId,
+  compact = false,
+  title = 'Keep reading with Trace Pro',
+  subtitle = '3-day free trial · cancel anytime',
+}: {
+  trackingId: string;
+  compact?: boolean;
+  title?: string;
+  subtitle?: string;
+}) {
+  return (
+    <div
+      className={`mx-auto w-full rounded-2xl border border-[#e5e7eb] bg-white/95 text-center shadow-[0_8px_30px_rgba(0,0,0,0.08)] backdrop-blur-sm ${
+        compact ? 'max-w-[320px] p-4' : 'max-w-md p-6'
+      }`}
+    >
+      <p className={`font-bold tracking-[-0.02em] text-[#111827] ${compact ? 'text-[15px]' : 'text-[17px]'}`}>
+        {title}
+      </p>
+      <p className={`mt-1.5 leading-relaxed text-[#6b7280] ${compact ? 'text-[12px]' : 'text-[14px]'}`}>
+        {subtitle}
+      </p>
+      <ul className={`mt-4 space-y-2 text-left ${compact ? 'text-[12px]' : 'text-[13px]'}`}>
+        {(compact ? LANDING_PRICING_BULLET_POINTS.slice(0, 3) : LANDING_PRICING_BULLET_POINTS).map((line) => (
+          <li key={line} className="flex items-start gap-2.5 text-[#374151]">
+            <Check size={compact ? 12 : 13} className="mt-0.5 shrink-0 text-[#111827]/45" strokeWidth={2.5} />
+            <span className="leading-snug">{pricingBulletText(line)}</span>
+          </li>
+        ))}
+      </ul>
+      <Link
+        href="/profile?tab=subscription"
+        prefetch={false}
+        onClick={() => trackCheckoutClicked(trackingId)}
+        className={`mt-5 inline-flex items-center justify-center rounded-full bg-[#111827] font-semibold text-white transition-all hover:bg-[#1f2937] ${
+          compact ? 'px-4 py-2 text-[12px]' : 'px-6 py-2.5 text-sm'
+        }`}
+      >
+        Start free trial
+      </Link>
+    </div>
+  );
+}
 
 const INDIA_PRICING = {
   trialDays: 3,
@@ -302,13 +352,13 @@ export function InlineUnlockBanner({ storyCount, freeReadsUsed = 0 }: { storyCou
           <div>
             <p className="text-sm font-semibold text-foreground">
               {limitReached
-                ? `You've read your 3 free articles today. ${storyCount - 3 > 0 ? `${storyCount - 3} more waiting for you.` : ''}`
-                : `Browse ${storyCount} stories. Unlock the full brief to read the details.`}
+                ? `${storyCount - 3 > 0 ? `${storyCount - 3} more stories waiting for you.` : 'Unlock the full feed.'}`
+                : `Browse ${storyCount} stories. Read the first 3 free — unlock the rest with Pro.`}
             </p>
             <p className="mt-0.5 text-xs text-secondary/55">
               {limitReached
                 ? 'Upgrade to Pro for unlimited articles, key takeaways, and source links.'
-                : `Free users can read 3 articles per day. You've read ${freeReadsUsed} of 3 today.`}
+                : `Free users can read the first 3 stories in today's feed.`}
             </p>
           </div>
         </div>
@@ -473,6 +523,154 @@ const FAKE_TWEET_SNIPPETS = [
   "Andrej just dropped another banger explainer thread. Go read it now.",
   "We're at the 'electricity will never power a house' stage of AI skepticism.",
 ];
+
+export function FeedListPaywallCta() {
+  return (
+    <div className="pointer-events-auto sticky top-0 z-10 border-b border-[#e5e7eb]/60 bg-white/95 px-4 py-4 backdrop-blur-sm">
+      <ProPaywallCard trackingId="feed_list_paywall" compact />
+    </div>
+  );
+}
+
+const INTEREST_LABEL_FALLBACK: Record<string, string> = Object.fromEntries(
+  ONBOARDING_INTERESTS.map((interest) => [interest.id, interest.label]),
+);
+
+function formatInterestPhrase(labels: string[]): string | null {
+  if (labels.length === 0) return null;
+  if (labels.length === 1) return labels[0];
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+  return `${labels.slice(0, -1).join(', ')}, and ${labels[labels.length - 1]}`;
+}
+
+function resolveInterestLabels(interests: string[]): string[] {
+  return interests
+    .slice(0, 4)
+    .map((id) => INTEREST_LABEL_FALLBACK[id] ?? id.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()));
+}
+
+function resolveRoleLabel(role?: string): string {
+  const match = ROLES.find((entry) => entry.id === role);
+  return match?.label ?? 'your role';
+}
+
+/** Full Pulse lock screen — no real content, profile-tailored feature highlights. */
+export function PulseLockedPreview({
+  role,
+  interests = [],
+}: {
+  role?: string;
+  interests?: string[];
+}) {
+  const roleLabel = resolveRoleLabel(role);
+  const interestLabels = resolveInterestLabels(interests);
+  const interestPhrase = formatInterestPhrase(interestLabels);
+
+  const features = [
+    { icon: Flame, label: 'Hot on X', detail: 'Trending tech threads, filtered for your feed' },
+    { icon: MessageSquare, label: 'Hacker News', detail: 'Top discussions from the builder community' },
+    { icon: Github, label: 'GitHub Trending', detail: 'Repos and tools gaining traction this week' },
+    { icon: BookOpen, label: 'Top blogs', detail: `Long-form reads picked for ${roleLabel.toLowerCase()}s` },
+  ] as const;
+
+  return (
+    <div className="flex h-full w-full flex-1 items-center justify-center overflow-hidden bg-white px-5 py-8 sm:px-8">
+      <div className="mx-auto w-full max-w-md">
+        <div className="rounded-2xl border border-[#e5e7eb] bg-white p-6 text-center shadow-[0_8px_30px_rgba(0,0,0,0.06)] sm:p-8">
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#9ca3af]">Trace Pulse</p>
+          <h2 className="mt-3 text-[20px] font-bold tracking-[-0.02em] text-[#111827] sm:text-[22px]">
+            Your daily signal layer
+          </h2>
+          <p className="mt-2 text-[14px] leading-relaxed text-[#6b7280]">
+            Built for{' '}
+            <span className="font-semibold text-[#374151]">{roleLabel}s</span>
+            {interestPhrase ? (
+              <>
+                {' '}
+                · tuned to{' '}
+                <span className="font-semibold text-[#374151]">{interestPhrase.toLowerCase()}</span>
+              </>
+            ) : (
+              ' · tuned to your profile'
+            )}
+          </p>
+
+          <ul className="mt-6 space-y-3 border-t border-[#f3f4f6] pt-6 text-left">
+            {features.map(({ icon: Icon, label, detail }) => (
+              <li key={label} className="flex items-start gap-3">
+                <Icon size={15} className="mt-0.5 shrink-0 text-[#9ca3af]" strokeWidth={2.25} />
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-[#111827]">{label}</p>
+                  <p className="mt-0.5 text-[12px] leading-relaxed text-[#6b7280]">{detail}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-6 border-t border-[#f3f4f6] pt-6">
+            <p className="text-[15px] font-bold tracking-[-0.02em] text-[#111827]">
+              Unlock Pulse with Trace Pro
+            </p>
+            <p className="mt-1 text-[13px] text-[#6b7280]">3-day free trial · cancel anytime</p>
+            <Link
+              href="/profile?tab=subscription"
+              prefetch={false}
+              onClick={() => trackCheckoutClicked('pulse_locked')}
+              className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-[#111827] px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#1f2937]"
+            >
+              Start free trial
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function MediumPaywallGate({
+  trackingId = 'feed_medium_paywall',
+}: {
+  trackingId?: string;
+}) {
+  return (
+    <div className="relative mt-6 overflow-hidden">
+      <div
+        className="pointer-events-none select-none space-y-3 pb-36 opacity-70 blur-[5px]"
+        aria-hidden
+      >
+        <p className="text-[15.5px] leading-[1.7] text-[#374151]">
+          The broader context here matters because it shapes how teams prioritize security, product velocity, and the tradeoffs between shipping fast and staying resilient as these systems scale.
+        </p>
+        <p className="text-[15.5px] leading-[1.7] text-[#374151]">
+          Analysts expect the next wave of releases to focus less on headline benchmarks and more on practical deployment, cost control, and the tooling needed to run models reliably in production environments.
+        </p>
+        <p className="text-[15.5px] leading-[1.7] text-[#374151]">
+          For operators, the key takeaway is not just what changed today, but which constraints will still matter when the initial excitement fades and real adoption begins.
+        </p>
+      </div>
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-white/75 to-white" />
+      <div className="absolute inset-x-0 bottom-0 flex justify-center px-4 pb-2 pt-12">
+        <ProPaywallCard trackingId={trackingId} />
+      </div>
+    </div>
+  );
+}
+
+/** @deprecated Use MediumPaywallGate */
+export function FeedLockedStoryPanel({
+  item,
+}: {
+  item: { title: string; preview?: string; thumbnail?: string | null };
+}) {
+  return (
+    <div className="mt-7">
+      {item.preview && (
+        <p className="text-[15.5px] leading-[1.7] text-[#374151]">{item.preview}</p>
+      )}
+      <MediumPaywallGate trackingId="feed_locked_story_panel" />
+    </div>
+  );
+}
 
 export function FreeBlurGate({ hiddenCount, noun = 'stories' }: { hiddenCount: number; noun?: string }) {
   if (hiddenCount <= 0) return null;

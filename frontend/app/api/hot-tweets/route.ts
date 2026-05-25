@@ -73,8 +73,14 @@ export async function GET() {
       });
     }
 
+    items.sort((a, b) => {
+      const ta = new Date(a.pubDate).getTime();
+      const tb = new Date(b.pubDate).getTime();
+      return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
+    });
+
     return NextResponse.json(
-      { items: items.slice(0, 12) },
+      { items: items.slice(0, 24) },
       {
         headers: {
           'Cache-Control': 'public, s-maxage=10800, stale-while-revalidate=3600',

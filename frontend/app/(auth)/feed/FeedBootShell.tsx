@@ -94,6 +94,49 @@ function WireLatestSkeleton({ rows = 5 }: { rows?: number }) {
   );
 }
 
+/** Pulse tab skeleton — two-column layout with tweets + sidebar sections. */
+export function PulseLoadingSkeleton() {
+  return (
+    <div className="h-full overflow-y-auto bg-white">
+      <div className="mx-auto max-w-6xl px-5 py-6 sm:px-8 sm:py-8">
+        <div className="flex flex-col gap-10 sm:flex-row">
+          <div className="min-w-0 flex-1">
+            <Skel className="mb-5 h-3 w-24 rounded-full" />
+            <div className="space-y-0 border-t border-[#e5e7eb]">
+              {Array.from({ length: 6 }, (_, i) => (
+                <div key={i} className="flex gap-3.5 border-b border-[#f3f4f6] py-4">
+                  <Skel className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded-full" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <Skel className={`h-3.5 rounded-full ${i % 2 === 0 ? 'w-full' : 'w-[92%]'}`} />
+                    <Skel className="h-3 w-[88%] rounded-full" />
+                    <Skel className="h-2.5 w-16 rounded-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="w-full space-y-8 sm:w-[300px] sm:shrink-0">
+            {['Hacker News', 'GitHub Trending', 'Top blogs'].map((label) => (
+              <div key={label}>
+                <Skel className="mb-4 h-2.5 w-28 rounded-full" />
+                <div className="space-y-4">
+                  {Array.from({ length: 4 }, (_, i) => (
+                    <div key={i} className="space-y-2">
+                      <Skel className="h-2 w-20 rounded-full" />
+                      <Skel className={`h-3.5 rounded-full ${i % 2 === 0 ? 'w-full' : 'w-[90%]'}`} />
+                      <Skel className="h-3 w-[75%] rounded-full" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Two-pane feed skeleton — matches FeedTwoPaneLayout. */
 export function WireFeedLoadingSkeleton() {
   return (

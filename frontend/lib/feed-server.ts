@@ -10,7 +10,7 @@ const WEB_ITEM_DETAIL_CACHE_COLLECTION = 'web_feed_item_detail_cache';
 // served (stale-while-revalidate) while a background rebuild refreshes it.
 const WEB_FULL_FEED_CACHE_TTL_MS = 3 * 60 * 1000;
 const WEB_ITEM_DETAIL_CACHE_TTL_MS = 3 * 60 * 1000;
-const WEB_FULL_FEED_CACHE_VERSION = 2;
+const WEB_FULL_FEED_CACHE_VERSION = 3;
 const WEB_ITEM_DETAIL_CACHE_VERSION = 1;
 const GUEST_FEED_INTERESTS = ['ai', 'tech', 'startups', 'engineering', 'markets'] as const;
 const MAX_SUMMARY_BODY_CHARS = 2200;
@@ -459,6 +459,29 @@ function sanitizeTrendingTopic(topic: TrendingTopic): TrendingTopic {
   };
 }
 
+function mergeDailyPulseBucket(
+  existing: { tools: FeedItem[]; blogs: FeedItem[]; discussions: FeedItem[] } | undefined,
+  incoming: DocData | null | undefined,
+): { tools: FeedItem[]; blogs: FeedItem[]; discussions: FeedItem[] } | undefined {
+  if (!incoming || typeof incoming !== 'object') return existing;
+  const next = {
+    tools: Array.isArray(incoming.tools) ? (incoming.tools as FeedItem[]) : [],
+    blogs: Array.isArray(incoming.blogs) ? (incoming.blogs as FeedItem[]) : [],
+    discussions: Array.isArray(incoming.discussions) ? (incoming.discussions as FeedItem[]) : [],
+  };
+  if (!existing) {
+    if (next.tools.length === 0 && next.blogs.length === 0 && next.discussions.length === 0) {
+      return undefined;
+    }
+    return next;
+  }
+  return {
+    tools: dedupeTrendingItems([...existing.tools, ...next.tools]),
+    blogs: dedupeTrendingItems([...existing.blogs, ...next.blogs]),
+    discussions: dedupeTrendingItems([...existing.discussions, ...next.discussions]),
+  };
+}
+
 function sanitizePulseBucket(
   bucket: { tools: FeedItem[]; blogs: FeedItem[]; discussions: FeedItem[] } | undefined
 ) {
@@ -606,15 +629,34 @@ async function buildFullFeedBody(normalizedRole: string): Promise<FeedBody | nul
 
     // Match mobile behavior: merge previous daily global snapshot too.
     if (globalSnapshot.docs.length > 1) {
-      const previousGlobalData = globalSnapshot.docs[1].data();
-      const previousTrending = Array.isArray(previousGlobalData.trending)
-        ? previousGlobalData.trending
-        : [];
-      const previousTopics = Array.isArray(previousGlobalData.trending_topics)
-        ? previousGlobalData.trending_topics
-        : [];
-      trending = dedupeTrendingItems([...(trending as FeedItem[]), ...(previousTrending as FeedItem[])]);
-      trendingTopics = dedupeTrendingTopics([...(trendingTopics as TrendingTopic[]), ...(previousTopics as TrendingTopic[])]);
+      for (let docIndex = 1; docIndex < globalSnapshot.docs.length; docIndex++) {
+        const previousGlobalData = globalSnapshot.docs[docIndex].data();
+        const previousTrending = Array.isArray(previousGlobalData.trending)
+          ? previousGlobalData.trending
+          : [];
+        const previousTopics = Array.isArray(previousGlobalData.trending_topics)
+          ? previousGlobalData.trending_topics
+          : [];
+        if (docIndex === 1) {
+          trending = dedupeTrendingItems([...(trending as FeedItem[]), ...(previousTrending as FeedItem[])]);
+          trendingTopics = dedupeTrendingTopics([...(trendingTopics as TrendingTopic[]), ...(previousTopics as TrendingTopic[])]);
+        }
+
+        const previousBuckets = extractRoleBuckets(previousGlobalData, normalizedRole);
+        dailyPulse = mergeDailyPulseBucket(dailyPulse, previousBuckets.dailyPulseBucket);
+        communityPulse = dedupeTrendingItems([
+          ...(communityPulse as FeedItem[]),
+          ...(previousBuckets.communityFeed as FeedItem[]),
+        ]);
+        buildPulse = dedupeTrendingItems([
+          ...(buildPulse as FeedItem[]),
+          ...(previousBuckets.buildFeed as FeedItem[]),
+        ]);
+        pulse = dedupeTrendingItems([
+          ...(pulse as FeedItem[]),
+          ...(previousBuckets.pulseFeed as FeedItem[]),
+        ]);
+      }
     }
   }
 

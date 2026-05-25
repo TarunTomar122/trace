@@ -3,15 +3,12 @@ import { Check, ExternalLink, Loader2, Share2 } from 'lucide-react';
 import MarkdownProse from '@/components/MarkdownProse';
 import { FeedItem, TrendingTopic, ONBOARDING_INTERESTS } from '@/lib/firestore';
 import { getArticleImage, isValidThumbnail } from '@/lib/fallback-images';
-import { getArticleSummary, getPreview, stripMarkdown } from '@/lib/feed-article-text';
+import { getArticleSummary, getPreview, stripMarkdown, decodeHtmlEntities } from '@/lib/feed-article-text';
 
 export { getArticleSummary, getPreview, stripMarkdown };
 
 export function decodeHtml(str: string): string {
-  if (!str) return str;
-  const txt = document.createElement('textarea');
-  txt.innerHTML = str;
-  return txt.value;
+  return decodeHtmlEntities(str);
 }
 
 export const FREE_LIMITS = { trending: 3 };

@@ -20,6 +20,8 @@ import { normalizeInterestOrder } from './FeedEditionOrganizer';
 import { type HotTweet } from './FeedOneScreen';
 import FeedTwoPaneLayout from './FeedTwoPaneLayout';
 import { FeedSubscribeClickLock } from './FeedPaywall';
+import { FREE_READS_LIMIT } from '@/lib/free-reads';
+import { pulseLiveToFeedItem } from '@/lib/pulse-live';
 import {
   decodeHtml,
   FeedListItem,
@@ -114,6 +116,59 @@ const hotTweetsFetcher = async (): Promise<HotTweet[]> => {
   return data.items;
 };
 
+const pulseFetcher = async (): Promise<Partial<V3UserFeed> | null> =>
+  fetchWithAuthFallback('/api/feed/pulse');
+
+type PulseLiveResponse = {
+  discussions?: Array<{ id: string; title: string; url: string; source: string; preview?: string; signal?: string; published_date?: string }>;
+  tools?: Array<{ id: string; title: string; url: string; source: string; preview?: string; signal?: string; published_date?: string }>;
+};
+
+const pulseLiveFetcher = async (): Promise<PulseLiveResponse | null> => {
+  const res = await fetch('/api/pulse/live');
+  if (!res.ok) return null;
+  return res.json();
+};
+
+function dedupePulseItems(items: FeedItem[]): FeedItem[] {
+  const seen = new Set<string>();
+  const out: FeedItem[] = [];
+  for (const item of items) {
+    const key = String(item.url || item.id || '').trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
+function toPulseListItem(item: FeedItem): FeedListItem {
+  const raw = item as FeedItem & { signal?: string };
+  const signalFromMeta = item.metadata?.signal_count;
+  const signalFromText = raw.signal
+    ? Number.parseInt(String(raw.signal).replace(/[^\d]/g, ''), 10)
+    : undefined;
+  const signalCount = typeof signalFromMeta === 'number' && signalFromMeta > 0
+    ? signalFromMeta
+    : Number.isFinite(signalFromText) && (signalFromText ?? 0) > 0
+      ? signalFromText
+      : undefined;
+
+  return {
+    id: item.id,
+    type: 'article',
+    title: decodeHtml(item.title || ''),
+    preview: getPreview(getArticleSummary(item), 140),
+    timestamp: item.published_date,
+    source: item.source_name || item.source,
+    sourceCount: signalCount || (item.sources?.length || 0),
+    thumbnail: item.thumbnail,
+    url: item.url?.trim() || undefined,
+    signalCount,
+    data: item,
+  };
+}
+
 function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -165,7 +220,34 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   );
 
   const baseFeed = v3Feed ?? initialFeed ?? null;
-  const effectiveFeed = baseFeed;
+
+  const isSubscribedFromProfile = profile?.subscriptionStatus === 'active' || profile?.subscriptionStatus === 'trial'
+    || profile?.appSubscriptionStatus === 'active' || profile?.appSubscriptionStatus === 'trial';
+  const isSubscribedFromFeed = baseFeed?.viewer_profile?.has_access === true
+    || baseFeed?.viewer_profile?.subscription_status === 'active'
+    || baseFeed?.viewer_profile?.subscription_status === 'trial'
+    || baseFeed?.viewer_profile?.app_subscription_status === 'active'
+    || baseFeed?.viewer_profile?.app_subscription_status === 'trial';
+  const isSubscribed = isSubscribedFromProfile || isSubscribedFromFeed;
+  const pulseDataEnabled = pulseTabActive && isSubscribed;
+
+  const { data: pulseFeed } = useSWR<Partial<V3UserFeed> | null>(
+    pulseDataEnabled && user ? 'feed-pulse' : null,
+    pulseFetcher,
+    { revalidateOnFocus: false, dedupingInterval: 300000 },
+  );
+
+  const effectiveFeed = useMemo(() => {
+    if (!baseFeed) return baseFeed;
+    if (!pulseFeed) return baseFeed;
+    return {
+      ...baseFeed,
+      pulse: pulseFeed.pulse ?? baseFeed.pulse,
+      daily_pulse: pulseFeed.daily_pulse ?? baseFeed.daily_pulse,
+      community_pulse: pulseFeed.community_pulse ?? baseFeed.community_pulse,
+      build_pulse: pulseFeed.build_pulse ?? baseFeed.build_pulse,
+    };
+  }, [baseFeed, pulseFeed]);
 
   const shouldLoadFallbackTrending = Boolean(user) && !feedLoading && (
     !effectiveFeed || (
@@ -180,30 +262,14 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
 
-  const { data: hotTweets = [] } = useSWR<HotTweet[]>(
-    pulseTabActive ? 'hot-tweets' : null,
+  const { data: hotTweets = [], isLoading: hotTweetsLoading } = useSWR<HotTweet[]>(
+    pulseDataEnabled ? 'hot-tweets' : null,
     hotTweetsFetcher,
     { revalidateOnFocus: false, revalidateOnReconnect: true, dedupingInterval: 10800000 },
   );
 
-  const isSubscribedFromProfile = profile?.subscriptionStatus === 'active' || profile?.subscriptionStatus === 'trial'
-    || profile?.appSubscriptionStatus === 'active' || profile?.appSubscriptionStatus === 'trial';
-  const isSubscribedFromFeed = effectiveFeed?.viewer_profile?.has_access === true
-    || effectiveFeed?.viewer_profile?.subscription_status === 'active'
-    || effectiveFeed?.viewer_profile?.subscription_status === 'trial'
-    || effectiveFeed?.viewer_profile?.app_subscription_status === 'active'
-    || effectiveFeed?.viewer_profile?.app_subscription_status === 'trial';
-  // Keep /feed access simple: once Firebase has a signed-in user, do not let
-  // stale profile cookies, local cache, or delayed Firestore reads re-lock the UI.
-  const isSubscribed = Boolean(user) || isSubscribedFromProfile || isSubscribedFromFeed;
-
-  /** Guests get the sign-in/upgrade lock. Signed-in users get the full feed. */
+  /** Guests get the sign-in/upgrade lock. Signed-in free users can browse the list. */
   const feedInteractionLocked = !user && !loading;
-
-  const isItemLocked = useCallback(
-    (_itemId: string) => !isSubscribed,
-    [isSubscribed],
-  );
 
   const viewerProfile = effectiveFeed?.viewer_profile;
   const viewerOnboarded = typeof viewerProfile?.onboarded === 'boolean'
@@ -437,41 +503,68 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     [currentList],
   );
 
+  const freeStoryIds = useMemo(
+    () => new Set(newsFeedList.slice(0, FREE_READS_LIMIT).map((item) => item.id)),
+    [newsFeedList],
+  );
+
+  const isItemLocked = useCallback(
+    (itemId: string) => {
+      if (isSubscribed) return false;
+      return !freeStoryIds.has(itemId);
+    },
+    [isSubscribed, freeStoryIds],
+  );
+
   const discussions = useMemo((): FeedListItem[] => {
-    const raw = effectiveFeed?.daily_pulse?.discussions ?? [];
-    return raw.map((item): FeedListItem => ({
-      id: item.id,
-      type: 'article',
-      pulseSection: 'discussions',
-      title: decodeHtml(item.title || ''),
-      preview: getPreview(getArticleSummary(item), 140),
-      timestamp: item.published_date,
-      source: item.source_name || item.source,
-      sourceCount: 1,
-      thumbnail: item.thumbnail,
-      url: item.url,
-      signalCount: item.metadata?.signal_count,
-      data: item,
-    }));
-  }, [effectiveFeed?.daily_pulse?.discussions]);
+    const merged = dedupePulseItems([
+      ...(effectiveFeed?.daily_pulse?.discussions ?? []),
+      ...(effectiveFeed?.community_pulse ?? []),
+    ]);
+    if (merged.length === 0 && effectiveFeed?.pulse?.length) {
+      return effectiveFeed.pulse.map(toPulseListItem);
+    }
+    return merged.map(toPulseListItem);
+  }, [effectiveFeed?.daily_pulse?.discussions, effectiveFeed?.community_pulse, effectiveFeed?.pulse]);
 
   const tools = useMemo((): FeedListItem[] => {
-    const raw = effectiveFeed?.daily_pulse?.tools ?? [];
-    return raw.map((item): FeedListItem => ({
-      id: item.id,
-      type: 'article',
-      pulseSection: 'tools',
-      title: decodeHtml(item.title || ''),
-      preview: getPreview(getArticleSummary(item), 140),
-      timestamp: item.published_date,
-      source: item.source_name || item.source,
-      sourceCount: 1,
-      thumbnail: item.thumbnail,
-      url: item.url,
-      signalCount: item.metadata?.signal_count,
-      data: item,
-    }));
-  }, [effectiveFeed?.daily_pulse?.tools]);
+    const merged = dedupePulseItems([
+      ...(effectiveFeed?.daily_pulse?.tools ?? []),
+      ...(effectiveFeed?.build_pulse ?? []),
+    ]);
+    return merged.map(toPulseListItem);
+  }, [effectiveFeed?.daily_pulse?.tools, effectiveFeed?.build_pulse]);
+
+  const blogs = useMemo((): FeedListItem[] => {
+    const merged = dedupePulseItems(effectiveFeed?.daily_pulse?.blogs ?? []);
+    return merged.map(toPulseListItem);
+  }, [effectiveFeed?.daily_pulse?.blogs]);
+
+  const needsLiveDiscussions = pulseDataEnabled && discussions.length === 0;
+  const needsLiveTools = pulseDataEnabled && tools.length === 0;
+  const { data: livePulse, isLoading: livePulseLoading } = useSWR<PulseLiveResponse | null>(
+    pulseDataEnabled && (needsLiveDiscussions || needsLiveTools) ? 'pulse-live' : null,
+    pulseLiveFetcher,
+    { revalidateOnFocus: false, dedupingInterval: 900000 },
+  );
+
+  const pulseDiscussions = useMemo(() => {
+    if (discussions.length > 0) return discussions;
+    const live = livePulse?.discussions ?? [];
+    return live.map((item) => toPulseListItem(pulseLiveToFeedItem(item)));
+  }, [discussions, livePulse?.discussions]);
+
+  const pulseTools = useMemo(() => {
+    if (tools.length > 0) return tools;
+    const live = livePulse?.tools ?? [];
+    return live.map((item) => toPulseListItem(pulseLiveToFeedItem(item)));
+  }, [tools, livePulse?.tools]);
+
+  const pulseTweetsLoading = pulseDataEnabled && hotTweetsLoading && hotTweets.length === 0;
+  const pulseDiscussionsLoading = pulseDataEnabled && needsLiveDiscussions && livePulseLoading && pulseDiscussions.length === 0;
+  const pulseToolsLoading = pulseDataEnabled && needsLiveTools && livePulseLoading && pulseTools.length === 0;
+
+  const pulseRole = profile?.role || effectiveFeed?.viewer_profile?.role || undefined;
 
   useEffect(() => {
     if (isSubscribed) return;
@@ -482,9 +575,9 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   }, [isSubscribed, currentList.length]);
 
   const handleSelectStory = useCallback((item: FeedListItem) => {
-    prepareFeedStoryNavigation(item, newsFeedList);
+    prepareFeedStoryNavigation(item, newsFeedList, { locked: isItemLocked(item.id) });
     router.push(getFeedStoryPath(item));
-  }, [router, newsFeedList]);
+  }, [router, newsFeedList, isItemLocked]);
 
   // ── Seed SWR cache with inline detail data ──
   // Bootstrap now ships every item fully hydrated, so every click should be
@@ -608,8 +701,15 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
           isLoading={isLoading}
           storyList={newsFeedList as FeedListItem[]}
           hotTweets={hotTweets}
-          discussions={discussions}
-          tools={tools}
+          discussions={pulseDiscussions}
+          tools={pulseTools}
+          blogs={blogs}
+          isSubscribed={isSubscribed}
+          pulseRole={pulseRole}
+          pulseInterests={effectiveInterests}
+          pulseTweetsLoading={pulseTweetsLoading}
+          pulseDiscussionsLoading={pulseDiscussionsLoading}
+          pulseToolsLoading={pulseToolsLoading}
           interestOrder={effectiveInterests}
           onSelectStory={handleSelectStory}
           isItemLocked={isItemLocked}

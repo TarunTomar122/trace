@@ -18,6 +18,8 @@ import { getArticleImage } from "@/lib/fallback-images";
 import FeedStoryTopic from "../FeedStoryTopic";
 import { type FeedListItem, getTopicDisplay } from "../FeedUi";
 import { goBackToFeed } from "../FeedPulse";
+import { MediumPaywallGate } from "../FeedPaywall";
+import { useAuth } from "@/contexts/AuthContext";
 
 
 const CARD_TYPE_LABELS: Record<string, string> = {
@@ -50,6 +52,7 @@ type DeepDiveContent = {
 type SourceRef = { name: string; title: string; url: string };
 const ARTICLE_RETURN_TO_KEY = "trace_article_returnTo";
 const FEED_STORY_KEY = "trace_feed_story";
+const FEED_STORY_LOCKED_KEY = "trace_feed_story_locked";
 
 function cleanSlides(slides: string[]): string[] {
   return slides.map(s => s.replace(/^Slide\s*\d+:\s*/i, ''));
@@ -142,8 +145,10 @@ function buildShareUrl(item: FeedItem): string | null {
 export default function ArticlePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { profile } = useAuth();
   const [item, setItem] = useState<FeedItem | null>(null);
   const [activeFeedStory, setActiveFeedStory] = useState<FeedListItem | null>(null);
+  const [storyLocked, setStoryLocked] = useState(false);
   const [savedSections, setSavedSections] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const [openChapter, setOpenChapter] = useState<number | null>(null);
@@ -160,6 +165,7 @@ export default function ArticlePage() {
     const expectedStoryId = storyId?.trim() || null;
 
     try {
+      setStoryLocked(sessionStorage.getItem(FEED_STORY_LOCKED_KEY) === '1');
       const feedStoryRaw = sessionStorage.getItem(FEED_STORY_KEY);
       if (feedStoryRaw) {
         const feedStory = JSON.parse(feedStoryRaw) as FeedListItem;
@@ -197,6 +203,10 @@ export default function ArticlePage() {
       router.replace(returnToFromUrl || "/feed");
     }
   }, [router, storyId]);
+
+  const isSubscribed = profile?.subscriptionStatus === 'active' || profile?.subscriptionStatus === 'trial'
+    || profile?.appSubscriptionStatus === 'active' || profile?.appSubscriptionStatus === 'trial';
+  const showPaywall = storyLocked && !isSubscribed;
 
   useEffect(() => {
     if (!item) return;
@@ -275,6 +285,66 @@ export default function ArticlePage() {
   const backLabel = getStoryBackLabel(returnHref);
   const hasImage = item.thumbnail && typeof item.thumbnail === 'string' && item.thumbnail.length > 10;
   const imageUrl = getArticleImage(item.thumbnail, item.title);
+
+  if (showPaywall) {
+    const metaLine = [
+      item.source_name,
+      activeFeedStory?.sourceCount && activeFeedStory.sourceCount > 1
+        ? `${activeFeedStory.sourceCount} sources`
+        : null,
+    ].filter(Boolean).join(' · ');
+    const teaserSource = body || activeFeedStory?.preview || '';
+    const plainTeaser = teaserSource
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/[#>`]/g, '')
+      .trim();
+    const teaser = plainTeaser.length <= 220
+      ? plainTeaser
+      : `${plainTeaser.slice(0, plainTeaser.lastIndexOf(' ', 220) > 120 ? plainTeaser.lastIndexOf(' ', 220) : 220).trim()}…`;
+
+    return (
+      <div className="min-h-screen bg-[#f9f9f7]">
+        <header className="sticky top-0 z-40 border-b border-[#e5e7eb]/60 bg-[#f9f9f7] px-5 py-3">
+          <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
+            <button
+              type="button"
+              onClick={handleBack}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white shadow-[0_1px_4px_rgba(0,0,0,0.08)] text-[#374151] hover:text-[#111827]"
+              aria-label="Back to feed"
+            >
+              <ArrowLeft size={16} />
+            </button>
+            <p className="flex-1 truncate text-center text-[12px] font-medium text-[#9ca3af]">
+              {metaLine}
+            </p>
+            <div className="h-8 w-8 shrink-0" />
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-2xl px-5 pb-12 pt-6">
+          <h1 className="text-[24px] font-bold tracking-[-0.02em] text-[#111827] leading-[1.22]">
+            {item.title}
+          </h1>
+          {hasImage && (
+            <div className="mt-5 overflow-hidden rounded-2xl bg-[#e5e7eb]">
+              <ArticleImage
+                thumbnail={item.thumbnail}
+                title={item.title}
+                fallbackWidth={800}
+                fallbackHeight={500}
+                className="w-full aspect-[16/10] object-cover"
+              />
+            </div>
+          )}
+          {teaser && (
+            <p className="mt-6 text-[16px] leading-[1.72] text-[#4b5563]">{teaser}</p>
+          )}
+          <MediumPaywallGate trackingId="feed_mobile_paywall" />
+        </main>
+      </div>
+    );
+  }
 
   /* ═══════════════════════════════════════════════════════
      Deep Dive — Chapter detail view
