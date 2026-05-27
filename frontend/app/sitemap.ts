@@ -315,6 +315,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.75,
   }))
 
+  const blogCategoryArchives: MetadataRoute.Sitemap = [
+    { url: `${baseUrl}/blog/category/comparisons`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.8 },
+    { url: `${baseUrl}/blog/category/guides`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.8 },
+    { url: `${baseUrl}/blog/category/ai-tools`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.8 },
+    { url: `${baseUrl}/blog/category/research`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.8 },
+  ];
+
   const blogPages: MetadataRoute.Sitemap = [
     ...blogPosts.map((post) => ({
       url: `${baseUrl}/blog/${post.slug}`,
@@ -326,6 +333,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/blog/best-ai-news-apps-2026`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.75 },
     { url: `${baseUrl}/blog/how-to-stay-updated-on-tech-without-doomscrolling`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.75 },
     { url: `${baseUrl}/blog/free-news-aggregators-for-developers`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.75 },
+    ...blogCategoryArchives,
   ];
 
   const compareDetailPages: MetadataRoute.Sitemap = comparePages.map((page) => ({

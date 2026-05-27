@@ -4,6 +4,7 @@ import { ArrowRight, Clock, Calendar } from "lucide-react";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import { blogPosts } from "./content";
+import { generateCollectionPageSchema, SITE_BASE_URL } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Blog | Trace — Tech News, Productivity & AI Insights",
@@ -42,8 +43,19 @@ export default function BlogPage() {
   const featuredPost = blogPosts[0];
   const remainingPosts = blogPosts.slice(1);
 
+  const collectionSchema = generateCollectionPageSchema(
+    "Blog | Trace — Tech News, Productivity & AI Insights",
+    "Expert guides on staying updated with tech news, beating information overload, and building better news consumption habits.",
+    `${SITE_BASE_URL}/blog`,
+    blogPosts.map((p) => `${SITE_BASE_URL}/blog/${p.slug}`),
+  );
+
   return (
     <div className="landing-page landing-grid-bg min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionSchema) }}
+      />
       <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
 
       {/* Hero */}
@@ -117,7 +129,7 @@ export default function BlogPage() {
             {CATEGORIES.map((cat) => (
               <Link
                 key={cat.key}
-                href={cat.key === "all" ? "/blog" : `/blog?category=${cat.key}`}
+                href={cat.key === "all" ? "/blog" : `/blog/category/${cat.key}`}
                 className="rounded-full border border-[#e5e7eb] bg-white px-4 py-2 text-[13px] font-medium text-[#6b7280] transition-all hover:text-[#111827] hover:border-[#d1d5db] hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
               >
                 {cat.label}
