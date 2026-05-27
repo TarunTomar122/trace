@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, ExternalLink, Clock, Calendar } from "lucide-rea
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import { blogPosts } from "../content";
+import { generateBreadcrumbSchema, SITE_BASE_URL } from "@/lib/seo";
 
 type PageProps = {
   params: Promise<{
@@ -65,7 +66,13 @@ export default async function BlogPostPage({ params }: PageProps) {
     const parsed = new Date(post.date);
     return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
   })();
-  const structuredData = {
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Trace", url: SITE_BASE_URL },
+    { name: "Blog", url: `${SITE_BASE_URL}/blog` },
+    { name: post.title, url: canonicalUrl },
+  ]);
+
+  const articleSchema = {
     "@context": "https://schema.org",
     "@type": "Article",
     "headline": post.title,
@@ -97,7 +104,11 @@ export default async function BlogPostPage({ params }: PageProps) {
     <div className="landing-page landing-grid-bg min-h-screen">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
       <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
 
