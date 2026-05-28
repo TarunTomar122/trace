@@ -1118,5 +1118,196 @@ export const blogPosts: BlogPost[] = [
         ]
       }
     ]
+  },
+  {
+    slug: "best-tech-news-apps-android-2026",
+    title: "Best Tech News Apps for Android in 2026 (Tested & Ranked)",
+    subtitle: "Stop juggling Chrome tabs and Twitter lists. We tested 12 Android news apps to find the best way to stay updated on tech — no doomscrolling required.",
+    tag: "Tools & Comparisons",
+    category: "comparisons",
+    excerpt:
+      "Looking for the best tech news app for Android? We tested 12 news apps including Trace, Feedly, Inoreader, Google News, and ground News. Here are the top picks for developers and professionals in 2026.",
+    author: "Trace Editorial",
+    readTime: "12 min read",
+    date: "May 28, 2026",
+    image: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=1200&h=630&fit=crop&auto=format",
+    sources: [],
+    sections: [
+      {
+        paragraphs: [
+          "If you're on Android and you work in tech, you've probably tried at least three different news apps this year alone. The problem isn't that there aren't enough options. It's that most news apps are designed for passive scrolling, not active staying-informed. You end up with 40-minute doom sessions that leave you feeling like you consumed everything and learned nothing.",
+          "We tested 12 Android tech news apps over two weeks — evaluating source diversity, AI summary quality, reading experience, noise filtering, and how long it actually takes to do a proper morning catch-up. Here's what we found."
+        ]
+      },
+      {
+        heading: "What We Tested",
+        paragraphs: [
+          "Every app was evaluated on the same criteria: how many tech sources it covers, whether it groups related stories or just shows reverse-chronological firehose, AI summary quality (does it hallucinate or actually help?), mobile experience, noise filtering, and morning catch-up speed from opening the app to being informed.",
+          "Our testing panel included developers, product managers, and founders — people whose jobs depend on staying current but who don't have time to read 50 articles a day."
+        ]
+      },
+      {
+        heading: "The Top Picks",
+        paragraphs: [
+          "Here are the apps that stood out, ranked for different use cases."
+        ]
+      },
+      {
+        heading: "1. Trace — Best for Daily AI-Powered Briefings",
+        paragraphs: [
+          "Trace is built specifically for tech professionals who want to stay informed without managing feeds. It scans 50+ sources automatically — TechCrunch, The Verge, Ars Technica, Hacker News, Reddit, Product Hunt, GitHub trending, and more — groups related stories into topic pages, and generates multi-source AI summaries.",
+          "The Android app is clean and fast. Open it in the morning, scroll through 8-12 topic groups, and in 10 minutes you're caught up without having touched a single feed setting. The AI summaries synthesize coverage from multiple outlets, so you get a balanced view of each story instead of one publication's take.",
+          "What sets Trace apart on Android is the notification game. Instead of bombarding you with every headline, it sends 2-3 daily notifications with genuinely important stories. The morning brief notification is the one notification you actually want to tap."
+        ],
+        bullets: [
+          "Pros: Automatic source scanning, multi-source AI summaries, topic grouping, no feed management needed, excellent notifications, clean Android app, free tier",
+          "Cons: Less source control than RSS readers, newer than established competitors, some features coming soon",
+          "Best for: Developers and tech professionals who want a daily briefing without feed management"
+        ]
+      },
+      {
+        heading: "2. Feedly — Best Traditional RSS Reader",
+        paragraphs: [
+          "Feedly's Android app is polished and reliable. The Leo AI feature adds summarization and keyword filtering on paid plans. The free tier gives you 100 sources and 3 folders, which is enough for casual use.",
+          "The Android app supports offline reading, which is great for commutes. But Feedly's AI features are gated behind Pro, and it doesn't group related stories from different sources."
+        ],
+        bullets: [
+          "Pros: Polished Android app, offline reading, 100 free sources, reliable sync",
+          "Cons: AI features paywalled, no multi-source story grouping",
+          "Best for: Users who want a traditional RSS reader with some AI enhancements"
+        ]
+      },
+      {
+        heading: "3. Inoreader — Best for Power Users",
+        paragraphs: [
+          "Inoreader's Android app is feature-rich but has a learning curve. The free tier already beats Feedly's at 150 subscriptions with newsletter integration and permanent archiving.",
+          "The rules engine is unmatched for power users, and the AI summaries on Pro ($9.99/month) are solid. But the mobile app isn't as polished as Trace or Feedly."
+        ],
+        bullets: [
+          "Pros: Most features per dollar, rules engine, newsletter integration, 150 free subscriptions",
+          "Cons: Steeper learning curve, less polished mobile experience",
+          "Best for: Power users who need automation and advanced filtering"
+        ]
+      },
+      {
+        heading: "4. Google News — Best for Casual Users",
+        paragraphs: [
+          "Google News comes pre-installed on most Android phones and uses Google's AI to curate a personalized feed. The "Full Coverage" view is genuinely useful for seeing multiple perspectives on major stories.",
+          "The downside: it's a firehose by default. You get a mix of tech, sports, politics, and entertainment unless you aggressively customize. For focused tech news, it's not the best."
+        ],
+        bullets: [
+          "Pros: Pre-installed, Google AI curation, Full Coverage view, free",
+          "Cons: Firehose-style feed, mixes topics unless customized, notification spam",
+          "Best for: Casual news readers who want a broad overview"
+        ]
+      },
+      {
+        heading: "5. Ground News — Best for Bias Awareness",
+        paragraphs: [
+          "Ground News shows you how different publications are covering the same story, including political bias ratings and factuality scores. It's excellent for understanding media landscapes.",
+          "The Android app is solid but focused more on news literacy than efficient tech news consumption. For developers who want to stay updated on tech specifically, it's a secondary tool."
+        ],
+        bullets: [
+          "Pros: Bias ratings, source comparison, unique value proposition",
+          "Cons: Not tech-focused, can be slow for daily catch-up",
+          "Best for: Users who want to understand media bias while reading news"
+        ]
+      },
+      {
+        heading: "Which One Should You Use?",
+        paragraphs: [
+          "If you're a developer or tech professional who wants to stay informed in 10 minutes a day without feed management — Trace is the best pick. The AI briefs replace 30+ minutes of manual scrolling.",
+          "If you have well-curated RSS feeds and want a reliable reader — Feedly or Inoreader depending on your power user level.",
+          "If you want a free, simple option — Google News works but requires customization to filter out non-tech topics.",
+          "The best setup? Use Trace for daily briefings and keep Inoreader or Feedly for deep-dive reading on specific topics."
+        ]
+      }
+    ]
+  },
+  {
+    slug: "ai-news-apps-what-actually-works-2026",
+    title: "AI News Apps in 2026: What Actually Works (Tested 12 Apps)",
+    subtitle: "Every news app claims to have AI. We tested 12 to find which ones actually save you time vs which ones are just marketing hype.",
+    tag: "AI & Tech",
+    category: "ai-tools",
+    excerpt:
+      "AI news apps are everywhere in 2026. But which ones actually deliver useful summaries without hallucinations? We tested 12 AI-powered news apps including Trace, Feedly Leo, Artifact successor, and more.",
+    author: "Trace Editorial",
+    readTime: "10 min read",
+    date: "May 28, 2026",
+    image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&h=630&fit=crop&auto=format",
+    sources: [],
+    sections: [
+      {
+        paragraphs: [
+          "AI in news apps is at peak hype in 2026. Every news aggregator, RSS reader, and briefing tool claims to use AI. Some genuinely save you time. Others are basic keyword filters with a ChatGPT wrapper.",
+          "We tested 12 AI-powered news apps focusing on one question: does the AI actually make you better informed faster? Here's what held up."
+        ]
+      },
+      {
+        heading: "The Good AI vs The Gimmick AI",
+        paragraphs: [
+          "After testing, the AI features that actually work fall into three categories: intelligent summarization (multi-source synthesis, not single-article rewrites), smart notification filtering (surface the important stuff, not everything), and topic grouping (connect related stories across sources).",
+          "The gimmicks: AI that just rewrites article headlines, chatbots bolted onto news feeds, and "personalized" feeds that just show you more of what you already clicked."
+        ]
+      },
+      {
+        heading: "1. Trace — Best Multi-Source AI Summaries",
+        paragraphs: [
+          "Trace's AI doesn't just summarize one article at a time. It reads coverage from 50+ sources, identifies the story, and synthesizes a summary across all of them. You get a balanced view: what happened, what different publications are saying, and where they agree or disagree.",
+          "The AI also scores stories by relevance to the tech industry, so you're not getting celebrity news or politics mixed into your tech briefing. The morning brief is generated fresh every day with multi-source AI summaries that take 10 minutes to read.",
+          "On Android, the AI brief comes as a notification that actually tells you something useful. No "Here are today's top stories" clickbait — you get the actual summary in the notification itself."
+        ],
+        bullets: [
+          "Pros: True multi-source summarization, topic grouping, relevance scoring, clean Android app, free tier",
+          "Cons: AI can occasionally miss niche sources, still improving personalization",
+          "Best for: Developers and tech professionals who want a genuinely intelligent daily brief"
+        ]
+      },
+      {
+        heading: "2. Feedly Leo — Best RSS AI Enhancement",
+        paragraphs: [
+          "Feedly's Leo AI enhances your RSS feeds with summarization, keyword filtering, and priority ranking. If you already have well-curated feeds, Leo makes them more manageable.",
+          "The limitation: Leo works within your existing feeds, it doesn't discover or group stories across sources. It's an enhancer, not a reimagining."
+        ],
+        bullets: [
+          "Pros: Works with existing RSS setup, good summarization, keyword alerts",
+          "Cons: Paywalled ($8+/mo), no multi-source story grouping, limited to your feeds",
+          "Best for: Existing Feedly users who want AI enhancements on their feeds"
+        ]
+      },
+      {
+        heading: "3. Inoreader AI — Best Automation Rules",
+        paragraphs: [
+          "Inoreader's AI features (Pro, $9.99/mo) add article summarization and smart tagging. Combined with the rules engine, you can create sophisticated automated workflows.",
+          "The AI summaries are solid but single-article focused. Where Inoreader shines is the automation layer."
+        ],
+        bullets: [
+          "Pros: Powerful automation + AI, newsletter integration, 150 free subscriptions",
+          "Cons: AI lacks multi-source synthesis, mobile app less polished",
+          "Best for: Power users who want AI combined with advanced automation"
+        ]
+      },
+      {
+        heading: "4. Google News AI — Best for Broad Coverage",
+        paragraphs: [
+          "Google News uses AI for its personalized feed and Full Coverage view. For broad news awareness across topics, it's solid. For focused tech news consumption, it's average.",
+          "The AI doesn't synthesize — it curates. You get headlines and snippets, not multi-source analysis."
+        ],
+        bullets: [
+          "Pros: Free, pre-installed, Full Coverage view is unique",
+          "Cons: Firehose feed, no multi-source AI summaries, topic mixing",
+          "Best for: Broad news consumption across multiple topics"
+        ]
+      },
+      {
+        heading: "What We Learned",
+        paragraphs: [
+          "After testing 12 AI news apps, here's the honest take: most AI features in news apps are incremental improvements on existing tools. A few genuinely reimagine how you consume news.",
+          "The best AI news app isn't the one with the most AI features — it's the one that reduces the time between opening the app and being informed. By that metric, Trace's multi-source brief is the most effective.",
+          "For existing RSS users, Feedly Leo or Inoreader AI add genuine value. For casual readers, Google News is fine. But if you want an AI-powered news app that actually saves you time, pick the one that groups, synthesizes, and briefs — not the one that just adds summaries to a firehose."
+        ]
+      }
+    ]
   }
 ];
