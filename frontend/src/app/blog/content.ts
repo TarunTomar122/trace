@@ -1192,7 +1192,7 @@ export const blogPosts: BlogPost[] = [
       {
         heading: "4. Google News — Best for Casual Users",
         paragraphs: [
-          "Google News comes pre-installed on most Android phones and uses Google's AI to curate a personalized feed. The "Full Coverage" view is genuinely useful for seeing multiple perspectives on major stories.",
+          "Google News comes pre-installed on most Android phones and uses Google's AI to curate a personalized feed. The 'Full Coverage' view is genuinely useful for seeing multiple perspectives on major stories.",
           "The downside: it's a firehose by default. You get a mix of tech, sports, politics, and entertainment unless you aggressively customize. For focused tech news, it's not the best."
         ],
         bullets: [
@@ -1248,7 +1248,7 @@ export const blogPosts: BlogPost[] = [
         heading: "The Good AI vs The Gimmick AI",
         paragraphs: [
           "After testing, the AI features that actually work fall into three categories: intelligent summarization (multi-source synthesis, not single-article rewrites), smart notification filtering (surface the important stuff, not everything), and topic grouping (connect related stories across sources).",
-          "The gimmicks: AI that just rewrites article headlines, chatbots bolted onto news feeds, and "personalized" feeds that just show you more of what you already clicked."
+          "The gimmicks: AI that just rewrites article headlines, chatbots bolted onto news feeds, and 'personalized' feeds that just show you more of what you already clicked."
         ]
       },
       {
@@ -1256,7 +1256,7 @@ export const blogPosts: BlogPost[] = [
         paragraphs: [
           "Trace's AI doesn't just summarize one article at a time. It reads coverage from 50+ sources, identifies the story, and synthesizes a summary across all of them. You get a balanced view: what happened, what different publications are saying, and where they agree or disagree.",
           "The AI also scores stories by relevance to the tech industry, so you're not getting celebrity news or politics mixed into your tech briefing. The morning brief is generated fresh every day with multi-source AI summaries that take 10 minutes to read.",
-          "On Android, the AI brief comes as a notification that actually tells you something useful. No "Here are today's top stories" clickbait — you get the actual summary in the notification itself."
+          "On Android, the AI brief comes as a notification that actually tells you something useful. No 'Here are today's top stories' clickbait — you get the actual summary in the notification itself."
         ],
         bullets: [
           "Pros: True multi-source summarization, topic grouping, relevance scoring, clean Android app, free tier",

@@ -81,7 +81,7 @@ export default function BestTechNewsAndroidPage() {
       headline: "Best Tech News Apps for Android in 2026 (Tested & Ranked)",
       description:
         "Looking for the best tech news app for Android? We tested 12 apps including Trace, Feedly, Inoreader, Google News, and Ground News.",
-      image: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=1200&h=630&fit=crop&auto=format",
+      imageUrl: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=1200&h=630&fit=crop&auto=format",
       datePublished: "2026-05-28",
       dateModified: "2026-05-28",
       authorName: "Trace Editorial",
@@ -97,7 +97,7 @@ export default function BestTechNewsAndroidPage() {
 
   return (
     <>
-      <StructuredDataList data={schema} />
+      <StructuredDataList schemas={schema} />
       <article className={`min-h-screen bg-background text-foreground ${spaceGrotesk.variable}`}>
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
           <Link href="/blog" className="inline-flex items-center gap-2 text-sm text-secondary/60 hover:text-secondary transition-colors mb-10">
