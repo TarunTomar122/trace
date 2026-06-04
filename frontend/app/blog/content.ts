@@ -1442,6 +1442,4 @@ export const blogPosts: BlogPost[] = [
     ]
   },
 
-  },
-
 ];
