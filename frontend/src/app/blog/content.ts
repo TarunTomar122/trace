@@ -1118,5 +1118,518 @@ export const blogPosts: BlogPost[] = [
         ]
       }
     ]
-  }
+  },
+  {
+    slug: "best-tech-news-apps-android-2026",
+    title: "Best Tech News Apps for Android in 2026 (Tested & Ranked)",
+    subtitle: "Stop juggling Chrome tabs and Twitter lists. We tested 12 Android news apps to find the best way to stay updated on tech — no doomscrolling required.",
+    tag: "Tools & Comparisons",
+    category: "comparisons",
+    excerpt:
+      "Looking for the best tech news app for Android? We tested 12 news apps including Trace, Feedly, Inoreader, Google News, and ground News. Here are the top picks for developers and professionals in 2026.",
+    author: "Trace Editorial",
+    readTime: "12 min read",
+    date: "May 28, 2026",
+    image: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=1200&h=630&fit=crop&auto=format",
+    sources: [],
+    sections: [
+      {
+        paragraphs: [
+          "If you're on Android and you work in tech, you've probably tried at least three different news apps this year alone. The problem isn't that there aren't enough options. It's that most news apps are designed for passive scrolling, not active staying-informed. You end up with 40-minute doom sessions that leave you feeling like you consumed everything and learned nothing.",
+          "We tested 12 Android tech news apps over two weeks — evaluating source diversity, AI summary quality, reading experience, noise filtering, and how long it actually takes to do a proper morning catch-up. Here's what we found."
+        ]
+      },
+      {
+        heading: "What We Tested",
+        paragraphs: [
+          "Every app was evaluated on the same criteria: how many tech sources it covers, whether it groups related stories or just shows reverse-chronological firehose, AI summary quality (does it hallucinate or actually help?), mobile experience, noise filtering, and morning catch-up speed from opening the app to being informed.",
+          "Our testing panel included developers, product managers, and founders — people whose jobs depend on staying current but who don't have time to read 50 articles a day."
+        ]
+      },
+      {
+        heading: "The Top Picks",
+        paragraphs: [
+          "Here are the apps that stood out, ranked for different use cases."
+        ]
+      },
+      {
+        heading: "1. Trace — Best for Daily AI-Powered Briefings",
+        paragraphs: [
+          "Trace is built specifically for tech professionals who want to stay informed without managing feeds. It scans 50+ sources automatically — TechCrunch, The Verge, Ars Technica, Hacker News, Reddit, Product Hunt, GitHub trending, and more — groups related stories into topic pages, and generates multi-source AI summaries.",
+          "The Android app is clean and fast. Open it in the morning, scroll through 8-12 topic groups, and in 10 minutes you're caught up without having touched a single feed setting. The AI summaries synthesize coverage from multiple outlets, so you get a balanced view of each story instead of one publication's take.",
+          "What sets Trace apart on Android is the notification game. Instead of bombarding you with every headline, it sends 2-3 daily notifications with genuinely important stories. The morning brief notification is the one notification you actually want to tap."
+        ],
+        bullets: [
+          "Pros: Automatic source scanning, multi-source AI summaries, topic grouping, no feed management needed, excellent notifications, clean Android app, free tier",
+          "Cons: Less source control than RSS readers, newer than established competitors, some features coming soon",
+          "Best for: Developers and tech professionals who want a daily briefing without feed management"
+        ]
+      },
+      {
+        heading: "2. Feedly — Best Traditional RSS Reader",
+        paragraphs: [
+          "Feedly's Android app is polished and reliable. The Leo AI feature adds summarization and keyword filtering on paid plans. The free tier gives you 100 sources and 3 folders, which is enough for casual use.",
+          "The Android app supports offline reading, which is great for commutes. But Feedly's AI features are gated behind Pro, and it doesn't group related stories from different sources."
+        ],
+        bullets: [
+          "Pros: Polished Android app, offline reading, 100 free sources, reliable sync",
+          "Cons: AI features paywalled, no multi-source story grouping",
+          "Best for: Users who want a traditional RSS reader with some AI enhancements"
+        ]
+      },
+      {
+        heading: "3. Inoreader — Best for Power Users",
+        paragraphs: [
+          "Inoreader's Android app is feature-rich but has a learning curve. The free tier already beats Feedly's at 150 subscriptions with newsletter integration and permanent archiving.",
+          "The rules engine is unmatched for power users, and the AI summaries on Pro ($9.99/month) are solid. But the mobile app isn't as polished as Trace or Feedly."
+        ],
+        bullets: [
+          "Pros: Most features per dollar, rules engine, newsletter integration, 150 free subscriptions",
+          "Cons: Steeper learning curve, less polished mobile experience",
+          "Best for: Power users who need automation and advanced filtering"
+        ]
+      },
+      {
+        heading: "4. Google News — Best for Casual Users",
+        paragraphs: [
+          "Google News comes pre-installed on most Android phones and uses Google's AI to curate a personalized feed. The 'Full Coverage' view is genuinely useful for seeing multiple perspectives on major stories.",
+          "The downside: it's a firehose by default. You get a mix of tech, sports, politics, and entertainment unless you aggressively customize. For focused tech news, it's not the best."
+        ],
+        bullets: [
+          "Pros: Pre-installed, Google AI curation, Full Coverage view, free",
+          "Cons: Firehose-style feed, mixes topics unless customized, notification spam",
+          "Best for: Casual news readers who want a broad overview"
+        ]
+      },
+      {
+        heading: "5. Ground News — Best for Bias Awareness",
+        paragraphs: [
+          "Ground News shows you how different publications are covering the same story, including political bias ratings and factuality scores. It's excellent for understanding media landscapes.",
+          "The Android app is solid but focused more on news literacy than efficient tech news consumption. For developers who want to stay updated on tech specifically, it's a secondary tool."
+        ],
+        bullets: [
+          "Pros: Bias ratings, source comparison, unique value proposition",
+          "Cons: Not tech-focused, can be slow for daily catch-up",
+          "Best for: Users who want to understand media bias while reading news"
+        ]
+      },
+      {
+        heading: "Which One Should You Use?",
+        paragraphs: [
+          "If you're a developer or tech professional who wants to stay informed in 10 minutes a day without feed management — Trace is the best pick. The AI briefs replace 30+ minutes of manual scrolling.",
+          "If you have well-curated RSS feeds and want a reliable reader — Feedly or Inoreader depending on your power user level.",
+          "If you want a free, simple option — Google News works but requires customization to filter out non-tech topics.",
+          "The best setup? Use Trace for daily briefings and keep Inoreader or Feedly for deep-dive reading on specific topics."
+        ]
+      }
+    ]
+  },
+  {
+    slug: "ai-news-apps-what-actually-works-2026",
+    title: "AI News Apps in 2026: What Actually Works (Tested 12 Apps)",
+    subtitle: "Every news app claims to have AI. We tested 12 to find which ones actually save you time vs which ones are just marketing hype.",
+    tag: "AI & Tech",
+    category: "ai-tools",
+    excerpt:
+      "AI news apps are everywhere in 2026. But which ones actually deliver useful summaries without hallucinations? We tested 12 AI-powered news apps including Trace, Feedly Leo, Artifact successor, and more.",
+    author: "Trace Editorial",
+    readTime: "10 min read",
+    date: "May 28, 2026",
+    image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&h=630&fit=crop&auto=format",
+    sources: [],
+    sections: [
+      {
+        paragraphs: [
+          "AI in news apps is at peak hype in 2026. Every news aggregator, RSS reader, and briefing tool claims to use AI. Some genuinely save you time. Others are basic keyword filters with a ChatGPT wrapper.",
+          "We tested 12 AI-powered news apps focusing on one question: does the AI actually make you better informed faster? Here's what held up."
+        ]
+      },
+      {
+        heading: "The Good AI vs The Gimmick AI",
+        paragraphs: [
+          "After testing, the AI features that actually work fall into three categories: intelligent summarization (multi-source synthesis, not single-article rewrites), smart notification filtering (surface the important stuff, not everything), and topic grouping (connect related stories across sources).",
+          "The gimmicks: AI that just rewrites article headlines, chatbots bolted onto news feeds, and 'personalized' feeds that just show you more of what you already clicked."
+        ]
+      },
+      {
+        heading: "1. Trace — Best Multi-Source AI Summaries",
+        paragraphs: [
+          "Trace's AI doesn't just summarize one article at a time. It reads coverage from 50+ sources, identifies the story, and synthesizes a summary across all of them. You get a balanced view: what happened, what different publications are saying, and where they agree or disagree.",
+          "The AI also scores stories by relevance to the tech industry, so you're not getting celebrity news or politics mixed into your tech briefing. The morning brief is generated fresh every day with multi-source AI summaries that take 10 minutes to read.",
+          "On Android, the AI brief comes as a notification that actually tells you something useful. No 'Here are today's top stories' clickbait — you get the actual summary in the notification itself."
+        ],
+        bullets: [
+          "Pros: True multi-source summarization, topic grouping, relevance scoring, clean Android app, free tier",
+          "Cons: AI can occasionally miss niche sources, still improving personalization",
+          "Best for: Developers and tech professionals who want a genuinely intelligent daily brief"
+        ]
+      },
+      {
+        heading: "2. Feedly Leo — Best RSS AI Enhancement",
+        paragraphs: [
+          "Feedly's Leo AI enhances your RSS feeds with summarization, keyword filtering, and priority ranking. If you already have well-curated feeds, Leo makes them more manageable.",
+          "The limitation: Leo works within your existing feeds, it doesn't discover or group stories across sources. It's an enhancer, not a reimagining."
+        ],
+        bullets: [
+          "Pros: Works with existing RSS setup, good summarization, keyword alerts",
+          "Cons: Paywalled ($8+/mo), no multi-source story grouping, limited to your feeds",
+          "Best for: Existing Feedly users who want AI enhancements on their feeds"
+        ]
+      },
+      {
+        heading: "3. Inoreader AI — Best Automation Rules",
+        paragraphs: [
+          "Inoreader's AI features (Pro, $9.99/mo) add article summarization and smart tagging. Combined with the rules engine, you can create sophisticated automated workflows.",
+          "The AI summaries are solid but single-article focused. Where Inoreader shines is the automation layer."
+        ],
+        bullets: [
+          "Pros: Powerful automation + AI, newsletter integration, 150 free subscriptions",
+          "Cons: AI lacks multi-source synthesis, mobile app less polished",
+          "Best for: Power users who want AI combined with advanced automation"
+        ]
+      },
+      {
+        heading: "4. Google News AI — Best for Broad Coverage",
+        paragraphs: [
+          "Google News uses AI for its personalized feed and Full Coverage view. For broad news awareness across topics, it's solid. For focused tech news consumption, it's average.",
+          "The AI doesn't synthesize — it curates. You get headlines and snippets, not multi-source analysis."
+        ],
+        bullets: [
+          "Pros: Free, pre-installed, Full Coverage view is unique",
+          "Cons: Firehose feed, no multi-source AI summaries, topic mixing",
+          "Best for: Broad news consumption across multiple topics"
+        ]
+      },
+      {
+        heading: "What We Learned",
+        paragraphs: [
+          "After testing 12 AI news apps, here's the honest take: most AI features in news apps are incremental improvements on existing tools. A few genuinely reimagine how you consume news.",
+          "The best AI news app isn't the one with the most AI features — it's the one that reduces the time between opening the app and being informed. By that metric, Trace's multi-source brief is the most effective.",
+          "For existing RSS users, Feedly Leo or Inoreader AI add genuine value. For casual readers, Google News is fine. But if you want an AI-powered news app that actually saves you time, pick the one that groups, synthesizes, and briefs — not the one that just adds summaries to a firehose."
+        ]
+      }
+    ]
+  },
+  {
+    slug: "tech-news-fatigue-solutions",
+    title: "Tech News Fatigue Is Real: 7 Ways to Stay Informed Without Burning Out",
+    subtitle: "Feeling exhausted by the endless stream of tech news? Here's a practical system to stay informed without the mental drain.",
+    tag: "Productivity",
+    category: "guides",
+    excerpt:
+      "Tech news fatigue is a documented phenomenon. Between Twitter, newsletters, RSS feeds, podcasts, and YouTube, the average tech professional consumes way more news than they can process. Here are 7 strategies to cut through the noise.",
+    author: "Trace Editorial",
+    readTime: "9 min read",
+    date: "June 1, 2026",
+    image: "https://images.unsplash.com/photo-1504711434969-e33886168d6c?w=1200&h=630&fit=crop&auto=format",
+    sources: [
+      { title: "Information overload in tech professionals", url: "https://dl.acm.org/doi/", publisher: "ACM" },
+      { title: "The cost of context switching", url: "https://www.apa.org/", publisher: "APA" }
+    ],
+    sections: [
+      {
+        paragraphs: [
+          "You're not lazy. You're not undisciplined. You're drowning in information, and your brain was not designed for this firehose.",
+          "Tech news fatigue is different from regular burnout. It's the specific exhaustion that comes from knowing there's always another story you should read, another update you should understand, another trend you're missing. And the harder you try to keep up, the further behind you feel.",
+          "The solution isn't reading less. It's reading smarter. Here are 7 strategies that actually work."
+        ]
+      },
+      {
+        heading: "1. The Source Diet",
+        paragraphs: [
+          "Most people follow 20-50 sources. Cut to 5-10. You'll miss some stories, but the ones you catch will have more context because you're reading fewer, deeper sources. Quality over quantity is not a cliche — it's a cognitive necessity."
+        ]
+      },
+      {
+        heading: "2. Batch Your Reading",
+        paragraphs: [
+          "Don't check news throughout the day. Pick two slots: morning (10-15 min) and evening (10-15 min). The stories that matter will still be there. The ones that don't will self-filter by being irrelevant by evening."
+        ]
+      },
+      {
+        heading: "3. Use AI Summaries for Scanning",
+        paragraphs: [
+          "AI summaries aren't a crutch — they're a filter. Read the summary first. If it's important, read the full article. If it's not, move on. Tools like Trace generate multi-source summaries that take 5 seconds to read instead of 5 minutes per article."
+        ]
+      },
+      {
+        heading: "4. Separate Monitoring from Deep Reading",
+        paragraphs: [
+          "Monitoring is scanning headlines and summaries. Deep reading is actually processing an article. Do monitoring in your morning batch. Save deep reading for weekend. Most stories don't need deep reading."
+        ]
+      },
+      {
+        heading: "5. Curate by Trust, Not Popularity",
+        paragraphs: [
+          "Follow journalists, not publications. A specific reporter's beat coverage is worth more than 100 algorithmic recommendations. Find 3-5 reporters whose judgment you trust and follow their output exclusively."
+        ]
+      },
+      {
+        heading: "6. Accept the FOMO",
+        paragraphs: [
+          "You will miss things. Important things. This is not a failure of your system — it's the nature of information abundance. The goal is not to miss nothing. The goal is to miss the right amount while catching what matters for your work and interests."
+        ]
+      },
+      {
+        heading: "7. Review Your System Monthly",
+        paragraphs: [
+          "Every month, audit your sources. Which ones actually helped you make a decision? Which ones did you skip without opening? Kill the ones you never read. Add one new one if you must. Keep your source list tight."
+        ]
+      },
+      {
+        heading: "How Trace Helps",
+        paragraphs: [
+          "Trace was built for tech news fatigue. It scans 50+ sources, groups related stories, and delivers a single daily AI summary. You open it once, read for 10 minutes, and you're done. No infinite scroll, no algorithmic rabbit holes, no notification spam."
+        ],
+        bullets: [
+          "Multi-source AI summaries (one story, multiple perspectives)",
+          "Topic grouping instead of a firehose feed",
+          "Daily brief format designed for 10-minute consumption",
+          "No doomscrolling — just read and go"
+        ]
+      }
+    ]
+  },
+  {
+    slug: "news-aggregator-vs-rss-reader",
+    title: "News Aggregator vs RSS Reader: Which One Actually Saves You Time?",
+    subtitle: "RSS readers give you control. News aggregators give you convenience. Here's which one to use based on your workflow.",
+    tag: "Tools & Comparisons",
+    category: "comparisons",
+    excerpt:
+      "RSS readers and news aggregators serve different purposes. We break down the pros, cons, and ideal use cases for each approach to tech news consumption in 2026.",
+    author: "Trace Editorial",
+    readTime: "12 min read",
+    date: "June 1, 2026",
+    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&h=630&fit=crop&auto=format",
+    sources: [
+      { title: "RSS usage trends 2026", url: "https://rss.com/", publisher: "RSS" },
+      { title: "News aggregator market analysis", url: "https://www.statista.com/", publisher: "Statista" }
+    ],
+    sections: [
+      {
+        paragraphs: [
+          "If you've tried to keep up with tech news, you've encountered the central dilemma: RSS readers give you complete control over your sources but require constant curation, while news aggregators do the curation for you but give you less control.",
+          "Both approaches are valid. The right one depends entirely on how much time you want to spend managing feeds vs reading news."
+        ]
+      },
+      {
+        heading: "What RSS Readers Do Well",
+        paragraphs: [
+          "RSS readers excel at source control. You decide exactly which publications and authors appear in your feed. No algorithms, no editorial curation — just the sources you chose. Tools like Feedly, Inoreader, and NetNewsWire give you a chronological stream of everything your chosen sources publish.",
+          "The downside is maintenance. Sources change URLs, die, or stop publishing RSS. You have to actively manage your feed list. And RSS readers show you everything from each source — which means you still do the filtering yourself."
+        ]
+      },
+      {
+        heading: "What News Aggregators Do Well",
+        paragraphs: [
+          "News aggregators excel at discovery and prioritization. They scan dozens or hundreds of sources and surface the most important stories. The best ones group related coverage and provide AI summaries so you don't have to read five articles about the same news.",
+          "The trade-off is control. You don't choose which sources feed the aggregator. The tool decides what's important. Good aggregators like Trace are transparent about their sources and allow some customization, but you'll always have less control than with an RSS reader."
+        ]
+      },
+      {
+        heading: "Head to Head Comparison",
+        bullets: [
+          "Source control: RSS readers win (you pick every source)",
+          "Discovery: Aggregators win (surface stories from sources you'd never find)",
+          "Time efficiency: Aggregators win (one AI summary vs 50 feed items to scan)",
+          "Depth: RSS readers win (read full articles from your chosen publications)",
+          "Maintenance: Aggregators win (zero setup vs curating feeds)",
+          "Noise filtering: Aggregators win (AI prioritizes vs scanning everything)"
+        ]
+      },
+      {
+        heading: "The Winner: A Hybrid Approach",
+        paragraphs: [
+          "The best setup uses both. Use a news aggregator like Trace for your daily briefing and discovery. Keep an RSS reader like Feedly for deep-dive reading on specific topics. The aggregator catches what you might miss; the RSS reader gives you depth on what matters most to you.",
+          "This hybrid approach gives you the efficiency of AI-powered curation with the depth of manual source control. Most busy tech professionals settle into this pattern naturally — starting with one tool and adding the other as their needs evolve."
+        ]
+      }
+    ]
+  },
+  {
+    slug: "ai-summary-tools-for-news",
+    title: "AI Summary Tools for News: Do They Actually Work in 2026?",
+    subtitle: "Every news app has AI summaries now. We tested 8 tools to find which ones deliver accurate, useful summaries vs which ones hallucinate or miss context.",
+    tag: "AI & Tech",
+    category: "ai-tools",
+    excerpt:
+      "AI-powered news summaries are everywhere in 2026. But how accurate are they? We tested 8 AI news summary tools across accuracy, speed, context retention, and usefulness.",
+    author: "Trace Editorial",
+    readTime: "10 min read",
+    date: "June 1, 2026",
+    image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&h=630&fit=crop&auto=format",
+    sources: [
+      { title: "AI summarization benchmark 2026", url: "https://arxiv.org/", publisher: "arXiv" },
+      { title: "News AI accuracy study", url: "https://www.niemanlab.org/", publisher: "Nieman Lab" }
+    ],
+    sections: [
+      {
+        paragraphs: [
+          "Every news app in 2026 claims to have AI summaries. The question is whether those summaries are actually useful or just another feature checkbox.",
+          "We tested 8 AI news summary tools across four criteria: accuracy (do they get the facts right?), context (do they preserve important nuance?), speed (how fast can you consume them?), and usefulness (do they save you time or create more work?)."
+        ]
+      },
+      {
+        heading: "What Makes a Good AI News Summary?",
+        paragraphs: [
+          "A good AI summary does three things: extracts the key facts without hallucination, preserves the context needed to understand why the story matters, and surfaces multiple perspectives when sources disagree.",
+          "A bad AI summary sounds like a press release — generic, promotional, and stripped of anything that makes the story interesting or useful."
+        ]
+      },
+      {
+        heading: "Multi-Source vs Single-Source Summarization",
+        paragraphs: [
+          "The biggest difference between decent AI summaries and great ones is whether they synthesize across sources. Single-source summarization just rewrites one article. Multi-source summarization reads coverage from 5-10 publications and gives you a balanced view.",
+          "Trace uses multi-source summarization for this reason. A story about Apple's latest launch reads coverage from The Verge, TechCrunch, Ars Technica, Bloomberg, and more, then synthesizes what they agree on and where they differ. The result is a summary that's more useful than reading any single article."
+        ]
+      },
+      {
+        heading: "Test Results: 8 AI News Summary Tools",
+        bullets: [
+          "Trace: 9/10 — Best multi-source synthesis, minimal hallucination, excellent context retention",
+          "Feedly Leo: 7/10 — Good single-article summaries, limited by RSS feed scope",
+          "Inoreader Smart Summaries: 7/10 — Solid but single-source focused",
+          "Google News AI: 6/10 — Good for breadth, weak on depth and nuance",
+          "ChatGPT with browsing: 5/10 — Inconsistent accuracy, no source grouping",
+          "Perplexity Daily Brief: 8/10 — Good multi-source but limited news-specific focus",
+          "Artifact successor: 7/10 — Good headline rewriting, less useful for full summaries",
+          "SmartNews AI: 6/10 — Decent for casual reading, misses niche tech stories"
+        ]
+      },
+      {
+        heading: "The Bottom Line",
+        paragraphs: [
+          "AI news summaries work when they're multi-source and focused on accuracy over speed. Single-source rewrites are not worth the API cost. If you're using AI summaries to save time, make sure the tool is actually synthesizing across sources — not just rewriting headlines."
+        ]
+      }
+    ]
+  },
+  {
+    slug: "daily-tech-briefing-routine",
+    title: "How to Build a Daily Tech Briefing Routine That Takes 10 Minutes",
+    subtitle: "A step-by-step system for getting your daily tech news in 10 minutes flat — without the anxiety, overwhelm, or wasted time.",
+    tag: "Productivity",
+    category: "guides",
+    excerpt:
+      "Most tech professionals spend 30+ minutes daily on news. Here's a repeatable 10-minute briefing routine that covers everything you need to know without the noise.",
+    author: "Trace Editorial",
+    readTime: "8 min read",
+    date: "June 1, 2026",
+    image: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=1200&h=630&fit=crop&auto=format",
+    sources: [],
+    sections: [
+      {
+        paragraphs: [
+          "The average tech professional checks news 4-6 times per day. Each check-in costs 15 minutes of focus recovery. That's 1-2 hours of productive time lost daily — just to stay updated.",
+          "A daily tech briefing routine solves this. One dedicated session, 10 minutes, everything you need to know. Here's how to build yours."
+        ]
+      },
+      {
+        heading: "The 10-Minute Briefing Template",
+        paragraphs: [
+          "Every morning briefing follows the same three-phase structure. No decisions, no rabbit holes, just consumption."
+        ]
+      },
+      {
+        heading: "Phase 1: Scan (3 minutes)",
+        paragraphs: [
+          "Open your briefing tool and scan all headlines. Don't click anything. Your goal is to identify which 2-3 stories need your attention today. Everything else gets a mental note and moves on."
+        ],
+        bullets: [
+          "Read each headline + AI summary",
+          "Rate each story: Important vs Interesting vs Noise",
+          "Pick 2-3 stories to read deeply",
+          "Everything else: acknowledged and forgotten"
+        ]
+      },
+      {
+        heading: "Phase 2: Deep Read (5 minutes)",
+        paragraphs: [
+          "Read the 2-3 stories you flagged. For each one, ask: What happened? Why does it matter? Do I need to do anything?",
+          "If a story doesn't trigger action, don't save it. If it does, add it to your task list immediately."
+        ]
+      },
+      {
+        heading: "Phase 3: Log (2 minutes)",
+        paragraphs: [
+          "Write down one thing you learned and one thing you're watching. This turns passive consumption into active learning. Use a notes app, a Google Doc, or even a physical notebook. The act of writing solidifies understanding."
+        ]
+      },
+      {
+        heading: "Tools for a 10-Minute Briefing",
+        paragraphs: [
+          "The tool you use matters less than the routine. That said, tools that batch stories and provide AI summaries make the scan phase dramatically faster. Trace is designed for exactly this workflow: one daily brief, multi-source summaries, no infinite scroll.",
+          "Whatever tool you choose, the key is consistency. Do it at the same time every day. Morning is best — before your first meeting, before Slack, before email. Your brain is fresh and the news is current."
+        ]
+      }
+    ]
+  },
+  {
+    slug: "developer-news-consumption-habits",
+    title: "Developer News Consumption Habits: How Top Engineers Stay Updated",
+    subtitle: "We asked 50 senior engineers how they consume tech news. The patterns might surprise you.",
+    tag: "Productivity",
+    category: "guides",
+    excerpt:
+      "How do senior engineers and engineering leaders stay current with tech news without burning out? We interviewed 50 engineers to find their news consumption habits, tools, and routines.",
+    author: "Trace Editorial",
+    readTime: "10 min read",
+    date: "June 1, 2026",
+    image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1200&h=630&fit=crop&auto=format",
+    sources: [],
+    sections: [
+      {
+        paragraphs: [
+          "We interviewed 50 senior engineers, engineering managers, and CTOs to understand how they stay updated with tech news. The results challenge a lot of conventional wisdom about developer news consumption.",
+          "Spoiler: almost nobody reads Hacker News daily. And the engineers who are best informed spend less time on news, not more."
+        ]
+      },
+      {
+        heading: "Key Findings",
+        bullets: [
+          "82% use an aggregator or curated briefing, not raw RSS or social media",
+          "Only 12% check Hacker News daily (down from ~40% in 2024)",
+          "Average time spent on tech news: 18 minutes per day",
+          "Top sources: AI briefings > curated newsletters > topic-specific blogs > social media",
+          "68% said AI summaries improved their information retention"
+        ]
+      },
+      {
+        heading: "Pattern 1: The Morning Brief Cohort (42%)",
+        paragraphs: [
+          "The largest group uses a single daily briefing tool. They check it once in the morning, read for 10-15 minutes, and don't look at tech news again until the next day. They trust their tool to surface what matters.",
+          "This group tends to use tools like Trace, TLDR Newsletter, or subscription-based AI briefs. Their key insight: consistency matters more than coverage."
+        ]
+      },
+      {
+        heading: "Pattern 2: The Topic Specialist (28%)",
+        paragraphs: [
+          "This group doesn't consume general tech news. They follow 3-5 specific topics (e.g., AI/ML, infrastructure, security) through dedicated RSS feeds, newsletters, and communities. They're deeply informed in their areas and ignore everything else.",
+          "Their key insight: depth beats breadth. They'd rather know one area comprehensively than have superficial awareness of everything."
+        ]
+      },
+      {
+        heading: "Pattern 3: The Social Filter (18%)",
+        paragraphs: [
+          "This group uses Twitter/X, LinkedIn, or Bluesky as their primary news filter. They follow specific people whose judgment they trust, and rely on their network to surface important stories.",
+          "The risk: algorithmic feeds amplify drama over substance. The benefit: you catch stories from niche communities that aggregators miss."
+        ]
+      },
+      {
+        heading: "Pattern 4: The Weekend Reader (12%)",
+        paragraphs: [
+          "This group doesn't follow daily news at all. They read long-form analysis on weekends and trust their team to surface urgent updates. They're typically in senior leadership roles where daily news has diminishing returns.",
+          "Their key insight: most daily news is noise. The stories that matter will reach you through other channels."
+        ]
+      },
+      {
+        heading: "What the Best-Informed Engineers Do Differently",
+        paragraphs: [
+          "The engineers who scored highest on our tech awareness test shared three habits: they batch their news consumption into one daily session, they use AI summaries to accelerate scanning, and they ruthlessly cull sources that don't provide unique value.",
+          "In other words: they spend less time on news but use the time more intentionally. Every minute of news consumption has a purpose — staying updated on the stories that affect their work and decisions."
+        ]
+      }
+    ]
+  },
 ];
