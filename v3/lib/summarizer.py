@@ -22,6 +22,12 @@ FOR_YOU_PROSE_MODEL = "gpt-5-mini"
 TEMPERATURE = 0.3
 TIMEOUT = 45
 
+SUMMARY_SYSTEM_PROMPT = """You are a rigorous editor at Trace, a professional tech news product.
+You return valid JSON only. No markdown code fences.
+Your summaries must be source-faithful, concrete, and dense with specific facts.
+Never write generic news filler, throat-clearing openers, or commentary that adds no new information.
+Body and key_takeaways must complement each other: the body tells the story; takeaways add distinct facts not already in the body."""
+
 # ---------------------------------------------------------------------------
 # Technical depth detection from user profile
 # ---------------------------------------------------------------------------
@@ -55,10 +61,11 @@ def compute_technical_depth(profile: dict) -> str:
 # Unified summary prompt — one style for all "For You" content
 # ---------------------------------------------------------------------------
 
-FOR_YOU_SUMMARY = """Write a concise, source-faithful summary for a For You evergreen feed.
+FOR_YOU_SUMMARY = """Write a source-faithful summary for a For You evergreen feed.
 
-Goal:
-Help the reader quickly absorb the most useful ideas from the source in a way that is clear, concrete, and easy to read on mobile.
+The reader wants two complementary layers that together capture much more of the source than a typical short summary:
+1. A readable body with the story, context, and main arguments.
+2. Key takeaways with additional concrete facts they would miss if they only read the body.
 
 SOURCE:
 Title: {title}
@@ -70,12 +77,18 @@ Return JSON with EXACT structure:
 {{
   "short_article": {{
     "subtitle": "One sentence capturing the central idea or tension",
-    "key_takeaways": ["3-4 concrete points with real specifics from the source"],
-    "body": "Concise summary in markdown (see rules below)",
+    "key_takeaways": ["4-6 concrete points with real specifics from the source"],
+    "body": "Informative summary in markdown (see rules below)",
     "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card. Start with the core idea. Be concrete and punchy."
   }},
   "reading_time_minutes": <estimated int>
 }}
+
+COVERAGE RULE (VERY IMPORTANT):
+- Before writing, mentally list the distinct facts, claims, examples, numbers, and named entities in the source.
+- Body + key_takeaways together should capture the top 8-12 most important items from that list.
+- Do not compress the whole article into 3 ideas repeated twice.
+- Missing a major named company, product, number, or specific claim from the source is a failure unless the article is extremely thin.
 
 REQUIREMENTS:
 - Preserve the source's actual ideas, examples, and specific details when they matter.
@@ -83,33 +96,31 @@ REQUIREMENTS:
 - Make it feel informative and readable, not academic, not like a recommendation, and not like commentary on the source.
 - Do not say "this article", "this piece", "the author", or similar.
 - Do not invent facts, labels, or explanations that are not supported by the source.
-- Avoid generic summary language like "highlights", "underscores", "serves as", or "the importance of".
+- Avoid generic summary language like "highlights", "underscores", "serves as", "critics argue", or "the importance of".
 - Prefer concrete nouns, examples, and distinctions over vague interpretation.
 - If the source contains useful examples, numbers, edge cases, or memorable quirks, keep them.
 - Never use em dashes. Use commas, periods, or colons instead.
 
 BODY RULES:
-- This summary will be read on a phone screen. Optimize for mobile reading, not desktop prose.
-- Use a mix of short paragraphs and lightweight structure when it helps scanning.
-- 4-6 short blocks for most articles.
-- Most paragraphs should be 1-2 sentences.
+- Target 120-220 words across 4-6 short paragraphs.
+- This summary will be read on a phone screen, but it should still feel substantial.
+- Most paragraphs should be 1-3 sentences.
 - Insert a blank line between every paragraph.
 - Do not return one large paragraph. If the body is a single block of text, it is wrong.
-- Each paragraph should carry one idea and should be easy to scan on mobile.
+- Start with the strongest fact, claim, or tension — not throat-clearing like "As X continues to..." or "In recent years..."
+- Include the single best number, date, or named entity from the source when one exists.
 - You may use short markdown headings like ## Context or ## Why it matters when they improve readability.
 - You may use a short bullet list for steps, examples, named points, or concrete facts, but only when the source naturally supports it.
-- Do not over-format. This should feel clean and readable on a phone, not like a report.
-- Start with the central idea or tension, not throat-clearing.
-- Keep enough specificity that the summary still feels tied to the original source.
-- Optimize for quick understanding and retained value.
 - Plain, strong English.
 - No concluding fluff. No "In summary", "Overall", or "In conclusion".
 
 KEY_TAKEAWAYS RULES:
-- 3-4 takeaways max.
-- Each should be one sentence.
-- Use real specifics from the source when possible.
-- Cut any takeaway that's obvious, generic, or unsupported.
+- 4-6 takeaways when the source supports them.
+- Each should be one sentence with a concrete fact.
+- Each takeaway must add information not already substantially covered in the body.
+- Prioritize: numbers -> named companies/products/people -> examples -> rollout details -> consequences.
+- Do not paraphrase the body sentence by sentence.
+- Cut any takeaway that's obvious, generic, unsupported, or repetitive.
 """
 
 # ---------------------------------------------------------------------------
@@ -159,11 +170,11 @@ WHY_IT_MATTERS:
 
 TRENDING_BRIEF = """You are a rigorous editor writing a high-signal brief for a fast-moving story.
 
-The reader wants two layers:
-1. An overview paragraph that reads naturally and tells the story clearly.
-2. A few skim bullets for readers who want only the most important extra facts.
+The reader wants two complementary layers that together feel fuller than a typical news blurb:
+1. A body paragraph that reads naturally and tells the story clearly.
+2. Key takeaways with additional concrete facts they would miss if they only read the body.
 
-The paragraph and bullets must do different jobs. Do not make the bullets restate the paragraph.
+The body and takeaways must do different jobs. Do not make the takeaways restate the body.
 
 SOURCE:
 Title: {title}
@@ -178,19 +189,25 @@ Return JSON with EXACT structure:
     "subtitle": "One short factual line (max 14 words) saying what changed",
     "headline": "Short factual overlay headline (6-10 words max)",
     "key_takeaways": [
-      "1-3 one-sentence skim bullets with only the strongest additional details"
+      "3-5 one-sentence bullets with only additional concrete details"
     ],
     "slides": [
       "Slide 1: What happened — who, what, and the most important number/name (30-45 words)",
       "Slide 2: The strongest supporting detail or concrete consequence (25-40 words)",
       "Slide 3 (optional): A second concrete detail only if it adds real information (20-35 words)"
     ],
-    "body": "One short natural paragraph, usually 2-3 sentences, that reads like a concise article lead",
+    "body": "A natural news paragraph, 3-5 sentences and about 100-160 words, that reads like a strong article lead",
     "mobile_card_summary": "1-2 short paragraphs, max 90 words total, plain prose — no markdown, no bullets, no headers. Written for a phone card. Start with the core news. Be concrete and punchy.",
     "outline": []
   }},
   "reading_time_minutes": <estimated int>
 }}
+
+COVERAGE RULE (VERY IMPORTANT):
+- Before writing, mentally list the distinct facts, claims, examples, numbers, and named entities in the source.
+- Body + key_takeaways together should capture the top 8-10 most important items from that list.
+- Do not compress the whole article into 3 ideas repeated twice.
+- Missing a major named company, product, number, or specific claim from the source is a failure unless the article is extremely thin.
 
 RULES:
 - Choose exactly one interest_id from this allowed list:
@@ -209,8 +226,11 @@ RULES:
 - Write like a sharp reporter, not a marketer.
 - The body is the main story layer. It must read naturally as a paragraph, not as disguised bullet points.
 - In the body, cover the core development, the main actors, and the most important concrete detail or consequence from the source.
+- Start the body with the strongest fact, demand, or development — not throat-clearing like "As X floods Y..." or "Users are calling for..."
+- Include the single best number, percentage, or date from the source in the body when one exists.
 - Do not write a generic first sentence followed by filler. Every sentence in the body must add real information.
-- Prefer fewer key takeaways over weak ones. If the article only supports 1 strong takeaway, return 1.
+- Never write "Critics argue", "paying lip service", "underscores a trend", or other commentary that adds no new fact.
+- Return 3-5 key takeaways when the source supports them. Prefer fewer only if the article is genuinely thin.
 - Key takeaways are the skim layer. Use them for concrete details a reader might miss if they skip the paragraph.
 - Each key takeaway must add information that is not already substantially covered in the body.
 - Key takeaways must be one complete sentence each, not fragments and not mini-paragraphs.
@@ -240,6 +260,10 @@ BAD KEY TAKEAWAY EXAMPLES:
 - The update is part of ongoing improvements to the app.
 - This could reshape the future of mapping.
 - The deal is part of a broader trend of investor interest.
+- Current AI labeling efforts on platforms like YouTube and Instagram are ineffective. (BAD if the body already says labeling is ineffective)
+
+BAD BODY EXAMPLE:
+"As AI-generated content floods social media, users are calling for platforms to introduce filters. Current labeling systems have proven ineffective. Critics argue that without user-controlled filtering options, platforms are merely paying lip service to the issue."
 """
 
 # ---------------------------------------------------------------------------
@@ -665,6 +689,88 @@ def summary_lookup_key(url: str, feed_type: str = "default", technical_depth: st
     return (url, _cache_bucket(feed_type, technical_depth, output_format))
 
 
+def _normalize_text_for_overlap(value: str) -> str:
+    return re.sub(r"\s+", " ", (value or "")).strip().lower()
+
+
+def _takeaway_overlaps_body(takeaway: str, body: str, threshold: float = 0.55) -> bool:
+    """Return True when a takeaway substantially repeats the body."""
+    takeaway_norm = _normalize_text_for_overlap(takeaway)
+    body_norm = _normalize_text_for_overlap(body)
+    if not takeaway_norm or not body_norm:
+        return False
+    if takeaway_norm in body_norm:
+        return True
+
+    words = [word for word in re.findall(r"[a-z0-9]{5,}", takeaway_norm)]
+    if not words:
+        return takeaway_norm in body_norm
+
+    hits = sum(1 for word in words if word in body_norm)
+    return (hits / len(words)) >= threshold
+
+
+def _dedupe_takeaways_from_body(body: str, takeaways: Any, *, max_items: int = 6) -> list[str]:
+    if not isinstance(takeaways, list):
+        return []
+
+    cleaned: list[str] = []
+    for raw in takeaways:
+        point = str(raw).strip()
+        if not point:
+            continue
+        if _takeaway_overlaps_body(point, body):
+            continue
+        cleaned.append(point)
+        if len(cleaned) >= max_items:
+            break
+    return cleaned
+
+
+def _clean_summary_body(body: str, *, fallback: str = "") -> str:
+    body = str(body or "").strip()
+    body = re.sub(r"^\s*#+\s*", "", body, flags=re.MULTILINE)
+    body = re.sub(r"^\s*[-*]\s+", "", body, flags=re.MULTILINE)
+    body = re.sub(r"^\s*\d+\.\s+", "", body, flags=re.MULTILINE)
+    body = re.sub(r"\n{3,}", "\n\n", body).strip()
+
+    label_prefix = re.compile(
+        r"^\s*(what'?s\s+new|what\s+happened|why\s+it\s+matters|the\s+impact|bottom\s+line)\s*:\s*",
+        re.IGNORECASE,
+    )
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", body) if p.strip()]
+    paragraphs = [label_prefix.sub("", p).strip() for p in paragraphs if p.strip()]
+
+    if not paragraphs:
+        return fallback.strip()
+    return "\n\n".join(paragraphs)
+
+
+def _normalize_short_article_summary(
+    parsed: dict[str, Any],
+    *,
+    strip_markdown_body: bool = False,
+    body_fallback: str = "Fresh developments in this story are drawing attention.",
+) -> dict[str, Any]:
+    short = parsed.get("short_article")
+    if not isinstance(short, dict):
+        short = {}
+
+    subtitle = str(short.get("subtitle", "")).strip()
+    body = str(short.get("body", "")).strip()
+    if strip_markdown_body:
+        body = _clean_summary_body(body, fallback=subtitle or body_fallback)
+    else:
+        body = _clean_summary_body(body, fallback=subtitle or body_fallback)
+
+    takeaways = short.get("key_takeaways")
+    short["subtitle"] = subtitle
+    short["body"] = body
+    short["key_takeaways"] = _dedupe_takeaways_from_body(body, takeaways)
+    parsed["short_article"] = short
+    return parsed
+
+
 def _normalize_trending_summary(parsed: dict[str, Any]) -> dict[str, Any]:
     """Clean up trending summary - remove markdown formatting but keep full content."""
     allowed_interest_ids = {
@@ -677,36 +783,11 @@ def _normalize_trending_summary(parsed: dict[str, Any]) -> dict[str, Any]:
         "fintech",
         "product-design",
     }
+    parsed = _normalize_short_article_summary(parsed, strip_markdown_body=True)
     short = parsed.get("short_article")
-    if not isinstance(short, dict):
-        short = {}
-
-    subtitle = str(short.get("subtitle", "")).strip()
-
-    body = str(short.get("body", "")).strip()
-    # Remove markdown headers, bullets, numbered lists
-    body = re.sub(r"^\s*#+\s*", "", body, flags=re.MULTILINE)
-    body = re.sub(r"^\s*[-*]\s+", "", body, flags=re.MULTILINE)
-    body = re.sub(r"^\s*\d+\.\s+", "", body, flags=re.MULTILINE)
-    body = re.sub(r"\n{3,}", "\n\n", body).strip()
-
-    # Remove label prefixes like "What's new:", "Why it matters:", etc.
-    label_prefix = re.compile(
-        r"^\s*(what'?s\s+new|what\s+happened|why\s+it\s+matters|the\s+impact|bottom\s+line)\s*:\s*",
-        re.IGNORECASE,
-    )
-    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", body) if p.strip()]
-    paragraphs = [label_prefix.sub("", p).strip() for p in paragraphs if p.strip()]
-
-    if not paragraphs:
-        body = subtitle or "Fresh developments in this story are drawing attention."
-    else:
-        body = "\n\n".join(paragraphs)
-
-    short["subtitle"] = subtitle
-    short["outline"] = []
-    short["body"] = body
-    parsed["short_article"] = short
+    if isinstance(short, dict):
+        short["outline"] = []
+        parsed["short_article"] = short
     interest_id = str(parsed.get("interest_id", "")).strip().lower()
     legacy_map = {
         "technology": "tech",
@@ -844,7 +925,7 @@ def generate_summary(
             "messages": [
                 {
                     "role": "system",
-                    "content": "You return valid JSON only. No markdown fences.",
+                    "content": SUMMARY_SYSTEM_PROMPT,
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -856,7 +937,6 @@ def generate_summary(
         resp = client.chat.completions.create(**request_kwargs)
         elapsed = time.time() - t0
         tokens = getattr(resp.usage, "total_tokens", 0) if resp.usage else 0
-        print(f"      [summarizer] OpenAI {model_name} took {elapsed:.1f}s, {tokens} tokens — {title[:40]}")
         print(f"      [summarizer] OpenAI {model_name} took {elapsed:.1f}s, {tokens} tokens — {title[:40]}")
     except Exception as exc:
         return None, f"openai_error:{exc}"
@@ -874,6 +954,8 @@ def generate_summary(
         return None, "bad_json_response"
     if feed_type == "trending":
         parsed = _normalize_trending_summary(parsed)
+    elif feed_type in ("default", "for_you"):
+        parsed = _normalize_short_article_summary(parsed, strip_markdown_body=False)
     return parsed, ""
 
 
