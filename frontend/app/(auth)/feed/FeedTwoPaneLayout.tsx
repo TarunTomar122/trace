@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { ExternalLink, Flame } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { Check, ExternalLink, Flame, Loader2, Share2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -23,7 +23,9 @@ import {
   FEED_LIST_SCROLL_KEY,
   FEED_RESTORE_SCROLL_KEY,
   FEED_SELECTED_STORY_KEY,
+  getContentFromFeedListItem,
 } from './FeedPulse';
+import { copyOrShareUrl } from '@/lib/article-share';
 import type { FeedItem, TrendingTopic, TopicTimelineEvent } from '@/lib/firestore';
 import type { HotTweet } from './FeedOneScreen';
 import { ArticleImage } from '@/components/ArticleImage';
@@ -310,6 +312,49 @@ function LeftPane({
 
 // ── right pane ────────────────────────────────────────────────────────────────
 
+function StoryShareButton({
+  shareUrl,
+  title,
+}: {
+  shareUrl: string;
+  title: string;
+}) {
+  const [shareLoading, setShareLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = useCallback(async () => {
+    setShareLoading(true);
+    try {
+      await copyOrShareUrl(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // ignore clipboard failures
+    } finally {
+      setShareLoading(false);
+    }
+  }, [shareUrl]);
+
+  return (
+    <button
+      type="button"
+      onClick={handleShare}
+      disabled={shareLoading}
+      aria-label="Share article"
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#e5e7eb] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#374151] shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-colors hover:bg-[#f9fafb] disabled:opacity-60"
+    >
+      {shareLoading ? (
+        <Loader2 size={14} className="animate-spin" />
+      ) : copied ? (
+        <Check size={14} className="text-green-500" />
+      ) : (
+        <Share2 size={14} />
+      )}
+      {shareLoading ? 'Copying...' : copied ? 'Link copied' : 'Copy link'}
+    </button>
+  );
+}
+
 function RightPane({ item, isItemLocked }: { item: FeedListItem; isItemLocked: (id: string) => boolean }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const locked = isItemLocked(item.id);
@@ -325,6 +370,10 @@ function RightPane({ item, isItemLocked }: { item: FeedListItem; isItemLocked: (
     item.sourceCount > 1 ? `${item.sourceCount} sources` : null,
   ].filter(Boolean).join('  ·  ');
   const showStocksBrewCta = (item.interestId ?? item.tags?.[0] ?? '').toLowerCase() === 'markets';
+  const shareUrl = useMemo(() => {
+    const content = getContentFromFeedListItem(item);
+    return content?.shareUrl || content?.url || undefined;
+  }, [item]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
@@ -333,12 +382,18 @@ function RightPane({ item, isItemLocked }: { item: FeedListItem; isItemLocked: (
   return (
     <div ref={scrollRef} className="hidden min-h-0 flex-1 overflow-y-auto bg-white sm:block">
       <article className="mx-auto w-full max-w-[720px] px-10 py-10">
-        {/* meta */}
-        {meta && (
-          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[#9ca3af]">
-            {meta}
-          </p>
-        )}
+        <div className="flex items-start justify-between gap-4">
+          {meta ? (
+            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[#9ca3af]">
+              {meta}
+            </p>
+          ) : (
+            <span />
+          )}
+          {shareUrl && (
+            <StoryShareButton shareUrl={shareUrl} title={item.title} />
+          )}
+        </div>
 
         {/* headline */}
         <h1 className="mt-3 text-[28px] font-bold tracking-[-0.02em] text-[#111827] leading-[1.18]">
@@ -425,8 +480,8 @@ function RightPane({ item, isItemLocked }: { item: FeedListItem; isItemLocked: (
           </section>
         )}
 
-        {/* read original */}
-        {url && (
+        {/* read original + share */}
+        {(url || shareUrl) && (
           <div className="mt-10 border-t border-[#e5e7eb] pt-6">
             {showStocksBrewCta && (
               <div className="mb-3">
@@ -440,14 +495,21 @@ function RightPane({ item, isItemLocked }: { item: FeedListItem; isItemLocked: (
                 </a>
               </div>
             )}
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#2563eb] hover:underline underline-offset-2"
-            >
-              Read full article <ExternalLink size={13} />
-            </a>
+            <div className="flex flex-wrap items-center gap-4">
+              {shareUrl && (
+                <StoryShareButton shareUrl={shareUrl} title={item.title} />
+              )}
+              {url && (
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#2563eb] hover:underline underline-offset-2"
+                >
+                  Read full article <ExternalLink size={13} />
+                </a>
+              )}
+            </div>
           </div>
         )}
           </>

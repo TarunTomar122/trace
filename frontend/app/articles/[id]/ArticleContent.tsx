@@ -1,13 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Clock, Share2, Check, Loader2, ExternalLink } from "lucide-react";
 import StoryPageShell, { getStoryBackLabel } from "@/components/StoryPageShell";
+import StorySharePromo from "@/components/StorySharePromo";
 import { ArticleImage } from "@/components/ArticleImage";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  buildArticleShareUrl,
+  copyOrShareUrl,
+  getPublicStoryCta,
+} from "@/lib/article-share";
 
 interface ArticleData {
   id: string;
@@ -73,7 +79,8 @@ function getSafeReturnPath(value: string | null, fallback: string): string {
 
 export default function ArticleContent({ article }: Props) {
   const searchParams = useSearchParams();
-  const [copied, setCopied] = useState(false);
+  const { user, profile, loading, profileResolved } = useAuth();
+  const [shareCopied, setShareCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
 
   const shortArticle = article.summary?.short_article;
@@ -84,16 +91,28 @@ export default function ArticleContent({ article }: Props) {
     : [];
   const whyItMatters = normalizeText(shortArticle?.why_it_matters);
   const readingTime = article.summary?.reading_time_minutes || 3;
-  const returnHref = getSafeReturnPath(searchParams.get("from"), "/feed");
+  const fromParam = searchParams.get("from");
+  const isFromFeed = Boolean(
+    fromParam && getSafeReturnPath(fromParam, "").startsWith("/feed"),
+  );
+  const returnHref = isFromFeed ? getSafeReturnPath(fromParam, "/feed") : "/";
   const backLabel = getStoryBackLabel(returnHref);
-  const isFromFeed = returnHref.startsWith("/feed");
+  const isPublicShare = !isFromFeed;
+  const shareUrl = useMemo(() => buildArticleShareUrl(article), [article]);
+  const publicCta = getPublicStoryCta({
+    user,
+    profile,
+    loading: loading || !profileResolved,
+  });
 
   const handleShare = async () => {
+    const url = shareUrl || (typeof window !== "undefined" ? window.location.href : "");
+    if (!url) return;
     setSharing(true);
     try {
-      await navigator.clipboard.writeText(window.location.href);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await copyOrShareUrl(url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
     } catch {
       // ignore clipboard failures
     } finally {
@@ -101,31 +120,26 @@ export default function ArticleContent({ article }: Props) {
     }
   };
 
-  return (
-    <StoryPageShell
-      backHref={returnHref}
-      backLabel={backLabel}
-      mode={isFromFeed ? "app" : "public"}
-      ctaHref="/feed"
-      ctaLabel="Open feed"
-      shareButton={
-        <button
-          type="button"
-          onClick={handleShare}
-          disabled={sharing}
-          className="story-page-share"
-        >
-          {sharing ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : copied ? (
-            <Check size={14} className="text-green-500" />
-          ) : (
-            <Share2 size={14} />
-          )}
-          {sharing ? "Copying..." : copied ? "Link copied" : "Share"}
-        </button>
-      }
+  const shareButton = (
+    <button
+      type="button"
+      onClick={handleShare}
+      disabled={sharing}
+      className="story-page-share"
     >
+      {sharing ? (
+        <Loader2 size={14} className="animate-spin" />
+      ) : shareCopied ? (
+        <Check size={14} className="text-green-500" />
+      ) : (
+        <Share2 size={14} />
+      )}
+      {sharing ? "Copying..." : shareCopied ? "Link copied" : "Copy link"}
+    </button>
+  );
+
+  const overview = (
+    <>
       <div className="story-page-meta mb-4">
         {article.source_name && <span>{article.source_name}</span>}
         {article.source_name && <span>·</span>}
@@ -136,14 +150,6 @@ export default function ArticleContent({ article }: Props) {
       </div>
 
       <h1 className="story-page-title">{article.title}</h1>
-
-      {hasMeaningfulSubtitle(article) && (
-        <p className="story-page-dek">{subtitle}</p>
-      )}
-
-      <div className="story-page-hero">
-        <ArticleImage thumbnail={article.thumbnail} title={article.title} />
-      </div>
 
       {bodyContent ? (
         <div className="story-page-body mb-8">
@@ -192,22 +198,111 @@ export default function ArticleContent({ article }: Props) {
         </a>
       </div>
 
-      {!isFromFeed && (
-        <div className="story-page-promo">
-          <h2 className="story-page-promo-title">Get your personalized feed</h2>
-          <p className="story-page-promo-copy">
-            Trace groups the biggest stories, videos, and discussions into one feed so you can stay current without scanning ten tabs.
-          </p>
-          <Link href="/feed" className="story-page-btn-primary">
-            Open your feed
-          </Link>
+      <StorySharePromo trackingId="shared_article_promo" />
+    </>
+  );
+
+  const appContent = (
+    <>
+      <div className="story-page-meta mb-4">
+        {article.source_name && <span>{article.source_name}</span>}
+        {article.source_name && <span>·</span>}
+        <span className="inline-flex items-center gap-1">
+          <Clock size={13} />
+          {readingTime} min read
+        </span>
+      </div>
+
+      <h1 className="story-page-title">{article.title}</h1>
+
+      {hasMeaningfulSubtitle(article) && (
+        <p className="story-page-dek">{subtitle}</p>
+      )}
+
+      {article.thumbnail && (
+        <div className="story-page-hero">
+          <ArticleImage thumbnail={article.thumbnail} title={article.title} />
         </div>
       )}
 
-      {!isFromFeed && (
-        <div className="story-page-link-row">
-          <Link href="/blog" className="story-page-btn-secondary">Blog</Link>
+      {bodyContent ? (
+        <div className="story-page-body mb-8">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{bodyContent}</ReactMarkdown>
         </div>
+      ) : (
+        <p className="mb-8 text-sm text-[#6b7280]">
+          No summary available. Read the original source.
+        </p>
+      )}
+
+      {keyTakeaways.length > 0 && (
+        <div className="mb-8">
+          <h2 className="story-page-section-title">Key takeaways</h2>
+          <div className="space-y-3">
+            {keyTakeaways.map((point, index) => (
+              <div key={index} className="story-page-key-point">
+                <span className="story-page-key-point-dot" />
+                <div className="story-page-body text-[15px]">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{point}</ReactMarkdown>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {whyItMatters && (
+        <div className="story-page-card mb-8">
+          <h2 className="story-page-section-title">Why it matters</h2>
+          <div className="story-page-body text-[15px]">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{whyItMatters}</ReactMarkdown>
+          </div>
+        </div>
+      )}
+
+      <div className="story-page-actions">
+        <a
+          href={article.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="story-page-btn-primary"
+        >
+          Read original source
+          <ExternalLink size={14} />
+        </a>
+      </div>
+    </>
+  );
+
+  return (
+    <StoryPageShell
+      backHref={returnHref}
+      backLabel={backLabel}
+      mode={isFromFeed ? "app" : "public"}
+      variant={isPublicShare ? "share" : "default"}
+      showBack={isFromFeed}
+      ctaHref={publicCta.href}
+      ctaLabel={publicCta.headerLabel}
+      shareButton={isFromFeed ? shareButton : undefined}
+    >
+      {isPublicShare ? (
+        <div className="story-share-article">
+          {article.thumbnail && (
+            <div className="story-share-hero">
+              <ArticleImage
+                thumbnail={article.thumbnail}
+                title={article.title}
+                fallbackWidth={1200}
+                fallbackHeight={1600}
+              />
+            </div>
+          )}
+          <div className="story-share-overview">
+            {overview}
+          </div>
+        </div>
+      ) : (
+        appContent
       )}
     </StoryPageShell>
   );

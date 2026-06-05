@@ -9,7 +9,10 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import StoryPageShell, { getStoryBackLabel } from '@/components/StoryPageShell';
+import StorySharePromo from '@/components/StorySharePromo';
 import { ArticleImage } from '@/components/ArticleImage';
+import { useAuth } from '@/contexts/AuthContext';
+import { buildArticleShareUrl, copyOrShareUrl, getPublicStoryCta, SHARE_SITE_ORIGIN } from '@/lib/article-share';
 
 interface TimelineEvent {
   id: string;
@@ -100,13 +103,19 @@ function formatLongArchiveDate(iso: string): string {
 export default function TopicContent({ topic }: { topic: TopicData }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user, profile, loading, profileResolved } = useAuth();
   const [toast, setToast] = useState<string | null>(null);
   const [shareLoading, setShareLoading] = useState(false);
-  const [shareSuccess, setShareSuccess] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
 
   const returnHref = getSafeReturnPath(searchParams.get('from'), '/feed');
   const backLabel = getStoryBackLabel(returnHref);
   const isFromFeed = returnHref.startsWith('/feed');
+  const publicCta = getPublicStoryCta({
+    user,
+    profile,
+    loading: loading || !profileResolved,
+  });
 
   const sortedTimeline = useMemo(() => {
     if (!topic.timeline) return [];
@@ -124,62 +133,31 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
 
   const handleShare = async () => {
     setShareLoading(true);
-    const shareUrl = window.location.href;
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
 
     try {
-      // Generate share image
-      const params = new URLSearchParams({
-        headline: topic.title,
-        imageUrl: topic.thumbnail || '',
-        url: shareUrl,
-      });
-      const imageResponse = await fetch(`/api/share/render?${params.toString()}`);
-
-      if (!imageResponse.ok) {
-        throw new Error('Failed to generate image');
-      }
-
-      const blob = await imageResponse.blob();
-      const file = new File([blob], 'trace-story.png', { type: 'image/png' });
-
-      // Try Web Share API with file
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: topic.title,
-          text: `Read the full story on Trace: ${shareUrl}`,
-        });
-        setShareSuccess(true);
-        setTimeout(() => setShareSuccess(false), 2000);
-      } else {
-        // Fallback: download the image
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'trace-story.png';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        setShareSuccess(true);
-        setTimeout(() => setShareSuccess(false), 2000);
-      }
+      await copyOrShareUrl(shareUrl);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
     } catch {
-      // Fallback to just copying the URL
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        setToast("Link copied!");
-        setTimeout(() => setToast(null), 2000);
-      } catch {
-        setToast("Couldn't copy link");
-        setTimeout(() => setToast(null), 2000);
-      }
+      setToast("Couldn't share link");
+      setTimeout(() => setToast(null), 2000);
     } finally {
       setShareLoading(false);
     }
   };
 
   const openArticle = (article: TopicArticle) => {
+    const shareUrl = buildArticleShareUrl({
+      id: article.id,
+      feed_type: 'trending',
+    });
+    if (shareUrl) {
+      const articlePath = shareUrl.replace(SHARE_SITE_ORIGIN, '');
+      router.push(`${articlePath}?from=${encodeURIComponent(returnHref)}`);
+      return;
+    }
+
     const feedItem = {
       id: article.id,
       url: article.url,
@@ -199,8 +177,8 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
       backHref={returnHref}
       backLabel={backLabel}
       mode={isFromFeed ? 'app' : 'public'}
-      ctaHref="/feed"
-      ctaLabel="Open feed"
+      ctaHref={publicCta.href}
+      ctaLabel={publicCta.headerLabel}
       shareButton={
         <button
           type="button"
@@ -210,12 +188,12 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
         >
           {shareLoading ? (
             <Loader2 size={15} className="animate-spin" />
-          ) : shareSuccess ? (
+          ) : shareCopied ? (
             <Check size={15} className="text-green-500" />
           ) : (
             <Share2 size={15} />
           )}
-          {shareLoading ? 'Generating...' : shareSuccess ? 'Shared!' : 'Share'}
+          {shareLoading ? 'Copying...' : shareCopied ? 'Link copied' : 'Copy link'}
         </button>
       }
     >
@@ -313,18 +291,7 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
         </div>
       )}
 
-      {!isFromFeed && (
-        <div className="story-page-promo">
-          <h2 className="story-page-promo-title">Get your personalized feed</h2>
-          <p className="story-page-promo-copy">
-            Trace groups the biggest stories, conversations, and launches into one daily pulse so you stay current without the tab stack.
-          </p>
-          <Link href="/feed" className="story-page-btn-primary">
-            Open your feed
-            <ExternalLink size={14} />
-          </Link>
-        </div>
-      )}
+      {!isFromFeed && <StorySharePromo trackingId="shared_topic_promo" />}
 
       {!isFromFeed && (
         <div className="story-page-link-row">

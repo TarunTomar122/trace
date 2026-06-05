@@ -63,7 +63,9 @@ function normalizeText(value?: string | null): string {
 }
 
 function hasMeaningfulArticleContent(article: Pick<ArticleData, 'title' | 'summary'>): boolean {
-  const title = normalizeText(article.title).toLowerCase();
+  const title = normalizeText(article.title);
+  if (title.length > 0) return true;
+
   const shortArticle = article.summary?.short_article;
   const subtitle = normalizeText(shortArticle?.subtitle);
   const body = normalizeText(shortArticle?.body);
@@ -75,13 +77,25 @@ function hasMeaningfulArticleContent(article: Pick<ArticleData, 'title' | 'summa
     ? shortArticle!.key_takeaways!.map((item) => normalizeText(item)).filter(Boolean)
     : [];
 
-  const bodyHasSignal = body.length > 80 && body.toLowerCase() !== title;
-  const subtitleHasSignal = subtitle.length > 40 && subtitle.toLowerCase() !== title;
+  const bodyHasSignal = body.length > 80 && body.toLowerCase() !== title.toLowerCase();
+  const subtitleHasSignal = subtitle.length > 40 && subtitle.toLowerCase() !== title.toLowerCase();
   const whyHasSignal = whyItMatters.length > 40;
-  const slidesHaveSignal = slides.some((slide) => slide.length > 30 && slide.toLowerCase() !== title);
-  const takeawaysHaveSignal = keyTakeaways.some((item) => item.length > 20 && item.toLowerCase() !== title);
+  const slidesHaveSignal = slides.some((slide) => slide.length > 30 && slide.toLowerCase() !== title.toLowerCase());
+  const takeawaysHaveSignal = keyTakeaways.some((item) => item.length > 20 && item.toLowerCase() !== title.toLowerCase());
 
   return bodyHasSignal || subtitleHasSignal || whyHasSignal || slidesHaveSignal || takeawaysHaveSignal;
+}
+
+async function fetchArticleFromPool(poolCollection: string, docId: string): Promise<ArticlePoolDoc | null> {
+  if (!adminFirestore) return null;
+
+  const articleDoc = await adminFirestore
+    .collection(poolCollection)
+    .doc(docId)
+    .get();
+
+  if (!articleDoc.exists) return null;
+  return (articleDoc.data() as ArticlePoolDoc | undefined) || null;
 }
 
 async function getArticle(id: string): Promise<ArticleData | null> {
@@ -91,23 +105,27 @@ async function getArticle(id: string): Promise<ArticleData | null> {
 
   const prefix = id.substring(0, 2);
   const docId = id.substring(3);
-  const poolCollection = POOL_MAP[prefix];
+  let poolCollection = POOL_MAP[prefix];
+  let resolvedPrefix = prefix;
 
   if (!poolCollection) {
     return null;
   }
 
   try {
-    const articleDoc = await adminFirestore
-      .collection(poolCollection)
-      .doc(docId)
-      .get();
+    let data = await fetchArticleFromPool(poolCollection, docId);
 
-    if (!articleDoc.exists) {
-      return null;
+    if (!data) {
+      const alternatePool = poolCollection === 'v3_for_you_pool'
+        ? 'v3_trending_pool'
+        : 'v3_for_you_pool';
+      data = await fetchArticleFromPool(alternatePool, docId);
+      if (data) {
+        poolCollection = alternatePool;
+        resolvedPrefix = alternatePool === 'v3_for_you_pool' ? 'fy' : 'tr';
+      }
     }
 
-    const data = articleDoc.data() as ArticlePoolDoc | undefined;
     if (!data) {
       return null;
     }
@@ -133,19 +151,19 @@ async function getArticle(id: string): Promise<ArticleData | null> {
     }
 
     const article: ArticleData = {
-      id,
+      id: resolvedPrefix === prefix ? id : `${resolvedPrefix}_${docId}`,
       url: articleUrl,
       title: data.title || '',
       type: data.type || 'blog',
       source: data.source || '',
       source_name: data.source_name || '',
       interest_id: data.interest_id || '',
-      feed_type: FEED_TYPE_MAP[prefix] || 'for_you',
+      feed_type: FEED_TYPE_MAP[resolvedPrefix] || 'for_you',
       published_date: data.published_date || '',
       thumbnail: data.og_image || data.thumbnail || null,
       summary,
       metadata: {
-        feed_type: FEED_TYPE_MAP[prefix] || 'for_you',
+        feed_type: FEED_TYPE_MAP[resolvedPrefix] || 'for_you',
         source_description: data.source_description || '',
       },
     };

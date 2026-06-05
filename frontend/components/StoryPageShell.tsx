@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import FeedFooter from "@/components/FeedFooter";
 import StoryWireFooter from "@/components/StoryWireFooter";
 
 export function getStoryBackLabel(returnHref: string): string {
@@ -19,6 +20,8 @@ export default function StoryPageShell({
   ctaHref = "/feed",
   ctaLabel = "Open feed",
   mode = "public",
+  showBack = true,
+  variant = "default",
   contentLayout,
 }: {
   backHref: string;
@@ -28,10 +31,13 @@ export default function StoryPageShell({
   ctaHref?: string;
   ctaLabel?: string;
   mode?: "public" | "app";
+  showBack?: boolean;
+  variant?: "default" | "share";
   contentLayout?: (content: React.ReactNode) => React.ReactNode;
 }) {
   const label = backLabel ?? getStoryBackLabel(backHref);
   const isApp = mode === "app";
+  const isShare = variant === "share";
   const { user } = useAuth();
 
   if (isApp) {
@@ -86,36 +92,36 @@ export default function StoryPageShell({
   }
 
   return (
-    <div className="story-page">
+    <div className={`story-page${isShare ? " story-page--share" : ""}`}>
       <header className="story-page-header">
         <div className="story-page-nav">
           <Link href="/" className="story-page-logo">
             <img src="/trace.webp" alt="Trace" className="h-5 w-auto" />
             <span>TRACE</span>
           </Link>
-          <>
-            <nav className="story-page-nav-links" aria-label="Site">
-              <Link href="/blog">Blog</Link>
-            </nav>
-            <Link href={ctaHref} className="story-page-cta">
-              {ctaLabel}
-            </Link>
-          </>
+          <Link href={ctaHref} className="story-page-cta">
+            {ctaLabel}
+          </Link>
         </div>
       </header>
 
       <main className="story-page-main">
-        <div className="story-page-toolbar">
-          <Link href={backHref} className="story-page-back">
-            <ArrowLeft size={16} />
-            {label}
-          </Link>
-          {shareButton}
-        </div>
+        {(showBack || shareButton) && (
+          <div className={`story-page-toolbar${showBack ? "" : " story-page-toolbar--end"}`}>
+            {showBack && (
+              <Link href={backHref} className="story-page-back">
+                <ArrowLeft size={16} />
+                {label}
+              </Link>
+            )}
+            {shareButton}
+          </div>
+        )}
         {contentLayout
           ? contentLayout(children)
           : <div className="story-page-content">{children}</div>}
       </main>
+      {isShare && <FeedFooter stocksBrewMedium="shared_article_footer" />}
     </div>
   );
 }

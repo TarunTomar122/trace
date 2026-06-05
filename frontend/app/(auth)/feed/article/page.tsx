@@ -20,6 +20,7 @@ import { type FeedListItem, getTopicDisplay } from "../FeedUi";
 import { goBackToFeed } from "../FeedPulse";
 import { MediumPaywallGate } from "../FeedPaywall";
 import { useAuth } from "@/contexts/AuthContext";
+import { buildArticleShareUrl, copyOrShareUrl } from "@/lib/article-share";
 
 
 const CARD_TYPE_LABELS: Record<string, string> = {
@@ -129,19 +130,6 @@ function ArticleSections({ cards }: { cards: LearningCard[] }) {
   );
 }
 
-const FEED_TYPE_PREFIX: Record<string, string> = {
-  for_you: 'fy',
-  trending: 'tr',
-};
-
-function buildShareUrl(item: FeedItem): string | null {
-  const feedType = item.feed_type || item.metadata?.feed_type;
-  const prefix = feedType ? FEED_TYPE_PREFIX[feedType] : null;
-  if (!prefix || !item.id) return null;
-  const normalizedId = item.id.startsWith(`${prefix}_`) ? item.id : `${prefix}_${item.id}`;
-  return `https://www.yourtrace.online/articles/${normalizedId}`;
-}
-
 export default function ArticlePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -238,10 +226,10 @@ export default function ArticlePage() {
   const handleShare = async () => {
     if (!item) return;
     setShareLoading(true);
-    const shareUrl = buildShareUrl(item) || item.url;
+    const shareUrl = buildArticleShareUrl(item) || item.url;
 
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      await copyOrShareUrl(shareUrl);
       setShareCopied(true);
       setTimeout(() => setShareCopied(false), 2000);
     } catch {

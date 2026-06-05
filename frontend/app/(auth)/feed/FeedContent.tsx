@@ -4,6 +4,7 @@ import MarkdownProse from '@/components/MarkdownProse';
 import { FeedItem, TrendingTopic, ONBOARDING_INTERESTS } from '@/lib/firestore';
 import { getArticleImage, isValidThumbnail } from '@/lib/fallback-images';
 import { getArticleSummary, getPreview, stripMarkdown, decodeHtmlEntities } from '@/lib/feed-article-text';
+import { copyOrShareUrl } from '@/lib/article-share';
 
 export { getArticleSummary, getPreview, stripMarkdown };
 
@@ -12,10 +13,7 @@ export function decodeHtml(str: string): string {
 }
 
 export const FREE_LIMITS = { trending: 3 };
-export const FEED_TYPE_PREFIX: Record<string, string> = {
-  for_you: 'fy',
-  trending: 'tr',
-};
+export { FEED_TYPE_PREFIX } from '@/lib/article-share';
 export { MarkdownProse };
 
 /* ─── Daily Brief Body Parser ─── */
@@ -504,7 +502,7 @@ export function ContentPanel({
     if (!shareUrl) return;
     setShareLoading(true);
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      await copyOrShareUrl(shareUrl);
       setShareCopied(true);
       setTimeout(() => setShareCopied(false), 2000);
     } catch {
@@ -703,7 +701,7 @@ export function ContentPanel({
                 ) : (
                   <Share2 size={14} />
                 )}
-                {shareLoading ? 'Copying...' : shareCopied ? 'Link copied' : 'Copy article link'}
+                {shareLoading ? 'Copying...' : shareCopied ? 'Link copied' : 'Copy link'}
               </button>
               {content.url && (
                 <a

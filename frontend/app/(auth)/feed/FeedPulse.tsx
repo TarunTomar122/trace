@@ -3,11 +3,11 @@ import { ExternalLink } from 'lucide-react';
 import { FeedItem, TrendingTopic } from '@/lib/firestore';
 import { getArticleImage, isValidThumbnail } from '@/lib/fallback-images';
 import { PulseBetaBadge } from '@/components/PulseBetaBadge';
+import { buildArticleShareUrl } from '@/lib/article-share';
 import {
   BriefBody,
   ContentData,
   decodeHtml,
-  FEED_TYPE_PREFIX,
   getArticleSummary,
   getPreview,
   getTimeLabel,
@@ -851,14 +851,6 @@ export type FeedListItem = {
   pulseSources?: Array<{ name: string; title?: string; url: string }>;
   data: TrendingTopic | FeedItem;
 };
-
-function buildArticleShareUrl(article: FeedItem): string | null {
-  const feedType = article.feed_type || article.metadata?.feed_type;
-  const prefix = feedType ? FEED_TYPE_PREFIX[feedType] : null;
-  if (!prefix || !article.id) return null;
-  const normalizedId = article.id.startsWith(`${prefix}_`) ? article.id : `${prefix}_${article.id}`;
-  return `https://www.yourtrace.online/articles/${normalizedId}`;
-}
 
 function buildTopicShareUrl(topic: TrendingTopic): string | null {
   const topicSlug = topic.topic_key || topic.id;
