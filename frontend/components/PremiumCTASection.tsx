@@ -78,7 +78,7 @@ export default function PremiumCTASection({
           </div>
           <p className="mt-3 text-[14px] text-secondary/50 leading-[1.7] max-w-md">
             Deeper context, smarter filtering, and signal over noise — in one
-            daily pulse. Try free for 3 days, then{" "}
+            daily pulse at{' '}
             <SubscriptionPrice
               price={pricing.priceDisplay}
               compareAt={pricing.compareAtPriceDisplay}
@@ -107,10 +107,9 @@ export default function PremiumCTASection({
             onClick={() => trackCheckoutClicked("premium_cta_light")}
             className="mt-6 inline-flex items-center justify-center w-full sm:w-auto rounded-full bg-foreground px-6 py-3.5 text-[13px] font-semibold text-background transition-all hover:bg-foreground/90 hover:scale-[1.01] active:scale-[0.99]"
           >
-            Start my free 3-day trial
+            Subscribe to Pro
           </Link>
           <p className="mt-3 text-[12px] leading-snug text-secondary/40">
-            Free for 3 days · then{" "}
             <SubscriptionPrice
               price={pricing.priceDisplay}
               compareAt={pricing.compareAtPriceDisplay}
@@ -147,7 +146,7 @@ export default function PremiumCTASection({
         </div>
         <p className="mt-3 text-[14px] text-white/40 leading-[1.7] max-w-md">
           Deeper context, smarter filtering, and signal over noise — in one
-          daily pulse. Try free for 3 days, then{" "}
+          daily pulse at{" "}
           <SubscriptionPrice
             price={pricing.priceDisplay}
             compareAt={pricing.compareAtPriceDisplay}
@@ -176,10 +175,9 @@ export default function PremiumCTASection({
           onClick={() => trackCheckoutClicked("premium_cta_dark")}
           className="mt-6 inline-flex items-center justify-center w-full rounded-full bg-white px-6 py-3.5 text-[13px] font-semibold text-[#151515] transition-all hover:bg-white/90 hover:scale-[1.01] active:scale-[0.99]"
         >
-          Start my free 3-day trial
+          Subscribe to Pro
         </Link>
         <p className="mt-3 text-center text-[12px] leading-snug text-white/35">
-          Free for 3 days · then{" "}
           <SubscriptionPrice
             price={pricing.priceDisplay}
             compareAt={pricing.compareAtPriceDisplay}

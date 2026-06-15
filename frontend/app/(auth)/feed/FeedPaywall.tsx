@@ -20,7 +20,7 @@ function ProPaywallCard({
   trackingId,
   compact = false,
   title = 'Keep reading with Trace Pro',
-  subtitle = '3-day free trial · cancel anytime',
+  subtitle = 'Cancel anytime',
 }: {
   trackingId: string;
   compact?: boolean;
@@ -55,20 +55,18 @@ function ProPaywallCard({
           compact ? 'px-4 py-2 text-[12px]' : 'px-6 py-2.5 text-sm'
         }`}
       >
-        Start free trial
+        Subscribe to Pro
       </Link>
     </div>
   );
 }
 
 const INDIA_PRICING = {
-  trialDays: 3,
   priceDisplay: SUBSCRIPTION_PRICE_INDIA,
   compareAtPriceDisplay: null as string | null,
   pricingOffer: 'india' as const,
 };
 const DEFAULT_PRICING = {
-  trialDays: 3,
   priceDisplay: SUBSCRIPTION_PRICE_DEFAULT,
   compareAtPriceDisplay: SUBSCRIPTION_COMPARE_AT_DEFAULT,
   pricingOffer: 'default' as const,
@@ -251,16 +249,16 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
             {!user ? (
               <>
                 <h2 id="feed-subscribe-lock-heading" className="text-[1.35rem] font-bold tracking-tight text-foreground leading-snug">
-                  Try Trace Pro free<br />for 3 days
+                  Unlock Trace Pro
                 </h2>
                 <p className="mt-2.5 text-[13px] leading-relaxed text-secondary/55">
-                  Sign in to start your trial. Love it? Stay at{' '}
+                  Sign in to subscribe. Get unlimited reads at{' '}
                   <SubscriptionPrice
                     price={pricingPreview.priceDisplay}
                     compareAt={pricingPreview.compareAtPriceDisplay}
                     size="sm"
                   />
-                  . Don&apos;t? Cancel before day 3 — you pay nothing.
+                  . Cancel anytime.
                 </p>
                 <div className="mt-5 space-y-2.5">
                   {LANDING_PRICING_BULLET_POINTS.map((line) => (
@@ -279,7 +277,7 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
                       <Loader2 size={16} className="animate-spin" /> Signing in...
                     </>
                   ) : (
-                    'Start my free 3-day trial →'
+                    'Subscribe to Pro →'
                   )}
                 </button>
                 <button
@@ -293,16 +291,16 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
             ) : (
               <>
                 <h2 id="feed-subscribe-lock-heading" className="text-[1.35rem] font-bold tracking-tight text-foreground leading-snug">
-                  Try Trace Pro free<br />for 3 days
+                  Unlock Trace Pro
                 </h2>
                 <p className="mt-2.5 text-[13px] leading-relaxed text-secondary/55">
-                  Love it? Stay at{' '}
+                  Get unlimited reads at{' '}
                   <SubscriptionPrice
                     price={pricingPreview.priceDisplay}
                     compareAt={pricingPreview.compareAtPriceDisplay}
                     size="sm"
                   />
-                  . Don&apos;t? Cancel before day 3 — you pay nothing.
+                  . Cancel anytime.
                 </p>
                 <div className="mt-5 space-y-2.5">
                   {LANDING_PRICING_BULLET_POINTS.map((line) => (
@@ -321,7 +319,7 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
                       <Loader2 size={16} className="animate-spin" /> Setting up...
                     </>
                   ) : (
-                    'Start my free 3-day trial →'
+                    'Subscribe to Pro →'
                   )}
                 </button>
                 <button
@@ -404,7 +402,7 @@ export function PaywallGate() {
     return () => { cancelled = true; };
   }, [user]);
 
-  const handleStartTrial = async () => {
+  const handleSubscribe = async () => {
     if (!user) return;
     setLoading(true);
     setError(null);
@@ -442,7 +440,6 @@ export function PaywallGate() {
       desc: "Skim today's feed in 5 minutes. Know what's going on. Move on with your day.",
     },
   ];
-  const trialDays = pricingPreview.trialDays;
   const priceDisplay = pricingPreview.priceDisplay;
   const compareAtPriceDisplay = pricingPreview.compareAtPriceDisplay ?? null;
   const planName = pricingPreview.pricingOffer === 'india' ? 'Trace Pro India' : 'Trace Pro';
@@ -454,7 +451,6 @@ export function PaywallGate() {
           The news habit that<br />doesn't waste your time.
         </h2>
         <p className="text-[14px] text-secondary/50 mb-10 leading-relaxed">
-          Free for 3 days · then{' '}
           <SubscriptionPrice price={priceDisplay} compareAt={compareAtPriceDisplay} size="sm" />
           {' '}· Cancel anytime.
         </p>
@@ -473,14 +469,13 @@ export function PaywallGate() {
 
         {error && <p className="text-[12px] text-red-500 mb-3">{error}</p>}
         <button
-          onClick={handleStartTrial}
+          onClick={handleSubscribe}
           disabled={loading}
           className="flex items-center justify-center gap-2 w-full py-3.5 rounded-full text-[13px] font-semibold bg-foreground text-background transition-all hover:bg-foreground/90 hover:shadow-md hover:shadow-black/10 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:scale-100"
         >
-          {loading ? <><Loader2 size={14} className="animate-spin" />Setting up...</> : 'Start my free 3-day trial'}
+          {loading ? <><Loader2 size={14} className="animate-spin" />Setting up...</> : 'Subscribe to Pro'}
         </button>
         <p className="text-[11px] text-secondary/35 mt-2.5 text-center">
-          Free for 3 days · then{' '}
           <SubscriptionPrice price={priceDisplay} compareAt={compareAtPriceDisplay} size="sm" />
           {' '}· Cancel anytime
         </p>
@@ -611,14 +606,14 @@ export function PulseLockedPreview({
             <p className="text-[15px] font-bold tracking-[-0.02em] text-[#111827]">
               Unlock Pulse with Trace Pro
             </p>
-            <p className="mt-1 text-[13px] text-[#6b7280]">3-day free trial · cancel anytime</p>
+            <p className="mt-1 text-[13px] text-[#6b7280]">Cancel anytime</p>
             <Link
               href="/profile?tab=subscription"
               prefetch={false}
               onClick={() => trackCheckoutClicked('pulse_locked')}
               className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-[#111827] px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#1f2937]"
             >
-              Start free trial
+              Subscribe to Pro
             </Link>
           </div>
         </div>

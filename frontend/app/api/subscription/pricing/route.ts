@@ -22,7 +22,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       countryCode: offer.countryCode,
       countrySource: offer.countrySource,
-      trialDays: offer.trialDays,
       priceDisplay: offer.priceDisplay,
       compareAtPriceDisplay: offer.compareAtPriceDisplay,
       pricingOffer: offer.isIndiaOffer ? 'india' : 'default',

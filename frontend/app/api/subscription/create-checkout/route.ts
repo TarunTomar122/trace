@@ -170,9 +170,6 @@ export async function POST(request: NextRequest) {
         feature_flags: {
           allow_discount_code: offer.isIndiaOffer,
         },
-        subscription_data: {
-          trial_period_days: offer.trialDays,
-        },
         customer: {
           email: email,
           name: name,
@@ -228,7 +225,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       checkoutUrl: checkoutData.checkout_url,
       sessionId: checkoutData.session_id,
-      trialDays: offer.trialDays,
       countryCode: offer.countryCode,
       priceDisplay: offer.priceDisplay,
       pricingOffer: offer.isIndiaOffer ? 'india' : 'default',

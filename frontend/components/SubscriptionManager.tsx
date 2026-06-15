@@ -39,7 +39,6 @@ interface SubscriptionStatus {
 interface PricingPreview {
   countryCode: string | null;
   countrySource: 'header' | 'profile' | 'fallback';
-  trialDays: number;
   priceDisplay: string;
   compareAtPriceDisplay?: string | null;
   pricingOffer: 'india' | 'default';
@@ -48,7 +47,6 @@ interface PricingPreview {
 const INDIA_PRICING_PREVIEW: PricingPreview = {
   countryCode: 'IN',
   countrySource: 'fallback',
-  trialDays: 0,
   priceDisplay: SUBSCRIPTION_PRICE_INDIA,
   compareAtPriceDisplay: null,
   pricingOffer: 'india',
@@ -57,7 +55,6 @@ const INDIA_PRICING_PREVIEW: PricingPreview = {
 const DEFAULT_PRICING_PREVIEW: PricingPreview = {
   countryCode: null,
   countrySource: 'fallback',
-  trialDays: 0,
   priceDisplay: SUBSCRIPTION_PRICE_DEFAULT,
   compareAtPriceDisplay: SUBSCRIPTION_COMPARE_AT_DEFAULT,
   pricingOffer: 'default',
@@ -413,7 +410,6 @@ export default function SubscriptionManager() {
   const status = subscriptionStatus?.subscriptionStatus || 'none';
   const hasAccess = subscriptionStatus?.hasAccess || false;
   const fallbackPricing = guessClientPricingPreview();
-  const trialDays = pricingPreview?.trialDays ?? fallbackPricing.trialDays;
   const priceDisplay = pricingPreview?.priceDisplay ?? fallbackPricing.priceDisplay;
   const compareAtPriceDisplay =
     pricingPreview?.compareAtPriceDisplay ?? fallbackPricing.compareAtPriceDisplay ?? null;

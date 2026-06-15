@@ -124,7 +124,7 @@ export default async function SolutionDetailPage({ params }: PageProps) {
               ?
             </h2>
             <p className="mt-3 text-white/60 max-w-2xl">
-              Start your free trial and see how Trace cuts through the noise.
+              Subscribe to Trace Pro and see how Trace cuts through the noise.
               One brief, under 10 minutes, and you&apos;re caught up.
             </p>
             <Link
@@ -132,7 +132,7 @@ export default async function SolutionDetailPage({ params }: PageProps) {
               className="mt-5 inline-block rounded-full bg-[#2563eb] px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#1d4ed8]"
               style={{ boxShadow: "0 10px 24px rgba(37, 99, 235, 0.22)" }}
             >
-              Start free trial →
+              Get started →
             </Link>
           </section>
 
@@ -161,7 +161,7 @@ export default async function SolutionDetailPage({ params }: PageProps) {
                 href="/onboarding"
                 className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-sm text-[#6b7280] transition-colors hover:text-[#111827]"
               >
-                Start Free Trial
+                Get Started
               </Link>
             </div>
           </section>

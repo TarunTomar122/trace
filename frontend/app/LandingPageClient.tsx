@@ -141,7 +141,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What does Trace Pro include?',
-    a: 'A feed tailored to your role and interests, full topic depth, hot tweets, launches, and community signal, with a 3-day free trial. Cancel before day 3 and pay nothing.',
+    a: 'A feed tailored to your role and interests, full topic depth, hot tweets, launches, and community signal. Cancel anytime.',
   },
   {
     q: 'Is there an Android app?',
@@ -158,13 +158,11 @@ const HeroPulsePreview = dynamic(() => import('./HeroPulsePreview'), {
 });
 
 const INDIA_PRICING_PREVIEW = {
-  trialDays: 3,
   priceDisplay: SUBSCRIPTION_PRICE_INDIA,
   compareAtPriceDisplay: null,
   pricingOffer: 'india' as const,
 };
 const DEFAULT_PRICING_PREVIEW = {
-  trialDays: 3,
   priceDisplay: SUBSCRIPTION_PRICE_DEFAULT,
   compareAtPriceDisplay: SUBSCRIPTION_COMPARE_AT_DEFAULT,
   pricingOffer: 'default' as const,
@@ -260,8 +258,8 @@ export default function LandingPageClient({
     }
   };
 
-  const handleStartTrial = (location = 'hero') => {
-    trackLandingCTAClicked('trial', location);
+  const handleSubscribe = (location = 'hero') => {
+    trackLandingCTAClicked('subscribe', location);
     if (user && profileResolved) {
       router.push(getPostAuthDestination(profile, 'checkout'));
     } else {
@@ -485,7 +483,7 @@ export default function LandingPageClient({
                     />
                   </div>
                   <p className="mt-3 text-[14px] leading-relaxed text-[#6b7280]">
-                    Try free for 3 days. Cancel before day 3 and you pay nothing.
+                    Deeper context, smarter filtering, and signal over noise — in one daily pulse.
                   </p>
                   <div className="mt-6 space-y-3">
                     {LANDING_PRICING_BULLET_POINTS.map((line) => (
@@ -497,13 +495,13 @@ export default function LandingPageClient({
                   </div>
                   <button
                     type="button"
-                    onClick={() => handleStartTrial('pricing_card')}
+                    onClick={() => handleSubscribe('pricing_card')}
                     className="landing-btn landing-btn-primary landing-btn-lg mt-8 w-full"
                   >
-                    Start my free 3-day trial
+                    Subscribe to Trace Pro
                   </button>
                   <p className="mt-3 text-center text-[12px] text-[#9ca3af]">
-                    3-day free trial · Cancel anytime
+                    Cancel anytime
                   </p>
                 </div>
               </div>
@@ -575,11 +573,11 @@ export default function LandingPageClient({
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleStartTrial('bottom_cta')}
+                    onClick={() => handleSubscribe('bottom_cta')}
                     className="landing-btn landing-btn-secondary landing-btn-lg"
                     style={{ background: 'rgba(255,255,255,0.95)' }}
                   >
-                    Try free for 3 days
+                    Subscribe to Pro
                   </button>
                 </div>
               </div>

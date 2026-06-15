@@ -115,7 +115,7 @@ export const EndCardScene: React.FC = () => {
       }}>
         <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#34d399" }} />
         <span style={{ fontFamily: fontGrotesk, fontSize: 14, fontWeight: 600, color: "rgba(0,0,0,0.55)" }}>
-          Start free — 3 days, no card needed
+          Subscribe to Trace Pro
         </span>
       </div>
     </AbsoluteFill>

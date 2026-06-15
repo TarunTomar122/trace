@@ -201,7 +201,7 @@ export default async function NewsletterDetailPage({ params }: PageProps) {
                 href="/onboarding"
                 className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-sm text-[#6b7280] transition-colors hover:text-[#111827]"
               >
-                Start Free Trial
+                Get Started
               </Link>
             </div>
           </section>

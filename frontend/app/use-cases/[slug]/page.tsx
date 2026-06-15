@@ -126,8 +126,8 @@ export default async function UseCaseDetailPage({ params }: PageProps) {
           <section className="mt-10 rounded-[1.5rem] bg-[#111827] p-8 text-white">
             <h2 className="text-2xl font-semibold tracking-tight">
               {page.title.startsWith("Trace for")
-                ? page.title.replace("Trace ", "") + "? Try Trace free"
-                : "Try Trace free for 3 days"}
+                ? page.title.replace("Trace ", "") + "? Try Trace"
+                : "Try Trace Pro"}
             </h2>
             <p className="mt-3 text-white/60 max-w-2xl">
               See how Trace fits your workflow. One brief, under 10 minutes,
@@ -138,7 +138,7 @@ export default async function UseCaseDetailPage({ params }: PageProps) {
               className="mt-5 inline-block rounded-full bg-[#2563eb] px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#1d4ed8]"
               style={{ boxShadow: "0 10px 24px rgba(37, 99, 235, 0.22)" }}
             >
-              Start free trial →
+              Get started →
             </Link>
           </section>
 
@@ -167,7 +167,7 @@ export default async function UseCaseDetailPage({ params }: PageProps) {
                 href="/onboarding"
                 className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-sm text-[#6b7280] transition-colors hover:text-[#111827]"
               >
-                Start Free Trial
+                Get Started
               </Link>
             </div>
           </section>

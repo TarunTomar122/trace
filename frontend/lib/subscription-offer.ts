@@ -18,12 +18,6 @@ export interface SubscriptionOffer {
   productId: string;
   priceDisplay: string;
   compareAtPriceDisplay: string | null;
-  trialDays: number;
-}
-
-function parseTrialDays(value: string | undefined, fallback: number): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
 const COUNTRY_HEADER_KEYS = [
@@ -99,7 +93,6 @@ export function resolveSubscriptionOfferFromHeaders(headers: HeaderReader, profi
     compareAtPriceDisplay: isIndiaOffer
       ? null
       : (process.env.SUBSCRIPTION_COMPARE_AT_DISPLAY_DEFAULT || SUBSCRIPTION_COMPARE_AT_DEFAULT),
-    trialDays: 3,
   };
 }
 

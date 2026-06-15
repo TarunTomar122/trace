@@ -84,7 +84,7 @@ const RESOURCE_SECTIONS = [
     links: [
       { label: "How It Works", href: "/how-it-works" },
       { label: "Tools Directory", href: "/tools" },
-      { label: "Start Free Trial", href: "/onboarding" },
+      { label: "Get Started", href: "/onboarding" },
     ],
   },
 ];
