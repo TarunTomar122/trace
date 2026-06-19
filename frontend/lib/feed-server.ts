@@ -4,14 +4,6 @@ import type { FeedItem, TopicTimelineEvent, TrendingTopic, V3UserFeed } from '@/
 
 /** Today + yesterday's global edition; pipeline handles source freshness. */
 const GLOBAL_FEED_LOOKBACK_DOCS = 2;
-const WEB_FULL_FEED_CACHE_COLLECTION = 'web_feed_full_cache';
-const WEB_ITEM_DETAIL_CACHE_COLLECTION = 'web_feed_item_detail_cache';
-// Fresh-window for the web full-feed cache. After this the entry is still
-// served (stale-while-revalidate) while a background rebuild refreshes it.
-const WEB_FULL_FEED_CACHE_TTL_MS = 3 * 60 * 1000;
-const WEB_ITEM_DETAIL_CACHE_TTL_MS = 3 * 60 * 1000;
-const WEB_FULL_FEED_CACHE_VERSION = 3;
-const WEB_ITEM_DETAIL_CACHE_VERSION = 1;
 const GUEST_FEED_INTERESTS = ['ai', 'tech', 'startups', 'engineering', 'markets'] as const;
 const MAX_SUMMARY_BODY_CHARS = 2200;
 const MAX_SUMMARY_SUBTITLE_CHARS = 280;
@@ -141,28 +133,6 @@ function buildViewerProfile(profile: DocData | null, roleFromProfile: string, vi
   };
 }
 
-function getFullFeedCacheDocId(normalizedRole: string) {
-  return `latest_${normalizedRole || 'developer'}`;
-}
-
-function getItemDetailCacheRoleDocId(normalizedRole: string) {
-  return `latest_${normalizedRole || 'developer'}`;
-}
-
-function isFreshIsoTimestamp(value: unknown, ttlMs: number) {
-  if (typeof value !== 'string') return false;
-  const ts = new Date(value).getTime();
-  if (!Number.isFinite(ts)) return false;
-  return Date.now() - ts < ttlMs;
-}
-
-function isFeedItemDetailResponse(value: unknown): value is FeedItemDetailResponse {
-  if (!value || typeof value !== 'object') return false;
-  const data = value as { kind?: unknown; item?: unknown };
-  if (data.kind !== 'article' && data.kind !== 'topic') return false;
-  return Boolean(data.item && typeof data.item === 'object');
-}
-
 function findFeedItemDetailInFeed(feed: FeedBody, itemId: string): FeedItemDetailResponse | null {
   const topic = feed.trending_topics?.find((entry) => entry.id === itemId);
   if (topic) {
@@ -188,153 +158,6 @@ function findFeedItemDetailInFeed(feed: FeedBody, itemId: string): FeedItemDetai
   }
 
   return null;
-}
-
-async function writeItemDetailCacheForRole(normalizedRole: string, feed: FeedBody, generatedAt: string) {
-  if (!adminFirestore) {
-    throw new Error('Server configuration error');
-  }
-
-  const detailByItemId = new Map<string, FeedItemDetailResponse>();
-  for (const topic of feed.trending_topics || []) {
-    detailByItemId.set(topic.id, { kind: 'topic', item: topic });
-  }
-
-  const articleGroups: FeedItem[][] = [
-    feed.for_you || [],
-    feed.trending || [],
-    feed.pulse || [],
-    feed.community_pulse || [],
-    feed.build_pulse || [],
-    feed.daily_pulse?.tools || [],
-    feed.daily_pulse?.blogs || [],
-    feed.daily_pulse?.discussions || [],
-  ];
-
-  for (const group of articleGroups) {
-    for (const article of group) {
-      if (!detailByItemId.has(article.id)) {
-        detailByItemId.set(article.id, { kind: 'article', item: article });
-      }
-    }
-  }
-
-  if (detailByItemId.size === 0) return;
-
-  const roleDocRef = adminFirestore
-    .collection(WEB_ITEM_DETAIL_CACHE_COLLECTION)
-    .doc(getItemDetailCacheRoleDocId(normalizedRole));
-  const writes: Promise<unknown>[] = [];
-
-  for (const [itemId, detail] of detailByItemId.entries()) {
-    writes.push(
-      roleDocRef.collection('items').doc(itemId).set(stripUndefinedDeep({
-        version: WEB_ITEM_DETAIL_CACHE_VERSION,
-        generated_at: generatedAt,
-        detail,
-      }), { merge: true })
-    );
-  }
-
-  await Promise.all(writes);
-}
-
-async function readFeedItemDetailFromCache(
-  normalizedRole: string,
-  itemId: string
-): Promise<FeedItemDetailResponse | null> {
-  if (!adminFirestore) {
-    throw new Error('Server configuration error');
-  }
-
-  const itemSnapshot = await adminFirestore
-    .collection(WEB_ITEM_DETAIL_CACHE_COLLECTION)
-    .doc(getItemDetailCacheRoleDocId(normalizedRole))
-    .collection('items')
-    .doc(itemId)
-    .get();
-
-  if (!itemSnapshot.exists) return null;
-
-  const cacheData = itemSnapshot.data() as {
-    version?: number;
-    generated_at?: string;
-    detail?: unknown;
-  } | undefined;
-
-  if (
-    cacheData?.version !== WEB_ITEM_DETAIL_CACHE_VERSION
-    || !isFreshIsoTimestamp(cacheData.generated_at, WEB_ITEM_DETAIL_CACHE_TTL_MS)
-    || !isFeedItemDetailResponse(cacheData.detail)
-  ) {
-    return null;
-  }
-
-  return cacheData.detail;
-}
-
-async function hydrateFeedItemDetailFromFullCache(
-  normalizedRole: string,
-  itemId: string
-): Promise<FeedItemDetailResponse | null> {
-  if (!adminFirestore) {
-    throw new Error('Server configuration error');
-  }
-
-  const fullCacheSnapshot = await adminFirestore
-    .collection(WEB_FULL_FEED_CACHE_COLLECTION)
-    .doc(getFullFeedCacheDocId(normalizedRole))
-    .get();
-
-  if (!fullCacheSnapshot.exists) return null;
-
-  const fullCacheData = fullCacheSnapshot.data() as {
-    version?: number;
-    generated_at?: string;
-    feed?: FeedBody;
-  } | undefined;
-
-  if (
-    fullCacheData?.version !== WEB_FULL_FEED_CACHE_VERSION
-    || !fullCacheData.feed
-    || !isFreshIsoTimestamp(fullCacheData.generated_at, WEB_FULL_FEED_CACHE_TTL_MS)
-  ) {
-    return null;
-  }
-
-  const detail = findFeedItemDetailInFeed(fullCacheData.feed, itemId);
-  if (!detail) return null;
-
-  const generatedAt = fullCacheData.generated_at || new Date().toISOString();
-  await adminFirestore
-    .collection(WEB_ITEM_DETAIL_CACHE_COLLECTION)
-    .doc(getItemDetailCacheRoleDocId(normalizedRole))
-    .collection('items')
-    .doc(itemId)
-    .set(stripUndefinedDeep({
-      version: WEB_ITEM_DETAIL_CACHE_VERSION,
-      generated_at: generatedAt,
-      detail,
-    }), { merge: true });
-
-  return detail;
-}
-
-function stripUndefinedDeep<T>(value: T): T {
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => stripUndefinedDeep(item))
-      .filter((item) => item !== undefined) as T;
-  }
-
-  if (value && typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .filter(([, entryValue]) => entryValue !== undefined)
-      .map(([key, entryValue]) => [key, stripUndefinedDeep(entryValue)]);
-    return Object.fromEntries(entries) as T;
-  }
-
-  return value;
 }
 
 function trimText(value: unknown, maxChars: number): string | undefined {
@@ -690,121 +513,9 @@ async function buildFullFeedBody(normalizedRole: string): Promise<FeedBody | nul
   return applyFeedDedupe(body);
 }
 
-// In-memory dedupe for background rebuilds. If several concurrent requests
-// all see the same stale entry, only one fires the rebuild.
-const inflightRebuilds = new Map<string, Promise<FeedBody | null>>();
-
-async function rebuildAndCacheFullFeed(normalizedRole: string): Promise<FeedBody | null> {
-  if (!adminFirestore) return null;
-  const cacheRef = adminFirestore
-    .collection(WEB_FULL_FEED_CACHE_COLLECTION)
-    .doc(getFullFeedCacheDocId(normalizedRole));
-  const feed = await buildFullFeedBody(normalizedRole);
-  if (!feed) return null;
-  const generatedAt = new Date().toISOString();
-  await cacheRef.set(stripUndefinedDeep({
-    version: WEB_FULL_FEED_CACHE_VERSION,
-    role: normalizedRole || 'developer',
-    date: feed.date,
-    assembled_at: feed.assembled_at || null,
-    generated_at: generatedAt,
-    feed,
-  }), { merge: true });
-  void writeItemDetailCacheForRole(normalizedRole, feed, generatedAt).catch((error) => {
-    console.error('[feed-server] item-detail cache write failed:', error);
-  });
-  return feed;
-}
-
-async function getFullFeedBodyForRole(normalizedRole: string): Promise<FeedBody | null> {
-  if (!adminFirestore) {
-    throw new Error('Server configuration error');
-  }
-
-  const cacheRef = adminFirestore
-    .collection(WEB_FULL_FEED_CACHE_COLLECTION)
-    .doc(getFullFeedCacheDocId(normalizedRole));
-
-  try {
-    const readStart = Date.now();
-    const cacheSnapshot = await cacheRef.get();
-    const readMs = Date.now() - readStart;
-    if (cacheSnapshot.exists) {
-      const cacheData = cacheSnapshot.data() as {
-        version?: number;
-        generated_at?: string;
-        feed?: FeedBody;
-      } | undefined;
-      if (cacheData?.version === WEB_FULL_FEED_CACHE_VERSION && cacheData.feed) {
-        const isFresh = isFreshIsoTimestamp(cacheData.generated_at, WEB_FULL_FEED_CACHE_TTL_MS);
-        try {
-          const feedBytes = Buffer.byteLength(JSON.stringify(cacheData.feed), 'utf8');
-          const f = cacheData.feed;
-          console.log(
-            `[perf][feed-server] cache ${isFresh ? 'HIT' : 'STALE-SERVE'} role=${normalizedRole} `
-            + `firestore_read_ms=${readMs} `
-            + `feed_kb=${(feedBytes / 1024).toFixed(1)} `
-            + `for_you=${f.for_you?.length ?? 0} `
-            + `trending=${f.trending?.length ?? 0} `
-            + `pulse=${f.pulse?.length ?? 0} `
-            + `topics=${f.trending_topics?.length ?? 0}`
-          );
-        } catch {}
-        // Past fresh window: rebuild on the request path so /feed always gets
-        // today's edition instead of silently serving stale while rebuilding.
-        if (!isFresh) {
-          const existing = inflightRebuilds.get(normalizedRole);
-          const rebuildPromise = existing ?? (() => {
-            const promise = rebuildAndCacheFullFeed(normalizedRole).finally(() => {
-              inflightRebuilds.delete(normalizedRole);
-            });
-            inflightRebuilds.set(normalizedRole, promise);
-            return promise;
-          })();
-          try {
-            const rebuilt = await rebuildPromise;
-            if (rebuilt) return rebuilt;
-          } catch (error) {
-            console.error('[feed-server] stale cache rebuild failed:', error);
-          }
-        }
-        void writeItemDetailCacheForRole(
-          normalizedRole,
-          cacheData.feed,
-          cacheData.generated_at || new Date().toISOString()
-        ).catch((error) => {
-          console.error('[feed-server] item-detail cache write failed:', error);
-        });
-        return cacheData.feed;
-      }
-      console.log(`[perf][feed-server] cache VERSION-MISS role=${normalizedRole} firestore_read_ms=${readMs}`);
-    } else {
-      console.log(`[perf][feed-server] cache MISS role=${normalizedRole} firestore_read_ms=${readMs}`);
-    }
-  } catch (error) {
-    console.error('[feed-server] full-feed cache read failed:', error);
-  }
-
-  // Cold path: no usable cache. Rebuild on the critical path as a fallback,
-  // but dedupe so concurrent requests share one rebuild.
-  const coldStart = Date.now();
-  const existing = inflightRebuilds.get(normalizedRole);
-  if (existing) {
-    return existing;
-  }
-  const promise = rebuildAndCacheFullFeed(normalizedRole)
-    .finally(() => {
-      inflightRebuilds.delete(normalizedRole);
-    });
-  inflightRebuilds.set(normalizedRole, promise);
-  const feed = await promise;
-  console.log(`[perf][feed-server] cold rebuild role=${normalizedRole} ms=${Date.now() - coldStart}`);
-  return feed;
-}
-
 export async function getFeedForUid(uid: string, roleFromQuery = ''): Promise<V3UserFeed | null> {
   const viewerContext = await getViewerContext(uid, roleFromQuery);
-  const feed = await getFullFeedBodyForRole(viewerContext.normalizedRole);
+  const feed = await buildFullFeedBody(viewerContext.normalizedRole);
   if (!feed) return null;
 
   return {
@@ -816,7 +527,7 @@ export async function getFeedForUid(uid: string, roleFromQuery = ''): Promise<V3
 export async function getPublicBootstrapFeed(roleFromQuery = 'developer'): Promise<V3UserFeed | null> {
   const totalStart = Date.now();
   const normalizedRole = normalizeFeedRole(roleFromQuery || 'developer');
-  const feed = await getFullFeedBodyForRole(normalizedRole);
+  const feed = await buildFullFeedBody(normalizedRole);
   if (!feed) {
     console.log(`[perf][feed-server] getPublicBootstrapFeed role=${normalizedRole} result=null total_ms=${Date.now() - totalStart}`);
     return null;
@@ -846,7 +557,7 @@ export async function getBootstrapFeedFromProfile(
 ): Promise<V3UserFeed | null> {
   const totalStart = Date.now();
   const normalizedRole = normalizeFeedRole(rawRole || 'developer');
-  const feed = await getFullFeedBodyForRole(normalizedRole);
+  const feed = await buildFullFeedBody(normalizedRole);
   if (!feed) {
     console.log(`[perf][feed-server] getBootstrapFeedFromProfile role=${normalizedRole} result=null total_ms=${Date.now() - totalStart}`);
     return null;
@@ -865,44 +576,14 @@ export async function getBootstrapFeedFromProfile(
   return result;
 }
 
-// Legacy fallback path — used only when the session cookie is an old version
-// that doesn't carry profile data. Within ~1 hour all callers migrate to the
-// fast path via onIdTokenChanged cookie refresh.
-//
-// Optimization: fire the 'developer' (most common) role-cache read in parallel
-// with the user-profile read. If the viewer turns out to be a different role
-// we do a second cache read, but for ~90% of users we've hidden the profile
-// read latency entirely.
 export async function getBootstrapFeedForUid(uid: string, roleFromQuery = ''): Promise<V3UserFeed | null> {
   if (!adminFirestore) {
     throw new Error('Server configuration error');
   }
 
   const totalStart = Date.now();
-
-  const viewerStart = Date.now();
-  const viewerContextPromise = getViewerContext(uid, roleFromQuery).then((ctx) => {
-    console.log(`[perf][feed-server] getViewerContext uid=${uid.slice(0, 6)} total_ms=${Date.now() - viewerStart}`);
-    return ctx;
-  });
-
-  const earlyRole = roleFromQuery ? normalizeFeedRole(roleFromQuery) : 'developer';
-  const speculativeFeedPromise = getFullFeedBodyForRole(earlyRole);
-
-  const viewerContext = await viewerContextPromise;
-  let feed: FeedBody | null;
-  if (viewerContext.normalizedRole === earlyRole) {
-    feed = await speculativeFeedPromise;
-  } else {
-    // Role didn't match our guess. Start the correct fetch; we can ignore the
-    // speculative one (it'll settle in the background and populate its cache).
-    console.log(
-      `[perf][feed-server] speculative role miss guess=${earlyRole} actual=${viewerContext.normalizedRole}`
-    );
-    feed = await getFullFeedBodyForRole(viewerContext.normalizedRole);
-    void speculativeFeedPromise.catch(() => {});
-  }
-
+  const viewerContext = await getViewerContext(uid, roleFromQuery);
+  const feed = await buildFullFeedBody(viewerContext.normalizedRole);
   if (!feed) {
     console.log(`[perf][feed-server] getBootstrapFeedForUid uid=${uid.slice(0, 6)} result=null total_ms=${Date.now() - totalStart}`);
     return null;
@@ -949,9 +630,7 @@ export async function getFeedItemDetailForUid(
   roleFromQuery = ''
 ): Promise<FeedItemDetailResponse | null> {
   const viewerContext = await getViewerContext(uid, roleFromQuery);
-
-  const cached = await readFeedItemDetailFromCache(viewerContext.normalizedRole, itemId);
-  if (cached) return cached;
-
-  return hydrateFeedItemDetailFromFullCache(viewerContext.normalizedRole, itemId);
+  const feed = await buildFullFeedBody(viewerContext.normalizedRole);
+  if (!feed) return null;
+  return findFeedItemDetailInFeed(feed, itemId);
 }

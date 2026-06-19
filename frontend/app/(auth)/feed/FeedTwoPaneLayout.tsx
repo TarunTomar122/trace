@@ -208,6 +208,7 @@ function LeftPane({
     return (
       <button
         type="button"
+        data-story-id={item.id}
         onClick={() => onSelect(item)}
         className={`group ${rowClass} transition-colors`}
       >
@@ -873,6 +874,49 @@ export default function FeedTwoPaneLayout({
       onSelectStory(item);
     }
   };
+
+  useEffect(() => {
+    if (tab !== 'news') return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+
+      const stories = allStories;
+      if (stories.length === 0) return;
+
+      const currentIndex = stories.findIndex((s) => s.id === effectiveSelectedId);
+      const startIndex = currentIndex >= 0 ? currentIndex : 0;
+
+      const nextIndex =
+        e.key === 'ArrowDown'
+          ? Math.min(startIndex + 1, stories.length - 1)
+          : Math.max(startIndex - 1, 0);
+
+      const nextItem = stories[nextIndex];
+      if (!nextItem || isItemLocked(nextItem.id)) return;
+
+      e.preventDefault();
+      handleSelect(nextItem);
+
+      requestAnimationFrame(() => {
+        const container = listScrollRef.current;
+        if (!container) return;
+        const el = container.querySelector(`[data-story-id="${nextItem.id}"]`);
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+
+        if (rect.top < containerRect.top) {
+          el.scrollIntoView({ block: 'nearest' });
+        } else if (rect.bottom > containerRect.bottom) {
+          el.scrollIntoView({ block: 'nearest' });
+        }
+      });
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [tab, allStories, effectiveSelectedId, isItemLocked]);
 
   if (isLoading && storyList.length === 0) {
     return <WireFeedLoadingSkeleton />;

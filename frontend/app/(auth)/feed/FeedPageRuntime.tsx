@@ -15,7 +15,6 @@ import {
 import { trackPaywallShown, trackSubscriptionStarted } from '@/lib/posthog';
 import FeedFooter from '@/components/FeedFooter';
 import Image from 'next/image';
-import { consumePrefetchedFeed } from '@/lib/feed-prefetch';
 import FeedBootShell from './FeedBootShell';
 import { normalizeInterestOrder } from './FeedEditionOrganizer';
 import { type HotTweet } from './FeedOneScreen';
@@ -83,14 +82,6 @@ async function fetchWithAuthFallback<T>(path: string): Promise<T | null> {
 }
 
 const feedFetcher = async (): Promise<V3UserFeed | null> => {
-  if (auth.currentUser) {
-    const token = await auth.currentUser.getIdToken();
-    const prefetched = consumePrefetchedFeed(auth.currentUser.uid, token);
-    if (prefetched) {
-      const cached = await prefetched;
-      if (cached) return cached;
-    }
-  }
   return fetchWithAuthFallback('/api/feed');
 };
 
