@@ -31,11 +31,6 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
-        source: '/daily/:date',
-        destination: '/daily',
-        permanent: true,
-      },
-      {
         source: "/:path+/",
         destination: "/:path+",
         permanent: true,
