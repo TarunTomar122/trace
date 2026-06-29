@@ -101,7 +101,7 @@ const trendingFetcher = async () => {
 };
 
 const hotTweetsFetcher = async (): Promise<HotTweet[]> => {
-  const res = await fetch('/api/hot-tweets');
+  const res = await fetch('/api/hot-tweets', { cache: 'no-store' });
   if (!res.ok) return [];
   const data = await res.json();
   if (!Array.isArray(data.items)) return [];
@@ -254,11 +254,17 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
 
-  const { data: hotTweets = [], isLoading: hotTweetsLoading } = useSWR<HotTweet[]>(
+  const { data: hotTweets = [], isLoading: hotTweetsLoading, mutate: mutateHotTweets } = useSWR<HotTweet[]>(
     pulseDataEnabled ? 'hot-tweets' : null,
     hotTweetsFetcher,
-    { revalidateOnFocus: false, revalidateOnReconnect: true, dedupingInterval: 10800000 },
+    { revalidateOnFocus: true, revalidateOnReconnect: true, dedupingInterval: 60_000 },
   );
+
+  useEffect(() => {
+    if (pulseTabActive) {
+      void mutateHotTweets();
+    }
+  }, [pulseTabActive, mutateHotTweets]);
 
   /** Guests get the sign-in/upgrade lock. Signed-in free users can browse the list. */
   const feedInteractionLocked = !user && !loading;

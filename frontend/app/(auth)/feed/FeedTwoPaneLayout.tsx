@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { Check, ExternalLink, Flame, Loader2, Share2 } from 'lucide-react';
+import { Check, ExternalLink, Loader2, Share2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -539,6 +539,31 @@ function PulseSidebarSkeleton({ rows = 4 }: { rows?: number }) {
   );
 }
 
+function XIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.742l7.731-8.835L1.254 2.25H8.08l4.261 5.635 5.903-5.635zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+function PulseSectionTitle({
+  icon,
+  label,
+}: {
+  icon?: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <div className="mb-3 flex items-center gap-2 border-b border-[#e5e7eb] pb-2.5">
+      {icon}
+      <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#374151]">
+        {label}
+      </span>
+    </div>
+  );
+}
+
 function PulseSidebar({
   discussions,
   tools,
@@ -554,7 +579,7 @@ function PulseSidebar({
   toolsLoading?: boolean;
   renderSidebarItem: (
     item: FeedListItem,
-    opts?: { sectionSource?: 'hacker' | 'github'; signalLabel?: string },
+    opts?: { rank?: number; marker?: boolean; sectionSource?: 'hacker' | 'github'; signalLabel?: string },
   ) => React.ReactNode;
 }) {
   const sidebarHasContent = discussions.length > 0 || tools.length > 0 || blogs.length > 0
@@ -562,19 +587,15 @@ function PulseSidebar({
   if (!sidebarHasContent) return null;
 
   return (
-    <div className="w-full space-y-8 sm:w-[300px] sm:shrink-0">
+    <div className="mt-8 w-full shrink-0 space-y-8 border-t border-[#e5e7eb] pt-7 lg:mt-0 lg:w-[290px] lg:border-l lg:border-t-0 lg:pl-12 lg:pt-0">
       {(discussions.length > 0 || discussionsLoading) && (
         <div>
-          <div className="mb-4 border-b border-[#e5e7eb] pb-3">
-            <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9ca3af]">
-              Hacker News
-            </span>
-          </div>
+          <PulseSectionTitle label="Hacker News" />
           {discussionsLoading && discussions.length === 0 ? (
             <PulseSidebarSkeleton />
           ) : (
-            <div className="space-y-4">
-              {discussions.slice(0, PULSE_SIDEBAR_MAX).map((item) => renderSidebarItem(item, { sectionSource: 'hacker' }))}
+            <div className="divide-y divide-[#f3f4f6]">
+              {discussions.slice(0, PULSE_SIDEBAR_MAX).map((item, i) => renderSidebarItem(item, { rank: i + 1, sectionSource: 'hacker' }))}
             </div>
           )}
         </div>
@@ -582,16 +603,13 @@ function PulseSidebar({
 
       {(tools.length > 0 || toolsLoading) && (
         <div>
-          <div className="mb-4 border-b border-[#e5e7eb] pb-3">
-            <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9ca3af]">
-              GitHub Trending
-            </span>
-          </div>
+          <PulseSectionTitle label="GitHub Trending" />
           {toolsLoading && tools.length === 0 ? (
             <PulseSidebarSkeleton />
           ) : (
-            <div className="space-y-4">
+            <div className="divide-y divide-[#f3f4f6]">
               {tools.slice(0, PULSE_SIDEBAR_MAX).map((item) => renderSidebarItem(item, {
+                marker: true,
                 sectionSource: 'github',
                 signalLabel: item.source === 'Product Hunt' ? 'upvotes' : 'stars today',
               }))}
@@ -602,12 +620,8 @@ function PulseSidebar({
 
       {blogs.length > 0 && (
         <div>
-          <div className="mb-4 border-b border-[#e5e7eb] pb-3">
-            <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9ca3af]">
-              Top blogs
-            </span>
-          </div>
-          <div className="space-y-4">
+          <PulseSectionTitle label="Top Reads" />
+          <div className="divide-y divide-[#f3f4f6]">
             {blogs.slice(0, PULSE_SIDEBAR_MAX).map((item) => renderSidebarItem(item))}
           </div>
         </div>
@@ -616,14 +630,7 @@ function PulseSidebar({
   );
 }
 
-// ── X / Twitter icon ─────────────────────────────────────────────────────────
-function XIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.742l7.731-8.835L1.254 2.25H8.08l4.261 5.635 5.903-5.635zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-    </svg>
-  );
-}
+// ── Pulse tab ────────────────────────────────────────────────────────────────
 
 function PulseTab({
   hotTweets,
@@ -672,42 +679,73 @@ function PulseTab({
     );
   }
 
-  const renderTweet = (tweet: HotTweet) => (
+  const tweetMeta = (tweet: HotTweet, viewLabel = 'View on X') => (
+    <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-[#9ca3af]">
+      <span>{getTimeLabel(tweet.pubDate)}</span>
+      {tweet.category && (
+        <>
+          <span className="mx-1.5 text-[#d1d5db]">·</span>
+          <span>{tweet.category}</span>
+        </>
+      )}
+      <span className="mx-1.5 text-[#d1d5db]">·</span>
+      <span className="text-[#111827] group-hover:underline underline-offset-2">{viewLabel} →</span>
+    </p>
+  );
+
+  // Featured lead — large editorial treatment, anchors the page.
+  const renderHeroTweet = (tweet: HotTweet) => (
     <a
       key={tweet.id}
       href={tweet.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex gap-3.5 border-b border-[#f3f4f6] py-4 transition-colors last:border-b-0 hover:bg-transparent"
+      className="group mb-6 block border-b border-[#e5e7eb] pb-7"
     >
-      <XIcon className="mt-[3px] h-[14px] w-[14px] shrink-0 text-[#d1d5db] transition-colors group-hover:text-[#1d9bf0]" />
-      <div className="min-w-0 flex-1">
-        <p className="text-[14px] font-semibold leading-snug text-[#111827] line-clamp-2">
-          {tweet.title}
-        </p>
-        {tweet.description && (
-          <p className="mt-1.5 line-clamp-3 text-[13px] leading-relaxed text-[#6b7280]">
-            {tweet.description}
-          </p>
-        )}
-        <div className="mt-2 flex items-center gap-2">
-          <span className="text-[11px] text-[#9ca3af]">{getTimeLabel(tweet.pubDate)}</span>
-          <span className="text-[11px] font-medium text-[#1d9bf0] opacity-0 transition-opacity group-hover:opacity-100">
-            View on X →
-          </span>
-        </div>
+      <div className="mb-3">
+        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#9ca3af]">Featured</span>
       </div>
+      <h2 className="text-[24px] font-bold leading-[1.18] tracking-[-0.02em] text-[#111827] group-hover:underline decoration-[#111827]/20 underline-offset-[3px] sm:text-[27px]">
+        {tweet.title}
+      </h2>
+      {tweet.description && (
+        <p className="mt-3 max-w-[58ch] text-[15.5px] leading-[1.65] text-[#4b5563]">
+          {tweet.description}
+        </p>
+      )}
+      <div className="mt-4">{tweetMeta(tweet)}</div>
+    </a>
+  );
+
+  // Masonry card — flows in CSS columns, height varies with content.
+  const renderTweetCard = (tweet: HotTweet) => (
+    <a
+      key={tweet.id}
+      href={tweet.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group mb-4 block break-inside-avoid rounded-lg border border-[#e5e7eb] p-4 transition-all hover:border-[#d1d5db] hover:shadow-[0_2px_10px_rgba(0,0,0,0.04)]"
+    >
+      <p className="text-[15px] font-semibold leading-snug text-[#111827] line-clamp-3 group-hover:underline decoration-[#111827]/20 underline-offset-[3px]">
+        {tweet.title}
+      </p>
+      {tweet.description && (
+        <p className="mt-1.5 line-clamp-3 text-[13px] leading-relaxed text-[#6b7280]">
+          {tweet.description}
+        </p>
+      )}
+      <div className="mt-3">{tweetMeta(tweet)}</div>
     </a>
   );
 
   const renderSidebarItem = (
     item: FeedListItem,
-    opts: { sectionSource?: 'hacker' | 'github'; signalLabel?: string } = {},
+    opts: { rank?: number; marker?: boolean; sectionSource?: 'hacker' | 'github'; signalLabel?: string } = {},
   ) => {
     const url = getItemUrl(item);
-    const hideRedundantTag = opts.sectionSource
-      && item.source?.toLowerCase().includes(opts.sectionSource);
-    const showSourceTag = item.source && !hideRedundantTag;
+    const signalText = item.signalCount != null && item.signalCount > 0
+      ? `${item.signalCount.toLocaleString()} ${opts.signalLabel ?? 'pts'}`
+      : null;
 
     return (
       <a
@@ -715,60 +753,60 @@ function PulseTab({
         href={url || '#'}
         target="_blank"
         rel="noopener noreferrer"
-        className="group block"
+        className="group flex gap-3 py-3"
       >
-        {(showSourceTag || (item.signalCount != null && item.signalCount > 0)) && (
-          <div className="mb-1 flex items-center gap-1.5">
-            {showSourceTag && (
-              <span className="rounded bg-[#f3f4f6] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#6b7280]">
-                {item.source}
-              </span>
-            )}
-            {item.signalCount != null && item.signalCount > 0 && (
-              <span className="text-[11px] font-medium text-[#9ca3af]">
-                {item.signalCount.toLocaleString()} {opts.signalLabel ?? 'pts'}
-              </span>
-            )}
-          </div>
+        {opts.rank != null && (
+          <span className="w-5 shrink-0 text-[13px] font-bold tabular-nums leading-[1.35] text-[#d1d5db] transition-colors group-hover:text-[#111827]">
+            {String(opts.rank).padStart(2, '0')}
+          </span>
         )}
-        <p className="text-[13px] font-semibold leading-snug text-[#111827] group-hover:underline underline-offset-2 decoration-[#111827]/20">
-          {item.title}
-        </p>
-        {item.preview && (
-          <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-[#6b7280]">
-            {item.preview}
+        {opts.marker && (
+          <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rotate-45 bg-[#d1d5db] transition-colors group-hover:bg-[#111827]" />
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-semibold leading-snug text-[#111827] line-clamp-2 group-hover:underline underline-offset-2 decoration-[#111827]/20">
+            {item.title}
+            {signalText && (
+              <span className="ml-1.5 font-normal tabular-nums text-[#9ca3af]">{signalText}</span>
+            )}
           </p>
-        )}
+          {item.preview && (
+            <p className="mt-0.5 line-clamp-1 text-[12px] leading-snug text-[#9ca3af]">
+              {item.preview}
+            </p>
+          )}
+        </div>
       </a>
     );
   };
 
+  const [heroTweet, ...restTweets] = hotTweets.slice(0, PULSE_TWEET_MAX);
+
   return (
     <div className="h-full overflow-y-auto overscroll-contain bg-white">
-      <div className="mx-auto max-w-6xl px-5 py-6 sm:px-8 sm:py-8">
-        <div className="flex flex-col gap-10 sm:flex-row">
-          {(hotTweets.length > 0 || tweetsLoading) && (
-            <div className="min-w-0 flex-1">
-              <div className="mb-5 flex items-center gap-2 border-b border-[#e5e7eb] pb-3">
-                <Flame size={14} className="text-orange-500" />
-                <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-600/70">
-                  Hot on X
-                </span>
+      <div className="mx-auto flex max-w-6xl flex-col px-5 py-6 sm:px-6 sm:py-7 lg:flex-row lg:gap-12">
+        {(hotTweets.length > 0 || tweetsLoading) && (
+          <div className="min-w-0 flex-1">
+            <PulseSectionTitle
+              icon={<XIcon className="h-3 w-3 text-[#111827]" />}
+              label="Hot on X"
+            />
+            {heroTweet && renderHeroTweet(heroTweet)}
+            {restTweets.length > 0 && (
+              <div className="columns-1 gap-x-5 md:columns-2">
+                {restTweets.map((tweet) => renderTweetCard(tweet))}
               </div>
-              <div className="space-y-0">
-                {hotTweets.slice(0, PULSE_TWEET_MAX).map((tweet) => renderTweet(tweet))}
-              </div>
-            </div>
-          )}
-          <PulseSidebar
-            discussions={discussions}
-            tools={tools}
-            blogs={blogs}
-            discussionsLoading={discussionsLoading}
-            toolsLoading={toolsLoading}
-            renderSidebarItem={renderSidebarItem}
-          />
-        </div>
+            )}
+          </div>
+        )}
+        <PulseSidebar
+          discussions={discussions}
+          tools={tools}
+          blogs={blogs}
+          discussionsLoading={discussionsLoading}
+          toolsLoading={toolsLoading}
+          renderSidebarItem={renderSidebarItem}
+        />
       </div>
     </div>
   );
