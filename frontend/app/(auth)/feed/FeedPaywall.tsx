@@ -1,8 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, BookOpen, Check, Flame, Github, Loader2, Lock, MessageSquare, Sparkles, X } from 'lucide-react';
+import { Check, Loader2, Lock, Sparkles, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { trackCheckoutClicked, trackFeedSubscribeDialogShown, trackFeedProWelcomeShown } from '@/lib/posthog';
+import { trackCheckoutClicked, trackFeedSubscribeDialogShown, trackFeedProWelcomeShown, trackPaywallShown } from '@/lib/posthog';
 import { LANDING_PRICING_BULLET_POINTS } from '@/lib/subscription-pricing-bullets';
 import { ONBOARDING_INTERESTS, ROLES } from '@/lib/firestore';
 import {
@@ -16,19 +16,41 @@ function pricingBulletText(line: string): string {
   return line.replace(/^[\s\S]*?\s{2,}/, '').trim() || line;
 }
 
+function usePaywallImpression(source: string) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const tracked = React.useRef(false);
+
+  React.useEffect(() => {
+    const element = ref.current;
+    if (!element || tracked.current) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting || tracked.current) return;
+      tracked.current = true;
+      trackPaywallShown(source);
+      observer.disconnect();
+    }, { threshold: 0.5 });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [source]);
+
+  return ref;
+}
+
 function ProPaywallCard({
   trackingId,
   compact = false,
-  title = 'Keep reading with Trace Pro',
-  subtitle = 'Cancel anytime',
+  title = 'Keep your daily brief going',
+  subtitle = 'Know what changed before your first meeting. Cancel anytime.',
 }: {
   trackingId: string;
   compact?: boolean;
   title?: string;
   subtitle?: string;
 }) {
+  const impressionRef = usePaywallImpression(trackingId);
   return (
     <div
+      ref={impressionRef}
       className={`mx-auto w-full rounded-2xl border border-[#e5e7eb] bg-white/95 text-center shadow-[0_8px_30px_rgba(0,0,0,0.08)] backdrop-blur-sm ${
         compact ? 'max-w-[320px] p-4' : 'max-w-md p-6'
       }`}
@@ -48,14 +70,14 @@ function ProPaywallCard({
         ))}
       </ul>
       <Link
-        href="/profile?tab=subscription"
+        href="/profile?tab=subscription&intent=checkout"
         prefetch={false}
         onClick={() => trackCheckoutClicked(trackingId)}
         className={`mt-5 inline-flex items-center justify-center rounded-full bg-[#111827] font-semibold text-white transition-all hover:bg-[#1f2937] ${
           compact ? 'px-4 py-2 text-[12px]' : 'px-6 py-2.5 text-sm'
         }`}
       >
-        Subscribe to Pro
+        Get tomorrow&rsquo;s brief
       </Link>
     </div>
   );
@@ -98,7 +120,7 @@ function UpgradeCard({ lockedCount }: { lockedCount: number }) {
         </div>
       </div>
       <Link
-        href="/profile?tab=subscription"
+        href="/profile?tab=subscription&intent=checkout"
         prefetch={false}
         onClick={() => trackCheckoutClicked('feed_upgrade_card_trending', { locked_count: lockedCount })}
         className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-sm font-semibold bg-foreground text-background transition-all hover:bg-foreground/90 hover:shadow-lg hover:shadow-black/10 hover:scale-[1.02] active:scale-[0.98]"
@@ -194,7 +216,7 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
     const result = await signInWithGoogle('checkout', { rememberIntent: true });
     if (result.status === 'success') {
       // Sign-in succeeded, redirect to profile/subscription or let the post-auth redirect handle it
-      window.location.href = '/profile?tab=subscription';
+      window.location.href = '/profile?tab=subscription&intent=checkout';
     } else if (result.status === 'redirecting') {
       // Redirect-based sign-in in progress — page will reload
       return;
@@ -355,19 +377,19 @@ export function InlineUnlockBanner({ storyCount, freeReadsUsed = 0 }: { storyCou
             </p>
             <p className="mt-0.5 text-xs text-secondary/55">
               {limitReached
-                ? 'Upgrade to Pro for unlimited articles, key takeaways, and source links.'
+                ? 'Get tomorrow’s personalized brief and keep every story, takeaway, and source unlocked.'
                 : `Free users can read the first 3 stories in today's feed.`}
             </p>
           </div>
         </div>
         <Link
-          href="/profile?tab=subscription"
+          href="/profile?tab=subscription&intent=checkout"
           prefetch={false}
           onClick={() => trackCheckoutClicked('feed_inline_unlock_banner', { story_count: storyCount, free_reads_used: freeReadsUsed })}
           className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90"
         >
           <Sparkles size={14} />
-          {limitReached ? 'Upgrade to keep reading' : 'Subscribe to unlock'}
+          {limitReached ? 'Get tomorrow’s brief' : 'Unlock my daily brief'}
         </Link>
       </div>
     </div>
@@ -424,20 +446,20 @@ export function PaywallGate() {
 
   const benefits = [
     {
-      title: 'Your pulse, every day',
-      desc: 'Wake up to a full feed of stories filtered to what you care about — AI, tech, markets, whatever you follow.',
+      title: 'Know what changed before your first meeting',
+      desc: 'Open one brief built around the topics you follow and get the shape of the day in five minutes.',
     },
     {
-      title: 'The point, not the whole article',
-      desc: "We read it for you. You get the summary, the key takeaways, and why it matters — in under a minute.",
+      title: 'Understand why each story matters',
+      desc: 'Get the point, key takeaways, and useful context without reading the same news across ten tabs.',
     },
     {
-      title: '10 outlets covered it. We show you one.',
-      desc: 'When everyone writes about the same story, we collapse it into a single clear view so you stop reading the same thing twice.',
+      title: 'Read one version, not ten duplicates',
+      desc: 'Trace groups coverage into one clear story and keeps the best sources attached.',
     },
     {
-      title: 'No rabbit holes',
-      desc: "Skim today's feed in 5 minutes. Know what's going on. Move on with your day.",
+      title: 'Feel caught up, then move on',
+      desc: 'Finish the brief, close the tab, and get back to your day.',
     },
   ];
   const priceDisplay = pricingPreview.priceDisplay;
@@ -448,7 +470,7 @@ export function PaywallGate() {
       <div className="max-w-md mx-auto px-6 sm:px-12 py-10 sm:py-16">
         <p className="text-[11px] font-semibold text-secondary/35 uppercase tracking-[0.18em] mb-5">{planName}</p>
         <h2 className="text-[1.65rem] font-bold text-foreground tracking-[-0.025em] leading-tight mb-3">
-          The news habit that<br />doesn't waste your time.
+          Your five-minute tech brief,<br />ready every morning.
         </h2>
         <p className="text-[14px] text-secondary/50 mb-10 leading-relaxed">
           <SubscriptionPrice price={priceDisplay} compareAt={compareAtPriceDisplay} size="sm" />
@@ -473,7 +495,7 @@ export function PaywallGate() {
           disabled={loading}
           className="flex items-center justify-center gap-2 w-full py-3.5 rounded-full text-[13px] font-semibold bg-foreground text-background transition-all hover:bg-foreground/90 hover:shadow-md hover:shadow-black/10 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:scale-100"
         >
-          {loading ? <><Loader2 size={14} className="animate-spin" />Setting up...</> : 'Subscribe to Pro'}
+          {loading ? <><Loader2 size={14} className="animate-spin" />Setting up...</> : 'Unlock my daily brief'}
         </button>
         <p className="text-[11px] text-secondary/35 mt-2.5 text-center">
           <SubscriptionPrice price={priceDisplay} compareAt={compareAtPriceDisplay} size="sm" />
@@ -483,41 +505,6 @@ export function PaywallGate() {
     </div>
   );
 }
-
-/* ─── Free-tier blur gate ─── */
-/**
- * Renders after the last free item in a column. Shows blurred placeholder rows,
- * a gradient fade, and an inline subscribe CTA.
- */
-const FAKE_STORY_TITLES = [
-  'OpenAI quietly ships new reasoning model that beats o3 on key benchmarks',
-  'Google DeepMind researchers publish landmark paper on agent memory',
-  'Apple reportedly building its own AI chip for data centers',
-  'Anthropic raises $2B at $40B valuation as AI race intensifies',
-  'Meta releases Llama 4 with 128K context window and native tool use',
-  'Sam Altman says AGI could arrive "sooner than most people expect"',
-  'NVIDIA unveils next-gen GPU architecture designed for inference at scale',
-  'Microsoft integrates Copilot into every Office app with new reasoning layer',
-  'Perplexity launches enterprise tier with SOC2 compliance and private search',
-  'Y Combinator backs 12 new AI infra startups in its biggest batch ever',
-  'AWS announces 40% price cut on GPU instances amid cloud AI wars',
-  'Cloudflare launches AI Gateway to rate-limit and cache LLM calls',
-  "xAI's Grok 3 reportedly outperforms GPT-4o on coding benchmarks",
-  'Stripe adds AI fraud detection that reduced chargebacks by 30%',
-  'GitHub Copilot now writes entire PRs autonomously with test coverage',
-];
-
-const FAKE_TWEET_SNIPPETS = [
-  "This new model just wrote a working compiler in 4 minutes. I'm speechless.",
-  "Hot take: context windows will make RAG obsolete within 18 months.",
-  "Just shipped a full SaaS product solo using Claude + Cursor. 3 days. No joke.",
-  "The AI hype cycle is real but so is the underlying capability jump.",
-  "Everyone building AI wrappers will be replaced by the model itself soon.",
-  "Nobody talks about how much inference costs dropped in the last 6 months.",
-  "The best engineers I know are 10x-ing their output with AI. The rest are in denial.",
-  "Andrej just dropped another banger explainer thread. Go read it now.",
-  "We're at the 'electricity will never power a house' stage of AI skepticism.",
-];
 
 export function FeedListPaywallCta() {
   return (
@@ -549,7 +536,7 @@ function resolveRoleLabel(role?: string): string {
   return match?.label ?? 'your role';
 }
 
-/** Full Pulse lock screen — no real content, profile-tailored feature highlights. */
+/** Inline upgrade card shown after a live Pulse sample. */
 export function PulseLockedPreview({
   role,
   interests = [],
@@ -560,63 +547,48 @@ export function PulseLockedPreview({
   const roleLabel = resolveRoleLabel(role);
   const interestLabels = resolveInterestLabels(interests);
   const interestPhrase = formatInterestPhrase(interestLabels);
+  const impressionRef = usePaywallImpression('pulse_locked');
 
-  const features = [
-    { icon: Flame, label: 'Hot on X', detail: 'Trending tech threads, filtered for your feed' },
-    { icon: MessageSquare, label: 'Hacker News', detail: 'Top discussions from the builder community' },
-    { icon: Github, label: 'GitHub Trending', detail: 'Repos and tools gaining traction this week' },
-    { icon: BookOpen, label: 'Top blogs', detail: `Long-form reads picked for ${roleLabel.toLowerCase()}s` },
-  ] as const;
+  const included = [
+    'Three distinct signals from X',
+    'Top Hacker News discussions with context',
+    'Trending repos with clear descriptions',
+    `Long-form reads picked for ${roleLabel.toLowerCase()}s`,
+  ];
 
   return (
-    <div className="flex h-full w-full flex-1 items-center justify-center overflow-hidden bg-white px-5 py-8 sm:px-8">
-      <div className="mx-auto w-full max-w-md">
-        <div className="rounded-2xl border border-[#e5e7eb] bg-white p-6 text-center shadow-[0_8px_30px_rgba(0,0,0,0.06)] sm:p-8">
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#9ca3af]">Trace Pulse</p>
-          <h2 className="mt-3 text-[20px] font-bold tracking-[-0.02em] text-[#111827] sm:text-[22px]">
-            Your daily signal layer
-          </h2>
-          <p className="mt-2 text-[14px] leading-relaxed text-[#6b7280]">
-            Built for{' '}
-            <span className="font-semibold text-[#374151]">{roleLabel}s</span>
-            {interestPhrase ? (
-              <>
-                {' '}
-                · tuned to{' '}
-                <span className="font-semibold text-[#374151]">{interestPhrase.toLowerCase()}</span>
-              </>
-            ) : (
-              ' · tuned to your profile'
-            )}
-          </p>
+    <div
+      ref={impressionRef}
+      className="mt-6 overflow-hidden rounded-2xl bg-[#111827] p-6 text-white shadow-[0_16px_40px_rgba(17,24,39,0.16)] sm:p-7"
+    >
+      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Your full Pulse</p>
+      <h2 className="mt-2 text-[22px] font-bold leading-tight tracking-[-0.025em]">
+        This is a live sample. The rest is waiting.
+      </h2>
+      <p className="mt-2 max-w-[58ch] text-[13.5px] leading-relaxed text-white/65">
+        Get the complete daily scan for {roleLabel.toLowerCase()}s
+        {interestPhrase ? `, tuned to ${interestPhrase.toLowerCase()}` : ', tuned to your profile'}.
+      </p>
 
-          <ul className="mt-6 space-y-3 border-t border-[#f3f4f6] pt-6 text-left">
-            {features.map(({ icon: Icon, label, detail }) => (
-              <li key={label} className="flex items-start gap-3">
-                <Icon size={15} className="mt-0.5 shrink-0 text-[#9ca3af]" strokeWidth={2.25} />
-                <div className="min-w-0">
-                  <p className="text-[13px] font-semibold text-[#111827]">{label}</p>
-                  <p className="mt-0.5 text-[12px] leading-relaxed text-[#6b7280]">{detail}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+      <ul className="mt-5 grid gap-2.5 sm:grid-cols-2">
+        {included.map((line) => (
+          <li key={line} className="flex items-start gap-2.5 text-[12.5px] leading-snug text-white/80">
+            <Check size={13} className="mt-0.5 shrink-0 text-white/45" strokeWidth={2.5} />
+            <span>{line}</span>
+          </li>
+        ))}
+      </ul>
 
-          <div className="mt-6 border-t border-[#f3f4f6] pt-6">
-            <p className="text-[15px] font-bold tracking-[-0.02em] text-[#111827]">
-              Unlock Pulse with Trace Pro
-            </p>
-            <p className="mt-1 text-[13px] text-[#6b7280]">Cancel anytime</p>
-            <Link
-              href="/profile?tab=subscription"
-              prefetch={false}
-              onClick={() => trackCheckoutClicked('pulse_locked')}
-              className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-[#111827] px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#1f2937]"
-            >
-              Subscribe to Pro
-            </Link>
-          </div>
-        </div>
+      <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-[12px] text-white/45">Included with Trace Pro · Cancel anytime</p>
+        <Link
+          href="/profile?tab=subscription&intent=checkout"
+          prefetch={false}
+          onClick={() => trackCheckoutClicked('pulse_locked')}
+          className="inline-flex shrink-0 items-center justify-center rounded-full bg-white px-5 py-2.5 text-[13px] font-semibold text-[#111827] transition-colors hover:bg-white/90"
+        >
+          Unlock the full Pulse
+        </Link>
       </div>
     </div>
   );
@@ -628,25 +600,8 @@ export function MediumPaywallGate({
   trackingId?: string;
 }) {
   return (
-    <div className="relative mt-6 overflow-hidden">
-      <div
-        className="pointer-events-none select-none space-y-3 pb-36 opacity-70 blur-[5px]"
-        aria-hidden
-      >
-        <p className="text-[15.5px] leading-[1.7] text-[#374151]">
-          The broader context here matters because it shapes how teams prioritize security, product velocity, and the tradeoffs between shipping fast and staying resilient as these systems scale.
-        </p>
-        <p className="text-[15.5px] leading-[1.7] text-[#374151]">
-          Analysts expect the next wave of releases to focus less on headline benchmarks and more on practical deployment, cost control, and the tooling needed to run models reliably in production environments.
-        </p>
-        <p className="text-[15.5px] leading-[1.7] text-[#374151]">
-          For operators, the key takeaway is not just what changed today, but which constraints will still matter when the initial excitement fades and real adoption begins.
-        </p>
-      </div>
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-white/75 to-white" />
-      <div className="absolute inset-x-0 bottom-0 flex justify-center px-4 pb-2 pt-12">
-        <ProPaywallCard trackingId={trackingId} />
-      </div>
+    <div className="mt-8 border-t border-[#e5e7eb] pt-8">
+      <ProPaywallCard trackingId={trackingId} />
     </div>
   );
 }
@@ -670,51 +625,14 @@ export function FeedLockedStoryPanel({
 export function FreeBlurGate({ hiddenCount, noun = 'stories' }: { hiddenCount: number; noun?: string }) {
   if (hiddenCount <= 0) return null;
 
-  const isTweets = noun === 'tweets';
-  const pool = isTweets ? FAKE_TWEET_SNIPPETS : FAKE_STORY_TITLES;
-  // Show 5 fake items so the fade looks full of content
-  const fakes = [pool[0], pool[2], pool[5], pool[8], pool[11 % pool.length]];
-
   return (
-    <div className="relative mt-1 select-none" aria-hidden="true">
-      {/* Blurred fake titles — barely blurred at top, very blurred at bottom */}
-      <div className="space-y-2 pointer-events-none">
-        {fakes.map((title, i) => {
-          const blurPx = 2 + i * 2.5;
-          const op = 0.75 - i * 0.12;
-          return (
-            <div
-              key={i}
-              className="flex items-start gap-2.5 py-0.5"
-              style={{ filter: `blur(${blurPx}px)`, opacity: op }}
-            >
-              <div className="shrink-0 w-8 h-8 rounded-md bg-foreground/10" />
-              <div className="flex-1 min-w-0 space-y-1.5">
-                <div className="text-[13px] font-medium text-foreground leading-snug line-clamp-2">
-                  {title}
-                </div>
-                <div className="h-[9px] w-20 rounded bg-foreground/8" />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      {/* Gradient: starts transparent so top items are readable, then fades hard */}
-      <div className="absolute inset-x-0 top-0 h-full bg-gradient-to-b from-transparent from-10% via-background/60 via-50% to-background pointer-events-none" />
-      {/* CTA pinned at bottom */}
-      <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 pb-1 pointer-events-auto">
-        <p className="text-[11px] text-secondary/45">+{hiddenCount} more {noun}</p>
-        <Link
-          href="/profile?tab=subscription"
-          onClick={() => {
-            try { import('@/lib/posthog').then(({ trackCheckoutClicked }) => trackCheckoutClicked('feed_blur_gate', { noun })); } catch { /* ignore */ }
-          }}
-          className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-5 py-2.5 text-[12px] font-semibold text-background transition-all hover:bg-foreground/90 hover:scale-[1.02] active:scale-[0.98] shadow-[0_2px_12px_rgba(0,0,0,0.15)]"
-        >
-          Unlock full feed
-          <ArrowRight size={12} strokeWidth={2.5} />
-        </Link>
-      </div>
+    <div className="mt-4">
+      <ProPaywallCard
+        trackingId="feed_blur_gate"
+        compact
+        title={`${hiddenCount} more ${noun} in today’s brief`}
+        subtitle="Get the full signal without the scroll. Cancel anytime."
+      />
     </div>
   );
 }

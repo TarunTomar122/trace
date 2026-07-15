@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { Check, ExternalLink, Loader2, Share2 } from 'lucide-react';
+import { Check, ExternalLink, Github, Loader2, Share2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -30,6 +30,7 @@ import type { FeedItem, TrendingTopic, TopicTimelineEvent } from '@/lib/firestor
 import type { HotTweet } from './FeedOneScreen';
 import { ArticleImage } from '@/components/ArticleImage';
 import { MediumPaywallGate, FeedListPaywallCta, PulseLockedPreview } from './FeedPaywall';
+import { trackFeedItemClicked, trackSummaryOpened } from '@/lib/posthog';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -522,8 +523,9 @@ function RightPane({ item, isItemLocked }: { item: FeedListItem; isItemLocked: (
 
 // ── pulse tab ─────────────────────────────────────────────────────────────────
 
-const PULSE_TWEET_MAX = 15;
-const PULSE_SIDEBAR_MAX = 5;
+const PULSE_TWEET_MAX = 3;
+const PULSE_SIDEBAR_MAX = 4;
+const PULSE_READ_MAX = 4;
 
 function PulseSidebarSkeleton({ rows = 4 }: { rows?: number }) {
   return (
@@ -547,6 +549,14 @@ function XIcon({ className }: { className?: string }) {
   );
 }
 
+function HackerNewsIcon() {
+  return (
+    <span className="flex h-4 w-4 items-center justify-center rounded-[2px] bg-[#ff6600] text-[10px] font-medium leading-none text-white" aria-hidden="true">
+      Y
+    </span>
+  );
+}
+
 function PulseSectionTitle({
   icon,
   label,
@@ -565,45 +575,31 @@ function PulseSectionTitle({
 }
 
 function PulseSidebar({
-  discussions,
   tools,
-  blogs,
-  discussionsLoading,
+  tweets,
   toolsLoading,
+  tweetsLoading,
   renderSidebarItem,
+  renderTweet,
 }: {
-  discussions: FeedListItem[];
   tools: FeedListItem[];
-  blogs: FeedListItem[];
-  discussionsLoading?: boolean;
+  tweets: HotTweet[];
   toolsLoading?: boolean;
+  tweetsLoading?: boolean;
   renderSidebarItem: (
     item: FeedListItem,
     opts?: { rank?: number; marker?: boolean; sectionSource?: 'hacker' | 'github'; signalLabel?: string },
   ) => React.ReactNode;
+  renderTweet: (tweet: HotTweet) => React.ReactNode;
 }) {
-  const sidebarHasContent = discussions.length > 0 || tools.length > 0 || blogs.length > 0
-    || discussionsLoading || toolsLoading;
+  const sidebarHasContent = tools.length > 0 || tweets.length > 0 || toolsLoading || tweetsLoading;
   if (!sidebarHasContent) return null;
 
   return (
-    <div className="mt-8 w-full shrink-0 space-y-8 border-t border-[#e5e7eb] pt-7 lg:mt-0 lg:w-[290px] lg:border-l lg:border-t-0 lg:pl-12 lg:pt-0">
-      {(discussions.length > 0 || discussionsLoading) && (
-        <div>
-          <PulseSectionTitle label="Hacker News" />
-          {discussionsLoading && discussions.length === 0 ? (
-            <PulseSidebarSkeleton />
-          ) : (
-            <div className="divide-y divide-[#f3f4f6]">
-              {discussions.slice(0, PULSE_SIDEBAR_MAX).map((item, i) => renderSidebarItem(item, { rank: i + 1, sectionSource: 'hacker' }))}
-            </div>
-          )}
-        </div>
-      )}
-
+    <div className="mt-8 w-full shrink-0 space-y-9 border-t border-[#e5e7eb] pt-7 lg:mt-0 lg:w-[360px] lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
       {(tools.length > 0 || toolsLoading) && (
         <div>
-          <PulseSectionTitle label="GitHub Trending" />
+          <PulseSectionTitle icon={<Github className="h-4 w-4 text-[#111827]" />} label="GitHub Trending" />
           {toolsLoading && tools.length === 0 ? (
             <PulseSidebarSkeleton />
           ) : (
@@ -618,12 +614,19 @@ function PulseSidebar({
         </div>
       )}
 
-      {blogs.length > 0 && (
+      {(tweets.length > 0 || tweetsLoading) && (
         <div>
-          <PulseSectionTitle label="Top Reads" />
-          <div className="divide-y divide-[#f3f4f6]">
-            {blogs.slice(0, PULSE_SIDEBAR_MAX).map((item) => renderSidebarItem(item))}
-          </div>
+          <PulseSectionTitle
+            icon={<XIcon className="h-3 w-3 text-[#111827]" />}
+            label="Signals from X"
+          />
+          {tweetsLoading && tweets.length === 0 ? (
+            <PulseSidebarSkeleton />
+          ) : (
+            <div className="space-y-3">
+              {tweets.map(renderTweet)}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -655,23 +658,25 @@ function PulseTab({
   discussionsLoading?: boolean;
   toolsLoading?: boolean;
 }) {
-  if (!isSubscribed) {
-    return (
-      <div className="flex min-h-0 w-full flex-1 overflow-hidden">
-        <PulseLockedPreview role={pulseRole} interests={pulseInterests} />
-      </div>
-    );
-  }
+  const pulseTweets = hotTweets
+    .filter((tweet, index, tweets) => {
+      const category = tweet.category.trim().toLowerCase();
+      return !category || tweets.findIndex((candidate) => candidate.category.trim().toLowerCase() === category) === index;
+    })
+    .slice(0, PULSE_TWEET_MAX);
+  const sidebarHasContent = discussions.length > 0 || tools.length > 0 || blogs.length > 0
+    || discussionsLoading || toolsLoading;
+  const isEmpty = !pulseTweets.length && !sidebarHasContent && !tweetsLoading;
+  const visibleTweets = isSubscribed ? pulseTweets : pulseTweets.slice(0, 1);
+  const visibleDiscussions = isSubscribed ? discussions : discussions.slice(0, 2);
+  const visibleTools = isSubscribed ? tools : tools.slice(0, 2);
+  const visibleBlogs = isSubscribed ? blogs.slice(0, PULSE_READ_MAX) : blogs.slice(0, 1);
 
-  if (tweetsLoading && hotTweets.length === 0) {
+  if (tweetsLoading && hotTweets.length === 0 && !sidebarHasContent) {
     return <PulseLoadingSkeleton />;
   }
 
-  const sidebarHasContent = discussions.length > 0 || tools.length > 0 || blogs.length > 0
-    || discussionsLoading || toolsLoading;
-  const isEmpty = !hotTweets.length && !sidebarHasContent && !tweetsLoading;
-
-  if (isEmpty) {
+  if (isEmpty && isSubscribed) {
     return (
       <div className="flex h-full items-center justify-center bg-white">
         <p className="text-[13px] text-[#9ca3af]">Pulse is on its way</p>
@@ -693,44 +698,19 @@ function PulseTab({
     </p>
   );
 
-  // Featured lead — large editorial treatment, anchors the page.
-  const renderHeroTweet = (tweet: HotTweet) => (
-    <a
-      key={tweet.id}
-      href={tweet.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group mb-6 block border-b border-[#e5e7eb] pb-7"
-    >
-      <div className="mb-3">
-        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#9ca3af]">Featured</span>
-      </div>
-      <h2 className="text-[24px] font-bold leading-[1.18] tracking-[-0.02em] text-[#111827] group-hover:underline decoration-[#111827]/20 underline-offset-[3px] sm:text-[27px]">
-        {tweet.title}
-      </h2>
-      {tweet.description && (
-        <p className="mt-3 max-w-[58ch] text-[15.5px] leading-[1.65] text-[#4b5563]">
-          {tweet.description}
-        </p>
-      )}
-      <div className="mt-4">{tweetMeta(tweet)}</div>
-    </a>
-  );
-
-  // Masonry card — flows in CSS columns, height varies with content.
   const renderTweetCard = (tweet: HotTweet) => (
     <a
       key={tweet.id}
       href={tweet.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group mb-4 block break-inside-avoid rounded-lg border border-[#e5e7eb] p-4 transition-all hover:border-[#d1d5db] hover:shadow-[0_2px_10px_rgba(0,0,0,0.04)]"
+      className="group block rounded-xl border border-[#e5e7eb] p-5 transition-all hover:border-[#d1d5db] hover:shadow-[0_4px_16px_rgba(0,0,0,0.05)]"
     >
-      <p className="text-[15px] font-semibold leading-snug text-[#111827] line-clamp-3 group-hover:underline decoration-[#111827]/20 underline-offset-[3px]">
+      <p className="text-[15px] font-semibold leading-[1.45] text-[#111827] group-hover:underline decoration-[#111827]/20 underline-offset-[3px]">
         {tweet.title}
       </p>
       {tweet.description && (
-        <p className="mt-1.5 line-clamp-3 text-[13px] leading-relaxed text-[#6b7280]">
+        <p className="mt-2 text-[13px] leading-[1.6] text-[#6b7280]">
           {tweet.description}
         </p>
       )}
@@ -764,48 +744,102 @@ function PulseTab({
           <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rotate-45 bg-[#d1d5db] transition-colors group-hover:bg-[#111827]" />
         )}
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-semibold leading-snug text-[#111827] line-clamp-2 group-hover:underline underline-offset-2 decoration-[#111827]/20">
+          <p className="text-[13.5px] font-semibold leading-[1.4] text-[#111827] group-hover:underline underline-offset-2 decoration-[#111827]/20">
             {item.title}
-            {signalText && (
-              <span className="ml-1.5 font-normal tabular-nums text-[#9ca3af]">{signalText}</span>
-            )}
           </p>
           {item.preview && (
-            <p className="mt-0.5 line-clamp-1 text-[12px] leading-snug text-[#9ca3af]">
+            <p className="mt-1 text-[12.5px] leading-[1.5] text-[#6b7280]">
               {item.preview}
             </p>
+          )}
+          {signalText && (
+            <p className="mt-1.5 text-[11px] font-medium tabular-nums text-[#9ca3af]">{signalText}</p>
           )}
         </div>
       </a>
     );
   };
 
-  const [heroTweet, ...restTweets] = hotTweets.slice(0, PULSE_TWEET_MAX);
+  const renderTopRead = (item: FeedListItem) => {
+    const url = getItemUrl(item);
+    const article = item.data as FeedItem;
+    const description = article.summary?.short_article?.subtitle || article.description || item.preview;
+    return (
+      <a
+        key={item.id}
+        href={url || '#'}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`group grid overflow-hidden rounded-xl border border-[#e5e7eb] bg-white transition-all hover:border-[#d1d5db] hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)] ${
+          item.thumbnail ? 'sm:grid-cols-[minmax(220px,38%)_1fr]' : 'grid-cols-1'
+        }`}
+      >
+        {item.thumbnail && (
+          <div className="aspect-[16/9] overflow-hidden bg-[#f3f4f6] sm:aspect-auto sm:min-h-[220px]">
+            <ArticleImage
+              thumbnail={item.thumbnail}
+              title={item.title}
+              alt=""
+              loading="lazy"
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            />
+          </div>
+        )}
+        <div className="p-5">
+          {(item.source || item.timestamp) && (
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9ca3af]">
+              {[item.source, item.timestamp ? getTimeLabel(item.timestamp) : ''].filter(Boolean).join(' · ')}
+            </p>
+          )}
+          <h3 className="text-[16px] font-bold leading-[1.35] tracking-[-0.015em] text-[#111827] group-hover:underline decoration-[#111827]/20 underline-offset-[3px]">
+            {item.title}
+          </h3>
+          {description && (
+            <p className="mt-2 text-[13px] leading-[1.7] text-[#6b7280]">{description}</p>
+          )}
+        </div>
+      </a>
+    );
+  };
 
   return (
     <div className="h-full overflow-y-auto overscroll-contain bg-white">
-      <div className="mx-auto flex max-w-6xl flex-col px-5 py-6 sm:px-6 sm:py-7 lg:flex-row lg:gap-12">
-        {(hotTweets.length > 0 || tweetsLoading) && (
+      <div className="mx-auto flex max-w-7xl flex-col px-5 py-6 sm:px-6 sm:py-7 lg:flex-row lg:gap-10">
+        {(visibleBlogs.length > 0 || visibleDiscussions.length > 0 || discussionsLoading || !isSubscribed) && (
           <div className="min-w-0 flex-1">
-            <PulseSectionTitle
-              icon={<XIcon className="h-3 w-3 text-[#111827]" />}
-              label="Hot on X"
-            />
-            {heroTweet && renderHeroTweet(heroTweet)}
-            {restTweets.length > 0 && (
-              <div className="columns-1 gap-x-5 md:columns-2">
-                {restTweets.map((tweet) => renderTweetCard(tweet))}
+            {visibleBlogs.length > 0 && (
+              <div>
+                <PulseSectionTitle label="Top Reads" />
+                <div className="grid grid-cols-1 gap-4">
+                  {visibleBlogs.map(renderTopRead)}
+                </div>
               </div>
             )}
+            {(visibleDiscussions.length > 0 || discussionsLoading) && (
+              <div className={visibleBlogs.length > 0 ? 'mt-10' : undefined}>
+                <PulseSectionTitle icon={<HackerNewsIcon />} label="Hacker News" />
+                {discussionsLoading && visibleDiscussions.length === 0 ? (
+                  <PulseSidebarSkeleton />
+                ) : (
+                  <div className="divide-y divide-[#f3f4f6]">
+                    {visibleDiscussions.slice(0, PULSE_SIDEBAR_MAX).map((item, i) => renderSidebarItem(item, {
+                      rank: i + 1,
+                      sectionSource: 'hacker',
+                    }))}
+                  </div>
+                )}
+              </div>
+            )}
+            {!isSubscribed && <PulseLockedPreview role={pulseRole} interests={pulseInterests} />}
           </div>
         )}
         <PulseSidebar
-          discussions={discussions}
-          tools={tools}
-          blogs={blogs}
-          discussionsLoading={discussionsLoading}
+          tools={visibleTools}
+          tweets={visibleTweets}
           toolsLoading={toolsLoading}
+          tweetsLoading={tweetsLoading}
           renderSidebarItem={renderSidebarItem}
+          renderTweet={renderTweetCard}
         />
       </div>
     </div>
@@ -904,6 +938,8 @@ export default function FeedTwoPaneLayout({
   );
 
   const handleSelect = (item: FeedListItem) => {
+    trackFeedItemClicked(item.id, item.type, item.source || 'feed');
+    trackSummaryOpened(item.id, isSubscribed);
     setSelectedId(item.id);
     if (typeof window !== 'undefined' && window.innerWidth < 640) {
       sessionStorage.setItem(FEED_LIST_SCROLL_KEY, String(listScrollRef.current?.scrollTop ?? 0));

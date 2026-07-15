@@ -41,7 +41,7 @@ type UserData = {
   selectedLearningSources?: string[];
   selectedSources?: string[];
   referralSource?: string | null;
-  platform?: 'mobile' | 'web' | 'both' | 'unknown';
+  platform?: 'mobile' | 'web';
 };
 
 type DailyStats = {
@@ -71,6 +71,7 @@ type UserFeed = {
 };
 
 type TimeRange = 'week' | 'month' | 'all';
+type PlatformFilter = 'web' | 'mobile';
 
 // Custom Tooltip Component
 function CustomTooltip({ active, payload, label }: any) {
@@ -119,6 +120,12 @@ export default function AnalyticsPage() {
   const [isFetchingFeed, setIsFetchingFeed] = useState(false);
   const [firebaseError, setFirebaseError] = useState<string | null>(null);
   const [visitorError, setVisitorError] = useState<string | null>(null);
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('analytics_platform') as PlatformFilter) || 'web';
+    }
+    return 'web';
+  });
 
   // Load preferences from localStorage
   const [timeRange, setTimeRange] = useState<TimeRange>(() => {
@@ -181,6 +188,9 @@ export default function AnalyticsPage() {
   useEffect(() => {
     localStorage.setItem('analytics_chartType', chartType);
   }, [chartType]);
+  useEffect(() => {
+    localStorage.setItem('analytics_platform', platformFilter);
+  }, [platformFilter]);
 
   useEffect(() => {
     const isDevMode = process.env.NODE_ENV === 'development' ||
@@ -256,13 +266,19 @@ export default function AnalyticsPage() {
     }
   };
 
+  const platformUsers = useMemo(
+    () => users.filter((u) => (u.platform === 'mobile' ? 'mobile' : 'web') === platformFilter),
+    [users, platformFilter]
+  );
+  const isWeb = platformFilter === 'web';
+
   // Calculate daily stats from user data (only 2026 onwards)
   // Onboarded/subscribed are counted on the SIGNUP date (cohort view)
   const dailyStats = useMemo(() => {
     const stats: Record<string, DailyStats> = {};
     const cutoffYear = '2026'; // Only count this year's data
 
-    users.forEach(u => {
+    platformUsers.forEach(u => {
       const createdDate = parseDate(u.createdAt);
       const isNewUser = createdDate && createdDate >= cutoffYear;
 
@@ -276,17 +292,14 @@ export default function AnalyticsPage() {
           stats[createdDate].onboarded++;
         }
 
-        if (
-          ['trial', 'active'].includes(u.subscriptionStatus) ||
-          ['trial', 'active'].includes(u.appSubscriptionStatus || '')
-        ) {
+        if (isWeb && ['trial', 'active'].includes(u.subscriptionStatus)) {
           stats[createdDate].subscribed++;
         }
       }
     });
 
     return Object.values(stats).sort((a, b) => a.date.localeCompare(b.date));
-  }, [users]);
+  }, [platformUsers, isWeb]);
 
   // Filter stats by time range and fill in missing dates
   const filteredStats = useMemo(() => {
@@ -330,10 +343,10 @@ export default function AnalyticsPage() {
 
     return filteredStats.map(s => ({
       ...s,
-      visitors: visitorMap.get(s.date) || 0,
+      visitors: isWeb ? visitorMap.get(s.date) || 0 : 0,
       displayDate: new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     }));
-  }, [filteredStats, visitorStats]);
+  }, [filteredStats, visitorStats, isWeb]);
 
   // Calculate totals for the selected period
   const totals = useMemo(() => {
@@ -349,27 +362,26 @@ export default function AnalyticsPage() {
 
   // All time totals
   const allTimeTotals = useMemo(() => ({
-    signups: users.length,
-    onboarded: users.filter(u => u.onboarded).length,
-    subscribed: users.filter(u =>
-      ['trial', 'active'].includes(u.subscriptionStatus) ||
-      ['trial', 'active'].includes(u.appSubscriptionStatus || '')
-    ).length,
-  }), [users]);
+    signups: platformUsers.length,
+    onboarded: platformUsers.filter(u => u.onboarded).length,
+    subscribed: isWeb
+      ? platformUsers.filter(u => ['trial', 'active'].includes(u.subscriptionStatus)).length
+      : 0,
+  }), [platformUsers, isWeb]);
 
   const platformBreakdown = useMemo(() => {
     return users.reduce(
       (acc, user) => {
-        const key = user.platform || 'unknown';
+        const key = user.platform === 'mobile' ? 'mobile' : 'web';
         acc[key] = (acc[key] || 0) + 1;
         return acc;
       },
-      { mobile: 0, web: 0, both: 0, unknown: 0 } as Record<'mobile' | 'web' | 'both' | 'unknown', number>
+      { mobile: 0, web: 0 } as Record<'mobile' | 'web', number>
     );
   }, [users]);
 
   const referralBreakdown = useMemo(() => {
-    const counts = users.reduce((acc, user) => {
+    const counts = platformUsers.reduce((acc, user) => {
       const key = user.referralSource || 'unknown';
       acc[key] = (acc[key] || 0) + 1;
       return acc;
@@ -377,7 +389,7 @@ export default function AnalyticsPage() {
 
     return Object.entries(counts)
       .sort((a, b) => b[1] - a[1]);
-  }, [users]);
+  }, [platformUsers]);
 
   // Search users by name
   const searchResults = useMemo(() => {
@@ -556,8 +568,35 @@ export default function AnalyticsPage() {
               </div>
             )}
 
+            <div className="flex items-center justify-between rounded-2xl border border-black/5 bg-white px-6 py-4 shadow-sm dark:border-white/5 dark:bg-white/5">
+              <div>
+                <p className="text-sm font-semibold">{isWeb ? 'Web paid funnel' : 'Mobile free funnel'}</p>
+                <p className="mt-0.5 text-xs text-secondary/50">
+                  {isWeb ? 'Includes web visitors and web subscriptions.' : 'Shows signup and onboarding only; web traffic and paid conversion are excluded.'}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 rounded-lg bg-black/5 p-1 dark:bg-white/5">
+                {([
+                  { value: 'web', label: 'Web', count: platformBreakdown.web },
+                  { value: 'mobile', label: 'Mobile', count: platformBreakdown.mobile },
+                ] as const).map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setPlatformFilter(option.value)}
+                    className={`rounded-md px-4 py-2 text-sm font-medium transition-all ${
+                      platformFilter === option.value
+                        ? 'bg-white text-foreground shadow-sm dark:bg-white/10'
+                        : 'text-secondary/60 hover:text-foreground'
+                    }`}
+                  >
+                    {option.label} <span className="ml-1 text-secondary/40">{option.count}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* All-Time Stats Cards */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className={`grid gap-4 ${isWeb ? 'grid-cols-3' : 'grid-cols-2'}`}>
               <div className="bg-white dark:bg-white/5 rounded-2xl p-6 border border-black/5 dark:border-white/5 shadow-sm">
                 <div className="flex items-start justify-between">
                   <div>
@@ -592,48 +631,28 @@ export default function AnalyticsPage() {
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-white/5 rounded-2xl p-6 border border-black/5 dark:border-white/5 shadow-sm">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-secondary/60 mb-1">Subscribed</p>
-                    <p className="text-4xl font-bold tracking-tight">{allTimeTotals.subscribed}</p>
-                  </div>
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                    <Zap size={20} className="text-amber-500" />
-                  </div>
-                </div>
-                <div className="mt-4 pt-4 border-t border-black/5 dark:border-white/5">
-                  <span className="text-xs text-secondary/50">
-                    {allTimeTotals.onboarded > 0 ? Math.round((allTimeTotals.subscribed / allTimeTotals.onboarded) * 100) : 0}% of onboarded
-                  </span>
-                </div>
-              </div>
-
-              </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-black/5 dark:border-white/5">
-                  <h2 className="font-semibold">Likely Platform</h2>
-                  <p className="text-xs text-secondary/50 mt-0.5">Derived from app-specific vs web-specific profile/payment signals</p>
-                </div>
-                <div className="p-6 grid grid-cols-4 gap-3">
-                  {[
-                    { label: 'Mobile', value: platformBreakdown.mobile, tone: 'text-emerald-500 bg-emerald-500/10' },
-                    { label: 'Web/Desktop', value: platformBreakdown.web, tone: 'text-blue-500 bg-blue-500/10' },
-                    { label: 'Both', value: platformBreakdown.both, tone: 'text-violet-500 bg-violet-500/10' },
-                    { label: 'Unknown', value: platformBreakdown.unknown, tone: 'text-secondary/70 bg-black/5 dark:bg-white/5' },
-                  ].map((item) => (
-                    <div key={item.label} className="rounded-xl border border-black/5 dark:border-white/5 p-4">
-                      <div className={`inline-flex rounded-lg px-2 py-1 text-xs font-medium ${item.tone}`}>
-                        {item.label}
-                      </div>
-                      <p className="mt-3 text-3xl font-bold tracking-tight">{item.value}</p>
+              {isWeb && (
+                <div className="bg-white dark:bg-white/5 rounded-2xl p-6 border border-black/5 dark:border-white/5 shadow-sm">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-secondary/60 mb-1">Subscribed</p>
+                      <p className="text-4xl font-bold tracking-tight">{allTimeTotals.subscribed}</p>
                     </div>
-                  ))}
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                      <Zap size={20} className="text-amber-500" />
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-black/5 dark:border-white/5">
+                    <span className="text-xs text-secondary/50">
+                      {allTimeTotals.onboarded > 0 ? Math.round((allTimeTotals.subscribed / allTimeTotals.onboarded) * 100) : 0}% of onboarded
+                    </span>
+                  </div>
                 </div>
+              )}
+
               </div>
 
+            {platformFilter === 'mobile' && (
               <div className="bg-white dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-black/5 dark:border-white/5">
                   <h2 className="font-semibold">Where Users Came From</h2>
@@ -645,7 +664,7 @@ export default function AnalyticsPage() {
                   ) : (
                     <div className="space-y-3">
                       {referralBreakdown.map(([source, count]) => {
-                        const pct = users.length > 0 ? Math.round((count / users.length) * 100) : 0;
+                        const pct = platformUsers.length > 0 ? Math.round((count / platformUsers.length) * 100) : 0;
                         return (
                           <div key={source} className="space-y-1.5">
                             <div className="flex items-center justify-between text-sm">
@@ -665,31 +684,33 @@ export default function AnalyticsPage() {
                   )}
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Conversion Funnel */}
             <div className="bg-white dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm overflow-hidden">
               <div className="px-6 py-4 border-b border-black/5 dark:border-white/5">
                 <h2 className="font-semibold">Conversion Funnel</h2>
-                <p className="text-xs text-secondary/50 mt-0.5">Based on selected time range ({timeRange === 'week' ? '7 days' : timeRange === 'month' ? '30 days' : 'all time'})</p>
+                <p className="text-xs text-secondary/50 mt-0.5">{isWeb ? 'Web visitors to paid subscribers' : 'Mobile signups to completed onboarding'} · {timeRange === 'week' ? '7 days' : timeRange === 'month' ? '30 days' : 'all time'}</p>
               </div>
               <div className="p-6">
                 <div className="flex items-center justify-between gap-4">
-                  {/* Visitors */}
-                  <div className="flex-1 text-center">
-                    <p className="text-3xl font-bold text-purple-500">{chartData.reduce((sum, d) => sum + (d.visitors || 0), 0)}</p>
-                    <p className="text-xs text-secondary/50 mt-1">Visitors</p>
-                  </div>
-
-                  <div className="flex flex-col items-center">
-                    <span className="text-xs font-medium text-secondary/40">→</span>
-                    <span className="text-xs font-semibold text-purple-500">
-                      {(() => {
-                        const visitors = chartData.reduce((sum, d) => sum + (d.visitors || 0), 0);
-                        return visitors > 0 ? `${((totals.signups / visitors) * 100).toFixed(1)}%` : '—';
-                      })()}
-                    </span>
-                  </div>
+                  {isWeb && (
+                    <>
+                      <div className="flex-1 text-center">
+                        <p className="text-3xl font-bold text-purple-500">{chartData.reduce((sum, d) => sum + (d.visitors || 0), 0)}</p>
+                        <p className="text-xs text-secondary/50 mt-1">Visitors</p>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <span className="text-xs font-medium text-secondary/40">→</span>
+                        <span className="text-xs font-semibold text-purple-500">
+                          {(() => {
+                            const visitors = chartData.reduce((sum, d) => sum + (d.visitors || 0), 0);
+                            return visitors > 0 ? `${((totals.signups / visitors) * 100).toFixed(1)}%` : '—';
+                          })()}
+                        </span>
+                      </div>
+                    </>
+                  )}
 
                   {/* Signups */}
                   <div className="flex-1 text-center">
@@ -710,18 +731,20 @@ export default function AnalyticsPage() {
                     <p className="text-xs text-secondary/50 mt-1">Onboarded</p>
                   </div>
 
-                  <div className="flex flex-col items-center">
-                    <span className="text-xs font-medium text-secondary/40">→</span>
-                    <span className="text-xs font-semibold text-green-500">
-                      {totals.onboarded > 0 ? `${((totals.subscribed / totals.onboarded) * 100).toFixed(1)}%` : '—'}
-                    </span>
-                  </div>
-
-                  {/* Subscribed */}
-                  <div className="flex-1 text-center">
-                    <p className="text-3xl font-bold text-amber-500">{totals.subscribed}</p>
-                    <p className="text-xs text-secondary/50 mt-1">Subscribed</p>
-                  </div>
+                  {isWeb && (
+                    <>
+                      <div className="flex flex-col items-center">
+                        <span className="text-xs font-medium text-secondary/40">→</span>
+                        <span className="text-xs font-semibold text-green-500">
+                          {totals.onboarded > 0 ? `${((totals.subscribed / totals.onboarded) * 100).toFixed(1)}%` : '—'}
+                        </span>
+                      </div>
+                      <div className="flex-1 text-center">
+                        <p className="text-3xl font-bold text-amber-500">{totals.subscribed}</p>
+                        <p className="text-xs text-secondary/50 mt-1">Subscribed</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -734,7 +757,7 @@ export default function AnalyticsPage() {
                   <div className="flex items-center gap-4 mt-1">
                     <span className="text-xs text-blue-500 font-medium">{totals.signups} signups</span>
                     <span className="text-xs text-green-500 font-medium">{totals.onboarded} onboarded</span>
-                    <span className="text-xs text-amber-500 font-medium">{totals.subscribed} subscribed</span>
+                    {isWeb && <span className="text-xs text-amber-500 font-medium">{totals.subscribed} subscribed</span>}
                     <span className="text-xs text-secondary/40">in selected period</span>
                   </div>
                 </div>
@@ -806,28 +829,32 @@ export default function AnalyticsPage() {
                     <div className={`w-2.5 h-2.5 rounded-full ${showOnboarded ? 'bg-green-500' : 'bg-secondary/30'}`} />
                     Onboarded
                   </button>
-                  <button
-                    onClick={() => setShowSubscribed(!showSubscribed)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                      showSubscribed
-                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                        : 'bg-black/5 dark:bg-white/5 text-secondary/50'
-                    }`}
-                  >
-                    <div className={`w-2.5 h-2.5 rounded-full ${showSubscribed ? 'bg-amber-500' : 'bg-secondary/30'}`} />
-                    Subscribed
-                  </button>
-                  <button
-                    onClick={() => setShowVisitors(!showVisitors)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                      showVisitors
-                        ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400'
-                        : 'bg-black/5 dark:bg-white/5 text-secondary/50'
-                    }`}
-                  >
-                    <div className={`w-2.5 h-2.5 rounded-full ${showVisitors ? 'bg-purple-500' : 'bg-secondary/30'}`} />
-                    Visitors
-                  </button>
+                  {isWeb && (
+                    <>
+                      <button
+                        onClick={() => setShowSubscribed(!showSubscribed)}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                          showSubscribed
+                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                            : 'bg-black/5 dark:bg-white/5 text-secondary/50'
+                        }`}
+                      >
+                        <div className={`w-2.5 h-2.5 rounded-full ${showSubscribed ? 'bg-amber-500' : 'bg-secondary/30'}`} />
+                        Subscribed
+                      </button>
+                      <button
+                        onClick={() => setShowVisitors(!showVisitors)}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                          showVisitors
+                            ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400'
+                            : 'bg-black/5 dark:bg-white/5 text-secondary/50'
+                        }`}
+                      >
+                        <div className={`w-2.5 h-2.5 rounded-full ${showVisitors ? 'bg-purple-500' : 'bg-secondary/30'}`} />
+                        Visitors
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 {chartData.length === 0 ? (
@@ -871,7 +898,7 @@ export default function AnalyticsPage() {
                           activeDot={{ r: 6, fill: '#22c55e' }}
                         />
                       )}
-                      {showSubscribed && (
+                      {isWeb && showSubscribed && (
                         <Line
                           type="linear"
                           dataKey="subscribed"
@@ -882,7 +909,7 @@ export default function AnalyticsPage() {
                           activeDot={{ r: 6, fill: '#f59e0b' }}
                         />
                       )}
-                      {showVisitors && (
+                      {isWeb && showVisitors && (
                         <Line
                           type="linear"
                           dataKey="visitors"
@@ -914,8 +941,8 @@ export default function AnalyticsPage() {
                       <Tooltip content={<CustomTooltip />} />
                       {showSignups && <Bar dataKey="signups" name="Signups" fill="#3b82f6" radius={[4, 4, 0, 0]} />}
                       {showOnboarded && <Bar dataKey="onboarded" name="Onboarded" fill="#22c55e" radius={[4, 4, 0, 0]} />}
-                      {showSubscribed && <Bar dataKey="subscribed" name="Subscribed" fill="#f59e0b" radius={[4, 4, 0, 0]} />}
-                      {showVisitors && <Bar dataKey="visitors" name="Visitors" fill="#a855f7" radius={[4, 4, 0, 0]} />}
+                      {isWeb && showSubscribed && <Bar dataKey="subscribed" name="Subscribed" fill="#f59e0b" radius={[4, 4, 0, 0]} />}
+                      {isWeb && showVisitors && <Bar dataKey="visitors" name="Visitors" fill="#a855f7" radius={[4, 4, 0, 0]} />}
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -935,7 +962,7 @@ export default function AnalyticsPage() {
                       <th className="px-6 py-3 text-left text-xs font-semibold text-secondary/60">Date</th>
                       <th className="px-6 py-3 text-center text-xs font-semibold text-blue-500">Signups</th>
                       <th className="px-6 py-3 text-center text-xs font-semibold text-green-500">Onboarded</th>
-                      <th className="px-6 py-3 text-center text-xs font-semibold text-amber-500">Subscribed</th>
+                      {isWeb && <th className="px-6 py-3 text-center text-xs font-semibold text-amber-500">Subscribed</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -960,11 +987,13 @@ export default function AnalyticsPage() {
                               {day.onboarded}
                             </span>
                           </td>
-                          <td className="px-6 py-3 text-center">
-                            <span className={`text-sm font-semibold ${day.subscribed > 0 ? 'text-amber-500' : 'text-secondary/30'}`}>
-                              {day.subscribed}
-                            </span>
-                          </td>
+                          {isWeb && (
+                            <td className="px-6 py-3 text-center">
+                              <span className={`text-sm font-semibold ${day.subscribed > 0 ? 'text-amber-500' : 'text-secondary/30'}`}>
+                                {day.subscribed}
+                              </span>
+                            </td>
+                          )}
                         </tr>
                       );
                     })}

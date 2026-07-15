@@ -333,7 +333,7 @@ function ScrollFeedUnlockGate() {
             </span>
           </div>
           <Link
-            href="/profile?tab=subscription"
+            href="/profile?tab=subscription&intent=checkout"
             prefetch={false}
             onClick={() => trackCheckoutClicked('feed_scroll_expand_unlock')}
             className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90"
@@ -1280,7 +1280,7 @@ function DesktopArticlePageView({
                 </span>
               </div>
               <Link
-                href="/profile?tab=subscription"
+                href="/profile?tab=subscription&intent=checkout"
                 prefetch={false}
                 className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background"
               >
@@ -1453,7 +1453,7 @@ function DesktopArticlePageView({
                       </span>
                     </div>
                     <Link
-                      href="/profile?tab=subscription"
+                      href="/profile?tab=subscription&intent=checkout"
                       prefetch={false}
                       className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background"
                     >
@@ -1789,7 +1789,7 @@ function LockedStoryPanel({ story }: { story: FeedListItem }) {
           </div>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
-              href="/profile?tab=subscription"
+              href="/profile?tab=subscription&intent=checkout"
               prefetch={false}
               className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90"
             >
@@ -2144,7 +2144,7 @@ export default function FeedBriefingView({
                     </span>
                   </div>
                   <Link
-                    href="/profile?tab=subscription"
+                    href="/profile?tab=subscription&intent=checkout"
                     prefetch={false}
                     className="mt-5 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background"
                   >

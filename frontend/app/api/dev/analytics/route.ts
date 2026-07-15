@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldPath } from 'firebase-admin/firestore';
 import { adminAuth, adminFirestore } from '@/lib/firebase-admin';
+import { classifySignupPlatform } from '@/lib/analytics-platform';
 
 /**
  * DEV ONLY: Get analytics data
@@ -72,24 +73,7 @@ export async function GET(request: NextRequest) {
     const users = await Promise.all(sourceEntries.map(async ({ uid, createdAt }) => {
       const data = firestoreProfiles.get(uid) || {};
 
-      const hasMobileSignals = Boolean(
-        data.referralSource ||
-        data.pushToken ||
-        data.pushNotificationsEnabled ||
-        data.hasRequestedReview ||
-        (data.appSubscriptionStatus && data.appSubscriptionStatus !== 'none')
-      );
-      const hasWebSignals = Boolean(
-        data.subscriptionId ||
-        data.dodoCustomerId ||
-        data.planId ||
-        data.lastCheckoutSessionId
-      );
-
-      let platform: 'mobile' | 'web' | 'both' | 'unknown' = 'unknown';
-      if (hasMobileSignals && hasWebSignals) platform = 'both';
-      else if (hasMobileSignals) platform = 'mobile';
-      else if (hasWebSignals) platform = 'web';
+      const platform = classifySignupPlatform(data);
       
       // Get latest feed (single query, avoid scanning all feeds)
       let feedItemCount = 0;
@@ -221,7 +205,7 @@ export async function GET(request: NextRequest) {
         acc[key] = (acc[key] || 0) + 1;
         return acc;
       },
-      { mobile: 0, web: 0, both: 0, unknown: 0 } as Record<'mobile' | 'web' | 'both' | 'unknown', number>
+      { mobile: 0, web: 0 } as Record<'mobile' | 'web', number>
     );
 
     const referralBreakdown = users.reduce((acc, user) => {

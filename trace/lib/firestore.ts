@@ -171,6 +171,7 @@ export interface UserProfile {
   email: string;
   displayName: string;
   photoURL: string | null;
+  signupPlatform?: 'web' | 'mobile';
 
   // Onboarding data
   onboarded: boolean;
@@ -811,6 +812,7 @@ export async function createUserProfile(
     email,
     displayName,
     photoURL,
+    signupPlatform: 'mobile',
     onboarded: false,
     name: displayName || '',
     role: '',
@@ -888,6 +890,7 @@ export async function getOrCreateUserProfile(
         email,
         displayName,
         photoURL,
+        signupPlatform: 'mobile',
         onboarded: false,
         name: displayName || '',
         role: '',

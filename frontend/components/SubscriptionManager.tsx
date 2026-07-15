@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth } from '@/lib/firebase';
-import { trackCheckoutClicked, trackPaywallShown, trackSubscriptionStarted } from '@/lib/posthog';
+import { trackCheckoutClicked, trackPaywallShown } from '@/lib/posthog';
 import {
   SUBSCRIPTION_COMPARE_AT_DEFAULT,
   SUBSCRIPTION_PRICE_DEFAULT,
@@ -113,7 +113,6 @@ export default function SubscriptionManager() {
   const [pricingPreview, setPricingPreview] = useState<PricingPreview | null>(null);
   const autoCheckoutStarted = React.useRef(false);
   const trackedPaywall = React.useRef(false);
-  const trackedSuccess = React.useRef(false);
   const refreshProfileRef = React.useRef(refreshProfile);
   const checkoutIntent = searchParams.get('intent') === 'checkout';
   const checkoutReturned = searchParams.get('subscription') === 'success';
@@ -424,13 +423,6 @@ export default function SubscriptionManager() {
     }
   }, [checkoutIntent, isLoading, status, isCreatingCheckout]);
 
-  useEffect(() => {
-    if (checkoutReturned && !trackedSuccess.current && (status === 'trial' || status === 'active')) {
-      trackedSuccess.current = true;
-      trackSubscriptionStarted('pro_monthly');
-    }
-  }, [checkoutReturned, status]);
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -442,10 +434,10 @@ export default function SubscriptionManager() {
   // Unsubscribed state
   if (status === 'none') {
     const benefits = [
-      { title: 'Your morning briefing, every day', desc: 'A full feed of stories filtered to what you follow — AI, tech, markets, and more.' },
-      { title: 'The point, not the whole article', desc: 'Summary, key takeaways, and why it matters — in under a minute.' },
-      { title: '10 outlets covered it. We show you one.', desc: 'Related stories collapsed into one clear view, no duplicates.' },
-      { title: 'No rabbit holes', desc: "Skim today's feed in 5 minutes. Know what's going on. Move on." },
+      { title: 'Start the day already caught up', desc: 'The changes that matter across AI, tech, markets, and the topics you follow.' },
+      { title: 'Understand why each story matters', desc: 'Clear context, key points, and the reactions worth reading.' },
+      { title: 'Read one version of the story', desc: 'Duplicate coverage collapsed into one useful briefing.' },
+      { title: 'Finish in five minutes', desc: 'Get the signal, skip the scroll, and get on with your day.' },
     ];
     return (
       <motion.div
@@ -457,7 +449,7 @@ export default function SubscriptionManager() {
         <div>
           <p className="text-[11px] font-semibold text-secondary/40 uppercase tracking-[0.18em] mb-3">{planName}</p>
           <h2 className="text-xl font-bold text-foreground tracking-[-0.02em] leading-snug mb-1.5">
-            The news habit that<br />doesn't waste your time.
+            Know what changed<br />before your first meeting.
           </h2>
           <p className="text-[13px] text-secondary/50">
             <SubscriptionPrice price={priceDisplay} compareAt={compareAtPriceDisplay} size="sm" />
@@ -491,7 +483,7 @@ export default function SubscriptionManager() {
             {isCreatingCheckout ? (
               <><Loader2 className="animate-spin" size={15} />Setting up...</>
             ) : (
-              <>Subscribe to {planName}</>
+              <>Unlock my daily brief</>
             )}
           </button>
           <p className="text-[11px] text-secondary/35 mt-2 text-center">

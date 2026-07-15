@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
 import { resolveSubscriptionOffer } from '@/lib/subscription-offer';
+import { captureServerEvent } from '@/lib/posthog-server';
 
 function readAffiliateCookie(raw: string | undefined) {
   if (!raw) return null;
@@ -200,6 +201,10 @@ export async function POST(request: NextRequest) {
         errorData = { message: errorText };
       }
       console.error('Dodo Payments error:', { status: checkoutResponse.status, error: errorData });
+      await captureServerEvent(userId, 'checkout_create_failed', {
+        status: checkoutResponse.status,
+        pricing_offer: offer.isIndiaOffer ? 'india' : 'default',
+      });
       return NextResponse.json({ 
         error: 'Failed to create checkout session',
         details: errorData,
@@ -220,6 +225,12 @@ export async function POST(request: NextRequest) {
       checkoutOfferType: offer.isIndiaOffer ? 'india' : 'default',
       checkoutProductId: offer.productId,
       updatedAt: new Date(),
+    });
+
+    await captureServerEvent(userId, 'checkout_created', {
+      $insert_id: `checkout_created:${checkoutData.session_id}`,
+      pricing_offer: offer.isIndiaOffer ? 'india' : 'default',
+      country_code: offer.countryCode,
     });
 
     return NextResponse.json({

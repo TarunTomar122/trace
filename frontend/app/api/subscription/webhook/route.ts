@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { Webhook } from 'standardwebhooks';
+import { captureServerEvent } from '@/lib/posthog-server';
 
 // Dodo Payments webhook handler
 export async function POST(request: NextRequest) {
@@ -179,6 +180,12 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date(),
         });
         console.log(`Subscription created for user ${userId}: ${eventData.subscription_id}`);
+        await captureServerEvent(userId, 'subscription_started', {
+          $insert_id: `subscription_started:${eventData.subscription_id}`,
+          subscription_status: hasTrial ? 'trial' : 'active',
+          pricing_offer: eventData.metadata?.pricing_offer,
+          source: 'dodo_webhook',
+        });
         await recordAffiliateConversion();
         
         // Trigger feed generation for new subscriber
@@ -197,6 +204,12 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date(),
         });
         console.log(`Subscription activated for user ${userId}`);
+        await captureServerEvent(userId, 'subscription_started', {
+          $insert_id: `subscription_started:${eventData.subscription_id}`,
+          subscription_status: 'active',
+          pricing_offer: eventData.metadata?.pricing_offer,
+          source: 'dodo_webhook',
+        });
         await recordAffiliateConversion();
         
         // Also trigger feed generation as safety net (in case subscription.created didn't fire or failed)
@@ -214,6 +227,11 @@ export async function POST(request: NextRequest) {
             updatedAt: new Date(),
           });
           console.log(`Subscription renewed for user ${userId}`);
+          await captureServerEvent(userId, 'payment_succeeded', {
+            $insert_id: `payment_succeeded:${webhookId || eventData.payment_id || eventData.subscription_id}`,
+            subscription_id: eventData.subscription_id,
+            source: 'dodo_webhook',
+          });
         }
         break;
 

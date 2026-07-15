@@ -12,7 +12,7 @@ import {
   V3UserFeed, FeedItem, TrendingTopic,
   recordLastActive,
 } from '@/lib/firestore';
-import { trackPaywallShown, trackSubscriptionStarted } from '@/lib/posthog';
+import { trackFeedViewed } from '@/lib/posthog';
 import FeedFooter from '@/components/FeedFooter';
 import Image from 'next/image';
 import FeedBootShell from './FeedBootShell';
@@ -150,7 +150,7 @@ function toPulseListItem(item: FeedItem): FeedListItem {
     id: item.id,
     type: 'article',
     title: decodeHtml(item.title || ''),
-    preview: getPreview(getArticleSummary(item), 140),
+    preview: item.summary?.short_article?.subtitle || item.description || getArticleSummary(item),
     timestamp: item.published_date,
     source: item.source_name || item.source,
     sourceCount: signalCount || (item.sources?.length || 0),
@@ -166,8 +166,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   const searchParams = useSearchParams();
   const { user, profile, loading, profileResolved, refreshProfile } = useAuth();
   const checkoutReturned = searchParams.get('subscription') === 'success';
-  const trackedPaywalls = React.useRef<Set<string>>(new Set());
-  const trackedCheckoutSuccess = React.useRef(false);
+  const trackedFeedView = React.useRef(false);
 
   const [showProWelcome, setShowProWelcome] = useState(false);
   const [pulseTabActive, setPulseTabActive] = useState(false);
@@ -222,6 +221,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     || baseFeed?.viewer_profile?.app_subscription_status === 'trial';
   const isSubscribed = isSubscribedFromProfile || isSubscribedFromFeed;
   const pulseDataEnabled = pulseTabActive && isSubscribed;
+  const pulsePreviewEnabled = pulseTabActive;
 
   const { data: pulseFeed } = useSWR<Partial<V3UserFeed> | null>(
     pulseDataEnabled && user ? 'feed-pulse' : null,
@@ -255,7 +255,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   );
 
   const { data: hotTweets = [], isLoading: hotTweetsLoading, mutate: mutateHotTweets } = useSWR<HotTweet[]>(
-    pulseDataEnabled ? 'hot-tweets' : null,
+    pulsePreviewEnabled ? 'hot-tweets' : null,
     hotTweetsFetcher,
     { revalidateOnFocus: true, revalidateOnReconnect: true, dedupingInterval: 60_000 },
   );
@@ -351,13 +351,6 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   const userInterests = useMemo(() => new Set(effectiveInterests), [effectiveInterests]);
 
   const visibleTrendingTopics = useMemo(() => trendingTopics, [trendingTopics]);
-
-  useEffect(() => {
-    if (checkoutReturned && isSubscribed && !trackedCheckoutSuccess.current) {
-      trackedCheckoutSuccess.current = true;
-      trackSubscriptionStarted('pro_monthly');
-    }
-  }, [checkoutReturned, isSubscribed]);
 
   useEffect(() => {
     if (!profileResolved || isSubscribed) return;
@@ -538,10 +531,10 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     return merged.map(toPulseListItem);
   }, [effectiveFeed?.daily_pulse?.blogs]);
 
-  const needsLiveDiscussions = pulseDataEnabled && discussions.length === 0;
-  const needsLiveTools = pulseDataEnabled && tools.length === 0;
+  const needsLiveDiscussions = pulsePreviewEnabled && discussions.length === 0;
+  const needsLiveTools = pulsePreviewEnabled && tools.length === 0;
   const { data: livePulse, isLoading: livePulseLoading } = useSWR<PulseLiveResponse | null>(
-    pulseDataEnabled && (needsLiveDiscussions || needsLiveTools) ? 'pulse-live' : null,
+    pulsePreviewEnabled && (needsLiveDiscussions || needsLiveTools) ? 'pulse-live' : null,
     pulseLiveFetcher,
     { revalidateOnFocus: false, dedupingInterval: 900000 },
   );
@@ -558,18 +551,16 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     return live.map((item) => toPulseListItem(pulseLiveToFeedItem(item)));
   }, [tools, livePulse?.tools]);
 
-  const pulseTweetsLoading = pulseDataEnabled && hotTweetsLoading && hotTweets.length === 0;
-  const pulseDiscussionsLoading = pulseDataEnabled && needsLiveDiscussions && livePulseLoading && pulseDiscussions.length === 0;
-  const pulseToolsLoading = pulseDataEnabled && needsLiveTools && livePulseLoading && pulseTools.length === 0;
+  const pulseTweetsLoading = pulsePreviewEnabled && hotTweetsLoading && hotTweets.length === 0;
+  const pulseDiscussionsLoading = pulsePreviewEnabled && needsLiveDiscussions && livePulseLoading && pulseDiscussions.length === 0;
+  const pulseToolsLoading = pulsePreviewEnabled && needsLiveTools && livePulseLoading && pulseTools.length === 0;
 
   const pulseRole = profile?.role || effectiveFeed?.viewer_profile?.role || undefined;
 
   useEffect(() => {
-    if (isSubscribed) return;
-    if (currentList.length > 0 && !trackedPaywalls.current.has('trending')) {
-      trackedPaywalls.current.add('trending');
-      trackPaywallShown('feed_trending', { story_count: currentList.length });
-    }
+    if (trackedFeedView.current || currentList.length === 0) return;
+    trackedFeedView.current = true;
+    trackFeedViewed(currentList.length, !isSubscribed);
   }, [isSubscribed, currentList.length]);
 
   const handleSelectStory = useCallback((item: FeedListItem) => {

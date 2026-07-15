@@ -48,8 +48,10 @@ from v3.lib.store import V3Store, _today_ist  # noqa: E402
 
 ROLE_CLASSIFIER_BUCKET = "daily_pulse_role_classifier_v1"
 ROLE_CLASSIFIER_MODEL = "gpt-4.1-nano"
-ITEM_SUMMARY_BUCKET = "daily_pulse_item_summary_v1"
+ITEM_SUMMARY_BUCKET = "daily_pulse_item_summary_v2"
 ITEM_SUMMARY_MODEL = "gpt-4o-mini"
+COMPACT_SUMMARY_SECTIONS = {"tools", "discussions"}
+COMPACT_SUMMARY_MAX_WORDS = 24
 
 TOOLS_LIMIT = 4
 BLOGS_LIMIT = 3
@@ -124,6 +126,23 @@ def _clean_summary_text(text: str, limit: int = 900) -> str:
     return cleaned[: limit - 1].rstrip() + "…"
 
 
+def _compact_summary_text(text: str) -> str:
+    clean = _safe_text(text)
+    if not clean:
+        return ""
+    first_sentence = re.split(r"(?<=[.!?])\s+", clean, maxsplit=1)[0]
+    words = first_sentence.split()
+    if len(words) <= COMPACT_SUMMARY_MAX_WORDS:
+        return first_sentence
+    return " ".join(words[:COMPACT_SUMMARY_MAX_WORDS]).rstrip(".,;:!?") + "…"
+
+
+def _normalize_item_summary(section: str, text: str) -> str:
+    if section in COMPACT_SUMMARY_SECTIONS:
+        return _compact_summary_text(text)
+    return _clean_summary_text(text)
+
+
 def _item_cache_url(target_date: str, role: str, section: str, article: dict[str, Any]) -> str:
     raw = "|".join([
         target_date, role, section,
@@ -140,12 +159,14 @@ def _fallback_summary(section: str, article: dict[str, Any]) -> str:
     title = _safe_text(article.get("title", ""))
     source = _safe_text(article.get("source", ""))
     if preview:
-        return _clean_summary_text(preview)
+        return _normalize_item_summary(section, preview)
     if section == "tools":
-        return f"{title} surfaced in {source} today and looks like one of the stronger role-relevant tools or launches."
+        fallback = f"{title} surfaced in {source} today and looks like one of the stronger role-relevant tools or launches."
+        return _normalize_item_summary(section, fallback)
     if section == "blogs":
         return f"{title} was one of the more useful reads today from {source}."
-    return f"{title} was one of the more substantive discussions we saw today from {source}."
+    fallback = f"{title} was one of the more substantive discussions we saw today from {source}."
+    return _normalize_item_summary(section, fallback)
 
 
 def _summarize_item(
@@ -160,7 +181,7 @@ def _summarize_item(
     if cached:
         summary = cached.get("summary")
         if isinstance(summary, dict) and isinstance(summary.get("body"), str):
-            return summary["body"]
+            return _normalize_item_summary(section, summary["body"])
 
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
     if not api_key:
@@ -178,15 +199,20 @@ def _summarize_item(
     if body:
         prompt_parts.append(f"Article text excerpt: {body[:7000]}")
 
-    prompt = (
-        "Write a compact but detailed daily-digest summary for this item.\n"
-        "It should be detailed enough that the user can mostly skip the original link.\n"
-        "Write it as 2 to 4 short paragraphs, separated by blank lines.\n"
-        "Each paragraph should be 1 to 3 sentences.\n"
-        "Be concrete, readable, and specific. No fluff, no advice voice, no 'why it matters'.\n"
-        "Return JSON only with key body.\n\n"
-        + "\n".join(prompt_parts)
-    )
+    if section in COMPACT_SUMMARY_SECTIONS:
+        summary_instructions = (
+            f"Write exactly one factual sentence of no more than {COMPACT_SUMMARY_MAX_WORDS} words.\n"
+            "Say what it is and its main differentiator. No setup, hype, advice, or call to action.\n"
+        )
+    else:
+        summary_instructions = (
+            "Write a compact but detailed daily-digest summary for this item.\n"
+            "It should be detailed enough that the user can mostly skip the original link.\n"
+            "Write it as 2 to 4 short paragraphs, separated by blank lines.\n"
+            "Each paragraph should be 1 to 3 sentences.\n"
+            "Be concrete, readable, and specific. No fluff, no advice voice, no 'why it matters'.\n"
+        )
+    prompt = summary_instructions + "Return JSON only with key body.\n\n" + "\n".join(prompt_parts)
 
     client = OpenAI(api_key=api_key)
     try:
@@ -201,7 +227,7 @@ def _summarize_item(
             timeout=60,
         )
         raw = json.loads(response.choices[0].message.content or "{}")
-        summary = {"body": _clean_summary_text(raw.get("body", ""))}
+        summary = {"body": _normalize_item_summary(section, raw.get("body", ""))}
         if summary["body"]:
             store.save_cached_summary_v2(cache_url, ITEM_SUMMARY_BUCKET, summary, ITEM_SUMMARY_MODEL)
             return summary["body"]

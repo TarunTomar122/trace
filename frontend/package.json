@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 5001",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:analytics-platform": "node --test lib/analytics-platform.test.mjs",
     "remotion:studio": "remotion studio",
     "remotion:render": "remotion render"
   },

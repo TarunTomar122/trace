@@ -19,7 +19,6 @@ try {
       const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || 'anybrew-7c6c1.firebasestorage.app';
       initializeApp({
         credential: cert(serviceAccount),
-        projectId: 'anybrew-7c6c1',
         storageBucket,
       });
     } else if (serviceAccountPath) {
@@ -28,7 +27,6 @@ try {
       const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || 'anybrew-7c6c1.firebasestorage.app';
       initializeApp({
         credential: cert(serviceAccountPath),
-        projectId: 'anybrew-7c6c1',
         storageBucket,
       });
     } else {

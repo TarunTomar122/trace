@@ -9,20 +9,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   completeOnboarding,
   ROLES,
-  SENIORITY_LEVELS,
   ONBOARDING_INTERESTS,
-  CAREER_GOALS,
 } from '@/lib/firestore';
 import { isAlphaMode } from '@/lib/alpha';
-import { trackOnboardingStarted, trackOnboardingCompleted } from '@/lib/posthog';
+import { trackOnboardingStarted, trackOnboardingStepCompleted, trackOnboardingCompleted } from '@/lib/posthog';
 
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 3;
 const PENDING_ONBOARDING_KEY = 'trace_pending_onboarding';
 
 const STEP_META = [
   { label: 'Role',      title: 'What do you do?',        subtitle: 'We tailor articles and depth to your perspective.' },
   { label: 'Interests', title: 'Pick your beats',         subtitle: 'Choose 3–5 topics. We build grouped briefings around them.' },
-  { label: 'Goals',     title: "What's your next move?",  subtitle: 'Pick up to 3. We surface content that gets you there.' },
   { label: 'Account',   title: 'Almost there',            subtitle: 'Create your account to save your profile and unlock your feed.' },
 ];
 
@@ -33,9 +30,7 @@ function OnboardingPageContent() {
 
   const [step, setStep] = useState(1);
   const [role, setRole] = useState('');
-  const [seniority, setSeniority] = useState('');
   const [interests, setInterests] = useState<string[]>([]);
-  const [careerGoals, setCareerGoals] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasTracked, setHasTracked] = useState(false);
   const checkoutIntent = searchParams.get('intent') === 'checkout';
@@ -49,7 +44,7 @@ function OnboardingPageContent() {
     if (loading || !profileResolved) return;
 
     if (user && profile?.onboarded) {
-      router.push('/feed');
+      router.push(checkoutIntent ? '/profile?tab=subscription&intent=checkout' : '/feed');
       return;
     }
 
@@ -63,9 +58,9 @@ function OnboardingPageContent() {
           completeOnboarding(user.uid, {
             name: user.displayName || '',
             role: pending.role,
-            seniority: pending.seniority || 'mid',
+            seniority: 'mid',
             interests: pending.interests,
-            careerGoals: pending.careerGoals,
+            careerGoals: [],
           })
             .then(() => {
               trackOnboardingCompleted({
@@ -97,19 +92,21 @@ function OnboardingPageContent() {
       trackOnboardingStarted();
       setHasTracked(true);
     }
-  }, [user, loading, router, hasTracked, profile, profileResolved, refreshProfile]);
+  }, [user, loading, router, hasTracked, profile, profileResolved, refreshProfile, checkoutIntent]);
 
   const canContinue = (() => {
     if (step === 1) return !!role;
     if (step === 2) return interests.length >= 3;
-    if (step === 3) return careerGoals.length >= 1;
-    if (step === 4) return true;
+    if (step === 3) return true;
     return false;
   })();
 
   const handleNext = () => {
     if (!canContinue) return;
-    if (step < TOTAL_STEPS) setStep(step + 1);
+    if (step < TOTAL_STEPS) {
+      trackOnboardingStepCompleted(step, STEP_META[step - 1].label.toLowerCase());
+      setStep(step + 1);
+    }
   };
 
   const handleBack = () => {
@@ -124,21 +121,13 @@ function OnboardingPageContent() {
     }
   };
 
-  const toggleGoal = (id: string) => {
-    if (careerGoals.includes(id)) {
-      setCareerGoals(careerGoals.filter((g) => g !== id));
-    } else if (careerGoals.length < 3) {
-      setCareerGoals([...careerGoals, id]);
-    }
-  };
-
   const finishOnboarding = async (uid: string, displayName: string | null) => {
     await completeOnboarding(uid, {
       name: displayName || '',
       role,
-      seniority: seniority || 'mid',
+      seniority: 'mid',
       interests,
-      careerGoals,
+      careerGoals: [],
     });
     trackOnboardingCompleted({ interests_count: interests.length, hobbies_count: 0, role });
     await refreshProfile();
@@ -160,7 +149,7 @@ function OnboardingPageContent() {
 
     localStorage.setItem(
       PENDING_ONBOARDING_KEY,
-      JSON.stringify({ role, seniority, interests, careerGoals, checkoutIntent }),
+      JSON.stringify({ role, interests, checkoutIntent }),
     );
 
     const result = await signInWithGoogle(checkoutIntent ? 'checkout' : 'read');
@@ -231,47 +220,26 @@ function OnboardingPageContent() {
 
         <div className="mt-10">
           {step === 1 && (
-            <div className="space-y-10">
-              <div>
-                <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#2563eb]">
-                  Your role
-                </p>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {ROLES.map((r) => {
-                    const sel = role === r.id;
-                    return (
-                      <button key={r.id} type="button" onClick={() => setRole(r.id)} className={optionCardClass(sel)}>
-                        {sel && (
-                          <div className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-[#2563eb]">
-                            <Check size={12} className="text-white" />
-                          </div>
-                        )}
-                        <div className="text-sm font-semibold text-[#111827]">{r.label}</div>
-                        <div className="mt-0.5 text-xs landing-muted">{r.subtitle}</div>
-                      </button>
-                    );
-                  })}
-                </div>
+            <div>
+              <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#2563eb]">
+                Your role
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {ROLES.map((r) => {
+                  const sel = role === r.id;
+                  return (
+                    <button key={r.id} type="button" onClick={() => setRole(r.id)} className={optionCardClass(sel)}>
+                      {sel && (
+                        <div className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-[#2563eb]">
+                          <Check size={12} className="text-white" />
+                        </div>
+                      )}
+                      <div className="text-sm font-semibold text-[#111827]">{r.label}</div>
+                      <div className="mt-0.5 text-xs landing-muted">{r.subtitle}</div>
+                    </button>
+                  );
+                })}
               </div>
-
-              {role && (
-                <div>
-                  <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#2563eb]">
-                    Experience level
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {SENIORITY_LEVELS.map((s) => {
-                      const sel = seniority === s.id;
-                      return (
-                        <button key={s.id} type="button" onClick={() => setSeniority(s.id)} className={optionCardClass(sel)}>
-                          <div className="text-sm font-semibold text-[#111827]">{s.label}</div>
-                          <div className="mt-0.5 text-xs landing-muted">{s.subtitle}</div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -311,41 +279,14 @@ function OnboardingPageContent() {
           )}
 
           {step === 3 && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {CAREER_GOALS.map((goal) => {
-                const selected = careerGoals.includes(goal.id);
-                const disabled = !selected && careerGoals.length >= 3;
-                return (
-                  <button
-                    key={goal.id}
-                    type="button"
-                    onClick={() => toggleGoal(goal.id)}
-                    disabled={disabled}
-                    className={optionCardClass(selected, disabled)}
-                  >
-                    {selected && (
-                      <div className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-[#2563eb]">
-                        <Check size={12} className="text-white" />
-                      </div>
-                    )}
-                    <div className="text-sm font-semibold text-[#111827]">{goal.label}</div>
-                    <div className="mt-0.5 text-xs landing-muted">{goal.subtitle}</div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {step === 4 && (
             <div className="space-y-6">
               <div className="landing-card space-y-3 p-5">
                 <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#2563eb]">
                   Your profile
                 </p>
                 {[
-                  `${ROLES.find((r) => r.id === role)?.label ?? role}${seniority ? ` · ${SENIORITY_LEVELS.find((s) => s.id === seniority)?.label}` : ''}`,
+                  ROLES.find((r) => r.id === role)?.label ?? role,
                   `${interests.length} topic${interests.length !== 1 ? 's' : ''} selected`,
-                  `${careerGoals.length} goal${careerGoals.length !== 1 ? 's' : ''} set`,
                 ].map((line) => (
                   <div key={line} className="flex items-center gap-3">
                     <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2563eb]">

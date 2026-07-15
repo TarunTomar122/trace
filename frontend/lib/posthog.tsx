@@ -136,11 +136,6 @@ export function trackProfileUpdated(fields: string[]) {
   posthog.capture("profile_updated", { fields_updated: fields });
 }
 
-// Subscription events
-export function trackSubscriptionStarted(plan: string) {
-  posthog.capture("subscription_started", { plan });
-}
-
 export function trackSubscriptionCancelled(plan: string) {
   posthog.capture("subscription_cancelled", { plan });
 }
