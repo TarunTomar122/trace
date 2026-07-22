@@ -81,13 +81,28 @@ function StoryRow({
         >
           {number}
         </span>
-        <span className="min-w-0 flex-1">
-          <span
-            className={`${editionSerif.className} block text-[25px] leading-[1.18] transition-colors sm:text-[31px]`}
-            style={{ color: expanded ? BLUE : INK }}
-          >
-            {item.title}
-          </span>
+        <div className="min-w-0 flex-1">
+          <div className={showImages && !expanded ? 'grid grid-cols-[minmax(0,1fr)_92px] items-start gap-4 sm:grid-cols-[minmax(0,1fr)_128px]' : ''}>
+            <span
+              className={`${editionSerif.className} block text-[25px] leading-[1.18] transition-colors sm:text-[31px]`}
+              style={{ color: expanded ? BLUE : INK }}
+            >
+              {item.title}
+            </span>
+            <AnimatePresence initial={false}>
+              {showImages && !expanded && (
+                <motion.div
+                  key="row-thumb"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.18 }}
+                >
+                  <StoryImage item={item} className="aspect-[4/3] w-full" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
           {!expanded && item.preview && (
             <span className="mt-1.5 block text-[14px] leading-[1.6]" style={{ color: MUTED }}>
               {sentencePreview(item.preview, 1)}
@@ -102,21 +117,7 @@ function StoryRow({
               />
             )}
           </span>
-        </span>
-        <AnimatePresence initial={false}>
-          {showImages && !expanded && (
-            <motion.div
-              key="row-thumb"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 }}
-              className="shrink-0 self-center"
-            >
-              <StoryImage item={item} className="aspect-[4/3] w-[92px] sm:w-[128px]" />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        </div>
       </div>
       <AnimatePresence initial={false}>
         {expanded && (
