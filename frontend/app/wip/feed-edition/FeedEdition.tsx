@@ -59,6 +59,33 @@ function StoryRow({
 
   if (locked) return null; // locked rendering is handled by the section (wireframe)
 
+  const title = (
+    <span
+      className={`${editionSerif.className} block text-[25px] leading-[1.18] transition-colors sm:text-[31px]`}
+      style={{ color: expanded ? BLUE : INK }}
+    >
+      {item.title}
+    </span>
+  );
+  const details = () => (
+    <>
+      {!expanded && item.preview && (
+        <span className="mt-1.5 block text-[14px] leading-[1.6]" style={{ color: MUTED }}>
+          {sentencePreview(item.preview, 1)}
+        </span>
+      )}
+      <span className="mt-2 flex items-center gap-2">
+        <StoryMeta item={item} />
+        {expanded && (
+          <StoryShareButton
+            item={item}
+            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+          />
+        )}
+      </span>
+    </>
+  );
+
   return (
     <div className="relative border-t" style={{ borderColor: HAIRLINE }}>
       <div
@@ -82,41 +109,25 @@ function StoryRow({
           {number}
         </span>
         <div className="min-w-0 flex-1">
-          <div className={showImages && !expanded ? 'grid grid-cols-[minmax(0,1fr)_92px] items-start gap-4 sm:grid-cols-[minmax(0,1fr)_128px]' : ''}>
-            <span
-              className={`${editionSerif.className} block text-[25px] leading-[1.18] transition-colors sm:text-[31px]`}
-              style={{ color: expanded ? BLUE : INK }}
-            >
-              {item.title}
-            </span>
-            <AnimatePresence initial={false}>
-              {showImages && !expanded && (
-                <motion.div
-                  key="row-thumb"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.18 }}
-                >
+          {showImages && !expanded ? (
+            <>
+              <div className="grid grid-cols-[minmax(0,1fr)_92px] items-start gap-4 md:grid-cols-[minmax(0,1fr)_128px] md:gap-7">
+                <div>
+                  {title}
+                  <div className="hidden md:block">{details()}</div>
+                </div>
+                <motion.div key="row-thumb" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }} className="md:self-center">
                   <StoryImage item={item} className="aspect-[4/3] w-full" />
                 </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-          {!expanded && item.preview && (
-            <span className="mt-1.5 block text-[14px] leading-[1.6]" style={{ color: MUTED }}>
-              {sentencePreview(item.preview, 1)}
-            </span>
+              </div>
+              <div className="md:hidden">{details()}</div>
+            </>
+          ) : (
+            <>
+              {title}
+              {details()}
+            </>
           )}
-          <span className="mt-2 flex items-center gap-2">
-            <StoryMeta item={item} />
-            {expanded && (
-              <StoryShareButton
-                item={item}
-                className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
-              />
-            )}
-          </span>
         </div>
       </div>
       <AnimatePresence initial={false}>
