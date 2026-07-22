@@ -8,6 +8,7 @@ import {
   ScrollView,
   Share,
   Platform,
+  type GestureResponderEvent,
 } from 'react-native';
 import { trackEvent } from '@/lib/posthog';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,8 +20,12 @@ import { FontFamily } from '@/constants/theme';
 import { FeedItem, TrendingTopic } from '@/lib/firestore';
 import { getArticleImage } from '@/lib/fallback-images';
 import { decodeHtmlEntities } from '@/lib/text-decode';
+import { formatShareMessage } from '@/lib/article-share';
 
 const LOCK_IMAGE = require('@/assets/images/lock.png');
+const TAP_END_SLOP_PX = 18;
+const TAP_MOVE_CANCEL_DY = 12;
+const TAP_MAX_MS = 600;
 
 
 const CARD_RADIUS = 12;
@@ -72,6 +77,7 @@ export type DeckStoryCardProps = {
   shareOverview: string;
   shareUrl?: string;
   onPress: () => void;
+  pressEnabled?: boolean;
   swipeHint?: string;
   nextTitle?: string;
   locked?: boolean;
@@ -89,6 +95,7 @@ export function DeckStoryCard({
   shareOverview,
   shareUrl,
   onPress,
+  pressEnabled = true,
   swipeHint,
   nextTitle,
   locked,
@@ -127,11 +134,52 @@ export function DeckStoryCard({
   const [shareBusy, setShareBusy] = useState(false);
   const [shareViewMounted, setShareViewMounted] = useState(false);
   const shareViewRef = useRef<View>(null);
+  const touchStartRef = useRef<{ x: number; y: number; at: number } | null>(null);
+
+  const handleTouchStart = useCallback((event: GestureResponderEvent) => {
+    const { pageX, pageY } = event.nativeEvent;
+    touchStartRef.current = { x: pageX, y: pageY, at: Date.now() };
+  }, []);
+
+  const handleTouchMove = useCallback((event: GestureResponderEvent) => {
+    const start = touchStartRef.current;
+    if (!start) return;
+    const { pageX, pageY } = event.nativeEvent;
+    const dx = Math.abs(pageX - start.x);
+    const dy = Math.abs(pageY - start.y);
+    if (dy > TAP_MOVE_CANCEL_DY || dx > TAP_END_SLOP_PX) {
+      touchStartRef.current = null;
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback((event: GestureResponderEvent) => {
+    if (!pressEnabled) {
+      touchStartRef.current = null;
+      return;
+    }
+
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start) return;
+
+    const { pageX, pageY } = event.nativeEvent;
+    const dx = Math.abs(pageX - start.x);
+    const dy = Math.abs(pageY - start.y);
+    const elapsed = Date.now() - start.at;
+
+    if (dx <= TAP_END_SLOP_PX && dy <= TAP_END_SLOP_PX && elapsed <= TAP_MAX_MS) {
+      onPress();
+    }
+  }, [onPress, pressEnabled]);
+
+  const handleTouchCancel = useCallback(() => {
+    touchStartRef.current = null;
+  }, []);
 
   const onShare = useCallback(async () => {
     if (shareBusy) return;
     const t = decodeHtmlEntities(shareTitle).trim();
-    const message = `${(shareOverview || '').trim().slice(0, 300)}\n\nRead more at yourtrace.online`;
+    const message = formatShareMessage(shareOverview || '', shareUrl);
     setShareBusy(true);
     trackEvent('share_initiated', {
       title: shareTitle,
@@ -182,27 +230,34 @@ export function DeckStoryCard({
 
   return (
     <View style={[styles.shell, { height, width: cardWidth, backgroundColor: ins.canvas }]}>
-      <Pressable onPress={onPress} style={styles.cardPressable}>
+      <View style={styles.cardPressable}>
         <View style={[styles.cardInner, { backgroundColor: ins.canvas }]}>
           <View style={[styles.imageShell, { height: imageHeight }]}>
-            <Image
-              source={{ uri: imageUrl }}
-              style={styles.image}
-              resizeMode="cover"
-              onError={() => setImageUrl(fallbackUrl)}
-            />
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.78)']}
-              style={styles.imageGradient}
-            />
-            <View style={styles.imageMeta}>
-              <Text style={styles.sourceName} numberOfLines={1}>{sourceName}</Text>
-              {timeAgo !== '' && (
-                <>
-                  <Text style={styles.dot}>·</Text>
-                  <Text style={styles.time}>{timeAgo}</Text>
-                </>
-              )}
+            <View
+              style={styles.imageTouchLayer}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={handleTouchCancel}>
+              <Image
+                source={{ uri: imageUrl }}
+                style={styles.image}
+                resizeMode="cover"
+                onError={() => setImageUrl(fallbackUrl)}
+              />
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.78)']}
+                style={styles.imageGradient}
+              />
+              <View style={styles.imageMeta}>
+                <Text style={styles.sourceName} numberOfLines={1}>{sourceName}</Text>
+                {timeAgo !== '' && (
+                  <>
+                    <Text style={styles.dot}>·</Text>
+                    <Text style={styles.time}>{timeAgo}</Text>
+                  </>
+                )}
+              </View>
             </View>
             <Pressable
               onPress={onShare}
@@ -215,7 +270,12 @@ export function DeckStoryCard({
             </Pressable>
           </View>
 
-          <View style={styles.newsColumn}>
+          <View
+            style={styles.newsColumn}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchCancel}>
             <Text style={[styles.metaLine, { color: ins.sub }]} numberOfLines={1}>
               {metaLine}
             </Text>
@@ -227,7 +287,7 @@ export function DeckStoryCard({
                 nestedScrollEnabled={true}
                 scrollEventThrottle={16}>
                 <Text style={[styles.newsBody, { color: ins.textBody }]}>
-                  {truncateWords(overview, 70).text}
+                  {truncateWords(overview, 62).text}
                 </Text>
               </ScrollView>
             ) : null}
@@ -235,12 +295,17 @@ export function DeckStoryCard({
           </View>
 
           {locked && (
-            <View style={[styles.lockOverlay, { bottom: 0, left: 0, right: 0, top: 0 }]}>
+            <View
+              style={[styles.lockOverlay, { bottom: 0, left: 0, right: 0, top: 0 }]}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={handleTouchCancel}>
               <Image source={LOCK_IMAGE} style={styles.lockIcon} resizeMode="contain" />
             </View>
           )}
         </View>
-      </Pressable>
+      </View>
 
       {/* Hidden off-screen view — only mounted when sharing to avoid per-card render cost */}
       {shareViewMounted && (
@@ -286,6 +351,9 @@ const styles = StyleSheet.create({
     borderTopRightRadius: CARD_RADIUS,
     overflow: 'hidden',
     backgroundColor: '#1C1C1E',
+  },
+  imageTouchLayer: {
+    ...StyleSheet.absoluteFillObject,
   },
   image: {
     width: '100%',

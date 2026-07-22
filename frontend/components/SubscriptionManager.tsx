@@ -15,6 +15,7 @@ import {
   Bell,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { ProBenefits } from '@/app/wip/feed-edition/edition-shared';
 import { auth } from '@/lib/firebase';
 import { trackCheckoutClicked, trackPaywallShown } from '@/lib/posthog';
 import {
@@ -380,7 +381,7 @@ export default function SubscriptionManager() {
     switch (status) {
       case 'trial':
       case 'active':
-        return 'text-amber-500';
+        return 'text-[#2557d6]';
       case 'on_hold':
         return 'text-yellow-500';
       case 'cancelled':
@@ -395,7 +396,7 @@ export default function SubscriptionManager() {
     switch (status) {
       case 'trial':
       case 'active':
-        return <CheckCircle2 className="text-amber-500" size={20} />;
+        return <CheckCircle2 className="text-[#2557d6]" size={20} />;
       case 'on_hold':
         return <AlertCircle className="text-yellow-500" size={20} />;
       case 'cancelled':
@@ -433,12 +434,6 @@ export default function SubscriptionManager() {
 
   // Unsubscribed state
   if (status === 'none') {
-    const benefits = [
-      { title: 'Start the day already caught up', desc: 'The changes that matter across AI, tech, markets, and the topics you follow.' },
-      { title: 'Understand why each story matters', desc: 'Clear context, key points, and the reactions worth reading.' },
-      { title: 'Read one version of the story', desc: 'Duplicate coverage collapsed into one useful briefing.' },
-      { title: 'Finish in five minutes', desc: 'Get the signal, skip the scroll, and get on with your day.' },
-    ];
     return (
       <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -447,38 +442,28 @@ export default function SubscriptionManager() {
         className="space-y-7"
       >
         <div>
-          <p className="text-[11px] font-semibold text-secondary/40 uppercase tracking-[0.18em] mb-3">{planName}</p>
-          <h2 className="text-xl font-bold text-foreground tracking-[-0.02em] leading-snug mb-1.5">
-            Know what changed<br />before your first meeting.
+          <p className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[#2557d6]">{planName}</p>
+          <h2 className="mb-1.5 font-serif text-[32px] leading-[1.05] tracking-[-0.02em] text-[#1b1a17]">
+            Stay on top of tech<br />without reading 50 sources.
           </h2>
-          <p className="text-[13px] text-secondary/50">
+          <p className="text-[13px] text-[#75705f]">
             <SubscriptionPrice price={priceDisplay} compareAt={compareAtPriceDisplay} size="sm" />
             . Cancel anytime.
           </p>
         </div>
 
-        <div className="space-y-4 pb-7 border-b border-border/15">
-          {benefits.map((b, i) => (
-            <div key={i} className="flex items-start gap-3">
-              <CheckCircle2 size={15} className="shrink-0 mt-0.5 text-foreground/40" />
-              <div>
-                <p className="text-[13px] font-semibold text-foreground">{b.title}</p>
-                <p className="text-[12px] text-secondary/50 mt-0.5">{b.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+        <ProBenefits className="border-b border-[#e4e1d8] pb-7" />
 
         <div>
           {error && (
-            <div className="mb-4 p-3 rounded-xl bg-red-500/8 border border-red-500/15 text-red-600 text-sm">
+            <div className="mb-4 border border-red-200 bg-red-50 p-3 text-sm text-red-600">
               {error}
             </div>
           )}
           <button
             onClick={handleSubscribe}
             disabled={isCreatingCheckout}
-            className="w-full bg-foreground text-background py-3.5 rounded-full text-[13px] font-semibold hover:bg-foreground/90 transition-all hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 bg-[#2557d6] py-3.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#1d48b4] disabled:opacity-50"
           >
             {isCreatingCheckout ? (
               <><Loader2 className="animate-spin" size={15} />Setting up...</>
@@ -486,13 +471,13 @@ export default function SubscriptionManager() {
               <>Unlock my daily brief</>
             )}
           </button>
-          <p className="text-[11px] text-secondary/35 mt-2 text-center">
+          <p className="mt-2 text-center text-[11px] text-[#75705f]">
             <SubscriptionPrice price={priceDisplay} compareAt={compareAtPriceDisplay} size="sm" />
             {' '}· Cancel anytime
           </p>
         </div>
 
-        <p className="text-[11px] text-secondary/30">
+        <p className="text-[11px] text-[#75705f]">
           Questions? tomartarun2001@gmail.com
         </p>
       </motion.div>
@@ -505,15 +490,15 @@ export default function SubscriptionManager() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white dark:bg-[#16161e] border border-gray-200 dark:border-gray-800 rounded-2xl p-6 md:p-8"
+        className="border border-[#e4e1d8] bg-transparent p-6 md:p-8"
       >
         <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+            <div className="flex h-12 w-12 items-center justify-center border border-[#e4e1d8] bg-[#f5f3ed]">
               {getStatusIcon(status)}
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-foreground">
+              <h3 className="font-serif text-[28px] leading-none text-[#1b1a17]">
                 {planName}
               </h3>
               <p className={`text-sm font-medium mt-0.5 ${getStatusColor(status)}`}>
@@ -522,14 +507,14 @@ export default function SubscriptionManager() {
             </div>
           </div>
           {hasAccess && (
-            <span className="px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-xs font-medium">
+            <span className="border border-[#2557d6] px-3 py-1.5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[#2557d6]">
               Active
             </span>
           )}
         </div>
 
         {/* Subscription Details */}
-        <div className="space-y-3 mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+        <div className="mb-6 space-y-3 border-y border-[#e4e1d8] py-4">
           {status === 'trial' && subscriptionStatus?.trialEndDate && (
             <div className="flex items-center gap-3 text-sm">
               <Calendar size={16} className="text-secondary" />
@@ -591,7 +576,7 @@ export default function SubscriptionManager() {
                   <button
                     onClick={handleResumeSubscription}
                     disabled={isResuming}
-                    className="w-full bg-amber-500 text-white py-3 rounded-xl text-sm font-medium hover:bg-amber-500/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex w-full items-center justify-center gap-2 bg-[#2557d6] py-3 text-sm font-medium text-white transition-colors hover:bg-[#1d48b4] disabled:opacity-50"
                   >
                     {isResuming ? (
                       <>
@@ -606,7 +591,7 @@ export default function SubscriptionManager() {
               ) : !showCancelConfirm ? (
                 <button
                   onClick={() => setShowCancelConfirm(true)}
-                  className="w-full border border-gray-200 dark:border-gray-700 text-secondary hover:border-red-300 dark:hover:border-red-700 hover:text-red-500 py-3 rounded-xl text-sm font-medium transition-colors"
+                  className="w-full border border-[#e4e1d8] py-3 text-sm font-medium text-[#a24d43] transition-colors hover:border-[#a24d43] hover:bg-[#f7ebe8]"
                 >
                   Cancel Subscription
                 </button>
@@ -619,13 +604,13 @@ export default function SubscriptionManager() {
                     <button
                       onClick={() => handleCancelSubscription(false)}
                       disabled={isCancelling}
-                      className="flex-1 bg-red-500 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+                    className="flex-1 bg-[#a24d43] py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#813a32] disabled:opacity-50"
                     >
                       {isCancelling ? 'Cancelling...' : 'Cancel at Period End'}
                     </button>
                     <button
                       onClick={() => setShowCancelConfirm(false)}
-                      className="flex-1 border border-gray-200 dark:border-gray-700 text-secondary py-2.5 rounded-lg text-sm font-medium hover:border-foreground hover:text-foreground transition-colors"
+                    className="flex-1 border border-[#e4e1d8] py-2.5 text-sm font-medium text-[#75705f] transition-colors hover:border-[#1b1a17] hover:text-[#1b1a17]"
                     >
                       Keep Subscription
                     </button>
@@ -639,7 +624,7 @@ export default function SubscriptionManager() {
             <button
               onClick={handleSubscribe}
               disabled={isCreatingCheckout}
-              className="w-full bg-amber-500 text-white py-4 rounded-xl text-sm font-medium hover:bg-amber-500/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 bg-[#2557d6] py-4 text-sm font-medium text-white transition-colors hover:bg-[#1d48b4] disabled:opacity-50"
             >
               {isCreatingCheckout ? (
                 <>
@@ -658,7 +643,7 @@ export default function SubscriptionManager() {
       </motion.div>
 
       {/* Help Text */}
-      <p className="text-xs text-secondary/40 text-center">
+      <p className="text-center text-xs text-[#75705f]">
         Questions? tomartarun2001@gmail.com
       </p>
     </div>

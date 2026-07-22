@@ -56,6 +56,7 @@ import { logReadingEvent } from '@/lib/reading-analytics';
 import { trackEvent } from '@/lib/posthog';
 import { recordAppOpen } from '@/lib/streaks';
 import { getArticleImage } from '@/lib/fallback-images';
+import { buildArticleShareUrl, formatShareMessage } from '@/lib/article-share';
 import { decodeHtmlEntities } from '@/lib/text-decode';
 
 const ACCENT = '#F59E0B';
@@ -236,12 +237,12 @@ export default function ArticleScreen() {
       has_thumbnail: !!item.thumbnail,
     });
 
-    // Build share message with overview text
     const overview = item.summary?.short_article?.subtitle
       || item.summary?.short_article?.body?.slice(0, 300)
       || item.description
       || '';
-    const shareMessage = `${overview}\n\nRead more such stories at yourtrace.online`;
+    const shareWebUrl = buildArticleShareUrl(item);
+    const shareMessage = formatShareMessage(overview, shareWebUrl);
 
     try {
       const uri = await shareCardRef.current.capture?.();

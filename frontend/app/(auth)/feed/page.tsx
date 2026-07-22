@@ -1,8 +1,8 @@
 import { Suspense } from 'react';
 import { cookies } from 'next/headers';
 import { TRACE_SESSION_COOKIE_NAME, verifyTraceSession } from '@/lib/server-session';
-import FeedPageClient from './FeedPageClient';
 import FeedBootShell from './FeedBootShell';
+import EditionPrototype from '@/app/wip/feed-edition/EditionPrototype';
 
 // Force dynamic so Next.js streams the response instead of trying to
 // statically pre-render with cookies().
@@ -10,9 +10,10 @@ export const dynamic = 'force-dynamic';
 
 const DEFAULT_GUEST_INTERESTS = ['ai', 'tech', 'startups', 'engineering', 'markets'];
 
-async function FeedDataLoader() {
+async function FeedDataLoader({ view }: { view: 'edition' | 'pulse' }) {
   const loaderStart = Date.now();
   let initialFeed = null;
+  let isPro = false;
   let path: 'fast' | 'legacy' | 'public' | 'none' = 'none';
 
   try {
@@ -34,6 +35,7 @@ async function FeedDataLoader() {
       // Firestore reads needed to render the feed.
       path = 'fast';
       const p = session.profile;
+      isPro = p.hasAccess ?? false;
       initialFeed = await getBootstrapFeedFromProfile(p.role || 'developer', {
         role: p.role || 'developer',
         interests: p.interests || [],
@@ -72,15 +74,48 @@ async function FeedDataLoader() {
     console.error('[feed/page] Server-side feed fetch failed:', error);
   }
 
-  return <FeedPageClient initialFeed={initialFeed} />;
+  const viewerProfile = initialFeed?.viewer_profile;
+  isPro =
+    isPro ||
+    viewerProfile?.has_access === true ||
+    viewerProfile?.subscription_status === 'active' ||
+    viewerProfile?.subscription_status === 'trial' ||
+    viewerProfile?.app_subscription_status === 'active' ||
+    viewerProfile?.app_subscription_status === 'trial';
+
+  const dateLabel = new Date()
+    .toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    })
+    .replace(/,/g, ' ·')
+    .toUpperCase();
+
+  return (
+    <EditionPrototype
+      initialFeed={initialFeed}
+      isPro={isPro}
+      dateLabel={dateLabel}
+      view={view}
+    />
+  );
 }
 
-export default function FeedPage() {
+export default async function FeedPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const view = params.view === 'pulse' ? 'pulse' : 'edition';
+
   // Streaming: the Suspense boundary lets Next.js flush the shell (skeleton)
   // to the browser immediately while FeedDataLoader does its work.
   return (
     <Suspense fallback={<FeedBootShell />}>
-      <FeedDataLoader />
+      <FeedDataLoader view={view} />
     </Suspense>
   );
 }

@@ -3,7 +3,6 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, ArrowLeft, ArrowRight } from 'lucide-react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -14,13 +13,12 @@ import {
 import { isAlphaMode } from '@/lib/alpha';
 import { trackOnboardingStarted, trackOnboardingStepCompleted, trackOnboardingCompleted } from '@/lib/posthog';
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 2;
 const PENDING_ONBOARDING_KEY = 'trace_pending_onboarding';
 
 const STEP_META = [
   { label: 'Role',      title: 'What do you do?',        subtitle: 'We tailor articles and depth to your perspective.' },
-  { label: 'Interests', title: 'Pick your beats',         subtitle: 'Choose 3–5 topics. We build grouped briefings around them.' },
-  { label: 'Account',   title: 'Almost there',            subtitle: 'Create your account to save your profile and unlock your feed.' },
+  { label: 'Interests', title: 'Pick your beats',         subtitle: 'Choose 3–5 topics. We build your edition around them.' },
 ];
 
 function OnboardingPageContent() {
@@ -97,7 +95,6 @@ function OnboardingPageContent() {
   const canContinue = (() => {
     if (step === 1) return !!role;
     if (step === 2) return interests.length >= 3;
-    if (step === 3) return true;
     return false;
   })();
 
@@ -172,10 +169,10 @@ function OnboardingPageContent() {
 
   const optionCardClass = (selected: boolean, disabled = false) =>
     [
-      'relative rounded-2xl border p-4 text-left transition-all',
+      'relative border p-4 text-left transition-colors',
       selected
-        ? 'border-[#2563eb] bg-white ring-2 ring-[#2563eb]/30 shadow-[0_4px_20px_rgba(37,99,235,0.12)]'
-        : 'landing-card border-[#e5e7eb] bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.06)]',
+        ? 'border-[#2557d6] bg-[#faf9f5]'
+        : 'border-[#e4e1d8] bg-transparent hover:bg-[#f5f3ed]',
       disabled ? 'opacity-30 cursor-not-allowed' : '',
     ].join(' ');
 
@@ -190,28 +187,26 @@ function OnboardingPageContent() {
   const meta = STEP_META[step - 1];
 
   return (
-    <div className="landing-page landing-grid-bg min-h-screen text-[#111827]">
-      <header className="sticky top-0 z-50 border-b border-[#e5e7eb] bg-white/90 px-4 backdrop-blur-xl sm:px-6">
-        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 no-underline" style={{ color: 'inherit' }}>
-            <Image src="/trace.webp" alt="Trace" width={22} height={22} priority className="h-[22px] w-auto" />
-            <span className="text-[13px] font-bold tracking-[0.12em]">TRACE</span>
-          </Link>
-          <span className="text-[12px] font-medium text-[#9ca3af]">
+    <div className="landing-page landing-grid-bg min-h-screen text-[#1b1a17]">
+      <header className="sticky top-0 z-50 bg-[#faf9f5] px-5 sm:px-8">
+        <div className="mx-auto flex max-w-[880px] items-center justify-between border-b border-[#e4e1d8] py-4">
+          <Link href="/" className="font-mono text-[12.5px] font-bold tracking-[0.28em]">TRACE</Link>
+          <span className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-[#75705f]">
             Step {step} of {TOTAL_STEPS}
           </span>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 pb-32 pt-8 sm:px-6 sm:pt-12">
-        <div className="mb-10 h-1 overflow-hidden rounded-full bg-[#e5e7eb]">
+      <main className="mx-auto max-w-[880px] px-5 pb-32 pt-14 sm:px-8 sm:pt-20">
+        <div className="mb-10 h-px overflow-hidden bg-[#e4e1d8]">
           <div
-            className="h-full rounded-full bg-[#2563eb] transition-all duration-500 ease-out"
+            className="h-full bg-[#2557d6] transition-all duration-500 ease-out"
             style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
           />
         </div>
 
-        <h1 className="text-3xl font-bold leading-tight tracking-[-0.03em] sm:text-4xl">
+        <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[#2557d6]">{meta.label}</p>
+        <h1 className="mt-4 font-serif text-[46px] leading-[0.98] tracking-[-0.03em] sm:text-[64px]">
           {meta.title}
         </h1>
         <p className="mt-3 max-w-lg text-[15px] leading-relaxed landing-muted">
@@ -221,7 +216,7 @@ function OnboardingPageContent() {
         <div className="mt-10">
           {step === 1 && (
             <div>
-              <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#2563eb]">
+              <p className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2557d6]">
                 Your role
               </p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -230,7 +225,7 @@ function OnboardingPageContent() {
                   return (
                     <button key={r.id} type="button" onClick={() => setRole(r.id)} className={optionCardClass(sel)}>
                       {sel && (
-                        <div className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-[#2563eb]">
+                        <div className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center bg-[#2557d6]">
                           <Check size={12} className="text-white" />
                         </div>
                       )}
@@ -255,10 +250,10 @@ function OnboardingPageContent() {
                       type="button"
                       onClick={() => toggleInterest(interest.id)}
                       disabled={disabled}
-                      className={`rounded-full px-5 py-3 text-sm font-semibold transition-all ${
+                      className={`border px-5 py-3 text-sm font-semibold transition-colors ${
                         selected
-                          ? 'bg-[#2563eb] text-white shadow-[0_4px_16px_rgba(37,99,235,0.25)]'
-                          : 'border border-[#e5e7eb] bg-white text-[#111827] hover:border-[#d1d5db] hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]'
+                          ? 'border-[#2557d6] bg-[#2557d6] text-white'
+                          : 'border-[#e4e1d8] bg-transparent text-[#1b1a17] hover:bg-[#f5f3ed]'
                       } ${disabled ? 'cursor-not-allowed opacity-30' : ''}`}
                     >
                       <span className="flex items-center gap-2">
@@ -272,46 +267,22 @@ function OnboardingPageContent() {
               {interests.length > 0 && (
                 <p className="mt-5 text-xs text-[#9ca3af]">
                   {interests.length}/5 selected
-                  {interests.length < 3 ? ` — pick ${3 - interests.length} more` : interests.length === 5 ? ' (max)' : ''}
+                  {interests.length < 3 ? ` · pick ${3 - interests.length} more` : interests.length === 5 ? ' (max)' : ''}
                 </p>
               )}
             </div>
           )}
 
-          {step === 3 && (
-            <div className="space-y-6">
-              <div className="landing-card space-y-3 p-5">
-                <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#2563eb]">
-                  Your profile
-                </p>
-                {[
-                  ROLES.find((r) => r.id === role)?.label ?? role,
-                  `${interests.length} topic${interests.length !== 1 ? 's' : ''} selected`,
-                ].map((line) => (
-                  <div key={line} className="flex items-center gap-3">
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2563eb]">
-                      <Check size={12} className="text-white" />
-                    </div>
-                    <span className="text-sm font-medium text-[#374151]">{line}</span>
-                  </div>
-                ))}
-              </div>
-
-              <p className="px-4 text-center text-sm landing-muted">
-                Your personalized feed is ready — sign in to save your profile and start reading.
-              </p>
-            </div>
-          )}
         </div>
       </main>
 
-      <div className="fixed inset-x-0 bottom-0 border-t border-[#e5e7eb] bg-white/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-5 sm:px-6">
+      <div className="fixed inset-x-0 bottom-0 border-t border-[#e4e1d8] bg-[#faf9f5]/95 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[880px] items-center justify-between px-5 py-5 sm:px-8">
           <button
             type="button"
             onClick={handleBack}
             disabled={step === 1}
-            className="flex items-center gap-2 text-sm font-medium text-[#6b7280] transition-colors hover:text-[#111827] disabled:opacity-0"
+            className="flex items-center gap-2 text-sm font-medium text-[#75705f] transition-colors hover:text-[#1b1a17] disabled:opacity-0"
           >
             <ArrowLeft size={16} />
             Back

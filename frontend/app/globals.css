@@ -3,20 +3,20 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #f5f3ef;
-  --foreground: #1a1a1a;
-  --primary: #1a1a1a;
-  --primary-foreground: #f5f3ef;
-  --secondary: #6b6560;
-  --border: #c4bfb7;
-  --surface: #eae7e1;
-  --surface-secondary: #e0ddd6;
-  --surface-tertiary: #d5d0c8;
-  --accent: #1a1a1a;
-  --accent-foreground: #f5f3ef;
-  --tab-inactive: #9a958e;
-  --sidebar-border: #c9c4bc;
-  --selected-indicator: #1a1a1a;
+  --background: #faf9f5;
+  --foreground: #1b1a17;
+  --primary: #1b1a17;
+  --primary-foreground: #faf9f5;
+  --secondary: #75705f;
+  --border: #e4e1d8;
+  --surface: #f5f3ed;
+  --surface-secondary: #efede6;
+  --surface-tertiary: #e8e5dc;
+  --accent: #1b1a17;
+  --accent-foreground: #faf9f5;
+  --tab-inactive: #8a8578;
+  --sidebar-border: #e4e1d8;
+  --selected-indicator: #1b1a17;
 }
 
 .dark {
@@ -147,7 +147,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 }
 
 .landing-page > header {
-  background: transparent;
+  background: #faf9f5;
   border: none;
 }
 
@@ -663,6 +663,176 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
+/* Public Trace pages share the Edition's editorial language. */
+.landing-page,
+.landing-page.landing-grid-bg {
+  --landing-blue: #2557d6;
+  --landing-blue-dark: #1d48b4;
+  --landing-text: #1b1a17;
+  --landing-muted: #75705f;
+  --landing-border: #e4e1d8;
+  --landing-card-shadow: none;
+  background: #faf9f5;
+  color: #1b1a17;
+}
+
+.landing-grid-bg {
+  background-color: #faf9f5;
+  background-image: none;
+}
+
+.landing-page .landing-card,
+.landing-page .landing-explore-card,
+.landing-page .landing-blog-card {
+  border-radius: 0;
+  border-color: #e4e1d8;
+  background: transparent;
+  box-shadow: none;
+}
+
+.landing-page .landing-card:hover,
+.landing-page .landing-explore-card:hover,
+.landing-page .landing-blog-card:hover,
+.landing-page .landing-card-link:hover {
+  box-shadow: none;
+  transform: none;
+  background: #f5f3ed;
+}
+
+.landing-page .landing-btn {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.landing-page .landing-btn-primary {
+  background: #2557d6;
+}
+
+.landing-page .landing-btn-primary:hover {
+  background: #1d48b4;
+  transform: none;
+}
+
+.landing-page .landing-btn-secondary {
+  border-color: #e4e1d8;
+  background: transparent;
+}
+
+.landing-page .landing-hero-title,
+.landing-page .landing-section-title {
+  font-family: var(--font-edition-serif), Georgia, serif;
+  font-weight: 500;
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+}
+
+.landing-page h1,
+.landing-page h2 {
+  font-family: var(--font-edition-serif), Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+.landing-page .rounded-3xl,
+.landing-page .rounded-2xl,
+.landing-page .rounded-xl {
+  border-radius: 0;
+}
+
+.landing-page .landing-hero-title {
+  margin-top: 1.25rem;
+  font-size: clamp(3.25rem, 6vw, 5rem);
+  max-width: 1080px;
+}
+
+.landing-page .landing-hero-actions {
+  justify-content: flex-start;
+}
+
+.landing-page .landing-badge {
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  color: #2557d6;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.landing-page .landing-trust-row {
+  justify-content: flex-start;
+  gap: 1.25rem;
+  margin-top: 3rem;
+  opacity: 1;
+}
+
+.landing-page .landing-trust-row span {
+  color: #75705f;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.landing-page .landing-gradient-cta {
+  border: 1px solid #e4e1d8;
+  border-radius: 0;
+  background: #1b1a17;
+}
+
+.landing-page .landing-dot-grid {
+  background-image: none;
+}
+
+.landing-page .landing-blog-footer {
+  text-align: left;
+}
+
+/* Older SEO articles use the same paper, type, and rules without duplicating a page shell. */
+.editorial-static-article {
+  background: #faf9f5 !important;
+  color: #1b1a17;
+}
+
+.editorial-static-article h1,
+.editorial-static-article h2,
+.editorial-static-article h3 {
+  font-family: var(--font-edition-serif), Georgia, serif !important;
+  color: #1b1a17 !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.025em;
+}
+
+.editorial-static-article p,
+.editorial-static-article li {
+  color: #514d42 !important;
+  line-height: 1.7;
+}
+
+.editorial-static-article a {
+  color: #2557d6;
+}
+
+.editorial-static-article hr {
+  border-color: #e4e1d8 !important;
+}
+
+.editorial-static-article .bg-gray-50,
+.editorial-static-article .dark\:bg-gray-900 {
+  background: #f5f3ed !important;
+  border-radius: 0;
+}
+
+.legal-content .rounded-xl,
+.legal-content .rounded-2xl,
+.legal-content .rounded-lg {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 /* Brutalist folder tab styles */
 .folder-tab {
   position: relative;
@@ -802,10 +972,9 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
   justify-content: space-between;
   border-radius: 9999px;
   border: 1px solid #e5e7eb;
-  background: rgba(255, 255, 255, 0.92);
+  background: #faf9f5;
   padding: 0 1.25rem;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-  backdrop-filter: blur(16px);
 }
 
 .edition-feed-nav--story {
@@ -1855,8 +2024,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
   top: 0;
   z-index: 40;
   padding: 0.75rem 1rem;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(16px);
+  background: #faf9f5;
 }
 
 @media (min-width: 640px) {
@@ -2522,6 +2690,120 @@ button.story-timeline-entry:hover .story-timeline-title {
   border-top: 1px solid var(--story-border);
 }
 
+/* Shared story pages use the same editorial system as the main Edition. */
+.story-page--share {
+  --story-blue: #2557d6;
+  --story-blue-dark: #1d48b4;
+  --story-text: #1b1a17;
+  --story-muted: #75705f;
+  --story-faint: #75705f;
+  --story-border: #e4e1d8;
+  --story-surface: #f0eee7;
+  --story-serif: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, "Times New Roman", serif;
+  background: #faf9f5;
+}
+
+.story-page--share .story-page-header {
+  position: static;
+  padding: 0 1.25rem;
+  background: #faf9f5;
+}
+
+.story-page--share .story-page-nav {
+  height: auto;
+  max-width: 55rem;
+  border: 0;
+  border-bottom: 1px solid var(--story-border);
+  border-radius: 0;
+  background: #faf9f5;
+  padding: 1rem 0;
+  box-shadow: none;
+}
+
+.story-page--share .story-page-cta,
+.story-page--share .story-page-btn-primary {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.story-page--share .story-page-main {
+  max-width: 55rem;
+  padding: clamp(3.5rem, 8vw, 6rem) 1.25rem 5rem;
+}
+
+.story-page--share .story-share-article {
+  gap: 2.5rem;
+}
+
+.story-page--share .story-share-hero,
+.story-page--share .story-page-hero {
+  min-height: 0;
+  margin-bottom: 0;
+  background: #e4e1d8;
+}
+
+.story-page--share .story-share-hero img,
+.story-page--share .story-page-hero img {
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.story-page--share .story-share-overview {
+  padding: 0;
+}
+
+.story-page--share .story-page-kicker,
+.story-page--share .story-page-meta,
+.story-page--share .story-page-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.story-page--share .story-page-title {
+  max-width: 52rem;
+  font-family: var(--story-serif);
+  font-size: clamp(2.6rem, 6vw, 5rem);
+  font-weight: 400;
+  line-height: 0.98;
+  letter-spacing: -0.025em;
+  margin: 0.875rem 0 2rem;
+}
+
+.story-page--share .story-page-body {
+  max-width: 44rem;
+  font-size: clamp(17px, 1.3vw, 20px);
+  line-height: 1.78;
+  color: #3d3a33;
+}
+
+.story-page--share .story-page-card,
+.story-page--share .story-page-promo {
+  border-color: var(--story-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.story-page--share .story-page-promo {
+  margin-top: 3rem;
+  padding: 1.75rem 0 0;
+  border-width: 1px 0 0;
+}
+
+.story-page--share .story-page-actions {
+  border-color: var(--story-border);
+}
+
+.story-page--share .story-page-btn-primary:hover,
+.story-page--share .story-page-cta:hover {
+  background: var(--story-blue-dark);
+  transform: none;
+}
+
 /* Feed — skeleton shimmer */
 @keyframes wire-skel-shimmer {
   0% {
@@ -3070,4 +3352,3 @@ button.story-timeline-entry:hover .story-timeline-title {
   color: #9ca3af;
   letter-spacing: 0.02em;
 }
-

@@ -1,5 +1,5 @@
-const sk = 'animate-pulse rounded-full bg-black/[0.07] dark:bg-white/[0.09]';
-const skBlock = 'animate-pulse rounded-md bg-black/[0.08] dark:bg-white/[0.10]';
+const sk = 'animate-pulse rounded-full bg-[#e4e1d8]';
+const skBlock = 'animate-pulse bg-[#e4e1d8]';
 
 function SkeletonLine({ className }: { className: string }) {
   return <div className={`${sk} ${className}`} />;
@@ -100,18 +100,18 @@ export function TrendingSkeleton() {
 export function GenericListSkeleton({ rows = 6 }: { rows?: number }) {
   return (
     <div className="space-y-0">
-      <section className="pt-2 pb-4">
+      <section className="pb-10 pt-14 sm:pt-20">
         <SkeletonLine className="h-3 w-24" />
-        <div className={`${skBlock} mt-3 h-8 w-56`} />
-        <div className={`${sk} mt-4 h-4 w-full max-w-md`} />
+        <div className={`${skBlock} mt-5 h-12 w-full max-w-md`} />
+        <div className={`${sk} mt-5 h-3 w-64`} />
       </section>
-      <div className="space-y-1">
+      <div className="border-y border-[#e4e1d8]">
         {Array.from({ length: rows }, (_, i) => (
-          <div key={i} className="py-4 border-b border-border/[0.06]">
-            <div className={`${skBlock} h-5 w-3/4 mb-2`} />
-            <div className={`${sk} h-3.5 w-full mb-1`} />
+          <div key={i} className="border-b border-[#e4e1d8] py-6 last:border-0">
+            <div className={`${skBlock} mb-3 h-7 w-3/4`} />
+            <div className={`${sk} mb-1 h-3.5 w-full`} />
             <div className={`${sk} h-3.5 w-2/3`} />
-            <div className="flex items-center gap-2 mt-2">
+            <div className="mt-3 flex items-center gap-2">
               <div className={`${sk} h-2.5 w-16`} />
               <div className={`${sk} h-2.5 w-12`} />
             </div>
@@ -124,22 +124,18 @@ export function GenericListSkeleton({ rows = 6 }: { rows?: number }) {
 
 export function PageShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-50 border-b border-border/[0.06] bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-14">
-          <div className="flex items-center gap-3">
-            <div className="h-5 w-5 rounded bg-black/[0.08] dark:bg-white/[0.10] animate-pulse" />
-            <div className="h-3.5 w-16 rounded-full bg-black/[0.07] dark:bg-white/[0.09] animate-pulse" />
-          </div>
-          <div className="flex items-center gap-2">
-            {[44, 36, 52, 40].map((w, i) => (
-              <div key={i} style={{ width: w }} className="h-2.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] animate-pulse" />
+    <div className="min-h-screen bg-[#faf9f5] text-[#1b1a17]">
+      <header className="mx-auto max-w-[880px] border-b border-[#e4e1d8] px-5 py-4 sm:px-8">
+        <div className="flex items-center justify-between">
+          <div className="h-3 w-16 animate-pulse bg-[#e4e1d8]" />
+          <div className="flex items-center gap-5">
+            {[44, 36, 52].map((w, i) => (
+              <div key={i} style={{ width: w }} className="h-2.5 animate-pulse bg-[#e4e1d8]" />
             ))}
           </div>
-          <div className="h-8 w-20 rounded-full bg-black/[0.08] dark:bg-white/[0.10] animate-pulse" />
         </div>
       </header>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+      <main className="mx-auto max-w-[880px] px-5 sm:px-8">
         {children}
       </main>
     </div>

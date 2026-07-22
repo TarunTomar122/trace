@@ -40,7 +40,7 @@ function ProPaywallCard({
   trackingId,
   compact = false,
   title = 'Keep your daily brief going',
-  subtitle = 'Know what changed before your first meeting. Cancel anytime.',
+  subtitle = 'Stay on top of tech without reading 50 sources. Cancel anytime.',
 }: {
   trackingId: string;
   compact?: boolean;
@@ -446,8 +446,8 @@ export function PaywallGate() {
 
   const benefits = [
     {
-      title: 'Know what changed before your first meeting',
-      desc: 'Open one brief built around the topics you follow and get the shape of the day in five minutes.',
+      title: 'Stay on top of tech without reading 50 sources',
+      desc: 'Open one clear edition built from reporting across the web, then move on with your day.',
     },
     {
       title: 'Understand why each story matters',

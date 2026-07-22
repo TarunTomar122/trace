@@ -177,6 +177,7 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
       backHref={returnHref}
       backLabel={backLabel}
       mode={isFromFeed ? 'app' : 'public'}
+      variant={!isFromFeed ? 'share' : 'default'}
       ctaHref={publicCta.href}
       ctaLabel={publicCta.headerLabel}
       shareButton={
@@ -221,7 +222,7 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
         <div className="mb-8">
           <h2 className="story-page-section-title">Key points</h2>
           <div className="space-y-3">
-            {topic.key_points.slice(0, 6).map((point, i) => (
+            {topic.key_points.map((point, i) => (
               <div key={i} className="story-page-key-point">
                 <span className="story-page-key-point-dot" />
                 <div className="story-page-body text-[15px]">
@@ -256,7 +257,7 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
                       </div>
                       <h3 className="story-page-timeline-title">{event.title}</h3>
                       {event.summary && (
-                        <p className="mt-1 text-xs text-[#6b7280] line-clamp-2 leading-relaxed">
+                        <p className="mt-1 text-xs text-[#6b7280] leading-relaxed">
                           {stripMarkdown(event.summary)}
                         </p>
                       )}
@@ -278,7 +279,7 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
                       </div>
                       <h3 className="story-page-timeline-title">{event.title}</h3>
                       {event.summary && (
-                        <p className="mt-1 text-xs text-[#6b7280] line-clamp-2 leading-relaxed">
+                        <p className="mt-1 text-xs text-[#6b7280] leading-relaxed">
                           {stripMarkdown(event.summary)}
                         </p>
                       )}

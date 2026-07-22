@@ -57,7 +57,7 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className={cn(
-            "bg-background/95 backdrop-blur-md w-full transition-all duration-500 rounded-2xl mt-4",
+            "w-full bg-[#faf9f5] transition-all duration-500 rounded-2xl mt-4",
             scrolled
               ? "border border-gray-200 dark:border-gray-800 shadow-sm dark:shadow-none px-4 py-3"
               : "border-transparent px-4 py-5"

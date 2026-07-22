@@ -2,7 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } fro
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import LottieView from 'lottie-react-native';
 import {
@@ -41,6 +41,8 @@ import { Colors, FontFamily, Typography } from '@/constants/theme';
 import { getAppVersionConfig, getArticleById, getTopicById } from '@/lib/firestore';
 import { setCurrentArticle } from '@/lib/article-store';
 import { setCurrentTopic } from '@/lib/topic-store';
+import { recordAppOpen } from '@/lib/streaks';
+import { maybeRequestReview } from '@/lib/app-review';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -123,6 +125,33 @@ function checkVersion(current: string, target: string): boolean {
   return true;
 }
 
+function ReviewPromptHandler({ enabled }: { enabled: boolean }) {
+  const { user, profile } = useAuth();
+  const attemptedRef = useRef(false);
+
+  useEffect(() => {
+    if (!enabled || !user?.uid || !profile || attemptedRef.current || profile.day2ReviewPromptedAt) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      const streak = await recordAppOpen();
+      if (cancelled || streak.currentStreak < 2) return;
+
+      attemptedRef.current = true;
+      await maybeRequestReview(user.uid, streak.currentStreak, profile.day2ReviewPromptedAt);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, user?.uid, profile]);
+
+  return null;
+}
+
 function AuthGate({ children }: { children: ReactNode }) {
   const { user, profile, onboardingStatus, loading } = useAuth();
   const segments = useSegments();
@@ -200,6 +229,9 @@ function AuthGate({ children }: { children: ReactNode }) {
   return (
     <>
       {!authDecisionPending && children}
+      {!authDecisionPending && onboardingStatus === 'onboarded' && appReady && (
+        <ReviewPromptHandler enabled />
+      )}
       {splashVisible && (
         <View
           style={[

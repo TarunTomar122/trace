@@ -4,9 +4,8 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Check, ChevronDown, LogOut, Shield, FileText, Mail,
-  Loader2, User, Settings, CreditCard, ExternalLink, ArrowLeft,
+  Loader2, User, Settings, CreditCard, ExternalLink,
 } from 'lucide-react';
-import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   updateUserProfile, ROLES, SENIORITY_LEVELS,
@@ -14,6 +13,15 @@ import {
 } from '@/lib/firestore';
 import { isAlphaMode } from '@/lib/alpha';
 import SubscriptionManager from '@/components/SubscriptionManager';
+import {
+  BLUE,
+  HAIRLINE,
+  INK,
+  MUTED,
+  EditionHeader,
+  MonoLabel,
+  editionSerif,
+} from '@/app/wip/feed-edition/edition-shared';
 
 type ProfileTab = 'account' | 'preferences' | 'subscription';
 type PrefKey = 'role' | 'interests' | 'goals';
@@ -34,13 +42,14 @@ function PrefRow({ label, value, isOpen, onToggle }: {
   return (
     <button
       onClick={onToggle}
-      className="flex items-center gap-3 px-5 py-4 w-full text-left hover:bg-[#f9fafb] transition-colors border-b border-[#e5e7eb] last:border-0"
+      className="flex w-full items-center gap-3 border-b px-0 py-5 text-left transition-colors hover:bg-[#f5f3ed] last:border-0"
+      style={{ borderColor: HAIRLINE }}
     >
       <div className="flex-1 min-w-0">
-        <p className="text-[14px] font-medium text-[#111827]">{label}</p>
-        {value && <p className="text-[12px] text-[#9ca3af] truncate mt-0.5">{value}</p>}
+        <p className="text-[15px] font-medium" style={{ color: INK }}>{label}</p>
+        {value && <p className="mt-1 text-[12px] leading-[1.6]" style={{ color: MUTED }}>{value}</p>}
       </div>
-      <ChevronDown size={16} className={`text-[#9ca3af] transition-transform shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+      <ChevronDown size={16} className={`shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} style={{ color: MUTED }} />
     </button>
   );
 }
@@ -52,14 +61,16 @@ function EditActions({ saving, onCancel, onSave, disabled }: {
     <div className="flex items-center gap-2 pt-2">
       <button
         onClick={onCancel}
-        className="px-4 py-2 rounded-full text-[12px] font-medium text-[#6b7280] bg-[#f3f4f6] hover:bg-[#e5e7eb] transition-colors"
+        className="border px-4 py-2 text-[12px] font-medium transition-colors hover:bg-[#f0eee7]"
+        style={{ borderColor: HAIRLINE, color: MUTED }}
       >
         Cancel
       </button>
       <button
         onClick={onSave}
         disabled={saving || disabled}
-        className="px-4 py-2 rounded-full text-[12px] font-semibold bg-[#111827] text-white hover:bg-[#1f2937] transition-colors disabled:opacity-40"
+        className="px-4 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-[#1d48b4] disabled:opacity-40"
+        style={{ background: BLUE }}
       >
         {saving ? 'Saving...' : 'Save'}
       </button>
@@ -72,7 +83,7 @@ function Toggle({ enabled, onChange, disabled }: { enabled: boolean; onChange: (
     <button
       onClick={onChange}
       disabled={disabled}
-      className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${enabled ? 'bg-[#111827]' : 'bg-[#e5e7eb]'} ${disabled ? 'opacity-50' : ''}`}
+      className={`relative h-6 w-11 rounded-full transition-colors ${enabled ? 'bg-[#2557d6]' : 'bg-[#e4e1d8]'} ${disabled ? 'opacity-50' : ''}`}
     >
       <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${enabled ? 'left-6' : 'left-1'}`} />
     </button>
@@ -178,15 +189,15 @@ function ProfileContent() {
   const tabContent = (
     <>
       {activeTab === 'account' && (
-        <div className="max-w-xl space-y-5">
+        <div className="border-t" style={{ borderColor: HAIRLINE }}>
           {/* Plan status */}
-          <div className="rounded-2xl border border-[#e5e7eb] bg-white p-5">
+          <div className="border-b py-6" style={{ borderColor: HAIRLINE }}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#9ca3af] mb-1">
+                <p className="mb-2 font-mono text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: BLUE }}>
                   {isSubscribed ? 'Pro' : 'Free plan'}
                 </p>
-                <p className="text-[14px] text-[#6b7280]">
+                <p className="text-[14px] leading-[1.65]" style={{ color: MUTED }}>
                   {isSubscribed
                     ? 'Full access to all content and features.'
                     : 'Upgrade to unlock unlimited articles and your full feed.'}
@@ -194,7 +205,8 @@ function ProfileContent() {
               </div>
               <button
                 onClick={() => setActiveTab('subscription')}
-                className="shrink-0 rounded-full border border-[#e5e7eb] px-3.5 py-1.5 text-[12px] font-medium text-[#374151] hover:bg-[#f9fafb] transition-colors"
+                className="shrink-0 border px-3.5 py-1.5 text-[12px] font-medium transition-colors hover:bg-[#f0eee7]"
+                style={{ borderColor: HAIRLINE, color: INK }}
               >
                 Manage
               </button>
@@ -202,50 +214,49 @@ function ProfileContent() {
           </div>
 
           {/* Newsletter */}
-          <div className="rounded-2xl border border-[#e5e7eb] bg-white p-5">
-            <div className="flex items-center gap-4">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f3f4f6]">
-                <Mail size={16} className="text-[#6b7280]" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-medium text-[#111827]">Daily Newsletter</p>
-                <p className="text-[12px] text-[#9ca3af]">Curated digest every morning</p>
-              </div>
-              <Toggle enabled={newsletterEnabled} onChange={toggleNewsletter} disabled={savingNewsletter} />
+          <div className="flex items-center gap-4 border-b py-6" style={{ borderColor: HAIRLINE }}>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center border" style={{ borderColor: HAIRLINE }}>
+              <Mail size={16} style={{ color: BLUE }} />
             </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[14px] font-medium" style={{ color: INK }}>Daily Newsletter</p>
+              <p className="mt-1 text-[12px]" style={{ color: MUTED }}>Curated digest every morning</p>
+            </div>
+            <Toggle enabled={newsletterEnabled} onChange={toggleNewsletter} disabled={savingNewsletter} />
           </div>
 
           {/* Links */}
-          <div className="rounded-2xl border border-[#e5e7eb] bg-white overflow-hidden">
+          <div className="border-b" style={{ borderColor: HAIRLINE }}>
             <a
               href="https://www.yourtrace.online/privacy-policy"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 px-5 py-4 border-b border-[#e5e7eb] hover:bg-[#f9fafb] transition-colors"
+              className="flex items-center gap-3 border-b py-5 transition-colors hover:bg-[#f0eee7]"
+              style={{ borderColor: HAIRLINE }}
             >
-              <Shield size={15} className="text-[#9ca3af]" />
-              <span className="flex-1 text-[14px] text-[#374151]">Privacy Policy</span>
-              <ExternalLink size={12} className="text-[#d1d5db]" />
+              <Shield size={15} style={{ color: BLUE }} />
+              <span className="flex-1 text-[14px]" style={{ color: INK }}>Privacy Policy</span>
+              <ExternalLink size={12} style={{ color: MUTED }} />
             </a>
             <a
               href="https://www.yourtrace.online/terms"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 px-5 py-4 hover:bg-[#f9fafb] transition-colors"
+              className="flex items-center gap-3 py-5 transition-colors hover:bg-[#f0eee7]"
             >
-              <FileText size={15} className="text-[#9ca3af]" />
-              <span className="flex-1 text-[14px] text-[#374151]">Terms of Service</span>
-              <ExternalLink size={12} className="text-[#d1d5db]" />
+              <FileText size={15} style={{ color: BLUE }} />
+              <span className="flex-1 text-[14px]" style={{ color: INK }}>Terms of Service</span>
+              <ExternalLink size={12} style={{ color: MUTED }} />
             </a>
           </div>
         </div>
       )}
 
       {activeTab === 'preferences' && (
-        <div className="max-w-xl">
-          <p className="text-[12px] text-[#9ca3af] mb-5">Changes take effect on your next daily feed refresh.</p>
+        <div>
+          <p className="mb-5 text-[12px]" style={{ color: MUTED }}>Changes take effect on your next daily feed refresh.</p>
 
-          <div className="rounded-2xl border border-[#e5e7eb] bg-white overflow-hidden">
+          <div className="border-t" style={{ borderColor: HAIRLINE }}>
             <PrefRow
               label="Role & Experience"
               value={roleValue}
@@ -253,18 +264,18 @@ function ProfileContent() {
               onToggle={() => editing === 'role' ? cancelEditing() : startEditing('role')}
             />
             {editing === 'role' && (
-              <div className="px-5 py-4 border-b border-[#e5e7eb] space-y-4 bg-[#f9fafb]">
+              <div className="space-y-4 border-b px-5 py-5" style={{ borderColor: HAIRLINE, background: '#f5f3ed' }}>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9ca3af] mb-3">Role</p>
+                  <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: MUTED }}>Role</p>
                   <div className="grid grid-cols-2 gap-2">
                     {ROLES.map((r) => (
                       <button
                         key={r.id}
                         onClick={() => setEditRole(r.id)}
-                        className={`p-3 rounded-xl text-left text-[13px] font-medium transition-all border ${
+                        className={`border p-3 text-left text-[13px] font-medium transition-colors ${
                           editRole === r.id
-                            ? 'border-[#111827] bg-white text-[#111827]'
-                            : 'border-[#e5e7eb] bg-white text-[#6b7280] hover:border-[#d1d5db]'
+                            ? 'border-[#2557d6] bg-[#faf9f5] text-[#1b1a17]'
+                            : 'border-[#e4e1d8] bg-transparent text-[#75705f] hover:bg-[#faf9f5]'
                         }`}
                       >
                         {r.label}
@@ -273,16 +284,16 @@ function ProfileContent() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9ca3af] mb-3">Experience</p>
+                  <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: MUTED }}>Experience</p>
                   <div className="grid grid-cols-2 gap-2">
                     {SENIORITY_LEVELS.map((s) => (
                       <button
                         key={s.id}
                         onClick={() => setEditSeniority(s.id)}
-                        className={`p-3 rounded-xl text-left text-[13px] font-medium transition-all border ${
+                        className={`border p-3 text-left text-[13px] font-medium transition-colors ${
                           editSeniority === s.id
-                            ? 'border-[#111827] bg-white text-[#111827]'
-                            : 'border-[#e5e7eb] bg-white text-[#6b7280] hover:border-[#d1d5db]'
+                            ? 'border-[#2557d6] bg-[#faf9f5] text-[#1b1a17]'
+                            : 'border-[#e4e1d8] bg-transparent text-[#75705f] hover:bg-[#faf9f5]'
                         }`}
                       >
                         {s.label}
@@ -301,8 +312,8 @@ function ProfileContent() {
               onToggle={() => editing === 'interests' ? cancelEditing() : startEditing('interests')}
             />
             {editing === 'interests' && (
-              <div className="px-5 py-4 border-b border-[#e5e7eb] space-y-3 bg-[#f9fafb]">
-                <p className="text-[12px] text-[#9ca3af]">Pick 3–5 topics</p>
+              <div className="space-y-3 border-b px-5 py-5" style={{ borderColor: HAIRLINE, background: '#f5f3ed' }}>
+                <p className="text-[12px]" style={{ color: MUTED }}>Pick 3–5 topics</p>
                 <div className="flex flex-wrap gap-2">
                   {ONBOARDING_INTERESTS.map((interest) => {
                     const selected = editInterests.includes(interest.id);
@@ -312,10 +323,10 @@ function ProfileContent() {
                         key={interest.id}
                         disabled={disabled}
                         onClick={() => setEditInterests(toggleIn(editInterests, interest.id, 5))}
-                        className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-medium transition-all ${
+                        className={`flex items-center gap-1.5 border px-3.5 py-1.5 text-[12px] font-medium transition-colors ${
                           selected
-                            ? 'bg-[#111827] text-white'
-                            : 'bg-[#f3f4f6] text-[#374151] hover:bg-[#e5e7eb]'
+                            ? 'border-[#2557d6] bg-[#2557d6] text-white'
+                            : 'border-[#e4e1d8] bg-transparent text-[#75705f] hover:bg-[#faf9f5]'
                         } ${disabled ? 'opacity-30 cursor-not-allowed' : ''}`}
                       >
                         {interest.label}
@@ -335,8 +346,8 @@ function ProfileContent() {
               onToggle={() => editing === 'goals' ? cancelEditing() : startEditing('goals')}
             />
             {editing === 'goals' && (
-              <div className="px-5 py-4 bg-[#f9fafb] space-y-3">
-                <p className="text-[12px] text-[#9ca3af]">Pick up to 3</p>
+              <div className="space-y-3 px-5 py-5" style={{ background: '#f5f3ed' }}>
+                <p className="text-[12px]" style={{ color: MUTED }}>Pick up to 3</p>
                 <div className="grid gap-2">
                   {CAREER_GOALS.map((goal) => {
                     const selected = editGoals.includes(goal.id);
@@ -346,14 +357,14 @@ function ProfileContent() {
                         key={goal.id}
                         disabled={disabled}
                         onClick={() => setEditGoals(toggleIn(editGoals, goal.id, 3))}
-                        className={`p-3 rounded-xl text-left transition-all border ${
+                        className={`border p-3 text-left transition-colors ${
                           selected
-                            ? 'border-[#111827] bg-white'
-                            : 'border-[#e5e7eb] bg-white hover:border-[#d1d5db]'
+                            ? 'border-[#2557d6] bg-[#faf9f5]'
+                            : 'border-[#e4e1d8] bg-transparent hover:bg-[#faf9f5]'
                         } ${disabled ? 'opacity-30 cursor-not-allowed' : ''}`}
                       >
-                        <p className="text-[13px] font-medium text-[#111827]">{goal.label}</p>
-                        <p className="text-[12px] text-[#9ca3af] mt-0.5">{goal.subtitle}</p>
+                        <p className="text-[13px] font-medium" style={{ color: INK }}>{goal.label}</p>
+                        <p className="mt-0.5 text-[12px]" style={{ color: MUTED }}>{goal.subtitle}</p>
                       </button>
                     );
                   })}
@@ -366,143 +377,82 @@ function ProfileContent() {
       )}
 
       {activeTab === 'subscription' && (
-        <div className="max-w-xl">
+        <div className="profile-subscription">
           <SubscriptionManager />
         </div>
       )}
     </>
   );
 
+  const activeTitle = activeTab === 'account' ? 'Account' : activeTab === 'preferences' ? 'Feed preferences' : 'Trace Pro';
+
   return (
-    <div className="min-h-screen bg-[#f9f9f7]">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-[#e5e7eb] bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
-          <Link href="/feed" prefetch={false} className="flex items-center gap-2.5 no-underline">
-            <img src="/trace.webp" alt="Trace" className="h-5 w-auto" />
-            <span className="text-[13px] font-bold tracking-[0.12em] text-[#111827]">TRACE</span>
-          </Link>
-          <Link
-            href="/feed"
-            prefetch={false}
-            className="flex items-center gap-1.5 text-[13px] font-medium text-[#6b7280] hover:text-[#111827] transition-colors"
-          >
-            <ArrowLeft size={14} />
-            Back to feed
-          </Link>
-        </div>
-      </header>
+    <div className="min-h-screen" style={{ background: '#faf9f5' }}>
+      <div className="mx-auto max-w-[880px] px-5 sm:px-8">
+        <EditionHeader view="profile" />
 
-      <div className="mx-auto max-w-6xl px-5 py-8 sm:px-6 lg:py-12">
-        {/* Desktop: sidebar + content */}
-        <div className="hidden md:grid md:grid-cols-[240px_1fr] lg:grid-cols-[260px_1fr] gap-10 lg:gap-16">
-          <aside className="min-w-0">
-            <div className="sticky top-24">
-              {/* User card */}
-              <div className="mb-8 flex items-center gap-3.5">
-                {user.photoURL ? (
-                  <img src={user.photoURL} alt="" className="h-12 w-12 rounded-full ring-2 ring-white shadow-sm" />
-                ) : (
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#2563eb] text-white shadow-[0_4px_14px_rgba(37,99,235,0.25)]">
-                    <span className="text-base font-bold">{user.displayName?.charAt(0) || user.email?.[0]?.toUpperCase() || 'U'}</span>
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-[15px] font-semibold text-[#111827] truncate">
-                    {profile?.name || user.displayName || 'User'}
-                  </p>
-                  <p className="text-[12px] text-[#9ca3af] truncate">{user.email}</p>
+        <section className="pb-12 pt-14 sm:pt-20">
+          <MonoLabel>Trace account</MonoLabel>
+          <div className="mt-5 flex flex-wrap items-end justify-between gap-6">
+            <div>
+              <h1 className={`${editionSerif.className} text-[52px] leading-[0.98] sm:text-[72px]`} style={{ color: INK }}>
+                {profile?.name || user.displayName || 'Profile'}
+              </h1>
+              <p className="mt-4 text-[15px]" style={{ color: MUTED }}>{user.email}</p>
+            </div>
+            <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: BLUE }}>
+              {isSubscribed ? 'Trace Pro' : 'Trace Free'}
+            </span>
+          </div>
+        </section>
+
+        <div className="grid gap-12 border-t pt-8 md:grid-cols-[190px_minmax(0,1fr)]" style={{ borderColor: HAIRLINE }}>
+          <aside className="flex min-w-0 flex-col md:sticky md:top-6 md:min-h-[500px] md:self-start">
+            <div className="flex items-center gap-3">
+              {user.photoURL ? (
+                <img src={user.photoURL} alt="" className="h-11 w-11 rounded-full border object-cover" style={{ borderColor: HAIRLINE }} />
+              ) : (
+                <div className="flex h-11 w-11 items-center justify-center rounded-full text-white" style={{ background: BLUE }}>
+                  <span className="text-sm font-semibold">{user.displayName?.charAt(0) || user.email?.[0]?.toUpperCase() || 'U'}</span>
                 </div>
-              </div>
-
-              {/* Nav */}
-              <nav className="flex flex-col gap-0.5 mb-8">
-                {TAB_CONFIG.map((tab) => (
-                  <button
-                    key={tab.key}
-                    onClick={() => { setActiveTab(tab.key); setEditing(null); }}
-                    className={`flex items-center gap-2.5 w-full rounded-lg px-3.5 py-2.5 text-[13px] font-medium transition-colors ${
-                      activeTab === tab.key
-                        ? 'bg-[#111827] text-white'
-                        : 'text-[#6b7280] hover:text-[#111827] hover:bg-[#f3f4f6]'
-                    }`}
-                  >
-                    <tab.icon size={15} />
-                    {tab.label}
-                  </button>
-                ))}
-              </nav>
-
-              <div className="border-t border-[#e5e7eb] pt-4">
-                <button
-                  onClick={handleSignOut}
-                  className="flex items-center gap-2.5 w-full rounded-lg px-3.5 py-2.5 text-[13px] text-[#9ca3af] hover:text-[#111827] hover:bg-[#f3f4f6] transition-colors"
-                >
-                  <LogOut size={15} />
-                  Sign out
-                </button>
+              )}
+              <div className="min-w-0">
+                <p className="truncate text-[14px] font-medium" style={{ color: INK }}>{profile?.name || user.displayName || 'User'}</p>
+                {roleValue && <p className="mt-0.5 text-[11px]" style={{ color: MUTED }}>{roleValue}</p>}
               </div>
             </div>
+
+            <nav className="mt-8 flex border-y md:flex-col md:border-y-0" style={{ borderColor: HAIRLINE }}>
+              {TAB_CONFIG.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => { setActiveTab(tab.key); setEditing(null); }}
+                  className={`flex min-w-0 flex-1 items-center gap-2 border-r px-3 py-3 text-left text-[12px] font-medium transition-colors last:border-r-0 md:border-b md:border-r-0 ${
+                    activeTab === tab.key ? 'text-[#2557d6]' : 'hover:bg-[#f0eee7]'
+                  }`}
+                  style={{ borderColor: HAIRLINE, color: activeTab === tab.key ? BLUE : MUTED }}
+                >
+                  <tab.icon size={14} />
+                  <span className="truncate">{tab.label}</span>
+                </button>
+              ))}
+            </nav>
+
+            <button
+              onClick={handleSignOut}
+              className="mt-8 flex items-center gap-2 border-y px-3 py-3 text-[12px] transition-colors hover:bg-[#f7ebe8] md:mt-auto"
+              style={{ color: '#a24d43', borderColor: HAIRLINE }}
+            >
+              <LogOut size={14} />
+              Sign out
+            </button>
           </aside>
 
-          <main className="min-w-0 pb-16">
-            <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#111827] mb-6">
-              {activeTab === 'account' ? 'Account' : activeTab === 'preferences' ? 'Feed Preferences' : 'Subscription'}
-            </h1>
-            {tabContent}
+          <main className="min-w-0 pb-24">
+            <MonoLabel>{activeTab === 'account' ? '01' : activeTab === 'preferences' ? '02' : '03'} · {activeTitle}</MonoLabel>
+            <h2 className={`${editionSerif.className} mt-3 text-[34px] leading-[1.1]`} style={{ color: INK }}>{activeTitle}</h2>
+            <div className="mt-7">{tabContent}</div>
           </main>
-        </div>
-
-        {/* Mobile */}
-        <div className="md:hidden">
-          {/* User row */}
-          <div className="mb-6 flex items-center gap-3">
-            {user.photoURL ? (
-              <img src={user.photoURL} alt="" className="h-11 w-11 rounded-full ring-2 ring-white shadow-sm" />
-            ) : (
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#2563eb] text-white shadow-[0_4px_14px_rgba(37,99,235,0.25)]">
-                <span className="text-sm font-bold">{user.displayName?.charAt(0) || user.email?.[0]?.toUpperCase() || 'U'}</span>
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-[15px] font-semibold text-[#111827] truncate">
-                {profile?.name || user.displayName || 'User'}
-              </p>
-              <p className="text-[12px] text-[#9ca3af] truncate">{user.email}</p>
-            </div>
-          </div>
-
-          {/* Tab bar */}
-          <div className="mb-6 flex gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
-            {TAB_CONFIG.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => { setActiveTab(tab.key); setEditing(null); }}
-                className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[12px] font-medium transition-colors ${
-                  activeTab === tab.key
-                    ? 'bg-[#111827] text-white'
-                    : 'bg-[#f3f4f6] text-[#6b7280] hover:bg-[#e5e7eb]'
-                }`}
-              >
-                <tab.icon size={13} />
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {tabContent}
-
-          {activeTab === 'account' && (
-            <div className="mt-8 border-t border-[#e5e7eb] pt-5">
-              <button
-                onClick={handleSignOut}
-                className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[13px] text-[#9ca3af] hover:text-[#111827] hover:bg-[#f3f4f6] transition-colors"
-              >
-                <LogOut size={15} />
-                Sign out
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

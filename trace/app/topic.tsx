@@ -33,6 +33,7 @@ import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { getCurrentTopic, isFreePreview } from '@/lib/topic-store';
 import { setCurrentArticle } from '@/lib/article-store';
 import type { FeedItem, TopicTimelineEvent } from '@/lib/firestore';
+import { buildTopicCardShareUrl, formatShareMessage } from '@/lib/article-share';
 import { decodeHtmlEntities } from '@/lib/text-decode';
 
 function RichText({ children, style, selectable = true }: { children: string; style?: any; selectable?: boolean }) {
@@ -240,13 +241,14 @@ export default function TopicScreen() {
   const [isSharing, setIsSharing] = useState(false);
   const shareViewRef = useRef<View>(null);
 
+  const shareWebUrl = buildTopicCardShareUrl(topic, primaryArticle);
+
   const handleShare = async () => {
-    // Build share message with overview text
     const overview = splitBody.first || displayBody.slice(0, 300);
-    const shareMessage = `${overview}\n\nRead more such stories at yourtrace.online`;
+    const shareMessage = formatShareMessage(overview, shareWebUrl);
     trackEvent('share_initiated', {
       title: topic.title,
-      url: sourceUrl,
+      url: shareWebUrl || sourceUrl,
       screen: 'topic',
       has_thumbnail: !!displayThumbnail,
     });
@@ -365,8 +367,8 @@ export default function TopicScreen() {
         {/* Overview content */}
         {hasAccess ? (
           <View style={styles.tabContent}>
-            {Array.isArray(displayKeyPoints) && displayKeyPoints.length > 0 ? (
-              displayKeyPoints.slice(0, 6).map((point, idx) => (
+            {Array.isArray(displayKeyPoints) && displayKeyPoints.length > 0
+              ? displayKeyPoints.slice(0, 6).map((point, idx) => (
                 <View
                   key={`kp-${idx}`}
                   style={[
@@ -379,11 +381,7 @@ export default function TopicScreen() {
                   </RichText>
                 </View>
               ))
-            ) : (
-              <Text style={[styles.emptyText, { color: Colors[colorScheme].muted }]}>
-                No overview available yet.
-              </Text>
-            )}
+              : null}
 
             {!isSingletonTopic && timeline.length > 0 && (
               <View style={styles.timelineSection}>
@@ -692,10 +690,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 23,
     fontFamily: FontFamily.regular,
-  },
-  emptyText: {
-    padding: 20,
-    fontSize: 14,
   },
 
   // Timeline

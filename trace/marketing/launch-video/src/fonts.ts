@@ -1,12 +1,21 @@
+import { loadFont as loadIBMPlexSans } from "@remotion/google-fonts/IBMPlexSans";
+import { loadFont as loadIBMPlexSerif } from "@remotion/google-fonts/IBMPlexSerif";
 import { loadFont as loadOutfit } from "@remotion/google-fonts/Outfit";
-import { loadFont as loadCormorant } from "@remotion/google-fonts/CormorantGaramond";
 
-export const { fontFamily: sans } = loadOutfit("normal", {
-  weights: ["300", "400", "600", "700"],
+/** App body/UI — matches trace FontFamily */
+export const { fontFamily: sans } = loadIBMPlexSans("normal", {
+  weights: ["400", "500", "600", "700"],
   subsets: ["latin"],
 });
 
-export const { fontFamily: serif } = loadCormorant("italic", {
-  weights: ["300", "400"],
+/** App headlines — matches trace FontFamilySerif */
+export const { fontFamily: serif } = loadIBMPlexSerif("normal", {
+  weights: ["400", "600", "700"],
+  subsets: ["latin"],
+});
+
+/** Marketing display type for reel hooks */
+export const { fontFamily: display } = loadOutfit("normal", {
+  weights: ["300", "400", "600", "700", "800"],
   subsets: ["latin"],
 });

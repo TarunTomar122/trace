@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Space_Grotesk, Geist_Mono } from "next/font/google";
+import { Space_Grotesk, Geist_Mono, Newsreader } from "next/font/google";
 import { PostHogProvider } from "@/lib/posthog";
 import ThemeProvider from "@/components/ThemeProvider";
 import AffiliateTracker from "@/components/AffiliateTracker";
@@ -18,6 +18,12 @@ const spaceGrotesk = Space_Grotesk({
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const newsreader = Newsreader({
+  variable: "--font-edition-serif",
   subsets: ["latin"],
   display: "swap",
 });
@@ -207,7 +213,7 @@ export default function RootLayout({
       </head>
       <body
         suppressHydrationWarning
-        className={`${spaceGrotesk.variable} ${geistMono.variable} antialiased`}
+        className={`${spaceGrotesk.variable} ${geistMono.variable} ${newsreader.variable} antialiased`}
       >
         <script
           type="application/ld+json"

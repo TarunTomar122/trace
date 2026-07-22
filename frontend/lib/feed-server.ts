@@ -38,6 +38,9 @@ function normalizeFeedRole(role?: string | null): string {
   if (normalized === 'pm' || normalized === 'product manager') {
     return 'pm';
   }
+  if (normalized === 'reader' || normalized === 'just browsing') {
+    return 'developer';
+  }
   if (normalized === 'data scientist') {
     return 'developer';
   }

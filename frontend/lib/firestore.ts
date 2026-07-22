@@ -565,6 +565,7 @@ export const ROLES = [
   { id: 'designer', label: 'Designer', subtitle: 'UI/UX, Product, Visual' },
   { id: 'pm', label: 'Product Manager', subtitle: 'Strategy & Roadmaps' },
   { id: 'founder', label: 'Founder / CEO', subtitle: 'Building & Leading' },
+  { id: 'reader', label: 'Just browsing', subtitle: 'A balanced view of tech' },
 ] as const;
 
 export const SENIORITY_LEVELS = [

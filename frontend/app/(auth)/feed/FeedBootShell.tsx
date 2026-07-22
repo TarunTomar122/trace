@@ -379,10 +379,39 @@ function FeedNavSkeleton() {
 
 export default function FeedBootShell() {
   return (
-    <div className="min-h-screen bg-white">
-      <FeedNavSkeleton />
-      <div className="relative mx-auto max-w-6xl">
-        <WireFeedLoadingSkeleton />
+    <div className="min-h-screen bg-[#faf9f5] text-[#1b1a17]">
+      <div className="mx-auto max-w-[880px] px-5 sm:px-8">
+        <header className="flex items-center justify-between border-b border-[#e4e1d8] py-4">
+          <Skel className="h-3 w-16 rounded-none" />
+          <div className="flex gap-5">
+            <Skel className="h-2.5 w-12 rounded-none" />
+            <Skel className="h-2.5 w-9 rounded-none" />
+            <Skel className="h-2.5 w-12 rounded-none" />
+          </div>
+        </header>
+        <section className="pb-10 pt-14 sm:pt-20">
+          <Skel className="h-3 w-40 rounded-none" />
+          <Skel className="mt-5 h-20 w-full max-w-[600px] rounded-none" />
+          <Skel className="mt-6 h-3 w-80 max-w-full rounded-none" />
+        </section>
+        <div className="border-y border-[#e4e1d8] py-4">
+          <div className="flex gap-6 overflow-hidden">
+            {[72, 58, 66, 82, 74].map((width) => <Skel key={width} className={`h-3 w-[${width}px] shrink-0 rounded-none`} />)}
+          </div>
+        </div>
+        <div className="pt-10">
+          {Array.from({ length: 5 }, (_, i) => (
+            <div key={i} className="flex gap-5 border-t border-[#e4e1d8] py-6 sm:gap-7">
+              <Skel className="hidden h-7 w-7 shrink-0 rounded-none sm:block" />
+              <div className="min-w-0 flex-1 space-y-3">
+                <Skel className={`h-8 max-w-full rounded-none ${i % 2 ? 'w-[78%]' : 'w-[92%]'}`} />
+                <Skel className="h-3.5 w-full rounded-none" />
+                <Skel className="h-3 w-28 rounded-none" />
+              </div>
+              <Skel className="h-[72px] w-[92px] shrink-0 rounded-none sm:h-[96px] sm:w-[128px]" />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

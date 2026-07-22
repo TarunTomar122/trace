@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
 import { StructuredDataList } from "@/components/StructuredData";
+import EditorialArticleShell from "@/components/EditorialArticleShell";
 import {
   SITE_BASE_URL,
   generateBlogPostingSchema,
@@ -87,7 +88,7 @@ export default function BlogPost() {
   ]);
 
   return (
-    <article className="min-h-screen bg-white dark:bg-gray-950">
+    <EditorialArticleShell>
       <StructuredDataList schemas={[blogPostSchema, breadcrumbSchema, faqSchema]} />
       <div className="max-w-3xl mx-auto px-4 py-16">
         <nav aria-label="Breadcrumb" className="mb-6">
@@ -241,6 +242,6 @@ export default function BlogPost() {
           </div>
         </div>
       </div>
-    </article>
+    </EditorialArticleShell>
   );
 }

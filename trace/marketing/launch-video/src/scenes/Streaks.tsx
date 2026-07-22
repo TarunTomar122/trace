@@ -3,7 +3,7 @@ import { sans } from "../fonts";
 
 const BG = "#F8F6F2";
 const ACCENT = "#C8622A";
-const PAD = 220;
+const PAD = 360;
 
 export const Streaks: React.FC = () => {
   const frame = useCurrentFrame();

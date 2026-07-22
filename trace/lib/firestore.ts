@@ -232,6 +232,7 @@ export interface UserProfile {
   // App store review
   hasRequestedReview?: boolean;
   reviewRequestedAt?: string;
+  day2ReviewPromptedAt?: string;
 
   // Timestamps
   createdAt: Timestamp | null;
@@ -689,21 +690,23 @@ export async function saveReferralSource(
 }
 
 /**
- * Mark that we've requested a review from this user (to avoid asking again).
+ * Mark that we've shown the day-2 review prompt (to avoid asking again).
  */
-export async function markReviewRequested(uid: string): Promise<void> {
+export async function markDay2ReviewPrompted(uid: string): Promise<void> {
+  const promptedAt = new Date().toISOString();
   try {
     const docRef = doc(firestore, COLLECTIONS.userProfiles, uid);
     await setDoc(
       docRef,
       {
+        day2ReviewPromptedAt: promptedAt,
         hasRequestedReview: true,
-        reviewRequestedAt: new Date().toISOString(),
+        reviewRequestedAt: promptedAt,
       },
       { merge: true }
     );
   } catch (error) {
-    console.error('Error marking review requested:', error);
+    console.error('Error marking day-2 review prompted:', error);
   }
 }
 

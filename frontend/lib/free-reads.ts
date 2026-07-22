@@ -1,5 +1,5 @@
 const FREE_READS_KEY = 'trace_free_reads_v1';
-export const FREE_READS_LIMIT = 3;
+export const FREE_READS_LIMIT = 5;
 
 export interface FreeReadsState {
   date: string; // YYYY-MM-DD

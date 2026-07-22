@@ -70,9 +70,9 @@ const VIEW_MODE_KEY = '@trace:feed_view_mode';
 import { logReadingEvent } from '@/lib/reading-analytics';
 import { trackEvent, setUserProperty } from '@/lib/posthog';
 import { setCurrentTopic } from '@/lib/topic-store';
+import { buildArticleShareUrl, buildTopicCardShareUrl } from '@/lib/article-share';
 import { getStreakData, recordAppOpen, StreakData } from '@/lib/streaks';
 import { consumePrefetchedFeed, getPrefetchPromise } from '@/lib/feed-cache';
-import { maybeRequestReview } from '@/lib/app-review';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 /** Deck card: show long narrative from body (scrollable); bullets stripped */
@@ -584,6 +584,24 @@ export default function UnifiedFeedScreen() {
   const deckListRef = useRef<FlatList<FeedSection>>(null);
   const listRef = useRef<any>(null);
   const [currentDeckIndex, setCurrentDeckIndex] = useState(0);
+  const [deckScrolling, setDeckScrolling] = useState(false);
+  const deckScrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onDeckScrollBegin = useCallback(() => {
+    if (deckScrollEndTimerRef.current) {
+      clearTimeout(deckScrollEndTimerRef.current);
+      deckScrollEndTimerRef.current = null;
+    }
+    setDeckScrolling(true);
+  }, []);
+  const onDeckScrollEnd = useCallback(() => {
+    if (deckScrollEndTimerRef.current) {
+      clearTimeout(deckScrollEndTimerRef.current);
+    }
+    deckScrollEndTimerRef.current = setTimeout(() => {
+      setDeckScrolling(false);
+      deckScrollEndTimerRef.current = null;
+    }, 120);
+  }, []);
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
       const idx = viewableItems[0]?.index;
@@ -701,13 +719,6 @@ export default function UnifiedFeedScreen() {
   useEffect(() => {
     AsyncStorage.setItem(VIEW_MODE_KEY, viewMode);
   }, [viewMode]);
-
-  // Request app store review for returning users (streak >= 2)
-  useEffect(() => {
-    if (user && profile && streak && streak.currentStreak >= 2) {
-      maybeRequestReview(user.uid, streak.currentStreak, profile.hasRequestedReview);
-    }
-  }, [user, profile, streak]);
 
   const loadFeed = useCallback(async (): Promise<boolean> => {
     if (!user?.uid) return false;
@@ -1236,7 +1247,7 @@ export default function UnifiedFeedScreen() {
         const deckOverview = getTopicOverviewForDeck(topic);
         const primaryArticle = topic.articles?.[0];
         const shareTitle = primaryArticle?.title || topic.title;
-        const shareUrl = primaryArticle?.url || topic.timeline?.[0]?.article_url || '';
+        const shareUrl = buildTopicCardShareUrl(topic, primaryArticle) || '';
         return wrap(
           <DeckStoryCard
             variant="trending"
@@ -1249,6 +1260,7 @@ export default function UnifiedFeedScreen() {
             shareOverview={deckOverview}
             shareUrl={shareUrl}
             onPress={() => handleTopicPress(topic)}
+            pressEnabled={!deckScrolling}
             nextTitle={nextTitle}
             locked={isLocked}
           />,
@@ -1271,10 +1283,11 @@ export default function UnifiedFeedScreen() {
             cardWidth={deckCardWidth}
             shareTitle={patched.title}
             shareOverview={deckOverview}
-            shareUrl={patched.url || ''}
+            shareUrl={buildArticleShareUrl(patched) || ''}
             onPress={isPulseCard
               ? () => WebBrowser.openBrowserAsync(section.tapUrl!)
               : () => handleItemPress(section.item)}
+            pressEnabled={!deckScrolling}
             swipeHint={isPulseCard ? 'Tap to read full story' : undefined}
             nextTitle={nextTitle}
             locked={!isProUser}
@@ -1283,7 +1296,7 @@ export default function UnifiedFeedScreen() {
       }
       return wrap(<View style={{ height: cardH }} />);
     },
-    [colorScheme, deckRowHeight, deckCardWidth, firstFreeTrendingId, handleItemPress, handleTopicPress, isProUser, deckSections],
+    [colorScheme, deckRowHeight, deckCardWidth, deckScrolling, firstFreeTrendingId, handleItemPress, handleTopicPress, isProUser, deckSections],
   );
 
   const renderListItem = useCallback(
@@ -1338,7 +1351,7 @@ export default function UnifiedFeedScreen() {
                 keyExtractor={deckKeyExtractor}
                 renderItem={renderDeckItem}
                 getItemLayout={getDeckItemLayout}
-                extraData={`${deckViewportH}-${deckRowHeight}-${deckCardWidth}`}
+                extraData={`${deckViewportH}-${deckRowHeight}-${deckCardWidth}-${deckScrolling}`}
                 snapToInterval={deckRowHeight}
                 snapToAlignment="start"
                 decelerationRate="fast"
@@ -1350,6 +1363,10 @@ export default function UnifiedFeedScreen() {
                 maxToRenderPerBatch={3}
                 updateCellsBatchingPeriod={50}
                 refreshControl={refreshControlEl}
+                onScrollBeginDrag={onDeckScrollBegin}
+                onMomentumScrollBegin={onDeckScrollBegin}
+                onScrollEndDrag={onDeckScrollEnd}
+                onMomentumScrollEnd={onDeckScrollEnd}
                 onViewableItemsChanged={onViewableItemsChanged}
                 viewabilityConfig={viewabilityConfig.current}
               />

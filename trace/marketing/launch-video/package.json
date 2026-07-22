@@ -5,7 +5,14 @@
   "scripts": {
     "studio": "remotion studio src/index.ts",
     "render": "remotion render src/index.ts TracePromo out/trace-promo.mp4",
-    "build": "remotion render src/index.ts TracePromo out/trace-promo.mp4 --codec=h264"
+    "build": "remotion render src/index.ts TracePromo out/trace-promo.mp4 --codec=h264",
+    "render:reels": "npm run render:reel:doomscroll && npm run render:reel:30s && npm run render:reel:pro",
+    "render:reel:doomscroll": "remotion render src/index.ts DoomscrollReel out/reels/doomscroll-reel.mp4",
+    "render:reel:30s": "remotion render src/index.ts ThirtySecondReel out/reels/thirty-second-reel.mp4",
+    "render:reel:pro": "remotion render src/index.ts ProBriefReel out/reels/pro-brief-reel.mp4",
+    "render:launch": "remotion render src/index.ts TraceLaunch out/landscape/trace-launch.mp4",
+    "render:highlight": "remotion render src/index.ts TraceHighlight out/landscape/trace-highlight.mp4",
+    "render:landscape": "npm run render:launch && npm run render:highlight"
   },
   "keywords": [],
   "author": "",

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import LandingPageClient from "../LandingPageClient";
 import { blogPosts } from "@/app/blog/content";
-import { getHeroHeadlines } from "@/lib/hero-headlines";
+import type { V3UserFeed } from '@/lib/firestore';
 
 export const metadata: Metadata = {
   title: "Trace — Your daily tech, in one place",
@@ -48,10 +48,12 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const heroHeadlines = await getHeroHeadlines().catch(() => []);
+  const editionFeed = await import('@/lib/feed-server')
+    .then(({ getPublicBootstrapFeed }) => getPublicBootstrapFeed('developer'))
+    .catch((): V3UserFeed | null => null);
   return (
     <LandingPageClient
-      heroHeadlines={heroHeadlines}
+      editionFeed={editionFeed}
       recentBlogPosts={blogPosts.slice(0, 3).map((post) => ({
         href: `/blog/${post.slug}`,
         date: post.date,
