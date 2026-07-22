@@ -8,7 +8,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Check, ExternalLink, Layers3, LineChart, Link2, ListChecks, Smartphone, Sparkles } from 'lucide-react';
+import { Check, Layers3, LineChart, Link2, ListChecks, Smartphone, Sparkles } from 'lucide-react';
 import { Newsreader } from 'next/font/google';
 import type { V3UserFeed, FeedItem, TrendingTopic } from '@/lib/firestore';
 import { buildArticleShareUrl, copyOrShareUrl, SHARE_SITE_ORIGIN } from '@/lib/article-share';
@@ -420,18 +420,15 @@ export function EditionFooter() {
       </p>
       <div className="mt-6 border-t pt-5" style={{ borderColor: HAIRLINE }}>
         <p className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: MUTED }}>More from the founder</p>
-        <div className="mt-3 grid gap-3">
-          <a className="inline-flex w-fit items-center gap-2 text-[12px] font-medium text-[#2557d6] transition-opacity hover:opacity-70" href="https://stocksbrew.online/?utm_source=trace&utm_medium=edition_footer" target="_blank" rel="noopener noreferrer">
-            <LineChart size={15} strokeWidth={1.8} />
-            <span>StocksBrew</span>
-            <span style={{ color: MUTED }}>Know what to do with your stock</span>
-            <ExternalLink size={12} strokeWidth={1.8} />
-          </a>
-          <a className="inline-flex w-fit items-center gap-2 text-[12px] font-medium text-[#2557d6] transition-opacity hover:opacity-70" href="/api/affiliate/outbound?target=android_app&next=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Donline.yourtrace.app">
-            <Smartphone size={15} strokeWidth={1.8} />
-            <span>Trace for Android</span>
-            <ExternalLink size={12} strokeWidth={1.8} />
-          </a>
+        <div className="mt-3 grid gap-4">
+          <div>
+            <a className="inline-flex items-center gap-2 text-[12px] font-medium text-[#2557d6] transition-opacity hover:opacity-70" href="https://stocksbrew.online/?utm_source=trace&utm_medium=edition_footer" target="_blank" rel="noopener noreferrer"><LineChart size={15} strokeWidth={1.8} />StocksBrew</a>
+            <p className="mt-1 text-[12px]" style={{ color: MUTED }}>Know what to do with your stock.</p>
+          </div>
+          <div>
+            <a className="inline-flex items-center gap-2 text-[12px] font-medium text-[#2557d6] transition-opacity hover:opacity-70" href="/api/affiliate/outbound?target=android_app&next=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Donline.yourtrace.app"><Smartphone size={15} strokeWidth={1.8} />Trace - Android</a>
+            <p className="mt-1 text-[12px]" style={{ color: MUTED }}>TikTok for news.</p>
+          </div>
         </div>
       </div>
     </footer>
