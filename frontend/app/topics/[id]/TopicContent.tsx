@@ -108,9 +108,10 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
   const [shareLoading, setShareLoading] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
 
-  const returnHref = getSafeReturnPath(searchParams.get('from'), '/feed');
+  const fromParam = searchParams.get('from');
+  const isFromFeed = Boolean(fromParam && getSafeReturnPath(fromParam, '').startsWith('/feed'));
+  const returnHref = isFromFeed ? getSafeReturnPath(fromParam, '/feed') : '/';
   const backLabel = getStoryBackLabel(returnHref);
-  const isFromFeed = returnHref.startsWith('/feed');
   const publicCta = getPublicStoryCta({
     user,
     profile,
@@ -178,9 +179,10 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
       backLabel={backLabel}
       mode={isFromFeed ? 'app' : 'public'}
       variant={!isFromFeed ? 'share' : 'default'}
+      showBack={isFromFeed}
       ctaHref={publicCta.href}
       ctaLabel={publicCta.headerLabel}
-      shareButton={
+      shareButton={isFromFeed ? (
         <button
           type="button"
           onClick={handleShare}
@@ -196,7 +198,7 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
           )}
           {shareLoading ? 'Copying...' : shareCopied ? 'Link copied' : 'Copy link'}
         </button>
-      }
+      ) : undefined}
     >
       <Toast message={toast || ''} visible={!!toast} />
 

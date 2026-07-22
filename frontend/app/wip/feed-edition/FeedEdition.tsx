@@ -116,9 +116,9 @@ function StoryRow({
                   {title}
                   <div className="hidden md:block">{details()}</div>
                 </div>
-                <motion.div key="row-thumb" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }} className="md:self-center">
+                <div className="md:self-center">
                   <StoryImage item={item} className="aspect-[4/3] w-full" />
-                </motion.div>
+                </div>
               </div>
               <div className="md:hidden">{details()}</div>
             </>
