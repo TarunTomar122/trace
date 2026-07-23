@@ -318,7 +318,7 @@ export const blogPosts: BlogPost[] = [
         heading: "Our Recommendation",
         paragraphs: [
           "If you want traditional RSS with maximum features and flexibility, go with Inoreader. It's the most powerful RSS reader on the market and beats Feedly on features at every price tier. The rules engine, permanent archiving, and newsletter integration alone justify the switch for power users.",
-          "If you want AI-curated tech news without managing feeds at all, try Trace. It's a fundamentally different approach from Feedly — you open it, you read grouped topic pages with multi-source perspectives and community discussions, and you're caught up in 15 minutes. No feed curation required. This approach pairs well with the systems described in our [tech news routine guide](/blog/how-to-stay-updated-with-tech-news). See the full breakdown in our [comparison hub](/compare) or explore [Trace for busy founders →](/use-cases/trace-for-founders) and [get started](/onboarding).",
+          "If you want AI-curated tech news without managing feeds at all, try Trace. It's a fundamentally different approach from Feedly — you open it, you read grouped topic pages with multi-source perspectives and community discussions, and you're caught up in 15 minutes. No feed curation required. This approach pairs well with the systems described in our [tech news routine guide](/blog/how-to-stay-updated-with-tech-news). See the full breakdown in our [comparison hub](/compare) or explore [Trace for busy founders →](/use-cases/for-founders) and [get started](/onboarding).",
           "If you want open-source and self-hosted, NewsBlur (for AI filtering) or Miniflux (for pure speed and simplicity) are both excellent. NewsBlur gives you a managed option if you don't want to self-host; Miniflux requires self-hosting but rewards you with the fastest reading experience on this list.",
           "If you want simplicity above all else, The Old Reader delivers the Google Reader experience without any of the AI overhead. It's the most straightforward RSS reader available and perfectly adequate for users with modest feed-counts and no interest in AI features.",
           "The best part: all of these tools have free tiers, so you can test them without commitment. Export your Feedly OPML file, import it into 2-3 alternatives, and use each for a week. Pay attention to which one you naturally reach for first. The right tool is the one you actually use — not the one with the most impressive feature list."
@@ -1376,12 +1376,12 @@ export const blogPosts: BlogPost[] = [
   },
   {
     slug: "developer-news-consumption-habits",
-    title: "Developer News Consumption Habits: How Top Engineers Stay Updated",
-    subtitle: "We asked 50 senior engineers how they consume tech news. The patterns might surprise you.",
+    title: "Four Developer News Routines That Do Not Take Over Your Day",
+    subtitle: "A practical breakdown of the main ways developers stay current, with the tradeoffs of each routine.",
     tag: "Productivity",
     category: "guides",
     excerpt:
-      "How do senior engineers and engineering leaders stay current with tech news without burning out? We interviewed 50 engineers to find their news consumption habits, tools, and routines.",
+      "Compare four practical developer news routines: a morning brief, topic-specific feeds, trusted people, and a weekly deep-reading block.",
     author: "Trace Editorial",
     readTime: "10 min read",
     date: "June 1, 2026",
@@ -1390,53 +1390,286 @@ export const blogPosts: BlogPost[] = [
     sections: [
       {
         paragraphs: [
-          "We interviewed 50 senior engineers, engineering managers, and CTOs to understand how they stay updated with tech news. The results challenge a lot of conventional wisdom about developer news consumption.",
-          "Spoiler: almost nobody reads Hacker News daily. And the engineers who are best informed spend less time on news, not more."
+          "Developers do not need the same news routine. An infrastructure engineer tracking security advisories has a different job from a founder scanning funding, product, and platform shifts. The useful question is not which source is best. It is which routine gets the information you need into a bounded amount of time.",
+          "The four routines below cover the most common jobs: broad daily awareness, narrow topic monitoring, community discovery, and deliberate long-form learning. Pick one primary routine and add a second only when it solves a specific gap."
         ]
       },
       {
-        heading: "Key Findings",
+        heading: "Pick the Routine by Job, Not by Popularity",
         bullets: [
-          "82% use an aggregator or curated briefing, not raw RSS or social media",
-          "Only 12% check Hacker News daily (down from ~40% in 2024)",
-          "Average time spent on tech news: 18 minutes per day",
-          "Top sources: AI briefings > curated newsletters > topic-specific blogs > social media",
-          "68% said AI summaries improved their information retention"
+          "Use a morning brief when you need broad awareness across tech.",
+          "Use topic-specific feeds when missing one narrow update has a real cost.",
+          "Use trusted people and communities for interpretation, not comprehensive coverage.",
+          "Use a weekly reading block for durable knowledge that will still matter next month."
         ]
       },
       {
-        heading: "Pattern 1: The Morning Brief Cohort (42%)",
+        heading: "Routine 1: The Morning Brief",
         paragraphs: [
-          "The largest group uses a single daily briefing tool. They check it once in the morning, read for 10-15 minutes, and don't look at tech news again until the next day. They trust their tool to surface what matters.",
-          "This group tends to use tools like Trace, TLDR Newsletter, or subscription-based AI briefs. Their key insight: consistency matters more than coverage."
+          "Open one daily briefing, scan the lead stories, and choose at most two source links for deeper reading. This works well for founders, product managers, engineering leaders, and anyone whose job spans several parts of tech.",
+          "Trace, TLDR, and other daily digests serve this job differently. Trace keeps the source trail and community context attached to each grouped story; newsletters are faster when you want a fixed editorial list in your inbox. Compare the formats in our [TLDR review](/newsletters/tldr-tech) and [daily briefing guide](/blog/daily-tech-briefing-guide)."
         ]
       },
       {
-        heading: "Pattern 2: The Topic Specialist (28%)",
+        heading: "Routine 2: Topic-Specific Monitoring",
         paragraphs: [
-          "This group doesn't consume general tech news. They follow 3-5 specific topics (e.g., AI/ML, infrastructure, security) through dedicated RSS feeds, newsletters, and communities. They're deeply informed in their areas and ignore everything else.",
-          "Their key insight: depth beats breadth. They'd rather know one area comprehensively than have superficial awareness of everything."
+          "Follow a short list of primary sources for one domain: release notes, maintainers, standards bodies, research labs, or security advisories. An RSS reader such as Inoreader is useful here because rules and monitoring feeds can route precise updates without depending on a general recommendation system.",
+          "Topic monitoring needs maintenance. Review the source list monthly, remove feeds that only repeat other coverage, and keep a broad brief as a safety net for adjacent changes. See [Trace vs Inoreader](/compare/trace-vs-inoreader) for the control-versus-convenience tradeoff."
         ]
       },
       {
-        heading: "Pattern 3: The Social Filter (18%)",
+        heading: "Routine 3: Trusted People and Communities",
         paragraphs: [
-          "This group uses Twitter/X, LinkedIn, or Bluesky as their primary news filter. They follow specific people whose judgment they trust, and rely on their network to surface important stories.",
-          "The risk: algorithmic feeds amplify drama over substance. The benefit: you catch stories from niche communities that aggregators miss."
+          "Use Hacker News, focused subreddits, Bluesky lists, or a small group of practitioners to understand why a release or decision matters. Communities are strongest at interpretation and weak at completeness: they surface unusual work early, but popularity can bury operationally important updates.",
+          "Treat the community layer as commentary attached to a known story, not as your only news source. Trace follows that model in its daily edition by keeping discussion beside the reporting."
         ]
       },
       {
-        heading: "Pattern 4: The Weekend Reader (12%)",
+        heading: "Routine 4: The Weekly Deep-Reading Block",
         paragraphs: [
-          "This group doesn't follow daily news at all. They read long-form analysis on weekends and trust their team to surface urgent updates. They're typically in senior leadership roles where daily news has diminishing returns.",
-          "Their key insight: most daily news is noise. The stories that matter will reach you through other channels."
+          "Save durable analysis during the week and read it in one scheduled block. This is a good fit when your work rewards depth more than immediate awareness. The risk is missing time-sensitive changes, so keep a tiny alert layer for releases, incidents, or policy changes tied directly to your job.",
+          "A weekly block works best when the save list is capped. If five articles enter, five older items should leave. Otherwise the reading list becomes another inbox."
         ]
       },
       {
         heading: "What the Best-Informed Engineers Do Differently",
         paragraphs: [
-          "The engineers who scored highest on our tech awareness test shared three habits: they batch their news consumption into one daily session, they use AI summaries to accelerate scanning, and they ruthlessly cull sources that don't provide unique value.",
-          "In other words: they spend less time on news but use the time more intentionally. Every minute of news consumption has a purpose — staying updated on the stories that affect their work and decisions."
+          "The strongest routines share three properties: a fixed time boundary, a clear job for each source, and a regular pruning habit. Summaries accelerate triage, but source links remain necessary for decisions that depend on exact details.",
+          "Start with one routine for two weeks. If you still miss a specific class of update, add the smallest second layer that catches it. Do not add another feed because it happens to be popular."
+        ]
+      }
+    ]
+  },
+  {
+    slug: "developer-news-aggregator-guide",
+    title: "What Is a Developer News Aggregator? A Practical 2026 Guide",
+    subtitle: "How developer news aggregators differ from RSS readers, newsletters, and social feeds — and how to choose one that saves time.",
+    tag: "Developer News",
+    category: "guides",
+    excerpt:
+      "A developer news aggregator pulls engineering articles, releases, community discussions, and product updates into one ranked feed. Here is how to evaluate the options.",
+    author: "Trace Editorial",
+    readTime: "9 min read",
+    date: "July 23, 2026",
+    image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1200&h=630&fit=crop&auto=format",
+    sources: [
+      { title: "daily.dev developer news blog", url: "https://daily.dev/blog/", publisher: "daily.dev" },
+      { title: "Inoreader feature comparison", url: "https://www.inoreader.com/pricing/feature/filters", publisher: "Inoreader" },
+      { title: "Hacker News API", url: "https://github.com/HackerNews/API", publisher: "Y Combinator" },
+    ],
+    sections: [
+      {
+        heading: "Quick Answer",
+        paragraphs: [
+          "A developer news aggregator collects material from engineering blogs, release notes, communities, repositories, and technology publications, then gives you one place to scan it. The useful products do more than collect links: they remove duplicate coverage, rank by relevance, preserve source links, and make it obvious which items deserve deeper reading.",
+          "The category includes personalized feeds such as daily.dev, configurable readers such as Inoreader, community-ranked pages such as Hacker News, and briefing products such as Trace. They share inputs but optimize for different jobs."
+        ]
+      },
+      {
+        heading: "Aggregator vs RSS Reader vs Newsletter",
+        paragraphs: [
+          "An RSS reader gives you source control. You choose every feed and usually see items in chronological order. A newsletter gives an editor control. You receive a fixed selection on a schedule. A social feed gives a ranking algorithm and your network control. A developer news aggregator sits between them: it brings many source types together and applies topic, quality, or behavior signals to decide what appears first.",
+          "If you need exact source monitoring, choose RSS. If you want a predictable editorial voice, choose a newsletter. If you need broad awareness with minimal setup, choose an aggregator. The [news aggregator vs RSS reader guide](/blog/news-aggregator-vs-rss-reader) covers the tradeoff in more detail."
+        ]
+      },
+      {
+        heading: "The Five Inputs That Matter",
+        bullets: [
+          "Primary sources: official engineering blogs, release notes, documentation, and research labs.",
+          "Independent technical writing: practitioners explaining implementation details and tradeoffs.",
+          "Community discussion: Hacker News, focused forums, and practitioner reactions.",
+          "Product signals: launches, repositories, changelogs, and tools gaining real adoption.",
+          "Editorial reporting: publications that verify events and add company or policy context."
+        ]
+      },
+      {
+        heading: "How to Evaluate a Developer News Aggregator",
+        paragraphs: [
+          "Start with source transparency. Can you see where a claim came from and open the original material? Then check duplicate handling. A major release should become one story with several perspectives, not six near-identical cards. Next, inspect ranking controls: explicit topics are easier to reason about than a feed driven only by clicks.",
+          "Finally, measure the workflow. Time a normal catch-up, count how many useful stories you found, and note how often you had to leave the product just to understand the basics. A good aggregator reduces discovery time without hiding the evidence."
+        ],
+        bullets: [
+          "Source trail is visible on every summarized story.",
+          "Duplicate coverage is grouped rather than merely filtered.",
+          "Topic controls are explicit and reversible.",
+          "The feed has a stopping point instead of infinite-scroll pressure.",
+          "Original links remain available for any decision that needs precision."
+        ]
+      },
+      {
+        heading: "Which Type Fits Which Developer?",
+        paragraphs: [
+          "Use daily.dev when you want a low-setup stream of developer writing in the browser. Use Inoreader when you want rules, folders, alerts, and exact feed control. Use Hacker News when community discussion is the product. Use Trace when you want the day reconciled into grouped stories with reporting, reactions, and launches in one reading order.",
+          "There is no universal winner. The best tool is the one whose default behavior matches your job. Our [developer news routines guide](/blog/developer-news-consumption-habits) helps translate that job into a daily or weekly setup."
+        ]
+      },
+      {
+        heading: "A 15-Minute Setup That Stays Useful",
+        bullets: [
+          "Choose three work topics and one adjacent topic.",
+          "Add no more than five must-not-miss primary sources.",
+          "Use one community surface for interpretation.",
+          "Schedule one daily scan and one weekly pruning pass.",
+          "Remove any source that repeats information without adding context."
+        ],
+        paragraphs: [
+          "Do not begin by importing every feed you have ever followed. Begin with the decisions the feed should support. You can add coverage when a real gap appears; removing a noisy system after it becomes a habit is much harder."
+        ]
+      }
+    ]
+  },
+  {
+    slug: "personalized-developer-news-feed",
+    title: "How to Build a Personalized Developer News Feed in 2026",
+    subtitle: "A lean source, ranking, and reading system for staying current without turning news into a second job.",
+    tag: "Developer News",
+    category: "guides",
+    excerpt:
+      "Build a personalized developer news feed with a small primary-source layer, community context, explicit topics, and a bounded reading routine.",
+    author: "Trace Editorial",
+    readTime: "10 min read",
+    date: "July 23, 2026",
+    image: "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=1200&h=630&fit=crop&auto=format",
+    sources: [
+      { title: "How to build a personalized developer news feed", url: "https://daily.dev/blog/how-to-build-personalized-developer-news-feed/", publisher: "daily.dev" },
+      { title: "Follow different source types", url: "https://www.inoreader.com/blog/2026/01/follow-different-sources.html", publisher: "Inoreader" },
+    ],
+    sections: [
+      {
+        heading: "Start With the Job",
+        paragraphs: [
+          "Write down what being informed should change: choosing tools, spotting platform risk, tracking competitors, preparing for planning, or finding ideas. A feed without a job becomes entertainment. A feed with a job has an obvious inclusion test.",
+          "For example, a frontend lead may need browser releases, framework changes, accessibility guidance, and a small view of the wider product landscape. They do not need every general AI headline."
+        ]
+      },
+      {
+        heading: "Layer 1: Primary Sources",
+        paragraphs: [
+          "Choose the sources that publish the facts first: official release notes, engineering blogs, standards groups, repositories, and research labs. Keep the list small. Five high-value primary sources are more useful than fifty blogs rewriting the same announcement.",
+          "RSS readers are strong at this layer because the contract is explicit. An aggregator is stronger when you want primary updates grouped with reporting and reactions."
+        ]
+      },
+      {
+        heading: "Layer 2: Interpretation",
+        paragraphs: [
+          "Add one community or analyst layer to explain consequences. Hacker News can expose technical objections quickly. A trusted newsletter can provide editorial judgment. Practitioner blogs can show what happened after a release met production.",
+          "Interpretation should add a new angle. If a source merely repeats the announcement, it belongs in neither layer."
+        ]
+      },
+      {
+        heading: "Layer 3: Discovery",
+        paragraphs: [
+          "Reserve a small part of the feed for adjacent work: an unfamiliar tool, a different engineering discipline, or a product pattern outside your current stack. Discovery prevents a personalized feed from becoming a closed loop.",
+          "Keep this layer deliberately small. A practical default is three core topics and one adjacent topic. If discovery dominates, personalization has stopped doing its job."
+        ]
+      },
+      {
+        heading: "Choose the Ranking Model",
+        bullets: [
+          "Chronological ranking is predictable and best for must-not-miss sources.",
+          "Community ranking surfaces discussion but can reward controversy and familiarity.",
+          "Behavioral ranking adapts quickly but can create a narrow feedback loop.",
+          "Explicit topic ranking is easier to control and audit.",
+          "Editorial ranking gives a strong stopping point but reflects one team's judgment."
+        ],
+        paragraphs: [
+          "A hybrid works best for most developers: explicit topics define the boundary, freshness keeps it current, source quality prevents spam, and community activity acts as a secondary signal rather than the sole ranking rule."
+        ]
+      },
+      {
+        heading: "Build a Reading Flow With an End",
+        paragraphs: [
+          "Use three passes. First, scan titles and one-sentence context. Second, open only the stories tied to your current work. Third, save at most two durable pieces for a weekly deep-reading block. The feed ends when those passes end.",
+          "Infinite scroll makes relevance impossible to judge because there is always another candidate. A daily edition or fixed queue gives you permission to stop."
+        ]
+      },
+      {
+        heading: "DIY or Ready-Made?",
+        paragraphs: [
+          "Build with RSS when source control is the product you need. Use daily.dev when browser-based developer discovery is the main job. Use a newsletter when you trust one editor's selection. Use Trace when you want related reporting, community reactions, and launches combined into a concise daily order.",
+          "The [developer news aggregator guide](/blog/developer-news-aggregator-guide) compares these product models. The [Trace vs Inoreader guide](/compare/trace-vs-inoreader) covers the most important decision: manual control versus automatic grouping."
+        ]
+      },
+      {
+        heading: "The Monthly Pruning Rule",
+        paragraphs: [
+          "Once a month, remove sources that produced no useful action, repeated other sources, or consistently pulled you into irrelevant browsing. Then add only one replacement for a documented gap.",
+          "Personalization is not a one-time onboarding screen. It is a small, recurring editorial decision about what deserves your attention."
+        ]
+      }
+    ]
+  },
+  {
+    slug: "tldr-newsletter-alternatives",
+    title: "The Best TLDR Newsletter Alternatives for Developers in 2026",
+    subtitle: "Choose between a fixed daily email, a personalized developer feed, focused engineering newsletters, and a source-backed daily edition.",
+    tag: "Tools & Comparisons",
+    category: "comparisons",
+    excerpt:
+      "Compare TLDR alternatives by format, topic depth, personalization, source transparency, and the reading habit each option creates.",
+    author: "Trace Editorial",
+    readTime: "11 min read",
+    date: "July 23, 2026",
+    image: "https://images.unsplash.com/photo-1557200134-90327ee9fafa?w=1200&h=630&fit=crop&auto=format",
+    sources: [
+      { title: "TLDR Tech", url: "https://tldr.tech/tech", publisher: "TLDR" },
+      { title: "daily.dev Digest", url: "https://daily.dev/", publisher: "daily.dev" },
+      { title: "The Pragmatic Engineer", url: "https://newsletter.pragmaticengineer.com/", publisher: "The Pragmatic Engineer" },
+    ],
+    sections: [
+      {
+        heading: "Quick Picks",
+        bullets: [
+          "Best for a fixed, broad email: TLDR.",
+          "Best for a personalized developer feed: daily.dev.",
+          "Best for engineering leadership depth: The Pragmatic Engineer.",
+          "Best for stack-specific weekly coverage: Cooperpress newsletters.",
+          "Best for grouped stories with source and community context: Trace."
+        ]
+      },
+      {
+        heading: "Why Look Beyond TLDR?",
+        paragraphs: [
+          "TLDR is effective when you want a broad list delivered by email. The limitation is structural: every reader gets a similar editorial package, individual items are intentionally short, and your inbox remains the reading interface.",
+          "Look for an alternative when you need explicit topic controls, deeper engineering context, fewer but more connected stories, or a format outside email. If TLDR already gives you the right topics and cadence, switching tools will not automatically improve the habit."
+        ]
+      },
+      {
+        heading: "daily.dev: Best for Personalized Discovery",
+        paragraphs: [
+          "daily.dev works well when you want developer writing ranked around your stack and interests. The browser extension puts discovery in a place developers already open frequently. It is less like a fixed newsletter and more like a continuously refreshed developer homepage.",
+          "Choose it over TLDR when personalization and community discovery matter more than a short, finite email."
+        ]
+      },
+      {
+        heading: "The Pragmatic Engineer: Best for Depth",
+        paragraphs: [
+          "The Pragmatic Engineer focuses on software-industry analysis, engineering organizations, careers, and leadership. It is not a direct replacement for broad daily headlines. It is a replacement for the part of a news habit that should create durable understanding.",
+          "Choose it when one deeply reported piece is more valuable to your work than a dozen short updates."
+        ]
+      },
+      {
+        heading: "Cooperpress: Best for One Ecosystem",
+        paragraphs: [
+          "Cooperpress publishes focused newsletters for ecosystems such as JavaScript, React, Node, and database technology. The narrow scope produces a cleaner signal when your work lives in one stack.",
+          "Choose a focused weekly over TLDR when missing a framework release matters more than following the broader technology conversation."
+        ]
+      },
+      {
+        heading: "Trace: Best for the Connected Story",
+        paragraphs: [
+          "Trace groups reporting, Hacker News and other community reactions, and product launches into one daily edition. Instead of receiving isolated links, you see the main story, concise context, and the source trail together.",
+          "Choose Trace when your main problem is reconstructing the same story across publications and communities. Read the [TLDR newsletter review](/newsletters/tldr-tech) or compare [Trace with a traditional morning newsletter](/compare/morning-brew-tech-alternative)."
+        ]
+      },
+      {
+        heading: "How to Choose",
+        bullets: [
+          "Pick email when delivery consistency matters most.",
+          "Pick a personalized feed when topic relevance matters most.",
+          "Pick a focused newsletter when domain depth matters most.",
+          "Pick a grouped daily edition when context and source reconciliation matter most.",
+          "Use one daily product and one weekly deep source; more usually creates duplicate reading."
         ]
       }
     ]

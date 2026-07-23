@@ -1,9 +1,9 @@
 import Link from 'next/link';
-import { LineChart, Smartphone } from 'lucide-react';
+import { LineChart, Rss, Smartphone } from 'lucide-react';
 
-export default function Footer(_props: { variant?: 'default' | 'landing' } = {}) {
+export default function Footer(props: { variant?: 'default' | 'landing' } = {}) {
   return (
-    <footer className="bg-[#faf9f5] px-5 py-10 sm:px-8">
+    <footer data-variant={props.variant ?? 'default'} className="bg-[#faf9f5] px-5 py-10 sm:px-8">
       <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-5 border-t border-[#e4e1d8] pt-8">
         <span className="font-mono text-[11px] font-semibold tracking-[0.24em] text-[#1b1a17]">TRACE</span>
         <nav className="flex flex-wrap gap-x-5 gap-y-2 text-[12px] text-[#75705f]">
@@ -11,6 +11,11 @@ export default function Footer(_props: { variant?: 'default' | 'landing' } = {})
           <Link href="/feed?view=pulse" className="hover:text-[#2557d6]">Pulse</Link>
           <Link href="/compare" className="hover:text-[#2557d6]">Compare</Link>
           <Link href="/blog" className="hover:text-[#2557d6]">Guides</Link>
+          <Link href="/resources" className="hover:text-[#2557d6]">Resources</Link>
+          <Link href="/solutions" className="hover:text-[#2557d6]">Solutions</Link>
+          <Link href="/use-cases" className="hover:text-[#2557d6]">Use cases</Link>
+          <Link href="/newsletters" className="hover:text-[#2557d6]">Newsletter reviews</Link>
+          <a href="/rss.xml" className="inline-flex items-center gap-1 hover:text-[#2557d6]"><Rss size={11} />RSS</a>
           <Link href="/how-it-works" className="hover:text-[#2557d6]">How it works</Link>
           <Link href="/privacy-policy" className="hover:text-[#2557d6]">Privacy</Link>
           <Link href="/terms" className="hover:text-[#2557d6]">Terms</Link>

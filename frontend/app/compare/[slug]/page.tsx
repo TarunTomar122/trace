@@ -4,6 +4,11 @@ import { notFound } from "next/navigation";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import { comparePages, getComparePage } from "../content";
+import {
+  generateBreadcrumbSchema,
+  generateFAQSchema,
+  SITE_BASE_URL,
+} from "@/lib/seo";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -58,6 +63,15 @@ export default async function CompareDetailPage({ params }: PageProps) {
   }
 
   const canonical = `https://www.yourtrace.online/compare/${page.slug}`;
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Trace", url: SITE_BASE_URL },
+    { name: "Comparisons", url: `${SITE_BASE_URL}/compare` },
+    { name: page.heroTitle, url: canonical },
+  ]);
+  const faqSchema = generateFAQSchema(page.faq);
+  const relatedPages = comparePages
+    .filter((candidate) => candidate.slug !== page.slug)
+    .slice(0, 4);
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -80,6 +94,14 @@ export default async function CompareDetailPage({ params }: PageProps) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
       <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
       <main className="px-4 sm:px-6">
@@ -163,7 +185,21 @@ export default async function CompareDetailPage({ params }: PageProps) {
           </section>
 
           <section className="mt-8">
-            <div className="flex flex-wrap gap-2 text-sm">
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#9ca3af]">
+              Related comparisons
+            </h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {relatedPages.map((related) => (
+                <Link
+                  key={related.slug}
+                  href={`/compare/${related.slug}`}
+                  className="landing-card p-5 text-sm font-semibold leading-6 text-[#111827] transition-colors hover:text-[#2563eb]"
+                >
+                  {related.heroTitle} →
+                </Link>
+              ))}
+            </div>
+            <div className="mt-5 flex flex-wrap gap-2 text-sm">
               <Link href="/compare" className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-[#6b7280] transition-colors hover:text-[#111827]">More comparisons</Link>
               <Link href="/blog" className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-[#6b7280] transition-colors hover:text-[#111827]">Blog</Link>
               <Link href="/tools" className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-[#6b7280] transition-colors hover:text-[#111827]">Free tools</Link>

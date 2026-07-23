@@ -1023,6 +1023,175 @@ export const comparePages: ComparePage[] = [
       },
     ],
   },
+  {
+    slug: "daily-dev-alternative",
+    title: "daily.dev Alternative for a Finite Daily Tech Brief | Trace",
+    description:
+      "Compare Trace and daily.dev for developer news: a finite grouped daily edition versus a continuously refreshed personalized discovery feed.",
+    heroTitle: "A daily.dev alternative for developers who want a stopping point",
+    heroDescription:
+      "daily.dev is strong at continuous developer discovery. Trace is built for a finite daily catch-up that groups reporting, community reactions, and launches.",
+    intro:
+      "Both products reduce the need to visit many sources, but they create different habits. daily.dev turns the browser into a personalized stream of developer content. Trace assembles a daily edition with a clear beginning and end.",
+    comparisonTitle: "Trace vs daily.dev",
+    comparisonRows: [
+      {
+        label: "Primary job",
+        trace: "Understand the important tech stories of the day",
+        alternative: "Continuously discover developer articles and discussions",
+      },
+      {
+        label: "Reading model",
+        trace: "Finite daily edition",
+        alternative: "Personalized, continuously refreshed feed",
+      },
+      {
+        label: "Story handling",
+        trace: "Related reporting and reactions are grouped",
+        alternative: "Individual posts are ranked in a stream",
+      },
+      {
+        label: "Best for",
+        trace: "Developers who want broad awareness in one sitting",
+        alternative: "Developers who want ongoing stack-specific discovery",
+      },
+    ],
+    sections: [
+      {
+        title: "Choose daily.dev for discovery",
+        body:
+          "If you want a personalized developer homepage, frequent new material, and community-driven discovery tied to your stack, daily.dev is a strong fit.",
+      },
+      {
+        title: "Choose Trace for daily orientation",
+        body:
+          "If you want to know what changed across tech, why it matters, and where the original reporting and community discussion live, Trace provides a shorter and more deliberate reading loop.",
+      },
+    ],
+    faq: [
+      {
+        question: "Is Trace a direct replacement for the daily.dev browser extension?",
+        answer:
+          "No. Trace does not replace the new-tab discovery experience. It replaces the broader daily catch-up across reporting, discussion, and launches.",
+      },
+      {
+        question: "Can developers use both?",
+        answer:
+          "Yes. Use Trace for a bounded daily scan and daily.dev for occasional stack-specific discovery. The overlap becomes wasteful only if both are treated as feeds that must be cleared.",
+      },
+    ],
+  },
+  {
+    slug: "tldr-newsletter-alternative",
+    title: "TLDR Newsletter Alternative With Sources and Context | Trace",
+    description:
+      "Compare Trace and TLDR for daily tech news: a grouped web edition with source trails and community context versus a concise email newsletter.",
+    heroTitle: "A TLDR alternative for readers who want the sources behind the summary",
+    heroDescription:
+      "TLDR is a fast daily email. Trace turns the day into grouped stories with source links, community reactions, and product launches attached.",
+    intro:
+      "TLDR and Trace both aim to compress a busy technology day. The difference is the unit of reading: TLDR sends a list of concise items, while Trace reconciles related coverage into a structured edition you can scan and investigate.",
+    comparisonTitle: "Trace vs TLDR",
+    comparisonRows: [
+      {
+        label: "Delivery",
+        trace: "Web and Android daily edition",
+        alternative: "Email newsletter",
+      },
+      {
+        label: "Context",
+        trace: "Grouped sources, key points, discussions, and launches",
+        alternative: "Short editorial summaries with outbound links",
+      },
+      {
+        label: "Personalization",
+        trace: "Explicit interests shape the edition",
+        alternative: "A consistent editorial package for subscribers",
+      },
+      {
+        label: "Best for",
+        trace: "Readers who want a source-backed view of connected stories",
+        alternative: "Readers who want the fastest fixed email scan",
+      },
+    ],
+    sections: [
+      {
+        title: "Choose TLDR for inbox convenience",
+        body:
+          "TLDR works well when email is already your trusted daily queue and you want a broad selection without configuring topics or learning another product.",
+      },
+      {
+        title: "Choose Trace for connected coverage",
+        body:
+          "Trace is stronger when a short summary raises follow-up questions. The reporting, community reaction, and related launches stay attached, so you can verify and go deeper without reconstructing the story across tabs.",
+      },
+    ],
+    faq: [
+      {
+        question: "Does Trace send a daily email?",
+        answer:
+          "Trace supports a daily briefing workflow, but its core experience is the edition itself, where grouped context and source links have room to stay together.",
+      },
+      {
+        question: "Is TLDR better if I only want headlines?",
+        answer:
+          "Usually, yes. TLDR is optimized for a fast fixed scan. Trace is the better fit when you want fewer disconnected items and more context around each important story.",
+      },
+    ],
+  },
+  {
+    slug: "ground-news-alternative-for-tech",
+    title: "Ground News Alternative Focused on Technology | Trace",
+    description:
+      "Compare Trace and Ground News for technology coverage: a tech-focused daily edition with community context versus broad news with media-bias comparison.",
+    heroTitle: "A Ground News alternative built specifically for technology",
+    heroDescription:
+      "Ground News helps readers compare political and media perspectives across general news. Trace focuses on technology, pairing reporting with practitioner discussion and product signals.",
+    intro:
+      "The products solve different trust problems. Ground News shows how outlets frame the same general-news event. Trace shows how a technology story connects across reporting, developer communities, repositories, and launches.",
+    comparisonTitle: "Trace vs Ground News",
+    comparisonRows: [
+      {
+        label: "Coverage",
+        trace: "Technology, AI, startups, products, and developer communities",
+        alternative: "Broad global news across politics, business, and culture",
+      },
+      {
+        label: "Context layer",
+        trace: "Source grouping, key points, practitioner reactions, launches",
+        alternative: "Outlet comparison, ownership, and media-bias context",
+      },
+      {
+        label: "Best for",
+        trace: "Technology professionals",
+        alternative: "General-news readers comparing media coverage",
+      },
+    ],
+    sections: [
+      {
+        title: "Choose Ground News for media-literacy tools",
+        body:
+          "If your priority is comparing political framing, ownership, and blind spots across general-news outlets, Ground News is purpose-built for that work.",
+      },
+      {
+        title: "Choose Trace for practitioner context",
+        body:
+          "If your priority is understanding what a technology announcement means in practice, Trace adds developer discussion, product work, and related coverage to the source trail.",
+      },
+    ],
+    faq: [
+      {
+        question: "Does Trace assign political bias ratings to sources?",
+        answer:
+          "No. Trace preserves source links and groups related technology coverage, but it does not replace Ground News's media-bias and ownership analysis.",
+      },
+      {
+        question: "Does Ground News cover technology?",
+        answer:
+          "Yes, as part of its broader general-news product. Trace is narrower and designed around the information needs of people working in technology.",
+      },
+    ],
+  },
 ];
 
 export function getComparePage(slug: string): ComparePage | undefined {

@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Clock } from "lucide-react";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import { blogPosts } from "../../content";
+import { standaloneBlogPosts } from "../../standalone-content";
 import { generateBreadcrumbSchema, generateCollectionPageSchema, SITE_BASE_URL } from "@/lib/seo";
 
 type PageProps = {
@@ -75,7 +76,14 @@ export default async function CategoryPage({ params }: PageProps) {
     notFound();
   }
 
-  const posts = blogPosts.filter((p) => p.category === category);
+  const posts = [
+    ...blogPosts.filter((p) => p.category === category),
+    ...standaloneBlogPosts
+      .filter((p) => p.category === category)
+      .map((post) => ({ ...post, author: "Trace Editorial" })),
+  ]
+    .filter((post, index, all) => all.findIndex((candidate) => candidate.slug === post.slug) === index)
+    .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
   const categoryUrl = `${SITE_BASE_URL}/blog/category/${category}`;
 
   const breadcrumbSchema = generateBreadcrumbSchema([

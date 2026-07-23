@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Space_Grotesk, Geist_Mono, Newsreader } from "next/font/google";
 import { PostHogProvider } from "@/lib/posthog";
@@ -87,12 +87,15 @@ export const metadata: Metadata = {
     apple: "/trace.png",
   },
   manifest: "/site.webmanifest",
-  themeColor: "#000000",
   appleWebApp: {
     capable: true,
     title: "Trace",
     statusBarStyle: "black-translucent",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#000000",
 };
 
 export default function RootLayout({
@@ -108,12 +111,7 @@ export default function RootLayout({
         "@id": "https://www.yourtrace.online/#website",
         "url": "https://www.yourtrace.online",
         "name": "Trace",
-        "description": "Stop checking 10 apps every morning. Trace scans the sources you care about and gives you a short daily brief with links worth opening.",
-        "potentialAction": {
-          "@type": "SearchAction",
-          "target": "https://www.yourtrace.online/feed?q={search_term_string}",
-          "query-input": "required name=search_term_string"
-        }
+        "description": "Stop checking 10 apps every morning. Trace scans the sources you care about and gives you a short daily brief with links worth opening."
       },
       {
         "@type": "Organization",
@@ -128,75 +126,6 @@ export default function RootLayout({
           "https://x.com/tarat_211",
           "https://play.google.com/store/apps/details?id=online.yourtrace.app"
         ]
-      },
-      {
-        "@type": "Product",
-        "@id": "https://www.yourtrace.online/#product",
-        "name": "Trace Pro",
-        "description": "Trending topics with AI summaries, key points, and timelines that help you catch up faster",
-        "image": "https://www.yourtrace.online/trace.png",
-        "offers": {
-          "@type": "Offer",
-          "price": "2.99",
-          "priceCurrency": "USD",
-          "availability": "https://schema.org/InStock",
-          "priceValidUntil": "2026-12-31",
-          "url": "https://www.yourtrace.online/profile"
-        }
-      },
-      {
-        "@type": "FAQPage",
-        "@id": "https://www.yourtrace.online/#faq",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "What does Trace include?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Trace gives you trending topics grouped from many sources, each with an AI summary, key points, and a timeline."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How much does Trace cost?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Trace Pro is $2.99/month in the US (was $4.99/month; pricing varies by region, e.g. ₹49/month in India). You can cancel anytime from your profile."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How does personalization work?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "You choose the topics you care about. Trace uses those inputs to prioritize and summarize the stories in your daily feed."
-            }
-          }
-        ]
-      },
-      {
-        "@type": "CollectionPage",
-        "@id": "https://www.yourtrace.online/solutions",
-        "name": "Trace Solutions Hub",
-        "url": "https://www.yourtrace.online/solutions",
-        "description": "Solutions for every tech reading workflow problem — from information overload to building a daily digest habit.",
-        "isPartOf": { "@id": "https://www.yourtrace.online/#website" }
-      },
-      {
-        "@type": "CollectionPage",
-        "@id": "https://www.yourtrace.online/use-cases",
-        "name": "Trace Use Cases",
-        "url": "https://www.yourtrace.online/use-cases",
-        "description": "See how founders, developers, PMs, designers, investors, and other tech professionals use Trace to stay current.",
-        "isPartOf": { "@id": "https://www.yourtrace.online/#website" }
-      },
-      {
-        "@type": "CollectionPage",
-        "@id": "https://www.yourtrace.online/newsletters",
-        "name": "Tech Newsletter Reviews",
-        "url": "https://www.yourtrace.online/newsletters",
-        "description": "Honest reviews of popular tech newsletters — rated, compared, and ranked.",
-        "isPartOf": { "@id": "https://www.yourtrace.online/#website" }
       }
     ]
   };
@@ -210,6 +139,12 @@ export default function RootLayout({
         <link rel="preconnect" href="https://firestore.googleapis.com" />
         <link rel="preconnect" href="https://us-assets.i.posthog.com" />
         <link rel="dns-prefetch" href="https://datafa.st" />
+        <link
+          rel="alternate"
+          type="application/rss+xml"
+          title="Trace guides"
+          href="https://www.yourtrace.online/rss.xml"
+        />
       </head>
       <body
         suppressHydrationWarning

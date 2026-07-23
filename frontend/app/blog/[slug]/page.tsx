@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, ExternalLink, Clock, Calendar } from "lucide-react";
+import { ArrowLeft, ExternalLink, Clock, Calendar } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import { blogPosts } from "../content";
@@ -12,6 +13,42 @@ type PageProps = {
     slug: string;
   }>;
 };
+
+function RichParagraph({ children }: { children: string }) {
+  return (
+    <ReactMarkdown
+      components={{
+        p: ({ children: content }) => (
+          <p className="text-[16px] leading-[1.8] landing-muted">{content}</p>
+        ),
+        a: ({ href = "", children: content }) =>
+          href.startsWith("/") ? (
+            <Link href={href} className="font-medium text-[#2563eb] underline-offset-4 hover:underline">
+              {content}
+            </Link>
+          ) : (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-[#2563eb] underline-offset-4 hover:underline"
+            >
+              {content}
+            </a>
+          ),
+      }}
+    >
+      {children}
+    </ReactMarkdown>
+  );
+}
+
+function headingId(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
 
 export function generateStaticParams() {
   return blogPosts.map((post) => ({ slug: post.slug }));
@@ -153,22 +190,46 @@ export default async function BlogPostPage({ params }: PageProps) {
             </div>
           </div>
 
+          {post.sections.filter((section) => section.heading).length > 2 && (
+            <nav aria-label="Table of contents" className="mb-12 border-y border-[#e5e7eb] py-6">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#9ca3af]">
+                In this guide
+              </p>
+              <ol className="mt-4 grid gap-x-8 gap-y-2 sm:grid-cols-2">
+                {post.sections
+                  .filter((section): section is typeof section & { heading: string } => Boolean(section.heading))
+                  .map((section, index) => (
+                    <li key={section.heading}>
+                      <a
+                        href={`#${headingId(section.heading)}`}
+                        className="text-[13px] leading-6 text-[#6b7280] hover:text-[#2563eb]"
+                      >
+                        {index + 1}. {section.heading}
+                      </a>
+                    </li>
+                  ))}
+              </ol>
+            </nav>
+          )}
+
           {/* Content */}
           <div className="flex flex-col gap-10">
             {post.sections.map((section, index) => (
               <section key={`${post.slug}-section-${index}`} className="flex flex-col gap-4">
                 {section.heading && (
-                  <h2 className="text-[1.35rem] font-bold tracking-[-0.02em] text-[#111827] sm:text-[1.5rem]">
+                  <h2
+                    id={headingId(section.heading)}
+                    className="scroll-mt-24 text-[1.35rem] font-bold tracking-[-0.02em] text-[#111827] sm:text-[1.5rem]"
+                  >
                     {section.heading}
                   </h2>
                 )}
                 {section.paragraphs?.map((paragraph, paragraphIndex) => (
-                  <p
+                  <RichParagraph
                     key={`${post.slug}-section-${index}-paragraph-${paragraphIndex}`}
-                    className="text-[16px] leading-[1.8] landing-muted"
                   >
                     {paragraph}
-                  </p>
+                  </RichParagraph>
                 ))}
                 {section.bullets && (
                   <ul className="space-y-3 pl-0">

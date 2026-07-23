@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "seo:check": "node scripts/check-seo-links.mjs",
     "test:analytics-platform": "node --test lib/analytics-platform.test.mjs",
     "remotion:studio": "remotion studio",
     "remotion:render": "remotion render"

@@ -54,11 +54,14 @@ export default async function HomePage() {
   return (
     <LandingPageClient
       editionFeed={editionFeed}
-      recentBlogPosts={blogPosts.slice(0, 3).map((post) => ({
-        href: `/blog/${post.slug}`,
-        date: post.date,
-        title: post.title,
-      }))}
+      recentBlogPosts={[...blogPosts]
+        .sort((a, b) => Date.parse(b.date) - Date.parse(a.date))
+        .slice(0, 3)
+        .map((post) => ({
+          href: `/blog/${post.slug}`,
+          date: post.date,
+          title: post.title,
+        }))}
     />
   );
 }

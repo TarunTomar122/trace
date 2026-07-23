@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next'
 import { blogPosts } from './blog/content'
+import { standaloneBlogPosts } from './blog/standalone-content'
 import { adminFirestore } from '@/lib/firebase-admin'
 import { comparePages } from './compare/content'
 import { getDailyArchiveEntries } from '@/lib/daily-archive'
@@ -329,11 +330,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly' as const,
       priority: 0.7,
     })),
-    // Standalone SEO blog posts (not in content.ts)
-    { url: `${baseUrl}/blog/best-ai-news-apps-2026`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.75 },
-    { url: `${baseUrl}/blog/feedly-alternatives`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.75 },
-    { url: `${baseUrl}/blog/how-to-stay-updated-on-tech-without-doomscrolling`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.75 },
-    { url: `${baseUrl}/blog/free-news-aggregators-for-developers`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.75 },
+    ...standaloneBlogPosts
+      .filter((post) => !blogPosts.some((candidate) => candidate.slug === post.slug))
+      .map((post) => ({
+        url: `${baseUrl}/blog/${post.slug}`,
+        lastModified: new Date(post.date),
+        changeFrequency: 'monthly' as const,
+        priority: 0.75,
+      })),
     ...blogCategoryArchives,
   ];
 

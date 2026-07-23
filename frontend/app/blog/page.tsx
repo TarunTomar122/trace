@@ -4,64 +4,8 @@ import { ArrowRight, Clock, Calendar } from "lucide-react";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import { blogPosts } from "./content";
+import { standaloneBlogPosts } from "./standalone-content";
 import { generateCollectionPageSchema, SITE_BASE_URL } from "@/lib/seo";
-
-const standaloneComparisonPosts = [
-  {
-    slug: "inoreader-alternatives",
-    title: "Inoreader Alternatives: 6 Better Options for Every Use Case (2026)",
-    tag: "Comparisons",
-    excerpt: "Looking for Inoreader alternatives? We tested 6 options including Trace, Feedly, and NewsBlur. Find the right news reader for your workflow in 2026.",
-    readTime: "11 min read",
-    date: "June 22, 2026",
-    image: "https://images.unsplash.com/photo-1504639725590-34d0984388bd?w=1200&h=630&fit=crop&auto=format",
-  },
-  {
-    slug: "google-news-alternatives",
-    title: "Google News Alternatives: 6 Better Options for Tech News (2026)",
-    tag: "Comparisons",
-    excerpt: "Looking for Google News alternatives? We tested 6 options that deliver better tech news curation, AI summaries, and developer-focused coverage in 2026.",
-    readTime: "12 min read",
-    date: "June 22, 2026",
-    image: "https://images.unsplash.com/photo-1504711434969-e33886168d6c?w=1200&h=630&fit=crop&auto=format",
-  },
-  {
-    slug: "flipboard-alternatives",
-    title: "Flipboard Alternatives: 6 Better News Apps for 2026",
-    tag: "Comparisons",
-    excerpt: "Looking for Flipboard alternatives? We tested 6 options including Trace, Feedly, and Inoreader. Find the right news app for tech professionals in 2026.",
-    readTime: "10 min read",
-    date: "June 22, 2026",
-    image: "https://images.unsplash.com/photo-1432821596592-e2c18b78144f?w=1200&h=630&fit=crop&auto=format",
-  },
-  {
-    slug: "smartnews-alternatives",
-    title: "SmartNews Alternatives: 6 Better News Apps for 2026",
-    tag: "Comparisons",
-    excerpt: "Looking for SmartNews alternatives? We tested 6 options with better AI curation, tech coverage, and developer-focused features in 2026.",
-    readTime: "10 min read",
-    date: "June 22, 2026",
-    image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200&h=630&fit=crop&auto=format",
-  },
-  {
-    slug: "newsblur-alternatives",
-    title: "NewsBlur Alternatives: 6 Options for Every Use Case (2026)",
-    tag: "Comparisons",
-    excerpt: "Looking for NewsBlur alternatives? We tested 6 options including Trace, Feedly, Inoreader, and Miniflux. Find the right RSS reader for 2026.",
-    readTime: "10 min read",
-    date: "June 22, 2026",
-    image: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1200&h=630&fit=crop&auto=format",
-  },
-  {
-    slug: "artifact-alternatives",
-    title: "Artifact News Alternatives: 6 Apps That Do AI News Better (2026)",
-    tag: "Comparisons",
-    excerpt: "Looking for Artifact news alternatives? We tested 6 AI-powered news apps including Trace, Feedly, and Particle. Find the best news app for 2026.",
-    readTime: "11 min read",
-    date: "June 22, 2026",
-    image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&h=630&fit=crop&auto=format",
-  },
-];
 
 export const metadata: Metadata = {
   title: "Blog | Trace — Tech News, Productivity & AI Insights",
@@ -97,13 +41,13 @@ const CATEGORIES = [
 ] as const;
 
 export default function BlogPage() {
-  const featuredPost = blogPosts[0];
-  const remainingPosts = blogPosts.slice(1);
-
   const allPosts = [
-    ...remainingPosts.map((p) => ({ ...p, isStandalone: false })),
-    ...standaloneComparisonPosts.map((p) => ({ ...p, isStandalone: true, category: "comparisons" })),
-  ];
+    ...blogPosts.map((post) => ({ ...post, isStandalone: false })),
+    ...standaloneBlogPosts.map((post) => ({ ...post, isStandalone: true })),
+  ]
+    .filter((post, index, posts) => posts.findIndex((candidate) => candidate.slug === post.slug) === index)
+    .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+  const [featuredPost, ...remainingPosts] = allPosts;
 
   const collectionSchema = generateCollectionPageSchema(
     "Blog | Trace — Tech News, Productivity & AI Insights",
@@ -111,7 +55,7 @@ export default function BlogPage() {
     `${SITE_BASE_URL}/blog`,
     [
       ...blogPosts.map((p) => `${SITE_BASE_URL}/blog/${p.slug}`),
-      ...standaloneComparisonPosts.map((p) => `${SITE_BASE_URL}/blog/${p.slug}`),
+      ...standaloneBlogPosts.map((p) => `${SITE_BASE_URL}/blog/${p.slug}`),
     ],
   );
 
@@ -208,7 +152,7 @@ export default function BlogPage() {
       <section className="px-4 pb-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {allPosts.map((post) => (
+            {remainingPosts.map((post) => (
               <Link
                 key={post.slug}
                 href={`/blog/${post.slug}`}

@@ -93,6 +93,7 @@ export default function LandingPageClient({
             <Link href="/feed?view=pulse" className="hover:text-[#2557d6]">Pulse</Link>
             <Link href="/compare" className="hover:text-[#2557d6]">Compare</Link>
             <Link href="/blog" className="hover:text-[#2557d6]">Guides</Link>
+            <Link href="/resources" className="hover:text-[#2557d6]">Resources</Link>
           </nav>
           <button type="button" onClick={() => void signIn()} className="border border-[#2557d6] px-3.5 py-1.5 text-[12px] font-semibold text-[#2557d6] hover:bg-[#2557d6] hover:text-white">Sign in</button>
         </div>
