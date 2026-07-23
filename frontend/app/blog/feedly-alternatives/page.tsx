@@ -16,7 +16,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Feedly Alternatives: 7 Free Options That Are Actually Better (2026) | Trace",
+  title: "Feedly Alternatives: 7 Better Options (2026) | Trace",
   description:
     "Looking for Feedly alternatives? We tested 7 free options including Trace, Inoreader, and NewsBlur. Find the right RSS reader for developers and founders in 2026.",
   keywords: [

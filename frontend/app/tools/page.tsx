@@ -3,15 +3,19 @@ import Link from "next/link";
 import { Mail, Sparkles, ArrowRight } from "lucide-react";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
+import { DEFAULT_OPEN_GRAPH } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Free Tools | Trace",
   description:
     "Free tools to help you read smarter. Preview your daily digest, summarize articles, and more.",
+  alternates: { canonical: "https://www.yourtrace.online/tools" },
   openGraph: {
+    ...DEFAULT_OPEN_GRAPH,
     title: "Free Tools | Trace",
     description: "Free tools to help you read smarter.",
     url: "https://www.yourtrace.online/tools",
+    type: "website",
   },
 };
 
@@ -63,6 +67,22 @@ export default function ToolsPage() {
                 </span>
               </Link>
             ))}
+          </div>
+
+          <div className="mt-12 max-w-2xl">
+            <h2 className="text-xl font-bold text-[#111827]">Why these tools exist</h2>
+            <p className="mt-3 text-sm leading-7 text-[#6b7280]">
+              A useful daily brief should be easy to evaluate before you create an account.
+              These tools let you choose a few interests, inspect the resulting mix, and see
+              how Trace groups related reporting into a shorter reading list. They are free,
+              require no sign-up, and keep the original source links visible so you can verify
+              context or continue reading whenever a story matters.
+            </p>
+            <p className="mt-3 text-sm leading-7 text-[#6b7280]">
+              The preview uses the same interest choices and editorial structure as the main
+              product, so it is a practical sample rather than a generic mock-up. Use it before
+              deciding whether the full daily product fits your workflow.
+            </p>
           </div>
 
           <div className="mt-16 flex justify-center">

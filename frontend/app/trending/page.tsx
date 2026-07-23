@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { cache } from 'react';
 import Script from 'next/script';
 import PublicHeader from '@/components/PublicHeader';
 import Footer from '@/components/Footer';
@@ -122,7 +123,7 @@ function getTodayIstDate(): string {
   return ist.toISOString().slice(0, 10);
 }
 
-async function getLatestUnifiedDate(): Promise<string | null> {
+const getLatestUnifiedDate = cache(async (): Promise<string | null> => {
   if (!adminFirestore) return null;
   const snapshot = await adminFirestore
     .collection('unified_newsletters')
@@ -131,9 +132,9 @@ async function getLatestUnifiedDate(): Promise<string | null> {
     .get();
   if (snapshot.empty) return null;
   return snapshot.docs[0].id || snapshot.docs[0].data().date || null;
-}
+});
 
-async function getLatestTrendingDate(): Promise<string | null> {
+const getLatestTrendingDate = cache(async (): Promise<string | null> => {
   if (!adminFirestore) return null;
   const snapshot = await adminFirestore
     .collection('trending_news')
@@ -142,7 +143,7 @@ async function getLatestTrendingDate(): Promise<string | null> {
     .get();
   if (snapshot.empty) return null;
   return snapshot.docs[0].id || snapshot.docs[0].data().date || null;
-}
+});
 
 function normalizeTopicSlug(value: unknown): string | null {
   if (typeof value !== 'string') return null;
@@ -171,10 +172,9 @@ function isEligibleTopicLink(input: {
   keyPointCount?: number;
 }): boolean {
   const hasContent =
-    (input.articleCount ?? 0) > 0 ||
-    (input.sourceCount ?? 0) > 0 ||
-    (input.timelineCount ?? 0) > 0 ||
-    (input.keyPointCount ?? 0) > 0;
+    (input.articleCount ?? 0) >= 2 ||
+    (input.sourceCount ?? 0) >= 2 ||
+    (input.timelineCount ?? 0) >= 2;
 
   if (!hasContent) return false;
   if (looksLikeRawSource(input.slug) || looksLikeRawSource(input.label)) return false;
@@ -215,7 +215,7 @@ function coveredTrendingKeys(topics: GlobalTopic[]): { ids: Set<string>; urls: S
   return { ids, urls };
 }
 
-async function getRecentGlobalFeedDocs(limitCount = 5) {
+const getRecentGlobalFeedDocs = cache(async (limitCount = 5) => {
   if (!adminFirestore) return [];
   const globalFeedRef = adminFirestore
     .collection('v3_user_feeds')
@@ -225,10 +225,11 @@ async function getRecentGlobalFeedDocs(limitCount = 5) {
   const snapshot = await globalFeedRef
     .orderBy('__name__', 'desc')
     .limit(limitCount)
+    .select('trending', 'trending_topics')
     .get();
 
   return snapshot.docs;
-}
+});
 
 // Strip "Slide N:" prefix from slides
 function cleanSlides(slides: string[]): string[] {
@@ -549,7 +550,7 @@ export default async function TrendingPage() {
     getTodaysItems(),
     getTopicLinks(),
     getTopicCards(),
-    getDailyArchiveEntries(7),
+    getDailyArchiveEntries(7, true),
   ]);
   const itemListSchema = {
     '@context': 'https://schema.org',

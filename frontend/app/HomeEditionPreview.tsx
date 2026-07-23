@@ -11,11 +11,9 @@ import {
   buildEditionModel,
   editionSerif,
 } from '@/app/wip/feed-edition/edition-shared';
-import { getArticleImageCandidates } from '@/lib/fallback-images';
+import { ArticleImage } from '@/components/ArticleImage';
 
 function PreviewRow({ item, number }: { item: FeedListItem; number: number }) {
-  const image = getArticleImageCandidates(item.thumbnail, item.title)[0];
-
   return (
     <article className="group flex items-start gap-4 border-t py-5 transition-colors hover:bg-[#f5f3ed] sm:gap-6" style={{ borderColor: HAIRLINE }}>
       <span className={editionSerif.className + ' hidden w-7 shrink-0 pt-1 text-[22px] leading-none sm:block'} style={{ color: BLUE }}>{number}</span>
@@ -23,13 +21,13 @@ function PreviewRow({ item, number }: { item: FeedListItem; number: number }) {
         <h3 className={editionSerif.className + ' text-[23px] leading-[1.16] sm:text-[29px]'} style={{ color: INK }}>{item.title}</h3>
         <div className="mt-2"><StoryMeta item={item} /></div>
       </div>
-      {image ? (
-        <img
-          src={image}
+      {item.thumbnail ? (
+        <ArticleImage
+          thumbnail={item.thumbnail}
+          title={item.title}
           alt=""
           className="shrink-0 self-center border border-[#e4e1d8] object-cover"
           style={{ width: 118, height: 88, objectFit: 'cover' }}
-          onError={(event) => { event.currentTarget.style.display = 'none'; }}
         />
       ) : null}
     </article>

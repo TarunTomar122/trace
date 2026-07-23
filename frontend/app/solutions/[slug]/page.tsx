@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import { solutionsContent } from "../content";
+import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE, metadataTitle } from "@/lib/seo";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -21,10 +22,11 @@ export async function generateMetadata({
   if (!page) return {};
   const url = `https://www.yourtrace.online/solutions/${slug}`;
   return {
-    title: `${page.title} | Trace Solutions`,
+    title: metadataTitle(page.title),
     description: page.shortDescription,
     alternates: { canonical: url },
     openGraph: {
+      ...DEFAULT_OPEN_GRAPH,
       title: `${page.title} | Trace Solutions`,
       description: page.shortDescription,
       url,
@@ -35,6 +37,7 @@ export async function generateMetadata({
       card: "summary_large_image",
       title: `${page.title} | Trace Solutions`,
       description: page.shortDescription,
+      images: [DEFAULT_TWITTER_IMAGE],
     },
   };
 }

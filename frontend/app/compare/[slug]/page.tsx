@@ -5,6 +5,8 @@ import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import { comparePages, getComparePage } from "../content";
 import {
+  DEFAULT_OPEN_GRAPH,
+  DEFAULT_TWITTER_IMAGE,
   generateBreadcrumbSchema,
   generateFAQSchema,
   SITE_BASE_URL,
@@ -40,6 +42,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       canonical,
     },
     openGraph: {
+      ...DEFAULT_OPEN_GRAPH,
       title: page.title,
       description: page.description,
       url: canonical,
@@ -50,6 +53,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       card: "summary_large_image",
       title: page.title,
       description: page.description,
+      images: [DEFAULT_TWITTER_IMAGE],
     },
   };
 }

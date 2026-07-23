@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import LegalPageShell from '@/components/LegalPageShell';
+import { DEFAULT_OPEN_GRAPH } from '@/lib/seo';
 
 export const metadata: Metadata = {
   title: 'Terms of Service — Trace',
@@ -10,10 +11,12 @@ export const metadata: Metadata = {
     canonical: 'https://www.yourtrace.online/terms',
   },
   openGraph: {
+    ...DEFAULT_OPEN_GRAPH,
     title: 'Terms of Service — Trace',
     description:
       'Read the Terms of Service for Trace, including acceptable use, subscriptions, intellectual property, and disclaimers.',
     url: 'https://www.yourtrace.online/terms',
+    type: 'website',
   },
 };
 

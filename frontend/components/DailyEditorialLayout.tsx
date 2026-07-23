@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { getArticleImage } from "@/lib/fallback-images";
+import { ArticleImage } from "@/components/ArticleImage";
 import type { PublicFeedCardItem, PublicTopicCardItem } from "@/components/PublicFeedCard";
 
 /* ─── Helpers ─── */
@@ -56,8 +56,6 @@ function EditorialHeroCard({
   item: EditorItem;
   onClick?: () => void;
 }) {
-  const imgUrl = item.thumbnail ? getArticleImage(item.thumbnail, item.title) : null;
-
   return (
     <button
       type="button"
@@ -65,10 +63,11 @@ function EditorialHeroCard({
       className="block w-full text-left hover:opacity-95 transition-opacity"
     >
       <article className="group">
-        {imgUrl && (
+        {item.thumbnail && (
           <div className="overflow-hidden rounded-xl mb-4">
-            <img
-              src={imgUrl}
+            <ArticleImage
+              thumbnail={item.thumbnail}
+              title={item.title}
               alt=""
               loading="eager"
               decoding="async"
@@ -117,8 +116,6 @@ function EditorialMediumCard({
   item: EditorItem;
   onClick?: () => void;
 }) {
-  const imgUrl = item.thumbnail ? getArticleImage(item.thumbnail, item.title) : null;
-
   return (
     <button
       type="button"
@@ -126,10 +123,11 @@ function EditorialMediumCard({
       className="block w-full text-left hover:opacity-95 transition-opacity"
     >
       <article className="group">
-        {imgUrl && (
+        {item.thumbnail && (
           <div className="overflow-hidden rounded-lg mb-3">
-            <img
-              src={imgUrl}
+            <ArticleImage
+              thumbnail={item.thumbnail}
+              title={item.title}
               alt=""
               loading="lazy"
               decoding="async"

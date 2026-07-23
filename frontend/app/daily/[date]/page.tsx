@@ -29,6 +29,20 @@ function formatDateHeading(iso: string): string {
   }
 }
 
+function formatDateTitle(iso: string): string {
+  try {
+    const d = new Date(`${iso}T00:00:00Z`);
+    return d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
+  } catch {
+    return iso;
+  }
+}
+
 type PageProps = { params: Promise<{ date: string }> };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -38,8 +52,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!feed) return {};
 
   const heading = formatDateHeading(date);
-  const title = `Tech News Digest — ${heading} | ${SITE_NAME}`;
-  const description = `${feed.trending.length} trending stories and ${feed.trendingTopics.length} topic overviews from ${heading}. AI-curated daily tech digest covering AI, startups, engineering, and markets.`;
+  const shortDate = formatDateTitle(date);
+  const title = `Tech News — ${shortDate} | ${SITE_NAME}`;
+  const description = `Daily tech news for ${shortDate}: ${feed.trending.length} stories and ${feed.trendingTopics.length} topic briefings across AI, startups, engineering, and markets.`;
 
   return {
     title,
@@ -62,7 +77,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       url: `${SITE_BASE_URL}/daily/${date}`,
       type: 'article',
       siteName: SITE_NAME,
+      locale: 'en_US',
       publishedTime: `${date}T00:00:00Z`,
+      modifiedTime: `${date}T00:00:00Z`,
       images: [{ url: `${SITE_BASE_URL}/opengraph-image`, width: 1200, height: 630, alt: title }],
     },
     twitter: {
@@ -229,12 +246,12 @@ export default async function DailyArchivePage({ params }: PageProps) {
           <p className="text-[14px] text-[#6b7280] mb-4">
             Want today&apos;s live feed with AI-powered summaries?
           </p>
-          <a
+          <Link
             href="/"
             className="inline-flex items-center rounded-full bg-[#111827] px-6 py-2.5 text-[13px] font-semibold text-white hover:bg-[#1f2937] transition-colors"
           >
             Get Trace Free
-          </a>
+          </Link>
         </div>
       </main>
 

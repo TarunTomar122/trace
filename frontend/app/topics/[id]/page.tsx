@@ -1,8 +1,15 @@
 import { Metadata } from 'next';
+import { cache } from 'react';
 import Script from 'next/script';
 import { notFound } from 'next/navigation';
 import { adminFirestore } from '@/lib/firebase-admin';
 import TopicContent from './TopicContent';
+import {
+  DEFAULT_OG_IMAGE,
+  DEFAULT_OPEN_GRAPH,
+  DEFAULT_TWITTER_IMAGE,
+  metadataTitle,
+} from '@/lib/seo';
 
 export const revalidate = 300;
 
@@ -96,7 +103,11 @@ async function getTopicFromGlobalFeed(
     .doc('_global')
     .collection('daily');
 
-  const snapshot = await globalFeedRef.orderBy('__name__', 'desc').limit(5).get();
+  const snapshot = await globalFeedRef
+    .orderBy('__name__', 'desc')
+    .limit(5)
+    .select('trending_topics')
+    .get();
   if (snapshot.empty) return null;
 
   for (const doc of snapshot.docs) {
@@ -206,7 +217,7 @@ async function getTopicFromTrendingNews(
   };
 }
 
-async function getTopic(id: string): Promise<TopicData | null> {
+async function getTopicUncached(id: string): Promise<TopicData | null> {
   if (!id || !adminFirestore) {
     return null;
   }
@@ -236,6 +247,8 @@ async function getTopic(id: string): Promise<TopicData | null> {
   }
 }
 
+const getTopic = cache(getTopicUncached);
+
 export async function generateMetadata({
   params,
 }: {
@@ -257,7 +270,7 @@ export async function generateMetadata({
   const canonicalUrl = `https://www.yourtrace.online/topics/${topic.topic_key || topic.id}`;
 
   return {
-    title: `${topic.title} | Trace`,
+    title: metadataTitle(topic.title),
     description: topic.summary?.slice(0, 160),
     alternates: {
       canonical: canonicalUrl,
@@ -267,13 +280,13 @@ export async function generateMetadata({
       description: topic.summary?.slice(0, 160),
       type: 'article',
       url: canonicalUrl,
-      images: topic.thumbnail ? [topic.thumbnail] : undefined,
+      ...DEFAULT_OPEN_GRAPH,
     },
     twitter: {
       card: 'summary_large_image',
       title: topic.title,
       description: topic.summary?.slice(0, 160),
-      images: topic.thumbnail ? [topic.thumbnail] : undefined,
+      images: [DEFAULT_TWITTER_IMAGE],
     },
     robots: {
       index: true,
@@ -300,7 +313,7 @@ export default async function TopicPage({
     '@type': 'Article',
     headline: topic.title,
     description: topic.summary,
-    image: topic.thumbnail || undefined,
+    image: DEFAULT_OG_IMAGE.url,
     mainEntityOfPage: canonicalUrl,
     publisher: {
       '@type': 'Organization',

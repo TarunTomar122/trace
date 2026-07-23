@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import { useCasesContent } from "../content";
+import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE } from "@/lib/seo";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -25,6 +26,7 @@ export async function generateMetadata({
     description: page.shortDescription,
     alternates: { canonical: url },
     openGraph: {
+      ...DEFAULT_OPEN_GRAPH,
       title: `${page.title} | Trace Use Cases`,
       description: page.shortDescription,
       url,
@@ -35,6 +37,7 @@ export async function generateMetadata({
       card: "summary_large_image",
       title: `${page.title} | Trace Use Cases`,
       description: page.shortDescription,
+      images: [DEFAULT_TWITTER_IMAGE],
     },
   };
 }
@@ -121,6 +124,15 @@ export default async function UseCaseDetailPage({ params }: PageProps) {
                 </ul>
               </div>
             </div>
+          </section>
+
+          <section className="mt-10 max-w-3xl">
+            <h2 className="text-xl font-semibold text-[#111827]">What changes day to day</h2>
+            <p className="mt-3 text-sm leading-relaxed text-[#6b7280]">
+              Instead of checking the same publications and community feeds separately,
+              you start with one ordered brief. Related coverage stays grouped, source links
+              remain available, and the topics most relevant to this role move to the front.
+            </p>
           </section>
 
           <section className="mt-10 rounded-[1.5rem] bg-[#111827] p-8 text-white">

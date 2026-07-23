@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, Clock, Calendar } from "lucide-react";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
+import { ArticleImage } from "@/components/ArticleImage";
 import { blogPosts } from "./content";
 import { standaloneBlogPosts } from "./standalone-content";
 import { generateCollectionPageSchema, SITE_BASE_URL } from "@/lib/seo";
@@ -93,9 +94,9 @@ export default function BlogPage() {
           >
             <div className="grid md:grid-cols-2">
               <div className="relative aspect-[16/10] md:aspect-auto overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={featuredPost.image}
+                <ArticleImage
+                  thumbnail={featuredPost.image}
+                  title={featuredPost.title}
                   alt={featuredPost.title}
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
                 />
@@ -159,9 +160,9 @@ export default function BlogPage() {
                 className="group landing-card flex flex-col overflow-hidden transition-all hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]"
               >
                 <div className="relative aspect-[16/10] overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={post.image}
+                  <ArticleImage
+                    thumbnail={post.image}
+                    title={post.title}
                     alt={post.title}
                     className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                     loading="lazy"

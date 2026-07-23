@@ -81,7 +81,7 @@ export default function LandingPageClient({
   const priceDisplay = indiaPricing ? SUBSCRIPTION_PRICE_INDIA : SUBSCRIPTION_PRICE_DEFAULT;
   const compareAtPriceDisplay = indiaPricing ? null : SUBSCRIPTION_COMPARE_AT_DEFAULT;
 
-  if (loading || (user && !profileResolved) || user) return <div className="min-h-screen bg-[#faf9f5]" />;
+  if (user) return <div className="min-h-screen bg-[#faf9f5]" />;
 
   return (
     <div className="min-h-screen bg-[#faf9f5] text-[#1b1a17]">

@@ -2,14 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
+import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Resources for Tech Readers | Guides, Tools & Comparisons | Trace",
+  title: "Tech Reading Resources, Guides & Comparisons | Trace",
   description:
     "Guides, tools, comparisons, and templates to help you build a better tech reading workflow.",
   alternates: { canonical: "https://www.yourtrace.online/resources" },
   openGraph: {
-    title: "Resources for Tech Readers | Guides, Tools & Comparisons | Trace",
+    ...DEFAULT_OPEN_GRAPH,
+    title: "Tech Reading Resources, Guides & Comparisons | Trace",
     description:
       "Guides, tools, comparisons, and templates for building a better tech reading workflow.",
     url: "https://www.yourtrace.online/resources",
@@ -18,9 +20,10 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Resources for Tech Readers | Guides, Tools & Comparisons | Trace",
+    title: "Tech Reading Resources, Guides & Comparisons | Trace",
     description:
       "Guides, tools, comparisons, and templates for building a better tech reading workflow.",
+    images: [DEFAULT_TWITTER_IMAGE],
   },
 };
 
