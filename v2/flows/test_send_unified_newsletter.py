@@ -28,7 +28,8 @@ class UnifiedNewsletterRenderTests(unittest.TestCase):
             SAMPLE_STORIES,
             "See you tomorrow.",
         )
-        self.assertIn("Open in Trace", html)
+        self.assertIn('href="https://www.yourtrace.online/articles/tr_example"', html)
+        self.assertNotIn("Open in Trace", html)
         self.assertIn("A &lt;script&gt; test title", html)
         self.assertNotIn("A <script> test title", html)
 

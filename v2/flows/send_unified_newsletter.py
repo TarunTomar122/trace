@@ -142,15 +142,6 @@ def _render_stories_html(stories: list[dict[str, Any]], sign_off: str) -> str:
             else:
                 image_html = img_tag
 
-        open_story = (
-            f'<a href="{escape(url)}" style="display: inline-block; color: #111111; '
-            'font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; '
-            'font-size: 13px; font-weight: 700; line-height: 1; text-decoration: none; '
-            'background-color: #f1f1ef; border-radius: 999px; padding: 10px 14px;">'
-            'Open in Trace&nbsp;&nbsp;↗</a>'
-            if url
-            else ""
-        )
         featured_image = (
             f'<tr><td style="padding: 0 0 18px 0;">{image_html}</td></tr>' if image_html else ""
         )
@@ -164,7 +155,7 @@ def _render_stories_html(stories: list[dict[str, Any]], sign_off: str) -> str:
             f'<p style="margin: 0 0 16px 0; color: #111111; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size: 26px; font-weight: 750; letter-spacing: -0.7px; line-height: 1.13;">{title_html}</p>'
             '</td></tr>'
             f'{featured_image}'
-            f'<tr><td>{body_html}{open_story}</td></tr>'
+            f'<tr><td>{body_html}</td></tr>'
             '</table></td></tr></table>'
         )
 
