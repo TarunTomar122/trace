@@ -186,14 +186,6 @@
       "title_keywords": ["AI", "ai", "developer", "survey", "programming", "engineering", "software", "open source", "llm", "model", "agent"]
     },
     {
-      "interest_id": "tech",
-      "name": "Cloudflare Blog",
-      "url": "https://blog.cloudflare.com/rss/",
-      "type": "rss",
-      "source_weight": 1.1,
-      "exclude_title_keywords": ["webinar", "event", "hiring"]
-    },
-    {
       "interest_id": "startups",
       "name": "Crunchbase News",
       "url": "https://news.crunchbase.com/feed/",
@@ -203,18 +195,27 @@
     },
     {
       "interest_id": "tech",
-      "name": "Rest of World",
-      "url": "https://restofworld.org/feed/latest/",
+      "name": "BBC Technology",
+      "url": "https://feeds.bbci.co.uk/news/technology/rss.xml",
       "type": "rss",
-      "source_weight": 1.15
+      "source_weight": 1.15,
+      "exclude_title_keywords": ["live:", "watch:", "podcast"]
     },
     {
       "interest_id": "tech",
-      "name": "NVIDIA Technical Blog",
-      "url": "https://developer.nvidia.com/blog/feed/",
-      "type": "atom",
+      "name": "404 Media",
+      "url": "https://www.404media.co/rss/",
+      "type": "rss",
+      "source_weight": 1.15,
+      "exclude_title_keywords": ["podcast", "newsletter", "sponsored"]
+    },
+    {
+      "interest_id": "tech",
+      "name": "SecurityWeek Malware & Threats",
+      "url": "https://www.securityweek.com/category/malware-cyber-threats/feed/",
+      "type": "rss",
       "source_weight": 1.1,
-      "exclude_title_keywords": ["course", "certification", "training"]
+      "exclude_title_keywords": ["webinar", "podcast", "sponsored", "how to", "tutorial"]
     }
   ]
 }

@@ -16,26 +16,32 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = REPO_ROOT / "v3/config/trending_sources.json"
 
 EXPECTED_SOURCES = {
-    "Cloudflare Blog": {
-        "url": "https://blog.cloudflare.com/rss/",
-        "type": "rss",
-        "interest_id": "tech",
-    },
     "Crunchbase News": {
         "url": "https://news.crunchbase.com/feed/",
         "type": "rss",
         "interest_id": "startups",
     },
-    "Rest of World": {
-        "url": "https://restofworld.org/feed/latest/",
+    "BBC Technology": {
+        "url": "https://feeds.bbci.co.uk/news/technology/rss.xml",
         "type": "rss",
         "interest_id": "tech",
     },
-    "NVIDIA Technical Blog": {
-        "url": "https://developer.nvidia.com/blog/feed/",
-        "type": "atom",
+    "404 Media": {
+        "url": "https://www.404media.co/rss/",
+        "type": "rss",
         "interest_id": "tech",
     },
+    "SecurityWeek Malware & Threats": {
+        "url": "https://www.securityweek.com/category/malware-cyber-threats/feed/",
+        "type": "rss",
+        "interest_id": "tech",
+    },
+}
+
+REJECTED_SOURCES = {
+    "Cloudflare Blog",
+    "NVIDIA Technical Blog",
+    "Rest of World",
 }
 
 
@@ -71,6 +77,7 @@ class TrendingSourceConfigTests(unittest.TestCase):
         by_name = {source["name"]: source for source in sources}
 
         self.assertEqual(len(by_name), len(sources))
+        self.assertTrue(REJECTED_SOURCES.isdisjoint(by_name))
         self.assertEqual(
             len({source["url"] for source in sources}),
             len(sources),
