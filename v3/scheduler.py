@@ -61,9 +61,9 @@ JOBS = {
         "description": "Build daily newsletter from trending feed",
     },
     "newsletter_send": {
-        "module": "v2.flows.send_unified_newsletter",
+        "module": "v3.flows.send_three_feed_newsletter",
         "pool_cadence_days": 0,
-        "description": "Send daily newsletter to subscribed users",
+        "description": "Send each opted-in user their personalized daily brief",
     },
 }
 
@@ -370,7 +370,9 @@ def main() -> None:
         if nl_date:
             nl_build_args.extend(["--date", nl_date])
 
-        if run_all or "newsletter" in requested or "newsletter_build" in requested:
+        # Unified newsletter generation remains available as an explicit legacy job.
+        # The normal daily newsletter uses each user's already-built v3 feed.
+        if "newsletter_build" in requested:
             _log("--- Build newsletter ---")
             nl_rc = _run_module(JOBS["newsletter_build"]["module"], nl_build_args)
             if nl_rc != 0:
@@ -379,7 +381,12 @@ def main() -> None:
 
         if run_all or "newsletter" in requested or "newsletter_send" in requested:
             _log("--- Send newsletter ---")
-            nl_send_args = list(nl_build_args)
+            nl_send_args = []
+            if nl_date:
+                nl_send_args.extend(["--date", nl_date])
+            if args.user_id:
+                nl_send_args.extend(["--user-id", args.user_id])
+            nl_send_args.extend(["--audience", args.audience])
             nl_send_rc = _run_module(JOBS["newsletter_send"]["module"], nl_send_args)
             if nl_send_rc != 0:
                 _log(f"ERROR: newsletter send exited with code {nl_send_rc}")

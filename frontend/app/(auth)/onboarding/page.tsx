@@ -2,7 +2,7 @@
 
 import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Check, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Check, ArrowLeft, ArrowRight, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -11,7 +11,12 @@ import {
   ONBOARDING_INTERESTS,
 } from '@/lib/firestore';
 import { isAlphaMode } from '@/lib/alpha';
-import { trackOnboardingStarted, trackOnboardingStepCompleted, trackOnboardingCompleted } from '@/lib/posthog';
+import {
+  trackDailyBriefPreferenceChanged,
+  trackOnboardingStarted,
+  trackOnboardingStepCompleted,
+  trackOnboardingCompleted,
+} from '@/lib/posthog';
 
 const TOTAL_STEPS = 2;
 const PENDING_ONBOARDING_KEY = 'trace_pending_onboarding';
@@ -29,6 +34,7 @@ function OnboardingPageContent() {
   const [step, setStep] = useState(1);
   const [role, setRole] = useState('');
   const [interests, setInterests] = useState<string[]>([]);
+  const [dailyBriefEnabled, setDailyBriefEnabled] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasTracked, setHasTracked] = useState(false);
   const checkoutIntent = searchParams.get('intent') === 'checkout';
@@ -59,12 +65,14 @@ function OnboardingPageContent() {
             seniority: 'mid',
             interests: pending.interests,
             careerGoals: [],
+            dailyNewsletterEnabled: pending.dailyBriefEnabled === true,
           })
             .then(() => {
               trackOnboardingCompleted({
                 interests_count: pending.interests.length,
                 hobbies_count: 0,
                 role: pending.role,
+                daily_brief_enabled: pending.dailyBriefEnabled === true,
               });
               return refreshProfile();
             })
@@ -125,13 +133,20 @@ function OnboardingPageContent() {
       seniority: 'mid',
       interests,
       careerGoals: [],
+      dailyNewsletterEnabled: dailyBriefEnabled,
     });
-    trackOnboardingCompleted({ interests_count: interests.length, hobbies_count: 0, role });
+    trackOnboardingCompleted({
+      interests_count: interests.length,
+      hobbies_count: 0,
+      role,
+      daily_brief_enabled: dailyBriefEnabled,
+    });
     await refreshProfile();
     router.push(checkoutIntent ? '/profile?tab=subscription&intent=checkout' : '/feed');
   };
 
   const handleSignInAndComplete = async () => {
+    if (!canContinue) return;
     setIsSubmitting(true);
 
     if (user) {
@@ -146,7 +161,7 @@ function OnboardingPageContent() {
 
     localStorage.setItem(
       PENDING_ONBOARDING_KEY,
-      JSON.stringify({ role, interests, checkoutIntent }),
+      JSON.stringify({ role, interests, checkoutIntent, dailyBriefEnabled }),
     );
 
     const result = await signInWithGoogle(checkoutIntent ? 'checkout' : 'read');
@@ -270,6 +285,37 @@ function OnboardingPageContent() {
                   {interests.length < 3 ? ` · pick ${3 - interests.length} more` : interests.length === 5 ? ' (max)' : ''}
                 </p>
               )}
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={dailyBriefEnabled}
+                onClick={() => {
+                  const enabled = !dailyBriefEnabled;
+                  setDailyBriefEnabled(enabled);
+                  trackDailyBriefPreferenceChanged(enabled, 'onboarding');
+                }}
+                className={`mt-8 flex w-full items-start gap-4 border p-4 text-left transition-colors ${
+                  dailyBriefEnabled
+                    ? 'border-[#2557d6] bg-[#f3f6ff]'
+                    : 'border-[#e4e1d8] bg-transparent hover:bg-[#f5f3ed]'
+                }`}
+              >
+                <span
+                  className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center border ${
+                    dailyBriefEnabled ? 'border-[#2557d6] bg-[#2557d6] text-white' : 'border-[#b8b3a6]'
+                  }`}
+                >
+                  {dailyBriefEnabled ? <Check size={12} /> : <Mail size={12} />}
+                </span>
+                <span>
+                  <span className="block text-sm font-semibold text-[#111827]">
+                    Email me my personal edition each morning
+                  </span>
+                  <span className="mt-1 block text-xs leading-relaxed landing-muted">
+                    One brief based on these beats. Optional, and you can unsubscribe anytime.
+                  </span>
+                </span>
+              </button>
             </div>
           )}
 
@@ -304,7 +350,7 @@ function OnboardingPageContent() {
             <button
               type="button"
               onClick={handleSignInAndComplete}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !canContinue}
               className="landing-btn landing-btn-primary landing-btn-lg flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSubmitting ? (

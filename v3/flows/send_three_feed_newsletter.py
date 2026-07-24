@@ -26,6 +26,7 @@ if str(REPO_ROOT) not in sys.path:
 load_dotenv(REPO_ROOT / ".env")
 
 from v1.storage import FirestoreStore  # noqa: E402
+from v1.newsletter_preferences import is_newsletter_enabled  # noqa: E402
 from v1.tools.brevo_client import send_newsletter_email  # noqa: E402
 from v3.lib.store import V3Store  # noqa: E402
 
@@ -34,7 +35,6 @@ SECTION_SPECS = [
     ("for_you", "For You", 4, "#f59e0b"),
     ("deep_dives", "Deep Dives", 2, "#0ea5e9"),
 ]
-
 
 def _today_ist() -> str:
     ist = timezone(timedelta(hours=5, minutes=30))
@@ -255,9 +255,9 @@ def send_three_feed_newsletter(
     for row in recipients:
         uid = row["uid"]
 
-        # Skip users who opted out of daily newsletter
+        # Missing preference is not consent. Legacy newsletterOptIn=true remains valid.
         profile = store.get_user_profile(uid) or {}
-        if profile.get("dailyNewsletterEnabled") is False:
+        if not is_newsletter_enabled(profile):
             skipped += 1
             continue
 

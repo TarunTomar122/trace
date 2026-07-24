@@ -6,9 +6,11 @@
  * State toggles via URL: ?tier=free|pro, ?img=on.
  */
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import type { V3UserFeed } from '@/lib/firestore';
-import { PAPER, buildEditionModel, editionSerif } from './edition-shared';
+import { trackFeedViewed } from '@/lib/posthog';
+import { useAuth } from '@/contexts/AuthContext';
+import { PAPER, buildEditionModel, buildPulseEdition, editionSerif } from './edition-shared';
 import FeedEdition from './FeedEdition';
 import PulseEdition from './PulseEdition';
 import PrototypeToggles from './PrototypeSwitcher';
@@ -32,11 +34,31 @@ export default function EditionPrototype({
 }) {
   const effectiveIsPro = tier === 'pro' ? true : tier === 'free' ? false : isPro;
   const showImages = img !== 'off';
+  const { user, loading: authLoading } = useAuth();
 
   const model = useMemo(
     () => buildEditionModel(initialFeed, effectiveIsPro, dateLabel, showImages),
     [initialFeed, effectiveIsPro, dateLabel, showImages],
   );
+  const trackedView = useRef<string | null>(null);
+  const itemCount = view === 'pulse'
+    ? buildPulseEdition(initialFeed).reduce((total, section) => total + section.items.length, 0)
+    : model.edition.totalCount;
+
+  useEffect(() => {
+    if (authLoading || itemCount === 0) return;
+    const audience = user ? 'authenticated' : 'guest';
+    const trackingKey = `${dateLabel}:${view}:${effectiveIsPro ? 'pro' : 'free'}:${audience}`;
+    if (trackedView.current === trackingKey) return;
+    trackedView.current = trackingKey;
+    trackFeedViewed(
+      itemCount,
+      !effectiveIsPro,
+      view,
+      effectiveIsPro ? 'pro' : 'free',
+      audience,
+    );
+  }, [authLoading, dateLabel, effectiveIsPro, itemCount, user, view]);
 
   return (
     <div className={`${editionSerif.variable} min-h-screen`} style={{ background: PAPER }}>

@@ -16,6 +16,7 @@ export type AuthSessionCachePayload = {
   interests: string[];
   subscriptionStatus: UserProfile['subscriptionStatus'];
   appSubscriptionStatus?: UserProfile['appSubscriptionStatus'];
+  dailyNewsletterEnabled?: boolean;
   updatedAt: string;
 };
 
@@ -32,6 +33,7 @@ export type AuthSessionCachePatch = Partial<
     | 'interests'
     | 'subscriptionStatus'
     | 'appSubscriptionStatus'
+    | 'dailyNewsletterEnabled'
   >
 >;
 
@@ -94,6 +96,7 @@ export function optimisticProfileFromCache(user: User, cached: AuthSessionCacheP
     interests: normalizedInterests,
     subscriptionStatus: cached.subscriptionStatus ?? 'none',
     appSubscriptionStatus: cached.appSubscriptionStatus,
+    dailyNewsletterEnabled: cached.dailyNewsletterEnabled,
   };
 }
 
@@ -170,6 +173,7 @@ export function writeAuthSessionCache(user: User, profile: UserProfile): void {
       interests: Array.isArray(profile.interests) ? profile.interests : [],
       subscriptionStatus: profile.subscriptionStatus ?? 'none',
       appSubscriptionStatus: profile.appSubscriptionStatus,
+      dailyNewsletterEnabled: profile.dailyNewsletterEnabled,
       updatedAt: new Date().toISOString(),
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));

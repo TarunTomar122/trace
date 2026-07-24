@@ -4,6 +4,14 @@ import posthog from "posthog-js";
 import { PostHogProvider as PHProvider } from "posthog-js/react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, Suspense } from "react";
+import {
+  FEED_EVENTS,
+  dailyBriefPreferenceProperties,
+  feedViewedProperties,
+  storyInteractionProperties,
+  type FeedTier,
+  type FeedView,
+} from "@/lib/feed-analytics";
 
 // Initialize PostHog only on client side
 if (typeof window !== "undefined") {
@@ -78,37 +86,96 @@ export function resetUser() {
 
 // Auth events
 export function trackSignIn(method: "google" | "email" = "google") {
-  posthog.capture("user_signed_in", { method });
+  posthog.capture("user_signed_in", { method, surface: "web" });
+}
+
+export function trackSignUp(method: "google" | "email" = "google") {
+  posthog.capture("user_signed_up", { method, surface: "web" });
 }
 
 export function trackSignOut() {
-  posthog.capture("user_signed_out");
+  posthog.capture("user_signed_out", { surface: "web" });
 }
 
 // Onboarding events
 export function trackOnboardingStarted() {
-  posthog.capture("onboarding_started");
+  posthog.capture("onboarding_started", { surface: "web" });
 }
 
 export function trackOnboardingStepCompleted(step: number, stepName: string) {
-  posthog.capture("onboarding_step_completed", { step, step_name: stepName });
+  posthog.capture("onboarding_step_completed", { step, step_name: stepName, surface: "web" });
 }
 
 export function trackOnboardingCompleted(data: {
   interests_count: number;
   hobbies_count: number;
   role?: string;
+  daily_brief_enabled?: boolean;
 }) {
-  posthog.capture("onboarding_completed", data);
+  posthog.capture("onboarding_completed", { ...data, surface: "web" });
 }
 
 // Feed events
-export function trackFeedViewed(itemCount: number, isPreview?: boolean) {
-  posthog.capture("feed_viewed", { item_count: itemCount, is_preview: isPreview });
+export function trackFeedViewed(
+  itemCount: number,
+  isPreview = false,
+  view: FeedView = "edition",
+  tier: FeedTier = isPreview ? "free" : "pro",
+  audience: "guest" | "authenticated" = "authenticated",
+) {
+  posthog.capture(
+    FEED_EVENTS.viewed,
+    feedViewedProperties({ itemCount, isPreview, view, tier, audience }),
+  );
+}
+
+export function trackFeedStoryExpanded(input: {
+  itemId: string;
+  itemType: string;
+  source?: string;
+  position: number;
+  section: string;
+  tier: FeedTier;
+}) {
+  posthog.capture(FEED_EVENTS.storyExpanded, storyInteractionProperties(input));
+}
+
+export function trackFeedSourceClicked(input: {
+  itemId: string;
+  itemType: string;
+  source?: string;
+  position: number;
+  section: string;
+  tier: FeedTier;
+}) {
+  posthog.capture(FEED_EVENTS.sourceClicked, storyInteractionProperties(input));
+}
+
+export function trackFeedFilterChanged(filter: string, previousFilter: string) {
+  posthog.capture(FEED_EVENTS.filterChanged, {
+    surface: "web",
+    filter,
+    previous_filter: previousFilter,
+  });
+}
+
+export function trackDailyBriefPreferenceChanged(
+  enabled: boolean,
+  location: "onboarding" | "feed" | "profile",
+) {
+  posthog.capture(
+    FEED_EVENTS.dailyBriefPreferenceChanged,
+    dailyBriefPreferenceProperties({ enabled, location }),
+  );
 }
 
 export function trackFeedItemClicked(itemId: string, itemType: string, source: string) {
-  posthog.capture("feed_item_clicked", { item_id: itemId, item_type: itemType, source });
+  posthog.capture("feed_item_clicked", {
+    item_id: itemId,
+    item_type: itemType,
+    source,
+    surface: "web",
+  });
 }
 
 export function trackFeedItemUpvoted(itemId: string, itemType: string) {

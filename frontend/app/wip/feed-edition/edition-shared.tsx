@@ -8,10 +8,17 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Check, Layers3, LineChart, Link2, ListChecks, Smartphone, Sparkles } from 'lucide-react';
+import { Check, Layers3, LineChart, Link2, ListChecks, Mail, Smartphone, Sparkles } from 'lucide-react';
 import { Newsreader } from 'next/font/google';
+import { updateUserProfile } from '@/lib/firestore';
 import type { V3UserFeed, FeedItem, TrendingTopic } from '@/lib/firestore';
 import { buildArticleShareUrl, copyOrShareUrl, SHARE_SITE_ORIGIN } from '@/lib/article-share';
+import {
+  trackCheckoutClicked,
+  trackDailyBriefPreferenceChanged,
+  trackFeedSourceClicked,
+  trackPaywallShown,
+} from '@/lib/posthog';
 import {
   decodeHtml,
   getArticleSummary,
@@ -572,9 +579,15 @@ function getExpandedContent(item: FeedListItem): ExpandedContent {
 export function ExpandedStory({
   item,
   showImages = false,
+  tracking,
 }: {
   item: FeedListItem;
   showImages?: boolean;
+  tracking: {
+    position: number;
+    section: string;
+    tier: 'free' | 'pro';
+  };
 }) {
   const content = getExpandedContent(item);
   return (
@@ -613,6 +626,14 @@ export function ExpandedStory({
                 href={s.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => trackFeedSourceClicked({
+                  itemId: item.id,
+                  itemType: item.type,
+                  source: s.name,
+                  position: tracking.position,
+                  section: tracking.section,
+                  tier: tracking.tier,
+                })}
                 className="font-mono text-[11.5px] uppercase tracking-[0.08em] underline decoration-[0.5px] underline-offset-4"
                 style={{ color: BLUE }}
               >
@@ -685,6 +706,18 @@ export function ProEditionNote({
   visibleCount: number;
   totalCount: number;
 }) {
+  const tracked = React.useRef(false);
+
+  React.useEffect(() => {
+    if (tracked.current) return;
+    tracked.current = true;
+    trackPaywallShown('feed_edition', {
+      surface: 'web',
+      visible_count: visibleCount,
+      total_count: totalCount,
+    });
+  }, [totalCount, visibleCount]);
+
   return (
     <aside className="mt-10 border bg-[#f3f6ff] px-6 py-7 sm:px-8" style={{ borderColor: '#d5def8' }}>
       <MonoLabel>Pro · The full edition</MonoLabel>
@@ -698,6 +731,11 @@ export function ProEditionNote({
       <div className="mt-5 flex flex-wrap items-center gap-x-8 gap-y-3">
         <a
           href="/onboarding?intent=checkout"
+          onClick={() => trackCheckoutClicked('feed_edition', {
+            surface: 'web',
+            visible_count: visibleCount,
+            total_count: totalCount,
+          })}
           className="inline-block px-6 py-3 text-[13.5px] font-semibold text-white"
           style={{ background: BLUE }}
         >
@@ -706,6 +744,73 @@ export function ProEditionNote({
         <span className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: MUTED }}>
           Cancel anytime
         </span>
+      </div>
+    </aside>
+  );
+}
+
+/** Makes the next-day return loop explicit without interrupting the edition. */
+export function DailyBriefNote() {
+  const { user, profile, profileResolved, refreshProfile } = useAuth();
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  if (!user || !profileResolved || !profile?.updatedAt) return null;
+
+  const enabled = profile.dailyNewsletterEnabled === true || profile.newsletterOptIn === true;
+  const enableDailyBrief = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      await updateUserProfile(user.uid, {
+        dailyNewsletterEnabled: true,
+        newsletterOptIn: true,
+      });
+      trackDailyBriefPreferenceChanged(true, 'feed');
+      await refreshProfile();
+    } catch {
+      setError('Could not save that preference. Try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <aside className="mt-16 border-y py-8" style={{ borderColor: HAIRLINE }}>
+      <div className="flex items-start gap-4">
+        <Mail className="mt-1 shrink-0" size={18} strokeWidth={1.6} style={{ color: BLUE }} />
+        <div className="min-w-0 flex-1">
+          <MonoLabel>Tomorrow&rsquo;s edition</MonoLabel>
+          {enabled ? (
+            <>
+              <p className={`${editionSerif.className} mt-3 text-[22px] leading-[1.4]`} style={{ color: INK }}>
+                Your next personal brief will land in {user.email || 'your inbox'}.
+              </p>
+              <Link href="/profile" className="mt-3 inline-block text-[12px] font-semibold underline underline-offset-4" style={{ color: MUTED }}>
+                Manage email
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className={`${editionSerif.className} mt-3 max-w-[560px] text-[22px] leading-[1.4]`} style={{ color: INK }}>
+                Get your personal edition by email each morning.
+              </p>
+              <p className="mt-2 text-[13px] leading-[1.65]" style={{ color: MUTED }}>
+                One brief based on your beats. Unsubscribe anytime.
+              </p>
+              <button
+                type="button"
+                onClick={enableDailyBrief}
+                disabled={saving}
+                className="mt-5 px-5 py-2.5 text-[13px] font-semibold text-white disabled:opacity-50"
+                style={{ background: BLUE }}
+              >
+                {saving ? 'Saving…' : 'Email me tomorrow’s edition'}
+              </button>
+              {error && <p className="mt-2 text-[12px] text-[#a33]">{error}</p>}
+            </>
+          )}
+        </div>
       </div>
     </aside>
   );

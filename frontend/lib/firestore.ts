@@ -766,6 +766,8 @@ export async function createUserProfile(
     utmSource: null,
     utmCampaign: null,
     utmMedium: null,
+    newsletterOptIn: false,
+    dailyNewsletterEnabled: false,
     timezone,
     locale,
     createdAt: serverTimestamp() as Timestamp,
@@ -807,6 +809,7 @@ export async function completeOnboarding(
       discussions: number;
     };
     contentDepth?: 'quick' | 'deep' | 'surprise' | null;
+    dailyNewsletterEnabled?: boolean;
   }
 ): Promise<void> {
   try {
@@ -819,6 +822,7 @@ export async function completeOnboarding(
     await setDoc(docRef, {
       ...cleanData,
       uid,
+      newsletterOptIn: data.dailyNewsletterEnabled === true,
       onboarded: true,
       feedBuildStatus: 'building',
       feedBuildRequestedAt: serverTimestamp(),
@@ -845,6 +849,7 @@ export async function completeOnboarding(
         role: data.role || '',
         interests: data.interests,
         name: data.name,
+        dailyNewsletterEnabled: data.dailyNewsletterEnabled,
       });
     }
   } catch (error) {
@@ -910,6 +915,9 @@ export async function updateUserProfile(
       }
       if (data.appSubscriptionStatus !== undefined) {
         patch.appSubscriptionStatus = data.appSubscriptionStatus;
+      }
+      if (data.dailyNewsletterEnabled !== undefined) {
+        patch.dailyNewsletterEnabled = data.dailyNewsletterEnabled;
       }
       if (Object.keys(patch).length > 0) {
         patchAuthSessionCache(uid, u, patch);
