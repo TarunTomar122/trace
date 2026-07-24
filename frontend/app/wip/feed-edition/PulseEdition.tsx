@@ -70,7 +70,19 @@ function SignalCard({ item }: { item: FeedListItem }) {
   );
 }
 
-function LockedSignalPreview({ item, remaining }: { item: FeedListItem; remaining: number }) {
+function LockedSignalPreview({
+  item,
+  remaining,
+  accessPending,
+  accessVerificationFailed,
+  onRetryAccess,
+}: {
+  item: FeedListItem;
+  remaining: number;
+  accessPending: boolean;
+  accessVerificationFailed: boolean;
+  onRetryAccess: () => Promise<unknown>;
+}) {
   return (
     <div className="relative overflow-hidden border-t" style={{ borderColor: HAIRLINE }}>
       <div className="pointer-events-none select-none opacity-35 blur-[4px]" aria-hidden="true">
@@ -78,16 +90,32 @@ function LockedSignalPreview({ item, remaining }: { item: FeedListItem; remainin
       </div>
       <div className="absolute inset-0 flex items-end bg-gradient-to-b from-transparent via-[#faf9f5]/45 to-[#faf9f5]/95 px-5 py-5">
         <div>
-          <MonoLabel>Trace Pro</MonoLabel>
+          <MonoLabel>{accessPending ? 'Access check' : 'Trace Pro'}</MonoLabel>
           <p className={`${editionSerif.className} mt-2 text-[21px] leading-[1.2]`} style={{ color: INK }}>
-            {remaining} more signal{remaining === 1 ? '' : 's'} in this desk.
+            {accessPending
+              ? accessVerificationFailed
+                ? 'Trace could not verify your subscription.'
+                : 'Checking your subscription before opening this desk.'
+              : `${remaining} more signal${remaining === 1 ? '' : 's'} in this desk.`}
           </p>
-          <a
-            href="/onboarding?intent=checkout"
-            className="mt-3 inline-block text-[12px] font-semibold text-[#2557d6] hover:underline"
-          >
-            Unlock the full Pulse
-          </a>
+          {accessPending ? (
+            accessVerificationFailed && (
+              <button
+                type="button"
+                onClick={() => void onRetryAccess()}
+                className="mt-3 inline-block text-[12px] font-semibold text-[#2557d6] hover:underline"
+              >
+                Retry access check
+              </button>
+            )
+          ) : (
+            <a
+              href="/onboarding?intent=checkout"
+              className="mt-3 inline-block text-[12px] font-semibold text-[#2557d6] hover:underline"
+            >
+              Unlock the full Pulse
+            </a>
+          )}
         </div>
       </div>
     </div>
@@ -98,10 +126,16 @@ function SignalSection({
   section,
   index,
   isPro,
+  accessPending,
+  accessVerificationFailed,
+  onRetryAccess,
 }: {
   section: PulseEditionSection;
   index: number;
   isPro: boolean;
+  accessPending: boolean;
+  accessVerificationFailed: boolean;
+  onRetryAccess: () => Promise<unknown>;
 }) {
   const Icon = SECTION_ICON[section.id];
   const visibleItems = isPro ? section.items : section.items.slice(0, 1);
@@ -134,14 +168,34 @@ function SignalSection({
           </div>
         ))}
         {!isPro && hiddenCount > 0 && (
-          <LockedSignalPreview item={section.items[visibleItems.length]} remaining={hiddenCount} />
+          <LockedSignalPreview
+            item={section.items[visibleItems.length]}
+            remaining={hiddenCount}
+            accessPending={accessPending}
+            accessVerificationFailed={accessVerificationFailed}
+            onRetryAccess={onRetryAccess}
+          />
         )}
       </div>
     </section>
   );
 }
 
-export default function PulseEdition({ feed, dateLabel, isPro }: { feed: V3UserFeed | null; dateLabel: string; isPro: boolean }) {
+export default function PulseEdition({
+  feed,
+  dateLabel,
+  isPro,
+  accessPending = false,
+  accessVerificationFailed = false,
+  onRetryAccess = async () => {},
+}: {
+  feed: V3UserFeed | null;
+  dateLabel: string;
+  isPro: boolean;
+  accessPending?: boolean;
+  accessVerificationFailed?: boolean;
+  onRetryAccess?: () => Promise<unknown>;
+}) {
   const sections = buildPulseEdition(feed).filter((section) => section.items.length > 0);
   const totalSignals = sections.reduce((total, section) => total + section.items.length, 0);
   const [conversations, ...referenceDesks] = sections;
@@ -167,11 +221,28 @@ export default function PulseEdition({ feed, dateLabel, isPro }: { feed: V3UserF
 
       {sections.length > 0 ? (
         <div>
-          {conversations && <SignalSection section={conversations} index={1} isPro={isPro} />}
+          {conversations && (
+            <SignalSection
+              section={conversations}
+              index={1}
+              isPro={isPro}
+              accessPending={accessPending}
+              accessVerificationFailed={accessVerificationFailed}
+              onRetryAccess={onRetryAccess}
+            />
+          )}
           {referenceDesks.length > 0 && (
             <div className="mt-14 space-y-14">
               {referenceDesks.map((section, index) => (
-                <SignalSection key={section.id} section={section} index={index + 2} isPro={isPro} />
+                <SignalSection
+                  key={section.id}
+                  section={section}
+                  index={index + 2}
+                  isPro={isPro}
+                  accessPending={accessPending}
+                  accessVerificationFailed={accessVerificationFailed}
+                  onRetryAccess={onRetryAccess}
+                />
               ))}
             </div>
           )}

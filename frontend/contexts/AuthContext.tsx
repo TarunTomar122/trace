@@ -1,7 +1,6 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
 import { 
   User,
   onIdTokenChanged,
@@ -16,6 +15,7 @@ import { readAffiliateAttribution } from '@/lib/affiliate';
 import { identifyUser, resetUser, trackSignIn, trackSignOut } from '@/lib/posthog';
 import {
   clearAuthSessionCache,
+  isAuthSessionCacheFresh,
   optimisticProfileFromCache,
   readAuthSessionCache,
   writeAuthSessionCache,
@@ -34,9 +34,11 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   profileResolved: boolean;
+  profileFresh: boolean;
+  profileRefreshFailed: boolean;
   signInWithGoogle: (intent?: SignInIntent, options?: { rememberIntent?: boolean }) => Promise<SignInResult>;
   signOut: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
+  refreshProfile: () => Promise<UserProfile | null>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -44,9 +46,11 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   loading: true,
   profileResolved: false,
+  profileFresh: false,
+  profileRefreshFailed: false,
   signInWithGoogle: async () => ({ status: 'cancelled', intent: 'read' }),
   signOut: async () => {},
-  refreshProfile: async () => {},
+  refreshProfile: async () => null,
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -93,20 +97,23 @@ function shouldFallbackToRedirect(errorCode?: string) {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileResolved, setProfileResolved] = useState(false);
-  const deferInitialProfileBootstrap = pathname === '/feed' || pathname.startsWith('/feed/');
+  const [profileFresh, setProfileFresh] = useState(false);
+  const [profileRefreshFailed, setProfileRefreshFailed] = useState(false);
 
-  const syncServerSession = async (idToken: string) => {
-    await fetch('/api/auth/session', {
+  const syncServerSession = async (idToken: string, forceProfileRefresh = false) => {
+    const response = await fetch('/api/auth/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ idToken }),
+      body: JSON.stringify({ idToken, forceProfileRefresh }),
     });
+    if (!response.ok) {
+      throw new Error(`Server session sync failed (${response.status})`);
+    }
   };
 
   const clearServerSession = async () => {
@@ -127,14 +134,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             firebaseUser.photoURL
           )
         : await getUserProfile(firebaseUser.uid);
-      // Never replace a hydrated session-cache profile with null — getDoc can lag or
-      // return null briefly; wiping profile makes feed think the user needs onboarding.
       if (userProfile !== null) {
         setProfile(userProfile);
         void syncUserTimezone(firebaseUser.uid, userProfile);
         writeAuthSessionCache(firebaseUser, userProfile);
+      } else {
+        setProfile(null);
+        clearAuthSessionCache();
       }
       setProfileResolved(true);
+      setProfileFresh(true);
+      setProfileRefreshFailed(false);
       return userProfile;
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -162,17 +172,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshProfile = async () => {
-    if (user) {
-      try {
-        const p = await getUserProfile(user.uid);
-        setProfile(p);
-        if (p) {
-          void syncUserTimezone(user.uid, p);
-          writeAuthSessionCache(user, p);
-        }
-      } catch (error) {
-        console.error('Error refreshing profile:', error);
+    if (!user) return null;
+    setProfileFresh(false);
+    setProfileRefreshFailed(false);
+    try {
+      const p = await getUserProfile(user.uid);
+      setProfile(p);
+      if (p) {
+        void syncUserTimezone(user.uid, p);
+        writeAuthSessionCache(user, p);
+      } else {
+        clearAuthSessionCache();
       }
+      setProfileFresh(true);
+      try {
+        const idToken = await user.getIdToken();
+        await syncServerSession(idToken, true);
+      } catch (sessionError) {
+        console.error('Error refreshing server session:', sessionError);
+      }
+      return p;
+    } catch (error) {
+      setProfileRefreshFailed(true);
+      console.error('Error refreshing profile:', error);
+      return null;
     }
   };
 
@@ -181,10 +204,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(firebaseUser);
 
       if (firebaseUser) {
+        setProfileFresh(false);
+        setProfileRefreshFailed(false);
         const cached = readAuthSessionCache();
+        const cachedProfileFresh = Boolean(
+          cached?.uid === firebaseUser.uid && isAuthSessionCacheFresh(cached)
+        );
         if (cached?.uid === firebaseUser.uid) {
           const optimistic = optimisticProfileFromCache(firebaseUser, cached);
           setProfile(optimistic);
+          setProfileFresh(cachedProfileFresh);
           // Cached "not onboarded" can be stale; wait for Firestore before resolving
           // to avoid false redirects from /feed to /onboarding.
           const hasInterests = Array.isArray(optimistic.interests) && optimistic.interests.length > 0;
@@ -205,6 +234,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             try {
               userProfile = await loadProfile(firebaseUser, { allowCreate: false });
             } catch {
+              setProfileRefreshFailed(true);
               if (!cached || cached.uid !== firebaseUser.uid) {
                 setProfileResolved(false);
               }
@@ -220,33 +250,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         };
 
-        if (deferInitialProfileBootstrap) {
-          identifyUser(firebaseUser.uid, {
-            email: firebaseUser.email,
-            name: firebaseUser.displayName,
-            onboarded: cached?.onboarded || false,
-          });
-          // Still verify subscription status from Firestore — the cache can be stale
-          // (e.g. subscription granted after last login). Don't gate Pro access on a stale cache.
-          const cachedSub = cached?.subscriptionStatus;
-          const cachedAppSub = cached?.appSubscriptionStatus;
-          if (!['active', 'trial'].includes(cachedSub ?? '') && !['active', 'trial'].includes(cachedAppSub ?? '')) {
-            void loadProfileInBackground();
-          }
-          return;
+        identifyUser(firebaseUser.uid, {
+          email: firebaseUser.email,
+          name: firebaseUser.displayName,
+          onboarded: cached?.onboarded || false,
+        });
+        if (!cachedProfileFresh) {
+          void loadProfileInBackground();
         }
-
-        await loadProfileInBackground();
       } else {
         clearAuthSessionCache();
         setProfile(null);
         setProfileResolved(true);
+        setProfileFresh(true);
+        setProfileRefreshFailed(false);
         setLoading(false);
       }
     });
 
     return () => unsubscribe();
-  }, [deferInitialProfileBootstrap]);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
@@ -331,6 +354,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await clearServerSession();
       await firebaseSignOut(auth);
       setProfile(null);
+      setProfileFresh(true);
+      setProfileRefreshFailed(false);
     } catch (error) {
       console.error('Error signing out:', error);
       throw error;
@@ -338,7 +363,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, profileResolved, signInWithGoogle, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, profileResolved, profileFresh, profileRefreshFailed, signInWithGoogle, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

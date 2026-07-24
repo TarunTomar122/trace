@@ -89,8 +89,8 @@ export default function LandingPageClient({
         <div className="mx-auto flex max-w-[880px] items-center justify-between border-b border-[#e4e1d8] py-4">
           <Link href="/" className="font-mono text-[12.5px] font-bold tracking-[0.28em]">TRACE</Link>
           <nav className="hidden items-center gap-5 text-[13px] text-[#75705f] sm:flex">
-            <Link href="/feed" className="hover:text-[#2557d6]">Edition</Link>
-            <Link href="/feed?view=pulse" className="hover:text-[#2557d6]">Pulse</Link>
+            <a href="/feed" className="hover:text-[#2557d6]">Edition</a>
+            <a href="/feed?view=pulse" className="hover:text-[#2557d6]">Pulse</a>
             <Link href="/compare" className="hover:text-[#2557d6]">Compare</Link>
             <Link href="/blog" className="hover:text-[#2557d6]">Guides</Link>
             <Link href="/resources" className="hover:text-[#2557d6]">Resources</Link>
@@ -210,7 +210,7 @@ export default function LandingPageClient({
             <h2 className="mt-5 max-w-[620px] text-[clamp(2.7rem,5vw,4.6rem)] leading-[0.98] tracking-[-0.04em]" style={{ fontFamily: 'var(--font-edition-serif), Georgia, serif' }}>Spend less time finding the story. Spend more time understanding it.</h2>
             <div className="mt-8 flex flex-wrap gap-4">
               <button type="button" onClick={() => startReading('bottom_cta')} className="bg-[#faf9f5] px-5 py-3 text-[14px] font-semibold text-[#1b1a17] hover:bg-white">Read today</button>
-              <Link href="/feed" className="border border-white/60 px-5 py-3 text-[14px] font-semibold text-white hover:bg-white/10">See an edition</Link>
+              <a href="/feed" className="border border-white/60 px-5 py-3 text-[14px] font-semibold text-white hover:bg-white/10">See an edition</a>
             </div>
           </div>
         </section>

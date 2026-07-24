@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminFirestore } from '@/lib/firebase-admin';
-import { TRACE_SESSION_COOKIE_NAME, verifyTraceSession } from '@/lib/server-session';
+import {
+  isTraceSessionProfileFresh,
+  TRACE_SESSION_COOKIE_NAME,
+  verifyTraceSession,
+} from '@/lib/server-session';
 import { getBootstrapFeedForUid, getBootstrapFeedFromProfile } from '@/lib/feed-server';
 
 export async function GET(request: NextRequest) {
@@ -15,15 +19,17 @@ export async function GET(request: NextRequest) {
 
     const authHeader = request.headers.get('authorization');
     const sessionCookie = request.cookies.get(TRACE_SESSION_COOKIE_NAME)?.value;
+    const forceFreshViewer = request.nextUrl.searchParams.get('freshViewer') === '1';
 
     let uid = '';
     let sessionProfile: ReturnType<typeof verifyTraceSession> = null;
-    if (sessionCookie) {
+    if (sessionCookie && !forceFreshViewer) {
       sessionProfile = verifyTraceSession(sessionCookie);
       if (sessionProfile) {
         uid = sessionProfile.uid;
       }
-    } else if (authHeader?.startsWith('Bearer ')) {
+    }
+    if (!uid && authHeader?.startsWith('Bearer ')) {
       if (!adminAuth) {
         return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
       }
@@ -39,14 +45,15 @@ export async function GET(request: NextRequest) {
     authDoneAt = performance.now();
 
     const roleFromQuery = request.nextUrl.searchParams.get('role') || '';
+    const sessionAccessIsFresh = isTraceSessionProfileFresh(sessionProfile);
     const feed = sessionProfile?.profile
       ? await getBootstrapFeedFromProfile(sessionProfile.profile.role || roleFromQuery || 'developer', {
           role: sessionProfile.profile.role || 'developer',
           interests: sessionProfile.profile.interests || [],
           onboarded: sessionProfile.profile.onboarded ?? true,
-          subscription_status: sessionProfile.profile.subscriptionStatus || 'none',
-          app_subscription_status: sessionProfile.profile.appSubscriptionStatus || 'none',
-          has_access: sessionProfile.profile.hasAccess ?? false,
+          subscription_status: sessionAccessIsFresh ? sessionProfile.profile.subscriptionStatus || 'none' : 'none',
+          app_subscription_status: sessionAccessIsFresh ? sessionProfile.profile.appSubscriptionStatus || 'none' : 'none',
+          has_access: sessionAccessIsFresh && (sessionProfile.profile.hasAccess ?? false),
         })
       : await getBootstrapFeedForUid(uid, roleFromQuery);
     readsDoneAt = performance.now();

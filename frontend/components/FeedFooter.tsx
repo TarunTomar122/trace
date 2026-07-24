@@ -11,8 +11,8 @@ export default function FeedFooter({
       <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-5 border-t border-[#e4e1d8] pt-8">
         <span className="font-mono text-[11px] font-semibold tracking-[0.24em] text-[#1b1a17]">TRACE</span>
         <nav className="flex flex-wrap gap-x-5 gap-y-2 text-[12px] text-[#75705f]">
-          <Link href="/feed" className="hover:text-[#2557d6]">Edition</Link>
-          <Link href="/feed?view=pulse" className="hover:text-[#2557d6]">Pulse</Link>
+          <a href="/feed" className="hover:text-[#2557d6]">Edition</a>
+          <a href="/feed?view=pulse" className="hover:text-[#2557d6]">Pulse</a>
           <Link href="/profile" className="hover:text-[#2557d6]">Profile</Link>
           <Link href="/compare" className="hover:text-[#2557d6]">Compare</Link>
           <Link href="/blog" className="hover:text-[#2557d6]">Guides</Link>

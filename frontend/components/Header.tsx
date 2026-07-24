@@ -31,18 +31,18 @@ export default function Header({
               <span>{backLabel}</span>
             </Link>
           ) : showBackToFeed ? (
-            <Link
+            <a
               href="/feed"
               className="flex items-center gap-2 text-sm text-secondary hover:text-foreground transition-colors"
             >
               <ArrowLeft size={16} />
               <span>Feed</span>
-            </Link>
+            </a>
           ) : (
-            <Link href="/feed" className="flex items-center gap-2">
+            <a href="/feed" className="flex items-center gap-2">
               <Image src="/trace.webp" alt="Trace" width={24} height={24} className="h-6 w-auto" />
               <span className="text-sm font-semibold tracking-[0.12em] text-foreground">TRACE</span>
-            </Link>
+            </a>
           )}
 
           <div className="flex items-center gap-3">

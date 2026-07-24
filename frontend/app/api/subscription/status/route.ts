@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
+import { hasActiveSubscription } from '@/lib/subscription-access';
 
 // Get subscription status endpoint
 export async function GET(request: NextRequest) {
@@ -26,29 +27,8 @@ export async function GET(request: NextRequest) {
 
     const userData = userDoc.data();
     const subscriptionStatus = userData?.subscriptionStatus || 'none';
-    const appSubscriptionStatus = userData?.appSubscriptionStatus || 'none';
-    
-    // Check if they have active/trial status from EITHER payment source (Dodo web / RevenueCat app)
-    let hasAccess = ['trial', 'active'].includes(subscriptionStatus) || ['trial', 'active'].includes(appSubscriptionStatus);
-    
-    // If cancelled but still active, check if cancellation date has passed
-    if (hasAccess && userData?.cancelledAt) {
-      const now = new Date();
-      const willCancelAt = userData.willCancelAt 
-        ? (userData.willCancelAt.toDate ? userData.willCancelAt.toDate() : new Date(userData.willCancelAt))
-        : null;
-      const nextBilling = userData.nextBillingDate
-        ? (userData.nextBillingDate.toDate ? userData.nextBillingDate.toDate() : new Date(userData.nextBillingDate))
-        : null;
-      
-      // Use willCancelAt if available, otherwise nextBillingDate
-      const cancelDate = willCancelAt || nextBilling;
-      
-      // If cancellation date has passed, revoke access
-      if (cancelDate && now >= cancelDate) {
-        hasAccess = false;
-      }
-    }
+
+    const hasAccess = hasActiveSubscription(userData);
 
     // Return subscription info
     return NextResponse.json({
@@ -71,4 +51,3 @@ export async function GET(request: NextRequest) {
     }, { status: 500 });
   }
 }
-

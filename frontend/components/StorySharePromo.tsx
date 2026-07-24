@@ -10,11 +10,20 @@ export default function StorySharePromo({
 }: {
   trackingId?: string;
 }) {
-  const { user, profile, loading, profileResolved } = useAuth();
+  const {
+    user,
+    profile,
+    loading,
+    profileResolved,
+    profileFresh,
+    profileRefreshFailed,
+  } = useAuth();
   const cta = getPublicStoryCta({
     user,
     profile,
     loading: loading || !profileResolved,
+    profileFresh,
+    profileRefreshFailed,
   });
 
   if (!cta.showPromo) return null;

@@ -1,6 +1,10 @@
 import { Suspense } from 'react';
 import { cookies } from 'next/headers';
-import { TRACE_SESSION_COOKIE_NAME, verifyTraceSession } from '@/lib/server-session';
+import {
+  isTraceSessionProfileFresh,
+  TRACE_SESSION_COOKIE_NAME,
+  verifyTraceSession,
+} from '@/lib/server-session';
 import FeedBootShell from './FeedBootShell';
 import EditionPrototype from '@/app/wip/feed-edition/EditionPrototype';
 
@@ -35,14 +39,15 @@ async function FeedDataLoader({ view }: { view: 'edition' | 'pulse' }) {
       // Firestore reads needed to render the feed.
       path = 'fast';
       const p = session.profile;
-      isPro = p.hasAccess ?? false;
+      const profileAccessIsFresh = isTraceSessionProfileFresh(session);
+      isPro = profileAccessIsFresh && (p.hasAccess ?? false);
       initialFeed = await getBootstrapFeedFromProfile(p.role || 'developer', {
         role: p.role || 'developer',
         interests: p.interests || [],
         onboarded: p.onboarded ?? true,
-        subscription_status: p.subscriptionStatus || 'none',
-        app_subscription_status: p.appSubscriptionStatus || 'none',
-        has_access: p.hasAccess ?? false,
+        subscription_status: profileAccessIsFresh ? p.subscriptionStatus || 'none' : 'none',
+        app_subscription_status: profileAccessIsFresh ? p.appSubscriptionStatus || 'none' : 'none',
+        has_access: profileAccessIsFresh && (p.hasAccess ?? false),
       });
     } else if (session) {
       // Legacy cookie (pre-profile-enrichment). Fall back to viewer-context
@@ -99,6 +104,7 @@ async function FeedDataLoader({ view }: { view: 'edition' | 'pulse' }) {
       isPro={isPro}
       dateLabel={dateLabel}
       view={view}
+      initialFeedAuthenticated={path === 'fast' || path === 'legacy'}
     />
   );
 }

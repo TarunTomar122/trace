@@ -54,6 +54,8 @@ export type EditionModel = {
   storyNumber: Map<string, number>;
   freeIds: Set<string>;
   isPro: boolean;
+  accessPending: boolean;
+  accessVerificationFailed: boolean;
   totalSources: number;
   dateLabel: string;
   topicCount: number;
@@ -183,6 +185,8 @@ export function buildEditionModel(
   isPro: boolean,
   dateLabel: string,
   showImages: boolean,
+  accessPending = false,
+  accessVerificationFailed = false,
 ): EditionModel {
   const list = buildEditionList(feed || ({} as V3UserFeed));
   const interestOrder = normalizeInterestOrder(
@@ -212,6 +216,8 @@ export function buildEditionModel(
     storyNumber,
     freeIds,
     isPro,
+    accessPending,
+    accessVerificationFailed,
     totalSources,
     dateLabel,
     topicCount: edition.sections.length,
@@ -387,12 +393,18 @@ export function EditionHeader({ view }: { view: 'edition' | 'pulse' | 'profile' 
 
   return (
     <header className="relative flex flex-wrap items-center justify-between gap-x-8 gap-y-3 border-b py-4" style={{ borderColor: HAIRLINE, backgroundColor: '#faf9f5' }}>
-      <Link href={user ? '/feed' : '/'} className="font-mono text-[12.5px] font-bold tracking-[0.28em]" style={{ color: INK }}>
-        TRACE
-      </Link>
+      {user ? (
+        <a href="/feed" className="font-mono text-[12.5px] font-bold tracking-[0.28em]" style={{ color: INK }}>
+          TRACE
+        </a>
+      ) : (
+        <Link href="/" className="font-mono text-[12.5px] font-bold tracking-[0.28em]" style={{ color: INK }}>
+          TRACE
+        </Link>
+      )}
       <nav className="flex items-center gap-5 text-[13px] font-medium" aria-label="Trace">
-        <Link className="transition-opacity hover:opacity-70" href="/feed" onClick={startNavigation('/feed')} style={navItem(view === 'edition')}>Edition</Link>
-        <Link className="transition-opacity hover:opacity-70" href="/feed?view=pulse" onClick={startNavigation('/feed?view=pulse')} style={navItem(view === 'pulse')}>Pulse</Link>
+        <a className="transition-opacity hover:opacity-70" href="/feed" onClick={startNavigation('/feed')} style={navItem(view === 'edition')}>Edition</a>
+        <a className="transition-opacity hover:opacity-70" href="/feed?view=pulse" onClick={startNavigation('/feed?view=pulse')} style={navItem(view === 'pulse')}>Pulse</a>
         <Link className="transition-opacity hover:opacity-70" href="/profile" onClick={startNavigation('/profile')} style={navItem(view === 'profile')}>Profile</Link>
       </nav>
       {pendingHref && <span aria-hidden="true" className="absolute inset-x-0 bottom-[-2px] h-[2px] animate-pulse" style={{ backgroundColor: BLUE }} />}

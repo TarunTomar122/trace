@@ -22,6 +22,7 @@ import {
   MonoLabel,
   editionSerif,
 } from '@/app/wip/feed-edition/edition-shared';
+import { hasActiveSubscription } from '@/lib/subscription-access';
 
 type ProfileTab = 'account' | 'preferences' | 'subscription';
 type PrefKey = 'role' | 'interests' | 'goals';
@@ -157,8 +158,7 @@ function ProfileContent() {
     setEditing(null);
   };
 
-  const isSubscribed = profile?.subscriptionStatus === 'active' || profile?.subscriptionStatus === 'trial'
-    || profile?.appSubscriptionStatus === 'active' || profile?.appSubscriptionStatus === 'trial';
+  const isSubscribed = hasActiveSubscription(profile);
 
   const roleValue = [
     profile?.role ? lookupLabel(ROLES as unknown as { id: string; label: string }[], profile.role) : '',
