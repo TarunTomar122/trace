@@ -184,6 +184,37 @@
       "type": "rss",
       "source_weight": 1.05,
       "title_keywords": ["AI", "ai", "developer", "survey", "programming", "engineering", "software", "open source", "llm", "model", "agent"]
+    },
+    {
+      "interest_id": "tech",
+      "name": "Cloudflare Blog",
+      "url": "https://blog.cloudflare.com/rss/",
+      "type": "rss",
+      "source_weight": 1.1,
+      "exclude_title_keywords": ["webinar", "event", "hiring"]
+    },
+    {
+      "interest_id": "startups",
+      "name": "Crunchbase News",
+      "url": "https://news.crunchbase.com/feed/",
+      "type": "rss",
+      "source_weight": 1.15,
+      "exclude_title_keywords": ["sponsored", "partner content"]
+    },
+    {
+      "interest_id": "tech",
+      "name": "Rest of World",
+      "url": "https://restofworld.org/feed/latest/",
+      "type": "rss",
+      "source_weight": 1.15
+    },
+    {
+      "interest_id": "tech",
+      "name": "NVIDIA Technical Blog",
+      "url": "https://developer.nvidia.com/blog/feed/",
+      "type": "atom",
+      "source_weight": 1.1,
+      "exclude_title_keywords": ["course", "certification", "training"]
     }
   ]
 }
