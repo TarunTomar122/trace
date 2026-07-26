@@ -2,6 +2,12 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { adminFirestore } from '@/lib/firebase-admin';
 import ArticleContent from './ArticleContent';
+import {
+  DEFAULT_OG_IMAGE,
+  DEFAULT_OPEN_GRAPH,
+  DEFAULT_TWITTER_IMAGE,
+  metadataTitle,
+} from '@/lib/seo';
 
 // Pool collection mapping based on article ID prefix
 const POOL_MAP: Record<string, string> = {
@@ -200,7 +206,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     || `Read this article from ${article.source_name || 'Trace'}`;
 
   return {
-    title: `${article.title} | Trace`,
+    title: metadataTitle(article.title),
     description,
     alternates: {
       canonical: canonicalUrl,
@@ -210,14 +216,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       type: 'article',
       url: canonicalUrl,
-      images: article.thumbnail ? [{ url: article.thumbnail }] : [],
-      siteName: 'Trace',
+      ...DEFAULT_OPEN_GRAPH,
     },
     twitter: {
-      card: article.thumbnail ? 'summary_large_image' : 'summary',
+      card: 'summary_large_image',
       title: article.title,
       description,
-      images: article.thumbnail ? [article.thumbnail] : [],
+      images: [DEFAULT_TWITTER_IMAGE],
     },
     robots: {
       index: true,
@@ -263,7 +268,7 @@ export default async function PublicArticlePage({ params }: PageProps) {
         url: 'https://www.yourtrace.online/trace.png',
       },
     },
-    image: article.thumbnail ? [article.thumbnail] : undefined,
+    image: [DEFAULT_OG_IMAGE.url],
     url: canonicalUrl,
   };
 

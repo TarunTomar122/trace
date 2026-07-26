@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Lock, Loader2 } from "lucide-react";
 import { trackCheckoutClicked } from "@/lib/posthog";
 import {
-  PublicFeedCard,
   PublicTopicCard,
   type PublicFeedCardItem,
   type PublicTopicCardItem,
@@ -208,10 +207,10 @@ function DatePickerTabs({
               const selected = selectedDate === d.date;
               const weekday = formatDateWeekday(d.date);
               return (
-                <button
+                <Link
                   key={d.date}
-                  type="button"
-                  onClick={() => onSelect(d.date)}
+                  href={`/daily/${d.date}`}
+                  prefetch={false}
                   className={`shrink-0 rounded-lg px-3 py-2 text-[13px] font-medium whitespace-nowrap transition-colors ${
                     selected
                       ? "bg-foreground text-background"
@@ -222,7 +221,7 @@ function DatePickerTabs({
                     {weekday}
                   </span>
                   {formatDateShort(d.date)}
-                </button>
+                </Link>
               );
             })}
           </div>
@@ -505,6 +504,28 @@ export default function DailyFeedView({
             Select a date above to view its feed.
           </p>
         </div>
+      )}
+
+      {archiveDates.length > 30 && (
+        <nav aria-label="Older daily editions" className="border-t border-border/20 py-10">
+          <details>
+            <summary className="cursor-pointer text-[13px] font-semibold text-foreground">
+              Browse older editions
+            </summary>
+            <div className="mt-5 grid grid-cols-2 gap-x-5 gap-y-2 sm:grid-cols-4 lg:grid-cols-6">
+              {archiveDates.slice(30).map((entry) => (
+                <Link
+                  key={entry.date}
+                  href={`/daily/${entry.date}`}
+                  prefetch={false}
+                  className="text-[12px] text-secondary/65 hover:text-foreground"
+                >
+                  {formatDateLong(entry.date)}
+                </Link>
+              ))}
+            </div>
+          </details>
+        </nav>
       )}
     </div>
   );

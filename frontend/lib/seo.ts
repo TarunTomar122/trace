@@ -15,6 +15,13 @@ export const DEFAULT_OG_IMAGE = {
   height: 630,
   alt: 'Trace — Your daily tech, in one place',
 };
+export const DEFAULT_OPEN_GRAPH = {
+  siteName: SITE_NAME,
+  locale: 'en_US',
+  images: [DEFAULT_OG_IMAGE],
+};
+export const DEFAULT_TWITTER_IMAGE = `${SITE_BASE_URL}/twitter-image`;
+const TITLE_SUFFIX = ` | ${SITE_NAME}`;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -151,6 +158,22 @@ export function canonicalUrl(path: string): string {
 }
 
 /**
+ * Keep dynamic page titles within the common 60-character search-result limit.
+ */
+export function metadataTitle(title: string, maxLength = 60): string {
+  const normalized = title.replace(/\s+/g, ' ').trim();
+  const available = maxLength - TITLE_SUFFIX.length;
+  if (normalized.length <= available) return `${normalized}${TITLE_SUFFIX}`;
+
+  const clipped = normalized.slice(0, Math.max(1, available - 1));
+  const wordBoundary = clipped.lastIndexOf(' ');
+  const shortened = wordBoundary >= Math.floor(available * 0.6)
+    ? clipped.slice(0, wordBoundary)
+    : clipped;
+  return `${shortened.trimEnd()}…${TITLE_SUFFIX}`;
+}
+
+/**
  * Standard OpenGraph article tags.
  */
 export function openGraphArticle(
@@ -165,12 +188,10 @@ export function openGraphArticle(
     title,
     description,
     url,
-    siteName: SITE_NAME,
-    locale: 'en_US',
+    ...DEFAULT_OPEN_GRAPH,
     publishedTime,
     modifiedTime: modifiedTime || publishedTime,
     authors: ['https://x.com/tarat_211'],
-    images: [DEFAULT_OG_IMAGE],
   };
 }
 
@@ -182,7 +203,7 @@ export function twitterCard(title: string, description: string) {
     card: 'summary_large_image' as const,
     title,
     description,
-    images: [`${SITE_BASE_URL}/twitter-image`],
+    images: [DEFAULT_TWITTER_IMAGE],
     creator: '@tarat_211',
   };
 }

@@ -3,6 +3,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { getArticleImageCandidates } from "@/lib/fallback-images";
 
+const LOCAL_PLACEHOLDER = "/article-placeholder.svg";
+const MAX_REMOTE_IMAGE_BYTES = 1_000_000;
+
 type ArticleImageProps = Omit<React.ImgHTMLAttributes<HTMLImageElement>, "src"> & {
   thumbnail?: string | null;
   title: string;
@@ -12,8 +15,9 @@ type ArticleImageProps = Omit<React.ImgHTMLAttributes<HTMLImageElement>, "src"> 
 };
 
 /**
- * Renders a story thumbnail with automatic fallbacks when the URL 404s or breaks.
- * Chain: source thumbnail → curated Unsplash → picsum.photos seed.
+ * Renders a crawler-safe local image first, then swaps in the first remote
+ * candidate that successfully preloads in the browser. Broken third-party
+ * images never reach the rendered <img>.
  */
 export function ArticleImage({
   thumbnail,
@@ -21,6 +25,7 @@ export function ArticleImage({
   fallbackWidth = 800,
   fallbackHeight = 500,
   alt = "",
+  onLoad,
   onError,
   ...props
 }: ArticleImageProps) {
@@ -29,26 +34,74 @@ export function ArticleImage({
     [thumbnail, title, fallbackWidth, fallbackHeight],
   );
 
-  const [index, setIndex] = useState(0);
+  const candidateKey = candidates.join("|");
+  const [loaded, setLoaded] = useState({ key: "", src: LOCAL_PLACEHOLDER });
+  const [visibleKey, setVisibleKey] = useState("");
+  const src = loaded.key === candidateKey ? loaded.src : LOCAL_PLACEHOLDER;
+  const canLoadRemote = visibleKey === candidateKey;
 
   useEffect(() => {
-    setIndex(0);
-  }, [candidates]);
+    if (!canLoadRemote) return;
+    let cancelled = false;
 
-  const src = candidates[Math.min(index, candidates.length - 1)];
+    const loadCandidate = async (index: number) => {
+      if (cancelled || index >= candidates.length) return;
+
+      try {
+        // Fail closed for unknown-size third-party assets. If a host blocks
+        // CORS/HEAD, the next candidate is a bounded, CORS-enabled Unsplash
+        // image, so the card stays visual without risking an oversized fetch.
+        const response = await fetch(candidates[index], {
+          method: "HEAD",
+          cache: "force-cache",
+          signal: AbortSignal.timeout(5_000),
+        });
+        const contentType = response.headers.get("content-type") || "";
+        const contentLength = Number(response.headers.get("content-length") || 0);
+        if (
+          !response.ok ||
+          !contentType.startsWith("image/") ||
+          contentLength <= 0 ||
+          contentLength > MAX_REMOTE_IMAGE_BYTES
+        ) {
+          void loadCandidate(index + 1);
+          return;
+        }
+      } catch {
+        void loadCandidate(index + 1);
+        return;
+      }
+
+      const image = new Image();
+      image.onload = () => {
+        if (!cancelled) {
+          setLoaded({ key: candidateKey, src: candidates[index] });
+        }
+      };
+      image.onerror = () => void loadCandidate(index + 1);
+      image.src = candidates[index];
+    };
+
+    void loadCandidate(0);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canLoadRemote, candidateKey, candidates]);
 
   return (
+    // A plain img is intentional: remote candidates are preloaded before use,
+    // while Next Image would still expose failed remote optimizer requests.
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       {...props}
       src={src}
       alt={alt}
-      onError={(event) => {
-        if (index < candidates.length - 1) {
-          setIndex((current) => current + 1);
-          return;
-        }
-        onError?.(event);
+      onLoad={(event) => {
+        if (src === LOCAL_PLACEHOLDER) setVisibleKey(candidateKey);
+        onLoad?.(event);
       }}
+      onError={onError}
     />
   );
 }

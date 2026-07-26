@@ -16,7 +16,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Free News Aggregators for Developers: The Complete Guide | Trace",
+  title: "Free News Aggregators for Developers (2026) | Trace",
   description:
     "From RSS to AI-powered summaries, here are the best free tools to stay current on tech without paying a dime. A comprehensive guide for developers in 2026.",
   keywords: [

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import LegalPageShell from '@/components/LegalPageShell';
+import { DEFAULT_OPEN_GRAPH } from '@/lib/seo';
 
 const SUPPORT_EMAIL = 'tomartarun2001@gmail.com';
 
@@ -11,10 +12,12 @@ export const metadata: Metadata = {
     canonical: 'https://www.yourtrace.online/delete-account',
   },
   openGraph: {
+    ...DEFAULT_OPEN_GRAPH,
     title: 'Delete Account — Trace',
     description:
       'Request account and data deletion for Trace. Learn what data is deleted, what may be retained temporarily, and how long deletion takes.',
     url: 'https://www.yourtrace.online/delete-account',
+    type: 'website',
   },
 };
 
@@ -59,6 +62,12 @@ export default function DeleteAccountPage() {
             <li>Bookmarks and in-app personalization data</li>
             <li>Associated account records needed to operate Trace</li>
           </ul>
+          <p className="mt-3">
+            Deletion is permanent. Export or copy anything you want to keep before submitting
+            the request. After processing, you will need to create a new account and repeat
+            onboarding if you decide to use Trace again. Signing out or uninstalling the app
+            does not delete the account.
+          </p>
         </section>
 
         <section>

@@ -16,7 +16,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Google News Alternatives: 6 Better Options for Tech News (2026) | Trace",
+  title: "Google News Alternatives for Tech Readers (2026) | Trace",
   description:
     "Looking for Google News alternatives? We tested 6 options that deliver better tech news curation, AI summaries, and developer-focused coverage in 2026.",
   keywords: [

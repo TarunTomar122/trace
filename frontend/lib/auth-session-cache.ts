@@ -3,6 +3,7 @@ import type { UserProfile } from '@/lib/firestore';
 
 const STORAGE_KEY = 'trace_auth_session_v1';
 const CACHE_VERSION = 1;
+export const AUTH_SESSION_CACHE_FRESH_MS = 60_000;
 
 export type AuthSessionCachePayload = {
   v: typeof CACHE_VERSION;
@@ -18,6 +19,17 @@ export type AuthSessionCachePayload = {
   appSubscriptionStatus?: UserProfile['appSubscriptionStatus'];
   updatedAt: string;
 };
+
+export function isAuthSessionCacheFresh(
+  cached: Pick<AuthSessionCachePayload, 'updatedAt'>,
+  now = Date.now(),
+  maxAgeMs = AUTH_SESSION_CACHE_FRESH_MS,
+): boolean {
+  const updatedAt = Date.parse(cached.updatedAt);
+  if (!Number.isFinite(updatedAt)) return false;
+  const age = now - updatedAt;
+  return age >= 0 && age <= maxAgeMs;
+}
 
 /** Partial updates merged into an existing cache entry (same uid + current Firebase user). */
 export type AuthSessionCachePatch = Partial<

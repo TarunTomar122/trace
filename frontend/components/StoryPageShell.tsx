@@ -45,19 +45,18 @@ export default function StoryPageShell({
       <div className="story-page story-page--app min-h-screen bg-white">
         <header className="sticky top-0 z-40 bg-white px-4 pt-3 pb-3 sm:px-6">
           <div className="edition-feed-nav edition-feed-nav--story mx-auto max-w-6xl">
-            <Link href={backHref} prefetch={false} className="story-page-header-back">
+            <a href={backHref} className="story-page-header-back">
               <ArrowLeft size={16} aria-hidden />
               <span>{label}</span>
-            </Link>
-            <Link
+            </a>
+            <a
               href="/feed"
-              prefetch={false}
               className="story-page-header-logo flex items-center gap-2.5 no-underline"
               style={{ color: "inherit" }}
             >
               <img src="/trace.webp" alt="Trace" className="h-5 w-auto" />
               <span className="text-[13px] font-bold tracking-[0.12em] text-[#111827]">TRACE</span>
-            </Link>
+            </a>
             <div className="story-page-header-end">
               {shareButton}
               {user?.photoURL ? (

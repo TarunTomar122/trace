@@ -1,4 +1,5 @@
 import type { UserProfile } from '@/lib/firestore';
+import { resolveFeedAccess } from '@/lib/subscription-access';
 
 export const SHARE_SITE_ORIGIN = 'https://www.yourtrace.online';
 
@@ -34,16 +35,6 @@ export function buildArticleShareUrl(article: ShareableArticle): string | null {
   return `${SHARE_SITE_ORIGIN}/articles/${shareId}`;
 }
 
-export function isTraceProUser(profile: UserProfile | null | undefined): boolean {
-  if (!profile) return false;
-  return (
-    profile.subscriptionStatus === 'active'
-    || profile.subscriptionStatus === 'trial'
-    || profile.appSubscriptionStatus === 'active'
-    || profile.appSubscriptionStatus === 'trial'
-  );
-}
-
 export type PublicStoryCta = {
   href: string;
   headerLabel: string;
@@ -57,10 +48,26 @@ export function getPublicStoryCta(options: {
   user: { uid: string } | null;
   profile: UserProfile | null;
   loading: boolean;
+  profileFresh: boolean;
+  profileRefreshFailed: boolean;
 }): PublicStoryCta {
-  const { user, profile, loading } = options;
+  const {
+    user,
+    profile,
+    loading,
+    profileFresh,
+    profileRefreshFailed,
+  } = options;
+  const access = resolveFeedAccess({
+    serverHasAccess: false,
+    clientProfile: profile,
+    clientProfileFresh: profileFresh,
+    clientProfileRefreshFailed: profileRefreshFailed,
+    authLoading: loading,
+    signedIn: Boolean(user),
+  });
 
-  if (!loading && user && isTraceProUser(profile)) {
+  if (user && access.hasAccess) {
     return {
       href: '/feed',
       headerLabel: 'Open feed',
@@ -71,7 +78,18 @@ export function getPublicStoryCta(options: {
     };
   }
 
-  if (!loading && user) {
+  if (access.pending) {
+    return {
+      href: '/feed',
+      headerLabel: 'Open feed',
+      promoTitle: '',
+      promoCopy: '',
+      buttonLabel: '',
+      showPromo: false,
+    };
+  }
+
+  if (user) {
     return {
       href: '/profile?tab=subscription',
       headerLabel: 'Try Pro',

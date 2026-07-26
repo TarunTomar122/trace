@@ -16,7 +16,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Best AI News Apps in 2026 (That Actually Respect Your Time) | Trace",
+  title: "Best AI News Apps in 2026: 10 Tools Compared | Trace",
   description:
     "Looking for the best AI news app? We tested 10 options including Trace, Feedly, and Ground News. Find the right one for developers and founders in 2026.",
   keywords: [

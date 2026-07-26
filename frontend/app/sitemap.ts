@@ -62,10 +62,9 @@ function isIndexableTopic(candidate: {
   keyPointCount?: number
 }): boolean {
   const hasContent =
-    (candidate.articleCount ?? 0) > 0 ||
-    (candidate.sourceCount ?? 0) > 0 ||
-    (candidate.timelineCount ?? 0) > 0 ||
-    (candidate.keyPointCount ?? 0) > 0
+    (candidate.articleCount ?? 0) >= 2 ||
+    (candidate.sourceCount ?? 0) >= 2 ||
+    (candidate.timelineCount ?? 0) >= 2
 
   if (!hasContent) return false
   if (looksLikeRawSource(candidate.slug) || looksLikeRawSource(candidate.label)) return false
@@ -142,36 +141,6 @@ async function getTopicSlugs(): Promise<string[]> {
     }
   } catch (error) {
     console.error('[sitemap] Failed to fetch global feed topics:', error)
-  }
-
-  try {
-    const latestTrending = await adminFirestore
-      .collection('trending_news')
-      .orderBy('date', 'desc')
-      .limit(1)
-      .get()
-    if (!latestTrending.empty) {
-      const topicDocs = await latestTrending.docs[0].ref.collection('topics').get()
-      topicDocs.forEach((doc) => {
-        const data = doc.data() as SitemapTopicCandidate
-        const slug = normalizeTopicSlug(data.topic_key ?? data.id ?? doc.id)
-        const rawLabel = data.display_name || data.name
-        const label = typeof rawLabel === 'string' && rawLabel.trim()
-          ? rawLabel.trim()
-          : slug
-            ? formatTopicLabel(slug)
-            : ''
-        if (slug && isIndexableTopic({
-          slug,
-          label,
-          articleCount: data.article_count ?? data.articles?.length,
-        })) {
-          topics.add(slug)
-        }
-      })
-    }
-  } catch (error) {
-    console.error('[sitemap] Failed to fetch trending_news topics:', error)
   }
 
   return Array.from(topics)

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import HowItWorksContent from "./HowItWorksContent";
+import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "How Trace Turns Noise Into a Daily Brief | Trace",
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
     "From sources to signal — see how Trace groups, summarizes, and delivers what matters. A visual walkthrough of how your chaotic feeds become a clean daily brief.",
   alternates: { canonical: "https://www.yourtrace.online/how-it-works" },
   openGraph: {
+    ...DEFAULT_OPEN_GRAPH,
     title: "How Trace Turns Noise Into a Daily Brief | Trace",
     description:
       "From sources to signal — see how Trace groups, summarizes, and delivers what matters.",
@@ -21,6 +23,7 @@ export const metadata: Metadata = {
     title: "How Trace Turns Noise Into a Daily Brief | Trace",
     description:
       "From sources to signal — see how Trace groups, summarizes, and delivers what matters.",
+    images: [DEFAULT_TWITTER_IMAGE],
   },
 };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeft, ExternalLink } from "lucide-react";
-import { getArticleImage } from "@/lib/fallback-images";
+import { ArticleImage } from "@/components/ArticleImage";
 import { stripMarkdown } from "@/lib/feed-article-text";
 import type { PublicFeedCardItem } from "@/components/PublicFeedCard";
 
@@ -42,7 +42,6 @@ export default function DailyArchiveArticleView({
   onSelectStory: (id: string) => void;
   onBack: () => void;
 }) {
-  const imageUrl = getArticleImage(item.thumbnail || null, item.title);
   const body = item.summary || item.preview || "";
 
   return (
@@ -73,10 +72,11 @@ export default function DailyArchiveArticleView({
             {stripMarkdown(item.title)}
           </h1>
 
-          {imageUrl && (
+          {item.thumbnail && (
             <div className="mb-8">
-              <img
-                src={imageUrl}
+              <ArticleImage
+                thumbnail={item.thumbnail}
+                title={item.title}
                 alt=""
                 decoding="async"
                 className="w-full max-h-[420px] object-cover rounded-xl"
