@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 
 export const TRACE_SESSION_COOKIE_NAME = 'trace_session';
 export const TRACE_SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+export const TRACE_SESSION_PROFILE_FRESH_AGE_MS = 60_000;
 
 // Optional viewer profile fields embedded in the session cookie so the feed
 // page SSR can skip a Firestore user-profile read. These are signed (HMAC),
@@ -34,6 +35,15 @@ export type VerifiedTraceSession = {
   exp: number;
   profile: TraceSessionProfile | null;
 };
+
+export function isTraceSessionProfileFresh(
+  session: Pick<VerifiedTraceSession, 'iat' | 'profile'> | null,
+  now = Date.now(),
+): boolean {
+  if (!session?.profile) return false;
+  const age = now - session.iat * 1000;
+  return age >= 0 && age <= TRACE_SESSION_PROFILE_FRESH_AGE_MS;
+}
 
 function getSessionSecret() {
   const secret = process.env.TRACE_SESSION_SECRET || process.env.INSTAGRAM_RENDER_SECRET;

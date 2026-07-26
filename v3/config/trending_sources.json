@@ -184,6 +184,38 @@
       "type": "rss",
       "source_weight": 1.05,
       "title_keywords": ["AI", "ai", "developer", "survey", "programming", "engineering", "software", "open source", "llm", "model", "agent"]
+    },
+    {
+      "interest_id": "startups",
+      "name": "Crunchbase News",
+      "url": "https://news.crunchbase.com/feed/",
+      "type": "rss",
+      "source_weight": 1.15,
+      "exclude_title_keywords": ["sponsored", "partner content"]
+    },
+    {
+      "interest_id": "tech",
+      "name": "BBC Technology",
+      "url": "https://feeds.bbci.co.uk/news/technology/rss.xml",
+      "type": "rss",
+      "source_weight": 1.15,
+      "exclude_title_keywords": ["live:", "watch:", "podcast"]
+    },
+    {
+      "interest_id": "tech",
+      "name": "404 Media",
+      "url": "https://www.404media.co/rss/",
+      "type": "rss",
+      "source_weight": 1.15,
+      "exclude_title_keywords": ["podcast", "newsletter", "sponsored"]
+    },
+    {
+      "interest_id": "tech",
+      "name": "SecurityWeek Malware & Threats",
+      "url": "https://www.securityweek.com/category/malware-cyber-threats/feed/",
+      "type": "rss",
+      "source_weight": 1.1,
+      "exclude_title_keywords": ["webinar", "podcast", "sponsored", "how to", "tutorial"]
     }
   ]
 }

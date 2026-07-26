@@ -16,7 +16,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Artifact News Alternatives: 6 Apps That Do AI News Better (2026) | Trace",
+  title: "Artifact Alternatives: 6 AI News Apps (2026) | Trace",
   description:
     "Looking for Artifact news alternatives? We tested 6 AI-powered news apps including Trace, Feedly, and Particle. Find the best news app for 2026.",
   keywords: [

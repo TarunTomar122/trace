@@ -1,3 +1,5 @@
+import { cache } from 'react';
+import { FieldPath } from 'firebase-admin/firestore';
 import { adminFirestore } from '@/lib/firebase-admin';
 import { getTodayIstDate, ISO_DATE_RE } from '@/lib/daily-date-utils';
 import type { FeedItem, TrendingTopic } from '@/lib/firestore';
@@ -7,6 +9,12 @@ export { addCalendarDaysIso, getTodayIstDate, getYesterdayIstDate } from '@/lib/
 type GlobalDailyDoc = {
   date?: unknown;
   assembled_at?: unknown;
+  trending_count?: unknown;
+  trending_topics_count?: unknown;
+  metadata?: {
+    trending_count?: unknown;
+    trending_topics_count?: unknown;
+  };
   trending?: unknown;
   trending_topics?: unknown;
 };
@@ -41,16 +49,51 @@ function asTrendingTopics(value: unknown): TrendingTopic[] {
   return Array.isArray(value) ? (value as TrendingTopic[]) : [];
 }
 
-export async function getDailyArchiveEntries(limitCount = 365): Promise<DailyArchiveEntry[]> {
-  if (!adminFirestore) return [];
+function asNonNegativeInteger(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null;
+}
+
+function getArchiveCounts(data: GlobalDailyDoc): { trendingCount: number; topicCount: number } | null {
+  const trendingCount =
+    asNonNegativeInteger(data.trending_count) ??
+    asNonNegativeInteger(data.metadata?.trending_count);
+  const topicCount =
+    asNonNegativeInteger(data.trending_topics_count) ??
+    asNonNegativeInteger(data.metadata?.trending_topics_count);
+
+  if (trendingCount === null && topicCount === null) return null;
+  return {
+    trendingCount: trendingCount ?? 0,
+    topicCount: topicCount ?? 0,
+  };
+}
+
+function getDailyCollection() {
+  return adminFirestore
+    ?.collection('v3_user_feeds')
+    .doc('_global')
+    .collection('daily');
+}
+
+export async function getDailyArchiveEntries(
+  limitCount = 365,
+  includeHeadline = false,
+): Promise<DailyArchiveEntry[]> {
+  const collection = getDailyCollection();
+  if (!collection) return [];
 
   const today = getTodayIstDate();
-  const snapshot = await adminFirestore
-    .collection('v3_user_feeds')
-    .doc('_global')
-    .collection('daily')
+  const snapshot = await collection
     .orderBy('__name__', 'desc')
     .limit(limitCount)
+    .select(
+      'date',
+      'assembled_at',
+      'trending_count',
+      'trending_topics_count',
+      'metadata',
+      ...(includeHeadline ? ['trending'] : []),
+    )
     .get();
 
   const out: DailyArchiveEntry[] = [];
@@ -61,16 +104,17 @@ export async function getDailyArchiveEntries(limitCount = 365): Promise<DailyArc
     // Exclude today/future explicitly; archive is only past snapshots.
     if (date >= today) continue;
 
-    const trending = asFeedItems(data.trending);
-    const topics = asTrendingTopics(data.trending_topics);
-    if (trending.length === 0 && topics.length === 0) continue;
+    const counts = getArchiveCounts(data);
+    if (!counts || (counts.trendingCount === 0 && counts.topicCount === 0)) continue;
 
     out.push({
       date,
       assembledAt: typeof data.assembled_at === 'string' ? data.assembled_at : undefined,
-      trendingCount: trending.length,
-      topicCount: topics.length,
-      topHeadline: typeof trending[0]?.title === 'string' ? trending[0].title : undefined,
+      trendingCount: counts.trendingCount,
+      topicCount: counts.topicCount,
+      topHeadline: includeHeadline
+        ? asFeedItems(data.trending)[0]?.title
+        : undefined,
     });
   }
 
@@ -83,14 +127,58 @@ export async function getDailyArchiveEntries(limitCount = 365): Promise<DailyArc
  */
 export async function getAdjacentDailyArchiveNeighbours(
   isoDate: string,
-  limitCount = 500,
 ): Promise<{ older: string | null; newer: string | null }> {
-  const entries = await getDailyArchiveEntries(limitCount);
-  const i = entries.findIndex((e) => e.date === isoDate);
-  if (i === -1) return { older: null, newer: null };
+  const collection = getDailyCollection();
+  const normalized = toIsoDate(isoDate);
+  if (!collection || !normalized) return { older: null, newer: null };
+  const today = getTodayIstDate();
+  const fields = ['date', 'trending_count', 'trending_topics_count', 'metadata'];
+
+  const findOlder = async (): Promise<string | null> => {
+    let query = collection
+      .where(FieldPath.documentId(), '<', normalized)
+      .orderBy(FieldPath.documentId(), 'desc')
+      .limit(20)
+      .select(...fields);
+
+    while (true) {
+      const snapshot = await query.get();
+      const match = snapshot.docs.find((doc) => {
+        const date = toIsoDate(doc.id);
+        const counts = getArchiveCounts(doc.data() as GlobalDailyDoc);
+        return Boolean(date && date < today && counts && (counts.trendingCount > 0 || counts.topicCount > 0));
+      });
+      if (match) return toIsoDate(match.id);
+      if (snapshot.size < 20) return null;
+      query = query.startAfter(snapshot.docs[snapshot.docs.length - 1]);
+    }
+  };
+
+  const findNewer = async (): Promise<string | null> => {
+    let query = collection
+      .where(FieldPath.documentId(), '>', normalized)
+      .where(FieldPath.documentId(), '<', today)
+      .orderBy(FieldPath.documentId(), 'asc')
+      .limit(20)
+      .select(...fields);
+
+    while (true) {
+      const snapshot = await query.get();
+      const match = snapshot.docs.find((doc) => {
+        const date = toIsoDate(doc.id);
+        const counts = getArchiveCounts(doc.data() as GlobalDailyDoc);
+        return Boolean(date && counts && (counts.trendingCount > 0 || counts.topicCount > 0));
+      });
+      if (match) return toIsoDate(match.id);
+      if (snapshot.size < 20) return null;
+      query = query.startAfter(snapshot.docs[snapshot.docs.length - 1]);
+    }
+  };
+
+  const [older, newer] = await Promise.all([findOlder(), findNewer()]);
   return {
-    older: i < entries.length - 1 ? entries[i + 1].date : null,
-    newer: i > 0 ? entries[i - 1].date : null,
+    older,
+    newer,
   };
 }
 
@@ -128,7 +216,7 @@ export async function getTodaysFeed(): Promise<DailyArchiveFeed | null> {
   return null;
 }
 
-export async function getDailyArchiveFeed(date: string): Promise<DailyArchiveFeed | null> {
+async function getDailyArchiveFeedUncached(date: string): Promise<DailyArchiveFeed | null> {
   if (!adminFirestore) return null;
   const normalized = toIsoDate(date);
   if (!normalized) return null;
@@ -154,3 +242,9 @@ export async function getDailyArchiveFeed(date: string): Promise<DailyArchiveFee
     trendingTopics,
   };
 }
+
+/**
+ * React cache deduplicates the metadata and page-body read within one render.
+ * ISR still controls how long the completed archive response is retained.
+ */
+export const getDailyArchiveFeed = cache(getDailyArchiveFeedUncached);

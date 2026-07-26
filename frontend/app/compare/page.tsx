@@ -3,6 +3,7 @@ import Link from "next/link";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import { comparePages } from "./content";
+import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "News Reader Alternatives And Comparison Guides | Trace",
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
     canonical: "https://www.yourtrace.online/compare",
   },
   openGraph: {
+    ...DEFAULT_OPEN_GRAPH,
     title: "News Reader Alternatives And Comparison Guides | Trace",
     description:
       "Comparison pages for people who want less noise, faster context, and a better way to follow tech news.",
@@ -24,6 +26,7 @@ export const metadata: Metadata = {
     title: "News Reader Alternatives And Comparison Guides | Trace",
     description:
       "Comparison pages for people who want less noise and faster context.",
+    images: [DEFAULT_TWITTER_IMAGE],
   },
 };
 

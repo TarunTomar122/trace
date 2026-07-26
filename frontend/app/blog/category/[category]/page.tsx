@@ -4,9 +4,16 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, Clock } from "lucide-react";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
+import { ArticleImage } from "@/components/ArticleImage";
 import { blogPosts } from "../../content";
 import { standaloneBlogPosts } from "../../standalone-content";
-import { generateBreadcrumbSchema, generateCollectionPageSchema, SITE_BASE_URL } from "@/lib/seo";
+import {
+  DEFAULT_OPEN_GRAPH,
+  DEFAULT_TWITTER_IMAGE,
+  generateBreadcrumbSchema,
+  generateCollectionPageSchema,
+  SITE_BASE_URL,
+} from "@/lib/seo";
 
 type PageProps = {
   params: Promise<{
@@ -54,6 +61,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description,
     alternates: { canonical: url },
     openGraph: {
+      ...DEFAULT_OPEN_GRAPH,
       title,
       description,
       url,
@@ -64,6 +72,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       card: "summary_large_image",
       title,
       description,
+      images: [DEFAULT_TWITTER_IMAGE],
     },
   };
 }
@@ -190,9 +199,9 @@ export default async function CategoryPage({ params }: PageProps) {
                   className="group landing-card block overflow-hidden transition-all hover:shadow-[0_8px_40px_rgba(0,0,0,0.08)]"
                 >
                   <div className="relative aspect-[16/10] overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={post.image}
+                    <ArticleImage
+                      thumbnail={post.image}
+                      title={post.title}
                       alt={post.title}
                       className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
                     />

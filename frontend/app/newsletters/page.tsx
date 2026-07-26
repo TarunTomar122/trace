@@ -3,14 +3,16 @@ import Link from "next/link";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import { newslettersContent } from "./content";
+import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Tech Newsletter Reviews | Honest Ratings & Comparisons | Trace",
+  title: "Tech Newsletter Reviews & Comparisons | Trace",
   description:
     "Honest reviews of the most popular tech newsletters. See ratings, pros, cons, and whether each one is worth your inbox space.",
   alternates: { canonical: "https://www.yourtrace.online/newsletters" },
   openGraph: {
-    title: "Tech Newsletter Reviews | Honest Ratings & Comparisons | Trace",
+    ...DEFAULT_OPEN_GRAPH,
+    title: "Tech Newsletter Reviews & Comparisons | Trace",
     description:
       "Honest reviews of popular tech newsletters. Ratings, pros, cons — see which are worth your inbox space.",
     url: "https://www.yourtrace.online/newsletters",
@@ -19,9 +21,10 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Tech Newsletter Reviews | Honest Ratings & Comparisons | Trace",
+    title: "Tech Newsletter Reviews & Comparisons | Trace",
     description:
       "Honest reviews of popular tech newsletters. See which are worth your time.",
+    images: [DEFAULT_TWITTER_IMAGE],
   },
 };
 

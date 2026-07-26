@@ -1,6 +1,8 @@
 import { adminFirestore } from '@/lib/firebase-admin';
+import { unstable_cache } from 'next/cache';
 import { applyFeedDedupe } from '@/lib/feed-dedupe';
 import type { FeedItem, TopicTimelineEvent, TrendingTopic, V3UserFeed } from '@/lib/firestore';
+import { hasActiveSubscription, subscriptionStatuses } from '@/lib/subscription-access';
 
 /** Today + yesterday's global edition; pipeline handles source freshness. */
 const GLOBAL_FEED_LOOKBACK_DOCS = 2;
@@ -86,42 +88,9 @@ function extractRoleBuckets(globalData: DocData, normalizedRole: string) {
   return { roleFeed, pulseFeed, dailyPulseBucket, communityFeed, buildFeed };
 }
 
-function toDateMaybe(value: unknown): Date | null {
-  if (!value) return null;
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : value;
-  }
-  if (typeof value === 'object' && value !== null) {
-    const maybe = value as { toDate?: () => Date };
-    if (typeof maybe.toDate === 'function') {
-      try {
-        const date = maybe.toDate();
-        return Number.isNaN(date.getTime()) ? null : date;
-      } catch {
-        return null;
-      }
-    }
-  }
-  if (typeof value === 'string' || typeof value === 'number') {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-  return null;
-}
-
 function computeFeedAccess(profile: DocData | null) {
-  const webSub = String(profile?.subscriptionStatus || 'none');
-  const appSub = String(profile?.appSubscriptionStatus || 'none');
-  let hasAccess = ['trial', 'active'].includes(webSub) || ['trial', 'active'].includes(appSub);
-
-  if (hasAccess && profile?.cancelledAt) {
-    const cancelDate = toDateMaybe(profile.willCancelAt) || toDateMaybe(profile.nextBillingDate);
-    if (cancelDate && new Date() >= cancelDate) {
-      hasAccess = false;
-    }
-  }
-
-  return { webSub, appSub, hasAccess };
+  const { web: webSub, app: appSub } = subscriptionStatuses(profile);
+  return { webSub, appSub, hasAccess: hasActiveSubscription(profile) };
 }
 
 function buildViewerProfile(profile: DocData | null, roleFromProfile: string, viewerInterests: string[]) {
@@ -370,7 +339,7 @@ async function getViewerContext(uid: string, roleFromQuery = '') {
   };
 }
 
-async function buildFullFeedBody(normalizedRole: string): Promise<FeedBody | null> {
+async function buildFullFeedBodyUncached(normalizedRole: string): Promise<FeedBody | null> {
   if (!adminFirestore) {
     throw new Error('Server configuration error');
   }
@@ -514,6 +483,16 @@ async function buildFullFeedBody(normalizedRole: string): Promise<FeedBody | nul
   };
 
   return applyFeedDedupe(body);
+}
+
+const getCachedFullFeedBody = unstable_cache(
+  buildFullFeedBodyUncached,
+  ['trace-global-daily-feed-v1'],
+  { revalidate: 60, tags: ['trace-global-daily-feed'] },
+);
+
+async function buildFullFeedBody(normalizedRole: string): Promise<FeedBody | null> {
+  return getCachedFullFeedBody(normalizedRole);
 }
 
 export async function getFeedForUid(uid: string, roleFromQuery = ''): Promise<V3UserFeed | null> {

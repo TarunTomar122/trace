@@ -5,8 +5,16 @@ import { ArrowLeft, ExternalLink, Clock, Calendar } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
+import { ArticleImage } from "@/components/ArticleImage";
 import { blogPosts } from "../content";
-import { generateBreadcrumbSchema, SITE_BASE_URL } from "@/lib/seo";
+import {
+  DEFAULT_OG_IMAGE,
+  DEFAULT_OPEN_GRAPH,
+  DEFAULT_TWITTER_IMAGE,
+  generateBreadcrumbSchema,
+  metadataTitle,
+  SITE_BASE_URL,
+} from "@/lib/seo";
 
 type PageProps = {
   params: Promise<{
@@ -68,24 +76,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const url = `${baseUrl}/blog/${post.slug}`;
 
   return {
-    title: `${post.title} | Trace Blog`,
+    title: metadataTitle(post.title),
     description: post.excerpt,
     alternates: {
       canonical: url
     },
     openGraph: {
-      title: `${post.title} | Trace Blog`,
+      title: post.title,
       description: post.excerpt,
       url,
-      siteName: "Trace",
       type: "article",
-      images: [{ url: post.image, width: 1200, height: 630, alt: post.title }],
+      ...DEFAULT_OPEN_GRAPH,
     },
     twitter: {
       card: "summary_large_image",
-      title: `${post.title} | Trace Blog`,
+      title: post.title,
       description: post.excerpt,
-      images: [post.image],
+      images: [DEFAULT_TWITTER_IMAGE],
     }
   };
 }
@@ -114,7 +121,7 @@ export default async function BlogPostPage({ params }: PageProps) {
     "@type": "Article",
     "headline": post.title,
     "description": post.excerpt,
-    "image": post.image,
+    "image": DEFAULT_OG_IMAGE.url,
     "datePublished": publishedIso,
     "dateModified": publishedIso,
     "author": {
@@ -151,9 +158,9 @@ export default async function BlogPostPage({ params }: PageProps) {
 
       {/* Hero Image */}
       <div className="relative w-full h-[280px] sm:h-[400px] overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={post.image}
+        <ArticleImage
+          thumbnail={post.image}
+          title={post.title}
           alt={post.title}
           className="absolute inset-0 h-full w-full object-cover"
         />

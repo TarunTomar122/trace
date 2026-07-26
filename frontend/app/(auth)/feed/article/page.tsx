@@ -21,6 +21,7 @@ import { goBackToFeed } from "../FeedPulse";
 import { MediumPaywallGate } from "../FeedPaywall";
 import { useAuth } from "@/contexts/AuthContext";
 import { buildArticleShareUrl, copyOrShareUrl } from "@/lib/article-share";
+import { resolveFeedAccess } from "@/lib/subscription-access";
 
 
 const CARD_TYPE_LABELS: Record<string, string> = {
@@ -133,7 +134,14 @@ function ArticleSections({ cards }: { cards: LearningCard[] }) {
 export default function ArticlePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { profile } = useAuth();
+  const {
+    user,
+    profile,
+    loading,
+    profileFresh,
+    profileRefreshFailed,
+    refreshProfile,
+  } = useAuth();
   const [item, setItem] = useState<FeedItem | null>(null);
   const [activeFeedStory, setActiveFeedStory] = useState<FeedListItem | null>(null);
   const [storyLocked, setStoryLocked] = useState(false);
@@ -192,9 +200,16 @@ export default function ArticlePage() {
     }
   }, [router, storyId]);
 
-  const isSubscribed = profile?.subscriptionStatus === 'active' || profile?.subscriptionStatus === 'trial'
-    || profile?.appSubscriptionStatus === 'active' || profile?.appSubscriptionStatus === 'trial';
-  const showPaywall = storyLocked && !isSubscribed;
+  const access = resolveFeedAccess({
+    serverHasAccess: false,
+    clientProfile: profile,
+    clientProfileFresh: profileFresh,
+    clientProfileRefreshFailed: profileRefreshFailed,
+    authLoading: loading,
+    signedIn: Boolean(user),
+  });
+  const showAccessVerification = storyLocked && access.pending;
+  const showPaywall = storyLocked && !access.pending && !access.hasAccess;
 
   useEffect(() => {
     if (!item) return;
@@ -273,6 +288,44 @@ export default function ArticlePage() {
   const backLabel = getStoryBackLabel(returnHref);
   const hasImage = item.thumbnail && typeof item.thumbnail === 'string' && item.thumbnail.length > 10;
   const imageUrl = getArticleImage(item.thumbnail, item.title);
+
+  if (showAccessVerification) {
+    return (
+      <div className="min-h-screen bg-[#f9f9f7]">
+        <header className="sticky top-0 z-40 border-b border-[#e5e7eb]/60 bg-[#f9f9f7] px-5 py-3">
+          <div className="mx-auto flex max-w-2xl items-center">
+            <button
+              type="button"
+              onClick={handleBack}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-[0_1px_4px_rgba(0,0,0,0.08)] text-[#374151]"
+              aria-label="Back to feed"
+            >
+              <ArrowLeft size={16} />
+            </button>
+          </div>
+        </header>
+        <main className="mx-auto flex max-w-2xl flex-col items-center px-5 py-24 text-center">
+          {access.verificationFailed ? (
+            <>
+              <p className="text-sm font-semibold text-[#111827]">We couldn&apos;t verify your access.</p>
+              <button
+                type="button"
+                onClick={() => void refreshProfile()}
+                className="mt-4 rounded-full bg-[#111827] px-5 py-2 text-sm font-semibold text-white"
+              >
+                Try again
+              </button>
+            </>
+          ) : (
+            <>
+              <Loader2 size={22} className="animate-spin text-[#9ca3af]" />
+              <p className="mt-3 text-sm text-[#6b7280]">Checking your access…</p>
+            </>
+          )}
+        </main>
+      </div>
+    );
+  }
 
   if (showPaywall) {
     const metaLine = [

@@ -3,6 +3,7 @@ import Link from "next/link";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import { solutionsContent } from "./content";
+import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Solutions for Every Tech Reading Workflow | Trace",
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
     "From information overload to morning briefing workflows — explore how Trace solves the biggest tech reading problems.",
   alternates: { canonical: "https://www.yourtrace.online/solutions" },
   openGraph: {
+    ...DEFAULT_OPEN_GRAPH,
     title: "Solutions for Every Tech Reading Workflow | Trace",
     description:
       "Explore how Trace solves the biggest tech reading problems — from information overload to daily briefing workflows.",
@@ -22,6 +24,7 @@ export const metadata: Metadata = {
     title: "Solutions for Every Tech Reading Workflow | Trace",
     description:
       "Explore how Trace solves the biggest tech reading problems.",
+    images: [DEFAULT_TWITTER_IMAGE],
   },
 };
 

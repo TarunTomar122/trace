@@ -4,64 +4,45 @@ import {
   createTraceSession,
   TRACE_SESSION_COOKIE_NAME,
   TRACE_SESSION_MAX_AGE_MS,
+  isTraceSessionProfileFresh,
+  verifyTraceSession,
   type TraceSessionProfile,
 } from '@/lib/server-session';
+import { hasActiveSubscription } from '@/lib/subscription-access';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function toDateMaybe(value: any): Date | null {
-  if (!value) return null;
-  if (value instanceof Date) return value;
-  if (typeof value === 'string' || typeof value === 'number') {
-    const parsed = new Date(value);
-    return Number.isFinite(parsed.getTime()) ? parsed : null;
-  }
-  if (typeof value?.toDate === 'function') {
-    try {
-      const parsed = value.toDate();
-      return parsed instanceof Date ? parsed : null;
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
-
-// Mirrors computeFeedAccess in feed-server.ts — kept inline here so we don't
-// drag firebase-admin's feed-server module into this route's critical path.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function computeHasAccess(profile: any): boolean {
-  const webSub = String(profile?.subscriptionStatus || 'none');
-  const appSub = String(profile?.appSubscriptionStatus || 'none');
-  let hasAccess = ['trial', 'active'].includes(webSub) || ['trial', 'active'].includes(appSub);
-  if (hasAccess && profile?.cancelledAt) {
-    const cancelDate = toDateMaybe(profile.willCancelAt) || toDateMaybe(profile.nextBillingDate);
-    if (cancelDate && new Date() >= cancelDate) {
-      hasAccess = false;
-    }
-  }
-  return hasAccess;
+  return hasActiveSubscription(profile);
 }
 
-async function loadProfileForSession(uid: string): Promise<TraceSessionProfile | null> {
-  if (!adminFirestore) return null;
+type SessionProfileResult =
+  | { status: 'found'; profile: TraceSessionProfile }
+  | { status: 'missing' }
+  | { status: 'unavailable' };
+
+async function loadProfileForSession(uid: string): Promise<SessionProfileResult> {
+  if (!adminFirestore) return { status: 'unavailable' };
   try {
     const snap = await adminFirestore.collection('user_profiles').doc(uid).get();
-    if (!snap.exists) return null;
+    if (!snap.exists) return { status: 'missing' };
     const data = snap.data() || {};
     const interests = Array.isArray(data.interests)
       ? data.interests.filter((x: unknown): x is string => typeof x === 'string' && x.trim().length > 0)
       : null;
     return {
-      role: typeof data.role === 'string' ? data.role : null,
-      interests,
-      onboarded: data.onboarded === true,
-      subscriptionStatus: typeof data.subscriptionStatus === 'string' ? data.subscriptionStatus : 'none',
-      appSubscriptionStatus: typeof data.appSubscriptionStatus === 'string' ? data.appSubscriptionStatus : 'none',
-      hasAccess: computeHasAccess(data),
+      status: 'found',
+      profile: {
+        role: typeof data.role === 'string' ? data.role : null,
+        interests,
+        onboarded: data.onboarded === true,
+        subscriptionStatus: typeof data.subscriptionStatus === 'string' ? data.subscriptionStatus : 'none',
+        appSubscriptionStatus: typeof data.appSubscriptionStatus === 'string' ? data.appSubscriptionStatus : 'none',
+        hasAccess: computeHasAccess(data),
+      },
     };
   } catch (error) {
     console.error('[api/auth/session] loadProfileForSession failed:', error);
-    return null;
+    return { status: 'unavailable' };
   }
 }
 
@@ -71,20 +52,46 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
-    const body = await request.json().catch(() => null) as { idToken?: string } | null;
+    const body = await request.json().catch(() => null) as {
+      idToken?: string;
+      forceProfileRefresh?: boolean;
+    } | null;
     const idToken = typeof body?.idToken === 'string' ? body.idToken : '';
     if (!idToken) {
       return NextResponse.json({ error: 'Missing idToken' }, { status: 400 });
     }
 
     const decodedToken = await adminAuth.verifyIdToken(idToken);
-    // Enrich session cookie with profile so /feed SSR can skip getViewerContext.
-    // Runs on every id-token refresh (~hourly), so the cookie stays reasonably
-    // in sync with profile changes.
-    const profile = await loadProfileForSession(decodedToken.uid);
-    const sessionCookie = createTraceSession(decodedToken.uid, profile);
+    const existingCookie = request.cookies.get(TRACE_SESSION_COOKIE_NAME)?.value;
+    const existingSession = existingCookie ? verifyTraceSession(existingCookie) : null;
+    const existingProfileIsFresh = Boolean(
+      body?.forceProfileRefresh !== true
+      &&
+      existingSession?.uid === decodedToken.uid
+      && isTraceSessionProfileFresh(existingSession)
+    );
 
+    // Reuse a just-issued signed profile during document navigation. Outside
+    // that short window, refresh from Firestore so upgrades and revocations
+    // converge without turning every /feed entry into a profile read.
     const response = NextResponse.json({ ok: true });
+    if (existingProfileIsFresh) {
+      return response;
+    }
+
+    const profileResult = await loadProfileForSession(decodedToken.uid);
+    if (profileResult.status === 'unavailable') {
+      if (existingSession?.uid === decodedToken.uid && existingSession.profile) {
+        return response;
+      }
+      return NextResponse.json(
+        { error: 'Profile service unavailable' },
+        { status: 503 },
+      );
+    }
+
+    const profile = profileResult.status === 'found' ? profileResult.profile : null;
+    const sessionCookie = createTraceSession(decodedToken.uid, profile);
     response.cookies.set({
       name: TRACE_SESSION_COOKIE_NAME,
       value: sessionCookie,

@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "seo:check": "node scripts/check-seo-links.mjs",
+    "seo:audit-live": "node scripts/audit-live-seo.mjs",
+    "seo:indexnow": "node scripts/submit-indexnow.mjs",
     "test:analytics-platform": "node --test lib/analytics-platform.test.mjs",
     "remotion:studio": "remotion studio",
     "remotion:render": "remotion render"

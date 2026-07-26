@@ -24,6 +24,7 @@ import {
   SUBSCRIPTION_PRICE_INDIA,
 } from '@/lib/subscription-pricing';
 import SubscriptionPrice from '@/components/SubscriptionPrice';
+import { hasActiveSubscription } from '@/lib/subscription-access';
 
 interface SubscriptionStatus {
   subscriptionStatus: string;
@@ -97,7 +98,7 @@ function buildSubscriptionStatus(profile: any): SubscriptionStatus {
     lastPaymentDate: toDateOrNull(profile?.lastPaymentDate),
     cancelledAt: toDateOrNull(profile?.cancelledAt),
     willCancelAt: toDateOrNull(profile?.willCancelAt),
-    hasAccess: ['trial', 'active'].includes(status) || ['trial', 'active'].includes(profile?.appSubscriptionStatus || 'none'),
+    hasAccess: hasActiveSubscription(profile),
   };
 }
 

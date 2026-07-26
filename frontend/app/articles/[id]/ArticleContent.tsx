@@ -79,7 +79,14 @@ function getSafeReturnPath(value: string | null, fallback: string): string {
 
 export default function ArticleContent({ article }: Props) {
   const searchParams = useSearchParams();
-  const { user, profile, loading, profileResolved } = useAuth();
+  const {
+    user,
+    profile,
+    loading,
+    profileResolved,
+    profileFresh,
+    profileRefreshFailed,
+  } = useAuth();
   const [shareCopied, setShareCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
 
@@ -103,6 +110,8 @@ export default function ArticleContent({ article }: Props) {
     user,
     profile,
     loading: loading || !profileResolved,
+    profileFresh,
+    profileRefreshFailed,
   });
 
   const handleShare = async () => {

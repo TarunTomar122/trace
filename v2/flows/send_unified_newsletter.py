@@ -30,6 +30,9 @@ from v1.storage import FirestoreStore  # noqa: E402
 from v1.tools.brevo_client import send_newsletter_email  # noqa: E402
 
 
+EMAIL_TEMPLATE = "daily_pulse_newsletter.html"
+
+
 def _today_ist() -> str:
     ist = timezone(timedelta(hours=5, minutes=30))
     return datetime.now(ist).strftime("%Y-%m-%d")
@@ -128,7 +131,7 @@ def _render_stories_html(stories: list[dict[str, Any]], sign_off: str) -> str:
             img_tag = (
                 f'<img src="{escape(image_url)}" alt="" width="576" '
                 'style="display: block; width: 100%; max-width: 576px; '
-                'height: auto; border-radius: 8px; border: 1px solid #e4e4e7; margin: 0 0 14px 0;" />'
+                'height: auto; border: 0; margin: 0;" />'
             )
             if url:
                 image_html = (
@@ -139,20 +142,21 @@ def _render_stories_html(stories: list[dict[str, Any]], sign_off: str) -> str:
             else:
                 image_html = img_tag
 
+        featured_image = (
+            f'<tr><td style="padding: 0 0 18px 0;">{image_html}</td></tr>' if image_html else ""
+        )
         parts.append(
-            '<table width="100%" cellpadding="0" cellspacing="0" '
-            'border="0" style="margin: 0 0 8px 0;">'
-            '<tr><td style="padding: 0 0 20px 0;"><div '
-            'style="border-top: 1px solid #e4e4e7;"></div></td></tr>'
+            '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
+            'style="border-top: 1px solid #e5e5e2;">'
+            '<tr><td style="padding: 30px 0 28px 0;">'
+            '<table width="100%" cellpadding="0" cellspacing="0" border="0">'
             '<tr><td>'
-            f'<p style="margin: 0 0 12px 0; font-size: 22px; line-height: 1.35; '
-            "font-family: Georgia, 'Times New Roman', serif; font-weight: 700; color: #18181b;\">"
-            f"{idx}. {title_html}</p>"
-            f"{image_html}"
-            f"{body_html}"
-            "</td></tr>"
-            '<tr><td style="height: 14px;"></td></tr>'
-            "</table>"
+            f'<p style="margin: 0 0 10px 0; color: #777773; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size: 10px; font-weight: 800; letter-spacing: 1.4px;">THE SIGNAL &nbsp;·&nbsp; {idx:02d}</p>'
+            f'<p style="margin: 0 0 16px 0; color: #111111; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size: 26px; font-weight: 750; letter-spacing: -0.7px; line-height: 1.13;">{title_html}</p>'
+            '</td></tr>'
+            f'{featured_image}'
+            f'<tr><td>{body_html}</td></tr>'
+            '</table></td></tr></table>'
         )
 
     if sign_off:
@@ -176,7 +180,7 @@ def _generate_html(
     stories: list[dict[str, Any]],
     sign_off: str,
 ) -> str:
-    template = _load_template("free_newsletter.html")
+    template = _load_template(EMAIL_TEMPLATE)
     try:
         display_date = datetime.strptime(
             date, "%Y-%m-%d"
@@ -193,6 +197,11 @@ def _generate_html(
     out = out.replace("{{INTRO_HTML}}", intro_html)
     out = out.replace("{{ITEMS_HTML}}", items_html)
     return out
+
+
+def _is_targeted_delivery(to_email: str, user_id: str) -> bool:
+    """Targeted sends are previews and must never advance the daily campaign."""
+    return bool((to_email or "").strip() or (user_id or "").strip())
 
 
 def _generate_text(
@@ -249,7 +258,8 @@ def send_unified_newsletter(
             "date": target_date,
         }
     data = doc.to_dict() or {}
-    if data.get("status") == "sent" and not force:
+    targeted_delivery = _is_targeted_delivery(to_email, user_id)
+    if data.get("status") == "sent" and not (force or targeted_delivery):
         return {
             "success": False,
             "error": "already sent (use --force)",
@@ -300,10 +310,17 @@ def send_unified_newsletter(
             "recipient_count": len(recipients),
             "story_count": len(stories),
             "subject": subject,
+            "variant": "pulse",
+            "targeted_delivery": targeted_delivery,
         }
 
     html = _generate_html(target_date, intro, stories, sign_off)
     text = _generate_text(target_date, intro, stories, sign_off)
+    delivery_subject = (
+        f"[Preview] {subject}"
+        if targeted_delivery
+        else subject
+    )
 
     sent = 0
     failed = 0
@@ -315,7 +332,7 @@ def send_unified_newsletter(
         res = send_newsletter_email(
             to_email=email,
             to_name=None,
-            subject=subject,
+            subject=delivery_subject,
             html_content=html,
             text_content=text,
         )
@@ -325,20 +342,22 @@ def send_unified_newsletter(
             failed += 1
             errors.append(f"{email}: {res.get('error', 'unknown')}")
 
-    status = "sent" if sent > 0 else "failed"
-    doc_ref.set(
-        {
-            "status": status,
-            "sent_at": datetime.now(timezone.utc).isoformat(),
-            "sent_count": sent,
-            "failed_count": failed,
-            "recipient_count": len(recipients),
-            "email_subject": subject,
-            "email_html": html,
-            "email_text": text,
-        },
-        merge=True,
-    )
+    if not targeted_delivery:
+        status = "sent" if sent > 0 else "failed"
+        doc_ref.set(
+            {
+                "status": status,
+                "sent_at": datetime.now(timezone.utc).isoformat(),
+                "sent_count": sent,
+                "failed_count": failed,
+                "recipient_count": len(recipients),
+                "email_subject": subject,
+                "email_html": html,
+                "email_text": text,
+                "email_variant": "pulse",
+            },
+            merge=True,
+        )
     return {
         "success": sent > 0,
         "date": target_date,
@@ -346,6 +365,8 @@ def send_unified_newsletter(
         "failed": failed,
         "recipient_count": len(recipients),
         "story_count": len(stories),
+        "variant": "pulse",
+        "targeted_delivery": targeted_delivery,
         "errors": errors,
     }
 

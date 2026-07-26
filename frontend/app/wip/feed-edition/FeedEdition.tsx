@@ -176,8 +176,42 @@ function StoryRow({
   );
 }
 
-export default function FeedEdition({ model }: { model: EditionModel }) {
-  const { edition, isPro } = model;
+function AccessVerificationNote({
+  failed,
+  onRetry,
+}: {
+  failed: boolean;
+  onRetry: () => Promise<unknown>;
+}) {
+  return (
+    <div className="mt-7 border px-5 py-4" style={{ borderColor: HAIRLINE, color: MUTED }} role="status">
+      <p className="text-[13.5px] leading-[1.6]">
+        {failed
+          ? 'Trace could not verify your subscription. Your edition stays locked without showing an upgrade prompt.'
+          : 'Checking your subscription before opening the rest of today’s edition.'}
+      </p>
+      {failed && (
+        <button
+          type="button"
+          onClick={() => void onRetry()}
+          className="mt-3 text-[12px] font-semibold hover:underline"
+          style={{ color: BLUE }}
+        >
+          Retry access check
+        </button>
+      )}
+    </div>
+  );
+}
+
+export default function FeedEdition({
+  model,
+  onRetryAccess,
+}: {
+  model: EditionModel;
+  onRetryAccess: () => Promise<unknown>;
+}) {
+  const { edition, isPro, accessPending, accessVerificationFailed } = model;
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const firstVisibleRef = React.useRef<HTMLElement>(null);
@@ -348,8 +382,9 @@ export default function FeedEdition({ model }: { model: EditionModel }) {
         const openStories = section.stories.filter((s) => !isLocked(model, s.id));
         const lockedCount = section.stories.length - openStories.length;
         const fullyLocked = openStories.length === 0;
-        const showProNote = !isPro && lockedCount > 0;
-        if (showProNote) paywallShown = true;
+        const showAccessBoundary = !isPro && lockedCount > 0;
+        const showProNote = showAccessBoundary && !accessPending;
+        if (showAccessBoundary) paywallShown = true;
 
         return (
           <section ref={!showHero && sectionIndex === 0 ? firstVisibleRef : undefined} key={section.id} className="pt-12">
@@ -384,6 +419,9 @@ export default function FeedEdition({ model }: { model: EditionModel }) {
             </div>
 
             {lockedCount > 0 && <LockedWireRows count={lockedCount} showImages={model.showImages} />}
+            {showAccessBoundary && accessPending && (
+              <AccessVerificationNote failed={accessVerificationFailed} onRetry={onRetryAccess} />
+            )}
             {showProNote && (
               <ProEditionNote visibleCount={freeCount} totalCount={edition.totalCount} />
             )}

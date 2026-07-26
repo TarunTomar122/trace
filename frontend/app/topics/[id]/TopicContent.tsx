@@ -103,7 +103,14 @@ function formatLongArchiveDate(iso: string): string {
 export default function TopicContent({ topic }: { topic: TopicData }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, profile, loading, profileResolved } = useAuth();
+  const {
+    user,
+    profile,
+    loading,
+    profileResolved,
+    profileFresh,
+    profileRefreshFailed,
+  } = useAuth();
   const [toast, setToast] = useState<string | null>(null);
   const [shareLoading, setShareLoading] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
@@ -116,6 +123,8 @@ export default function TopicContent({ topic }: { topic: TopicData }) {
     user,
     profile,
     loading: loading || !profileResolved,
+    profileFresh,
+    profileRefreshFailed,
   });
 
   const sortedTimeline = useMemo(() => {

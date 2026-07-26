@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Mail } from 'lucide-react';
 import LegalPageShell from '@/components/LegalPageShell';
+import { DEFAULT_OPEN_GRAPH } from '@/lib/seo';
 
 export const metadata: Metadata = {
   title: 'Contact — Trace',
@@ -11,10 +12,12 @@ export const metadata: Metadata = {
     canonical: 'https://www.yourtrace.online/contact',
   },
   openGraph: {
+    ...DEFAULT_OPEN_GRAPH,
     title: 'Contact — Trace',
     description:
       'Get in touch with the Trace team. Have questions, feedback, or need help with your subscription? We are here to help.',
     url: 'https://www.yourtrace.online/contact',
+    type: 'website',
   },
 };
 
@@ -89,6 +92,23 @@ export default function ContactPage() {
           <Link href="/profile" className="text-[#2563eb] hover:underline">profile page</Link>.
         </p>
       </div>
+
+      <section className="mt-8 max-w-2xl text-sm leading-relaxed text-[#6b7280]">
+        <h2 className="mb-2 text-lg font-semibold text-[#111827]">What to include</h2>
+        <p>
+          For product problems, include the page you were using, what you expected to happen,
+          and the browser or Android version involved. For billing questions, send the email
+          attached to your Trace account, but never send a password or full payment-card
+          details. We use the information only to investigate your request and may ask for a
+          screenshot when the issue cannot be reproduced from the description alone.
+        </p>
+        <p className="mt-3">
+          Email is the best route for account, privacy, and subscription requests. X and GitHub
+          are useful for public feedback, feature ideas, or technical reports that do not
+          contain personal account information. Most messages receive a reply within a few
+          business days.
+        </p>
+      </section>
     </LegalPageShell>
   );
 }

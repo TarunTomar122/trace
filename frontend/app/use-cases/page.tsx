@@ -3,6 +3,7 @@ import Link from "next/link";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import { useCasesContent } from "./content";
+import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Trace for Every Role in Tech | Use Cases | Trace",
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
     "From founders to developers to investors — see how each role uses Trace to stay current without the noise.",
   alternates: { canonical: "https://www.yourtrace.online/use-cases" },
   openGraph: {
+    ...DEFAULT_OPEN_GRAPH,
     title: "Trace for Every Role in Tech | Use Cases | Trace",
     description:
       "See how founders, developers, PMs, and more use Trace to stay current without the noise.",
@@ -22,6 +24,7 @@ export const metadata: Metadata = {
     title: "Trace for Every Role in Tech | Use Cases | Trace",
     description:
       "See how each role uses Trace to stay current without the noise.",
+    images: [DEFAULT_TWITTER_IMAGE],
   },
 };
 

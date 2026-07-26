@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import LegalPageShell from '@/components/LegalPageShell';
+import { DEFAULT_OPEN_GRAPH } from '@/lib/seo';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy — Trace',
@@ -10,10 +11,12 @@ export const metadata: Metadata = {
     canonical: 'https://www.yourtrace.online/privacy-policy',
   },
   openGraph: {
+    ...DEFAULT_OPEN_GRAPH,
     title: 'Privacy Policy — Trace',
     description:
       'Learn how Trace collects, uses, and protects your personal data. Our privacy policy explains your rights and how we safeguard your information.',
     url: 'https://www.yourtrace.online/privacy-policy',
+    type: 'website',
   },
 };
 
