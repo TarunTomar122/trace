@@ -58,14 +58,16 @@ export const useAuth = () => useContext(AuthContext);
 
 const CHECKOUT_INTENT_KEY = 'trace_post_auth_intent';
 
-export function consumePendingPostAuthIntent(): SignInIntent | null {
+export function peekPendingPostAuthIntent(): SignInIntent | null {
   if (typeof window === 'undefined') return null;
   const intent = sessionStorage.getItem(CHECKOUT_INTENT_KEY);
-  if (intent === 'read' || intent === 'checkout') {
-    sessionStorage.removeItem(CHECKOUT_INTENT_KEY);
-    return intent;
-  }
-  return null;
+  return intent === 'read' || intent === 'checkout' ? intent : null;
+}
+
+export function consumePendingPostAuthIntent(): SignInIntent | null {
+  const intent = peekPendingPostAuthIntent();
+  if (intent) sessionStorage.removeItem(CHECKOUT_INTENT_KEY);
+  return intent;
 }
 
 function setPendingPostAuthIntent(intent: SignInIntent | null) {
@@ -77,12 +79,7 @@ function setPendingPostAuthIntent(intent: SignInIntent | null) {
   sessionStorage.removeItem(CHECKOUT_INTENT_KEY);
 }
 
-export function getPostAuthDestination(profile: UserProfile | null, intent: SignInIntent = 'read'): string {
-  if (!profile?.onboarded) {
-    return intent === 'checkout' ? '/onboarding?intent=checkout' : '/onboarding';
-  }
-  return intent === 'checkout' ? '/profile?tab=subscription&intent=checkout' : '/feed';
-}
+export { getPostAuthDestination } from '@/lib/landing-routing';
 
 function isPopupFallbackEnvironment() {
   if (typeof window === 'undefined') return false;

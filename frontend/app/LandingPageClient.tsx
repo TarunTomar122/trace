@@ -4,7 +4,13 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, MessagesSquare, Newspaper, Rocket, Smartphone, Zap, type LucideIcon } from 'lucide-react';
-import { consumePendingPostAuthIntent, getPostAuthDestination, useAuth } from '@/contexts/AuthContext';
+import {
+  consumePendingPostAuthIntent,
+  getPostAuthDestination,
+  peekPendingPostAuthIntent,
+  useAuth,
+} from '@/contexts/AuthContext';
+import { getSignedInLandingDestination } from '@/lib/landing-routing';
 import { trackLandingCTAClicked } from '@/lib/posthog';
 import { SUBSCRIPTION_COMPARE_AT_DEFAULT, SUBSCRIPTION_PRICE_DEFAULT, SUBSCRIPTION_PRICE_INDIA } from '@/lib/subscription-pricing';
 import SubscriptionPrice from '@/components/SubscriptionPrice';
@@ -58,8 +64,15 @@ export default function LandingPageClient({
   const { user, profile, loading, profileResolved, signInWithGoogle } = useAuth();
 
   useEffect(() => {
-    if (loading || !user || !profileResolved) return;
-    router.replace(getPostAuthDestination(profile, consumePendingPostAuthIntent() || 'read'));
+    if (loading || !user) return;
+    const destination = getSignedInLandingDestination(
+      profile,
+      profileResolved,
+      peekPendingPostAuthIntent(),
+    );
+    if (!destination) return;
+    consumePendingPostAuthIntent();
+    router.replace(destination);
   }, [user, loading, profileResolved, profile, router]);
 
   const startReading = (location: string) => {
@@ -85,7 +98,20 @@ export default function LandingPageClient({
 
   return (
     <div className="min-h-screen bg-[#faf9f5] text-[#1b1a17]">
-      <header className="bg-[#faf9f5] px-5 sm:px-8">
+      {loading && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="trace-auth-loading-cover fixed inset-0 z-[100] bg-[#faf9f5]"
+        >
+          <span className="sr-only">Checking your session</span>
+        </div>
+      )}
+      <noscript>
+        <style>{'.trace-auth-loading-cover{display:none!important}.trace-auth-home-content{visibility:visible!important}'}</style>
+      </noscript>
+      <div className={`trace-auth-home-content ${loading ? 'invisible' : ''}`}>
+        <header className="bg-[#faf9f5] px-5 sm:px-8">
         <div className="mx-auto flex max-w-[880px] items-center justify-between border-b border-[#e4e1d8] py-4">
           <Link href="/" className="font-mono text-[12.5px] font-bold tracking-[0.28em]">TRACE</Link>
           <nav className="hidden items-center gap-5 text-[13px] text-[#75705f] sm:flex">
@@ -215,7 +241,8 @@ export default function LandingPageClient({
           </div>
         </section>
       </main>
-      <Footer />
+        <Footer />
+      </div>
     </div>
   );
 }
