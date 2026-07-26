@@ -12,6 +12,7 @@ import {
   ONBOARDING_INTERESTS, CAREER_GOALS,
 } from '@/lib/firestore';
 import { isAlphaMode } from '@/lib/alpha';
+import { trackDailyBriefPreferenceChanged } from '@/lib/posthog';
 import SubscriptionManager from '@/components/SubscriptionManager';
 import {
   BLUE,
@@ -103,7 +104,7 @@ function ProfileContent() {
   const [editSeniority, setEditSeniority] = useState('');
   const [editInterests, setEditInterests] = useState<string[]>([]);
   const [editGoals, setEditGoals] = useState<string[]>([]);
-  const [newsletterEnabled, setNewsletterEnabled] = useState(true);
+  const [newsletterEnabled, setNewsletterEnabled] = useState(false);
   const [savingNewsletter, setSavingNewsletter] = useState(false);
 
   useEffect(() => {
@@ -118,7 +119,11 @@ function ProfileContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (profile) setNewsletterEnabled(profile.dailyNewsletterEnabled !== false);
+    if (profile) {
+      setNewsletterEnabled(
+        profile.dailyNewsletterEnabled === true || profile.newsletterOptIn === true,
+      );
+    }
   }, [profile]);
 
   const toggleNewsletter = async () => {
@@ -127,7 +132,11 @@ function ProfileContent() {
     setNewsletterEnabled(newValue);
     setSavingNewsletter(true);
     try {
-      await updateUserProfile(user.uid, { dailyNewsletterEnabled: newValue });
+      await updateUserProfile(user.uid, {
+        dailyNewsletterEnabled: newValue,
+        newsletterOptIn: newValue,
+      });
+      trackDailyBriefPreferenceChanged(newValue, 'profile');
       await refreshProfile();
     } catch (e) {
       console.error('Failed to update newsletter preference:', e);

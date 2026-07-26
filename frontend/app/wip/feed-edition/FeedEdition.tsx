@@ -13,6 +13,10 @@ import React, { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { FeedListItem } from '@/app/(auth)/feed/FeedUi';
 import {
+  trackFeedFilterChanged,
+  trackFeedStoryExpanded,
+} from '@/lib/posthog';
+import {
   BLUE,
   HAIRLINE,
   INK,
@@ -21,6 +25,7 @@ import {
   ExpandedStory,
   EditionFooter,
   EditionHeader,
+  DailyBriefNote,
   LockedWireRows,
   MonoLabel,
   ProEditionNote,
@@ -43,6 +48,8 @@ function StoryRow({
   onToggle,
   expanded,
   showImages,
+  section,
+  tier,
 }: {
   item: FeedListItem;
   number: number;
@@ -50,6 +57,8 @@ function StoryRow({
   expanded: boolean;
   onToggle: () => void;
   showImages: boolean;
+  section: string;
+  tier: 'free' | 'pro';
 }) {
   const headerRef = React.useRef<HTMLDivElement>(null);
 
@@ -150,7 +159,15 @@ function StoryRow({
               transition={{ duration: 0.42, ease: [0.32, 0.72, 0, 1] }}
               className="pb-7"
             >
-              <ExpandedStory item={item} showImages={showImages} />
+              <ExpandedStory
+                item={item}
+                showImages={showImages}
+                tracking={{
+                  position: number,
+                  section,
+                  tier,
+                }}
+              />
             </motion.div>
           </motion.div>
         )}
@@ -201,9 +218,26 @@ export default function FeedEdition({
   const userChangedFilterRef = React.useRef(false);
 
   const selectFilter = (filter: string) => {
+    if (filter === activeFilter) return;
     userChangedFilterRef.current = true;
+    trackFeedFilterChanged(filter, activeFilter);
     setExpandedId(null);
     setActiveFilter(filter);
+  };
+
+  const toggleStory = (item: FeedListItem, position: number, section: string) => {
+    const isOpening = expandedId !== item.id;
+    if (isOpening) {
+      trackFeedStoryExpanded({
+        itemId: item.id,
+        itemType: item.type,
+        source: item.source,
+        position,
+        section,
+        tier: isPro ? 'pro' : 'free',
+      });
+    }
+    setExpandedId(isOpening ? item.id : null);
   };
 
   const filters = useMemo(() => {
@@ -312,10 +346,14 @@ export default function FeedEdition({
               number={visibleStoryNumber.get(edition.hero.lead.id) ?? 1}
               locked={false}
               expanded={expandedId === edition.hero.lead.id}
-              onToggle={() =>
-                setExpandedId(expandedId === edition.hero!.lead.id ? null : edition.hero!.lead.id)
-              }
+              onToggle={() => toggleStory(
+                edition.hero!.lead,
+                visibleStoryNumber.get(edition.hero!.lead.id) ?? 1,
+                'lead',
+              )}
               showImages={model.showImages}
+              section="lead"
+              tier={isPro ? 'pro' : 'free'}
             />
             {edition.hero.sidebar.map((item) => (
               <StoryRow
@@ -324,8 +362,14 @@ export default function FeedEdition({
                 number={visibleStoryNumber.get(item.id) ?? 0}
                 locked={false}
                 expanded={expandedId === item.id}
-                onToggle={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                onToggle={() => toggleStory(
+                  item,
+                  visibleStoryNumber.get(item.id) ?? 1,
+                  'lead',
+                )}
                 showImages={model.showImages}
+                section="lead"
+                tier={isPro ? 'pro' : 'free'}
               />
             ))}
           </div>
@@ -362,8 +406,14 @@ export default function FeedEdition({
                   number={visibleStoryNumber.get(item.id) ?? 0}
                   locked={false}
                   expanded={expandedId === item.id}
-                  onToggle={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                  onToggle={() => toggleStory(
+                    item,
+                    visibleStoryNumber.get(item.id) ?? 1,
+                    section.id,
+                  )}
                   showImages={model.showImages}
+                  section={section.id}
+                  tier={isPro ? 'pro' : 'free'}
                 />
               ))}
             </div>
@@ -379,6 +429,8 @@ export default function FeedEdition({
           </section>
         );
       })}
+
+      <DailyBriefNote />
 
       <section className="mt-16 border-t pt-10" style={{ borderColor: HAIRLINE }}>
         <MonoLabel>Colophon</MonoLabel>

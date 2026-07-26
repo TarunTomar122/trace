@@ -2,7 +2,7 @@ name: Daily Newsletter
 
 on:
   schedule:
-    # Send newsletter after the morning feed pipeline has finished.
+    # Send each opted-in user's personalized brief after the morning feeds finish.
     - cron: '30 3 * * *'
 
   workflow_dispatch:

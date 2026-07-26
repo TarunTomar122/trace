@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
   User,
+  getAdditionalUserInfo,
   onIdTokenChanged,
   signInWithPopup,
   signInWithRedirect,
@@ -12,7 +13,7 @@ import {
 import { auth, googleProvider } from '@/lib/firebase';
 import { getOrCreateUserProfile, getUserProfile, syncAffiliateAttributionToProfile, syncUserTimezone, UserProfile } from '@/lib/firestore';
 import { readAffiliateAttribution } from '@/lib/affiliate';
-import { identifyUser, resetUser, trackSignIn, trackSignOut } from '@/lib/posthog';
+import { identifyUser, resetUser, trackSignIn, trackSignOut, trackSignUp } from '@/lib/posthog';
 import {
   clearAuthSessionCache,
   isAuthSessionCacheFresh,
@@ -309,6 +310,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           name: result.user.displayName,
           onboarded: userProfile?.onboarded || false,
         });
+        if (getAdditionalUserInfo(result)?.isNewUser) {
+          trackSignUp("google");
+        }
         trackSignIn("google");
         await syncPendingAffiliate(result.user.uid, userProfile);
 

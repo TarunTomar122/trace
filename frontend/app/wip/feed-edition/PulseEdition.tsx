@@ -1,8 +1,14 @@
 "use client";
 
+import React from 'react';
 import { BookOpen, MessagesSquare, Wrench } from 'lucide-react';
 import type { V3UserFeed } from '@/lib/firestore';
 import type { FeedListItem } from '@/app/(auth)/feed/FeedUi';
+import {
+  trackCheckoutClicked,
+  trackFeedSourceClicked,
+  trackPaywallShown,
+} from '@/lib/posthog';
 import {
   BLUE,
   HAIRLINE,
@@ -24,7 +30,17 @@ const SECTION_ICON = {
   reads: BookOpen,
 };
 
-function SignalCard({ item }: { item: FeedListItem }) {
+function SignalCard({
+  item,
+  position,
+  section,
+  tier,
+}: {
+  item: FeedListItem;
+  position: number;
+  section: string;
+  tier: 'free' | 'pro';
+}) {
   const url = item.url || (item.data as { url?: string }).url;
   const signalLabel = item.signalCount || item.sourceCount;
   const hasSourceImage = Boolean(item.thumbnail?.trim());
@@ -59,6 +75,14 @@ function SignalCard({ item }: { item: FeedListItem }) {
           href={url}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => trackFeedSourceClicked({
+            itemId: item.id,
+            itemType: item.type,
+            source: item.source,
+            position,
+            section,
+            tier,
+          })}
           className="group flex h-full flex-col px-5 py-6 transition-colors hover:bg-[#f5f3ed]"
         >
           {content}
@@ -73,20 +97,33 @@ function SignalCard({ item }: { item: FeedListItem }) {
 function LockedSignalPreview({
   item,
   remaining,
+  section,
   accessPending,
   accessVerificationFailed,
   onRetryAccess,
 }: {
   item: FeedListItem;
   remaining: number;
+  section: string;
   accessPending: boolean;
   accessVerificationFailed: boolean;
   onRetryAccess: () => Promise<unknown>;
 }) {
+  const tracked = React.useRef(false);
+  React.useEffect(() => {
+    if (tracked.current || accessPending) return;
+    tracked.current = true;
+    trackPaywallShown('feed_pulse', {
+      surface: 'web',
+      section,
+      hidden_count: remaining,
+    });
+  }, [accessPending, remaining, section]);
+
   return (
     <div className="relative overflow-hidden border-t" style={{ borderColor: HAIRLINE }}>
       <div className="pointer-events-none select-none opacity-35 blur-[4px]" aria-hidden="true">
-        <SignalCard item={item} />
+        <SignalCard item={item} position={1} section={section} tier="free" />
       </div>
       <div className="absolute inset-0 flex items-end bg-gradient-to-b from-transparent via-[#faf9f5]/45 to-[#faf9f5]/95 px-5 py-5">
         <div>
@@ -111,6 +148,11 @@ function LockedSignalPreview({
           ) : (
             <a
               href="/onboarding?intent=checkout"
+              onClick={() => trackCheckoutClicked('feed_pulse', {
+                surface: 'web',
+                section,
+                hidden_count: remaining,
+              })}
               className="mt-3 inline-block text-[12px] font-semibold text-[#2557d6] hover:underline"
             >
               Unlock the full Pulse
@@ -164,13 +206,19 @@ function SignalSection({
             className={itemIndex > 0 ? 'border-t' : ''}
             style={{ borderColor: HAIRLINE }}
           >
-            <SignalCard item={item} />
+            <SignalCard
+              item={item}
+              position={itemIndex + 1}
+              section={section.id}
+              tier={isPro ? 'pro' : 'free'}
+            />
           </div>
         ))}
         {!isPro && hiddenCount > 0 && (
           <LockedSignalPreview
             item={section.items[visibleItems.length]}
             remaining={hiddenCount}
+            section={section.id}
             accessPending={accessPending}
             accessVerificationFailed={accessVerificationFailed}
             onRetryAccess={onRetryAccess}

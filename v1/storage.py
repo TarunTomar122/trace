@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from dotenv import load_dotenv
+from v1.newsletter_preferences import is_newsletter_enabled
 
 load_dotenv()
 
@@ -344,7 +345,7 @@ class FirestoreStore:
             if doc.id in seen_uids:
                 return
             data = doc.to_dict()
-            if data.get("newsletterOptIn", True):
+            if is_newsletter_enabled(data):
                 seen_uids.add(doc.id)
                 users.append({"uid": doc.id, **_serialize_firestore(data)})
 
@@ -419,7 +420,7 @@ class FirestoreStore:
         for doc in all_docs:
             data = doc.to_dict()
             email = (data.get("email") or "").lower()
-            explicitly_opted_in = data.get("newsletterOptIn") is True
+            explicitly_opted_in = is_newsletter_enabled(data)
             if (
                 email
                 and not is_user_subscribed(data)
@@ -464,4 +465,3 @@ class FirestoreStore:
 def get_store() -> FirestoreStore:
     """Get the FirestoreStore instance."""
     return FirestoreStore()
-

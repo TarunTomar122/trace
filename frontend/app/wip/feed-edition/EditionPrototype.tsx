@@ -9,11 +9,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { V3UserFeed } from '@/lib/firestore';
-import { PAPER, buildEditionModel, editionSerif } from './edition-shared';
+import { trackFeedViewed } from '@/lib/posthog';
+import { useAuth } from '@/contexts/AuthContext';
+import { PAPER, buildEditionModel, buildPulseEdition, editionSerif } from './edition-shared';
 import FeedEdition from './FeedEdition';
 import PulseEdition from './PulseEdition';
 import PrototypeToggles from './PrototypeSwitcher';
-import { useAuth } from '@/contexts/AuthContext';
 import { hasActiveSubscription, resolveFeedAccess } from '@/lib/subscription-access';
 import {
   personalizedFeedRefreshKey,
@@ -151,6 +152,25 @@ export default function EditionPrototype({
     ),
     [resolvedFeed, effectiveIsPro, dateLabel, showImages, accessPending, access.verificationFailed],
   );
+  const trackedView = useRef<string | null>(null);
+  const itemCount = view === 'pulse'
+    ? buildPulseEdition(resolvedFeed).reduce((total, section) => total + section.items.length, 0)
+    : model.edition.totalCount;
+
+  useEffect(() => {
+    if (loading || itemCount === 0) return;
+    const audience = user ? 'authenticated' : 'guest';
+    const trackingKey = `${dateLabel}:${view}:${effectiveIsPro ? 'pro' : 'free'}:${audience}`;
+    if (trackedView.current === trackingKey) return;
+    trackedView.current = trackingKey;
+    trackFeedViewed(
+      itemCount,
+      !effectiveIsPro,
+      view,
+      effectiveIsPro ? 'pro' : 'free',
+      audience,
+    );
+  }, [dateLabel, effectiveIsPro, itemCount, loading, user, view]);
 
   return (
     <div className={`${editionSerif.variable} min-h-screen`} style={{ background: PAPER }}>
