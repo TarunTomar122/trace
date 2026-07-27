@@ -114,6 +114,7 @@ function collectInterestIds(
 export function organizeEditionFeed(
   storyList: FeedListItem[],
   interestOrder: string[],
+  withHero = true,
 ): EditionFeed {
   const usedIds = new Set<string>();
   const markUsed = (items: FeedListItem[]) => {
@@ -125,7 +126,7 @@ export function organizeEditionFeed(
   const sortedNews = sortByRecency(storyList);
   let hero: EditionHero | null = null;
 
-  if (sortedNews.length > 0) {
+  if (withHero && sortedNews.length > 0) {
     const lead = sortedNews[0];
     const sidebar = sortedNews.slice(1, 1 + HERO_SIDEBAR_COUNT);
     markUsed([lead, ...sidebar]);

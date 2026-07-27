@@ -220,32 +220,15 @@ export default function FeedEdition({
     ];
   }, [edition]);
 
-  const showHero = edition.hero;
   const visibleStoryNumber = useMemo(() => {
-    const visibleStories = [
-      ...(showHero && edition.hero ? [edition.hero.lead, ...edition.hero.sidebar] : []),
-      ...visibleSections.flatMap((section) => section.stories),
-    ];
+    const visibleStories = visibleSections.flatMap((section) => section.stories);
     return new Map(visibleStories.map((item, index) => [item.id, index + 1]));
-  }, [edition.hero, showHero, visibleSections]);
-  const leadStories = useMemo(() => {
-    if (!showHero || !edition.hero) return [];
-    const lead = [edition.hero.lead, ...edition.hero.sidebar].slice(0, 4);
-    if (lead.length < 4) {
-      const existing = new Set(lead.map((item) => item.id));
-      const promoted = visibleSections
-        .flatMap((section) => section.stories)
-        .find((item) => !existing.has(item.id) && (isPro || !isLocked(model, item.id)));
-      if (promoted) lead.push(promoted);
-    }
-    return lead;
-  }, [edition.hero, isPro, model, showHero, visibleSections]);
-  const leadIds = useMemo(() => new Set(leadStories.map((item) => item.id)), [leadStories]);
+  }, [visibleSections]);
   const freeCount = model.freeIds.size;
   let paywallShown = false;
 
   return (
-    <div id="edition-top" className="mx-auto max-w-[1500px] scroll-mt-24 px-5 sm:px-8">
+    <div id="edition-top" className="mx-auto max-w-[1500px] scroll-mt-24 px-6 sm:px-10 lg:px-12">
       <EditionHeader view="edition" />
 
       {/* hero */}
@@ -269,7 +252,7 @@ export default function FeedEdition({
       {/* topic filter */}
       <div
         data-edition-filter
-        className="sticky top-0 z-50 isolate -mx-5 overflow-x-auto border-y px-5 py-4 shadow-[0_10px_18px_rgba(250,249,245,0.98)] [scrollbar-width:none] sm:-mx-8 sm:px-8"
+        className="sticky top-0 z-50 isolate -mx-6 overflow-x-auto border-y px-6 py-4 shadow-[0_10px_18px_rgba(250,249,245,0.98)] [scrollbar-width:none] sm:-mx-10 sm:px-10 lg:-mx-12 lg:px-12"
         style={{ borderColor: HAIRLINE, backgroundColor: PAPER }}
       >
         <div className="flex min-w-max items-baseline gap-x-6">
@@ -303,32 +286,10 @@ export default function FeedEdition({
         </div>
       </div>
 
-      {/* lead stories */}
-      {showHero && edition.hero && (
-        <section className="pt-10">
-          <MonoLabel>Lead stories</MonoLabel>
-          <div className="mt-5 grid grid-cols-1 border md:grid-cols-2 lg:grid-cols-4" style={{ borderColor: HAIRLINE }}>
-            {leadStories.map((item) => (
-              <StoryCard
-                key={item.id}
-                item={item}
-                number={visibleStoryNumber.get(item.id) ?? 0}
-                onOpen={() => openStory(
-                  item,
-                  visibleStoryNumber.get(item.id) ?? 1,
-                  'lead',
-                )}
-                showImages={model.showImages}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* numbered topic sections */}
       {visibleSections.map((section, sectionIndex) => {
         if (!isPro && paywallShown) return null;
-        const sectionStories = section.stories.filter((item) => !leadIds.has(item.id));
+        const sectionStories = section.stories;
         if (sectionStories.length === 0) return null;
         const openStories = sectionStories.filter((s) => !isLocked(model, s.id));
         const lockedCount = sectionStories.length - openStories.length;

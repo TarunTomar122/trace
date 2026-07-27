@@ -48,7 +48,7 @@ from v3.lib.store import V3Store, _today_ist  # noqa: E402
 
 ROLE_CLASSIFIER_BUCKET = "daily_pulse_role_classifier_v1"
 ROLE_CLASSIFIER_MODEL = "gpt-4.1-nano"
-ITEM_SUMMARY_BUCKET = "daily_pulse_item_summary_v3"
+ITEM_SUMMARY_BUCKET = "daily_pulse_item_summary_v5"
 ITEM_SUMMARY_MODEL = "gpt-4o-mini"
 PULSE_SELECTION_ROLE = "developer"
 COMPACT_SUMMARY_SECTIONS = {"tools", "discussions"}
@@ -134,6 +134,33 @@ def _normalize_item_summary(section: str, text: str) -> str:
     return _clean_summary_text(text)
 
 
+def _normalize_summary_payload(
+    section: str,
+    body: str,
+    key_takeaways: Any = None,
+) -> dict[str, Any]:
+    points = [
+        _safe_text(point)
+        for point in (key_takeaways if isinstance(key_takeaways, list) else [])
+        if isinstance(point, str) and _safe_text(point)
+    ]
+    if section == "blogs":
+        marker = re.search(r"\bKey takeaways:\s*", body, flags=re.IGNORECASE)
+        if marker:
+            flattened = body[marker.end():]
+            body = body[:marker.start()].rstrip()
+            if not points:
+                points = [
+                    _safe_text(point)
+                    for point in re.split(r"(?:^|\s)[-•]\s+", flattened)
+                    if _safe_text(point)
+                ]
+    return {
+        "body": _normalize_item_summary(section, body),
+        "key_takeaways": points[:4] if section == "blogs" else [],
+    }
+
+
 def _summary_instructions(section: str) -> str:
     if section in COMPACT_SUMMARY_SECTIONS:
         return (
@@ -148,9 +175,9 @@ def _summary_instructions(section: str) -> str:
         "the sequence of events, numbers, evidence, constraints, and the outcome.\n"
         "For technical stories, include the before/after architecture or process, implementation "
         "details, tradeoffs, failure modes, and what the team would do differently.\n"
-        "End with 'Key takeaways:' followed by 2-4 short bullet points, each on its own line, "
-        "containing reusable lessons.\n"
-        "Use 3-5 short paragraphs plus the takeaways. Be specific and plainspoken. "
+        "Write 3-5 short paragraphs in body and return 2-4 reusable lessons separately "
+        "in the key_takeaways array.\n"
+        "Be specific and plainspoken. "
         "Do not add facts, conclusions, or advice that the source does not support.\n"
     )
 
@@ -187,17 +214,21 @@ def _summarize_item(
     role: str,
     section: str,
     article: dict[str, Any],
-) -> str:
+) -> dict[str, Any]:
     cache_url = _item_cache_url(target_date, role, section, article)
     cached = store.get_cached_summary_v2(cache_url, ITEM_SUMMARY_BUCKET)
     if cached:
         summary = cached.get("summary")
         if isinstance(summary, dict) and isinstance(summary.get("body"), str):
-            return _normalize_item_summary(section, summary["body"])
+            return _normalize_summary_payload(
+                section,
+                summary["body"],
+                summary.get("key_takeaways"),
+            )
 
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
     if not api_key:
-        return _fallback_summary(section, article)
+        return _normalize_summary_payload(section, _fallback_summary(section, article))
 
     content = fetch_content(str(article.get("url", "")).strip())
     prompt_parts = [
@@ -210,13 +241,14 @@ def _summarize_item(
     body = _safe_text((content or {}).get("content", ""))
     if section == "blogs" and len(body) < 500:
         _log(f"summary skipped: insufficient source text for {article.get('title', '')[:60]}")
-        return _fallback_summary(section, article)
+        return _normalize_summary_payload(section, _fallback_summary(section, article))
     if body:
         prompt_parts.append(f"Article text excerpt: {body[:20000]}")
 
     prompt = (
         _summary_instructions(section)
-        + "Return JSON only with key body. The value of body must be one string, never an object or array.\n\n"
+        + "Return JSON only with keys body and key_takeaways. body must be one string; "
+        "key_takeaways must be an array of strings and must be empty for compact sections.\n\n"
         + "\n".join(prompt_parts)
     )
 
@@ -229,22 +261,46 @@ def _summarize_item(
                 {"role": "user", "content": prompt},
             ],
             temperature=0.2,
-            response_format={"type": "json_object"},
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "daily_pulse_summary",
+                    "strict": True,
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "body": {"type": "string"},
+                            "key_takeaways": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "minItems": 2 if section == "blogs" else 0,
+                                "maxItems": 4 if section == "blogs" else 0,
+                            },
+                        },
+                        "required": ["body", "key_takeaways"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
             timeout=60,
         )
         raw = json.loads(response.choices[0].message.content or "{}")
         generated_body = raw.get("body")
         if not isinstance(generated_body, str):
             raise ValueError("summary body must be a string")
-        summary = {"body": _normalize_item_summary(section, generated_body)}
+        summary = _normalize_summary_payload(
+            section,
+            generated_body,
+            raw.get("key_takeaways"),
+        )
         if summary["body"]:
             store.save_cached_summary_v2(cache_url, ITEM_SUMMARY_BUCKET, summary, ITEM_SUMMARY_MODEL)
-            return summary["body"]
+            return summary
     except Exception as exc:
         _log(f"summary failed for {article.get('title', '')[:60]}: {exc}")
 
-    fallback = _fallback_summary(section, article)
-    store.save_cached_summary_v2(cache_url, ITEM_SUMMARY_BUCKET, {"body": fallback}, ITEM_SUMMARY_MODEL)
+    fallback = _normalize_summary_payload(section, _fallback_summary(section, article))
+    store.save_cached_summary_v2(cache_url, ITEM_SUMMARY_BUCKET, fallback, ITEM_SUMMARY_MODEL)
     return fallback
 
 
@@ -269,11 +325,15 @@ def _item_payload(
         "published_date": _safe_text(article.get("published_date", "")),
         "thumbnail": thumbnail,
         "summary": {
-            "body": summary,
-            "short_article": {"title": title, "body": summary},
+            "body": summary["body"],
+            "short_article": {
+                "title": title,
+                "body": summary["body"],
+                "key_takeaways": summary["key_takeaways"],
+            },
         },
         "roles": article.get("roles", []),
-        "reading_time_minutes": max(1, len(summary.split()) // 180),
+        "reading_time_minutes": max(1, len(summary["body"].split()) // 180),
     }
 
 

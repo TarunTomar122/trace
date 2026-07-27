@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { BookOpen, ExternalLink, MessagesSquare, Wrench, X } from 'lucide-react';
-import type { V3UserFeed } from '@/lib/firestore';
+import type { FeedItem, V3UserFeed } from '@/lib/firestore';
 import type { FeedListItem } from '@/app/(auth)/feed/FeedUi';
 import { getPostAuthDestination, useAuth } from '@/contexts/AuthContext';
 import {
@@ -110,6 +110,9 @@ function SignalCard({
 
 function ReadModal({ item, onClose }: { item: FeedListItem; onClose: () => void }) {
   const url = item.url || (item.data as { url?: string }).url;
+  const article = item.data as FeedItem;
+  const body = article.summary?.short_article?.body || item.preview;
+  const keyTakeaways = article.summary?.short_article?.key_takeaways || [];
   const dialogRef = React.useRef<HTMLElement>(null);
   useDialogFocus(dialogRef, onClose);
 
@@ -137,9 +140,22 @@ function ReadModal({ item, onClose }: { item: FeedListItem; onClose: () => void 
             <h2 id="pulse-read-title" className={`${editionSerif.className} mt-4 text-[30px] leading-[1.12] sm:text-[38px]`} style={{ color: INK }}>
               {item.title}
             </h2>
-            {item.preview && (
+            {body && (
               <div className="mt-6 whitespace-pre-line text-[16px] leading-[1.8]" style={{ color: '#3d3a33' }}>
-                {item.preview}
+                {body}
+              </div>
+            )}
+            {keyTakeaways.length > 0 && (
+              <div className="mt-7">
+                <MonoLabel>Key takeaways</MonoLabel>
+                <ul className="mt-3 space-y-2.5">
+                  {keyTakeaways.map((point, index) => (
+                    <li key={index} className="flex items-start gap-4">
+                      <span className="mt-[0.72em] h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: BLUE }} />
+                      <span className="text-[14.5px] leading-[1.65]" style={{ color: '#3d3a33' }}>{point}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
             {url && (
@@ -266,15 +282,15 @@ function SignalSection({
   const hiddenCount = Math.max(0, section.items.length - visibleItems.length);
 
   return (
-    <section>
+    <section id={`pulse-section-${section.id}`} className="scroll-mt-20">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="max-w-[500px]">
+        <div>
           <div className="flex items-center gap-2" style={{ color: BLUE }}>
             <Icon size={14} strokeWidth={1.8} />
-            <MonoLabel>{String(index).padStart(2, '0')} · {section.label}</MonoLabel>
+            <MonoLabel>{String(index).padStart(2, '0')}</MonoLabel>
           </div>
           <h2 className={`${editionSerif.className} mt-3 text-[31px] leading-[1.12]`} style={{ color: INK }}>
-            {section.description}
+            {section.label}
           </h2>
         </div>
         <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: MUTED }}>
@@ -340,7 +356,7 @@ export default function PulseEdition({
   const [selectedRead, setSelectedRead] = React.useState<FeedListItem | null>(null);
 
   return (
-    <div className="mx-auto max-w-[1500px] px-5 sm:px-8">
+    <div className="mx-auto max-w-[1500px] px-6 sm:px-10 lg:px-12">
       <EditionHeader view="pulse" />
 
       <div className="pb-12 pt-14 sm:pt-20">
@@ -350,13 +366,32 @@ export default function PulseEdition({
             A feed for builders.
           </h1>
           <p className="mt-6 max-w-[760px] text-[16.5px] leading-[1.7]" style={{ color: MUTED }}>
-            Build logs, architecture, open source, design, and product thinking for developers, designers, PMs, and founders.
+            Build logs, architecture, open source, design, and product thinking for builders.
           </p>
         </div>
         <p className="mt-6 font-mono text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: BLUE }}>
           {totalSignals} signals · aggregated hourly
         </p>
       </div>
+
+      {sections.length > 0 && (
+        <nav
+          className="sticky top-0 z-50 -mx-6 mb-10 flex gap-6 overflow-x-auto border-y bg-[#faf9f5] px-6 py-4 [scrollbar-width:none] sm:-mx-10 sm:px-10 lg:-mx-12 lg:px-12"
+          style={{ borderColor: HAIRLINE }}
+          aria-label="Pulse sections"
+        >
+          {sections.map((section) => (
+            <a
+              key={section.id}
+              href={`#pulse-section-${section.id}`}
+              className="shrink-0 text-[13.5px] font-medium transition-opacity hover:opacity-70"
+              style={{ color: MUTED }}
+            >
+              {section.label} ({section.items.length})
+            </a>
+          ))}
+        </nav>
+      )}
 
       {sections.length > 0 ? (
         <div className="space-y-14">

@@ -121,7 +121,6 @@ export type EditionModel = {
 export type PulseEditionSection = {
   id: 'discussions' | 'tools' | 'reads';
   label: string;
-  description: string;
   items: FeedListItem[];
 };
 
@@ -249,7 +248,7 @@ export function buildEditionModel(
       (i): i is string => typeof i === 'string' && i.trim().length > 0,
     ),
   );
-  const edition = organizeEditionFeed(list, interestOrder);
+  const edition = organizeEditionFeed(list, interestOrder, false);
 
   const orderedItems: FeedListItem[] = [
     ...(edition.hero ? [edition.hero.lead, ...edition.hero.sidebar] : []),
@@ -321,22 +320,19 @@ export function buildPulseEdition(feed: V3UserFeed | null): PulseEditionSection[
 
   return [
     {
-      id: 'reads',
-      label: 'How it gets built',
-      description: 'Build logs, architecture breakdowns, and product lessons worth keeping.',
-      items: uniquePulseItems(daily?.blogs || []),
+      id: 'tools',
+      label: 'Builds',
+      items: uniquePulseItems([...(daily?.tools || []), ...(feed?.build_pulse || [])]),
     },
     {
       id: 'discussions',
-      label: 'Builder conversations',
-      description: 'What developers, designers, PMs, and founders are debating right now.',
+      label: 'Conversation',
       items: discussions.length > 0 ? discussions : uniquePulseItems(feed?.pulse || []),
     },
     {
-      id: 'tools',
-      label: 'Open source & tools',
-      description: 'Repos, launches, and project roadmaps with real momentum.',
-      items: uniquePulseItems([...(daily?.tools || []), ...(feed?.build_pulse || [])]),
+      id: 'reads',
+      label: 'Articles',
+      items: uniquePulseItems(daily?.blogs || []),
     },
   ];
 }

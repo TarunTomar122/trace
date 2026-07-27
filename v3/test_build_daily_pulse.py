@@ -7,6 +7,7 @@ from v3.build_daily_pulse import (
     ROLE_ORDER,
     _blend_role_selections,
     _normalize_item_summary,
+    _normalize_summary_payload,
     _summarize_item,
     _summary_instructions,
     _write_shared_pulse,
@@ -31,8 +32,16 @@ class DailyPulseSummaryTest(unittest.TestCase):
         prompt = _summary_instructions("blogs")
         self.assertIn("replacement brief", prompt)
         self.assertIn("numbers, evidence, constraints", prompt)
-        self.assertIn("Key takeaways:", prompt)
+        self.assertIn("key_takeaways array", prompt)
         self.assertIn("does not support", prompt)
+
+    def test_flattened_blog_takeaways_are_structured(self) -> None:
+        summary = _normalize_summary_payload(
+            "blogs",
+            "Concrete brief.\n\nKey takeaways: - First lesson. - Second lesson.",
+        )
+        self.assertEqual(summary["body"], "Concrete brief.")
+        self.assertEqual(summary["key_takeaways"], ["First lesson.", "Second lesson."])
 
     def test_role_mix_keeps_builder_core_and_cross_discipline_items(self) -> None:
         primary = [{"url": f"developer-{i}"} for i in range(4)]
@@ -51,7 +60,9 @@ class DailyPulseSummaryTest(unittest.TestCase):
     def test_blog_summary_uses_extracted_article_content(self, openai, fetch_content) -> None:
         fetch_content.return_value = {"content": "Concrete source fact. " * 80}
         response = SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content='{"body":"Grounded brief."}'))]
+            choices=[SimpleNamespace(message=SimpleNamespace(
+                content='{"body":"Grounded brief.","key_takeaways":["Specific lesson."]}',
+            ))]
         )
         openai.return_value.chat.completions.create.return_value = response
 
@@ -69,9 +80,14 @@ class DailyPulseSummaryTest(unittest.TestCase):
             {"title": "Test", "source": "Source", "url": "https://example.com"},
         )
 
-        self.assertEqual(summary, "Grounded brief.")
+        self.assertEqual(summary, {
+            "body": "Grounded brief.",
+            "key_takeaways": ["Specific lesson."],
+        })
         prompt = openai.return_value.chat.completions.create.call_args.kwargs["messages"][1]["content"]
         self.assertIn("Article text excerpt: Concrete source fact.", prompt)
+        schema = openai.return_value.chat.completions.create.call_args.kwargs["response_format"]["json_schema"]["schema"]
+        self.assertEqual(schema["properties"]["key_takeaways"]["minItems"], 2)
 
     def test_shared_pulse_keeps_legacy_mobile_role_buckets(self) -> None:
         writes = []
