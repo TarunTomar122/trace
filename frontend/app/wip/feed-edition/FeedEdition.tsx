@@ -120,6 +120,9 @@ function EditionStoryModal({
           <h2 id="edition-story-title" className={`${editionSerif.className} mt-4 text-[30px] leading-[1.12] sm:text-[38px]`} style={{ color: INK }}>
             {item.title}
           </h2>
+          <div className="mt-5 sm:hidden">
+            <StoryImage item={item} className="aspect-[16/9] w-full" />
+          </div>
           <div className="mt-5">
             <ExpandedStory
               item={item}
