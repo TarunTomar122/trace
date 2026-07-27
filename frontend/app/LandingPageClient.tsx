@@ -172,7 +172,7 @@ export default function LandingPageClient({
                   className="mt-6 max-w-[800px] tracking-[-0.04em]"
                   style={{ fontFamily: 'var(--font-edition-serif), Georgia, serif', fontSize: 'clamp(3rem, 5vw, 4.5rem)', lineHeight: 1.08 }}
                 >
-                  A daily feed for builders.
+                  The fastest way to catch up on AI &amp; Tech
                 </h1>
                 <p className="mt-6 max-w-[620px] text-[16px] leading-[1.7] text-[#75705f] sm:text-[18px]">
                   Read AI and developer news, open-source projects, technical discussions, videos, and articles.
