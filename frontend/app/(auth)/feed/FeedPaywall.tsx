@@ -4,7 +4,7 @@ import { Check, Loader2, Lock, Sparkles, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { trackCheckoutClicked, trackFeedSubscribeDialogShown, trackFeedProWelcomeShown, trackPaywallShown } from '@/lib/posthog';
 import { LANDING_PRICING_BULLET_POINTS } from '@/lib/subscription-pricing-bullets';
-import { ONBOARDING_INTERESTS, ROLES } from '@/lib/firestore';
+import { ONBOARDING_INTERESTS } from '@/lib/firestore';
 import {
   SUBSCRIPTION_COMPARE_AT_DEFAULT,
   SUBSCRIPTION_PRICE_DEFAULT,
@@ -531,20 +531,12 @@ function resolveInterestLabels(interests: string[]): string[] {
     .map((id) => INTEREST_LABEL_FALLBACK[id] ?? id.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()));
 }
 
-function resolveRoleLabel(role?: string): string {
-  const match = ROLES.find((entry) => entry.id === role);
-  return match?.label ?? 'your role';
-}
-
 /** Inline upgrade card shown after a live Pulse sample. */
 export function PulseLockedPreview({
-  role,
   interests = [],
 }: {
-  role?: string;
   interests?: string[];
 }) {
-  const roleLabel = resolveRoleLabel(role);
   const interestLabels = resolveInterestLabels(interests);
   const interestPhrase = formatInterestPhrase(interestLabels);
   const impressionRef = usePaywallImpression('pulse_locked');
@@ -553,7 +545,7 @@ export function PulseLockedPreview({
     'Three distinct signals from X',
     'Top Hacker News discussions with context',
     'Trending repos with clear descriptions',
-    `Long-form reads picked for ${roleLabel.toLowerCase()}s`,
+    'Long-form reads for builders',
   ];
 
   return (
@@ -566,8 +558,8 @@ export function PulseLockedPreview({
         This is a live sample. The rest is waiting.
       </h2>
       <p className="mt-2 max-w-[58ch] text-[13.5px] leading-relaxed text-white/65">
-        Get the complete daily scan for {roleLabel.toLowerCase()}s
-        {interestPhrase ? `, tuned to ${interestPhrase.toLowerCase()}` : ', tuned to your profile'}.
+        Get the complete Pulse, refreshed throughout the day
+        {interestPhrase ? ` and tuned to ${interestPhrase.toLowerCase()}` : ''}.
       </p>
 
       <ul className="mt-5 grid gap-2.5 sm:grid-cols-2">

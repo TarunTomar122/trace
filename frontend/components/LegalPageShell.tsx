@@ -31,8 +31,8 @@ export default function LegalPageShell({
       <header className="mx-auto flex max-w-[880px] items-center justify-between border-b border-[#e4e1d8] px-5 py-4 sm:px-8">
         <a href="/feed" className="font-mono text-[12.5px] font-bold tracking-[0.28em]">TRACE</a>
         <nav className="flex items-center gap-5 text-[13px] font-medium text-[#75705f]">
-          <a className="transition-opacity hover:opacity-70" href="/feed">Edition</a>
           <a className="transition-opacity hover:opacity-70" href="/feed?view=pulse">Pulse</a>
+          <a className="transition-opacity hover:opacity-70" href="/feed?view=edition">Edition</a>
           <Link className="transition-opacity hover:opacity-70" href="/profile">Profile</Link>
         </nav>
       </header>

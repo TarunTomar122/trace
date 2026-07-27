@@ -592,6 +592,31 @@ class V3Store:
 
         doc_ref.set(payload, merge=True)
 
+    def write_global_role_digests(
+        self,
+        date: str,
+        section_prefix: str,
+        sections_by_role: dict[str, dict[str, list[dict[str, Any]]]],
+        metadata_by_role: dict[str, dict[str, Any]] | None = None,
+    ) -> None:
+        """Atomically replace every role bucket for one structured digest."""
+        generated_at = _now_iso()
+        payload: dict[str, Any] = {
+            f"{section_prefix}_roles": sections_by_role,
+            f"{section_prefix}_role_counts": {
+                role: sum(len(items) for items in sections.values() if isinstance(items, list))
+                for role, sections in sections_by_role.items()
+            },
+            f"{section_prefix}_role_generated_at": {
+                role: generated_at for role in sections_by_role
+            },
+        }
+        if metadata_by_role is not None:
+            payload[f"{section_prefix}_role_metadata"] = metadata_by_role
+        self.db.collection(USER_FEEDS).document("_global").collection(
+            "daily"
+        ).document(date).set(payload, merge=True)
+
     def write_global_role_feed(
         self,
         date: str,

@@ -167,7 +167,7 @@ export default async function CompareDetailPage({ params }: PageProps) {
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                href="/onboarding"
+                href="/feed?view=pulse"
                 className="rounded-full bg-[#2563eb] px-5 py-3 text-sm font-semibold text-white"
                 style={{ boxShadow: "0 10px 24px rgba(37, 99, 235, 0.22)" }}
               >

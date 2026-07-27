@@ -212,10 +212,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const optimistic = optimisticProfileFromCache(firebaseUser, cached);
           setProfile(optimistic);
           setProfileFresh(cachedProfileFresh);
-          // Cached "not onboarded" can be stale; wait for Firestore before resolving
-          // to avoid false redirects from /feed to /onboarding.
-          const hasInterests = Array.isArray(optimistic.interests) && optimistic.interests.length > 0;
-          setProfileResolved(optimistic.onboarded === true && hasInterests);
+          setProfileResolved(true);
         } else {
           setProfile(null);
           setProfileResolved(false);
@@ -226,11 +223,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const loadProfileInBackground = async () => {
           let userProfile: UserProfile | null = null;
           try {
-            userProfile = await loadProfile(firebaseUser, { allowCreate: false });
+            userProfile = await loadProfile(firebaseUser, { allowCreate: true });
           } catch {
             await new Promise((resolve) => setTimeout(resolve, 600));
             try {
-              userProfile = await loadProfile(firebaseUser, { allowCreate: false });
+              userProfile = await loadProfile(firebaseUser, { allowCreate: true });
             } catch {
               setProfileRefreshFailed(true);
               if (!cached || cached.uid !== firebaseUser.uid) {

@@ -115,7 +115,7 @@ export default async function FeedPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const view = params.view === 'pulse' ? 'pulse' : 'edition';
+  const view = params.view === 'edition' ? 'edition' : 'pulse';
 
   // Streaming: the Suspense boundary lets Next.js flush the shell (skeleton)
   // to the browser immediately while FeedDataLoader does its work.

@@ -501,6 +501,8 @@ export const INTERESTS = [
   { id: 'the-world', label: 'The World' },
 ];
 
+const DEFAULT_WEB_INTERESTS = ['ai', 'products', 'tech', 'startups', 'engineering', 'ux-design'];
+
 export const INTEREST_SUBTOPICS: Record<string, { id: string; label: string }[]> = {
   ai: [
     { id: 'model-launches', label: 'Model Launches' },
@@ -719,9 +721,9 @@ export async function createUserProfile(
     displayName,
     photoURL,
     signupPlatform: 'web',
-    onboarded: false,
+    onboarded: true,
     name: displayName || '',
-    role: '',
+    role: 'developer',
     company: '',
     location: '',
     experienceYears: null,
@@ -731,7 +733,7 @@ export async function createUserProfile(
     learningStyle: '',
     attentionConstraints: '',
     motivationTriggers: [],
-    interests: [],
+    interests: [...DEFAULT_WEB_INTERESTS],
     hobbies: [],
     skills: [],
     dislikedTopics: [],
@@ -772,7 +774,7 @@ export async function createUserProfile(
     locale,
     createdAt: serverTimestamp() as Timestamp,
     updatedAt: serverTimestamp() as Timestamp,
-    onboardedAt: null,
+    onboardedAt: serverTimestamp() as Timestamp,
   };
 
   try {
@@ -1001,6 +1003,18 @@ export async function getOrCreateUserProfile(
 ): Promise<UserProfile> {
   const existing = await getUserProfile(uid);
   if (existing) {
+    if (existing.signupPlatform === 'web' && !existing.onboarded) {
+      const role = existing.role || 'developer';
+      const interests = existing.interests?.length ? existing.interests : [...DEFAULT_WEB_INTERESTS];
+      await setDoc(doc(firestore, 'user_profiles', uid), {
+        onboarded: true,
+        role,
+        interests,
+        updatedAt: serverTimestamp(),
+        onboardedAt: serverTimestamp(),
+      }, { merge: true });
+      return { ...existing, onboarded: true, role, interests };
+    }
     return existing;
   }
   return createUserProfile(uid, email, displayName, photoURL);

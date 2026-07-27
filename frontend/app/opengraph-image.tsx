@@ -3,7 +3,7 @@ import { OgShareImageBody } from './og-share-image-body';
 
 export const runtime = 'edge';
 
-export const alt = 'Trace — Your daily tech, in one place';
+export const alt = 'Trace — A feed for builders';
 
 export const size = { width: 1200, height: 630 };
 

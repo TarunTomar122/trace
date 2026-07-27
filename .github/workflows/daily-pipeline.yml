@@ -9,6 +9,9 @@ on:
     # Trending refreshes every 3 hours, 24x7 (offset from other jobs)
     - cron: '20 */3 * * *'
 
+    # Pulse refreshes hourly with fresh reads, tools, and discussions
+    - cron: '5 * * * *'
+
     # Push notifications (morning only)
     - cron: '30 3 * * *'   # 9:00 AM IST - morning notification
   
@@ -49,6 +52,9 @@ jobs:
   morning-pipeline:
     if: github.event.schedule == '30 2 * * *' || (github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    concurrency:
+      group: trace-pulse-generation
+      cancel-in-progress: false
     
     steps:
       - name: Checkout code
@@ -73,6 +79,31 @@ jobs:
             python -u -m v3.scheduler --jobs pulse --audience all
             python -u -m v3.scheduler --jobs trending --audience all
           fi
+
+  pulse-refresh:
+    if: github.event.schedule == '5 * * * *' && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: trace-pulse-generation
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Refresh Pulse
+        run: |
+          python -u -m v3.scheduler --jobs pulse --audience all --force-pools
 
   trending-refresh:
     # Run only on the 24x7 trending refresh cadence

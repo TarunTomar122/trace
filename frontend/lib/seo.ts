@@ -7,13 +7,13 @@
 export const SITE_BASE_URL = 'https://www.yourtrace.online';
 export const SITE_NAME = 'Trace';
 export const SITE_DESCRIPTION =
-  'Stories, conversations, and product launches from 50+ sources — grouped into one scannable daily pulse so you stay current without the tab stack.';
+  'Aggregated tech news, build logs, architecture, open source, design, and product thinking for builders.';
 export const SITE_LOGO_URL = `${SITE_BASE_URL}/trace.png`;
 export const DEFAULT_OG_IMAGE = {
   url: `${SITE_BASE_URL}/opengraph-image`,
   width: 1200,
   height: 630,
-  alt: 'Trace — Your daily tech, in one place',
+  alt: 'Trace — A feed for builders',
 };
 export const DEFAULT_OPEN_GRAPH = {
   siteName: SITE_NAME,

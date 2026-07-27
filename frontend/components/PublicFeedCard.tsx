@@ -116,7 +116,7 @@ function LockedOverlay() {
             Get key takeaways, context, and source links for every story.
           </p>
           <Link
-            href="/onboarding?intent=checkout"
+            href="/subscribe"
             prefetch={false}
             onClick={() => trackCheckoutClicked("public_feed_card_unlock")}
             className="mt-3 inline-flex items-center rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90"
@@ -414,7 +414,7 @@ export function PublicInlineUnlockBanner({
           </div>
         </div>
         <Link
-          href="/onboarding?intent=checkout"
+          href="/subscribe"
           prefetch={false}
           onClick={() =>
             trackCheckoutClicked("public_inline_unlock_banner", {

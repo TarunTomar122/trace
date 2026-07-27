@@ -52,18 +52,7 @@ export function OgShareImageBody() {
               color: '#151515',
             }}
           >
-            Your daily tech,
-          </span>
-          <span
-            style={{
-              fontSize: 68,
-              fontWeight: 700,
-              lineHeight: 1.05,
-              letterSpacing: '-0.04em',
-              color: 'rgba(21, 21, 21, 0.32)',
-            }}
-          >
-            in one place.
+            A feed for builders.
           </span>
         </div>
         <p
@@ -76,7 +65,7 @@ export function OgShareImageBody() {
             maxWidth: 820,
           }}
         >
-          Stories, conversations & launches — stay current without bouncing between feeds.
+          Tech news, build logs, architecture, open source, design, and product in one place.
         </p>
       </div>
     </div>

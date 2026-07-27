@@ -42,7 +42,7 @@ from v3.lib.store import V3Store, _today_ist  # noqa: E402
 
 ROLE_CLASSIFIER_BUCKET = "weekly_pulse_role_classifier_v1"
 ROLE_CLASSIFIER_MODEL = "gpt-4.1-nano"
-ITEM_SUMMARY_BUCKET = "weekly_pulse_item_summary_v1"
+ITEM_SUMMARY_BUCKET = "weekly_pulse_item_summary_v2"
 ITEM_SUMMARY_MODEL = "gpt-4o-mini"
 
 TOOLS_LIMIT = 4
@@ -179,7 +179,10 @@ def _summarize_item(
         f"Source: {_safe_text(article.get('source', ''))}",
         f"Snippet: {_safe_text(article.get('snippet', ''))}",
     ]
-    body = _safe_text((content or {}).get("text", ""))
+    body = _safe_text((content or {}).get("content", ""))
+    if section == "blogs" and len(body) < 500:
+        _log(f"summary skipped: insufficient source text for {article.get('title', '')[:60]}")
+        return _fallback_summary(section, article)
     if body:
         prompt_parts.append(f"Article text excerpt: {body[:7000]}")
 
@@ -206,7 +209,10 @@ def _summarize_item(
             timeout=60,
         )
         raw = json.loads(response.choices[0].message.content or "{}")
-        summary = {"body": _clean_summary_text(raw.get("body", ""))}
+        generated_body = raw.get("body")
+        if not isinstance(generated_body, str):
+            raise ValueError("summary body must be a string")
+        summary = {"body": _clean_summary_text(generated_body)}
         if summary["body"]:
             store.save_cached_summary_v2(cache_url, ITEM_SUMMARY_BUCKET, summary, ITEM_SUMMARY_MODEL)
             return summary["body"]

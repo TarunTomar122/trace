@@ -29,9 +29,9 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: "Trace — Your daily tech, in one place",
+  title: "Trace — A feed for builders",
   description:
-    "The biggest stories, the conversations around them, and what people are building — one daily pulse, not ten feeds.",
+    "Aggregated tech news and the practical engineering, design, and product work behind it.",
   keywords: ["AI summaries", "trending news", "content curation", "daily briefing", "topic overviews", "RSS alternative"],
   authors: [{ name: "Trace", url: "https://www.yourtrace.online" }],
   creator: "Trace",
@@ -50,23 +50,23 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://www.yourtrace.online",
     siteName: "Trace",
-    title: "Trace — Your daily tech, in one place",
+    title: "Trace — A feed for builders",
     description:
-      "The biggest stories, the conversations around them, and what people are building — one daily pulse, not ten feeds.",
+      "Aggregated tech news and the practical engineering, design, and product work behind it.",
     images: [
       {
         url: "https://www.yourtrace.online/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Trace — Your daily tech, in one place",
+        alt: "Trace — A feed for builders",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Trace — Your daily tech, in one place",
+    title: "Trace — A feed for builders",
     description:
-      "Stories, conversations & launches. Stay current without bouncing between feeds.",
+      "Tech news, build logs, architecture, open source, design, and product in one feed.",
     images: ["https://www.yourtrace.online/twitter-image"],
   },
   robots: {
@@ -111,7 +111,7 @@ export default function RootLayout({
         "@id": "https://www.yourtrace.online/#website",
         "url": "https://www.yourtrace.online",
         "name": "Trace",
-        "description": "Stop checking 10 apps every morning. Trace scans the sources you care about and gives you a short daily brief with links worth opening."
+        "description": "Trace is a feed for builders: aggregated tech news plus build logs, architecture, open source, design, and product thinking."
       },
       {
         "@type": "Organization",

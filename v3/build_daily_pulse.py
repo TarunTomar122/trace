@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Build Daily Pulse — one role-aware digest with top tools, blogs, and discussions.
+Build Pulse — one shared builders digest with top tools, blogs, and discussions.
 
-Runs daily. Fetches today's content pool, classifies by role, selects and
-summarises the best tools, blogs, and discussions per role bucket, then writes
-to Firestore under daily_pulse_roles[role] = {tools, blogs, discussions}.
+Runs hourly. Fetches the current content pool, classifies it across engineering,
+design, product, and founder perspectives, then writes the shared payload to
+every legacy role key so older mobile clients keep their existing contract.
 
 Usage:
   python3 -m v3.build_daily_pulse
@@ -48,10 +48,12 @@ from v3.lib.store import V3Store, _today_ist  # noqa: E402
 
 ROLE_CLASSIFIER_BUCKET = "daily_pulse_role_classifier_v1"
 ROLE_CLASSIFIER_MODEL = "gpt-4.1-nano"
-ITEM_SUMMARY_BUCKET = "daily_pulse_item_summary_v2"
+ITEM_SUMMARY_BUCKET = "daily_pulse_item_summary_v3"
 ITEM_SUMMARY_MODEL = "gpt-4o-mini"
+PULSE_SELECTION_ROLE = "developer"
 COMPACT_SUMMARY_SECTIONS = {"tools", "discussions"}
 COMPACT_SUMMARY_MAX_WORDS = 24
+BLOG_SUMMARY_MAX_CHARS = 1800
 
 TOOLS_LIMIT = 4
 BLOGS_LIMIT = 3
@@ -98,22 +100,11 @@ def _load_profiles(store: V3Store, args: argparse.Namespace) -> list[dict[str, A
     return store.get_onboarded_users(args.audience)
 
 
-def _resolve_roles(profiles: list[dict[str, Any]]) -> tuple[list[str], dict[str, int]]:
-    counts: dict[str, int] = {}
-    for profile in profiles:
-        role = normalize_role(profile.get("role"))
-        counts[role] = counts.get(role, 0) + 1
-    roles = [role for role in ROLE_ORDER if counts.get(role, 0) > 0]
-    if not roles:
-        roles = list(ROLE_ORDER)
-    return roles, counts
-
-
 def _safe_text(text: str) -> str:
     return re.sub(r"\s+", " ", str(text or "").strip())
 
 
-def _clean_summary_text(text: str, limit: int = 900) -> str:
+def _clean_summary_text(text: str, limit: int = BLOG_SUMMARY_MAX_CHARS) -> str:
     paragraphs = []
     raw = str(text or "").replace("\r\n", "\n")
     for block in re.split(r"\n\s*\n", raw):
@@ -141,6 +132,27 @@ def _normalize_item_summary(section: str, text: str) -> str:
     if section in COMPACT_SUMMARY_SECTIONS:
         return _compact_summary_text(text)
     return _clean_summary_text(text)
+
+
+def _summary_instructions(section: str) -> str:
+    if section in COMPACT_SUMMARY_SECTIONS:
+        return (
+            f"Write exactly one factual sentence of no more than {COMPACT_SUMMARY_MAX_WORDS} words.\n"
+            "Say what it is and its main differentiator. No setup, hype, advice, or call to action.\n"
+        )
+    return (
+        "Write a 180-260 word replacement brief that lets a busy builder skip the original.\n"
+        "Start directly with the central result or argument. Never write meta phrases such as "
+        "'the article discusses', 'the author explores', or 'the post highlights'.\n"
+        "Capture the concrete facts: named people or systems, what changed, how it was done, "
+        "the sequence of events, numbers, evidence, constraints, and the outcome.\n"
+        "For technical stories, include the before/after architecture or process, implementation "
+        "details, tradeoffs, failure modes, and what the team would do differently.\n"
+        "End with 'Key takeaways:' followed by 2-4 short bullet points, each on its own line, "
+        "containing reusable lessons.\n"
+        "Use 3-5 short paragraphs plus the takeaways. Be specific and plainspoken. "
+        "Do not add facts, conclusions, or advice that the source does not support.\n"
+    )
 
 
 def _item_cache_url(target_date: str, role: str, section: str, article: dict[str, Any]) -> str:
@@ -195,24 +207,18 @@ def _summarize_item(
         f"Source: {_safe_text(article.get('source', ''))}",
         f"Snippet: {_safe_text(article.get('snippet', ''))}",
     ]
-    body = _safe_text((content or {}).get("text", ""))
+    body = _safe_text((content or {}).get("content", ""))
+    if section == "blogs" and len(body) < 500:
+        _log(f"summary skipped: insufficient source text for {article.get('title', '')[:60]}")
+        return _fallback_summary(section, article)
     if body:
-        prompt_parts.append(f"Article text excerpt: {body[:7000]}")
+        prompt_parts.append(f"Article text excerpt: {body[:20000]}")
 
-    if section in COMPACT_SUMMARY_SECTIONS:
-        summary_instructions = (
-            f"Write exactly one factual sentence of no more than {COMPACT_SUMMARY_MAX_WORDS} words.\n"
-            "Say what it is and its main differentiator. No setup, hype, advice, or call to action.\n"
-        )
-    else:
-        summary_instructions = (
-            "Write a compact but detailed daily-digest summary for this item.\n"
-            "It should be detailed enough that the user can mostly skip the original link.\n"
-            "Write it as 2 to 4 short paragraphs, separated by blank lines.\n"
-            "Each paragraph should be 1 to 3 sentences.\n"
-            "Be concrete, readable, and specific. No fluff, no advice voice, no 'why it matters'.\n"
-        )
-    prompt = summary_instructions + "Return JSON only with key body.\n\n" + "\n".join(prompt_parts)
+    prompt = (
+        _summary_instructions(section)
+        + "Return JSON only with key body. The value of body must be one string, never an object or array.\n\n"
+        + "\n".join(prompt_parts)
+    )
 
     client = OpenAI(api_key=api_key)
     try:
@@ -227,7 +233,10 @@ def _summarize_item(
             timeout=60,
         )
         raw = json.loads(response.choices[0].message.content or "{}")
-        summary = {"body": _normalize_item_summary(section, raw.get("body", ""))}
+        generated_body = raw.get("body")
+        if not isinstance(generated_body, str):
+            raise ValueError("summary body must be a string")
+        summary = {"body": _normalize_item_summary(section, generated_body)}
         if summary["body"]:
             store.save_cached_summary_v2(cache_url, ITEM_SUMMARY_BUCKET, summary, ITEM_SUMMARY_MODEL)
             return summary["body"]
@@ -266,6 +275,53 @@ def _item_payload(
         "roles": article.get("roles", []),
         "reading_time_minutes": max(1, len(summary.split()) // 180),
     }
+
+
+def _write_shared_pulse(
+    store: V3Store,
+    target_date: str,
+    payload: dict[str, list[dict[str, Any]]],
+    metadata: dict[str, Any],
+) -> None:
+    store.write_global_role_digests(
+        target_date,
+        "daily_pulse",
+        {role: payload for role in ROLE_ORDER},
+        metadata_by_role={
+            role: {**metadata, "role": role}
+            for role in ROLE_ORDER
+        },
+    )
+
+
+def _blend_role_selections(
+    primary: list[dict[str, Any]],
+    secondary_groups: list[list[dict[str, Any]]],
+    limit: int,
+) -> list[dict[str, Any]]:
+    selected: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def add(article: dict[str, Any]) -> None:
+        key = str(article.get("url") or article.get("title") or "").strip().lower()
+        if key and key not in seen and len(selected) < limit:
+            seen.add(key)
+            selected.append(article)
+
+    for article in primary[: max(1, (limit + 1) // 2)]:
+        add(article)
+    for group in secondary_groups:
+        for article in group:
+            before = len(selected)
+            add(article)
+            if len(selected) > before:
+                break
+    for article in primary:
+        add(article)
+    for group in secondary_groups:
+        for article in group:
+            add(article)
+    return selected
 
 
 def _blog_score(role: str, article: dict[str, Any], recent_urls: set[str], recent_titles: set[str]) -> float:
@@ -307,7 +363,7 @@ def _pick_blogs(
         source_kind = str(article.get("source_kind", "")).strip().lower()
         if source not in BLOG_SOURCES and not source.startswith("tldr ") and source_kind not in {"editorial", "support"}:
             continue
-        if role not in (article.get("roles") or []):
+        if not set(article.get("roles") or []).intersection(ROLE_ORDER):
             continue
         record = dict(article)
         record["_rank_score"] = _blog_score(role, article, recent_urls, recent_titles)
@@ -374,11 +430,10 @@ def main() -> None:
         return
 
     profiles = _load_profiles(store, args)
-    roles, role_counts = _resolve_roles(profiles)
-    _log(f"Building daily pulse for roles={roles}")
+    _log(f"Building shared daily pulse for audience={len(profiles)}")
 
-    community_pool = fetch_community_pool(roles=roles, weekly=False, log_fn=_log)
-    build_pool = fetch_build_pool(roles=roles, weekly=False, log_fn=_log)
+    community_pool = fetch_community_pool(roles=list(ROLE_ORDER), weekly=False, log_fn=_log)
+    build_pool = fetch_build_pool(roles=list(ROLE_ORDER), weekly=False, log_fn=_log)
 
     community_classified, community_stats = classify_content_pool(
         store,
@@ -395,45 +450,63 @@ def main() -> None:
         log_fn=_log,
     )
 
-    total_sections = 0
-    total_items = 0
-    for role in roles:
-        recent_urls, recent_titles = load_recent_role_history(
-            store,
-            role,
-            target_date,
-            section_prefix="daily_pulse",
-            lookback_days=7,
-        )
-        tools = _pick_tools(role, build_classified, recent_urls, recent_titles)
-        blogs = _pick_blogs(role, community_classified + build_classified, recent_urls, recent_titles)
-        discussions = _pick_discussions(role, community_classified, recent_urls, recent_titles)
+    recent_urls, recent_titles = load_recent_role_history(
+        store,
+        PULSE_SELECTION_ROLE,
+        target_date,
+        section_prefix="daily_pulse",
+        lookback_days=7,
+    )
+    cross_roles = [role for role in ROLE_ORDER if role != PULSE_SELECTION_ROLE]
+    offset = int(hashlib.sha256(target_date.encode("utf-8")).hexdigest()[:2], 16) % len(cross_roles)
+    cross_roles = cross_roles[offset:] + cross_roles[:offset]
 
-        payload = {
-            "tools": [_item_payload(store, target_date, role, "tools", a) for a in tools],
-            "blogs": [_item_payload(store, target_date, role, "blogs", a) for a in blogs],
-            "discussions": [_item_payload(store, target_date, role, "discussions", a) for a in discussions],
-        }
-        metadata = {
-            "label": "Daily Pulse",
-            "date": target_date,
-            "role": role,
-            "audience_users": role_counts.get(role, 0),
-            "tools_count": len(payload["tools"]),
-            "blogs_count": len(payload["blogs"]),
-            "discussions_count": len(payload["discussions"]),
-            "community_pool_size": len(community_classified),
-            "build_pool_size": len(build_classified),
-        }
-        store.write_global_role_digest(target_date, "daily_pulse", role, payload, metadata=metadata)
-        total_sections += 3
-        total_items += sum(len(items) for items in payload.values())
-        _log(f"  role={role} tools={len(payload['tools'])} blogs={len(payload['blogs'])} discussions={len(payload['discussions'])}")
+    tools = _blend_role_selections(
+        _pick_tools(PULSE_SELECTION_ROLE, build_classified, recent_urls, recent_titles),
+        [_pick_tools(role, build_classified, recent_urls, recent_titles) for role in cross_roles],
+        TOOLS_LIMIT,
+    )
+    blogs = _blend_role_selections(
+        _pick_blogs(PULSE_SELECTION_ROLE, community_classified + build_classified, recent_urls, recent_titles),
+        [
+            _pick_blogs(role, community_classified + build_classified, recent_urls, recent_titles)
+            for role in cross_roles
+        ],
+        BLOGS_LIMIT,
+    )
+    discussions = _blend_role_selections(
+        _pick_discussions(PULSE_SELECTION_ROLE, community_classified, recent_urls, recent_titles),
+        [_pick_discussions(role, community_classified, recent_urls, recent_titles) for role in cross_roles],
+        DISCUSSIONS_LIMIT,
+    )
+
+    payload = {
+        "tools": [_item_payload(store, target_date, PULSE_SELECTION_ROLE, "tools", a) for a in tools],
+        "blogs": [_item_payload(store, target_date, PULSE_SELECTION_ROLE, "blogs", a) for a in blogs],
+        "discussions": [_item_payload(store, target_date, PULSE_SELECTION_ROLE, "discussions", a) for a in discussions],
+    }
+    metadata = {
+        "label": "Builders Pulse",
+        "date": target_date,
+        "shared": True,
+        "audience_users": len(profiles),
+        "tools_count": len(payload["tools"]),
+        "blogs_count": len(payload["blogs"]),
+        "discussions_count": len(payload["discussions"]),
+        "community_pool_size": len(community_classified),
+        "build_pool_size": len(build_classified),
+    }
+    _write_shared_pulse(store, target_date, payload, metadata)
+    total_items = sum(len(items) for items in payload.values())
+    _log(
+        f"  shared tools={len(payload['tools'])} blogs={len(payload['blogs'])} "
+        f"discussions={len(payload['discussions'])}"
+    )
 
     result = {
-        "roles": len(roles),
+        "roles": 1,
         "items_total": total_items,
-        "sections_total": total_sections,
+        "sections_total": 3,
         **community_stats,
         **{f"build_{k}": v for k, v in build_stats.items()},
     }

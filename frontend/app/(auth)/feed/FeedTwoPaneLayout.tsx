@@ -524,8 +524,8 @@ function RightPane({ item, isItemLocked }: { item: FeedListItem; isItemLocked: (
 // ── pulse tab ─────────────────────────────────────────────────────────────────
 
 const PULSE_TWEET_MAX = 3;
-const PULSE_SIDEBAR_MAX = 4;
-const PULSE_READ_MAX = 4;
+const PULSE_SIDEBAR_MAX = 6;
+const PULSE_READ_MAX = 6;
 
 function PulseSidebarSkeleton({ rows = 4 }: { rows?: number }) {
   return (
@@ -596,14 +596,14 @@ function PulseSidebar({
   if (!sidebarHasContent) return null;
 
   return (
-    <div className="mt-8 w-full shrink-0 space-y-9 border-t border-[#e5e7eb] pt-7 lg:mt-0 lg:w-[360px] lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+    <div className="mt-10 w-full space-y-10">
       {(tools.length > 0 || toolsLoading) && (
         <div>
           <PulseSectionTitle icon={<Github className="h-4 w-4 text-[#111827]" />} label="GitHub Trending" />
           {toolsLoading && tools.length === 0 ? (
             <PulseSidebarSkeleton />
           ) : (
-            <div className="divide-y divide-[#f3f4f6]">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {tools.slice(0, PULSE_SIDEBAR_MAX).map((item) => renderSidebarItem(item, {
                 marker: true,
                 sectionSource: 'github',
@@ -623,7 +623,7 @@ function PulseSidebar({
           {tweetsLoading && tweets.length === 0 ? (
             <PulseSidebarSkeleton />
           ) : (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {tweets.map(renderTweet)}
             </div>
           )}
@@ -641,7 +641,6 @@ function PulseTab({
   tools,
   blogs,
   isSubscribed,
-  pulseRole,
   pulseInterests,
   tweetsLoading,
   discussionsLoading,
@@ -652,7 +651,6 @@ function PulseTab({
   tools: FeedListItem[];
   blogs: FeedListItem[];
   isSubscribed: boolean;
-  pulseRole?: string;
   pulseInterests?: string[];
   tweetsLoading?: boolean;
   discussionsLoading?: boolean;
@@ -704,17 +702,27 @@ function PulseTab({
       href={tweet.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group block rounded-xl border border-[#e5e7eb] p-5 transition-all hover:border-[#d1d5db] hover:shadow-[0_4px_16px_rgba(0,0,0,0.05)]"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white transition-all hover:border-[#d1d5db] hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)]"
     >
-      <p className="text-[15px] font-semibold leading-[1.45] text-[#111827] group-hover:underline decoration-[#111827]/20 underline-offset-[3px]">
-        {tweet.title}
-      </p>
-      {tweet.description && (
-        <p className="mt-2 text-[13px] leading-[1.6] text-[#6b7280]">
-          {tweet.description}
+      <div className="aspect-[16/9] overflow-hidden bg-[#f3f4f6]">
+        <ArticleImage
+          title={tweet.title}
+          alt=""
+          loading="lazy"
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+        />
+      </div>
+      <div className="flex flex-1 flex-col p-5">
+        <p className="text-[15px] font-semibold leading-[1.45] text-[#111827] group-hover:underline decoration-[#111827]/20 underline-offset-[3px]">
+          {tweet.title}
         </p>
-      )}
-      <div className="mt-3">{tweetMeta(tweet)}</div>
+        {tweet.description && (
+          <p className="mt-2 text-[13px] leading-[1.6] text-[#6b7280]">
+            {tweet.description}
+          </p>
+        )}
+        <div className="mt-auto pt-4">{tweetMeta(tweet)}</div>
+      </div>
     </a>
   );
 
@@ -733,17 +741,23 @@ function PulseTab({
         href={url || '#'}
         target="_blank"
         rel="noopener noreferrer"
-        className="group flex gap-3 py-3"
+        className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white transition-all hover:border-[#d1d5db] hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)]"
       >
-        {opts.rank != null && (
-          <span className="w-5 shrink-0 text-[13px] font-bold tabular-nums leading-[1.35] text-[#d1d5db] transition-colors group-hover:text-[#111827]">
-            {String(opts.rank).padStart(2, '0')}
-          </span>
-        )}
-        {opts.marker && (
-          <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rotate-45 bg-[#d1d5db] transition-colors group-hover:bg-[#111827]" />
-        )}
-        <div className="min-w-0 flex-1">
+        <div className="aspect-[16/9] overflow-hidden bg-[#f3f4f6]">
+          <ArticleImage
+            thumbnail={item.thumbnail}
+            title={item.title}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+          />
+        </div>
+        <div className="flex flex-1 flex-col p-5">
+          <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9ca3af]">
+            {opts.rank != null && <span>{String(opts.rank).padStart(2, '0')}</span>}
+            {opts.rank != null && <span>·</span>}
+            <span>{item.source || (opts.sectionSource === 'github' ? 'GitHub Trending' : 'Hacker News')}</span>
+          </div>
           <p className="text-[13.5px] font-semibold leading-[1.4] text-[#111827] group-hover:underline underline-offset-2 decoration-[#111827]/20">
             {item.title}
           </p>
@@ -753,7 +767,7 @@ function PulseTab({
             </p>
           )}
           {signalText && (
-            <p className="mt-1.5 text-[11px] font-medium tabular-nums text-[#9ca3af]">{signalText}</p>
+            <p className="mt-auto pt-4 text-[11px] font-medium tabular-nums text-[#9ca3af]">{signalText}</p>
           )}
         </div>
       </a>
@@ -768,24 +782,20 @@ function PulseTab({
       <a
         key={item.id}
         href={url || '#'}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={`group grid overflow-hidden rounded-xl border border-[#e5e7eb] bg-white transition-all hover:border-[#d1d5db] hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)] ${
-          item.thumbnail ? 'sm:grid-cols-[minmax(220px,38%)_1fr]' : 'grid-cols-1'
-        }`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white transition-all hover:border-[#d1d5db] hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)]"
       >
-        {item.thumbnail && (
-          <div className="aspect-[16/9] overflow-hidden bg-[#f3f4f6] sm:aspect-auto sm:min-h-[220px]">
-            <ArticleImage
-              thumbnail={item.thumbnail}
-              title={item.title}
-              alt=""
-              loading="lazy"
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-            />
-          </div>
-        )}
-        <div className="p-5">
+        <div className="aspect-[16/9] overflow-hidden bg-[#f3f4f6]">
+          <ArticleImage
+            thumbnail={item.thumbnail}
+            title={item.title}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+          />
+        </div>
+        <div className="flex flex-1 flex-col p-5">
           {(item.source || item.timestamp) && (
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9ca3af]">
               {[item.source, item.timestamp ? getTimeLabel(item.timestamp) : ''].filter(Boolean).join(' · ')}
@@ -804,13 +814,24 @@ function PulseTab({
 
   return (
     <div className="h-full overflow-y-auto overscroll-contain bg-white">
-      <div className="mx-auto flex max-w-7xl flex-col px-5 py-6 sm:px-6 sm:py-7 lg:flex-row lg:gap-10">
+      <div className="mx-auto w-full max-w-[1500px] px-5 py-7 sm:px-8 lg:px-10">
+        <header className="mb-10 border-b border-[#e5e7eb] pb-7">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#9ca3af]">
+            Pulse
+          </p>
+          <h1 className="mt-2 text-[28px] font-bold tracking-[-0.03em] text-[#111827] sm:text-[34px]">
+            {getTodayLabel()}
+          </h1>
+          <p className="mt-2 text-[14px] leading-relaxed text-[#6b7280]">
+            Fresh reads, tools, and discussions for builders. Updated hourly.
+          </p>
+        </header>
         {(visibleBlogs.length > 0 || visibleDiscussions.length > 0 || discussionsLoading || !isSubscribed) && (
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0">
             {visibleBlogs.length > 0 && (
               <div>
                 <PulseSectionTitle label="Top Reads" />
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {visibleBlogs.map(renderTopRead)}
                 </div>
               </div>
@@ -821,7 +842,7 @@ function PulseTab({
                 {discussionsLoading && visibleDiscussions.length === 0 ? (
                   <PulseSidebarSkeleton />
                 ) : (
-                  <div className="divide-y divide-[#f3f4f6]">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {visibleDiscussions.slice(0, PULSE_SIDEBAR_MAX).map((item, i) => renderSidebarItem(item, {
                       rank: i + 1,
                       sectionSource: 'hacker',
@@ -830,7 +851,7 @@ function PulseTab({
                 )}
               </div>
             )}
-            {!isSubscribed && <PulseLockedPreview role={pulseRole} interests={pulseInterests} />}
+            {!isSubscribed && <PulseLockedPreview interests={pulseInterests} />}
           </div>
         )}
         <PulseSidebar
@@ -856,7 +877,6 @@ export default function FeedTwoPaneLayout({
   tools = [],
   blogs = [],
   isSubscribed = false,
-  pulseRole,
   pulseInterests = [],
   pulseTweetsLoading = false,
   pulseDiscussionsLoading = false,
@@ -873,7 +893,6 @@ export default function FeedTwoPaneLayout({
   tools?: FeedListItem[];
   blogs?: FeedListItem[];
   isSubscribed?: boolean;
-  pulseRole?: string;
   pulseInterests?: string[];
   pulseTweetsLoading?: boolean;
   pulseDiscussionsLoading?: boolean;
@@ -883,7 +902,7 @@ export default function FeedTwoPaneLayout({
   isItemLocked: (id: string) => boolean;
   onTabChange?: (tab: 'news' | 'pulse') => void;
 }) {
-  const [tab, setTab] = useState<'news' | 'pulse'>('news');
+  const [tab, setTab] = useState<'news' | 'pulse'>('pulse');
 
   const handleTabChange = (next: 'news' | 'pulse') => {
     setTab(next);
@@ -1010,7 +1029,7 @@ export default function FeedTwoPaneLayout({
 
       {/* content */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 overflow-hidden">
+        <div className={`mx-auto flex min-h-0 w-full flex-1 overflow-hidden ${tab === 'pulse' ? 'max-w-none' : 'max-w-6xl'}`}>
           {tab === 'news' ? (
             <>
               <LeftPane
@@ -1034,7 +1053,6 @@ export default function FeedTwoPaneLayout({
               tools={tools}
               blogs={blogs}
               isSubscribed={isSubscribed}
-              pulseRole={pulseRole}
               pulseInterests={pulseInterests}
               tweetsLoading={pulseTweetsLoading}
               discussionsLoading={pulseDiscussionsLoading}

@@ -25,19 +25,20 @@ const SOURCES = [
 ];
 
 const SURFACES: { icon: LucideIcon; label: string; title: string; body: string }[] = [
-  { icon: Newspaper, label: '01 · Edition', title: 'One reading order for the day', body: 'Coverage from across the web, reconciled into a clear edition with the source links still attached.' },
-  { icon: MessagesSquare, label: '02 · Pulse', title: 'The conversations moving fastest', body: 'Useful threads and reactions from the communities that shape what happens next.' },
-  { icon: Rocket, label: '03 · What shipped', title: 'The work worth noticing', body: 'Launches, repos, and practical work that deserve more than a passing headline.' },
-  { icon: Zap, label: '04 · Your lens', title: 'A brief shaped around you', body: 'Two quick choices are enough to make the daily read relevant to your work.' },
+  { icon: Newspaper, label: '01 · News', title: 'Know what changed', body: 'The important technology news from across the web, grouped into one clear daily edition with every source attached.' },
+  { icon: MessagesSquare, label: '02 · How-to', title: 'See how things get built', body: 'Build logs, architecture breakdowns, and practical lessons that go beyond the headline.' },
+  { icon: Rocket, label: '03 · Open source', title: 'Find work worth following', body: 'Repositories, launches, and project roadmaps gaining real momentum.' },
+  { icon: Zap, label: '04 · Across disciplines', title: 'Build the whole product', body: 'Engineering, design, and product thinking together, because useful products need all three.' },
 ];
 
 const FAQ_ITEMS = [
-  { q: 'What is Trace?', a: 'Trace reconciles reporting, discussion, and launches from across tech into one readable daily edition.' },
-  { q: 'Do I need an account?', a: 'No for public reading. Create an account when you want an edition tailored to the topics you follow.' },
+  { q: 'What is Trace?', a: 'Trace is a feed for builders. It combines aggregated tech news with build logs, architecture, open-source projects, design, and product thinking.' },
+  { q: 'Who is Trace for?', a: 'Developers first, with the design, product, and founder context needed to build a complete product.' },
+  { q: 'Do I need an account?', a: 'No. You can open the feed and start reading immediately.' },
   { q: 'What does Trace Pro include?', a: 'The complete edition, every topic, key point, and source link, with no reading limit.' },
   { q: 'How does Trace choose what matters?', a: 'It groups duplicate coverage, puts the most consequential stories first, and keeps the source trail available when you want to go deeper.' },
-  { q: 'Can I shape the edition around my work?', a: 'Yes. Choose the areas you follow during setup, then Trace uses those preferences to organize your daily read.' },
-  { q: 'Where can I read Trace?', a: 'Read on the web or use the Android app. Your edition stays focused on the same topics either way.' },
+  { q: 'What is the difference between News and Pulse?', a: 'News gives you the important headlines. Pulse gives you the build logs, tools, discussions, and cross-disciplinary ideas behind the work.' },
+  { q: 'Where can I read Trace?', a: 'Read on the web or use the Android app.' },
 ];
 
 function FaqItem({ q, a }: { q: string; a: string }) {
@@ -76,18 +77,23 @@ export default function LandingPageClient({
   }, [user, loading, profileResolved, profile, router]);
 
   const startReading = (location: string) => {
-    trackLandingCTAClicked('read', location, { destination: user && profileResolved ? 'feed' : 'onboarding' });
-    router.push(user && profileResolved ? '/feed' : '/onboarding?intent=read');
+    trackLandingCTAClicked('read', location, { destination: 'feed' });
+    router.push('/feed?view=pulse');
   };
 
-  const subscribe = (location: string) => {
+  const subscribe = async (location: string) => {
     trackLandingCTAClicked('subscribe', location);
-    router.push(user && profileResolved ? getPostAuthDestination(profile, 'checkout') : '/onboarding?intent=checkout');
+    if (user && profileResolved) {
+      router.push(getPostAuthDestination(profile, 'checkout'));
+      return;
+    }
+    const result = await signInWithGoogle('checkout');
+    if (result.status === 'success') router.push(getPostAuthDestination(result.profile, result.intent));
   };
 
   const signIn = async () => {
     const result = await signInWithGoogle('read');
-    if (result.status === 'success') router.push(getPostAuthDestination(result.profile, result.intent));
+    if (result.status === 'success') router.push('/feed?view=pulse');
   };
 
   const indiaPricing = typeof window !== 'undefined' && Intl.DateTimeFormat().resolvedOptions().timeZone === 'Asia/Kolkata';
@@ -115,8 +121,8 @@ export default function LandingPageClient({
         <div className="mx-auto flex max-w-[880px] items-center justify-between border-b border-[#e4e1d8] py-4">
           <Link href="/" className="font-mono text-[12.5px] font-bold tracking-[0.28em]">TRACE</Link>
           <nav className="hidden items-center gap-5 text-[13px] text-[#75705f] sm:flex">
-            <a href="/feed" className="hover:text-[#2557d6]">Edition</a>
             <a href="/feed?view=pulse" className="hover:text-[#2557d6]">Pulse</a>
+            <a href="/feed?view=edition" className="hover:text-[#2557d6]">Edition</a>
             <Link href="/compare" className="hover:text-[#2557d6]">Compare</Link>
             <Link href="/blog" className="hover:text-[#2557d6]">Guides</Link>
             <Link href="/resources" className="hover:text-[#2557d6]">Resources</Link>
@@ -142,19 +148,19 @@ export default function LandingPageClient({
       <main>
         <section className="px-5 pb-16 pt-16 sm:px-8 sm:pb-20 sm:pt-24">
           <div className="mx-auto max-w-[880px]">
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[#2557d6]">Trace · Independent daily tech reference</p>
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[#2557d6]">Trace · A feed for builders</p>
             <h1
               className="mt-6 max-w-[1080px] tracking-[-0.04em]"
               style={{ fontFamily: 'var(--font-edition-serif), Georgia, serif', fontSize: 'clamp(3rem, 5vw, 4.5rem)', lineHeight: 1.08 }}
             >
-              Catch up on all the tech news<br />in under 5 minutes.
+              A feed for builders.
             </h1>
             <p className="mt-6 max-w-[620px] text-[16px] leading-[1.7] text-[#75705f] sm:text-[18px]">
-              Trace reconciles reporting from across the web into one daily edition, with concise context, key points, and the source links behind every story.
+              Aggregated tech news plus build logs, architecture breakdowns, open-source projects, design, and product thinking in one place.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-5">
-              <button type="button" onClick={() => startReading('hero')} className="bg-[#2557d6] px-5 py-3 text-[14px] font-semibold text-white hover:bg-[#1d48b4]">Build my brief</button>
-              <span className="text-[13px] text-[#75705f]">Two quick choices, then your personalized edition.</span>
+              <button type="button" onClick={() => startReading('hero')} className="bg-[#2557d6] px-5 py-3 text-[14px] font-semibold text-white hover:bg-[#1d48b4]">Open the feed</button>
+              <span className="text-[13px] text-[#75705f]">For developers, designers, PMs, and founders.</span>
             </div>
             <div className="mt-10 flex flex-wrap gap-x-5 gap-y-2 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-[#75705f]">
               {SOURCES.map((source) => <span key={source}>{source}</span>)}
@@ -175,7 +181,7 @@ export default function LandingPageClient({
         <section className="px-5 py-16 sm:px-8 sm:py-20">
           <div className="mx-auto max-w-[880px] border-y border-[#e4e1d8] py-10">
             <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[#2557d6]">How Trace works</p>
-            <h2 className="mt-5 max-w-[700px] text-[clamp(2.6rem,5vw,4.2rem)] leading-[0.98] tracking-[-0.04em]" style={{ fontFamily: 'var(--font-edition-serif), Georgia, serif' }}>A clear view of the day, with the evidence still attached.</h2>
+            <h2 className="mt-5 max-w-[700px] text-[clamp(2.6rem,5vw,4.2rem)] leading-[0.98] tracking-[-0.04em]" style={{ fontFamily: 'var(--font-edition-serif), Georgia, serif' }}>News tells you what changed. Pulse helps you build with it.</h2>
             <div className="mt-10 border-t border-[#e4e1d8]">
               {SURFACES.map((item) => (
                 <article key={item.title} className="grid gap-4 border-b border-[#e4e1d8] py-6 sm:grid-cols-[160px_minmax(0,1fr)] sm:gap-8">
@@ -236,7 +242,7 @@ export default function LandingPageClient({
             <h2 className="mt-5 max-w-[620px] text-[clamp(2.7rem,5vw,4.6rem)] leading-[0.98] tracking-[-0.04em]" style={{ fontFamily: 'var(--font-edition-serif), Georgia, serif' }}>Spend less time finding the story. Spend more time understanding it.</h2>
             <div className="mt-8 flex flex-wrap gap-4">
               <button type="button" onClick={() => startReading('bottom_cta')} className="bg-[#faf9f5] px-5 py-3 text-[14px] font-semibold text-[#1b1a17] hover:bg-white">Read today</button>
-              <a href="/feed" className="border border-white/60 px-5 py-3 text-[14px] font-semibold text-white hover:bg-white/10">See an edition</a>
+              <a href="/feed?view=edition" className="border border-white/60 px-5 py-3 text-[14px] font-semibold text-white hover:bg-white/10">See an edition</a>
             </div>
           </div>
         </section>

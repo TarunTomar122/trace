@@ -212,7 +212,7 @@ export default async function NewsletterDetailPage({ params }: PageProps) {
                 Compare Tools
               </Link>
               <Link
-                href="/onboarding"
+                href="/feed?view=pulse"
                 className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-sm text-[#6b7280] transition-colors hover:text-[#111827]"
               >
                 Get Started

@@ -91,7 +91,7 @@ const RESOURCE_SECTIONS = [
     links: [
       { label: "How It Works", href: "/how-it-works" },
       { label: "Tools Directory", href: "/tools" },
-      { label: "Get Started", href: "/onboarding" },
+      { label: "Open the feed", href: "/feed?view=pulse" },
     ],
   },
 ];

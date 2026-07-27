@@ -1,9 +1,10 @@
 "use client";
 
 import React from 'react';
-import { BookOpen, MessagesSquare, Wrench } from 'lucide-react';
+import { BookOpen, ExternalLink, MessagesSquare, Wrench, X } from 'lucide-react';
 import type { V3UserFeed } from '@/lib/firestore';
 import type { FeedListItem } from '@/app/(auth)/feed/FeedUi';
+import { getPostAuthDestination, useAuth } from '@/contexts/AuthContext';
 import {
   trackCheckoutClicked,
   trackFeedSourceClicked,
@@ -21,7 +22,9 @@ import {
   StoryMeta,
   buildPulseEdition,
   editionSerif,
+  sentencePreview,
   type PulseEditionSection,
+  useDialogFocus,
 } from './edition-shared';
 
 const SECTION_ICON = {
@@ -35,25 +38,29 @@ function SignalCard({
   position,
   section,
   tier,
+  compact = false,
+  onOpen,
 }: {
   item: FeedListItem;
   position: number;
   section: string;
   tier: 'free' | 'pro';
+  compact?: boolean;
+  onOpen?: () => void;
 }) {
   const url = item.url || (item.data as { url?: string }).url;
   const signalLabel = item.signalCount || item.sourceCount;
-  const hasSourceImage = Boolean(item.thumbnail?.trim());
   const content = (
-    <div className={hasSourceImage ? 'grid gap-5 md:grid-cols-[minmax(0,1fr)_168px] md:gap-7' : ''}>
+    <>
+      <StoryImage item={item} className={`w-full ${compact ? 'aspect-[3/2]' : 'aspect-[16/9]'}`} />
       <div className="flex min-w-0 flex-col">
         <StoryMeta item={item} />
-        <h2 className={`${editionSerif.className} mt-4 text-[23px] leading-[1.18] transition-colors group-hover:text-[#2557d6]`} style={{ color: INK }}>
+        <h2 className={`${editionSerif.className} mt-4 leading-[1.18] transition-colors group-hover:text-[#2557d6] ${compact ? 'text-[19px]' : 'text-[23px]'}`} style={{ color: INK }}>
           {item.title}
         </h2>
-        {item.preview && (
-          <p className="mt-3 text-[13.5px] leading-[1.65]" style={{ color: MUTED }}>
-            {item.preview}
+        {!onOpen && item.preview && (
+          <p className={`mt-3 leading-[1.6] ${compact ? 'text-[12.5px]' : 'text-[13.5px]'}`} style={{ color: MUTED }}>
+            {compact ? sentencePreview(item.preview, 1) : item.preview}
           </p>
         )}
         <div className="mt-auto pt-5">
@@ -64,13 +71,20 @@ function SignalCard({
           ) : null}
         </div>
       </div>
-      {hasSourceImage && <StoryImage item={item} useFallback={false} className="aspect-[4/3] w-full self-start" />}
-    </div>
+    </>
   );
 
   return (
     <article>
-      {url ? (
+      {onOpen ? (
+        <button
+          type="button"
+          onClick={onOpen}
+          className="group flex h-full w-full flex-col gap-5 p-5 text-left transition-colors hover:bg-[#f5f3ed]"
+        >
+          {content}
+        </button>
+      ) : url ? (
         <a
           href={url}
           target="_blank"
@@ -83,14 +97,65 @@ function SignalCard({
             section,
             tier,
           })}
-          className="group flex h-full flex-col px-5 py-6 transition-colors hover:bg-[#f5f3ed]"
+          className="group flex h-full flex-col gap-5 p-5 transition-colors hover:bg-[#f5f3ed]"
         >
           {content}
         </a>
       ) : (
-        <div className="flex h-full flex-col px-5 py-6">{content}</div>
+        <div className="flex h-full flex-col gap-5 p-5">{content}</div>
       )}
     </article>
+  );
+}
+
+function ReadModal({ item, onClose }: { item: FeedListItem; onClose: () => void }) {
+  const url = item.url || (item.data as { url?: string }).url;
+  const dialogRef = React.useRef<HTMLElement>(null);
+  useDialogFocus(dialogRef, onClose);
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-end bg-black/35 sm:items-center sm:justify-center sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="pulse-read-title"
+      onMouseDown={(event) => {
+        if (event.currentTarget === event.target) onClose();
+      }}
+    >
+      <article ref={dialogRef} tabIndex={-1} className="flex h-[100dvh] w-full flex-col overflow-hidden bg-[#faf9f5] sm:h-auto sm:max-h-[90vh] sm:max-w-[840px] sm:border" style={{ borderColor: HAIRLINE }}>
+        <header className="flex shrink-0 items-center justify-between border-b px-5 py-4 sm:px-7" style={{ borderColor: HAIRLINE }}>
+          <MonoLabel>Trace read</MonoLabel>
+          <button type="button" onClick={onClose} className="p-2" aria-label="Close article">
+            <X size={20} />
+          </button>
+        </header>
+        <div className="overflow-y-auto">
+          <StoryImage item={item} className="aspect-[16/9] w-full border-x-0 border-t-0" />
+          <div className="px-5 py-7 sm:px-10 sm:py-9">
+            <StoryMeta item={item} />
+            <h2 id="pulse-read-title" className={`${editionSerif.className} mt-4 text-[34px] leading-[1.08] sm:text-[46px]`} style={{ color: INK }}>
+              {item.title}
+            </h2>
+            {item.preview && (
+              <div className="mt-6 whitespace-pre-line text-[16px] leading-[1.8]" style={{ color: '#3d3a33' }}>
+                {item.preview}
+              </div>
+            )}
+            {url && (
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-8 inline-flex items-center gap-2 bg-[#2557d6] px-5 py-3 text-[13px] font-semibold text-white"
+              >
+                Read original <ExternalLink size={15} />
+              </a>
+            )}
+          </div>
+        </div>
+      </article>
+    </div>
   );
 }
 
@@ -110,6 +175,17 @@ function LockedSignalPreview({
   onRetryAccess: () => Promise<unknown>;
 }) {
   const tracked = React.useRef(false);
+  const { user, profile, profileResolved, signInWithGoogle } = useAuth();
+  const openCheckout = async () => {
+    if (user && profileResolved) {
+      window.location.href = getPostAuthDestination(profile, 'checkout');
+      return;
+    }
+    const result = await signInWithGoogle('checkout');
+    if (result.status === 'success') {
+      window.location.href = getPostAuthDestination(result.profile, result.intent);
+    }
+  };
   React.useEffect(() => {
     if (tracked.current || accessPending) return;
     tracked.current = true;
@@ -146,17 +222,20 @@ function LockedSignalPreview({
               </button>
             )
           ) : (
-            <a
-              href="/onboarding?intent=checkout"
-              onClick={() => trackCheckoutClicked('feed_pulse', {
-                surface: 'web',
-                section,
-                hidden_count: remaining,
-              })}
+            <button
+              type="button"
+              onClick={() => {
+                trackCheckoutClicked('feed_pulse', {
+                  surface: 'web',
+                  section,
+                  hidden_count: remaining,
+                });
+                void openCheckout();
+              }}
               className="mt-3 inline-block text-[12px] font-semibold text-[#2557d6] hover:underline"
             >
               Unlock the full Pulse
-            </a>
+            </button>
           )}
         </div>
       </div>
@@ -171,6 +250,7 @@ function SignalSection({
   accessPending,
   accessVerificationFailed,
   onRetryAccess,
+  onOpenRead,
 }: {
   section: PulseEditionSection;
   index: number;
@@ -178,8 +258,10 @@ function SignalSection({
   accessPending: boolean;
   accessVerificationFailed: boolean;
   onRetryAccess: () => Promise<unknown>;
+  onOpenRead: (item: FeedListItem) => void;
 }) {
   const Icon = SECTION_ICON[section.id];
+  const compact = section.id !== 'reads';
   const visibleItems = isPro ? section.items : section.items.slice(0, 1);
   const hiddenCount = Math.max(0, section.items.length - visibleItems.length);
 
@@ -199,11 +281,18 @@ function SignalSection({
           {section.items.length} signal{section.items.length === 1 ? '' : 's'}
         </span>
       </div>
-      <div className="mt-5 border" style={{ borderColor: HAIRLINE }}>
+      <div
+        className={compact
+          ? 'mt-5 flex snap-x snap-mandatory overflow-x-auto border lg:grid lg:grid-cols-4 lg:overflow-visible'
+          : 'mt-5 grid grid-cols-1 border md:grid-cols-2 lg:grid-cols-4'}
+        style={{ borderColor: HAIRLINE }}
+      >
         {visibleItems.map((item, itemIndex) => (
           <div
             key={item.id}
-            className={itemIndex > 0 ? 'border-t' : ''}
+            className={compact
+              ? 'w-[82vw] max-w-[320px] shrink-0 snap-start border-r lg:w-auto lg:max-w-none'
+              : 'border-b border-r last:border-r-0'}
             style={{ borderColor: HAIRLINE }}
           >
             <SignalCard
@@ -211,6 +300,8 @@ function SignalSection({
               position={itemIndex + 1}
               section={section.id}
               tier={isPro ? 'pro' : 'free'}
+              compact={compact}
+              onOpen={section.id === 'reads' ? () => onOpenRead(item) : undefined}
             />
           </div>
         ))}
@@ -246,54 +337,41 @@ export default function PulseEdition({
 }) {
   const sections = buildPulseEdition(feed).filter((section) => section.items.length > 0);
   const totalSignals = sections.reduce((total, section) => total + section.items.length, 0);
-  const [conversations, ...referenceDesks] = sections;
+  const [selectedRead, setSelectedRead] = React.useState<FeedListItem | null>(null);
 
   return (
-    <div className="mx-auto max-w-[880px] px-5 sm:px-8">
+    <div className="mx-auto max-w-[1500px] px-5 sm:px-8">
       <EditionHeader view="pulse" />
 
       <div className="pb-12 pt-14 sm:pt-20">
         <MonoLabel>{dateLabel}</MonoLabel>
-        <div className="mt-5 max-w-[680px]">
+        <div className="mt-5 max-w-[820px]">
           <h1 className={`${editionSerif.className} text-[56px] leading-[0.98] sm:text-[88px]`} style={{ color: INK }}>
-            The Pulse
+            A feed for builders.
           </h1>
-          <p className="mt-6 max-w-[580px] text-[16.5px] leading-[1.7]" style={{ color: MUTED }}>
-            The live edge of tech: what builders are debating, trying, and passing around right now.
+          <p className="mt-6 max-w-[760px] text-[16.5px] leading-[1.7]" style={{ color: MUTED }}>
+            Build logs, architecture, open source, design, and product thinking for developers, designers, PMs, and founders.
           </p>
         </div>
         <p className="mt-6 font-mono text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: BLUE }}>
-          {totalSignals} signals · {sections.length} desks · refreshed through the day
+          {totalSignals} signals · aggregated hourly
         </p>
       </div>
 
       {sections.length > 0 ? (
-        <div>
-          {conversations && (
+        <div className="space-y-14">
+          {sections.map((section, index) => (
             <SignalSection
-              section={conversations}
-              index={1}
+              key={section.id}
+              section={section}
+              index={index + 1}
               isPro={isPro}
               accessPending={accessPending}
               accessVerificationFailed={accessVerificationFailed}
               onRetryAccess={onRetryAccess}
+              onOpenRead={setSelectedRead}
             />
-          )}
-          {referenceDesks.length > 0 && (
-            <div className="mt-14 space-y-14">
-              {referenceDesks.map((section, index) => (
-                <SignalSection
-                  key={section.id}
-                  section={section}
-                  index={index + 2}
-                  isPro={isPro}
-                  accessPending={accessPending}
-                  accessVerificationFailed={accessVerificationFailed}
-                  onRetryAccess={onRetryAccess}
-                />
-              ))}
-            </div>
-          )}
+          ))}
         </div>
       ) : (
         <div className="border-y py-16 text-center" style={{ borderColor: HAIRLINE }}>
@@ -306,6 +384,7 @@ export default function PulseEdition({
       )}
 
       <EditionFooter />
+      {selectedRead && <ReadModal item={selectedRead} onClose={() => setSelectedRead(null)} />}
     </div>
   );
 }

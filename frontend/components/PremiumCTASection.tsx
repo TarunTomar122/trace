@@ -102,7 +102,7 @@ export default function PremiumCTASection({
             ))}
           </div>
           <Link
-            href="/onboarding?intent=checkout"
+            href="/subscribe"
             prefetch={false}
             onClick={() => trackCheckoutClicked("premium_cta_light")}
             className="mt-6 inline-flex items-center justify-center w-full sm:w-auto rounded-full bg-foreground px-6 py-3.5 text-[13px] font-semibold text-background transition-all hover:bg-foreground/90 hover:scale-[1.01] active:scale-[0.99]"
@@ -170,7 +170,7 @@ export default function PremiumCTASection({
           ))}
         </div>
         <Link
-          href="/onboarding?intent=checkout"
+          href="/subscribe"
           prefetch={false}
           onClick={() => trackCheckoutClicked("premium_cta_dark")}
           className="mt-6 inline-flex items-center justify-center w-full rounded-full bg-white px-6 py-3.5 text-[13px] font-semibold text-[#151515] transition-all hover:bg-white/90 hover:scale-[1.01] active:scale-[0.99]"

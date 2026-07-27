@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export default function PublicHeader({
   ctaLabel = 'Start reading',
-  ctaHref = '/onboarding?intent=read',
+  ctaHref = '/feed?view=pulse',
 }: {
   ctaLabel?: string;
   ctaHref?: string;
@@ -15,8 +15,8 @@ export default function PublicHeader({
           TRACE
         </Link>
         <nav className="hidden items-center gap-5 text-[13px] font-medium text-[#75705f] sm:flex">
-          <a href="/feed" className="transition-colors hover:text-[#2557d6]">Edition</a>
           <a href="/feed?view=pulse" className="transition-colors hover:text-[#2557d6]">Pulse</a>
+          <a href="/feed?view=edition" className="transition-colors hover:text-[#2557d6]">Edition</a>
           <Link href="/compare" className="transition-colors hover:text-[#2557d6]">Compare</Link>
           <Link href="/blog" className="transition-colors hover:text-[#2557d6]">Guides</Link>
           <Link href="/resources" className="transition-colors hover:text-[#2557d6]">Resources</Link>

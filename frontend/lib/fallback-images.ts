@@ -61,6 +61,31 @@ const CATEGORY_IMAGES: Record<string, string[]> = {
     'https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=800&h=500&fit=crop', // DNA
     'https://images.unsplash.com/photo-1614935151651-0bea6508db6b?w=800&h=500&fit=crop', // chemistry
   ],
+  security: [
+    'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=800&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1510511459019-5dda7724fd87?w=800&h=500&fit=crop',
+  ],
+  mobile: [
+    'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1523206489230-c012c64b2b48?w=800&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1551650975-87deedd944c3?w=800&h=500&fit=crop',
+  ],
+  space: [
+    'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=800&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=800&h=500&fit=crop',
+  ],
+  weather: [
+    'https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?w=800&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1534088568595-a066f410bcda?w=800&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1499346030926-9a72daac6c63?w=800&h=500&fit=crop',
+  ],
+  hardware: [
+    'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=800&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1555617981-dac3880eac6e?w=800&h=500&fit=crop',
+  ],
   finance: [
     'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&h=500&fit=crop', // stocks chart
     'https://images.unsplash.com/photo-1579532537598-459ecdaf39cc?w=800&h=500&fit=crop', // trading
@@ -69,11 +94,9 @@ const CATEGORY_IMAGES: Record<string, string[]> = {
     'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&h=500&fit=crop', // calculator
   ],
   general: [
-    'https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=800&h=500&fit=crop', // abstract blue
-    'https://images.unsplash.com/photo-1557683316-973673bdar25?w=800&h=500&fit=crop', // gradient
-    'https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=800&h=500&fit=crop', // purple gradient
-    'https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?w=800&h=500&fit=crop', // pink gradient
-    'https://images.unsplash.com/photo-1557682260-96773eb01377?w=800&h=500&fit=crop', // blue gradient
+    'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=800&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800&h=500&fit=crop',
   ],
 };
 
@@ -84,6 +107,13 @@ const KEYWORD_CATEGORY_MAP: Record<string, string> = {
   'software': 'tech', 'engineering': 'tech', 'api': 'tech', 'database': 'tech',
   'cloud': 'tech', 'devops': 'tech', 'javascript': 'tech', 'python': 'tech',
   'react': 'tech', 'node': 'tech', 'typescript': 'tech', 'rust': 'tech',
+  'privacy': 'security', 'security': 'security', 'cookie': 'security',
+  'cookies': 'security', 'banner': 'security', 'encryption': 'security',
+  'android': 'mobile', 'phone': 'mobile', 'smartphone': 'mobile', 'mobile': 'mobile',
+  'blackhole': 'space', 'hole': 'space', 'space': 'space', 'orbit': 'space',
+  'weather': 'weather', 'forecast': 'weather', 'rain': 'weather', 'storm': 'weather',
+  'hardware': 'hardware', 'transistor': 'hardware', 'chip': 'hardware',
+  'semiconductor': 'hardware', 'laptop': 'hardware', 'console': 'hardware',
 
   // AI
   'ai': 'ai', 'artificial': 'ai', 'intelligence': 'ai', 'machine': 'ai',
@@ -116,7 +146,7 @@ const KEYWORD_CATEGORY_MAP: Record<string, string> = {
 
   // Science
   'science': 'science', 'research': 'science', 'study': 'science', 'biology': 'science',
-  'physics': 'science', 'chemistry': 'science', 'space': 'science', 'health': 'science',
+  'physics': 'science', 'chemistry': 'science', 'health': 'science',
   'medical': 'science', 'brain': 'science',
 
   // Finance

@@ -169,7 +169,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   const trackedFeedView = React.useRef(false);
 
   const [showProWelcome, setShowProWelcome] = useState(false);
-  const [pulseTabActive, setPulseTabActive] = useState(false);
+  const [pulseTabActive, setPulseTabActive] = useState(true);
   const refreshProfileRef = React.useRef(refreshProfile);
   const phasePerfRef = React.useRef({
     startedAt: 0,
@@ -226,7 +226,11 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   const { data: pulseFeed } = useSWR<Partial<V3UserFeed> | null>(
     pulseDataEnabled && user ? 'feed-pulse' : null,
     pulseFetcher,
-    { revalidateOnFocus: false, dedupingInterval: 300000 },
+    {
+      revalidateOnFocus: true,
+      dedupingInterval: 300000,
+      refreshInterval: 900000,
+    },
   );
 
   const effectiveFeed = useMemo(() => {
@@ -280,8 +284,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     if (!isAlphaMode()) { router.push(user ? '/waitlist' : '/'); return; }
     if (!loading && !user && !hasInitialFeed) { router.push('/'); return; }
     if (user && !viewerProfileResolved) return;
-    if (user && !loading && viewerOnboarded === false) router.push('/onboarding');
-  }, [user, loading, router, viewerProfileResolved, viewerOnboarded, hasInitialFeed]);
+  }, [user, loading, router, viewerProfileResolved, hasInitialFeed]);
 
   useEffect(() => {
     if (!user || !viewerProfileResolved || viewerOnboarded !== true) {
@@ -555,8 +558,6 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   const pulseDiscussionsLoading = pulsePreviewEnabled && needsLiveDiscussions && livePulseLoading && pulseDiscussions.length === 0;
   const pulseToolsLoading = pulsePreviewEnabled && needsLiveTools && livePulseLoading && pulseTools.length === 0;
 
-  const pulseRole = profile?.role || effectiveFeed?.viewer_profile?.role || undefined;
-
   useEffect(() => {
     if (trackedFeedView.current || currentList.length === 0) return;
     trackedFeedView.current = true;
@@ -694,7 +695,6 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
           tools={pulseTools}
           blogs={blogs}
           isSubscribed={isSubscribed}
-          pulseRole={pulseRole}
           pulseInterests={effectiveInterests}
           pulseTweetsLoading={pulseTweetsLoading}
           pulseDiscussionsLoading={pulseDiscussionsLoading}

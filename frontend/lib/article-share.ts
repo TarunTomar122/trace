@@ -102,7 +102,7 @@ export function getPublicStoryCta(options: {
   }
 
   return {
-    href: '/onboarding?intent=read',
+    href: '/feed?view=pulse',
     headerLabel: 'Get started',
     promoTitle: 'Build your own personalized feed',
     promoCopy:

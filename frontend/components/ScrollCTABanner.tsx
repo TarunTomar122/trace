@@ -41,7 +41,7 @@ export default function ScrollCTABanner() {
             </p>
           </div>
           <Link
-            href="/onboarding?intent=checkout"
+            href="/subscribe"
             onClick={() => setDismissed(true)}
             className="shrink-0 rounded-full bg-[#151515] px-5 py-2.5 text-[13px] font-semibold text-white transition-all hover:bg-black hover:shadow-lg"
           >

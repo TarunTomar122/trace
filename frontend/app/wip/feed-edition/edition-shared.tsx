@@ -34,7 +34,7 @@ import {
 } from '@/app/(auth)/feed/FeedEditionOrganizer';
 import { FREE_READS_LIMIT } from '@/lib/free-reads';
 import { getArticleImageCandidates } from '@/lib/fallback-images';
-import { useAuth } from '@/contexts/AuthContext';
+import { getPostAuthDestination, useAuth } from '@/contexts/AuthContext';
 
 export const editionSerif = Newsreader({
   subsets: ['latin'],
@@ -48,6 +48,54 @@ export const PAPER = '#faf9f5';
 export const INK = '#1b1a17';
 export const MUTED = '#75705f';
 export const HAIRLINE = '#e4e1d8';
+
+export function useDialogFocus(
+  dialogRef: React.RefObject<HTMLElement | null>,
+  onClose: () => void,
+) {
+  React.useEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const previousOverflow = document.body.style.overflow;
+    const focusableSelector = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const dialog = dialogRef.current;
+    const focusable = () => Array.from(
+      dialog?.querySelectorAll<HTMLElement>(focusableSelector) ?? [],
+    );
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const items = focusable();
+      if (items.length === 0) {
+        event.preventDefault();
+        dialog?.focus();
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+    requestAnimationFrame(() => (focusable()[0] ?? dialog)?.focus());
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+      previousFocus?.focus();
+    };
+  }, [dialogRef, onClose]);
+}
 
 // ---------------------------------------------------------------------------
 // Model
@@ -273,22 +321,22 @@ export function buildPulseEdition(feed: V3UserFeed | null): PulseEditionSection[
 
   return [
     {
+      id: 'reads',
+      label: 'How it gets built',
+      description: 'Build logs, architecture breakdowns, and product lessons worth keeping.',
+      items: uniquePulseItems(daily?.blogs || []),
+    },
+    {
       id: 'discussions',
-      label: 'In the room',
-      description: 'The conversations moving fastest across the community.',
+      label: 'Builder conversations',
+      description: 'What developers, designers, PMs, and founders are debating right now.',
       items: discussions.length > 0 ? discussions : uniquePulseItems(feed?.pulse || []),
     },
     {
       id: 'tools',
-      label: 'Worth trying',
-      description: 'Tools, repos, and launches with real momentum.',
+      label: 'Open source & tools',
+      description: 'Repos, launches, and project roadmaps with real momentum.',
       items: uniquePulseItems([...(daily?.tools || []), ...(feed?.build_pulse || [])]),
-    },
-    {
-      id: 'reads',
-      label: 'Worth the time',
-      description: 'The posts and essays that add something to the conversation.',
-      items: uniquePulseItems(daily?.blogs || []),
     },
   ];
 }
@@ -410,8 +458,8 @@ export function EditionHeader({ view }: { view: 'edition' | 'pulse' | 'profile' 
         </Link>
       )}
       <nav className="flex items-center gap-5 text-[13px] font-medium" aria-label="Trace">
-        <a className="transition-opacity hover:opacity-70" href="/feed" onClick={startNavigation('/feed')} style={navItem(view === 'edition')}>Edition</a>
         <a className="transition-opacity hover:opacity-70" href="/feed?view=pulse" onClick={startNavigation('/feed?view=pulse')} style={navItem(view === 'pulse')}>Pulse</a>
+        <a className="transition-opacity hover:opacity-70" href="/feed?view=edition" onClick={startNavigation('/feed?view=edition')} style={navItem(view === 'edition')}>Edition</a>
         <Link className="transition-opacity hover:opacity-70" href="/profile" onClick={startNavigation('/profile')} style={navItem(view === 'profile')}>Profile</Link>
       </nav>
       {pendingHref && <span aria-hidden="true" className="absolute inset-x-0 bottom-[-2px] h-[2px] animate-pulse" style={{ backgroundColor: BLUE }} />}
@@ -591,10 +639,12 @@ function getExpandedContent(item: FeedListItem): ExpandedContent {
 export function ExpandedStory({
   item,
   showImages = false,
+  className = '',
   tracking,
 }: {
   item: FeedListItem;
   showImages?: boolean;
+  className?: string;
   tracking: {
     position: number;
     section: string;
@@ -603,11 +653,11 @@ export function ExpandedStory({
 }) {
   const content = getExpandedContent(item);
   return (
-    <div className="mx-auto max-w-[680px] pb-2">
+    <div className={`mx-auto max-w-[680px] pb-2 ${className}`}>
       {showImages && <StoryImage item={item} className="mb-5 aspect-[16/9] w-full" />}
 
       {content.paragraphs.map((p, i) => (
-        <p key={i} className="text-[15.5px] leading-[1.75]" style={{ color: '#3d3a33' }}>
+        <p key={i} className={`text-[15.5px] leading-[1.75] ${i > 0 ? 'mt-5' : ''}`} style={{ color: '#3d3a33' }}>
           {p}
         </p>
       ))}
@@ -719,6 +769,22 @@ export function ProEditionNote({
   totalCount: number;
 }) {
   const tracked = React.useRef(false);
+  const { user, profile, profileResolved, signInWithGoogle } = useAuth();
+  const openCheckout = async () => {
+    trackCheckoutClicked('feed_edition', {
+      surface: 'web',
+      visible_count: visibleCount,
+      total_count: totalCount,
+    });
+    if (user && profileResolved) {
+      window.location.href = getPostAuthDestination(profile, 'checkout');
+      return;
+    }
+    const result = await signInWithGoogle('checkout');
+    if (result.status === 'success') {
+      window.location.href = getPostAuthDestination(result.profile, result.intent);
+    }
+  };
 
   React.useEffect(() => {
     if (tracked.current) return;
@@ -741,18 +807,14 @@ export function ProEditionNote({
       </p>
       <ProBenefits className="mt-5" />
       <div className="mt-5 flex flex-wrap items-center gap-x-8 gap-y-3">
-        <a
-          href="/onboarding?intent=checkout"
-          onClick={() => trackCheckoutClicked('feed_edition', {
-            surface: 'web',
-            visible_count: visibleCount,
-            total_count: totalCount,
-          })}
+        <button
+          type="button"
+          onClick={() => void openCheckout()}
           className="inline-block px-6 py-3 text-[13.5px] font-semibold text-white"
           style={{ background: BLUE }}
         >
           Try Trace Pro
-        </a>
+        </button>
         <span className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: MUTED }}>
           Cancel anytime
         </span>

@@ -43,7 +43,7 @@ export default function HomeEditionPreview({ feed }: { feed: V3UserFeed | null }
     <section className="border border-[#e4e1d8] bg-[#faf9f5] px-5 py-7 sm:px-8 sm:py-9">
       <div className="flex items-center justify-between border-b border-[#e4e1d8] pb-5">
         <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#2557d6]">Today&rsquo;s edition</span>
-        <a href="/feed" className="text-[12px] font-semibold text-[#2557d6] hover:underline">Open Edition</a>
+        <a href="/feed?view=edition" className="text-[12px] font-semibold text-[#2557d6] hover:underline">Open Edition</a>
       </div>
       <div className="pt-6">
         {stories.map((item, index) => <PreviewRow key={item.id} item={item} number={index + 1} />)}

@@ -48,7 +48,7 @@ JOBS = {
     "pulse": {
         "module": "v3.build_daily_pulse",
         "pool_cadence_days": 1,
-        "description": "Daily Pulse (community + builds by role)",
+        "description": "Developer Pulse (reads + community + tools)",
     },
     "assemble": {
         "module": "v3.assemble_feeds",

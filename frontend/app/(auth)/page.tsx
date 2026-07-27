@@ -4,9 +4,9 @@ import { blogPosts } from "@/app/blog/content";
 import type { V3UserFeed } from '@/lib/firestore';
 
 export const metadata: Metadata = {
-  title: "Trace — Your daily tech, in one place",
+  title: "Trace — A feed for builders",
   description:
-    "Stories, conversations, and product launches from 50+ sources — grouped into one scannable daily pulse so you stay current without the tab stack.",
+    "Aggregated tech news, build logs, architecture breakdowns, open-source projects, design, and product thinking for builders.",
   keywords: [
     "tech news aggregator",
     "daily tech briefing",
@@ -23,9 +23,9 @@ export const metadata: Metadata = {
     canonical: "https://www.yourtrace.online/",
   },
   openGraph: {
-    title: "Trace — Your daily tech, in one place",
+    title: "Trace — A feed for builders",
     description:
-      "Stories, conversations, and product launches from 50+ sources — one daily pulse instead of ten half-read feeds.",
+      "Aggregated tech news plus the practical engineering, design, and product work behind it.",
     url: "https://www.yourtrace.online",
     type: "website",
     siteName: "Trace",
@@ -34,15 +34,15 @@ export const metadata: Metadata = {
         url: "https://www.yourtrace.online/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Trace — Your daily tech, in one place",
+        alt: "Trace — A feed for builders",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Trace — Your daily tech, in one place",
+    title: "Trace — A feed for builders",
     description:
-      "Stories, conversations & launches. Stay current without bouncing between feeds.",
+      "Tech news, build logs, architecture, open source, design, and product in one feed.",
     images: ["https://www.yourtrace.online/twitter-image"],
   },
 };

@@ -10,7 +10,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { X } from 'lucide-react';
 import type { FeedListItem } from '@/app/(auth)/feed/FeedUi';
 import {
   trackFeedFilterChanged,
@@ -36,142 +36,100 @@ import {
   editionSerif,
   isLocked,
   pad2,
-  scrollElementToTop,
   sentencePreview,
   type EditionModel,
+  useDialogFocus,
 } from './edition-shared';
 
-function StoryRow({
+function StoryCard({
   item,
   number,
-  locked,
-  onToggle,
-  expanded,
+  onOpen,
   showImages,
-  section,
-  tier,
 }: {
   item: FeedListItem;
   number: number;
-  locked: boolean;
-  expanded: boolean;
-  onToggle: () => void;
+  onOpen: () => void;
   showImages: boolean;
+}) {
+  return (
+    <article className="border-b border-r" style={{ borderColor: HAIRLINE }}>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="group flex h-full w-full flex-col gap-5 p-5 text-left transition-colors hover:bg-[#f5f3ed] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#2557d6]"
+      >
+        {showImages && <StoryImage item={item} className="aspect-[16/9] w-full" />}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: BLUE }}>
+            {pad2(number)}
+          </span>
+          <h2 className={`${editionSerif.className} mt-3 text-[23px] leading-[1.18] transition-colors group-hover:text-[#2557d6]`} style={{ color: INK }}>
+            {item.title}
+          </h2>
+          {item.preview && (
+            <p className="mt-3 text-[12.5px] leading-[1.6]" style={{ color: MUTED }}>
+              {sentencePreview(item.preview, 1)}
+            </p>
+          )}
+          <span className="mt-auto pt-5"><StoryMeta item={item} /></span>
+        </div>
+      </button>
+    </article>
+  );
+}
+
+function EditionStoryModal({
+  item,
+  number,
+  section,
+  tier,
+  onClose,
+}: {
+  item: FeedListItem;
+  number: number;
   section: string;
   tier: 'free' | 'pro';
+  onClose: () => void;
 }) {
-  const headerRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    if (expanded) scrollElementToTop(headerRef.current);
-  }, [expanded]);
-
-  if (locked) return null; // locked rendering is handled by the section (wireframe)
-
-  const title = (
-    <span
-      className={`${editionSerif.className} block text-[25px] leading-[1.18] transition-colors sm:text-[31px]`}
-      style={{ color: expanded ? BLUE : INK }}
-    >
-      {item.title}
-    </span>
-  );
-  const details = () => (
-    <>
-      {!expanded && item.preview && (
-        <span className="mt-1.5 block text-[14px] leading-[1.6]" style={{ color: MUTED }}>
-          {sentencePreview(item.preview, 1)}
-        </span>
-      )}
-      <span className="mt-2 flex items-center gap-2">
-        <StoryMeta item={item} />
-        {expanded && (
-          <StoryShareButton
-            item={item}
-            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
-          />
-        )}
-      </span>
-    </>
-  );
+  const dialogRef = React.useRef<HTMLElement>(null);
+  useDialogFocus(dialogRef, onClose);
 
   return (
-    <div className="relative border-t" style={{ borderColor: HAIRLINE }}>
-      <div
-        ref={headerRef}
-        role="button"
-        tabIndex={0}
-        onClick={onToggle}
-        onKeyDown={(event) => {
-          if (event.target !== event.currentTarget) return;
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            onToggle();
-          }
-        }}
-        className="group flex w-full cursor-pointer items-start gap-0 py-5 text-left transition-colors hover:bg-[#f5f3ed] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#2557d6] sm:gap-7"
-      >
-        <span
-          className={`${editionSerif.className} hidden w-8 shrink-0 pt-2 text-[24px] leading-none sm:block`}
-          style={{ color: BLUE }}
-        >
-          {number}
-        </span>
-        <div className="min-w-0 flex-1">
-          {showImages && !expanded ? (
-            <>
-              <div className="grid grid-cols-[minmax(0,1fr)_92px] items-start gap-4 md:grid-cols-[minmax(0,1fr)_128px] md:gap-7">
-                <div>
-                  {title}
-                  <div className="hidden md:block">{details()}</div>
-                </div>
-                <div className="md:self-center">
-                  <StoryImage item={item} className="aspect-[4/3] w-full" />
-                </div>
-              </div>
-              <div className="md:hidden">{details()}</div>
-            </>
-          ) : (
-            <>
-              {title}
-              {details()}
-            </>
-          )}
+    <div
+      className="fixed inset-0 z-[100] flex items-end bg-black/50 sm:items-center sm:justify-center sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="edition-story-title"
+      onMouseDown={(event) => {
+        if (event.currentTarget === event.target) onClose();
+      }}
+    >
+      <article ref={dialogRef} tabIndex={-1} className="flex h-[100dvh] w-full flex-col overflow-hidden bg-[#faf9f5] sm:h-auto sm:max-h-[90vh] sm:max-w-[820px] sm:border" style={{ borderColor: HAIRLINE }}>
+        <header className="flex shrink-0 items-center justify-between border-b px-5 py-4 sm:px-7" style={{ borderColor: HAIRLINE }}>
+          <div className="flex items-center gap-4">
+            <MonoLabel>Story {pad2(number)}</MonoLabel>
+            <StoryShareButton item={item} />
+          </div>
+          <button type="button" onClick={onClose} className="p-2" aria-label="Close story">
+            <X size={20} />
+          </button>
+        </header>
+        <div className="overflow-y-auto px-5 py-7 sm:px-10 sm:py-9">
+          <StoryMeta item={item} />
+          <h2 id="edition-story-title" className={`${editionSerif.className} mt-4 text-[34px] leading-[1.08] sm:text-[46px]`} style={{ color: INK }}>
+            {item.title}
+          </h2>
+          <div className="mt-5">
+            <ExpandedStory
+              item={item}
+              showImages={false}
+              className="max-w-none"
+              tracking={{ position: number, section, tier }}
+            />
+          </div>
         </div>
-      </div>
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            key="story-body"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{
-              height: { duration: 0.42, ease: [0.32, 0.72, 0, 1] },
-              opacity: { duration: 0.28, ease: 'easeOut' },
-            }}
-            style={{ overflow: 'hidden' }}
-          >
-            <motion.div
-              initial={{ y: -10 }}
-              animate={{ y: 0 }}
-              exit={{ y: -6 }}
-              transition={{ duration: 0.42, ease: [0.32, 0.72, 0, 1] }}
-              className="pb-7"
-            >
-              <ExpandedStory
-                item={item}
-                showImages={showImages}
-                tracking={{
-                  position: number,
-                  section,
-                  tier,
-                }}
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </article>
     </div>
   );
 }
@@ -213,31 +171,29 @@ export default function FeedEdition({
 }) {
   const { edition, isPro, accessPending, accessVerificationFailed } = model;
   const [activeFilter, setActiveFilter] = useState<string>('all');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const firstVisibleRef = React.useRef<HTMLElement>(null);
-  const userChangedFilterRef = React.useRef(false);
+  const [selectedStory, setSelectedStory] = useState<{
+    item: FeedListItem;
+    number: number;
+    section: string;
+  } | null>(null);
 
-  const selectFilter = (filter: string) => {
+  const selectSection = (filter: string) => {
     if (filter === activeFilter) return;
-    userChangedFilterRef.current = true;
     trackFeedFilterChanged(filter, activeFilter);
-    setExpandedId(null);
+    setSelectedStory(null);
     setActiveFilter(filter);
   };
 
-  const toggleStory = (item: FeedListItem, position: number, section: string) => {
-    const isOpening = expandedId !== item.id;
-    if (isOpening) {
-      trackFeedStoryExpanded({
-        itemId: item.id,
-        itemType: item.type,
-        source: item.source,
-        position,
-        section,
-        tier: isPro ? 'pro' : 'free',
-      });
-    }
-    setExpandedId(isOpening ? item.id : null);
+  const openStory = (item: FeedListItem, position: number, section: string) => {
+    trackFeedStoryExpanded({
+      itemId: item.id,
+      itemType: item.type,
+      source: item.source,
+      position,
+      section,
+      tier: isPro ? 'pro' : 'free',
+    });
+    setSelectedStory({ item, number: position, section });
   };
 
   const filters = useMemo(() => {
@@ -253,17 +209,15 @@ export default function FeedEdition({
   }, [edition]);
 
   const visibleSections = useMemo(() => {
-    const all = [
+    return [
       ...edition.sections.map((s) => ({ id: s.interestId, label: s.label, stories: s.stories })),
       ...(edition.latest.length > 0
         ? [{ id: '__latest', label: 'LATEST', stories: edition.latest }]
         : []),
     ];
-    if (activeFilter === 'all') return all;
-    return all.filter((s) => s.id === activeFilter);
-  }, [edition, activeFilter]);
+  }, [edition]);
 
-  const showHero = activeFilter === 'all' && edition.hero;
+  const showHero = edition.hero;
   const visibleStoryNumber = useMemo(() => {
     const visibleStories = [
       ...(showHero && edition.hero ? [edition.hero.lead, ...edition.hero.sidebar] : []),
@@ -271,16 +225,24 @@ export default function FeedEdition({
     ];
     return new Map(visibleStories.map((item, index) => [item.id, index + 1]));
   }, [edition.hero, showHero, visibleSections]);
+  const leadStories = useMemo(() => {
+    if (!showHero || !edition.hero) return [];
+    const lead = [edition.hero.lead, ...edition.hero.sidebar].slice(0, 4);
+    if (lead.length < 4) {
+      const existing = new Set(lead.map((item) => item.id));
+      const promoted = visibleSections
+        .flatMap((section) => section.stories)
+        .find((item) => !existing.has(item.id) && (isPro || !isLocked(model, item.id)));
+      if (promoted) lead.push(promoted);
+    }
+    return lead;
+  }, [edition.hero, isPro, model, showHero, visibleSections]);
+  const leadIds = useMemo(() => new Set(leadStories.map((item) => item.id)), [leadStories]);
   const freeCount = model.freeIds.size;
   let paywallShown = false;
 
-  React.useEffect(() => {
-    if (!userChangedFilterRef.current) return;
-    requestAnimationFrame(() => scrollElementToTop(firstVisibleRef.current));
-  }, [activeFilter]);
-
   return (
-    <div className="mx-auto max-w-[880px] px-5 sm:px-8">
+    <div id="edition-top" className="mx-auto max-w-[1500px] scroll-mt-24 px-5 sm:px-8">
       <EditionHeader view="edition" />
 
       {/* hero */}
@@ -290,7 +252,7 @@ export default function FeedEdition({
           className={`${editionSerif.className} mt-5 text-[56px] leading-[0.98] tracking-[-0.01em] sm:text-[88px]`}
           style={{ color: INK }}
         >
-          Today&rsquo;s Trace
+          Today in tech.
         </h1>
         {/* the 2-minute promise, one compact line */}
         <p
@@ -308,8 +270,9 @@ export default function FeedEdition({
         style={{ borderColor: HAIRLINE, backgroundColor: PAPER }}
       >
         <div className="flex min-w-max items-baseline gap-x-6">
-          <button
-            onClick={() => selectFilter('all')}
+          <a
+            href="#edition-top"
+            onClick={() => selectSection('all')}
             className="text-[13.5px] font-medium transition-opacity hover:opacity-70"
             style={{
               color: activeFilter === 'all' ? BLUE : MUTED,
@@ -318,11 +281,12 @@ export default function FeedEdition({
             }}
           >
             All ({edition.totalCount})
-          </button>
+          </a>
           {filters.map((f) => (
-            <button
+            <a
               key={f.id}
-              onClick={() => selectFilter(f.id)}
+              href={`#edition-section-${f.id}`}
+              onClick={() => selectSection(f.id)}
               className="text-[13.5px] font-medium capitalize transition-opacity hover:opacity-70"
               style={{
                 color: activeFilter === f.id ? BLUE : MUTED,
@@ -331,45 +295,27 @@ export default function FeedEdition({
               }}
             >
               {f.label.toLowerCase()} ({f.count})
-            </button>
+            </a>
           ))}
         </div>
       </div>
 
-      {/* lead story — a row like the others, just bigger */}
+      {/* lead stories */}
       {showHero && edition.hero && (
-        <section ref={firstVisibleRef} className="pt-10">
-          <MonoLabel>Lead story</MonoLabel>
-          <div className="mt-3">
-            <StoryRow
-              item={edition.hero.lead}
-              number={visibleStoryNumber.get(edition.hero.lead.id) ?? 1}
-              locked={false}
-              expanded={expandedId === edition.hero.lead.id}
-              onToggle={() => toggleStory(
-                edition.hero!.lead,
-                visibleStoryNumber.get(edition.hero!.lead.id) ?? 1,
-                'lead',
-              )}
-              showImages={model.showImages}
-              section="lead"
-              tier={isPro ? 'pro' : 'free'}
-            />
-            {edition.hero.sidebar.map((item) => (
-              <StoryRow
+        <section className="pt-10">
+          <MonoLabel>Lead stories</MonoLabel>
+          <div className="mt-5 grid grid-cols-1 border md:grid-cols-2 lg:grid-cols-4" style={{ borderColor: HAIRLINE }}>
+            {leadStories.map((item) => (
+              <StoryCard
                 key={item.id}
                 item={item}
                 number={visibleStoryNumber.get(item.id) ?? 0}
-                locked={false}
-                expanded={expandedId === item.id}
-                onToggle={() => toggleStory(
+                onOpen={() => openStory(
                   item,
                   visibleStoryNumber.get(item.id) ?? 1,
                   'lead',
                 )}
                 showImages={model.showImages}
-                section="lead"
-                tier={isPro ? 'pro' : 'free'}
               />
             ))}
           </div>
@@ -379,41 +325,43 @@ export default function FeedEdition({
       {/* numbered topic sections */}
       {visibleSections.map((section, sectionIndex) => {
         if (!isPro && paywallShown) return null;
-        const openStories = section.stories.filter((s) => !isLocked(model, s.id));
-        const lockedCount = section.stories.length - openStories.length;
+        const sectionStories = section.stories.filter((item) => !leadIds.has(item.id));
+        if (sectionStories.length === 0) return null;
+        const openStories = sectionStories.filter((s) => !isLocked(model, s.id));
+        const lockedCount = sectionStories.length - openStories.length;
         const fullyLocked = openStories.length === 0;
         const showAccessBoundary = !isPro && lockedCount > 0;
         const showProNote = showAccessBoundary && !accessPending;
         if (showAccessBoundary) paywallShown = true;
 
         return (
-          <section ref={!showHero && sectionIndex === 0 ? firstVisibleRef : undefined} key={section.id} className="pt-12">
+          <section
+            id={`edition-section-${section.id}`}
+            key={section.id}
+            className="scroll-mt-20 pt-12"
+          >
             <div className="flex items-baseline justify-between gap-4">
               <MonoLabel>
                 {pad2(sectionIndex + 1)} · {section.label}
               </MonoLabel>
               <span className="flex items-baseline gap-3 font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: MUTED }}>
-                {section.stories.length} stories
+                {sectionStories.length} stories
                 {fullyLocked && <ProTag />}
               </span>
             </div>
 
-            <div className="mt-2">
+            <div className="mt-5 grid grid-cols-1 border md:grid-cols-2 lg:grid-cols-4" style={{ borderColor: HAIRLINE }}>
               {openStories.map((item) => (
-                <StoryRow
+                <StoryCard
                   key={item.id}
                   item={item}
                   number={visibleStoryNumber.get(item.id) ?? 0}
-                  locked={false}
-                  expanded={expandedId === item.id}
-                  onToggle={() => toggleStory(
+                  onOpen={() => openStory(
                     item,
                     visibleStoryNumber.get(item.id) ?? 1,
                     section.id,
                   )}
                   showImages={model.showImages}
-                  section={section.id}
-                  tier={isPro ? 'pro' : 'free'}
                 />
               ))}
             </div>
@@ -448,6 +396,15 @@ export default function FeedEdition({
         </p>
       </section>
       <EditionFooter />
+      {selectedStory && (
+        <EditionStoryModal
+          item={selectedStory.item}
+          number={selectedStory.number}
+          section={selectedStory.section}
+          tier={isPro ? 'pro' : 'free'}
+          onClose={() => setSelectedStory(null)}
+        />
+      )}
     </div>
   );
 }
