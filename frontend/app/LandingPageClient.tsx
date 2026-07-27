@@ -147,7 +147,7 @@ export default function LandingPageClient({
               className="mt-6 max-w-[1080px] tracking-[-0.04em]"
               style={{ fontFamily: 'var(--font-edition-serif), Georgia, serif', fontSize: 'clamp(3rem, 5vw, 4.5rem)', lineHeight: 1.08 }}
             >
-              Stay on top of tech<br />without reading 50 sources.
+              Catch up on all the tech news<br />in under 5 minutes.
             </h1>
             <p className="mt-6 max-w-[620px] text-[16px] leading-[1.7] text-[#75705f] sm:text-[18px]">
               Trace reconciles reporting from across the web into one daily edition, with concise context, key points, and the source links behind every story.
