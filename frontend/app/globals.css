@@ -2,6 +2,10 @@
 @plugin "@tailwindcss/typography";
 @custom-variant dark (&:where(.dark, .dark *));
 
+@keyframes trace-directory-marquee {
+  to { transform: translateX(-50%); }
+}
+
 :root {
   --background: #faf9f5;
   --foreground: #1b1a17;

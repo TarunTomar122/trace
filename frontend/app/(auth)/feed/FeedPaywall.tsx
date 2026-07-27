@@ -249,7 +249,7 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
       />
       {open && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px] dark:bg-black/70 sm:p-6"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 p-4 backdrop-blur-[2px] dark:bg-black/80 sm:p-6"
           role="dialog"
           aria-modal="true"
           aria-labelledby="feed-subscribe-lock-heading"

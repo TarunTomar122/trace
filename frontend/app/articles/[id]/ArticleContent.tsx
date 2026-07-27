@@ -8,6 +8,7 @@ import { Clock, Share2, Check, Loader2, ExternalLink } from "lucide-react";
 import StoryPageShell, { getStoryBackLabel } from "@/components/StoryPageShell";
 import StorySharePromo from "@/components/StorySharePromo";
 import { ArticleImage } from "@/components/ArticleImage";
+import ArticleFeedback from "@/components/ArticleFeedback";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   buildArticleShareUrl,
@@ -196,6 +197,7 @@ export default function ArticleContent({ article }: Props) {
       )}
 
       <div className="story-page-actions">
+        <ArticleFeedback articleId={article.id || article.url} />
         <a
           href={article.url}
           target="_blank"
@@ -270,6 +272,7 @@ export default function ArticleContent({ article }: Props) {
       )}
 
       <div className="story-page-actions">
+        <ArticleFeedback articleId={article.id || article.url} />
         <a
           href={article.url}
           target="_blank"

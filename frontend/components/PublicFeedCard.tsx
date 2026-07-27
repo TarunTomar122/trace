@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { ExternalLink, Lock } from "lucide-react";
 import { trackCheckoutClicked } from "@/lib/posthog";
+import ArticleFeedback from "@/components/ArticleFeedback";
 
 /* ─── Helpers ─── */
 
@@ -194,6 +195,8 @@ export function PublicFeedCard({
               Show more
             </span>
           )}
+
+          {!isLocked && <ArticleFeedback articleId={item.id} />}
         </div>
       </div>
 

@@ -331,7 +331,7 @@ export function buildPulseEdition(feed: V3UserFeed | null): PulseEditionSection[
     },
     {
       id: 'reads',
-      label: 'Articles',
+      label: 'Briefings',
       items: uniquePulseItems(daily?.blogs || []),
     },
   ];
@@ -760,9 +760,11 @@ export function LockedWireRows({
 export function ProEditionNote({
   visibleCount,
   totalCount,
+  compact = false,
 }: {
   visibleCount: number;
   totalCount: number;
+  compact?: boolean;
 }) {
   const tracked = React.useRef(false);
   const { user, profile, profileResolved, signInWithGoogle } = useAuth();
@@ -793,16 +795,16 @@ export function ProEditionNote({
   }, [totalCount, visibleCount]);
 
   return (
-    <aside className="mt-10 border bg-[#f3f6ff] px-6 py-7 sm:px-8" style={{ borderColor: '#d5def8' }}>
+    <aside className={`${compact ? 'w-full px-5 py-5' : 'mt-10 border px-6 py-7 sm:px-8'} bg-[#f3f6ff]`} style={{ borderColor: '#d5def8' }}>
       <MonoLabel>Pro · The full edition</MonoLabel>
       <p
-        className={`${editionSerif.className} mt-3 max-w-xl text-[22px] leading-[1.45]`}
+        className={`${editionSerif.className} mt-3 max-w-xl ${compact ? 'text-[19px] leading-[1.2]' : 'text-[22px] leading-[1.45]'}`}
         style={{ color: INK }}
       >
         Read the full day in about six minutes, with every story and source in one place.
       </p>
-      <ProBenefits className="mt-5" />
-      <div className="mt-5 flex flex-wrap items-center gap-x-8 gap-y-3">
+      {!compact && <ProBenefits className="mt-5" />}
+      <div className={`${compact ? 'mt-4' : 'mt-5'} flex flex-wrap items-center gap-x-8 gap-y-3`}>
         <button
           type="button"
           onClick={() => void openCheckout()}

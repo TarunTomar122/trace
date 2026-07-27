@@ -11,6 +11,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { X } from 'lucide-react';
+import ArticleFeedback from '@/components/ArticleFeedback';
 import type { FeedListItem } from '@/app/(auth)/feed/FeedUi';
 import {
   trackFeedFilterChanged,
@@ -26,7 +27,6 @@ import {
   EditionFooter,
   EditionHeader,
   DailyBriefNote,
-  LockedWireRows,
   MonoLabel,
   ProEditionNote,
   ProTag,
@@ -46,33 +46,35 @@ function StoryCard({
   number,
   onOpen,
   showImages,
+  lockedPreview = false,
 }: {
   item: FeedListItem;
   number: number;
   onOpen: () => void;
   showImages: boolean;
+  lockedPreview?: boolean;
 }) {
   return (
-    <article className="border-b border-r" style={{ borderColor: HAIRLINE }}>
+    <article className="h-full border-b border-r" style={{ borderColor: HAIRLINE }}>
       <button
         type="button"
         onClick={onOpen}
-        className="group flex h-full w-full flex-col gap-5 p-5 text-left transition-colors hover:bg-[#f5f3ed] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#2557d6]"
+        className="group flex h-full w-full flex-col gap-5 p-4 text-left transition-colors hover:bg-[#f5f3ed] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#2557d6] sm:p-5"
       >
         {showImages && <StoryImage item={item} className="aspect-[16/9] w-full" />}
         <div className="flex min-w-0 flex-1 flex-col">
-          <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: BLUE }}>
+          {!lockedPreview && <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: BLUE }}>
             {pad2(number)}
-          </span>
+          </span>}
           <h2 className={`${editionSerif.className} mt-3 text-[23px] leading-[1.18] transition-colors group-hover:text-[#2557d6]`} style={{ color: INK }}>
             {item.title}
           </h2>
-          {item.preview && (
+          {!lockedPreview && item.preview && (
             <p className="mt-3 text-[12.5px] leading-[1.6]" style={{ color: MUTED }}>
               {sentencePreview(item.preview, 1)}
             </p>
           )}
-          <span className="mt-auto pt-5"><StoryMeta item={item} /></span>
+          {!lockedPreview && <span className="mt-auto pt-5"><StoryMeta item={item} /></span>}
         </div>
       </button>
     </article>
@@ -97,7 +99,7 @@ function EditionStoryModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end bg-black/50 sm:items-center sm:justify-center sm:p-6"
+      className="fixed inset-0 z-[100] flex items-end bg-black/65 backdrop-blur-[2px] sm:items-center sm:justify-center sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="edition-story-title"
@@ -109,7 +111,6 @@ function EditionStoryModal({
         <header className="flex shrink-0 items-center justify-between border-b px-5 py-4 sm:px-7" style={{ borderColor: HAIRLINE }}>
           <div className="flex items-center gap-4">
             <MonoLabel>Story {pad2(number)}</MonoLabel>
-            <StoryShareButton item={item} />
           </div>
           <button type="button" onClick={onClose} className="p-2" aria-label="Close story">
             <X size={20} />
@@ -130,6 +131,12 @@ function EditionStoryModal({
               className="max-w-none"
               tracking={{ position: number, section, tier }}
             />
+          </div>
+          <div className="mt-6 border-t pt-4" style={{ borderColor: HAIRLINE }}>
+            <div className="flex items-center gap-2">
+              <ArticleFeedback articleId={item.id} />
+              <StoryShareButton item={item} className="h-9 w-9" />
+            </div>
           </div>
         </div>
       </article>
@@ -228,7 +235,7 @@ export default function FeedEdition({
   let paywallShown = false;
 
   return (
-    <div id="edition-top" className="mx-auto max-w-[1500px] scroll-mt-24 px-6 sm:px-10 lg:px-12">
+    <div id="edition-top" className="mx-auto max-w-[1500px] scroll-mt-24 px-4 sm:px-16 lg:px-24">
       <EditionHeader view="edition" />
 
       {/* hero */}
@@ -252,7 +259,7 @@ export default function FeedEdition({
       {/* topic filter */}
       <div
         data-edition-filter
-        className="sticky top-0 z-50 isolate -mx-6 overflow-x-auto border-y px-6 py-4 shadow-[0_10px_18px_rgba(250,249,245,0.98)] [scrollbar-width:none] sm:-mx-10 sm:px-10 lg:-mx-12 lg:px-12"
+        className="sticky top-0 z-50 isolate -mx-4 overflow-x-auto border-y px-4 py-4 shadow-[0_10px_18px_rgba(250,249,245,0.98)] [scrollbar-width:none] sm:-mx-16 sm:px-16 lg:-mx-24 lg:px-24"
         style={{ borderColor: HAIRLINE, backgroundColor: PAPER }}
       >
         <div className="flex min-w-max items-baseline gap-x-6">
@@ -328,14 +335,35 @@ export default function FeedEdition({
                   showImages={model.showImages}
                 />
               ))}
+              {!isPro && lockedCount > 0 && (
+                <div className="relative self-start md:col-span-2 lg:col-span-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2">
+                    {!isPro && sectionStories
+                      .filter((item) => isLocked(model, item.id))
+                      .slice(0, Math.min(lockedCount, 2))
+                      .map((item) => (
+                        <div key={`locked-${item.id}`} aria-hidden className="pointer-events-none select-none blur-[5px] opacity-60">
+                          <StoryCard
+                            item={item}
+                            number={visibleStoryNumber.get(item.id) ?? 0}
+                            onOpen={() => {}}
+                            showImages={model.showImages}
+                            lockedPreview
+                          />
+                        </div>
+                      ))}
+                  </div>
+                  {showProNote && (
+                    <div className="absolute inset-0 z-10 flex items-end bg-[#faf9f5]/80">
+                      <ProEditionNote visibleCount={freeCount} totalCount={edition.totalCount} compact />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            {lockedCount > 0 && <LockedWireRows count={lockedCount} showImages={model.showImages} />}
             {showAccessBoundary && accessPending && (
               <AccessVerificationNote failed={accessVerificationFailed} onRetry={onRetryAccess} />
-            )}
-            {showProNote && (
-              <ProEditionNote visibleCount={freeCount} totalCount={edition.totalCount} />
             )}
             <div className="border-t" style={{ borderColor: HAIRLINE }} />
           </section>

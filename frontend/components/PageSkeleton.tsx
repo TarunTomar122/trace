@@ -125,7 +125,7 @@ export function GenericListSkeleton({ rows = 6 }: { rows?: number }) {
 export function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#faf9f5] text-[#1b1a17]">
-      <header className="mx-auto max-w-[880px] border-b border-[#e4e1d8] px-5 py-4 sm:px-8">
+      <header className="mx-auto max-w-[1500px] border-b border-[#e4e1d8] px-10 py-4 sm:px-16 lg:px-24">
         <div className="flex items-center justify-between">
           <div className="h-3 w-16 animate-pulse bg-[#e4e1d8]" />
           <div className="flex items-center gap-5">
@@ -135,7 +135,7 @@ export function PageShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-[880px] px-5 sm:px-8">
+      <main className="mx-auto max-w-[1500px] px-10 sm:px-16 lg:px-24">
         {children}
       </main>
     </div>

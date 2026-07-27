@@ -11,12 +11,10 @@ import {
   XCircle,
   Loader2,
   Zap,
-  Lock,
-  Bell,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { ProBenefits } from '@/app/wip/feed-edition/edition-shared';
 import { auth } from '@/lib/firebase';
+import type { UserProfile } from '@/lib/firestore';
 import { trackCheckoutClicked, trackPaywallShown } from '@/lib/posthog';
 import {
   SUBSCRIPTION_COMPARE_AT_DEFAULT,
@@ -87,7 +85,7 @@ function toDateOrNull(value: unknown): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function buildSubscriptionStatus(profile: any): SubscriptionStatus {
+function buildSubscriptionStatus(profile: UserProfile): SubscriptionStatus {
   const status = profile?.subscriptionStatus || 'none';
   return {
     subscriptionStatus: status,
@@ -178,7 +176,7 @@ export default function SubscriptionManager() {
       // Check for abandoned checkout (older than 15 minutes)
       let showAbandonedWarning = false;
       if (status === 'none' && profile.lastCheckoutCreatedAt) {
-        const checkoutTime = new Date((profile.lastCheckoutCreatedAt as any).seconds * 1000);
+        const checkoutTime = new Date(profile.lastCheckoutCreatedAt.seconds * 1000);
         const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
         if (checkoutTime > fifteenMinutesAgo) {
           showAbandonedWarning = true;
@@ -440,43 +438,40 @@ export default function SubscriptionManager() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="space-y-7"
+        className="space-y-4"
       >
-        <div>
-          <p className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[#2557d6]">{planName}</p>
-          <h2 className="mb-1.5 font-serif text-[32px] leading-[1.05] tracking-[-0.02em] text-[#1b1a17]">
-            Stay on top of tech<br />without reading 50 sources.
-          </h2>
-          <p className="text-[13px] text-[#75705f]">
-            <SubscriptionPrice price={priceDisplay} compareAt={compareAtPriceDisplay} size="sm" />
-            . Cancel anytime.
-          </p>
+        <div className="grid overflow-hidden border border-[#e4e1d8] md:grid-cols-[minmax(0,1fr)_290px]">
+          <div className="p-7 sm:p-9">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[#2557d6]">{planName}</p>
+            <h2 className="mt-4 font-serif text-[36px] leading-[1.02] tracking-[-0.025em] text-[#1b1a17]">
+              Read the complete feed.
+            </h2>
+            <p className="mt-4 max-w-[520px] text-[14px] leading-[1.7] text-[#75705f]">
+              Get every news story, project, discussion, video summary, key takeaway, and source link.
+            </p>
+          </div>
+          <div className="flex flex-col justify-center bg-[#2557d6] p-7 text-white">
+            <SubscriptionPrice price={priceDisplay} compareAt={compareAtPriceDisplay} size="lg" tone="dark" />
+            <button
+              onClick={handleSubscribe}
+              disabled={isCreatingCheckout}
+              className="mt-6 flex items-center justify-center gap-2 bg-white py-3 text-[13px] font-semibold text-[#2557d6] transition-colors hover:bg-[#f5f3ed] disabled:opacity-50"
+            >
+              {isCreatingCheckout ? (
+                <><Loader2 className="animate-spin" size={15} />Setting up...</>
+              ) : (
+                <>Get Trace Pro</>
+              )}
+            </button>
+            <p className="mt-3 text-center text-[11px] text-white/70">Cancel anytime.</p>
+          </div>
         </div>
 
-        <ProBenefits className="border-b border-[#e4e1d8] pb-7" />
-
-        <div>
-          {error && (
-            <div className="mb-4 border border-red-200 bg-red-50 p-3 text-sm text-red-600">
-              {error}
-            </div>
-          )}
-          <button
-            onClick={handleSubscribe}
-            disabled={isCreatingCheckout}
-            className="flex w-full items-center justify-center gap-2 bg-[#2557d6] py-3.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#1d48b4] disabled:opacity-50"
-          >
-            {isCreatingCheckout ? (
-              <><Loader2 className="animate-spin" size={15} />Setting up...</>
-            ) : (
-              <>Unlock my daily brief</>
-            )}
-          </button>
-          <p className="mt-2 text-center text-[11px] text-[#75705f]">
-            <SubscriptionPrice price={priceDisplay} compareAt={compareAtPriceDisplay} size="sm" />
-            {' '}· Cancel anytime
-          </p>
-        </div>
+        {error && (
+          <div className="border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+            {error}
+          </div>
+        )}
 
         <p className="text-[11px] text-[#75705f]">
           Questions? tomartarun2001@gmail.com

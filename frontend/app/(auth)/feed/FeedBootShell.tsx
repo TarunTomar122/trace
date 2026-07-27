@@ -98,7 +98,7 @@ function WireLatestSkeleton({ rows = 5 }: { rows?: number }) {
 export function PulseLoadingSkeleton() {
   return (
     <div className="h-full overflow-y-auto bg-white">
-      <div className="mx-auto max-w-6xl px-5 py-6 sm:px-8 sm:py-8">
+      <div className="mx-auto max-w-[1500px] px-10 py-6 sm:px-16 sm:py-8 lg:px-24">
         <div className="flex flex-col gap-10 sm:flex-row">
           <div className="min-w-0 flex-1">
             <Skel className="mb-5 h-3 w-24 rounded-full" />
@@ -143,7 +143,7 @@ export function WireFeedLoadingSkeleton() {
     <div className="flex h-full flex-col overflow-hidden">
       {/* tab bar */}
       <div className="shrink-0 border-b border-[#e5e7eb] bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 pt-3 pb-3">
+        <div className="mx-auto flex max-w-[1500px] items-center justify-between px-10 pt-3 pb-3 sm:px-16 lg:px-24">
           <div className="flex items-center gap-6">
             <Skel className="h-3 w-10 rounded-full" />
             <Skel className="h-3 w-10 rounded-full" />
@@ -154,7 +154,7 @@ export function WireFeedLoadingSkeleton() {
 
       {/* panes */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 overflow-hidden">
+        <div className="mx-auto flex min-h-0 w-full max-w-[1500px] flex-1 overflow-hidden px-10 sm:px-16 lg:px-24">
           {/* left pane */}
           <div className="flex w-full flex-col sm:w-[360px] sm:shrink-0 sm:border-r sm:border-[#e5e7eb]">
             {/* left header */}
@@ -365,8 +365,8 @@ export function ScrollFeedLoadingSkeleton({
 
 function FeedNavSkeleton() {
   return (
-    <header className="shrink-0 border-b border-[#e5e7eb] bg-white px-6 py-3.5">
-      <div className="mx-auto flex max-w-6xl items-center justify-between">
+    <header className="shrink-0 border-b border-[#e5e7eb] bg-white px-10 py-3.5 sm:px-16 lg:px-24">
+      <div className="mx-auto flex max-w-[1500px] items-center justify-between">
         <div className="flex items-center gap-2.5">
           <Skel className="h-5 w-5 rounded-sm" />
           <Skel className="h-3 w-14 rounded-full" />
@@ -380,7 +380,7 @@ function FeedNavSkeleton() {
 export default function FeedBootShell() {
   return (
     <div className="min-h-screen bg-[#faf9f5] text-[#1b1a17]">
-      <div className="mx-auto max-w-[880px] px-5 sm:px-8">
+      <div className="mx-auto max-w-[1500px] px-10 sm:px-16 lg:px-24">
         <header className="flex items-center justify-between border-b border-[#e4e1d8] py-4">
           <Skel className="h-3 w-16 rounded-none" />
           <div className="flex gap-5">

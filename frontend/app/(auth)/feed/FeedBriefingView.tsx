@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { getArticleImage } from '@/lib/fallback-images';
 import { trackCheckoutClicked } from '@/lib/posthog';
+import ArticleFeedback from '@/components/ArticleFeedback';
 import { ScrollFeedLoadingSkeleton } from './FeedBootShell';
 import { FreeBlurGate } from './FeedPaywall';
 import {
@@ -434,6 +435,8 @@ function ScrollFeedCard({
           {!expanded && (
             <span className="inline-block text-[15px] text-[#1d9bf0]">Show more</span>
           )}
+
+          <ArticleFeedback articleId={item.id} />
 
           {/* Image — same slot collapsed + expanded so layout doesn't jump up */}
           {showImg && (
@@ -1364,6 +1367,7 @@ function DesktopArticlePageView({
               {/* Actions — share + source link */}
               {(selectedContent?.shareUrl || selectedContent?.url) && (
                 <div className="pt-6 border-t border-border/15 flex flex-wrap items-center gap-3">
+                  <ArticleFeedback articleId={selectedContent.url || selectedContent.title} />
                   <ShareButton url={selectedContent.shareUrl || selectedContent.url!} />
                   {selectedContent?.url && (
                     <a
@@ -2187,6 +2191,8 @@ export default function FeedBriefingView({
                       )}
                     </div>
                   )}
+
+                  <ArticleFeedback articleId={selectedContent?.url || selectedContent?.title || story?.id || ''} />
 
                   {selectedContent?.keyPoints && selectedContent.keyPoints.length > 0 && (
                     <div className="mb-6">

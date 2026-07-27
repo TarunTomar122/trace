@@ -417,6 +417,7 @@ function ScrollFeedCard({
             <span className="inline-block text-[15px] text-[#1d9bf0]">Show more</span>
           )}
 
+
           {/* Image — same slot collapsed + expanded so layout doesn't jump up */}
           {showImg && (
             <div className="overflow-hidden rounded-2xl border border-[#cfd9de] dark:border-white/15">
@@ -2018,12 +2019,12 @@ export default function FeedBriefingView({
                 </div>
               ) : (
                 <>
-                  {isContentLoading && (
+              {isContentLoading && (
                     <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border/20 bg-foreground/5 px-3 py-1.5 text-[11px] font-medium text-secondary/60">
                       <Loader2 size={11} className="animate-spin" />
                       <span>Loading full article</span>
                     </div>
-                  )}
+              )}
                   {selectedContent?.body && (
                     <div className="mb-6 text-secondary leading-relaxed">
                       {briefFmt ? (

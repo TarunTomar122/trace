@@ -1,7 +1,29 @@
 import Link from 'next/link';
 import { LineChart, Rss, Smartphone } from 'lucide-react';
 
-export default function Footer(props: { variant?: 'default' | 'landing' } = {}) {
+type DirectoryBadge = {
+  name: string;
+  href: string;
+  imageSrc?: string;
+};
+
+function DirectoryBadgeMarquee({ badges }: { badges: DirectoryBadge[] }) {
+  if (badges.length === 0) return null;
+
+  return (
+    <div aria-label="Trace directory listings" className="mx-auto mt-8 max-w-[1180px] overflow-hidden border-t border-[#e4e1d8] pt-4">
+      <div className="flex w-max animate-[trace-directory-marquee_28s_linear_infinite] items-center gap-2 hover:[animation-play-state:paused] motion-reduce:animate-none">
+        {[...badges, ...badges].map((badge, index) => (
+          <a key={`${badge.name}-${index}`} href={badge.href} target="_blank" rel="noopener noreferrer" className="flex h-6 shrink-0 items-center border border-[#e4e1d8] px-2.5 font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-[#9a9587] transition-colors hover:border-[#c9c4b7] hover:text-[#75705f]">
+            {badge.imageSrc ? <img src={badge.imageSrc} alt={badge.name} className="h-4 w-auto opacity-65 grayscale" /> : badge.name}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function Footer(props: { variant?: 'default' | 'landing'; directoryBadges?: DirectoryBadge[] } = {}) {
   return (
     <footer data-variant={props.variant ?? 'default'} className="bg-[#faf9f5] px-5 py-10 sm:px-8">
       <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-5 border-t border-[#e4e1d8] pt-8">
@@ -29,6 +51,7 @@ export default function Footer(props: { variant?: 'default' | 'landing' } = {}) 
           <div><a href="/api/affiliate/outbound?target=android_app&next=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Donline.yourtrace.app" className="inline-flex items-center gap-2 text-[12px] font-medium text-[#2557d6] transition-opacity hover:opacity-70"><Smartphone size={15} strokeWidth={1.8} />Trace - Android</a><p className="mt-1 text-[12px] text-[#75705f]">TikTok for news.</p></div>
         </div>
       </div>
+      {props.directoryBadges && <DirectoryBadgeMarquee badges={props.directoryBadges} />}
     </footer>
   );
 }

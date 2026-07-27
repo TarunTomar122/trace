@@ -5,6 +5,7 @@ import { FeedItem, TrendingTopic, ONBOARDING_INTERESTS } from '@/lib/firestore';
 import { getArticleImage, isValidThumbnail } from '@/lib/fallback-images';
 import { getArticleSummary, getPreview, stripMarkdown, decodeHtmlEntities } from '@/lib/feed-article-text';
 import { copyOrShareUrl } from '@/lib/article-share';
+import ArticleFeedback from '@/components/ArticleFeedback';
 
 export { getArticleSummary, getPreview, stripMarkdown };
 
@@ -687,8 +688,9 @@ export function ContentPanel({
 
         {(content.shareUrl || content.url) && (
           <div className="pt-6 border-t border-border/15">
-            <div className="flex flex-wrap items-center gap-3">
-              <button
+              <div className="flex flex-wrap items-center gap-3">
+                <ArticleFeedback articleId={content.url || content.title} />
+                <button
                 type="button"
                 onClick={handleShare}
                 disabled={shareLoading}

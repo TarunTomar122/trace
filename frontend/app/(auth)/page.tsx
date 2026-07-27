@@ -4,9 +4,9 @@ import { blogPosts } from "@/app/blog/content";
 import type { V3UserFeed } from '@/lib/firestore';
 
 export const metadata: Metadata = {
-  title: "Trace — A feed for builders",
+  title: "Trace — A daily feed for builders",
   description:
-    "Aggregated tech news, build logs, architecture breakdowns, open-source projects, design, and product thinking for builders.",
+    "AI releases, developer news, open-source projects, technical conversations, and creator breakdowns in one focused feed.",
   keywords: [
     "tech news aggregator",
     "daily tech briefing",
@@ -23,9 +23,9 @@ export const metadata: Metadata = {
     canonical: "https://www.yourtrace.online/",
   },
   openGraph: {
-    title: "Trace — A feed for builders",
+    title: "Trace — A daily feed for builders",
     description:
-      "Aggregated tech news plus the practical engineering, design, and product work behind it.",
+      "Keep up with technology and find what is worth building next.",
     url: "https://www.yourtrace.online",
     type: "website",
     siteName: "Trace",
@@ -34,15 +34,15 @@ export const metadata: Metadata = {
         url: "https://www.yourtrace.online/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Trace — A feed for builders",
+        alt: "Trace — A daily feed for builders",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Trace — A feed for builders",
+    title: "Trace — A daily feed for builders",
     description:
-      "Tech news, build logs, architecture, open source, design, and product in one feed.",
+      "AI releases, developer news, open source, technical conversations, and creator briefings in one feed.",
     images: ["https://www.yourtrace.online/twitter-image"],
   },
 };

@@ -51,7 +51,7 @@ function TrendingClickLock({ children, active }: { children: React.ReactNode; ac
       <div className="pointer-events-none">{children}</div>
       {open && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 p-4 backdrop-blur-[2px]"
           role="dialog"
           aria-modal="true"
           onClick={() => setOpen(false)}

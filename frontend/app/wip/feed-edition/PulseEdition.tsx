@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { BookOpen, ExternalLink, MessagesSquare, Wrench, X } from 'lucide-react';
+import { BookOpen, ExternalLink, MessagesSquare, Play, Wrench, X } from 'lucide-react';
 import type { FeedItem, V3UserFeed } from '@/lib/firestore';
 import type { FeedListItem } from '@/app/(auth)/feed/FeedUi';
 import { getPostAuthDestination, useAuth } from '@/contexts/AuthContext';
@@ -33,6 +33,11 @@ const SECTION_ICON = {
   reads: BookOpen,
 };
 
+function isVideoItem(item: FeedListItem): boolean {
+  const url = item.url || (item.data as { url?: string }).url || '';
+  return /(?:youtube\.com|youtu\.be)/i.test(url);
+}
+
 function SignalCard({
   item,
   position,
@@ -40,6 +45,7 @@ function SignalCard({
   tier,
   compact = false,
   onOpen,
+  lockedPreview = false,
 }: {
   item: FeedListItem;
   position: number;
@@ -47,40 +53,49 @@ function SignalCard({
   tier: 'free' | 'pro';
   compact?: boolean;
   onOpen?: () => void;
+  lockedPreview?: boolean;
 }) {
   const url = item.url || (item.data as { url?: string }).url;
+  const isVideo = isVideoItem(item);
   const signalLabel = item.signalCount || item.sourceCount;
   const content = (
     <>
-      <StoryImage item={item} className={`w-full ${compact ? 'aspect-[3/2]' : 'aspect-[16/9]'}`} />
+      <div className="relative">
+        <StoryImage item={item} className={`w-full ${compact ? 'aspect-[3/2]' : 'aspect-[16/9]'}`} />
+        {isVideo && (
+          <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 bg-[#faf9f5] px-2.5 py-1.5 font-mono text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: INK }}>
+            <Play size={10} fill="currentColor" /> Video
+          </span>
+        )}
+      </div>
       <div className="flex min-w-0 flex-col">
-        <StoryMeta item={item} />
+        {!lockedPreview && <StoryMeta item={item} />}
         <h2 className={`${editionSerif.className} mt-4 leading-[1.18] transition-colors group-hover:text-[#2557d6] ${compact ? 'text-[19px]' : 'text-[23px]'}`} style={{ color: INK }}>
           {item.title}
         </h2>
-        {!onOpen && item.preview && (
+        {!lockedPreview && !onOpen && item.preview && (
           <p className={`mt-3 leading-[1.6] ${compact ? 'text-[12.5px]' : 'text-[13.5px]'}`} style={{ color: MUTED }}>
             {compact ? sentencePreview(item.preview, 1) : item.preview}
           </p>
         )}
-        <div className="mt-auto pt-5">
+        {!lockedPreview && <div className="mt-auto pt-5">
           {signalLabel > 0 ? (
             <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: BLUE }}>
               {signalLabel} signal{signalLabel === 1 ? '' : 's'}
             </span>
           ) : null}
-        </div>
+        </div>}
       </div>
     </>
   );
 
   return (
-    <article>
+    <article className="h-full">
       {onOpen ? (
         <button
           type="button"
           onClick={onOpen}
-          className="group flex h-full w-full flex-col gap-5 p-5 text-left transition-colors hover:bg-[#f5f3ed]"
+          className="group flex h-full w-full flex-col gap-5 p-4 text-left transition-colors hover:bg-[#f5f3ed] sm:p-5"
         >
           {content}
         </button>
@@ -97,12 +112,12 @@ function SignalCard({
             section,
             tier,
           })}
-          className="group flex h-full flex-col gap-5 p-5 transition-colors hover:bg-[#f5f3ed]"
+          className="group flex h-full flex-col gap-5 p-4 transition-colors hover:bg-[#f5f3ed] sm:p-5"
         >
           {content}
         </a>
       ) : (
-        <div className="flex h-full flex-col gap-5 p-5">{content}</div>
+        <div className="flex h-full flex-col gap-5 p-4 sm:p-5">{content}</div>
       )}
     </article>
   );
@@ -110,6 +125,7 @@ function SignalCard({
 
 function ReadModal({ item, onClose }: { item: FeedListItem; onClose: () => void }) {
   const url = item.url || (item.data as { url?: string }).url;
+  const isVideo = isVideoItem(item);
   const article = item.data as FeedItem;
   const body = article.summary?.short_article?.body || item.preview;
   const keyTakeaways = article.summary?.short_article?.key_takeaways || [];
@@ -118,7 +134,7 @@ function ReadModal({ item, onClose }: { item: FeedListItem; onClose: () => void 
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end bg-black/50 sm:items-center sm:justify-center sm:p-6"
+      className="fixed inset-0 z-[100] flex items-end bg-black/65 backdrop-blur-[2px] sm:items-center sm:justify-center sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="pulse-read-title"
@@ -128,7 +144,7 @@ function ReadModal({ item, onClose }: { item: FeedListItem; onClose: () => void 
     >
       <article ref={dialogRef} tabIndex={-1} className="flex h-[100dvh] w-full flex-col overflow-hidden bg-[#faf9f5] sm:h-auto sm:max-h-[90vh] sm:max-w-[760px] sm:border" style={{ borderColor: HAIRLINE }}>
         <header className="flex shrink-0 items-center justify-between border-b px-5 py-4 sm:px-7" style={{ borderColor: HAIRLINE }}>
-          <MonoLabel>Trace read</MonoLabel>
+          <MonoLabel>{isVideo ? 'Trace video' : 'Trace read'}</MonoLabel>
           <button type="button" onClick={onClose} className="p-2" aria-label="Close article">
             <X size={20} />
           </button>
@@ -165,7 +181,7 @@ function ReadModal({ item, onClose }: { item: FeedListItem; onClose: () => void 
                 rel="noopener noreferrer"
                 className="mt-8 inline-flex items-center gap-2 bg-[#2557d6] px-5 py-3 text-[13px] font-semibold text-white"
               >
-                Read original <ExternalLink size={15} />
+                {isVideo ? 'Watch original' : 'Read original'} <ExternalLink size={15} />
               </a>
             )}
           </div>
@@ -176,14 +192,12 @@ function ReadModal({ item, onClose }: { item: FeedListItem; onClose: () => void 
 }
 
 function LockedSignalPreview({
-  item,
   remaining,
   section,
   accessPending,
   accessVerificationFailed,
   onRetryAccess,
 }: {
-  item: FeedListItem;
   remaining: number;
   section: string;
   accessPending: boolean;
@@ -213,47 +227,42 @@ function LockedSignalPreview({
   }, [accessPending, remaining, section]);
 
   return (
-    <div className="relative overflow-hidden border-t" style={{ borderColor: HAIRLINE }}>
-      <div className="pointer-events-none select-none opacity-35 blur-[4px]" aria-hidden="true">
-        <SignalCard item={item} position={1} section={section} tier="free" />
-      </div>
-      <div className="absolute inset-0 flex items-end bg-gradient-to-b from-transparent via-[#faf9f5]/45 to-[#faf9f5]/95 px-5 py-5">
-        <div>
-          <MonoLabel>{accessPending ? 'Access check' : 'Trace Pro'}</MonoLabel>
-          <p className={`${editionSerif.className} mt-2 text-[21px] leading-[1.2]`} style={{ color: INK }}>
-            {accessPending
-              ? accessVerificationFailed
-                ? 'Trace could not verify your subscription.'
-                : 'Checking your subscription before opening this desk.'
-              : `${remaining} more signal${remaining === 1 ? '' : 's'} in this desk.`}
-          </p>
-          {accessPending ? (
-            accessVerificationFailed && (
-              <button
-                type="button"
-                onClick={() => void onRetryAccess()}
-                className="mt-3 inline-block text-[12px] font-semibold text-[#2557d6] hover:underline"
-              >
-                Retry access check
-              </button>
-            )
-          ) : (
+    <div className="flex min-h-[220px] items-end border-t px-5 py-5" style={{ borderColor: HAIRLINE }}>
+      <div>
+        <MonoLabel>{accessPending ? 'Access check' : 'Trace Pro'}</MonoLabel>
+        <p className={`${editionSerif.className} mt-2 text-[21px] leading-[1.2]`} style={{ color: INK }}>
+          {accessPending
+            ? accessVerificationFailed
+              ? 'Trace could not verify your subscription.'
+              : 'Checking your subscription before opening this desk.'
+            : `Get ${remaining} more signal${remaining === 1 ? '' : 's'} with Trace Pro.`}
+        </p>
+        {accessPending ? (
+          accessVerificationFailed && (
             <button
               type="button"
-              onClick={() => {
-                trackCheckoutClicked('feed_pulse', {
-                  surface: 'web',
-                  section,
-                  hidden_count: remaining,
-                });
-                void openCheckout();
-              }}
+              onClick={() => void onRetryAccess()}
               className="mt-3 inline-block text-[12px] font-semibold text-[#2557d6] hover:underline"
             >
-              Unlock the full Pulse
+              Retry access check
             </button>
-          )}
-        </div>
+          )
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              trackCheckoutClicked('feed_pulse', {
+                surface: 'web',
+                section,
+                hidden_count: remaining,
+              });
+              void openCheckout();
+            }}
+            className="mt-4 inline-flex bg-[#2557d6] px-5 py-3 text-[13px] font-semibold text-white transition-colors hover:bg-[#1d48b4]"
+          >
+            Try Trace Pro
+          </button>
+        )}
       </div>
     </div>
   );
@@ -278,7 +287,7 @@ function SignalSection({
 }) {
   const Icon = SECTION_ICON[section.id];
   const compact = section.id !== 'reads';
-  const visibleItems = isPro ? section.items : section.items.slice(0, 1);
+  const visibleItems = isPro ? section.items : section.items.slice(0, 2);
   const hiddenCount = Math.max(0, section.items.length - visibleItems.length);
 
   return (
@@ -298,17 +307,13 @@ function SignalSection({
         </span>
       </div>
       <div
-        className={compact
-          ? 'mt-5 flex snap-x snap-mandatory overflow-x-auto border lg:grid lg:grid-cols-4 lg:overflow-visible'
-          : 'mt-5 grid grid-cols-1 border md:grid-cols-2 lg:grid-cols-4'}
+        className="mt-5 grid grid-cols-1 border md:grid-cols-2 lg:grid-cols-4"
         style={{ borderColor: HAIRLINE }}
       >
         {visibleItems.map((item, itemIndex) => (
           <div
             key={item.id}
-            className={compact
-              ? 'w-[82vw] max-w-[320px] shrink-0 snap-start border-r lg:w-auto lg:max-w-none'
-              : 'border-b border-r last:border-r-0'}
+            className="border-b border-r last:border-r-0"
             style={{ borderColor: HAIRLINE }}
           >
             <SignalCard
@@ -322,14 +327,34 @@ function SignalSection({
           </div>
         ))}
         {!isPro && hiddenCount > 0 && (
-          <LockedSignalPreview
-            item={section.items[visibleItems.length]}
-            remaining={hiddenCount}
-            section={section.id}
-            accessPending={accessPending}
-            accessVerificationFailed={accessVerificationFailed}
-            onRetryAccess={onRetryAccess}
-          />
+          <div className="relative self-start grid grid-cols-1 md:col-span-2 md:grid-cols-2 lg:col-span-2 lg:grid-cols-2">
+            {section.items.slice(2, 4).map((item, itemIndex) => (
+              <div
+                key={`locked-${item.id}`}
+                aria-hidden
+                className="pointer-events-none select-none border-b border-r blur-[5px] opacity-60"
+                style={{ borderColor: HAIRLINE }}
+              >
+                <SignalCard
+                  item={item}
+                  position={itemIndex + 3}
+                  section={section.id}
+                  tier="free"
+                  compact={compact}
+                  lockedPreview
+                />
+              </div>
+            ))}
+            <div className="absolute inset-0 z-10 flex items-end bg-[#faf9f5]/80">
+              <LockedSignalPreview
+                remaining={hiddenCount}
+                section={section.id}
+                accessPending={accessPending}
+                accessVerificationFailed={accessVerificationFailed}
+                onRetryAccess={onRetryAccess}
+              />
+            </div>
+          </div>
         )}
       </div>
     </section>
@@ -353,10 +378,11 @@ export default function PulseEdition({
 }) {
   const sections = buildPulseEdition(feed).filter((section) => section.items.length > 0);
   const totalSignals = sections.reduce((total, section) => total + section.items.length, 0);
+  const [activeSection, setActiveSection] = React.useState(sections[0]?.id || '');
   const [selectedRead, setSelectedRead] = React.useState<FeedListItem | null>(null);
 
   return (
-    <div className="mx-auto max-w-[1500px] px-6 sm:px-10 lg:px-12">
+    <div className="mx-auto max-w-[1500px] px-4 sm:px-16 lg:px-24">
       <EditionHeader view="pulse" />
 
       <div className="pb-12 pt-14 sm:pt-20">
@@ -376,7 +402,7 @@ export default function PulseEdition({
 
       {sections.length > 0 && (
         <nav
-          className="sticky top-0 z-50 -mx-6 mb-10 flex gap-6 overflow-x-auto border-y bg-[#faf9f5] px-6 py-4 [scrollbar-width:none] sm:-mx-10 sm:px-10 lg:-mx-12 lg:px-12"
+          className="sticky top-0 z-50 -mx-4 mb-10 flex gap-6 overflow-x-auto border-y bg-[#faf9f5] px-4 py-4 [scrollbar-width:none] sm:-mx-16 sm:px-16 lg:-mx-24 lg:px-24"
           style={{ borderColor: HAIRLINE }}
           aria-label="Pulse sections"
         >
@@ -384,8 +410,13 @@ export default function PulseEdition({
             <a
               key={section.id}
               href={`#pulse-section-${section.id}`}
+              onClick={() => setActiveSection(section.id)}
               className="shrink-0 text-[13.5px] font-medium transition-opacity hover:opacity-70"
-              style={{ color: MUTED }}
+              style={{
+                color: activeSection === section.id ? BLUE : MUTED,
+                textDecoration: activeSection === section.id ? 'underline' : 'none',
+                textUnderlineOffset: 5,
+              }}
             >
               {section.label} ({section.items.length})
             </a>
