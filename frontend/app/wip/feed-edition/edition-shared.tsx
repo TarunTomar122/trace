@@ -320,6 +320,11 @@ export function buildPulseEdition(feed: V3UserFeed | null): PulseEditionSection[
 
   return [
     {
+      id: 'reads',
+      label: 'Briefings',
+      items: uniquePulseItems(daily?.blogs || []),
+    },
+    {
       id: 'tools',
       label: 'Builds',
       items: uniquePulseItems([...(daily?.tools || []), ...(feed?.build_pulse || [])]),
@@ -328,11 +333,6 @@ export function buildPulseEdition(feed: V3UserFeed | null): PulseEditionSection[
       id: 'discussions',
       label: 'Conversation',
       items: discussions.length > 0 ? discussions : uniquePulseItems(feed?.pulse || []),
-    },
-    {
-      id: 'reads',
-      label: 'Briefings',
-      items: uniquePulseItems(daily?.blogs || []),
     },
   ];
 }

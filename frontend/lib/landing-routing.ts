@@ -7,7 +7,7 @@ export function getPostAuthDestination(
 ): string {
   return intent === 'checkout'
     ? '/profile?tab=subscription&intent=checkout'
-    : '/feed?view=pulse';
+    : '/feed?view=edition';
 }
 
 export function getSignedInLandingDestination(
@@ -18,5 +18,5 @@ export function getSignedInLandingDestination(
   if (pendingIntent === 'checkout') {
     return profileResolved ? getPostAuthDestination(profile, pendingIntent) : null;
   }
-  return '/feed?view=pulse';
+  return '/feed?view=edition';
 }

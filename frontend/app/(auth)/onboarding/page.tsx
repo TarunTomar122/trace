@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
 
 export default function OnboardingPage() {
-  redirect('/feed?view=pulse');
+  redirect('/feed?view=edition');
 }

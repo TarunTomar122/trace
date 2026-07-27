@@ -91,11 +91,11 @@ export default function LandingPageClient({
   const startReading = async (location: string) => {
     trackLandingCTAClicked('read', location, { destination: 'feed' });
     if (user) {
-      router.push('/feed?view=pulse');
+      router.push(getPostAuthDestination(profile, 'read'));
       return;
     }
     const result = await signInWithGoogle('read');
-    if (result.status === 'success') router.push('/feed?view=pulse');
+    if (result.status === 'success') router.push(getPostAuthDestination(result.profile, result.intent));
   };
 
   const subscribe = async (location: string) => {
@@ -110,7 +110,7 @@ export default function LandingPageClient({
 
   const signIn = async () => {
     const result = await signInWithGoogle('read');
-    if (result.status === 'success') router.push('/feed?view=pulse');
+    if (result.status === 'success') router.push(getPostAuthDestination(result.profile, result.intent));
   };
 
   const indiaPricing = typeof window !== 'undefined' && Intl.DateTimeFormat().resolvedOptions().timeZone === 'Asia/Kolkata';
