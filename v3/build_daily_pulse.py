@@ -22,6 +22,7 @@ import os
 import re
 import sys
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any
 
@@ -63,13 +64,59 @@ TOOLS_SOURCES = {"product hunt", "show hn", "github trending"}
 DISCUSSION_SOURCES = {"hacker news", "lobsters"}
 BLOG_SOURCES = {
     "pragmatic engineer",
-    "leaddev",
-    "nielsen norman group",
-    "mind the product",
-    "lenny's newsletter",
-    "first round review",
-    "techcrunch startups",
-    "y combinator blog",
+    "stack overflow blog",
+    "github blog",
+    "simon willison's blog",
+    "the rundown ai",
+    "tldr ai",
+}
+VIDEO_SOURCES = {
+    "theo - t3.gg",
+    "fireship",
+    "the primetime",
+    "ai explained",
+}
+BLOG_SOURCES |= VIDEO_SOURCES
+
+BUILDER_FOCUS_TERMS = {
+    "ai": 14,
+    "llm": 14,
+    "llms": 14,
+    "model": 10,
+    "models": 10,
+    "agent": 10,
+    "agents": 10,
+    "claude": 14,
+    "openai": 14,
+    "anthropic": 14,
+    "gemini": 12,
+    "kimi": 12,
+    "coding": 8,
+    "code": 6,
+    "programming": 8,
+    "developer": 6,
+    "software": 6,
+    "typescript": 8,
+    "javascript": 8,
+    "python": 8,
+    "rust": 8,
+    "react": 8,
+    "database": 8,
+    "postgres": 8,
+    "compiler": 8,
+    "api": 6,
+    "open source": 8,
+}
+BUILDER_NOISE_TERMS = {
+    "sales": 14,
+    "marketing": 14,
+    "prospect": 14,
+    "prospects": 14,
+    "outreach": 14,
+    "lead generation": 14,
+    "fundraising": 10,
+    "seed round": 10,
+    "product-market fit": 10,
 }
 
 
@@ -239,7 +286,9 @@ def _summarize_item(
         f"Snippet: {_safe_text(article.get('snippet', ''))}",
     ]
     body = _safe_text((content or {}).get("content", ""))
-    if section == "blogs" and len(body) < 500:
+    snippet = _safe_text(article.get("snippet", ""))
+    is_video = str(article.get("source", "")).strip().lower() in VIDEO_SOURCES
+    if section == "blogs" and len(body) < 500 and not (is_video and len(snippet) >= 120):
         _log(f"summary skipped: insufficient source text for {article.get('title', '')[:60]}")
         return _normalize_summary_payload(section, _fallback_summary(section, article))
     if body:
@@ -354,34 +403,50 @@ def _write_shared_pulse(
     )
 
 
-def _blend_role_selections(
-    primary: list[dict[str, Any]],
-    secondary_groups: list[list[dict[str, Any]]],
-    limit: int,
-) -> list[dict[str, Any]]:
-    selected: list[dict[str, Any]] = []
-    seen: set[str] = set()
+def _builder_focus_score(article: dict[str, Any]) -> int:
+    text = " " + re.sub(
+        r"[^a-z0-9+#.]+",
+        " ",
+        " ".join([
+            str(article.get("title", "")),
+            str(article.get("source", "")),
+            str(article.get("snippet", "")),
+        ]).lower(),
+    ).strip() + " "
+    score = sum(
+        weight
+        for term, weight in BUILDER_FOCUS_TERMS.items()
+        if f" {term} " in text
+    )
+    score -= sum(
+        weight
+        for term, weight in BUILDER_NOISE_TERMS.items()
+        if f" {term} " in text
+    )
+    return score
 
-    def add(article: dict[str, Any]) -> None:
-        key = str(article.get("url") or article.get("title") or "").strip().lower()
-        if key and key not in seen and len(selected) < limit:
-            seen.add(key)
-            selected.append(article)
 
-    for article in primary[: max(1, (limit + 1) // 2)]:
-        add(article)
-    for group in secondary_groups:
-        for article in group:
-            before = len(selected)
-            add(article)
-            if len(selected) > before:
-                break
-    for article in primary:
-        add(article)
-    for group in secondary_groups:
-        for article in group:
-            add(article)
-    return selected
+def _freshness_score(article: dict[str, Any]) -> int:
+    raw = str(article.get("published_date", "")).strip()
+    if not raw:
+        return 0
+    try:
+        try:
+            published = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            published = parsedate_to_datetime(raw)
+        if published.tzinfo is None:
+            published = published.replace(tzinfo=timezone.utc)
+        age_days = max(0, (datetime.now(timezone.utc) - published).days)
+    except (TypeError, ValueError):
+        return 0
+    if age_days <= 2:
+        return 30
+    if age_days <= 7:
+        return 20
+    if age_days <= 14:
+        return 10
+    return -30 if age_days > 30 else 0
 
 
 def _blog_score(role: str, article: dict[str, Any], recent_urls: set[str], recent_titles: set[str]) -> float:
@@ -401,6 +466,8 @@ def _blog_score(role: str, article: dict[str, Any], recent_urls: set[str], recen
         score += 8.0
     elif source_kind == "support":
         score += 6.0
+    score += _builder_focus_score(article)
+    score += _freshness_score(article)
     score += min(8.0, signal_score(article) / 20.0)
     url = str(article.get("url", "")).strip()
     title_sig = re.sub(r"[^a-z0-9]+", " ", str(article.get("title", "")).lower()).strip()
@@ -423,7 +490,7 @@ def _pick_blogs(
         source_kind = str(article.get("source_kind", "")).strip().lower()
         if source not in BLOG_SOURCES and not source.startswith("tldr ") and source_kind not in {"editorial", "support"}:
             continue
-        if not set(article.get("roles") or []).intersection(ROLE_ORDER):
+        if normalize_role(role) not in (article.get("roles") or []):
             continue
         record = dict(article)
         record["_rank_score"] = _blog_score(role, article, recent_urls, recent_titles)
@@ -453,7 +520,23 @@ def _pick_tools(
         if str(a.get("source", "")).strip().lower() in TOOLS_SOURCES
         or str(a.get("source_kind", "")).strip().lower() == "build"
     ]
-    return select_role_articles(role, pool, recent_urls, recent_titles, total_limit=TOOLS_LIMIT, lane="build")[:TOOLS_LIMIT]
+    selected = select_role_articles(
+        role,
+        pool,
+        recent_urls,
+        recent_titles,
+        total_limit=TOOLS_LIMIT * 3,
+        lane="build",
+    )
+    selected.sort(
+        key=lambda article: (
+            _builder_focus_score(article)
+            + (10 if str(article.get("source", "")).lower() in {"github trending", "show hn"} else 0),
+            article.get("_rank_score", 0),
+        ),
+        reverse=True,
+    )
+    return selected[:TOOLS_LIMIT]
 
 
 def _pick_discussions(
@@ -468,7 +551,22 @@ def _pick_discussions(
         source_kind = str(article.get("source_kind", "")).strip().lower()
         if source_kind == "community" or source in DISCUSSION_SOURCES or source.startswith("r/"):
             pool.append(article)
-    return select_role_articles(role, pool, recent_urls, recent_titles, total_limit=DISCUSSIONS_LIMIT, lane="community")[:DISCUSSIONS_LIMIT]
+    selected = select_role_articles(
+        role,
+        pool,
+        recent_urls,
+        recent_titles,
+        total_limit=DISCUSSIONS_LIMIT * 3,
+        lane="community",
+    )
+    selected.sort(
+        key=lambda article: (
+            _builder_focus_score(article),
+            article.get("_rank_score", 0),
+        ),
+        reverse=True,
+    )
+    return selected[:DISCUSSIONS_LIMIT]
 
 
 def main() -> None:
@@ -483,8 +581,8 @@ def main() -> None:
 
     if args.pool_only:
         _log("Pool-only mode — fetching community and build pools")
-        fetch_community_pool(roles=list(ROLE_ORDER), weekly=False, log_fn=_log)
-        fetch_build_pool(roles=list(ROLE_ORDER), weekly=False, log_fn=_log)
+        fetch_community_pool(roles=[PULSE_SELECTION_ROLE], weekly=False, log_fn=_log)
+        fetch_build_pool(roles=[PULSE_SELECTION_ROLE], weekly=False, log_fn=_log)
         _log("Pool refresh done")
         print(json.dumps({"pool_only": True}))
         return
@@ -492,8 +590,8 @@ def main() -> None:
     profiles = _load_profiles(store, args)
     _log(f"Building shared daily pulse for audience={len(profiles)}")
 
-    community_pool = fetch_community_pool(roles=list(ROLE_ORDER), weekly=False, log_fn=_log)
-    build_pool = fetch_build_pool(roles=list(ROLE_ORDER), weekly=False, log_fn=_log)
+    community_pool = fetch_community_pool(roles=[PULSE_SELECTION_ROLE], weekly=False, log_fn=_log)
+    build_pool = fetch_build_pool(roles=[PULSE_SELECTION_ROLE], weekly=False, log_fn=_log)
 
     community_classified, community_stats = classify_content_pool(
         store,
@@ -517,27 +615,18 @@ def main() -> None:
         section_prefix="daily_pulse",
         lookback_days=7,
     )
-    cross_roles = [role for role in ROLE_ORDER if role != PULSE_SELECTION_ROLE]
-    offset = int(hashlib.sha256(target_date.encode("utf-8")).hexdigest()[:2], 16) % len(cross_roles)
-    cross_roles = cross_roles[offset:] + cross_roles[:offset]
-
-    tools = _blend_role_selections(
-        _pick_tools(PULSE_SELECTION_ROLE, build_classified, recent_urls, recent_titles),
-        [_pick_tools(role, build_classified, recent_urls, recent_titles) for role in cross_roles],
-        TOOLS_LIMIT,
+    tools = _pick_tools(PULSE_SELECTION_ROLE, build_classified, recent_urls, recent_titles)
+    blogs = _pick_blogs(
+        PULSE_SELECTION_ROLE,
+        community_classified + build_classified,
+        recent_urls,
+        recent_titles,
     )
-    blogs = _blend_role_selections(
-        _pick_blogs(PULSE_SELECTION_ROLE, community_classified + build_classified, recent_urls, recent_titles),
-        [
-            _pick_blogs(role, community_classified + build_classified, recent_urls, recent_titles)
-            for role in cross_roles
-        ],
-        BLOGS_LIMIT,
-    )
-    discussions = _blend_role_selections(
-        _pick_discussions(PULSE_SELECTION_ROLE, community_classified, recent_urls, recent_titles),
-        [_pick_discussions(role, community_classified, recent_urls, recent_titles) for role in cross_roles],
-        DISCUSSIONS_LIMIT,
+    discussions = _pick_discussions(
+        PULSE_SELECTION_ROLE,
+        community_classified,
+        recent_urls,
+        recent_titles,
     )
 
     payload = {

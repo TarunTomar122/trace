@@ -1,11 +1,14 @@
 import unittest
+import json
+from pathlib import Path
 from unittest.mock import patch
 from types import SimpleNamespace
 
 from v3.build_daily_pulse import (
     COMPACT_SUMMARY_MAX_WORDS,
     ROLE_ORDER,
-    _blend_role_selections,
+    _builder_focus_score,
+    _freshness_score,
     _normalize_item_summary,
     _normalize_summary_payload,
     _summarize_item,
@@ -43,16 +46,74 @@ class DailyPulseSummaryTest(unittest.TestCase):
         self.assertEqual(summary["body"], "Concrete brief.")
         self.assertEqual(summary["key_takeaways"], ["First lesson.", "Second lesson."])
 
-    def test_role_mix_keeps_builder_core_and_cross_discipline_items(self) -> None:
-        primary = [{"url": f"developer-{i}"} for i in range(4)]
-        secondary = [[{"url": "designer"}], [{"url": "product"}], [{"url": "founder"}]]
-        mixed = _blend_role_selections(primary, secondary, 4)
-        self.assertEqual([item["url"] for item in mixed], [
-            "developer-0",
-            "developer-1",
-            "designer",
-            "product",
-        ])
+    def test_builder_focus_prefers_ai_engineering_over_sales_content(self) -> None:
+        ai_score = _builder_focus_score({
+            "title": "Claude coding agents improve TypeScript workflows",
+            "snippet": "An open source developer tool.",
+        })
+        sales_score = _builder_focus_score({
+            "title": "Warm prospects before sales outreach",
+            "snippet": "AI lead generation for marketing teams.",
+        })
+        self.assertGreater(ai_score, sales_score)
+
+    @patch("v3.build_daily_pulse.datetime")
+    def test_freshness_prefers_current_items(self, datetime_mock) -> None:
+        datetime_mock.now.return_value = __import__("datetime").datetime(
+            2026, 7, 27, tzinfo=__import__("datetime").timezone.utc
+        )
+        datetime_mock.fromisoformat.side_effect = __import__("datetime").datetime.fromisoformat
+        self.assertGreater(
+            _freshness_score({"published_date": "2026-07-27T00:00:00+00:00"}),
+            _freshness_score({"published_date": "2026-05-20T00:00:00+00:00"}),
+        )
+        self.assertEqual(
+            _freshness_score({"published_date": "Mon, 27 Jul 2026 05:40:48 -0500"}),
+            30,
+        )
+
+    def test_theo_official_feed_is_in_developer_sources(self) -> None:
+        config = json.loads(
+            (Path(__file__).parent / "config" / "brief_sources.json").read_text()
+        )
+        sources = config["rss"]["developer"]
+        theo = next(source for source in sources if source["name"] == "Theo - t3.gg")
+        self.assertEqual(
+            theo["url"],
+            "https://www.youtube.com/feeds/videos.xml?channel_id=UCbRP3c757lWg9M-U7TyEkXA",
+        )
+
+    @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
+    @patch("v3.build_daily_pulse.fetch_content", return_value={"content": ""})
+    @patch("v3.build_daily_pulse.OpenAI")
+    def test_video_summary_uses_official_description(self, openai, _fetch_content) -> None:
+        response = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(
+                content='{"body":"A grounded video brief.","key_takeaways":["One supported takeaway.","Another supported takeaway."]}',
+            ))]
+        )
+        openai.return_value.chat.completions.create.return_value = response
+
+        class Store:
+            def get_cached_summary_v2(self, *_):
+                return None
+            def save_cached_summary_v2(self, *_):
+                pass
+
+        summary = _summarize_item(
+            Store(),
+            "2026-07-27",
+            "developer",
+            "blogs",
+            {
+                "title": "A new AI model",
+                "source": "AI Explained",
+                "url": "https://www.youtube.com/watch?v=test",
+                "snippet": "The official description explains the model release, its benchmark results, and its practical limits. " * 2,
+            },
+        )
+        self.assertEqual(summary["body"], "A grounded video brief.")
+        self.assertEqual(len(summary["key_takeaways"]), 2)
 
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     @patch("v3.build_daily_pulse.fetch_content")
