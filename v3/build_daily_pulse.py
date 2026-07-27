@@ -67,14 +67,20 @@ BLOG_SOURCES = {
     "stack overflow blog",
     "github blog",
     "simon willison's blog",
-    "the rundown ai",
-    "tldr ai",
+    "latent space",
+    "eugene yan",
+    "google deepmind",
+    "hugging face",
+    "hamel's blog",
+    "drew breunig",
 }
 VIDEO_SOURCES = {
     "theo - t3.gg",
     "fireship",
     "the primetime",
     "ai explained",
+    "jack herrington",
+    "ai engineer",
 }
 BLOG_SOURCES |= VIDEO_SOURCES
 

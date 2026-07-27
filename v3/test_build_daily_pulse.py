@@ -72,16 +72,31 @@ class DailyPulseSummaryTest(unittest.TestCase):
             30,
         )
 
-    def test_theo_official_feed_is_in_developer_sources(self) -> None:
+    def test_creator_sources_are_in_developer_sources(self) -> None:
         config = json.loads(
             (Path(__file__).parent / "config" / "brief_sources.json").read_text()
         )
         sources = config["rss"]["developer"]
-        theo = next(source for source in sources if source["name"] == "Theo - t3.gg")
+        by_name = {source["name"]: source for source in sources}
+        theo = by_name["Theo - t3.gg"]
         self.assertEqual(
             theo["url"],
             "https://www.youtube.com/feeds/videos.xml?channel_id=UCbRP3c757lWg9M-U7TyEkXA",
         )
+        self.assertTrue(
+            {
+                "Fireship",
+                "AI Explained",
+                "AI Engineer",
+                "Latent Space",
+                "Eugene Yan",
+                "Hugging Face",
+                "Hamel's Blog",
+            }
+            <= by_name.keys()
+        )
+        self.assertNotIn("GitHub Changelog", by_name)
+        self.assertNotIn("Changelog News", by_name)
 
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     @patch("v3.build_daily_pulse.fetch_content", return_value={"content": ""})
