@@ -105,7 +105,7 @@ function EditionStoryModal({
         if (event.currentTarget === event.target) onClose();
       }}
     >
-      <article ref={dialogRef} tabIndex={-1} className="flex h-[100dvh] w-full flex-col overflow-hidden bg-[#faf9f5] sm:h-auto sm:max-h-[90vh] sm:max-w-[820px] sm:border" style={{ borderColor: HAIRLINE }}>
+      <article ref={dialogRef} tabIndex={-1} className="flex h-[100dvh] w-full flex-col overflow-hidden bg-[#faf9f5] sm:h-auto sm:max-h-[90vh] sm:max-w-[760px] sm:border" style={{ borderColor: HAIRLINE }}>
         <header className="flex shrink-0 items-center justify-between border-b px-5 py-4 sm:px-7" style={{ borderColor: HAIRLINE }}>
           <div className="flex items-center gap-4">
             <MonoLabel>Story {pad2(number)}</MonoLabel>
@@ -117,7 +117,7 @@ function EditionStoryModal({
         </header>
         <div className="overflow-y-auto px-5 py-7 sm:px-10 sm:py-9">
           <StoryMeta item={item} />
-          <h2 id="edition-story-title" className={`${editionSerif.className} mt-4 text-[34px] leading-[1.08] sm:text-[46px]`} style={{ color: INK }}>
+          <h2 id="edition-story-title" className={`${editionSerif.className} mt-4 text-[30px] leading-[1.12] sm:text-[38px]`} style={{ color: INK }}>
             {item.title}
           </h2>
           <div className="mt-5">

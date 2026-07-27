@@ -115,7 +115,7 @@ function ReadModal({ item, onClose }: { item: FeedListItem; onClose: () => void 
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end bg-black/35 sm:items-center sm:justify-center sm:p-6"
+      className="fixed inset-0 z-[100] flex items-end bg-black/50 sm:items-center sm:justify-center sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="pulse-read-title"
@@ -123,7 +123,7 @@ function ReadModal({ item, onClose }: { item: FeedListItem; onClose: () => void 
         if (event.currentTarget === event.target) onClose();
       }}
     >
-      <article ref={dialogRef} tabIndex={-1} className="flex h-[100dvh] w-full flex-col overflow-hidden bg-[#faf9f5] sm:h-auto sm:max-h-[90vh] sm:max-w-[840px] sm:border" style={{ borderColor: HAIRLINE }}>
+      <article ref={dialogRef} tabIndex={-1} className="flex h-[100dvh] w-full flex-col overflow-hidden bg-[#faf9f5] sm:h-auto sm:max-h-[90vh] sm:max-w-[760px] sm:border" style={{ borderColor: HAIRLINE }}>
         <header className="flex shrink-0 items-center justify-between border-b px-5 py-4 sm:px-7" style={{ borderColor: HAIRLINE }}>
           <MonoLabel>Trace read</MonoLabel>
           <button type="button" onClick={onClose} className="p-2" aria-label="Close article">
@@ -134,7 +134,7 @@ function ReadModal({ item, onClose }: { item: FeedListItem; onClose: () => void 
           <StoryImage item={item} className="aspect-[16/9] w-full border-x-0 border-t-0" />
           <div className="px-5 py-7 sm:px-10 sm:py-9">
             <StoryMeta item={item} />
-            <h2 id="pulse-read-title" className={`${editionSerif.className} mt-4 text-[34px] leading-[1.08] sm:text-[46px]`} style={{ color: INK }}>
+            <h2 id="pulse-read-title" className={`${editionSerif.className} mt-4 text-[30px] leading-[1.12] sm:text-[38px]`} style={{ color: INK }}>
               {item.title}
             </h2>
             {item.preview && (
