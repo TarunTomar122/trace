@@ -30,6 +30,7 @@ import {
   MonoLabel,
   ProEditionNote,
   ProTag,
+  scrollElementToTop,
   StoryShareButton,
   StoryImage,
   StoryMeta,
@@ -194,6 +195,17 @@ export default function FeedEdition({
     setActiveFilter(filter);
   };
 
+  const navigateToSection = (event: React.MouseEvent<HTMLAnchorElement>, filter: string) => {
+    const sectionId = `edition-section-${filter}`;
+    if (!isPro && !document.getElementById(sectionId)) {
+      event.preventDefault();
+      selectSection(filter);
+      scrollElementToTop(document.getElementById('edition-subscribe'));
+      return;
+    }
+    selectSection(filter);
+  };
+
   const openStory = (item: FeedListItem, position: number, section: string) => {
     trackFeedStoryExpanded({
       itemId: item.id,
@@ -279,7 +291,7 @@ export default function FeedEdition({
             <a
               key={f.id}
               href={`#edition-section-${f.id}`}
-              onClick={() => selectSection(f.id)}
+              onClick={(event) => navigateToSection(event, f.id)}
               className="text-[13.5px] font-medium capitalize transition-opacity hover:opacity-70"
               style={{
                 color: activeFilter === f.id ? BLUE : MUTED,
@@ -336,7 +348,7 @@ export default function FeedEdition({
                 />
               ))}
               {!isPro && lockedCount > 0 && (
-                <div className="relative self-start md:col-span-2 lg:col-span-2">
+                <div id="edition-subscribe" className="relative scroll-mt-20 self-start md:col-span-2 lg:col-span-2">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2">
                     {!isPro && sectionStories
                       .filter((item) => isLocked(model, item.id))
