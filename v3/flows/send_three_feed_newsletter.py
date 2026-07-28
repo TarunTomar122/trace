@@ -32,7 +32,7 @@ from v3.lib.store import V3Store  # noqa: E402
 NEWSLETTER_INTERESTS = ("ai", "startups", "engineering")
 NEWS_STORY_COUNTS = {"ai": 3, "startups": 1, "engineering": 1}
 PULSE_COUNTS = {"tools": 2, "discussions": 1, "blogs": 1}
-EDITORIAL_VERSION = "builder_digest_v1"
+EDITORIAL_VERSION = "builder_digest_v5"
 EDITORIAL_MODEL = os.getenv("NEWSLETTER_WRITE_MODEL", "gpt-4o-mini")
 ACCENT = "#2f5bd5"
 
@@ -215,6 +215,23 @@ def _editorial_briefing(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
+def _edition_is_complete(edition: dict[str, Any], items: list[dict[str, Any]]) -> bool:
+    stories = edition.get("stories")
+    if not edition.get("subject") or not edition.get("intro") or not isinstance(stories, list):
+        return False
+    by_url = {
+        str(story.get("url", "")).strip(): story
+        for story in stories
+        if isinstance(story, dict)
+    }
+    return all(
+        (story := by_url.get(str(item.get("url", "")).strip()))
+        and _plain_text(story.get("body", ""))
+        and isinstance(story.get("takeaways"), list)
+        for item in items
+    )
+
+
 def _build_editorial_edition(
     store: FirestoreStore,
     feed: dict[str, Any],
@@ -238,7 +255,7 @@ def _build_editorial_edition(
         if (
             cached.get("version") == EDITORIAL_VERSION
             and cached.get("fingerprint") == fingerprint
-            and cached.get("stories")
+            and _edition_is_complete(cached, items)
         ):
             return cached
 
@@ -255,13 +272,12 @@ def _build_editorial_edition(
         "technical material easy to read without dumbing it down. Avoid hype, filler, greetings, "
         "marketing language, and phrases such as 'the key takeaway'.\n\n"
         "Rules:\n"
-        "- Write a 35-60 word intro that gives the shape of the day.\n"
+        "- Write a 25-40 word intro that gives the shape of the day.\n"
         "- Keep every supplied story, in the same order and section.\n"
         "- Preserve each title and URL exactly.\n"
-        "- For news and briefings, target 90-130 words across two short paragraphs when the "
-        "supplied facts support it.\n"
-        "- For builds and conversations, write a concise 35-70 word note.\n"
-        "- Add 2-3 factual takeaways only when the supplied material supports them.\n"
+        "- Give every item one compact paragraph suitable for a quick email scan.\n"
+        "- Keep builds and conversations especially brief.\n"
+        "- Add at most 2 factual takeaways only when they add information not already in the body.\n"
         "- Never pad thin material or invent detail to reach a length target.\n"
         "- The subject must be concrete, plain, and under 55 characters.\n\n"
         f"Briefing:\n{json.dumps(briefing, ensure_ascii=False)}\n\n"
@@ -272,7 +288,8 @@ def _build_editorial_edition(
     )
 
     try:
-        response = OpenAI(api_key=api_key).chat.completions.create(
+        client = OpenAI(api_key=api_key)
+        response = client.chat.completions.create(
             model=EDITORIAL_MODEL,
             temperature=0.4,
             response_format={"type": "json_object"},
@@ -289,7 +306,39 @@ def _build_editorial_edition(
         )
         written = json.loads(response.choices[0].message.content or "{}")
     except Exception as exc:
-        print(f"[newsletter] editorial rewrite failed, using stored summaries: {exc}")
+        print(f"[newsletter] editorial rewrite failed: {exc}")
+        return {}
+
+    try:
+        response = client.chat.completions.create(
+            model=EDITORIAL_MODEL,
+            temperature=0.2,
+            response_format={"type": "json_object"},
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are the final copy editor for a technology email newsletter. "
+                        "Use only the supplied facts and never invent information."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        "Edit this draft for fast email reading. Use editorial judgment, not fixed "
+                        "word counts. Make each story one short, complete paragraph; remove "
+                        "secondary details and repetition; never pad thin items. Preserve every URL "
+                        "and story order. Keep no more than two non-repetitive takeaways per story. "
+                        "Return only JSON with the same subject, intro, and stories shape.\n\n"
+                        f"Facts:\n{json.dumps(briefing, ensure_ascii=False)}\n\n"
+                        f"Draft:\n{json.dumps(written, ensure_ascii=False)}"
+                    ),
+                },
+            ],
+        )
+        written = json.loads(response.choices[0].message.content or "{}")
+    except Exception as exc:
+        print(f"[newsletter] newsletter copy edit failed: {exc}")
         return {}
 
     drafts = {
@@ -297,6 +346,7 @@ def _build_editorial_edition(
         for story in written.get("stories", [])
         if isinstance(story, dict) and str(story.get("url", "")).strip()
     }
+
     stories = []
     for item in items:
         url = str(item.get("url", "")).strip()
@@ -304,13 +354,13 @@ def _build_editorial_edition(
         body = _plain_text(draft.get("body", ""))
         takeaways = draft.get("takeaways", [])
         if not body or not isinstance(takeaways, list):
-            body = _summary_body(item)
-            takeaways = _key_takeaways(item)
+            print(f"[newsletter] copy edit omitted required story: {url}")
+            return {}
         stories.append(
             {
                 "url": url,
                 "body": body,
-                "takeaways": [_plain_text(value) for value in takeaways if _plain_text(value)][:3],
+                "takeaways": [_plain_text(value) for value in takeaways if _plain_text(value)][:2],
             }
         )
 
@@ -324,6 +374,8 @@ def _build_editorial_edition(
         "intro": _plain_text(written.get("intro", "")),
         "stories": stories,
     }
+    if not _edition_is_complete(edition, items):
+        return {}
     if persist:
         doc_ref.set(edition)
     return edition
@@ -356,7 +408,7 @@ def _image_url(item: dict[str, Any]) -> str:
         value = str(item.get(key, "")).strip()
         if value.startswith(("https://", "http://")):
             return value
-    return "https://www.yourtrace.online/trace.png"
+    return ""
 
 
 def _paragraph_html(text: str) -> str:
@@ -396,12 +448,15 @@ def _render_item(item: dict[str, Any]) -> str:
         'letter-spacing: 1.2px; text-transform: uppercase;">Key takeaways</p>'
         f'<table width="100%" cellpadding="0" cellspacing="0" border="0">{takeaway_html}</table>'
     ) if takeaway_html else ""
-
-    return (
-        '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0;">'
+    image_block = (
         f'<tr><td><a href="{url}" style="text-decoration: none;">'
         f'<img src="{image_url}" alt="" width="624" style="display: block; width: 100%; height: auto; '
         'border: 0; border-radius: 8px;" /></a></td></tr>'
+    ) if image_url else ""
+
+    return (
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0;">'
+        f"{image_block}"
         '<tr><td style="padding: 18px 0 30px 0; border-bottom: 1px solid #e8e4dc;">'
         f'<p style="margin: 0 0 9px 0; font-size: 11px; color: #777268; letter-spacing: 1.1px; '
         f'font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700;">{label} &nbsp;&middot;&nbsp; {source}</p>'
@@ -578,6 +633,17 @@ def send_three_feed_newsletter(
         target_date,
         persist=not dry_run,
     ) if eligible else {}
+    if eligible and not edition:
+        return {
+            "success": False,
+            "error": "newsletter editorial rewrite failed",
+            "date": target_date,
+            "recipient_count": len(recipients),
+            "sent": 0,
+            "failed": len(eligible),
+            "skipped": skipped,
+            "errors": [],
+        }
 
     for row in eligible:
         uid = row["uid"]

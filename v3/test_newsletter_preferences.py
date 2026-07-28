@@ -1,7 +1,12 @@
 import unittest
 
 from v1.newsletter_preferences import is_newsletter_enabled
-from v3.flows.send_three_feed_newsletter import _has_required_mix, _pick_items, _render_item
+from v3.flows.send_three_feed_newsletter import (
+    _edition_is_complete,
+    _has_required_mix,
+    _pick_items,
+    _render_item,
+)
 from v3.scheduler import JOBS
 
 
@@ -91,6 +96,22 @@ class NewsletterPreferenceTests(unittest.TestCase):
         self.assertIn("A specific fact.", html)
         self.assertIn("Another concrete fact.", html)
         self.assertNotIn("The full useful summary.", html)
+
+    def test_newsletter_story_omits_missing_image(self):
+        html = _render_item({
+            "url": "https://example.com/story",
+            "title": "Story",
+            "description": "A compact summary.",
+        })
+        self.assertNotIn("<img ", html)
+
+    def test_newsletter_rejects_partial_cached_ai_edition(self):
+        items = [{"url": "https://example.com/story"}]
+        self.assertFalse(_edition_is_complete({
+            "subject": "Subject",
+            "intro": "Intro",
+            "stories": [{"url": items[0]["url"], "body": "", "takeaways": []}],
+        }, items))
 
 
 if __name__ == "__main__":
