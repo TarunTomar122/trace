@@ -96,6 +96,9 @@ class NewsletterPreferenceTests(unittest.TestCase):
         self.assertIn("A specific fact.", html)
         self.assertIn("Another concrete fact.", html)
         self.assertNotIn("The full useful summary.", html)
+        self.assertIn('href="https://example.com/story"', html)
+        self.assertEqual(html.count('href="https://example.com/story"'), 1)
+        self.assertNotIn("Open original source", html)
 
     def test_newsletter_story_omits_missing_image(self):
         html = _render_item({

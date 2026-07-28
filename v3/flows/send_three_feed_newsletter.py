@@ -34,7 +34,6 @@ NEWS_STORY_COUNTS = {"ai": 3, "startups": 1, "engineering": 1}
 PULSE_COUNTS = {"tools": 2, "discussions": 1, "blogs": 1}
 EDITORIAL_VERSION = "builder_digest_v5"
 EDITORIAL_MODEL = os.getenv("NEWSLETTER_WRITE_MODEL", "gpt-4o-mini")
-ACCENT = "#2f5bd5"
 
 def _today_ist() -> str:
     ist = timezone(timedelta(hours=5, minutes=30))
@@ -449,9 +448,9 @@ def _render_item(item: dict[str, Any]) -> str:
         f'<table width="100%" cellpadding="0" cellspacing="0" border="0">{takeaway_html}</table>'
     ) if takeaway_html else ""
     image_block = (
-        f'<tr><td><a href="{url}" style="text-decoration: none;">'
+        '<tr><td>'
         f'<img src="{image_url}" alt="" width="624" style="display: block; width: 100%; height: auto; '
-        'border: 0; border-radius: 8px;" /></a></td></tr>'
+        'border: 0; border-radius: 8px;" /></td></tr>'
     ) if image_url else ""
 
     return (
@@ -465,9 +464,6 @@ def _render_item(item: dict[str, Any]) -> str:
         f'color: #171714; text-decoration: none; line-height: 1.2;">{title}</a>'
         f"{summary_html}"
         f"{takeaways_block}"
-        f'<a href="{url}" style="display: inline-block; margin-top: 7px; font-size: 13px; font-weight: 700; color: {ACCENT}; '
-        'font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', sans-serif; '
-        'text-decoration: none;">Open original source &rarr;</a>'
         "</td></tr></table>"
     )
 
