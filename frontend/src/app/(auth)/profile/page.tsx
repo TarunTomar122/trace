@@ -163,7 +163,7 @@ function ProfileContent() {
             <p className="text-sm text-secondary/60">
               {isSubscribed
                 ? 'Full access to all content and features.'
-                : 'Upgrade to unlock unlimited articles and your full feed.'}
+                : 'Try Pro free for 3 days to unlock unlimited articles and your full feed.'}
             </p>
           </div>
 

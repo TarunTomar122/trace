@@ -13,10 +13,9 @@ import {
 } from '@/contexts/AuthContext';
 import { getSignedInLandingDestination } from '@/lib/landing-routing';
 import { trackLandingCTAClicked } from '@/lib/posthog';
-import { SUBSCRIPTION_COMPARE_AT_DEFAULT, SUBSCRIPTION_PRICE_DEFAULT, SUBSCRIPTION_PRICE_INDIA } from '@/lib/subscription-pricing';
-import SubscriptionPrice from '@/components/SubscriptionPrice';
 import Footer from '@/components/Footer';
 import HomeEditionPreview from './HomeEditionPreview';
+import AgentAccessLanding from '@/components/AgentAccessLanding';
 import type { V3UserFeed } from '@/lib/firestore';
 
 const SOURCES = [
@@ -47,7 +46,7 @@ const FAQ_ITEMS = [
   { q: 'What is Trace?', a: 'Trace is a feed for builders. It combines aggregated technology news with open-source projects, technical conversations, creator videos, and practitioner writing.' },
   { q: 'Who is Trace for?', a: 'Builders. Developers are the center of the feed, with useful product, design, startup, and AI context mixed in.' },
   { q: 'Do I need an account?', a: 'No. You can open the feed and start reading immediately.' },
-  { q: 'What does Trace Pro include?', a: 'Every news story, video summary, key takeaway, project, discussion, and source link.' },
+  { q: 'What does Trace Pro include?', a: 'Every news story, video summary, key takeaway, project, discussion, and source link, plus read-only Agent Access for your AI tools and bots.' },
   { q: 'How does Trace choose what matters?', a: 'It groups duplicate coverage, puts the most consequential stories first, and keeps the source trail available when you want to go deeper.' },
   { q: 'How often is Trace updated?', a: 'New technology news, projects, discussions, videos, and articles are added throughout the day.' },
   { q: 'Where can I read Trace?', a: 'Read on the web or use the Android app.' },
@@ -113,10 +112,6 @@ export default function LandingPageClient({
     if (result.status === 'success') router.push(getPostAuthDestination(result.profile, result.intent));
   };
 
-  const indiaPricing = typeof window !== 'undefined' && Intl.DateTimeFormat().resolvedOptions().timeZone === 'Asia/Kolkata';
-  const priceDisplay = indiaPricing ? SUBSCRIPTION_PRICE_INDIA : SUBSCRIPTION_PRICE_DEFAULT;
-  const compareAtPriceDisplay = indiaPricing ? null : SUBSCRIPTION_COMPARE_AT_DEFAULT;
-
   if (user) return <div className="min-h-screen bg-[#faf9f5]" />;
 
   return (
@@ -143,6 +138,7 @@ export default function LandingPageClient({
             <Link href="/compare" className="hover:text-[#2557d6]">Compare</Link>
             <Link href="/blog" className="hover:text-[#2557d6]">Guides</Link>
             <Link href="/resources" className="hover:text-[#2557d6]">Resources</Link>
+            <Link href="/agents" className="hover:text-[#2557d6]">Agents</Link>
           </nav>
           <button type="button" onClick={() => void signIn()} className="border border-[#2557d6] px-3.5 py-1.5 text-[12px] font-semibold text-[#2557d6] hover:bg-[#2557d6] hover:text-white">Sign in</button>
         </div>
@@ -206,6 +202,8 @@ export default function LandingPageClient({
           </div>
         </section>
 
+        <AgentAccessLanding />
+
         <section className="py-16 sm:py-20">
           <div className="mx-auto max-w-[1500px] border-y border-[#e4e1d8] px-4 py-10 sm:px-16 lg:px-24">
             <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[#2557d6]">How Trace works</p>
@@ -233,9 +231,10 @@ export default function LandingPageClient({
                 <p className="mt-5 max-w-[600px] text-[16px] leading-[1.7] text-[#75705f]">Get every news story, project, discussion, video summary, key takeaway, and source link.</p>
               </div>
               <div className="flex flex-col justify-center bg-[#2557d6] p-7 text-white sm:p-10">
-                <SubscriptionPrice price={priceDisplay} compareAt={compareAtPriceDisplay} size="lg" tone="dark" />
-                <button type="button" onClick={() => subscribe('pro')} className="mt-7 bg-white px-5 py-3 text-[14px] font-semibold text-[#2557d6] hover:bg-[#f5f3ed]">Get Trace Pro</button>
-                <p className="mt-3 text-center text-[12px] text-white/70">Cancel anytime.</p>
+                <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">3 days on us</p>
+                <p className="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em]">Try Trace Pro free</p>
+                <button type="button" onClick={() => subscribe('pro')} className="mt-7 bg-white px-5 py-3 text-[14px] font-semibold text-[#2557d6] hover:bg-[#f5f3ed]">Start your free trial</button>
+                <p className="mt-3 text-center text-[12px] text-white/70">No charge for 3 days · Cancel anytime.</p>
               </div>
             </div>
           </div>

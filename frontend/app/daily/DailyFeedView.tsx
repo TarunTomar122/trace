@@ -246,7 +246,7 @@ function TodayLockedCard() {
         </h2>
         <p className="mt-2 text-[14px] text-secondary/60 leading-relaxed max-w-md">
           Fresh stories, grouped topics, and key takeaways — updated every
-          morning. Subscribe to Trace Pro to unlock today&apos;s personalized
+          morning. Try Trace Pro free for 3 days to unlock today&apos;s personalized
           feed.
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-2 text-[12px] text-secondary/60">
@@ -266,7 +266,7 @@ function TodayLockedCard() {
           onClick={() => trackCheckoutClicked("daily_today_locked")}
           className="mt-6 inline-flex items-center rounded-full bg-foreground px-6 py-3 text-[13px] font-semibold text-background transition-all hover:bg-foreground/90"
         >
-          Subscribe to unlock today
+          Try Pro free for 3 days
         </Link>
       </div>
     </div>

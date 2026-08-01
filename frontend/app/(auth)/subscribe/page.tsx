@@ -32,10 +32,10 @@ export default function SubscribePage() {
           Trace Pro
         </p>
         <h1 className="mt-4 text-[28px] font-semibold tracking-[-0.03em]">
-          Unlock the complete builder feed
+          Try the complete builder feed free for 3 days
         </h1>
         <p className="mt-3 text-[14px] leading-[1.7] text-[#75705f]">
-          Continue with Google to review pricing and complete checkout.
+          Continue with Google to start your trial. No charge for 3 days.
         </p>
         <button
           type="button"
@@ -43,7 +43,7 @@ export default function SubscribePage() {
           onClick={() => void continueToCheckout()}
           className="mt-7 w-full bg-[#1b1a17] px-5 py-3.5 text-[13px] font-semibold text-white disabled:opacity-50"
         >
-          {loading || user ? 'Loading checkout…' : 'Continue with Google'}
+          {loading || user ? 'Loading checkout…' : 'Start free trial with Google'}
         </button>
         {error && <p className="mt-3 text-[12px] text-red-700" role="alert">{error}</p>}
       </div>

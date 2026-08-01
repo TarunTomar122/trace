@@ -451,7 +451,8 @@ export default function SubscriptionManager() {
             </p>
           </div>
           <div className="flex flex-col justify-center bg-[#2557d6] p-7 text-white">
-            <SubscriptionPrice price={priceDisplay} compareAt={compareAtPriceDisplay} size="lg" tone="dark" />
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">3 days on us</p>
+            <p className="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em]">Try Trace Pro free</p>
             <button
               onClick={handleSubscribe}
               disabled={isCreatingCheckout}
@@ -460,10 +461,10 @@ export default function SubscriptionManager() {
               {isCreatingCheckout ? (
                 <><Loader2 className="animate-spin" size={15} />Setting up...</>
               ) : (
-                <>Get Trace Pro</>
+                <>Start your free trial</>
               )}
             </button>
-            <p className="mt-3 text-center text-[11px] text-white/70">Cancel anytime.</p>
+            <p className="mt-3 text-center text-[11px] text-white/70">No charge for 3 days · Cancel anytime.</p>
           </div>
         </div>
 

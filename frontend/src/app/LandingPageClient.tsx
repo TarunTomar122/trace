@@ -562,7 +562,7 @@ export default function LandingPageClient() {
                   onClick={() => handleStartTrial('pricing_card')}
                   className="w-full py-3.5 rounded-full text-[13px] font-semibold bg-white text-[#151515] transition-all hover:bg-white/90 hover:scale-[1.01] active:scale-[0.99]"
                 >
-                  Start {trialDays}-Day Free Trial
+                  Try Pro free for {trialDays} days
                 </button>
                 <p className="mt-3 text-center text-[12px] leading-snug text-white/35">
                   {priceDisplay} after {trialDays} days · Cancel anytime

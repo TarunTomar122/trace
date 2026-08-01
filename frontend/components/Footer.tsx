@@ -34,6 +34,7 @@ export default function Footer(props: { variant?: 'default' | 'landing'; directo
           <Link href="/compare" className="hover:text-[#2557d6]">Compare</Link>
           <Link href="/blog" className="hover:text-[#2557d6]">Guides</Link>
           <Link href="/resources" className="hover:text-[#2557d6]">Resources</Link>
+          <Link href="/agents" className="hover:text-[#2557d6]">Agents</Link>
           <Link href="/solutions" className="hover:text-[#2557d6]">Solutions</Link>
           <Link href="/use-cases" className="hover:text-[#2557d6]">Use cases</Link>
           <Link href="/newsletters" className="hover:text-[#2557d6]">Newsletter reviews</Link>

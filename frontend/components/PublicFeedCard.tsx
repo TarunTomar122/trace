@@ -122,7 +122,7 @@ function LockedOverlay() {
             onClick={() => trackCheckoutClicked("public_feed_card_unlock")}
             className="mt-3 inline-flex items-center rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90"
           >
-            Subscribe
+            Try Pro free for 3 days
           </Link>
         </div>
       </div>
@@ -411,8 +411,8 @@ export function PublicInlineUnlockBanner({
               {storyCount} more stories waiting for you
             </p>
             <p className="mt-0.5 text-xs text-secondary/55">
-              Subscribe to Pro for unlimited articles, key takeaways, and source
-              links.
+              Try Trace Pro free for 3 days for unlimited articles, key takeaways,
+              and source links.
             </p>
           </div>
         </div>
@@ -426,7 +426,7 @@ export function PublicInlineUnlockBanner({
           }
           className="inline-flex items-center justify-center rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90"
         >
-          Subscribe to unlock
+          Try Pro free for 3 days
         </Link>
       </div>
     </div>

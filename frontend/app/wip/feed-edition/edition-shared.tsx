@@ -811,10 +811,10 @@ export function ProEditionNote({
           className="inline-block px-6 py-3 text-[13.5px] font-semibold text-white"
           style={{ background: BLUE }}
         >
-          Try Trace Pro
+          Try Trace Pro free for 3 days
         </button>
         <span className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: MUTED }}>
-          Cancel anytime
+          No charge for 3 days · Cancel anytime
         </span>
       </div>
     </aside>

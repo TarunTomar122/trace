@@ -21,6 +21,266 @@ export type BlogPost = {
 
 export const blogPosts: BlogPost[] = [
   {
+    slug: "ai-agent-live-tech-news",
+    title: "How to Give an AI Agent Live Tech News Instead of Generic Web Search",
+    subtitle: "A practical way to give Claude, ChatGPT, Codex, or a custom agent current structured technology news, builds, and technical conversations.",
+    tag: "AI Agents",
+    category: "ai-tools",
+    excerpt: "Learn how to connect an AI agent to live structured tech news through MCP or an API, why ordinary web search is not enough, and what a useful daily briefing tool should return.",
+    author: "Trace Editorial",
+    readTime: "10 min read",
+    date: "August 1, 2026",
+    image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&h=630&fit=crop&auto=format",
+    sources: [
+      { title: "Notion MCP overview", url: "https://developers.notion.com/guides/mcp/overview", publisher: "Notion" },
+      { title: "Model Context Protocol authorization", url: "https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization", publisher: "MCP" },
+      { title: "Remote MCP tools in the Responses API", url: "https://platform.openai.com/docs/guides/tools-remote-mcp", publisher: "OpenAI" },
+    ],
+    sections: [
+      {
+        paragraphs: [
+          "Most AI agents can search the web. That sounds like enough until you ask one for a useful technology briefing every morning. The agent searches again, opens a handful of pages, repeats the same headlines, misses the developer conversation around the story, and gives you a different shape of answer every day.",
+          "The problem is not model intelligence. It is the input. Generic web search returns documents ranked for a query. A briefing agent needs a current, structured set of events: the leading stories, the projects people are building, the technical discussions around them, timestamps, summaries, and the source trail.",
+          "That is the gap [Trace for agents](/agents) is designed to fill. Trace does the collection and grouping first, then gives the agent a read-only briefing it can reason over or deliver wherever you work."
+        ]
+      },
+      {
+        heading: "Why ordinary web search produces an uneven tech brief",
+        paragraphs: [
+          "Web search is excellent when the agent has a precise question. It is much weaker as a standing input for an open-ended request such as ‘tell me what matters in tech today.’ The query is broad, freshness signals vary by source, and search results are pages rather than a normalized event stream.",
+          "A single model release can produce a launch post, press coverage, a GitHub repository, a Hacker News thread, and several independent technical reactions. Search returns those as separate links. A useful briefing system groups them into one story and preserves the different evidence underneath it."
+        ],
+        bullets: [
+          "Search results are query-shaped; a daily brief needs a stable schema.",
+          "Five links about one event create repetition unless they are grouped first.",
+          "Search ranking does not reliably distinguish a product announcement from informed practitioner analysis.",
+          "A search result page rarely includes builds and community conversations in the same response as the news."
+        ]
+      },
+      {
+        heading: "What structured agent-ready tech news looks like",
+        paragraphs: [
+          "An agent-ready briefing should be boring in the best way: predictable fields, bounded results, clear timestamps, and links back to evidence. The agent should not have to infer whether a string is a title, a summary, or a source URL.",
+          "Trace returns three explicit sections: top news, builds, and conversations. Each item carries a title and summary, with key takeaways, why-it-matters context, timestamps, and source links when they are available. That lets the model spend its context window comparing and explaining information instead of scraping and cleaning pages."
+        ]
+      },
+      {
+        heading: "MCP or HTTPS: choose based on the agent",
+        paragraphs: [
+          "Model Context Protocol is the cleanest option for MCP-compatible clients such as Codex, Claude, Cursor, and many agent frameworks. The client discovers named tools and their input schemas, so the model can decide whether it needs the full daily brief, only the top news, the latest builds, or the current technical conversations.",
+          "A normal HTTPS endpoint is useful for a Telegram bot, Discord bot, WhatsApp automation, cron job, or custom application that does not run an MCP client. It returns the same structured brief as JSON. Trace is the data source; your bot remains responsible for scheduling and delivery."
+        ]
+      },
+      {
+        heading: "A safe connection is read-only and revocable",
+        paragraphs: [
+          "An agent that only needs news should not receive permission to change account settings or write data. Trace Agent Keys carry one fixed read-only scope. There are no publishing, purchasing, or account-management tools in the agent surface.",
+          "The key can be rotated or revoked from Trace. Access is also checked against the account’s current Pro or trial status on every request, so an old key cannot silently preserve access after the account loses it. Keep the key in an environment variable or secret manager and out of source control and logs."
+        ]
+      },
+      {
+        heading: "Useful prompts after the connection is live",
+        paragraphs: [
+          "The best prompts describe the outcome and the audience. The agent already knows how to call the Trace tools. Tell it what to prioritize, how many items you want, and where the result should go."
+        ],
+        bullets: [
+          "Every weekday at 8:30 AM, send me the five AI and developer stories that matter. Include one sentence on why each matters.",
+          "Show me three new open-source projects from today’s brief. Skip wrapper apps and explain the technical novelty.",
+          "Summarize today’s strongest practitioner debates. Separate concrete technical criticism from generic reactions.",
+          "Give me a founder brief: market shifts first, then developer tools, then community signal."
+        ]
+      },
+      {
+        heading: "Connect Trace to your agent",
+        paragraphs: [
+          "Open the [Trace Agent Access documentation](/agents), start a Pro trial or use an active Pro account, and create a read-only Agent Key. You can copy a complete setup prompt, use the Codex command, add the remote MCP configuration to another client, or call the HTTPS endpoint directly.",
+          "The setup is deliberately small: one endpoint, one key, four read-only tools. The value comes from the structured feed behind it, not from making the integration complicated."
+        ]
+      }
+    ]
+  },
+  {
+    slug: "mcp-server-for-tech-news",
+    title: "MCP Server for Tech News: Connect Claude, ChatGPT, Codex, and Cursor",
+    subtitle: "How a remote MCP news server works, what tools it should expose, and how to connect an AI client without giving it excessive permissions.",
+    tag: "MCP Guide",
+    category: "guides",
+    excerpt: "A practical guide to using a remote MCP server for current tech news, including client setup, read-only authentication, tool design, testing, and security.",
+    author: "Trace Editorial",
+    readTime: "12 min read",
+    date: "August 1, 2026",
+    image: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1200&h=630&fit=crop&auto=format",
+    sources: [
+      { title: "Linear MCP server documentation", url: "https://linear.app/docs/mcp", publisher: "Linear" },
+      { title: "Connecting to Notion MCP", url: "https://developers.notion.com/guides/mcp/get-started-with-mcp", publisher: "Notion" },
+      { title: "Stripe Model Context Protocol server", url: "https://docs.stripe.com/mcp", publisher: "Stripe" },
+      { title: "Test a remote MCP server", url: "https://developers.cloudflare.com/agents/model-context-protocol/guides/test-remote-mcp-server/", publisher: "Cloudflare" },
+    ],
+    sections: [
+      {
+        paragraphs: [
+          "MCP has become the common adapter between AI clients and external services. Instead of teaching every model a custom API, a service exposes named tools with machine-readable input schemas. The client discovers the tools, and the model calls the right one when the conversation requires it.",
+          "For technology news, this changes the job from ‘search the internet’ to ‘retrieve today’s structured brief.’ The distinction matters. Search is an open-world retrieval task; a briefing tool is a bounded product with known sections, current data, and consistent output.",
+          "Trace exposes a hosted read-only [MCP server for tech news](/agents) at one URL. It is designed for the small set of tasks an agent actually needs rather than a giant generic news API."
+        ]
+      },
+      {
+        heading: "The MCP pattern used by mature products",
+        paragraphs: [
+          "Notion, Linear, Stripe, GitHub, and Cloudflare all document a hosted or remote MCP connection. The recurring pattern is simple: a stable server URL, client-specific setup instructions, explicit authentication, a small tool catalog, example prompts, and a place to revoke access.",
+          "The important product lesson is that users should not have to understand the protocol before they see the payoff. Good docs first explain what the agent can do, then provide copyable setup for the client the user already has."
+        ]
+      },
+      {
+        heading: "Trace MCP tools",
+        paragraphs: [
+          "Trace keeps the tool surface intentionally narrow. All tools are read-only and return at most 20 items per section. A smaller catalog is easier for the model to choose from and easier for a person to audit."
+        ],
+        bullets: [
+          "get_daily_tech_brief — top news, builds, and conversations in one response.",
+          "get_top_tech_news — grouped current technology and AI stories.",
+          "get_latest_builds — open-source projects, launches, and developer tools.",
+          "get_tech_conversations — current technical discussions and community signal."
+        ]
+      },
+      {
+        heading: "Connect Codex",
+        paragraphs: [
+          "Create a Trace Agent Key from the [agent setup page](/agents), store it in the TRACE_AGENT_KEY environment variable, and add the remote server with the Codex MCP command. Codex reads the bearer token from the environment instead of putting it in project configuration.",
+          "After restarting or opening a fresh session, ask Codex to list the Trace tools or request today’s daily tech brief. A successful tool call should return a feed date plus separate top_news, builds, and conversations arrays."
+        ]
+      },
+      {
+        heading: "Connect Claude, Cursor, or another MCP client",
+        paragraphs: [
+          "Most remote-MCP clients accept a server URL in their MCP settings or JSON configuration. Use https://www.yourtrace.online/api/mcp and attach the Trace Agent Key as a bearer token. Keep the value in the client’s secret or environment-variable mechanism when one exists.",
+          "Client configuration formats differ. Some use mcpServers, some use servers, and some provide a graphical connector screen. The endpoint and authorization semantics stay the same. If a client cannot attach a bearer header to a remote MCP server, use its local remote-MCP bridge or call the HTTPS brief endpoint from a custom tool."
+        ]
+      },
+      {
+        heading: "Use Trace from an agent framework",
+        paragraphs: [
+          "Agent frameworks can connect through a remote MCP client or call the JSON brief directly. The latter is often the shortest route for scheduled bots because there is no tool negotiation: send a GET request with the bearer key, choose a section and limit, then format the response for the destination channel.",
+          "The endpoint supports all, news, builds, and conversations sections. It is suitable for server-side jobs only. Do not put an Agent Key in browser JavaScript or a public mobile bundle."
+        ]
+      },
+      {
+        heading: "How to verify the integration",
+        paragraphs: [
+          "A connection screen is not proof that the integration works. Make one real read. Ask for the daily brief, confirm that the response contains a current feed_date, inspect at least one source URL, and make sure the client identifies the operation as read-only.",
+          "Then revoke the key in Trace and repeat the call. It should fail immediately. Create a new key and verify that the old value remains invalid. That proves the lifecycle, not just the happy path."
+        ]
+      },
+      {
+        heading: "Security boundaries that matter",
+        bullets: [
+          "Use one fixed read scope instead of a general account token.",
+          "Hash keys at rest and show the plaintext only once.",
+          "Re-check product entitlement on every request.",
+          "Cap output size so prompts and bills cannot grow without bounds.",
+          "Annotate every MCP tool as read-only, non-destructive, and idempotent.",
+          "Keep secrets out of chat logs, repositories, screenshots, and client-side code."
+        ],
+        paragraphs: [
+          "Trace follows those boundaries for Agent Access. For the current read-only use case, a revocable Agent Key is also more practical for headless bots than an interactive OAuth flow. One-click OAuth can be added later for clients where installation volume justifies the extra authorization infrastructure."
+        ]
+      }
+    ]
+  },
+  {
+    slug: "daily-tech-briefing-agent-telegram-discord-whatsapp",
+    title: "Build a Daily Tech Briefing Agent for Telegram, Discord, or WhatsApp",
+    subtitle: "Use one structured tech-news feed to deliver a useful morning briefing into the chat app where you and your team already work.",
+    tag: "Agent Workflow",
+    category: "guides",
+    excerpt: "Build a daily AI tech-news agent for Telegram, Discord, WhatsApp, or Slack using structured news, builds, and conversations instead of repeated web searches.",
+    author: "Trace Editorial",
+    readTime: "11 min read",
+    date: "August 1, 2026",
+    image: "https://images.unsplash.com/photo-1611606063065-ee7946f0787a?w=1200&h=630&fit=crop&auto=format",
+    sources: [
+      { title: "Telegram Bot API", url: "https://core.telegram.org/bots/api", publisher: "Telegram" },
+      { title: "Discord developer documentation", url: "https://discord.com/developers/docs/intro", publisher: "Discord" },
+      { title: "WhatsApp Cloud API overview", url: "https://developers.facebook.com/docs/whatsapp/cloud-api/overview", publisher: "Meta" },
+      { title: "Connect to an MCP server", url: "https://developers.cloudflare.com/agents/model-context-protocol/guides/connect-mcp-client/", publisher: "Cloudflare" },
+    ],
+    sections: [
+      {
+        paragraphs: [
+          "A morning briefing is useful only if it arrives where you will actually read it. For some people that is email. For a founder it may be Telegram. For an engineering team it may be Discord or Slack. For a private operations workflow it may be WhatsApp.",
+          "The delivery channel is the easy part. The hard part is producing a brief that is current, non-repetitive, and worth interrupting someone for. If the bot runs a generic web search every morning, quality moves around with the query and the search results. A structured upstream feed makes the workflow predictable.",
+          "Trace provides that upstream feed through [Agent Access](/agents). Your automation fetches the brief, chooses the most relevant items, formats them, and posts the result through the official bot API for your destination."
+        ]
+      },
+      {
+        heading: "The honest architecture",
+        paragraphs: [
+          "Trace does not directly log into your Telegram, Discord, WhatsApp, or Slack account. It supplies current tech intelligence to an agent or server-side automation. That automation owns the delivery credential and sends the final message through the platform’s bot API.",
+          "Keeping those roles separate is safer and easier to debug. A Trace Agent Key can only read the brief. A Telegram bot token can only operate within the bot permissions you grant. Rotating either credential does not require changing the other service."
+        ],
+        bullets: [
+          "Trace MCP or HTTPS → structured tech brief",
+          "Your agent → prioritization, rewriting, and scheduling",
+          "Official channel API → message delivery",
+          "Your chat → feedback and follow-up questions"
+        ]
+      },
+      {
+        heading: "Choose the briefing before choosing the channel",
+        paragraphs: [
+          "Start with the editorial contract. Decide when the brief runs, how many items it contains, what earns the top position, and what gets excluded. A good default is five news stories, three builds, and two conversations, but a smaller brief is usually better than a complete one.",
+          "Tie the ranking to your role. A developer may prioritize framework releases and informed technical debates. A founder may want market shifts, launches, and adoption signals. A designer may want product changes and new interaction patterns. Trace accepts an optional role lens, while the agent can apply additional instructions."
+        ]
+      },
+      {
+        heading: "Telegram setup pattern",
+        paragraphs: [
+          "A Telegram workflow runs on your server or agent platform. It fetches the Trace brief with the Agent Key, turns the selected items into a message, and sends that message through Telegram’s sendMessage method using your bot token and chat ID.",
+          "Telegram works well for personal or small-team briefs because messages can include compact links and follow-up commands. Keep the Trace key and Telegram bot token as separate secrets."
+        ]
+      },
+      {
+        heading: "Discord and Slack setup pattern",
+        paragraphs: [
+          "For Discord or Slack, post the briefing into a dedicated channel instead of a busy general channel. Use a bot or webhook owned by your workspace, and include the source links beneath each item so readers can verify or go deeper.",
+          "A team brief becomes more useful when it has a consistent shape. Use the same heading order every day and let replies ask the agent for details. The initial message should stay short enough to scan on a phone."
+        ]
+      },
+      {
+        heading: "WhatsApp setup pattern",
+        paragraphs: [
+          "WhatsApp delivery normally uses the WhatsApp Cloud API or an approved provider. That environment has stricter messaging and template rules than a personal bot in Telegram. Your server still fetches the same Trace JSON, but the outbound message must comply with the WhatsApp Business setup attached to your account.",
+          "Do not use unofficial browser automation to send messages from a personal WhatsApp account. It is brittle, hard to secure, and can break platform rules."
+        ]
+      },
+      {
+        heading: "A prompt that produces a useful morning brief",
+        paragraphs: [
+          "Give the agent a stable editor role and explicit limits. For example: ‘At 8:30 AM on weekdays, fetch the Trace daily brief for a software founder. Select five news stories, two builds, and one technical conversation. For each, write one sentence on what happened and one sentence on why it matters. Link the best source. Skip duplicate angles and generic funding news. Send the result to our private Telegram chat.’",
+          "The agent can change the format without changing the data connection. That is the advantage of separating Trace retrieval from delivery."
+        ]
+      },
+      {
+        heading: "Reliability and security checklist",
+        bullets: [
+          "Run the job server-side; never expose either credential in a browser.",
+          "Use a fixed maximum number of items and message characters.",
+          "Include feed_date so a stale run is visible.",
+          "Do not send if retrieval fails; a missing brief is better than an invented one.",
+          "Keep source links so humans can verify important claims.",
+          "Revoke the Trace key and channel credential independently during offboarding."
+        ]
+      },
+      {
+        heading: "Start with the data connection",
+        paragraphs: [
+          "Connect Trace from the [Agent Access page](/agents), verify one real daily-brief call, and inspect the returned sections. Only then add scheduling and channel delivery. This order makes failures obvious: first prove retrieval, then formatting, then delivery.",
+          "Once the flow works, the same Trace connection can power more than one destination. A private Telegram brief, a Discord team post, and a weekly founder summary can all reuse the same read-only source while keeping their output rules separate."
+        ]
+      }
+    ]
+  },
+  {
     slug: "best-tech-news-aggregator-apps",
     title: "The 7 Best Tech News Aggregator Apps in 2026",
     subtitle: "Stop jumping between 47 tabs. These tools curate, summarize, and deliver tech news so you actually stay informed.",

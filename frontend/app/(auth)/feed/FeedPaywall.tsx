@@ -10,7 +10,6 @@ import {
   SUBSCRIPTION_PRICE_DEFAULT,
   SUBSCRIPTION_PRICE_INDIA,
 } from '@/lib/subscription-pricing';
-import SubscriptionPrice from '@/components/SubscriptionPrice';
 
 function pricingBulletText(line: string): string {
   return line.replace(/^[\s\S]*?\s{2,}/, '').trim() || line;
@@ -104,32 +103,6 @@ function guessClientPricing() {
     /* ignore */
   }
   return DEFAULT_PRICING;
-}
-
-/* ─── Upgrade CTA Card ─── */
-function UpgradeCard({ lockedCount }: { lockedCount: number }) {
-  return (
-    <div className="p-4 mx-5 my-3 rounded-xl bg-linear-to-br from-foreground/5 to-foreground/10 border border-foreground/8">
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-8 h-8 rounded-lg bg-foreground/10 flex items-center justify-center">
-          <Lock size={14} className="text-foreground/60" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-foreground">{lockedCount}+ more stories</p>
-          <p className="text-[11px] text-secondary/50">Unlock with Pro</p>
-        </div>
-      </div>
-      <Link
-        href="/profile?tab=subscription&intent=checkout"
-        prefetch={false}
-        onClick={() => trackCheckoutClicked('feed_upgrade_card_trending', { locked_count: lockedCount })}
-        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-sm font-semibold bg-foreground text-background transition-all hover:bg-foreground/90 hover:shadow-lg hover:shadow-black/10 hover:scale-[1.02] active:scale-[0.98]"
-      >
-        <Sparkles size={14} />
-        Upgrade to Pro
-      </Link>
-    </div>
-  );
 }
 
 /** Full-viewport click shield below the feed header: opens subscribe modal (logged-in, not subscribed) or sign-in prompt (unauthenticated). */
@@ -271,16 +244,10 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
             {!user ? (
               <>
                 <h2 id="feed-subscribe-lock-heading" className="text-[1.35rem] font-bold tracking-tight text-foreground leading-snug">
-                  Unlock Trace Pro
+                  Try Trace Pro free for 3 days
                 </h2>
                 <p className="mt-2.5 text-[13px] leading-relaxed text-secondary/55">
-                  Sign in to subscribe. Get unlimited reads at{' '}
-                  <SubscriptionPrice
-                    price={pricingPreview.priceDisplay}
-                    compareAt={pricingPreview.compareAtPriceDisplay}
-                    size="sm"
-                  />
-                  . Cancel anytime.
+                  Sign in to start your 3-day free trial. No charge until the trial ends.
                 </p>
                 <div className="mt-5 space-y-2.5">
                   {LANDING_PRICING_BULLET_POINTS.map((line) => (
@@ -299,7 +266,7 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
                       <Loader2 size={16} className="animate-spin" /> Signing in...
                     </>
                   ) : (
-                    'Subscribe to Pro →'
+                    'Start your free trial →'
                   )}
                 </button>
                 <button
@@ -313,16 +280,10 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
             ) : (
               <>
                 <h2 id="feed-subscribe-lock-heading" className="text-[1.35rem] font-bold tracking-tight text-foreground leading-snug">
-                  Unlock Trace Pro
+                  Try Trace Pro free for 3 days
                 </h2>
                 <p className="mt-2.5 text-[13px] leading-relaxed text-secondary/55">
-                  Get unlimited reads at{' '}
-                  <SubscriptionPrice
-                    price={pricingPreview.priceDisplay}
-                    compareAt={pricingPreview.compareAtPriceDisplay}
-                    size="sm"
-                  />
-                  . Cancel anytime.
+                  Get unlimited reads with no charge for 3 days. Cancel anytime.
                 </p>
                 <div className="mt-5 space-y-2.5">
                   {LANDING_PRICING_BULLET_POINTS.map((line) => (
@@ -341,7 +302,7 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
                       <Loader2 size={16} className="animate-spin" /> Setting up...
                     </>
                   ) : (
-                    'Subscribe to Pro →'
+                    'Start your free trial →'
                   )}
                 </button>
                 <button
@@ -389,7 +350,7 @@ export function InlineUnlockBanner({ storyCount, freeReadsUsed = 0 }: { storyCou
           className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90"
         >
           <Sparkles size={14} />
-          {limitReached ? 'Get tomorrow’s brief' : 'Unlock my daily brief'}
+          Try Pro free for 3 days
         </Link>
       </div>
     </div>
@@ -461,9 +422,11 @@ export function PaywallGate() {
       title: 'Feel caught up, then move on',
       desc: 'Finish the brief, close the tab, and get back to your day.',
     },
+    {
+      title: 'Give your agent the same brief',
+      desc: 'Connect AI tools and bots through read-only Agent Access.',
+    },
   ];
-  const priceDisplay = pricingPreview.priceDisplay;
-  const compareAtPriceDisplay = pricingPreview.compareAtPriceDisplay ?? null;
   const planName = pricingPreview.pricingOffer === 'india' ? 'Trace Pro India' : 'Trace Pro';
   return (
     <div className="w-full sm:rounded-2xl sm:bg-surface sm:shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
@@ -473,8 +436,7 @@ export function PaywallGate() {
           Your five-minute tech brief,<br />ready every morning.
         </h2>
         <p className="text-[14px] text-secondary/50 mb-10 leading-relaxed">
-          <SubscriptionPrice price={priceDisplay} compareAt={compareAtPriceDisplay} size="sm" />
-          {' '}· Cancel anytime.
+          Try Trace Pro free for 3 days. No charge until the trial ends.
         </p>
 
         <div className="space-y-5 mb-10">
@@ -495,11 +457,10 @@ export function PaywallGate() {
           disabled={loading}
           className="flex items-center justify-center gap-2 w-full py-3.5 rounded-full text-[13px] font-semibold bg-foreground text-background transition-all hover:bg-foreground/90 hover:shadow-md hover:shadow-black/10 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:scale-100"
         >
-          {loading ? <><Loader2 size={14} className="animate-spin" />Setting up...</> : 'Unlock my daily brief'}
+          {loading ? <><Loader2 size={14} className="animate-spin" />Setting up...</> : 'Start your free trial'}
         </button>
         <p className="text-[11px] text-secondary/35 mt-2.5 text-center">
-          <SubscriptionPrice price={priceDisplay} compareAt={compareAtPriceDisplay} size="sm" />
-          {' '}· Cancel anytime
+          No charge for 3 days · Cancel anytime
         </p>
       </div>
     </div>
@@ -572,14 +533,14 @@ export function PulseLockedPreview({
       </ul>
 
       <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-[12px] text-white/45">Included with Trace Pro · Cancel anytime</p>
+        <p className="text-[12px] text-white/45">Free for 3 days · Cancel anytime</p>
         <Link
           href="/profile?tab=subscription&intent=checkout"
           prefetch={false}
           onClick={() => trackCheckoutClicked('pulse_locked')}
           className="inline-flex shrink-0 items-center justify-center rounded-full bg-white px-5 py-2.5 text-[13px] font-semibold text-[#111827] transition-colors hover:bg-white/90"
         >
-          Unlock the full Pulse
+          Try Pro free for 3 days
         </Link>
       </div>
     </div>
@@ -623,7 +584,7 @@ export function FreeBlurGate({ hiddenCount, noun = 'stories' }: { hiddenCount: n
         trackingId="feed_blur_gate"
         compact
         title={`${hiddenCount} more ${noun} in today’s brief`}
-        subtitle="Get the full signal without the scroll. Cancel anytime."
+        subtitle="Get the full signal free for 3 days. Cancel anytime."
       />
     </div>
   );

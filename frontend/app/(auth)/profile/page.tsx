@@ -105,7 +105,7 @@ function ProfileContent() {
                 <p className="text-[14px] leading-[1.65]" style={{ color: MUTED }}>
                   {isSubscribed
                     ? 'Full access to all content and features.'
-                    : 'Upgrade to read the complete feed.'}
+                    : 'Try Pro free for 3 days to read the complete feed.'}
                 </p>
               </div>
               <button

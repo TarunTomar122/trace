@@ -260,7 +260,7 @@ function LockedSignalPreview({
             }}
             className="mt-4 inline-flex bg-[#2557d6] px-5 py-3 text-[13px] font-semibold text-white transition-colors hover:bg-[#1d48b4]"
           >
-            Try Trace Pro
+            Try Trace Pro free for 3 days
           </button>
         )}
       </div>

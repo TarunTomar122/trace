@@ -96,7 +96,7 @@ export function getPublicStoryCta(options: {
       promoTitle: 'Unlock your full feed with Trace Pro',
       promoCopy:
         'Get unlimited reads, Pulse signals, and a feed tuned to your interests. Cancel anytime.',
-      buttonLabel: 'Subscribe to Pro',
+      buttonLabel: 'Try Pro free for 3 days',
       showPromo: true,
     };
   }

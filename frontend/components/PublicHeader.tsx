@@ -20,6 +20,7 @@ export default function PublicHeader({
           <Link href="/compare" className="transition-colors hover:text-[#2557d6]">Compare</Link>
           <Link href="/blog" className="transition-colors hover:text-[#2557d6]">Guides</Link>
           <Link href="/resources" className="transition-colors hover:text-[#2557d6]">Resources</Link>
+          <Link href="/agents" className="transition-colors hover:text-[#2557d6]">Agents</Link>
         </nav>
         <Link href={ctaHref} className="border border-[#2557d6] px-3.5 py-1.5 text-[12px] font-semibold text-[#2557d6] transition-colors hover:bg-[#2557d6] hover:text-white">
           {ctaLabel}

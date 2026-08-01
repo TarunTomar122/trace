@@ -1,46 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { Check } from "lucide-react";
 import { trackCheckoutClicked } from "@/lib/posthog";
 import { LANDING_PRICING_BULLET_POINTS } from "@/lib/subscription-pricing-bullets";
-import {
-  SUBSCRIPTION_COMPARE_AT_DEFAULT,
-  SUBSCRIPTION_PRICE_DEFAULT,
-  SUBSCRIPTION_PRICE_INDIA,
-} from "@/lib/subscription-pricing";
-import SubscriptionPrice from "@/components/SubscriptionPrice";
-
-const INDIA_PRICING = {
-  priceDisplay: SUBSCRIPTION_PRICE_INDIA,
-  compareAtPriceDisplay: null as string | null,
-  pricingOffer: "india" as const,
-};
-const DEFAULT_PRICING = {
-  priceDisplay: SUBSCRIPTION_PRICE_DEFAULT,
-  compareAtPriceDisplay: SUBSCRIPTION_COMPARE_AT_DEFAULT,
-  pricingOffer: "default" as const,
-};
-
-type PricingInfo = {
-  priceDisplay: string;
-  compareAtPriceDisplay: string | null;
-  pricingOffer: "india" | "default";
-};
-
-function guessClientPricing(): PricingInfo {
-  try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (tz === "Asia/Kolkata") return INDIA_PRICING;
-    const lang = (navigator.language || "").toLowerCase();
-    if (lang === "en-in" || lang.endsWith("-in")) return INDIA_PRICING;
-  } catch {
-    /* ignore */
-  }
-  return DEFAULT_PRICING;
-}
-
 export default function PremiumCTASection({
   variant = "dark",
   className = "",
@@ -49,12 +13,6 @@ export default function PremiumCTASection({
   variant?: "dark" | "light";
   className?: string;
 }) {
-  const [pricing] = useState<PricingInfo>(() => guessClientPricing());
-
-  const planName =
-    pricing.pricingOffer === "india" ? "Trace Pro India" : "Trace Pro";
-  const priceTone = variant === "dark" ? "dark" : "light";
-
   if (variant === "light") {
     return (
     <section
@@ -62,30 +20,17 @@ export default function PremiumCTASection({
     >
         <div className="p-6 sm:p-8">
           <p className="text-[11px] font-semibold text-secondary/35 uppercase tracking-[0.2em] mb-4">
-            {planName}
+            Trace Pro
           </p>
           <h3 className="text-[1.5rem] font-bold tracking-[-0.03em] leading-[1.1] text-foreground sm:text-[1.75rem]">
             Your personal daily
             <br className="hidden sm:block" />
             advantage in tech
           </h3>
-          <div className="mt-3">
-            <SubscriptionPrice
-              price={pricing.priceDisplay}
-              compareAt={pricing.compareAtPriceDisplay}
-              size="lg"
-            />
-          </div>
+          <p className="mt-3 text-[30px] font-semibold leading-none tracking-[-0.03em]">Try Trace Pro free</p>
           <p className="mt-3 text-[14px] text-secondary/50 leading-[1.7] max-w-md">
             Deeper context, smarter filtering, and signal over noise — in one
-            daily pulse at{' '}
-            <SubscriptionPrice
-              price={pricing.priceDisplay}
-              compareAt={pricing.compareAtPriceDisplay}
-              size="sm"
-              tone={priceTone}
-            />
-            .
+            daily pulse. Try it free for 3 days with no charge until the trial ends.
           </p>
           <div className="mt-6 space-y-3">
             {LANDING_PRICING_BULLET_POINTS.map((line) => (
@@ -107,16 +52,10 @@ export default function PremiumCTASection({
             onClick={() => trackCheckoutClicked("premium_cta_light")}
             className="mt-6 inline-flex items-center justify-center w-full sm:w-auto rounded-full bg-foreground px-6 py-3.5 text-[13px] font-semibold text-background transition-all hover:bg-foreground/90 hover:scale-[1.01] active:scale-[0.99]"
           >
-            Subscribe to Pro
+            Start your free trial
           </Link>
           <p className="mt-3 text-[12px] leading-snug text-secondary/40">
-            <SubscriptionPrice
-              price={pricing.priceDisplay}
-              compareAt={pricing.compareAtPriceDisplay}
-              size="sm"
-              tone={priceTone}
-            />{" "}
-            · Cancel anytime
+            No charge for 3 days · Cancel anytime
           </p>
         </div>
       </section>
@@ -129,31 +68,16 @@ export default function PremiumCTASection({
     >
       <div className="bg-gradient-to-br from-white/[0.04] to-transparent p-6 sm:p-8">
         <p className="text-[11px] font-semibold text-white/25 uppercase tracking-[0.2em] mb-5">
-          {planName}
+          Trace Pro
         </p>
         <h3 className="text-[1.5rem] font-bold tracking-[-0.03em] leading-[1.1] text-white sm:text-[1.75rem]">
           Your personal daily
           <br className="hidden sm:block" />
           advantage in tech
         </h3>
-        <div className="mt-3">
-          <SubscriptionPrice
-            price={pricing.priceDisplay}
-            compareAt={pricing.compareAtPriceDisplay}
-            size="lg"
-            tone="dark"
-          />
-        </div>
         <p className="mt-3 text-[14px] text-white/40 leading-[1.7] max-w-md">
           Deeper context, smarter filtering, and signal over noise — in one
-          daily pulse at{" "}
-          <SubscriptionPrice
-            price={pricing.priceDisplay}
-            compareAt={pricing.compareAtPriceDisplay}
-            size="sm"
-            tone="dark"
-          />
-          .
+          daily pulse. Try it free for 3 days with no charge until the trial ends.
         </p>
         <div className="mt-6 space-y-3">
           {LANDING_PRICING_BULLET_POINTS.map((line) => (
@@ -175,16 +99,10 @@ export default function PremiumCTASection({
           onClick={() => trackCheckoutClicked("premium_cta_dark")}
           className="mt-6 inline-flex items-center justify-center w-full rounded-full bg-white px-6 py-3.5 text-[13px] font-semibold text-[#151515] transition-all hover:bg-white/90 hover:scale-[1.01] active:scale-[0.99]"
         >
-          Subscribe to Pro
+          Start your free trial
         </Link>
         <p className="mt-3 text-center text-[12px] leading-snug text-white/35">
-          <SubscriptionPrice
-            price={pricing.priceDisplay}
-            compareAt={pricing.compareAtPriceDisplay}
-            size="sm"
-            tone="dark"
-          />{" "}
-          · Cancel anytime
+          No charge for 3 days · Cancel anytime
         </p>
       </div>
     </section>

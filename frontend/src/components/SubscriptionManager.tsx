@@ -452,7 +452,7 @@ export default function SubscriptionManager() {
           <h2 className="text-xl font-bold text-foreground tracking-[-0.02em] leading-snug mb-1.5">
             The news habit that<br />doesn't waste your time.
           </h2>
-          <p className="text-[13px] text-secondary/50">Try free for {trialDays} days. No charge until the trial ends.</p>
+          <p className="text-[13px] text-secondary/50">Try Pro free for {trialDays} days. No charge until the trial ends.</p>
         </div>
 
         <div className="space-y-4 pb-7 border-b border-border/15">
@@ -481,7 +481,7 @@ export default function SubscriptionManager() {
             {isCreatingCheckout ? (
               <><Loader2 className="animate-spin" size={15} />Setting up your trial...</>
             ) : (
-              <>Start {trialDays}-Day Free Trial</>
+              <>Try Pro free for {trialDays} days</>
             )}
           </button>
           <p className="text-[11px] text-secondary/35 mt-2 text-center">

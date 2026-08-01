@@ -340,7 +340,7 @@ function ScrollFeedUnlockGate() {
             className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90"
           >
             <Sparkles size={14} />
-            Subscribe
+            Try Pro free for 3 days
           </Link>
         </div>
       </div>
@@ -1288,7 +1288,7 @@ function DesktopArticlePageView({
                 className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background"
               >
                 <Sparkles size={14} />
-                Subscribe
+                Try Pro free for 3 days
               </Link>
             </div>
           ) : isContentLoading && !selectedContent?.body ? (
@@ -1444,7 +1444,7 @@ function DesktopArticlePageView({
                     )}
                     <p className="mt-5 text-[17px] font-semibold text-foreground">Unlock the full brief</p>
                     <p className="mt-1 text-[14px] leading-6 text-secondary/60">
-                      You've used your free reads for today. Upgrade to Pro for unlimited access.
+                      You&apos;ve used your free reads for today. Try Pro free for 3 days for unlimited access.
                     </p>
                     <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-secondary/70">
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground/6 px-2.5 py-1">
@@ -1462,7 +1462,7 @@ function DesktopArticlePageView({
                       className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background"
                     >
                       <Sparkles size={14} />
-                      Subscribe
+                      Try Pro free for 3 days
                     </Link>
                   </div>
                 ) : !hasBody ? (
@@ -1798,7 +1798,7 @@ function LockedStoryPanel({ story }: { story: FeedListItem }) {
               className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90"
             >
               <Sparkles size={14} />
-              Subscribe
+              Try Pro free for 3 days
             </Link>
           </div>
         </div>
@@ -2153,7 +2153,7 @@ export default function FeedBriefingView({
                     className="mt-5 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background"
                   >
                     <Sparkles size={14} />
-                    Subscribe
+                    Try Pro free for 3 days
                   </Link>
                 </div>
               ) : isContentLoading && !selectedContent?.body ? (

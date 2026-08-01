@@ -14,7 +14,7 @@ function UpgradeCard({ lockedCount }: { lockedCount: number }) {
         </div>
         <div>
           <p className="text-sm font-semibold text-foreground">{lockedCount}+ more stories</p>
-          <p className="text-[11px] text-secondary/50">Unlock with Pro</p>
+          <p className="text-[11px] text-secondary/50">Try Pro free for 3 days</p>
         </div>
       </div>
       <Link
@@ -24,7 +24,7 @@ function UpgradeCard({ lockedCount }: { lockedCount: number }) {
         className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-sm font-semibold bg-foreground text-background transition-all hover:bg-foreground/90 hover:shadow-lg hover:shadow-black/10 hover:scale-[1.02] active:scale-[0.98]"
       >
         <Sparkles size={14} />
-        Start Free Trial
+        Try Pro free for 3 days
       </Link>
     </div>
   );
@@ -54,7 +54,7 @@ export function InlineUnlockBanner({ storyCount }: { storyCount: number }) {
           className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90"
         >
           <Sparkles size={14} />
-          Subscribe to unlock
+          Try Pro free for 3 days
         </Link>
       </div>
     </div>
@@ -151,7 +151,7 @@ export function PaywallGate() {
           The news habit that<br />doesn't waste your time.
         </h2>
         <p className="text-[14px] text-secondary/50 mb-10 leading-relaxed">
-          Try it free for {trialDays} {trialDays === 1 ? 'day' : 'days'}. No charge until the trial ends.
+          Try Pro free for {trialDays} {trialDays === 1 ? 'day' : 'days'}. No charge until the trial ends.
         </p>
 
         <div className="space-y-5 mb-10">
@@ -172,7 +172,7 @@ export function PaywallGate() {
           disabled={loading}
           className="flex items-center justify-center gap-2 w-full py-3.5 rounded-full text-[13px] font-semibold bg-foreground text-background transition-all hover:bg-foreground/90 hover:shadow-md hover:shadow-black/10 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:scale-100"
         >
-          {loading ? <><Loader2 size={14} className="animate-spin" />Setting up your trial...</> : `Start ${trialDays}-Day Free Trial`}
+          {loading ? <><Loader2 size={14} className="animate-spin" />Setting up your trial...</> : `Try Pro free for ${trialDays} days`}
         </button>
         <p className="text-[11px] text-secondary/35 mt-2.5 text-center">{priceDisplay} after {trialDays} {trialDays === 1 ? 'day' : 'days'} · Cancel anytime</p>
       </div>
