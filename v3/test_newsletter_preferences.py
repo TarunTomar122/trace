@@ -2,7 +2,10 @@ import unittest
 
 from v1.newsletter_preferences import is_newsletter_enabled
 from v3.flows.send_three_feed_newsletter import (
+    _editorial_briefing,
     _edition_is_complete,
+    _takeaway_review_is_complete,
+    _editorial_model_options,
     _has_required_mix,
     _pick_items,
     _render_item,
@@ -15,6 +18,20 @@ class NewsletterPreferenceTests(unittest.TestCase):
         self.assertFalse(is_newsletter_enabled({}))
         self.assertFalse(is_newsletter_enabled({"dailyNewsletterEnabled": False}))
         self.assertTrue(is_newsletter_enabled({"dailyNewsletterEnabled": True}))
+
+    def test_gpt5_editorial_options_omit_unsupported_temperature(self):
+        self.assertEqual(
+            _editorial_model_options("gpt-5-mini", 100, 0.4),
+            {"max_completion_tokens": 100, "reasoning_effort": "minimal"},
+        )
+
+    def test_takeaway_review_requires_every_source_url(self):
+        items = [{"url": "https://example.com/story"}]
+        self.assertTrue(_takeaway_review_is_complete({"stories": [{
+            "url": items[0]["url"],
+            "takeaways": [],
+        }]}, items))
+        self.assertFalse(_takeaway_review_is_complete({"stories": []}, items))
 
     def test_legacy_explicit_opt_in_remains_valid(self):
         self.assertTrue(is_newsletter_enabled({"newsletterOptIn": True}))
@@ -99,6 +116,46 @@ class NewsletterPreferenceTests(unittest.TestCase):
         self.assertIn('href="https://example.com/story"', html)
         self.assertEqual(html.count('href="https://example.com/story"'), 1)
         self.assertNotIn("Open original source", html)
+        self.assertIn("background: #d8d2c8", html)
+
+    def test_newsletter_story_renders_the_model_takeaways_unchanged(self):
+        html = _render_item({
+            "url": "https://example.com/story",
+            "title": "Story",
+            "editorial_body": "Apple released a robotics model for warehouse control.",
+            "editorial_takeaways": [
+                "It runs on-device.",
+                "It uses a warehouse-specific control loop.",
+            ],
+        })
+        self.assertEqual(html.count("Apple released a robotics model for warehouse control."), 1)
+        self.assertIn("It runs on-device.", html)
+        self.assertIn("It uses a warehouse-specific control loop.", html)
+
+    def test_newsletter_story_does_not_fall_back_to_source_takeaways(self):
+        html = _render_item({
+            "url": "https://example.com/story",
+            "title": "Story",
+            "editorial_body": "A model was released for warehouse control.",
+            "summary": {"short_article": {"slides": ["Slide 1: It runs on-device."]}},
+        })
+        self.assertNotIn("It runs on-device.", html)
+        self.assertNotIn("Key takeaways", html)
+
+    def test_editorial_briefing_keeps_candidate_takeaways_for_the_editor(self):
+        briefing = _editorial_briefing([{
+            "url": "https://example.com/story",
+            "title": "Story",
+            "newsletter_group": "top_stories",
+            "summary": {
+                "short_article": {
+                    "body": "The company launched a model.",
+                    "slides": ["Slide 1: The model has 2.4 trillion parameters."],
+                },
+            },
+        }])
+        self.assertEqual(briefing[0]["takeaways"], ["The model has 2.4 trillion parameters."])
+        self.assertEqual(briefing[0]["format"], "two short paragraphs")
 
     def test_newsletter_story_omits_missing_image(self):
         html = _render_item({

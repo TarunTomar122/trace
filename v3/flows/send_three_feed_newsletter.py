@@ -32,12 +32,23 @@ from v3.lib.store import V3Store  # noqa: E402
 NEWSLETTER_INTERESTS = ("ai", "startups", "engineering")
 NEWS_STORY_COUNTS = {"ai": 3, "startups": 1, "engineering": 1}
 PULSE_COUNTS = {"tools": 2, "discussions": 1, "blogs": 1}
-EDITORIAL_VERSION = "builder_digest_v5"
-EDITORIAL_MODEL = os.getenv("NEWSLETTER_WRITE_MODEL", "gpt-4o-mini")
+EDITORIAL_VERSION = "builder_digest_v14"
+EDITORIAL_MODEL = os.getenv("NEWSLETTER_WRITE_MODEL", "gpt-5-mini")
 
 def _today_ist() -> str:
     ist = timezone(timedelta(hours=5, minutes=30))
     return datetime.now(ist).strftime("%Y-%m-%d")
+
+
+def _editorial_model_options(
+    model: str,
+    limit: int,
+    temperature: float,
+) -> dict[str, int | float]:
+    """Use only the Chat Completions parameters accepted by the selected model."""
+    if model.startswith("gpt-5"):
+        return {"max_completion_tokens": limit, "reasoning_effort": "minimal"}
+    return {"max_tokens": limit, "temperature": temperature}
 
 
 def _load_template(name: str) -> str:
@@ -182,33 +193,39 @@ def _summary_body(item: dict[str, Any]) -> str:
 def _key_takeaways(item: dict[str, Any]) -> list[str]:
     editorial = item.get("editorial_takeaways")
     if isinstance(editorial, list):
-        return [_plain_text(value) for value in editorial if _plain_text(value)][:3]
+        return [_plain_text(value) for value in editorial if _plain_text(value)]
+    return []
 
+
+def _takeaway_candidates(item: dict[str, Any]) -> list[str]:
     summary = item.get("summary", {})
     short = summary.get("short_article", {}) if isinstance(summary, dict) else {}
     if not isinstance(short, dict):
         return []
 
-    takeaways: list[str] = []
+    candidates: list[str] = []
     for value in list(short.get("key_takeaways", []) or []) + list(short.get("slides", []) or []):
         cleaned = re.sub(r"^Slide \d+:\s*", "", _plain_text(value), flags=re.IGNORECASE)
-        if cleaned and cleaned not in takeaways:
-            takeaways.append(cleaned)
-        if len(takeaways) >= 3:
-            break
-    return takeaways
+        if cleaned and cleaned not in candidates:
+            candidates.append(cleaned)
+    return candidates[:3]
 
 
 def _editorial_briefing(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [
         {
             "section": item.get("newsletter_group", ""),
+            "format": (
+                "two short paragraphs"
+                if item.get("newsletter_group") == "top_stories"
+                else "one compact paragraph"
+            ),
             "category": item.get("interest_id", ""),
             "title": item.get("title", ""),
             "source": _source_name(item),
             "url": item.get("url", ""),
             "facts": _summary_body(item),
-            "takeaways": _key_takeaways(item),
+            "takeaways": _takeaway_candidates(item),
         }
         for item in items
     ]
@@ -226,6 +243,22 @@ def _edition_is_complete(edition: dict[str, Any], items: list[dict[str, Any]]) -
     return all(
         (story := by_url.get(str(item.get("url", "")).strip()))
         and _plain_text(story.get("body", ""))
+        and isinstance(story.get("takeaways"), list)
+        for item in items
+    )
+
+
+def _takeaway_review_is_complete(review: dict[str, Any], items: list[dict[str, Any]]) -> bool:
+    stories = review.get("stories")
+    if not isinstance(stories, list):
+        return False
+    by_url = {
+        str(story.get("url", "")).strip(): story
+        for story in stories
+        if isinstance(story, dict)
+    }
+    return all(
+        (story := by_url.get(str(item.get("url", "")).strip()))
         and isinstance(story.get("takeaways"), list)
         for item in items
     )
@@ -267,16 +300,30 @@ def _build_editorial_edition(
         "The reader should understand every item without opening a link. This is an editorial "
         "rewrite, not a new summary: use only the supplied facts and never add facts, numbers, "
         "quotes, opinions, or implications that are not supported by the briefing.\n\n"
-        "Write like a sharp, calm technology editor. Make the edition flow naturally and make "
-        "technical material easy to read without dumbing it down. Avoid hype, filler, greetings, "
-        "marketing language, and phrases such as 'the key takeaway'.\n\n"
+        "Write with the energy of a smart technology newsroom: sharp, warm, and lightly playful when "
+        "the facts make room for it. Lead with the twist, tension, or surprising detail rather than "
+        "a generic announcement. A clean aside is welcome once or twice in the edition; never force a "
+        "joke or invent colour. Prefer active, concrete language. Never use corporate filler such as "
+        "'significant leap', 'rapidly evolving landscape', 'notable progress', 'reflects a practical "
+        "approach', 'showcasing', or 'further diversifying'. Make technical material easy to read "
+        "without dumbing it down. "
+        "Avoid hype, filler, greetings, marketing language, and phrases such as 'the key takeaway'.\n\n"
         "Rules:\n"
-        "- Write a 25-40 word intro that gives the shape of the day.\n"
+        "- Write a 25-40 word intro that gives the shape of the day through two actual stories and has "
+        "one human, conversational turn of phrase grounded in those facts. Never "
+        "open with 'Today', 'This edition', or 'We dive', and never call it a 'tech landscape'.\n"
         "- Keep every supplied story, in the same order and section.\n"
         "- Preserve each title and URL exactly.\n"
-        "- Give every item one compact paragraph suitable for a quick email scan.\n"
-        "- Keep builds and conversations especially brief.\n"
-        "- Add at most 2 factual takeaways only when they add information not already in the body.\n"
+        "- Follow each story's format field exactly. Top stories use two short paragraphs; every other "
+        "story gets one compact paragraph. Never add a vague closing sentence to fill space.\n"
+        "- Rewrite the supplied facts in original language. State a specific fact instead of making a "
+        "broad conclusion about a company, industry, or strategy.\n"
+        "- Treat the supplied takeaways as a fact bank. For every top story that has candidates, reserve "
+        "at least one candidate fact for a takeaway rather than mentioning its core detail in the body. "
+        "A takeaway must be a distinct concrete detail (a number, date, name, comparison, or constraint) "
+        "not stated or substantially paraphrased in the body. Empty is better than repetition.\n"
+        "- Before responding, compare every takeaway against its story at the meaning level. Remove any "
+        "takeaway that repeats, paraphrases, generalizes, or merely concludes what the body already says.\n"
         "- Never pad thin material or invent detail to reach a length target.\n"
         "- The subject must be concrete, plain, and under 55 characters.\n\n"
         f"Briefing:\n{json.dumps(briefing, ensure_ascii=False)}\n\n"
@@ -290,7 +337,7 @@ def _build_editorial_edition(
         client = OpenAI(api_key=api_key)
         response = client.chat.completions.create(
             model=EDITORIAL_MODEL,
-            temperature=0.4,
+            **_editorial_model_options(EDITORIAL_MODEL, 6000, 0.4),
             response_format={"type": "json_object"},
             messages=[
                 {
@@ -308,60 +355,85 @@ def _build_editorial_edition(
         print(f"[newsletter] editorial rewrite failed: {exc}")
         return {}
 
+    if not _edition_is_complete(written, items):
+        print("[newsletter] editorial draft is incomplete")
+        return {}
+
+    review_prompt = (
+        "You are Trace's final editor. Return a corrected final edition, using only the factual briefing. "
+        "Do not summarize the review or explain your choices. Preserve the subject, intro, every title, "
+        "every URL, story order, and section. Keep every story's required paragraph format.\n\n"
+        "Remove corporate filler and vague closing sentences while preserving all supported detail. Leave "
+        "takeaway selection to the specialist editor that follows.\n\n"
+        f"Briefing:\n{json.dumps(briefing, ensure_ascii=False)}\n\n"
+        f"Draft:\n{json.dumps(written, ensure_ascii=False)}\n\n"
+        "Return only JSON in the original edition shape."
+    )
     try:
         response = client.chat.completions.create(
             model=EDITORIAL_MODEL,
-            temperature=0.2,
+            **_editorial_model_options(EDITORIAL_MODEL, 6000, 0.2),
             response_format={"type": "json_object"},
             messages=[
                 {
                     "role": "system",
-                    "content": (
-                        "You are the final copy editor for a technology email newsletter. "
-                        "Use only the supplied facts and never invent information."
-                    ),
+                    "content": "You are a meticulous factual copy editor. Return valid JSON only.",
                 },
-                {
-                    "role": "user",
-                    "content": (
-                        "Edit this draft for fast email reading. Use editorial judgment, not fixed "
-                        "word counts. Make each story one short, complete paragraph; remove "
-                        "secondary details and repetition; never pad thin items. Preserve every URL "
-                        "and story order. Keep no more than two non-repetitive takeaways per story. "
-                        "Return only JSON with the same subject, intro, and stories shape.\n\n"
-                        f"Facts:\n{json.dumps(briefing, ensure_ascii=False)}\n\n"
-                        f"Draft:\n{json.dumps(written, ensure_ascii=False)}"
-                    ),
-                },
+                {"role": "user", "content": review_prompt},
             ],
         )
-        written = json.loads(response.choices[0].message.content or "{}")
+        reviewed = json.loads(response.choices[0].message.content or "{}")
     except Exception as exc:
-        print(f"[newsletter] newsletter copy edit failed: {exc}")
+        print(f"[newsletter] editorial review failed: {exc}")
+        return {}
+    if not _edition_is_complete(reviewed, items):
+        print("[newsletter] editorial review is incomplete")
         return {}
 
-    drafts = {
-        str(story.get("url", "")).strip(): story
-        for story in written.get("stories", [])
-        if isinstance(story, dict) and str(story.get("url", "")).strip()
-    }
-
-    stories = []
-    for item in items:
-        url = str(item.get("url", "")).strip()
-        draft = drafts.get(url, {})
-        body = _plain_text(draft.get("body", ""))
-        takeaways = draft.get("takeaways", [])
-        if not body or not isinstance(takeaways, list):
-            print(f"[newsletter] copy edit omitted required story: {url}")
-            return {}
-        stories.append(
-            {
-                "url": url,
-                "body": body,
-                "takeaways": [_plain_text(value) for value in takeaways if _plain_text(value)][:2],
-            }
+    takeaway_prompt = (
+        "You are Trace's takeaway editor. You are not writing story bodies. For every story, decide whether "
+        "it deserves one final takeaway or an empty list. The supplied candidate fact bank is the only source "
+        "for a takeaway. Treat the draft body as authoritative for what the reader has already learned.\n\n"
+        "Keep a candidate only when it adds a concrete fact absent from the body at the meaning level. A fact "
+        "is disqualified when the body states it directly, paraphrases it, names the same event and entities, "
+        "or already gives its implication. Do not turn a body conclusion into a takeaway. Empty is the normal "
+        "answer when no candidate survives. Return at most one candidate per story, in your own clear wording.\n\n"
+        f"Fact bank:\n{json.dumps(briefing, ensure_ascii=False)}\n\n"
+        f"Finished bodies:\n{json.dumps(reviewed, ensure_ascii=False)}\n\n"
+        'Return only JSON: {"stories":[{"url":"exact source URL","takeaways":["..."]}]}. '
+        "Include every source URL exactly once and no other fields."
+    )
+    try:
+        response = client.chat.completions.create(
+            model=EDITORIAL_MODEL,
+            **_editorial_model_options(EDITORIAL_MODEL, 2000, 0.2),
+            response_format={"type": "json_object"},
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a strict semantic editor. Return valid JSON only.",
+                },
+                {"role": "user", "content": takeaway_prompt},
+            ],
         )
+        takeaway_review = json.loads(response.choices[0].message.content or "{}")
+    except Exception as exc:
+        print(f"[newsletter] takeaway review failed: {exc}")
+        return {}
+    if not _takeaway_review_is_complete(takeaway_review, items):
+        print("[newsletter] takeaway review is incomplete")
+        return {}
+
+    reviewed_by_url = {
+        str(story.get("url", "")).strip(): story
+        for story in reviewed.get("stories", [])
+        if isinstance(story, dict)
+    }
+    takeaways_by_url = {
+        str(story.get("url", "")).strip(): story.get("takeaways", [])
+        for story in takeaway_review.get("stories", [])
+        if isinstance(story, dict)
+    }
 
     edition = {
         "version": EDITORIAL_VERSION,
@@ -369,9 +441,21 @@ def _build_editorial_edition(
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "model": EDITORIAL_MODEL,
         "fingerprint": fingerprint,
-        "subject": _plain_text(written.get("subject", "")),
-        "intro": _plain_text(written.get("intro", "")),
-        "stories": stories,
+        "subject": _plain_text(reviewed.get("subject", "")),
+        "intro": _plain_text(reviewed.get("intro", "")),
+        "stories": [
+            {
+                "url": str(item.get("url", "")).strip(),
+                "body": _plain_text(
+                    reviewed_by_url[str(item.get("url", "")).strip()].get("body", "")
+                ),
+                "takeaways": [
+                    _plain_text(value)
+                    for value in takeaways_by_url[str(item.get("url", "")).strip()]
+                ],
+            }
+            for item in items
+        ],
     }
     if not _edition_is_complete(edition, items):
         return {}
@@ -456,7 +540,7 @@ def _render_item(item: dict[str, Any]) -> str:
     return (
         '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0;">'
         f"{image_block}"
-        '<tr><td style="padding: 18px 0 30px 0; border-bottom: 1px solid #e8e4dc;">'
+        '<tr><td style="padding: 18px 0 26px 0;">'
         f'<p style="margin: 0 0 9px 0; font-size: 11px; color: #777268; letter-spacing: 1.1px; '
         f'font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700;">{label} &nbsp;&middot;&nbsp; {source}</p>'
         f'<a href="{url}" style="display: block; margin: 0 0 10px 0; font-size: 25px; '
@@ -464,7 +548,10 @@ def _render_item(item: dict[str, Any]) -> str:
         f'color: #171714; text-decoration: none; line-height: 1.2;">{title}</a>'
         f"{summary_html}"
         f"{takeaways_block}"
-        "</td></tr></table>"
+        "</td></tr>"
+        '<tr><td style="padding: 0 0 30px 0;"><table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
+        '<td height="1" style="height: 1px; line-height: 1px; font-size: 1px; background: #d8d2c8;">&nbsp;</td>'
+        "</tr></table></td></tr></table>"
     )
 
 
