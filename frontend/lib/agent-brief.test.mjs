@@ -34,3 +34,44 @@ test('buildAgentBrief separates news, builds, and conversations and caps output'
   assert.deepEqual(brief.conversations.map(({ id }) => id), ['chat-2']);
   assert.equal(brief.builds[0].why_it_matters, 'Build one matters');
 });
+
+test('buildAgentBrief gives the agent the first three grouped topics', () => {
+  const topics = Array.from({ length: 4 }, (_, index) => ({
+    id: `topic-${index + 1}`,
+    topic_key: `topic-${index + 1}`,
+    title: `Topic ${index + 1}`,
+    summary: `Summary ${index + 1}`,
+  }));
+
+  const brief = buildAgentBrief({
+    date: '2026-08-04',
+    for_you: [],
+    trending: [],
+    trending_topics: topics,
+  }, 3);
+
+  assert.deepEqual(brief.top_news.map(({ id }) => id), ['topic-1', 'topic-2', 'topic-3']);
+});
+
+test('buildAgentBrief fills a partial topic list with current news', () => {
+  const newsItem = (id) => ({
+    id,
+    title: id,
+    url: `https://example.com/${id}`,
+    summary: { short_article: { subtitle: `${id} summary` } },
+  });
+
+  const brief = buildAgentBrief({
+    date: '2026-08-04',
+    for_you: [newsItem('news-3')],
+    trending: [newsItem('news-1'), newsItem('news-2')],
+    trending_topics: [{
+      id: 'topic-1',
+      topic_key: 'topic-1',
+      title: 'Topic 1',
+      summary: 'Topic 1 summary',
+    }],
+  }, 3);
+
+  assert.deepEqual(brief.top_news.map(({ id }) => id), ['topic-1', 'news-1', 'news-2']);
+});

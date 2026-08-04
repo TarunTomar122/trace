@@ -22,6 +22,7 @@ import {
   HOME_FAQ_ITEMS,
   HOME_INTENT_LINKS,
 } from '@/lib/home-seo';
+import { SUBSCRIPTION_PRICE_DEFAULT } from '@/lib/subscription-pricing';
 
 const SOURCES = [
   'Hacker News', 'GitHub', 'Simon Willison', 'AI Engineer', 'Theo', 'Fireship',
@@ -204,7 +205,7 @@ export default function LandingPageClient({
           </div>
         </section>
 
-        <AgentAccessLanding />
+        <AgentAccessLanding feed={editionFeed} />
 
         <section className="py-16 sm:py-20">
           <div className="mx-auto max-w-[1500px] border-y border-[#e4e1d8] px-4 py-10 sm:px-16 lg:px-24">
@@ -266,6 +267,7 @@ export default function LandingPageClient({
               <div className="flex flex-col justify-center bg-[#2557d6] p-7 text-white sm:p-10">
                 <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">3 days on us</p>
                 <p className="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em]">Try Trace Pro free</p>
+                <p className="mt-3 text-[14px] font-medium text-white/90">3 days free, then {SUBSCRIPTION_PRICE_DEFAULT}</p>
                 <button type="button" onClick={() => subscribe('pro')} className="mt-7 bg-white px-5 py-3 text-[14px] font-semibold text-[#2557d6] hover:bg-[#f5f3ed]">Start your free trial</button>
                 <p className="mt-3 text-center text-[12px] text-white/70">No charge for 3 days · Cancel anytime.</p>
               </div>

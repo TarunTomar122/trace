@@ -91,6 +91,9 @@ export function buildAgentBrief(feed: V3UserFeed, requestedLimit = 8): AgentBrie
   const fallbackNews = unique([...(feed.trending || []), ...(feed.for_you || [])])
     .slice(0, limit)
     .map(fromFeedItem);
+  const topNews = [...topics, ...fallbackNews]
+    .filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index)
+    .slice(0, limit);
   const builds = unique([...(feed.build_pulse || []), ...(feed.daily_pulse?.tools || [])])
     .slice(0, limit)
     .map(fromFeedItem);
@@ -105,7 +108,7 @@ export function buildAgentBrief(feed: V3UserFeed, requestedLimit = 8): AgentBrie
     feed_date: feed.date,
     assembled_at: feed.assembled_at,
     generated_at: new Date().toISOString(),
-    top_news: topics.length > 0 ? topics : fallbackNews,
+    top_news: topNews,
     builds,
     conversations,
   };

@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Bot, Check, Copy, MessageCircle, Newspaper, Rocket, Terminal } from 'lucide-react';
+import type { V3UserFeed } from '@/lib/firestore';
+import { buildAgentBrief } from '@/lib/agent-brief';
 
 const setupPrompt = `Connect this agent to Trace as a read-only MCP server.
 
@@ -11,8 +13,9 @@ Authentication: Bearer token from the TRACE_AGENT_KEY environment variable
 
 Keep the key out of source control and logs. After setup, call get_daily_tech_brief and show me today's top tech news, builds, and conversations.`;
 
-export default function AgentAccessLanding() {
+export default function AgentAccessLanding({ feed }: { feed: V3UserFeed | null }) {
   const [copied, setCopied] = useState(false);
+  const topStories = feed ? buildAgentBrief(feed, 3).top_news : [];
 
   const copyPrompt = async () => {
     await navigator.clipboard.writeText(setupPrompt);
@@ -59,13 +62,46 @@ export default function AgentAccessLanding() {
                   </div>
                 ))}
               </div>
-              <div className="mt-4 border border-[#202532] bg-[#151923] p-5 text-white">
-                <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                  <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-white/55"><Terminal size={13} /> Your agent</span>
-                  <span className="text-[10px] text-emerald-300">Trace connected</span>
+              <div className="mt-4 border border-[#202532] bg-[#151923] p-5 text-white sm:p-6">
+                <div className="flex items-center justify-between border-b border-[#343a47] pb-4">
+                  <span className="flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[#c7cbd4]"><Terminal size={14} /> Your agent</span>
+                  <span className="text-[11px] font-medium text-[#6ee7b7]">Trace connected</span>
                 </div>
-                <p className="mt-4 text-[13px] leading-[1.65] text-white/85">“Send my 8:30 AM tech brief to Telegram. Lead with AI model releases, then developer tools and the best technical debate.”</p>
-                <div className="mt-5 flex items-center gap-2 text-[11px] text-white/45"><Bot size={13} /> MCP or HTTPS → Telegram, WhatsApp, Discord, Slack, or your own app</div>
+                <p className="mt-4 text-[14px] leading-[1.7] text-[#eef0f4]">“Send my 8:30 AM tech brief to Telegram. Lead with AI model releases, then developer tools and the best technical debate.”</p>
+                {topStories.length > 0 && (
+                  <div className="mt-5 border-t border-[#343a47] pt-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[#6ee7b7]"><Bot size={14} /> Agent response</span>
+                      <span className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-[#a8afbd]">{topStories.length} top stories</span>
+                    </div>
+                    <p className="mt-3 text-[13px] leading-[1.65] text-[#c7cbd4]">Morning — here are the strongest signals in today&rsquo;s Trace:</p>
+                    <ol className="mt-4 border-t border-[#343a47]">
+                      {topStories.map((story, index) => {
+                        return (
+                          <li key={story.id} className="flex gap-4 border-b border-[#343a47] py-4 last:border-b-0">
+                            <span className="w-6 shrink-0 pt-0.5 font-mono text-[11px] font-medium text-[#a8afbd]">{String(index + 1).padStart(2, '0')}</span>
+                            <div className="min-w-0">
+                              {story.url ? (
+                                <a href={story.url} target="_blank" rel="noopener noreferrer" className="text-[14px] font-semibold leading-[1.5] text-white hover:text-[#6ee7b7] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#6ee7b7]">
+                                  {story.title}
+                                </a>
+                              ) : (
+                                <p className="text-[14px] font-semibold leading-[1.5] text-white">{story.title}</p>
+                              )}
+                              <p className="mt-1.5 line-clamp-2 text-[13px] leading-[1.6] text-[#c7cbd4]">{story.summary}</p>
+                              {story.sources.length > 0 && (
+                                <p className="mt-2 font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-[#a8afbd]">
+                                  {story.sources.length} {story.sources.length === 1 ? 'source' : 'sources'}
+                                </p>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  </div>
+                )}
+                <div className="mt-5 flex items-center gap-2 text-[12px] leading-[1.5] text-[#a8afbd]"><Bot size={14} className="shrink-0" /> MCP or HTTPS → Telegram, WhatsApp, Discord, Slack, or your own app</div>
               </div>
             </div>
           </div>

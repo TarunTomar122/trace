@@ -9,6 +9,7 @@ assert.match(html, /<link rel="canonical" href="https:\/\/www\.yourtrace\.online
 assert.match(html, /<meta property="og:title" content="Trace — AI and developer news in one focused feed"/);
 assert.match(html, /Trace is a focused AI and developer news aggregator\./);
 assert.match(html, /Trace vs\. following every source manually\./);
+assert.match(html, /3 days free, then (?:<!-- -->)?\$2\.99\/month/);
 
 const requiredLinks = [
   '/blog/free-news-aggregators-for-developers',
