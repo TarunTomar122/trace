@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -17,6 +17,11 @@ import Footer from '@/components/Footer';
 import HomeEditionPreview from './HomeEditionPreview';
 import AgentAccessLanding from '@/components/AgentAccessLanding';
 import type { V3UserFeed } from '@/lib/firestore';
+import {
+  HOME_COMPARISON_ROWS,
+  HOME_FAQ_ITEMS,
+  HOME_INTENT_LINKS,
+} from '@/lib/home-seo';
 
 const SOURCES = [
   'Hacker News', 'GitHub', 'Simon Willison', 'AI Engineer', 'Theo', 'Fireship',
@@ -42,25 +47,22 @@ const SURFACES: { icon: LucideIcon; label: string; title: string; body: string }
   { icon: Zap, label: '04 · Videos and articles', title: 'Videos and articles', body: 'Summaries and key takeaways from technical videos and independent writers.' },
 ];
 
-const FAQ_ITEMS = [
-  { q: 'What is Trace?', a: 'Trace is a feed for builders. It combines aggregated technology news with open-source projects, technical conversations, creator videos, and practitioner writing.' },
-  { q: 'Who is Trace for?', a: 'Builders. Developers are the center of the feed, with useful product, design, startup, and AI context mixed in.' },
-  { q: 'Do I need an account?', a: 'No. You can open the feed and start reading immediately.' },
-  { q: 'What does Trace Pro include?', a: 'Every news story, video summary, key takeaway, project, discussion, and source link, plus read-only Agent Access for your AI tools and bots.' },
-  { q: 'How does Trace choose what matters?', a: 'It groups duplicate coverage, puts the most consequential stories first, and keeps the source trail available when you want to go deeper.' },
-  { q: 'How often is Trace updated?', a: 'New technology news, projects, discussions, videos, and articles are added throughout the day.' },
-  { q: 'Where can I read Trace?', a: 'Read on the web or use the Android app.' },
-];
-
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
+  const answerId = useId();
   return (
     <div className="border-b border-[#e4e1d8] last:border-0">
-      <button type="button" onClick={() => setOpen(!open)} className="flex w-full items-center justify-between gap-4 py-5 text-left">
+      <button
+        type="button"
+        aria-controls={answerId}
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between gap-4 py-5 text-left"
+      >
         <span className="text-[16px] font-medium">{q}</span>
         <ChevronDown size={16} className={'text-[#75705f] transition-transform ' + (open ? 'rotate-180' : '')} />
       </button>
-      {open && <p className="max-w-[640px] pb-5 text-[14px] leading-[1.7] text-[#75705f]">{a}</p>}
+      <p id={answerId} hidden={!open} className="max-w-[640px] pb-5 text-[14px] leading-[1.7] text-[#75705f]">{a}</p>
     </div>
   );
 }
@@ -171,7 +173,7 @@ export default function LandingPageClient({
                   The fastest way to catch up on AI &amp; Tech
                 </h1>
                 <p className="mt-6 max-w-[620px] text-[16px] leading-[1.7] text-[#75705f] sm:text-[18px]">
-                  Read AI and developer news, open-source projects, technical discussions, videos, and articles.
+                  Trace is a focused AI and developer news aggregator. Read technology news, open-source projects, technical discussions, videos, and independent writing in one source-linked feed.
                 </p>
                 <div className="mt-8">
                   <button type="button" onClick={() => startReading('hero')} className="bg-[#2557d6] px-5 py-3 text-[14px] font-semibold text-white hover:bg-[#1d48b4]">Explore today&rsquo;s feed</button>
@@ -222,6 +224,37 @@ export default function LandingPageClient({
           </div>
         </section>
 
+        <section className="py-16 sm:py-20" aria-labelledby="trace-comparison-title">
+          <div className="mx-auto max-w-[1500px] border-y border-[#e4e1d8] px-4 py-10 sm:px-16 lg:px-24">
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[#2557d6]">One feed, less tab-hopping</p>
+            <h2 id="trace-comparison-title" className="mt-5 max-w-[760px] text-[clamp(2.6rem,5vw,4.2rem)] leading-[0.98] tracking-[-0.04em]" style={{ fontFamily: 'var(--font-edition-serif), Georgia, serif' }}>Trace vs. following every source manually.</h2>
+            <p className="mt-5 max-w-[680px] text-[15px] leading-[1.7] text-[#75705f]">Trace keeps the original sources while removing the repetitive work of checking each channel separately.</p>
+            <div className="mt-9 overflow-x-auto border border-[#e4e1d8]">
+              <table className="w-full min-w-[720px] border-collapse text-left text-[14px] leading-[1.6]">
+                <thead className="bg-[#f5f3ed] font-mono text-[10px] font-semibold uppercase tracking-[0.13em] text-[#75705f]">
+                  <tr>
+                    <th scope="col" className="w-[20%] px-5 py-4">Comparison</th>
+                    <th scope="col" className="w-[40%] px-5 py-4">Manual monitoring</th>
+                    <th scope="col" className="w-[40%] px-5 py-4 text-[#2557d6]">Trace</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {HOME_COMPARISON_ROWS.map((row) => (
+                    <tr key={row.label} className="border-t border-[#e4e1d8] align-top">
+                      <th scope="row" className="px-5 py-5 font-semibold text-[#1b1a17]">{row.label}</th>
+                      <td className="px-5 py-5 text-[#75705f]">{row.manual}</td>
+                      <td className="px-5 py-5 text-[#1b1a17]">{row.trace}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <nav aria-label="Explore Trace by goal" className="mt-6 flex flex-wrap gap-x-5 gap-y-3 text-[13px] font-semibold text-[#2557d6]">
+              {HOME_INTENT_LINKS.map((link) => <Link key={link.href} href={link.href}>{link.label} →</Link>)}
+            </nav>
+          </div>
+        </section>
+
         <section className="py-16 sm:py-20">
           <div className="mx-auto max-w-[1500px] px-4 sm:px-16 lg:px-24">
             <div className="grid overflow-hidden border border-[#e4e1d8] bg-[#faf9f5] md:grid-cols-[minmax(0,1fr)_360px]">
@@ -262,7 +295,7 @@ export default function LandingPageClient({
           <div className="mx-auto max-w-[1500px] border-y border-[#e4e1d8] px-4 py-10 sm:px-16 lg:px-24">
             <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[#2557d6]">Questions</p>
             <h2 className="mt-5 text-[clamp(2.6rem,5vw,4.2rem)] leading-[0.98] tracking-[-0.04em]" style={{ fontFamily: 'var(--font-edition-serif), Georgia, serif' }}>A few things to know.</h2>
-            <div className="mt-8 border-t border-[#e4e1d8]">{FAQ_ITEMS.map((item) => <FaqItem key={item.q} {...item} />)}</div>
+            <div className="mt-8 border-t border-[#e4e1d8]">{HOME_FAQ_ITEMS.map((item) => <FaqItem key={item.q} {...item} />)}</div>
           </div>
         </section>
 

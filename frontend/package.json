@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "seo:check": "node scripts/check-seo-links.mjs",
+    "test:seo-home": "node --test lib/home-seo.test.mjs",
+    "test:seo-home-render": "npm run build && node scripts/check-homepage-render.mjs",
     "seo:audit-live": "node scripts/audit-live-seo.mjs",
     "seo:indexnow": "node scripts/submit-indexnow.mjs",
     "test:analytics-platform": "node --test lib/analytics-platform.test.mjs",
