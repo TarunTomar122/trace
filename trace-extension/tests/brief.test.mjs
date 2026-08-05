@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  filterArticlesByTag,
   isCacheFresh,
   normalizeArticlePool,
   selectRandomArticles,
@@ -25,14 +26,14 @@ const validPayload = {
   version: 4,
   feed_date: '2026-08-05',
   generated_at: '2026-08-05T06:05:00.000Z',
-  articles: Array.from({ length: 15 }, (_, index) => article(`edition-${index}`)),
+  articles: Array.from({ length: 30 }, (_, index) => article(`edition-${index}`)),
 };
 
 test('normalizeArticlePool accepts safe Edition articles', () => {
   const pool = normalizeArticlePool(validPayload);
 
   assert.equal(pool.feedDate, '2026-08-05');
-  assert.equal(pool.articles.length, 15);
+  assert.equal(pool.articles.length, 30);
   assert.equal(pool.articles.every(({ channel }) => channel === 'edition'), true);
   assert.equal(pool.articles.every(({ tag }) => tag === 'AI'), true);
 });
@@ -82,10 +83,21 @@ test('selectRandomArticles returns 15 unique Edition articles', () => {
   assert.equal(selected.every(({ channel }) => channel === 'edition'), true);
 });
 
+test('filterArticlesByTag reuses the loaded pool', () => {
+  const articles = [
+    { id: 'ai', tag: 'AI' },
+    { id: 'markets', tag: 'Markets' },
+    { id: 'all', tag: 'AI' },
+  ];
+
+  assert.deepEqual(filterArticlesByTag(articles, 'AI').map(({ id }) => id), ['ai', 'all']);
+  assert.equal(filterArticlesByTag(articles, ''), articles);
+});
+
 test('normalizeArticlePool rejects an incomplete pool', () => {
   assert.throws(
-    () => normalizeArticlePool({ ...validPayload, articles: validPayload.articles.slice(0, 14) }),
-    /at least 15/i,
+    () => normalizeArticlePool({ ...validPayload, articles: validPayload.articles.slice(0, 29) }),
+    /at least 30/i,
   );
 });
 

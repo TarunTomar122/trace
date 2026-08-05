@@ -6,18 +6,19 @@ Trace: AI & Tech News in Every New Tab
 
 ## Summary
 
-Open a new tab and get 15 fresh AI and technology news articles from Trace.
+Open a new tab and get 30 fresh AI and technology news articles from Trace.
 
 ## Detailed description
 
 Trace replaces the new-tab page with news from the current Edition.
 
-Every new tab randomly selects 15 articles from a locally cached pool. Select any card for the complete Trace summary and key takeaways, or open the original source directly.
+Every new tab randomly selects 30 articles from a locally cached pool. Filter the loaded stories by topic, then select any card for the complete Trace summary, key takeaways, and original source.
 
 Features:
 
-- 15 articles on every new tab
+- 30 articles on every new tab
 - A random selection from the current Edition
+- Topic filters that make no additional requests
 - Complete Trace reads inside the new tab
 - Direct original-source links
 - A 15 minute local cache that prevents a request on every tab
@@ -34,7 +35,7 @@ Developer Tools
 
 ## Single purpose
 
-Replace the browser's new-tab page with 15 public technology articles from Trace.
+Replace the browser's new-tab page with 30 public technology articles from Trace.
 
 ## Permission justification
 

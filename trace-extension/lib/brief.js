@@ -78,7 +78,7 @@ export function normalizeArticlePool(payload) {
       seen.add(article.sourceUrl);
       return true;
     });
-  if (articles.length < 15) throw new TypeError('At least 15 articles are required');
+  if (articles.length < 30) throw new TypeError('At least 30 articles are required');
   if (!articles.every(({ channel }) => channel === 'edition')) {
     throw new TypeError('Only Edition articles are supported');
   }
@@ -103,6 +103,10 @@ function shuffle(items, random) {
 export function selectRandomArticles(articles, limit = 15, random = Math.random) {
   const count = Math.max(0, Math.trunc(limit));
   return shuffle(articles, random).slice(0, count);
+}
+
+export function filterArticlesByTag(articles, tag) {
+  return tag ? articles.filter((article) => article.tag === tag) : articles;
 }
 
 export function isCacheFresh(cachedAt, now = Date.now()) {

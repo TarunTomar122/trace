@@ -8,7 +8,7 @@ The last successfully loaded public article pool and its load time are stored lo
 
 ## Data sent to Trace
 
-The extension requests the public Trace article endpoint only when the local pool is older than 15 minutes or the user selects refresh. The request contains ordinary network information such as the IP address and user agent that every web request carries. The extension does not send browsing history, visited pages, or the contents of other websites to Trace.
+The extension requests the public Trace article endpoint only when no pool is cached or the cached pool is older than 15 minutes. The request contains ordinary network information such as the IP address and user agent that every web request carries. The extension does not send browsing history, visited pages, or the contents of other websites to Trace.
 
 Article thumbnails are loaded from the public image URL supplied with each story. The image host receives the ordinary IP address and user agent needed to deliver that image. A failed image is removed from the card.
 

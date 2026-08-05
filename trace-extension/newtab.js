@@ -1,4 +1,5 @@
 import {
+  filterArticlesByTag,
   isCacheFresh,
   normalizeArticlePool,
   selectRandomArticles,
@@ -6,9 +7,11 @@ import {
 
 const CACHE_KEY = 'trace.extension.article-pool.v4';
 const API_URL = new URL('/api/extension/brief', chrome.runtime.getManifest().homepage_url).toString();
+const STORIES_PER_TAB = 30;
 
 const elements = {
-  refresh: document.querySelector('#refresh'),
+  filters: document.querySelector('#filters'),
+  feedbackCard: document.querySelector('#feedback-card'),
   loading: document.querySelector('#loading'),
   articles: document.querySelector('#articles'),
   error: document.querySelector('#error'),
@@ -16,7 +19,6 @@ const elements = {
   retry: document.querySelector('#retry'),
   reader: document.querySelector('#reader'),
   readerClose: document.querySelector('#reader-close'),
-  readerTag: document.querySelector('#reader-tag'),
   readerImage: document.querySelector('#reader-image'),
   readerSource: document.querySelector('#reader-source'),
   readerTitle: document.querySelector('#reader-title'),
@@ -26,6 +28,8 @@ const elements = {
 };
 
 let currentPool = null;
+let currentArticles = [];
+let activeTag = '';
 
 function formatDate(value) {
   if (!value) return '';
@@ -36,7 +40,7 @@ function formatDate(value) {
 
 function showLoading() {
   elements.loading.replaceChildren();
-  for (let index = 0; index < 15; index += 1) {
+  for (let index = 0; index < STORIES_PER_TAB; index += 1) {
     const skeleton = document.createElement('div');
     skeleton.className = 'skeleton';
     elements.loading.append(skeleton);
@@ -77,8 +81,6 @@ function renderReaderContent(article) {
 }
 
 function openReader(article) {
-  elements.readerTag.textContent = article.tag;
-  elements.readerTag.hidden = !article.tag;
   elements.readerSource.textContent = [article.source, formatDate(article.publishedAt)].filter(Boolean).join(' · ');
   elements.readerTitle.textContent = article.title;
   renderReaderContent(article);
@@ -124,49 +126,46 @@ function createArticleCard(article) {
   const content = document.createElement('span');
   content.className = 'article-content';
 
+  const tag = document.createElement('span');
+  tag.className = 'story-tag';
+  tag.textContent = article.tag;
+  content.append(tag);
+
   const title = document.createElement('span');
   title.className = 'article-title';
   title.textContent = article.title;
-
-  if (article.tag) {
-    const tag = document.createElement('span');
-    tag.className = 'story-tag';
-    tag.textContent = article.tag;
-    content.append(tag);
-  }
-
   content.append(title);
-
-  if (article.summary) {
-    const summary = document.createElement('span');
-    summary.className = 'article-summary';
-    summary.textContent = article.summary;
-    content.append(summary);
-  }
-
   open.append(content);
-
-  const footer = document.createElement('div');
-  footer.className = 'article-footer';
-
-  const meta = document.createElement('span');
-  meta.textContent = [article.source, formatDate(article.publishedAt)].filter(Boolean).join(' · ');
-
-  const sourceLink = document.createElement('a');
-  sourceLink.href = article.sourceUrl;
-  sourceLink.target = '_blank';
-  sourceLink.rel = 'noopener noreferrer';
-  sourceLink.textContent = 'Source';
-
-  footer.append(meta, sourceLink);
-  card.append(open, footer);
+  card.append(open);
   return card;
+}
+
+function renderArticles() {
+  const selected = filterArticlesByTag(currentArticles, activeTag).slice(0, STORIES_PER_TAB);
+  elements.articles.replaceChildren(
+    ...selected.map(createArticleCard),
+    elements.feedbackCard.content.cloneNode(true),
+  );
+}
+
+function renderFilters() {
+  const tags = [...new Set(currentArticles.map(({ tag }) => tag))].sort();
+  elements.filters.replaceChildren(...['', ...tags].map((tag) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.tag = tag;
+    button.textContent = tag ? tag.replace(/\b(ai|ux)\b|^\w/g, (word) => word.toUpperCase()) : 'All';
+    button.setAttribute('aria-pressed', String(tag === activeTag));
+    return button;
+  }));
 }
 
 function renderPool(pool) {
   currentPool = pool;
-  const selected = selectRandomArticles(pool.articles, 15);
-  elements.articles.replaceChildren(...selected.map(createArticleCard));
+  currentArticles = selectRandomArticles(pool.articles, pool.articles.length);
+  activeTag = '';
+  renderFilters();
+  renderArticles();
   elements.loading.hidden = true;
   elements.error.hidden = true;
   elements.error.classList.remove('is-overlay');
@@ -192,9 +191,7 @@ async function fetchPool() {
   }
 }
 
-async function refreshArticles() {
-  elements.refresh.classList.add('is-loading');
-  elements.refresh.disabled = true;
+async function loadArticles() {
   elements.error.hidden = true;
 
   try {
@@ -211,9 +208,6 @@ async function refreshArticles() {
     elements.error.classList.toggle('is-overlay', Boolean(currentPool));
     elements.error.hidden = false;
     console.error('Trace extension refresh failed', error);
-  } finally {
-    elements.refresh.classList.remove('is-loading');
-    elements.refresh.disabled = false;
   }
 }
 
@@ -231,12 +225,24 @@ async function start() {
     }
   }
 
-  await refreshArticles();
+  await loadArticles();
 }
 
-elements.refresh.addEventListener('click', refreshArticles);
-elements.retry.addEventListener('click', refreshArticles);
+elements.retry.addEventListener('click', loadArticles);
+elements.filters.addEventListener('click', (event) => {
+  const button = event.target.closest('button');
+  if (!button) return;
+  activeTag = button.dataset.tag;
+  elements.filters.querySelectorAll('button').forEach((option) => {
+    option.setAttribute('aria-pressed', String(option === button));
+  });
+  renderArticles();
+});
 elements.readerClose.addEventListener('click', () => elements.reader.close());
+elements.readerImage.addEventListener('error', () => {
+  elements.readerImage.removeAttribute('src');
+  elements.readerImage.hidden = true;
+});
 elements.reader.addEventListener('click', (event) => {
   if (event.target === elements.reader) elements.reader.close();
 });

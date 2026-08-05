@@ -103,16 +103,16 @@ test('buildExtensionBrief excludes Pulse even when it repeats Edition news', () 
   assert.equal(brief.articles[0].channel, 'edition');
 });
 
-test('hasCompleteExtensionPool requires at least 15 Edition articles', () => {
-  const edition = Array.from({ length: 15 }, (_, index) => ({
+test('hasCompleteExtensionPool requires at least 30 Edition articles', () => {
+  const edition = Array.from({ length: 30 }, (_, index) => ({
     id: `edition:${index}`,
     channel: 'edition',
   }));
-  const mixed = [...edition.slice(0, 14), { id: 'pulse:1', channel: 'pulse' }];
+  const mixed = [...edition.slice(0, 29), { id: 'pulse:1', channel: 'pulse' }];
 
   assert.equal(hasCompleteExtensionPool(edition), true);
   assert.equal(hasCompleteExtensionPool(mixed), false);
-  assert.equal(hasCompleteExtensionPool(mixed.slice(0, 14)), false);
+  assert.equal(hasCompleteExtensionPool(mixed.slice(0, 29)), false);
 });
 
 test('buildExtensionBrief deduplicates final article ids before validating the pool', () => {
@@ -137,6 +137,19 @@ test('buildExtensionBrief skips articles without readable full content', () => {
   });
 
   assert.equal(brief.articles.length, 0);
+});
+
+test('buildExtensionBrief skips generic daily brief cards', () => {
+  const brief = buildExtensionBrief({
+    date: '2026-08-05',
+    for_you: [
+      feedItem('generic', 'A renamed daily briefing', { type: 'brief' }),
+      feedItem('news', 'Actual news'),
+    ],
+    trending: [],
+  });
+
+  assert.deepEqual(brief.articles.map(({ title }) => title), ['Actual news']);
 });
 
 test('buildExtensionBrief preserves every full-read content block', () => {

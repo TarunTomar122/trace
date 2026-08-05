@@ -29,7 +29,7 @@ export type ExtensionBrief = {
 const MAX_ARTICLES = 60;
 
 export function hasCompleteExtensionPool(articles: ExtensionArticle[]): boolean {
-  return articles.length >= 15
+  return articles.length >= 30
     && articles.every((article) => article.channel === 'edition');
 }
 
@@ -110,6 +110,7 @@ function uniqueFeedItems(items: FeedItem[]): FeedItem[] {
 }
 
 function toExtensionArticle(item: FeedItem): ExtensionArticle | null {
+  if (item.type === 'brief') return null;
   const sourceUrl = safeWebUrl(item.url)
     || item.sources?.map((source) => safeWebUrl(source.url)).find(Boolean);
   const title = cleanDisplayText(item.title);

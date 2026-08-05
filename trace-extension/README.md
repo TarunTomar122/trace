@@ -1,12 +1,12 @@
 # Trace New Tab
 
-Trace New Tab is a Manifest V3 Chrome extension that puts 15 randomly selected Trace articles on every new tab.
+Trace New Tab is a Manifest V3 Chrome extension that puts 30 randomly selected Trace articles on every new tab.
 
-The article pool contains news from the current Edition. Selecting a card opens the complete Trace summary in the new tab. Each card and full read include a direct original-source link.
+The article pool contains news from the current Edition. Cards show a thumbnail, story tag, and headline. Selecting one opens the complete Trace summary, key takeaways, and original-source link in the new tab.
 
 ## Request behavior
 
-The public article pool is cached locally for 15 minutes. Opening another new tab during that window selects a fresh random set from the cached pool and performs no API request. A request happens only after the cache expires or the user selects refresh.
+The public article pool is cached locally for 15 minutes. Opening another new tab during that window selects a fresh random set from the cached pool and performs no API request. Story filters reuse that same pool. A request happens only when no pool is cached or the cached pool has expired.
 
 ## Privacy and permissions
 
