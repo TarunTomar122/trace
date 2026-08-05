@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Space_Grotesk, Geist_Mono, Newsreader } from "next/font/google";
 import { PostHogProvider } from "@/lib/posthog";
+import { APPLE_TOUCH_ICON, WEB_APP_ICONS } from "@/lib/app-icons";
 import ThemeProvider from "@/components/ThemeProvider";
 import AffiliateTracker from "@/components/AffiliateTracker";
 import "./globals.css";
@@ -81,10 +82,8 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: [
-      { url: "/trace.png", type: "image/png", sizes: "512x512" },
-    ],
-    apple: "/trace.png",
+    icon: WEB_APP_ICONS,
+    apple: [APPLE_TOUCH_ICON],
   },
   manifest: "/site.webmanifest",
   appleWebApp: {
