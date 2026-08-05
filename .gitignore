@@ -18,6 +18,7 @@ anybrew-7c6c1-firebase-adminsdk-fbsvc-fe164fd73a.json
 !trace/app.json
 !trace/eas.json
 !trace/**/*.json
+!trace-extension/**/*.json
 *-firebase-adminsdk-*.json
 trace_subscribers.csv
 v1/tools/trace_user_emails.csv

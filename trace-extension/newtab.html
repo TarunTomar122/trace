@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>Trace New Tab</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="https://www.yourtrace.online" aria-label="Open Trace">
+        <img src="assets/icon48.png" width="28" height="28" alt="">
+        <span>TRACE</span>
+      </a>
+      <button class="refresh" id="refresh" type="button" aria-label="Refresh articles" title="Refresh articles">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7"/></svg>
+      </button>
+    </header>
+
+    <main>
+      <div class="loading-grid" id="loading" aria-label="Loading articles"></div>
+      <div class="article-grid" id="articles" hidden></div>
+      <div class="error" id="error" hidden role="alert">
+        <span id="error-message">Could not load articles.</span>
+        <button id="retry" type="button">Try again</button>
+      </div>
+    </main>
+
+    <dialog class="reader" id="reader" aria-labelledby="reader-title">
+      <div class="reader-bar">
+        <span id="reader-channel"></span>
+        <button id="reader-close" type="button" aria-label="Close full read">Close</button>
+      </div>
+      <img id="reader-image" alt="">
+      <article>
+        <p class="reader-source" id="reader-source"></p>
+        <h1 id="reader-title"></h1>
+        <div class="reader-body" id="reader-body"></div>
+        <ul id="reader-takeaways"></ul>
+        <a id="reader-link" target="_blank" rel="noopener noreferrer">Read original source</a>
+      </article>
+    </dialog>
+
+    <script type="module" src="newtab.js"></script>
+  </body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Trace: AI & Tech News in Every New Tab",
+  "short_name": "Trace",
+  "version": "0.1.0",
+  "description": "Fifteen AI, technology, and developer articles from Trace in every new tab.",
+  "homepage_url": "https://www.yourtrace.online",
+  "permissions": ["storage"],
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "icons": {
+    "16": "assets/icon16.png",
+    "32": "assets/icon32.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}
