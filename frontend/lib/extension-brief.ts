@@ -3,13 +3,14 @@ import { decodeHtmlEntities, stripMarkdown } from './feed-article-text.ts';
 
 export type ExtensionArticle = {
   id: string;
-  channel: 'edition' | 'pulse';
+  channel: 'edition';
   title: string;
   summary: string;
   content: Array<{
     type: 'heading' | 'paragraph' | 'list_item';
     text: string;
   }>;
+  tag: string;
   source?: string;
   source_url: string;
   thumbnail?: string;
@@ -18,19 +19,18 @@ export type ExtensionArticle = {
 };
 
 export type ExtensionBrief = {
-  version: 3;
+  version: 4;
   feed_date: string;
   assembled_at?: string;
   generated_at: string;
   articles: ExtensionArticle[];
 };
 
-const MAX_ARTICLES_PER_CHANNEL = 30;
+const MAX_ARTICLES = 60;
 
 export function hasCompleteExtensionPool(articles: ExtensionArticle[]): boolean {
   return articles.length >= 15
-    && articles.some((article) => article.channel === 'edition')
-    && articles.some((article) => article.channel === 'pulse');
+    && articles.every((article) => article.channel === 'edition');
 }
 
 function cleanDisplayText(value: unknown): string {
@@ -109,7 +109,7 @@ function uniqueFeedItems(items: FeedItem[]): FeedItem[] {
   });
 }
 
-function toExtensionArticle(item: FeedItem, channel: ExtensionArticle['channel']): ExtensionArticle | null {
+function toExtensionArticle(item: FeedItem): ExtensionArticle | null {
   const sourceUrl = safeWebUrl(item.url)
     || item.sources?.map((source) => safeWebUrl(source.url)).find(Boolean);
   const title = cleanDisplayText(item.title);
@@ -121,13 +121,17 @@ function toExtensionArticle(item: FeedItem, channel: ExtensionArticle['channel']
   const source = cleanDisplayText(item.source_name || item.source || matchingSource?.name)
     || new URL(sourceUrl).hostname.replace(/^www\./, '');
   const publishedAt = cleanDisplayText(item.published_at || item.published_date);
+  const rawTag = (Array.isArray(item.tags) ? item.tags.map(cleanDisplayText).find(Boolean) : undefined)
+    || cleanDisplayText(item.interest_id);
+  const tag = rawTag.replace(/[-_]+/g, ' ');
+  if (!tag) return null;
   const summary = cleanDisplayText(short?.subtitle || item.description);
   const content = toContentBlocks(short?.body || short?.subtitle || item.description);
   if (!content.length) return null;
 
   return {
-    id: `${channel}:${cleanDisplayText(item.id) || sourceUrl}`,
-    channel,
+    id: `edition:${cleanDisplayText(item.id) || sourceUrl}`,
+    channel: 'edition',
     title,
     summary,
     content,
@@ -135,18 +139,19 @@ function toExtensionArticle(item: FeedItem, channel: ExtensionArticle['channel']
     key_takeaways: Array.isArray(short?.key_takeaways)
       ? short.key_takeaways.map(cleanDisplayText).filter(Boolean).slice(0, 4)
       : [],
+    tag,
     ...(source ? { source } : {}),
     ...(thumbnail ? { thumbnail } : {}),
     ...(publishedAt ? { published_at: publishedAt } : {}),
   };
 }
 
-function buildChannel(items: FeedItem[], channel: ExtensionArticle['channel']): ExtensionArticle[] {
+function buildEdition(items: FeedItem[]): ExtensionArticle[] {
   const seenIds = new Set<string>();
   const seenUrls = new Set<string>();
   return uniqueFeedItems(items)
     .flatMap((item) => {
-      const article = toExtensionArticle(item, channel);
+      const article = toExtensionArticle(item);
       return article ? [article] : [];
     })
     .filter((article) => {
@@ -163,26 +168,13 @@ export function buildExtensionBrief(feed: V3UserFeed): ExtensionBrief {
     ...(feed.trending || []),
     ...(feed.trending_topics || []).flatMap((topic) => topic.articles || []),
   ];
-  const pulseItems = [
-    ...(feed.pulse || []),
-    ...(feed.build_pulse || []),
-    ...(feed.community_pulse || []),
-    ...(feed.daily_pulse?.tools || []),
-    ...(feed.daily_pulse?.blogs || []),
-    ...(feed.daily_pulse?.discussions || []),
-  ];
-
-  const edition = buildChannel(editionItems, 'edition').slice(0, MAX_ARTICLES_PER_CHANNEL);
-  const editionUrls = new Set(edition.map((article) => article.source_url));
-  const pulse = buildChannel(pulseItems, 'pulse')
-    .filter((article) => !editionUrls.has(article.source_url))
-    .slice(0, MAX_ARTICLES_PER_CHANNEL);
+  const edition = buildEdition(editionItems).slice(0, MAX_ARTICLES);
 
   return {
-    version: 3,
+    version: 4,
     feed_date: feed.date,
     ...(feed.assembled_at ? { assembled_at: feed.assembled_at } : {}),
     generated_at: new Date().toISOString(),
-    articles: [...edition, ...pulse],
+    articles: edition,
   };
 }

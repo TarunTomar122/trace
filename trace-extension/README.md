@@ -2,7 +2,7 @@
 
 Trace New Tab is a Manifest V3 Chrome extension that puts 15 randomly selected Trace articles on every new tab.
 
-The article pool mixes the current Edition with Pulse stories, builds, blogs, and discussions. Selecting a card opens the complete Trace summary in the new tab. Each card and full read include a direct original-source link.
+The article pool contains news from the current Edition. Selecting a card opens the complete Trace summary in the new tab. Each card and full read include a direct original-source link.
 
 ## Request behavior
 
@@ -32,4 +32,4 @@ The package command writes the Chrome Web Store archive to `dist/`.
 
 ## Backend contract
 
-The extension reads `https://www.yourtrace.online/api/extension/brief`. The version 3 payload contains an `articles` array with Edition and Pulse items. The client validates the pool before caching or rendering it.
+The extension reads `https://www.yourtrace.online/api/extension/brief`. The version 4 payload contains an `articles` array with Edition news. The client validates the pool before caching or rendering it.

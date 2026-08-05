@@ -24,10 +24,13 @@ function safeUrl(value, label) {
 function normalizeArticle(value) {
   assertObject(value, 'Article');
   if (typeof value.id !== 'string' || !value.id.trim()) throw new TypeError('Article id is required');
-  if (!['edition', 'pulse'].includes(value.channel)) throw new TypeError('Article channel is required');
+  if (value.channel !== 'edition') throw new TypeError('Edition article channel is required');
   if (typeof value.title !== 'string' || !value.title.trim()) throw new TypeError('Article title is required');
 
   const thumbnail = value.thumbnail ? safeUrl(value.thumbnail, 'Article thumbnail') : undefined;
+  if (typeof value.tag !== 'string' || !value.tag.trim()) {
+    throw new TypeError('Article story tag is required');
+  }
   const content = Array.isArray(value.content)
     ? value.content
         .filter((block) => (
@@ -46,6 +49,7 @@ function normalizeArticle(value) {
     title: value.title.trim(),
     summary: typeof value.summary === 'string' ? value.summary.trim() : '',
     content,
+    tag: value.tag.trim(),
     sourceUrl: safeUrl(value.source_url, 'Article source'),
     source: typeof value.source === 'string' ? value.source.trim() : '',
     publishedAt: typeof value.published_at === 'string' ? value.published_at.trim() : '',
@@ -58,7 +62,7 @@ function normalizeArticle(value) {
 
 export function normalizeArticlePool(payload) {
   assertObject(payload, 'Article response');
-  if (payload.version !== 3) throw new TypeError('Unsupported article response version');
+  if (payload.version !== 4) throw new TypeError('Unsupported article response version');
   if (typeof payload.feed_date !== 'string' || !payload.feed_date.trim()) {
     throw new TypeError('Article feed date is required');
   }
@@ -75,13 +79,12 @@ export function normalizeArticlePool(payload) {
       return true;
     });
   if (articles.length < 15) throw new TypeError('At least 15 articles are required');
-  if (!articles.some(({ channel }) => channel === 'edition')
-      || !articles.some(({ channel }) => channel === 'pulse')) {
-    throw new TypeError('Edition and Pulse articles are required');
+  if (!articles.every(({ channel }) => channel === 'edition')) {
+    throw new TypeError('Only Edition articles are supported');
   }
 
   return {
-    version: 3,
+    version: 4,
     feedDate: payload.feed_date.trim(),
     generatedAt: typeof payload.generated_at === 'string' ? payload.generated_at : null,
     articles,
@@ -99,21 +102,7 @@ function shuffle(items, random) {
 
 export function selectRandomArticles(articles, limit = 15, random = Math.random) {
   const count = Math.max(0, Math.trunc(limit));
-  const selected = shuffle(articles, random).slice(0, count);
-  const edition = articles.filter((article) => article.channel === 'edition');
-  const pulse = articles.filter((article) => article.channel === 'pulse');
-
-  if (selected.length > 1 && edition.length && pulse.length) {
-    for (const channel of ['edition', 'pulse']) {
-      if (selected.some((article) => article.channel === channel)) continue;
-      const replacement = shuffle(channel === 'edition' ? edition : pulse, random)
-        .find((article) => !selected.some((item) => item.id === article.id));
-      const replaceIndex = selected.findLastIndex((article) => article.channel !== channel);
-      if (replacement && replaceIndex >= 0) selected[replaceIndex] = replacement;
-    }
-  }
-
-  return shuffle(selected, random);
+  return shuffle(articles, random).slice(0, count);
 }
 
 export function isCacheFresh(cachedAt, now = Date.now()) {

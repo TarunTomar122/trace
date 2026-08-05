@@ -4,7 +4,7 @@ import {
   selectRandomArticles,
 } from './lib/brief.js';
 
-const CACHE_KEY = 'trace.extension.article-pool.v3';
+const CACHE_KEY = 'trace.extension.article-pool.v4';
 const API_URL = new URL('/api/extension/brief', chrome.runtime.getManifest().homepage_url).toString();
 
 const elements = {
@@ -16,7 +16,7 @@ const elements = {
   retry: document.querySelector('#retry'),
   reader: document.querySelector('#reader'),
   readerClose: document.querySelector('#reader-close'),
-  readerChannel: document.querySelector('#reader-channel'),
+  readerTag: document.querySelector('#reader-tag'),
   readerImage: document.querySelector('#reader-image'),
   readerSource: document.querySelector('#reader-source'),
   readerTitle: document.querySelector('#reader-title'),
@@ -77,7 +77,8 @@ function renderReaderContent(article) {
 }
 
 function openReader(article) {
-  elements.readerChannel.textContent = article.channel;
+  elements.readerTag.textContent = article.tag;
+  elements.readerTag.hidden = !article.tag;
   elements.readerSource.textContent = [article.source, formatDate(article.publishedAt)].filter(Boolean).join(' · ');
   elements.readerTitle.textContent = article.title;
   renderReaderContent(article);
@@ -123,15 +124,18 @@ function createArticleCard(article) {
   const content = document.createElement('span');
   content.className = 'article-content';
 
-  const channel = document.createElement('span');
-  channel.className = `channel channel-${article.channel}`;
-  channel.textContent = article.channel;
-
   const title = document.createElement('span');
   title.className = 'article-title';
   title.textContent = article.title;
 
-  content.append(channel, title);
+  if (article.tag) {
+    const tag = document.createElement('span');
+    tag.className = 'story-tag';
+    tag.textContent = article.tag;
+    content.append(tag);
+  }
+
+  content.append(title);
 
   if (article.summary) {
     const summary = document.createElement('span');

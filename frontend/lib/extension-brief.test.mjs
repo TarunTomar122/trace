@@ -9,6 +9,7 @@ function feedItem(id, title, overrides = {}) {
     title,
     url: `https://example.com/${id}`,
     source_name: 'Example',
+    tags: ['AI'],
     thumbnail: `https://images.example.com/${id}.jpg`,
     published_date: '2026-08-05T08:00:00.000Z',
     summary: {
@@ -22,7 +23,7 @@ function feedItem(id, title, overrides = {}) {
   };
 }
 
-test('buildExtensionBrief returns one public pool mixing Edition and Pulse articles', () => {
+test('buildExtensionBrief returns Edition news and ignores Pulse content', () => {
   const brief = buildExtensionBrief({
     date: '2026-08-05',
     assembled_at: '2026-08-05T06:00:00.000Z',
@@ -32,16 +33,13 @@ test('buildExtensionBrief returns one public pool mixing Edition and Pulse artic
     build_pulse: [feedItem('pulse-2', 'Pulse two')],
   });
 
-  assert.equal(brief.version, 3);
+  assert.equal(brief.version, 4);
   assert.equal(brief.feed_date, '2026-08-05');
   assert.equal(brief.assembled_at, '2026-08-05T06:00:00.000Z');
-  assert.deepEqual(brief.articles.map(({ channel }) => channel), [
-    'edition',
-    'edition',
-    'pulse',
-    'pulse',
-  ]);
+  assert.deepEqual(brief.articles.map(({ channel }) => channel), ['edition', 'edition']);
+  assert.deepEqual(brief.articles.map(({ title }) => title), ['Edition one', 'Edition two']);
   assert.deepEqual(brief.articles[0].content, [{ type: 'paragraph', text: 'Edition one full Trace read' }]);
+  assert.equal(brief.articles[0].tag, 'AI');
 });
 
 test('buildExtensionBrief cleans display text and rejects unsafe links', () => {
@@ -72,7 +70,27 @@ test('buildExtensionBrief cleans display text and rejects unsafe links', () => {
   assert.deepEqual(brief.articles[0].key_takeaways, ['Useful & specific']);
 });
 
-test('buildExtensionBrief deduplicates the same source across channels', () => {
+test('buildExtensionBrief uses the canonical interest when tags are absent', () => {
+  const brief = buildExtensionBrief({
+    date: '2026-08-05',
+    for_you: [feedItem('interest', 'Interest story', { tags: [], interest_id: 'ux-design' })],
+    trending: [],
+  });
+
+  assert.equal(brief.articles[0].tag, 'ux design');
+});
+
+test('buildExtensionBrief skips articles without a real story tag', () => {
+  const brief = buildExtensionBrief({
+    date: '2026-08-05',
+    for_you: [feedItem('untagged', 'Untagged story', { tags: [], interest_id: undefined })],
+    trending: [],
+  });
+
+  assert.equal(brief.articles.length, 0);
+});
+
+test('buildExtensionBrief excludes Pulse even when it repeats Edition news', () => {
   const duplicate = feedItem('same', 'Same article');
   const brief = buildExtensionBrief({
     date: '2026-08-05',
@@ -85,15 +103,15 @@ test('buildExtensionBrief deduplicates the same source across channels', () => {
   assert.equal(brief.articles[0].channel, 'edition');
 });
 
-test('hasCompleteExtensionPool requires enough articles from both channels', () => {
+test('hasCompleteExtensionPool requires at least 15 Edition articles', () => {
   const edition = Array.from({ length: 15 }, (_, index) => ({
     id: `edition:${index}`,
     channel: 'edition',
   }));
   const mixed = [...edition.slice(0, 14), { id: 'pulse:1', channel: 'pulse' }];
 
-  assert.equal(hasCompleteExtensionPool(edition), false);
-  assert.equal(hasCompleteExtensionPool(mixed), true);
+  assert.equal(hasCompleteExtensionPool(edition), true);
+  assert.equal(hasCompleteExtensionPool(mixed), false);
   assert.equal(hasCompleteExtensionPool(mixed.slice(0, 14)), false);
 });
 

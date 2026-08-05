@@ -14,6 +14,7 @@ function article(id, channel = 'edition') {
     title: `Article ${id}`,
     summary: `Summary ${id}`,
     content: [{ type: 'paragraph', text: `Body ${id}` }],
+    tag: 'AI',
     source_url: `https://example.com/${id}`,
     source: 'Example',
     key_takeaways: [],
@@ -21,21 +22,19 @@ function article(id, channel = 'edition') {
 }
 
 const validPayload = {
-  version: 3,
+  version: 4,
   feed_date: '2026-08-05',
   generated_at: '2026-08-05T06:05:00.000Z',
-  articles: Array.from({ length: 15 }, (_, index) => (
-    index < 8 ? article(`edition-${index}`) : article(`pulse-${index}`, 'pulse')
-  )),
+  articles: Array.from({ length: 15 }, (_, index) => article(`edition-${index}`)),
 };
 
-test('normalizeArticlePool accepts safe Edition and Pulse articles', () => {
+test('normalizeArticlePool accepts safe Edition articles', () => {
   const pool = normalizeArticlePool(validPayload);
 
   assert.equal(pool.feedDate, '2026-08-05');
   assert.equal(pool.articles.length, 15);
-  assert.equal(pool.articles.some(({ channel }) => channel === 'edition'), true);
-  assert.equal(pool.articles.some(({ channel }) => channel === 'pulse'), true);
+  assert.equal(pool.articles.every(({ channel }) => channel === 'edition'), true);
+  assert.equal(pool.articles.every(({ tag }) => tag === 'AI'), true);
 });
 
 test('normalizeArticlePool rejects malformed or unsafe responses', () => {
@@ -55,38 +54,38 @@ test('normalizeArticlePool rejects malformed or unsafe responses', () => {
     }),
     /full-read content/i,
   );
+  assert.throws(
+    () => normalizeArticlePool({
+      ...validPayload,
+      articles: [article('pulse', 'pulse'), ...validPayload.articles.slice(1)],
+    }),
+    /edition article channel/i,
+  );
+  assert.throws(
+    () => normalizeArticlePool({
+      ...validPayload,
+      articles: [{ ...article('untagged'), tag: '' }, ...validPayload.articles.slice(1)],
+    }),
+    /story tag/i,
+  );
 });
 
-test('selectRandomArticles returns 15 unique mixed articles', () => {
+test('selectRandomArticles returns 15 unique Edition articles', () => {
   const articles = normalizeArticlePool({
     ...validPayload,
-    articles: [
-      ...Array.from({ length: 20 }, (_, index) => article(`edition-${index}`)),
-      ...Array.from({ length: 20 }, (_, index) => article(`pulse-${index}`, 'pulse')),
-    ],
+    articles: Array.from({ length: 40 }, (_, index) => article(`edition-${index}`)),
   }).articles;
   const selected = selectRandomArticles(articles, 15, () => 0.42);
 
   assert.equal(selected.length, 15);
   assert.equal(new Set(selected.map(({ id }) => id)).size, 15);
-  assert.equal(selected.some(({ channel }) => channel === 'edition'), true);
-  assert.equal(selected.some(({ channel }) => channel === 'pulse'), true);
+  assert.equal(selected.every(({ channel }) => channel === 'edition'), true);
 });
 
 test('normalizeArticlePool rejects an incomplete pool', () => {
   assert.throws(
     () => normalizeArticlePool({ ...validPayload, articles: validPayload.articles.slice(0, 14) }),
     /at least 15/i,
-  );
-});
-
-test('normalizeArticlePool rejects a single-channel pool', () => {
-  assert.throws(
-    () => normalizeArticlePool({
-      ...validPayload,
-      articles: Array.from({ length: 15 }, (_, index) => article(`edition-${index}`)),
-    }),
-    /edition and pulse/i,
   );
 });
 
