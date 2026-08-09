@@ -78,6 +78,12 @@ function getSafeReturnPath(value: string | null, fallback: string): string {
   return value;
 }
 
+function formatPublishedDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('en', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
+}
+
 export default function ArticleContent({ article }: Props) {
   const searchParams = useSearchParams();
   const {
@@ -150,15 +156,6 @@ export default function ArticleContent({ article }: Props) {
 
   const overview = (
     <>
-      <div className="story-page-meta mb-4">
-        {article.source_name && <span>{article.source_name}</span>}
-        {article.source_name && <span>·</span>}
-        <span className="inline-flex items-center gap-1">
-          <Clock size={13} />
-          {readingTime} min read
-        </span>
-      </div>
-
       <h1 className="story-page-title">{article.title}</h1>
 
       {bodyContent ? (
@@ -207,9 +204,10 @@ export default function ArticleContent({ article }: Props) {
           Read original source
           <ExternalLink size={14} />
         </a>
+        <p className="story-page-source-time">
+          {[article.source_name, formatPublishedDate(article.published_date)].filter(Boolean).join(' · ')}
+        </p>
       </div>
-
-      <StorySharePromo trackingId="shared_article_promo" />
     </>
   );
 
@@ -298,21 +296,24 @@ export default function ArticleContent({ article }: Props) {
       shareButton={isFromFeed ? shareButton : undefined}
     >
       {isPublicShare ? (
-        <div className="story-share-article">
-          {article.thumbnail && (
-            <div className="story-share-hero">
-              <ArticleImage
-                thumbnail={article.thumbnail}
-                title={article.title}
-                fallbackWidth={1200}
-                fallbackHeight={1600}
-              />
+        <>
+          <div className="story-share-article">
+            {article.thumbnail && (
+              <div className="story-share-hero">
+                <ArticleImage
+                  thumbnail={article.thumbnail}
+                  title={article.title}
+                  fallbackWidth={1200}
+                  fallbackHeight={1600}
+                />
+              </div>
+            )}
+            <div className="story-share-overview">
+              {overview}
             </div>
-          )}
-          <div className="story-share-overview">
-            {overview}
           </div>
-        </div>
+          <StorySharePromo trackingId="shared_article_promo" />
+        </>
       ) : (
         appContent
       )}

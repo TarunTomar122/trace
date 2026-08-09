@@ -11,7 +11,9 @@ const packageJson = JSON.parse(await read('package.json'));
 assert.equal(manifest.manifest_version, 3);
 assert.equal(manifest.version, packageJson.version);
 assert.deepEqual(manifest.permissions, ['storage']);
-assert.equal('host_permissions' in manifest, false, 'public CORS endpoint should not require host permissions');
+assert.ok(manifest.host_permissions.includes('https://www.yourtrace.online/*'));
+assert.equal(manifest.background?.service_worker, 'background.js');
+assert.ok(manifest.externally_connectable?.matches.includes('https://www.yourtrace.online/*'));
 assert.deepEqual(manifest.chrome_url_overrides, { newtab: 'newtab.html' });
 assert.equal(
   manifest.content_security_policy?.extension_pages,
@@ -24,6 +26,7 @@ const requiredFiles = [
   'newtab.html',
   'styles.css',
   'newtab.js',
+  'background.js',
   'lib/brief.js',
   ...Object.values(manifest.icons),
 ];
@@ -37,7 +40,7 @@ assert.doesNotMatch(html, /<script(?![^>]+src=)/i, 'inline scripts are not allow
 assert.doesNotMatch(html, /\son[a-z]+\s*=/i, 'inline event handlers are not allowed');
 assert.match(html, /<script type="module" src="newtab\.js"><\/script>/);
 
-const javascript = `${await read('newtab.js')}\n${await read('lib/brief.js')}`;
+const javascript = `${await read('newtab.js')}\n${await read('background.js')}\n${await read('lib/brief.js')}`;
 assert.doesNotMatch(javascript, /\beval\s*\(|\bnew\s+Function\b/);
 assert.doesNotMatch(javascript, /import\s+[^;]*https?:\/\//);
 
@@ -46,6 +49,7 @@ const textFiles = [
   'newtab.html',
   'styles.css',
   'newtab.js',
+  'background.js',
   'lib/brief.js',
   'README.md',
   'PRIVACY.md',

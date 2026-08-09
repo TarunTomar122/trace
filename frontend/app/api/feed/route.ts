@@ -46,14 +46,14 @@ export async function GET(request: NextRequest) {
 
     const roleFromQuery = request.nextUrl.searchParams.get('role') || '';
     const sessionAccessIsFresh = isTraceSessionProfileFresh(sessionProfile);
-    const feed = sessionProfile?.profile
+    const feed = sessionProfile?.profile && sessionAccessIsFresh
       ? await getBootstrapFeedFromProfile(sessionProfile.profile.role || roleFromQuery || 'developer', {
           role: sessionProfile.profile.role || 'developer',
           interests: sessionProfile.profile.interests || [],
           onboarded: sessionProfile.profile.onboarded ?? true,
-          subscription_status: sessionAccessIsFresh ? sessionProfile.profile.subscriptionStatus || 'none' : 'none',
-          app_subscription_status: sessionAccessIsFresh ? sessionProfile.profile.appSubscriptionStatus || 'none' : 'none',
-          has_access: sessionAccessIsFresh && (sessionProfile.profile.hasAccess ?? false),
+          subscription_status: sessionProfile.profile.subscriptionStatus || 'none',
+          app_subscription_status: sessionProfile.profile.appSubscriptionStatus || 'none',
+          has_access: sessionProfile.profile.hasAccess ?? false,
         })
       : await getBootstrapFeedForUid(uid, roleFromQuery);
     readsDoneAt = performance.now();

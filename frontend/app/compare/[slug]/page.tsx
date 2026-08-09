@@ -111,25 +111,25 @@ export default async function CompareDetailPage({ params }: PageProps) {
       <main className="px-4 sm:px-6">
         <article className="mx-auto max-w-5xl pt-16 pb-20 sm:pt-24">
           <div className="max-w-3xl">
-            <p className="text-[11px] uppercase tracking-[0.26em] text-[#9ca3af]">
+            <p className="public-meta uppercase tracking-[0.2em]">
               Comparison Guide
             </p>
-            <h1 className="mt-4 text-[2.5rem] font-bold tracking-[-0.04em] leading-[0.95] text-[#111827] sm:text-[3.25rem]">
+            <h1 className="public-title public-title-detail mt-4">
               {page.heroTitle}
             </h1>
-            <p className="mt-5 text-[16px] leading-[1.8] text-[#6b7280] sm:text-[17px]">
+            <p className="public-deck mt-5">
               {page.heroDescription}
             </p>
           </div>
 
-          <div className="mt-10 landing-card p-7">
-            <p className="text-base leading-8 text-[#6b7280]">{page.intro}</p>
+          <div className="public-content-card mt-10 p-7 sm:p-8">
+            <p className="public-body">{page.intro}</p>
           </div>
 
-          <section className="mt-8 landing-card p-7">
-            <h2 className="text-2xl font-semibold tracking-tight text-[#111827]">{page.comparisonTitle}</h2>
-            <div className="mt-6 overflow-hidden rounded-2xl border border-[#e5e7eb]">
-              <div className="grid grid-cols-[1.1fr_1fr_1fr] bg-[#f9fafb] px-4 py-3 text-sm font-semibold text-[#111827]">
+          <section className="public-content-card mt-8 p-7 sm:p-8">
+            <h2 className="text-[1.75rem] font-semibold tracking-[-0.03em] text-foreground">{page.comparisonTitle}</h2>
+            <div className="mt-6 overflow-x-auto rounded-[16px] bg-surface-secondary">
+              <div className="grid min-w-[680px] grid-cols-[1.1fr_1fr_1fr] px-5 py-4 text-sm font-semibold text-foreground">
                 <div>Comparison</div>
                 <div>Trace</div>
                 <div>Alternative</div>
@@ -137,11 +137,11 @@ export default async function CompareDetailPage({ params }: PageProps) {
               {page.comparisonRows.map((row) => (
                 <div
                   key={row.label}
-                  className="grid grid-cols-[1.1fr_1fr_1fr] border-t border-[#e5e7eb] px-4 py-4 text-sm leading-6"
+                  className="grid min-w-[680px] grid-cols-[1.1fr_1fr_1fr] border-t border-border px-5 py-5 text-[15px] leading-6"
                 >
-                  <div className="font-medium text-[#111827]">{row.label}</div>
-                  <div className="text-[#6b7280]">{row.trace}</div>
-                  <div className="text-[#6b7280]">{row.alternative}</div>
+                  <div className="font-medium text-foreground">{row.label}</div>
+                  <div className="text-secondary">{row.trace}</div>
+                  <div className="text-secondary">{row.alternative}</div>
                 </div>
               ))}
             </div>
@@ -151,45 +151,44 @@ export default async function CompareDetailPage({ params }: PageProps) {
             {page.sections.map((section) => (
               <div
                 key={section.title}
-                className="landing-card p-7"
+                className="public-list-section"
               >
-                <h2 className="text-2xl font-semibold tracking-tight text-[#111827]">{section.title}</h2>
-                <p className="mt-4 text-sm leading-7 text-[#6b7280]">{section.body}</p>
+                <h2 className="text-[1.625rem] font-semibold tracking-[-0.025em] text-foreground">{section.title}</h2>
+                <p className="public-body mt-4">{section.body}</p>
               </div>
             ))}
           </section>
 
-          <section className="mt-10 rounded-[1.5rem] bg-[#111827] p-8 text-white">
-            <h2 className="text-2xl font-semibold tracking-tight">If you want the workflow, not just the idea</h2>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-white/60">
+          <section className="public-cta mt-10 p-8 sm:p-10">
+            <h2 className="text-[1.75rem] font-semibold tracking-[-0.03em] text-foreground">If you want the workflow, not just the idea</h2>
+            <p className="public-body mt-4 max-w-2xl">
               These public pages explain the category. The actual value of Trace is still inside the product:
               daily topic grouping, faster catch-up, and a cleaner reading habit.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href="/feed?view=pulse"
-                className="rounded-full bg-[#2563eb] px-5 py-3 text-sm font-semibold text-white"
-                style={{ boxShadow: "0 10px 24px rgba(37, 99, 235, 0.22)" }}
+                className="rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-85"
               >
-                Start with Trace →
+                Start with Trace
               </Link>
             </div>
           </section>
 
-          <section className="mt-10 landing-card p-7">
-            <h2 className="text-2xl font-semibold tracking-tight text-[#111827]">FAQ</h2>
+          <section className="public-list-section mt-12">
+            <h2 className="text-[1.75rem] font-semibold tracking-[-0.03em] text-foreground">FAQ</h2>
             <div className="mt-6 space-y-5">
               {page.faq.map((item) => (
                 <div key={item.question}>
-                  <h3 className="text-base font-semibold text-[#111827]">{item.question}</h3>
-                  <p className="mt-2 text-sm leading-7 text-[#6b7280]">{item.answer}</p>
+                  <h3 className="text-[17px] font-semibold text-foreground">{item.question}</h3>
+                  <p className="mt-2 text-[16px] leading-[1.7] text-secondary">{item.answer}</p>
                 </div>
               ))}
             </div>
           </section>
 
           <section className="mt-8">
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#9ca3af]">
+            <h2 className="public-kicker text-secondary">
               Related comparisons
             </h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -197,16 +196,16 @@ export default async function CompareDetailPage({ params }: PageProps) {
                 <Link
                   key={related.slug}
                   href={`/compare/${related.slug}`}
-                  className="landing-card p-5 text-sm font-semibold leading-6 text-[#111827] transition-colors hover:text-[#2563eb]"
+                  className="public-content-card p-5 text-[15px] font-semibold leading-6 text-foreground transition-colors hover:text-accent"
                 >
-                  {related.heroTitle} →
+                  {related.heroTitle}
                 </Link>
               ))}
             </div>
             <div className="mt-5 flex flex-wrap gap-2 text-sm">
-              <Link href="/compare" className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-[#6b7280] transition-colors hover:text-[#111827]">More comparisons</Link>
-              <Link href="/blog" className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-[#6b7280] transition-colors hover:text-[#111827]">Blog</Link>
-              <Link href="/tools" className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-[#6b7280] transition-colors hover:text-[#111827]">Free tools</Link>
+              <Link href="/compare" className="public-chip">More comparisons</Link>
+              <Link href="/blog" className="public-chip">Blog</Link>
+              <Link href="/tools" className="public-chip">Free tools</Link>
             </div>
           </section>
         </article>

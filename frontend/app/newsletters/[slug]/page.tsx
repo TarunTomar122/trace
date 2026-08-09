@@ -27,7 +27,7 @@ export async function generateMetadata({
     alternates: { canonical: url },
     openGraph: {
       ...DEFAULT_OPEN_GRAPH,
-      title: `${page.name} Review — Tech Newsletter Reviews | Trace`,
+      title: `${page.name} Review | Tech Newsletter Reviews | Trace`,
       description: page.description,
       url,
       siteName: "Trace",
@@ -44,7 +44,7 @@ export async function generateMetadata({
 
 function Stars({ rating }: { rating: number }) {
   return (
-    <span className="text-[#2563eb] text-lg tracking-tight">
+    <span className="text-lg tracking-tight text-accent" aria-label={`${rating} out of 5 stars`}>
       {"★".repeat(rating)}{"☆".repeat(5 - rating)}
     </span>
   );
@@ -86,32 +86,32 @@ export default async function NewsletterDetailPage({ params }: PageProps) {
       <main className="px-4 sm:px-6">
         <article className="mx-auto max-w-5xl pt-16 pb-20 sm:pt-24">
           <div className="max-w-3xl">
-            <p className="text-[11px] uppercase tracking-[0.26em] text-[#9ca3af]">
-              <Link href="/newsletters" className="transition-colors hover:text-[#6b7280]">
+            <p className="public-meta uppercase tracking-[0.2em]">
+              <Link href="/newsletters" className="transition-colors hover:text-foreground">
                 Newsletter Reviews
               </Link>
               {" /"}
             </p>
-            <h1 className="mt-4 text-[2.5rem] font-bold tracking-[-0.04em] leading-[0.95] text-[#111827] sm:text-[3.25rem]">
+            <h1 className="public-title public-title-detail mt-4">
               {page.name}
             </h1>
-            <p className="mt-5 text-[16px] leading-[1.8] text-[#6b7280] sm:text-[17px]">
+            <p className="public-deck mt-5">
               {page.description}
             </p>
           </div>
 
           <div className="mt-8 flex flex-wrap items-center gap-4">
             <Stars rating={page.rating} />
-            <span className="text-sm font-medium text-[#6b7280]">
+            <span className="public-meta font-medium">
               {page.rating} / 5
             </span>
-            <span className="rounded-full bg-[#eff6ff] px-3 py-1 text-[12px] font-medium text-[#2563eb]">
+            <span className="public-chip text-accent">
               {page.frequency}
             </span>
             {page.topics.map((t) => (
               <span
                 key={t}
-                className="rounded-full border border-[#e5e7eb] px-3 py-1 text-[12px] text-[#6b7280]"
+                className="public-chip"
               >
                 {t}
               </span>
@@ -123,7 +123,7 @@ export default async function NewsletterDetailPage({ params }: PageProps) {
               href={page.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-[#2563eb] hover:underline"
+              className="public-link inline-flex items-center gap-1.5 text-sm"
             >
               Visit {page.name} ↗
             </a>
@@ -131,34 +131,34 @@ export default async function NewsletterDetailPage({ params }: PageProps) {
 
           <section className="mt-10">
             <div className="grid gap-6 md:grid-cols-2">
-              <div className="landing-card p-7">
-                <h2 className="flex items-center gap-2 text-xl font-semibold text-[#111827]">
-                  <span className="text-green-600">+</span> Pros
+              <div className="public-content-card p-7">
+                <h2 className="flex items-center gap-2 text-[1.5rem] font-semibold text-foreground">
+                  <span className="text-accent">+</span> Pros
                 </h2>
                 <ul className="mt-3 space-y-2">
                   {page.pros.map((pro) => (
                     <li
                       key={pro}
-                      className="flex items-start gap-2 text-sm leading-relaxed text-[#6b7280]"
+                      className="flex items-start gap-3 text-[16px] leading-[1.65] text-secondary"
                     >
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-green-500" />
+                      <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
                       {pro}
                     </li>
                   ))}
                 </ul>
               </div>
 
-              <div className="landing-card p-7">
-                <h2 className="flex items-center gap-2 text-xl font-semibold text-[#111827]">
-                  <span className="text-red-500">−</span> Cons
+              <div className="public-content-card p-7">
+                <h2 className="flex items-center gap-2 text-[1.5rem] font-semibold text-foreground">
+                  <span className="text-secondary">−</span> Cons
                 </h2>
                 <ul className="mt-3 space-y-2">
                   {page.cons.map((con) => (
                     <li
                       key={con}
-                      className="flex items-start gap-2 text-sm leading-relaxed text-[#6b7280]"
+                      className="flex items-start gap-3 text-[16px] leading-[1.65] text-secondary"
                     >
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />
+                      <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-secondary" />
                       {con}
                     </li>
                   ))}
@@ -168,8 +168,8 @@ export default async function NewsletterDetailPage({ params }: PageProps) {
           </section>
 
           <section className="mt-10 max-w-3xl">
-            <h2 className="text-xl font-semibold text-[#111827]">How we reviewed it</h2>
-            <p className="mt-3 text-sm leading-relaxed text-[#6b7280]">
+            <h2 className="text-[1.625rem] font-semibold tracking-[-0.025em] text-foreground">How we reviewed it</h2>
+            <p className="public-body mt-3">
               We assessed {page.name} on its {page.frequency.toLowerCase()} publishing cadence,
               coverage of {page.topics.join(", ")}, signal-to-noise ratio, and the amount of
               context each issue gives readers. The {page.rating}/5 rating reflects the overall
@@ -178,42 +178,41 @@ export default async function NewsletterDetailPage({ params }: PageProps) {
             </p>
           </section>
 
-          <section className="mt-10 rounded-[1.5rem] bg-[#111827] p-8 text-white">
-            <h2 className="text-2xl font-semibold tracking-tight">
+          <section className="public-cta mt-10 p-8 sm:p-10">
+            <h2 className="text-[1.75rem] font-semibold tracking-[-0.03em] text-foreground">
               Want a better way than managing newsletters?
             </h2>
-            <p className="mt-3 text-white/60 max-w-2xl">
-              Trace pulls from the same sources these newsletters curate — plus
+            <p className="public-body mt-3 max-w-2xl">
+              Trace pulls from the same sources these newsletters curate, plus
               communities, launches, and social platforms. One brief instead of
               five newsletters.
             </p>
             <Link
               href="/compare"
-              className="mt-5 inline-block rounded-full bg-[#2563eb] px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#1d4ed8]"
-              style={{ boxShadow: "0 10px 24px rgba(37, 99, 235, 0.22)" }}
+              className="mt-6 inline-flex rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-85"
             >
-              See how Trace compares →
+              See how Trace compares
             </Link>
           </section>
 
           <section className="mt-8">
-            <p className="text-sm text-[#6b7280] mb-3">Explore more:</p>
+            <p className="public-meta mb-3">Explore more:</p>
             <div className="flex flex-wrap gap-2">
               <Link
                 href="/newsletters"
-                className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-sm text-[#6b7280] transition-colors hover:text-[#111827]"
+                className="public-chip"
               >
-                ← All Reviews
+                All reviews
               </Link>
               <Link
                 href="/compare"
-                className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-sm text-[#6b7280] transition-colors hover:text-[#111827]"
+                className="public-chip"
               >
                 Compare Tools
               </Link>
               <Link
                 href="/feed?view=pulse"
-                className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-sm text-[#6b7280] transition-colors hover:text-[#111827]"
+                className="public-chip"
               >
                 Get Started
               </Link>

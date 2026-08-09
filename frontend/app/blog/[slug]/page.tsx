@@ -27,11 +27,11 @@ function RichParagraph({ children }: { children: string }) {
     <ReactMarkdown
       components={{
         p: ({ children: content }) => (
-          <p className="text-[16px] leading-[1.8] landing-muted">{content}</p>
+          <p className="public-body">{content}</p>
         ),
         a: ({ href = "", children: content }) =>
           href.startsWith("/") ? (
-            <Link href={href} className="font-medium text-[#2563eb] underline-offset-4 hover:underline">
+            <Link href={href} className="public-link">
               {content}
             </Link>
           ) : (
@@ -39,7 +39,7 @@ function RichParagraph({ children }: { children: string }) {
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-[#2563eb] underline-offset-4 hover:underline"
+              className="public-link"
             >
               {content}
             </a>
@@ -156,50 +156,49 @@ export default async function BlogPostPage({ params }: PageProps) {
       />
       <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
 
-      {/* Hero Image */}
-      <div className="relative w-full h-[280px] sm:h-[400px] overflow-hidden">
-        <ArticleImage
-          thumbnail={post.image}
-          title={post.title}
-          alt={post.title}
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-white via-white/60 to-transparent" />
-      </div>
-
       <article className="px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-3xl pb-20 sm:pb-28">
-          {/* Breadcrumb */}
-          <Link href="/blog" className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.25em] text-[#9ca3af] transition-colors hover:text-[#111827]">
+        <div className="mx-auto max-w-5xl pt-12 sm:pt-18">
+          <Link href="/blog" className="public-meta inline-flex items-center gap-1.5 font-semibold uppercase tracking-[0.2em] transition-colors hover:text-foreground">
             <ArrowLeft size={12} />
             Blog
           </Link>
 
-          {/* Post meta */}
-          <div className="mt-6 mb-12">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#2563eb] mb-4">{post.tag}</p>
-            <h1 className="text-[2rem] font-bold tracking-[-0.035em] leading-[1.08] text-[#111827] sm:text-[2.75rem]">
+          <header className="mt-7 max-w-3xl">
+            <p className="public-kicker mb-4">{post.tag}</p>
+            <h1 className="public-title public-title-detail">
               {post.title}
             </h1>
-            <p className="mt-4 text-[16px] leading-[1.8] landing-muted">
+            <p className="public-deck mt-5">
               {post.subtitle}
             </p>
-            <div className="mt-4 flex items-center gap-4">
-              <span className="text-[12px] text-[#6b7280]">{post.author}</span>
-              <span className="flex items-center gap-1 text-[12px] text-[#9ca3af]">
+            <div className="public-meta mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+              <span>{post.author}</span>
+              <span className="flex items-center gap-1">
                 <Clock size={11} />
                 {post.readTime}
               </span>
-              <span className="flex items-center gap-1 text-[12px] text-[#9ca3af]">
+              <span className="flex items-center gap-1">
                 <Calendar size={11} />
                 {post.date}
               </span>
             </div>
+          </header>
+
+          <div className="public-hero-media mt-10 sm:mt-12">
+            <ArticleImage
+              thumbnail={post.image}
+              title={post.title}
+              alt={post.title}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
           </div>
+        </div>
+
+        <div className="mx-auto mt-12 max-w-3xl pb-20 sm:mt-16 sm:pb-28">
 
           {post.sections.filter((section) => section.heading).length > 2 && (
-            <nav aria-label="Table of contents" className="mb-12 border-y border-[#e5e7eb] py-6">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#9ca3af]">
+            <nav aria-label="Table of contents" className="public-rule mb-12 border-y py-6">
+              <p className="public-kicker text-secondary">
                 In this guide
               </p>
               <ol className="mt-4 grid gap-x-8 gap-y-2 sm:grid-cols-2">
@@ -209,7 +208,7 @@ export default async function BlogPostPage({ params }: PageProps) {
                     <li key={section.heading}>
                       <a
                         href={`#${headingId(section.heading)}`}
-                        className="text-[13px] leading-6 text-[#6b7280] hover:text-[#2563eb]"
+                        className="text-[14px] leading-6 text-secondary hover:text-accent"
                       >
                         {index + 1}. {section.heading}
                       </a>
@@ -226,7 +225,7 @@ export default async function BlogPostPage({ params }: PageProps) {
                 {section.heading && (
                   <h2
                     id={headingId(section.heading)}
-                    className="scroll-mt-24 text-[1.35rem] font-bold tracking-[-0.02em] text-[#111827] sm:text-[1.5rem]"
+                    className="scroll-mt-24 text-[1.625rem] font-semibold leading-tight tracking-[-0.025em] text-foreground sm:text-[1.875rem]"
                   >
                     {section.heading}
                   </h2>
@@ -242,8 +241,8 @@ export default async function BlogPostPage({ params }: PageProps) {
                   <ul className="space-y-3 pl-0">
                     {section.bullets.map((bullet, bulletIndex) => (
                       <li key={`${post.slug}-section-${index}-bullet-${bulletIndex}`} className="flex gap-3">
-                        <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2563eb]/40" />
-                        <span className="text-[15px] leading-[1.8] landing-muted">{bullet}</span>
+                        <span className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                        <span className="public-body">{bullet}</span>
                       </li>
                     ))}
                   </ul>
@@ -254,8 +253,8 @@ export default async function BlogPostPage({ params }: PageProps) {
 
           {/* Sources */}
           {post.sources.length > 0 && (
-            <section className="mt-14 pt-8 border-t border-[#e5e7eb]">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#9ca3af] mb-5">Sources & Further Reading</h2>
+            <section className="public-rule mt-14 border-t pt-8">
+              <h2 className="public-kicker mb-5 text-secondary">Sources &amp; further reading</h2>
               <div className="space-y-2.5">
                 {post.sources.map((source) => (
                   <a
@@ -263,12 +262,12 @@ export default async function BlogPostPage({ params }: PageProps) {
                     href={source.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group flex items-start gap-2 text-[14px] landing-muted transition-colors hover:text-[#111827]"
+                    className="group flex items-start gap-2 text-[15px] leading-6 text-secondary transition-colors hover:text-foreground"
                   >
-                    <ExternalLink size={13} className="mt-1 shrink-0 text-[#9ca3af] group-hover:text-[#2563eb]" />
+                    <ExternalLink size={14} className="mt-1 shrink-0 text-secondary group-hover:text-accent" />
                     <span>
                       {source.title}
-                      {source.publisher ? <span className="text-[#9ca3af]"> — {source.publisher}</span> : ""}
+                      {source.publisher ? <span className="text-secondary"> · {source.publisher}</span> : ""}
                     </span>
                   </a>
                 ))}
@@ -277,12 +276,12 @@ export default async function BlogPostPage({ params }: PageProps) {
           )}
 
           {/* CTA */}
-          <section className="mt-14 overflow-hidden rounded-3xl border border-[#e5e7eb] bg-gradient-to-br from-[#eff6ff] to-white p-8 shadow-[0_8px_40px_rgba(0,0,0,0.08)] sm:p-10">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.15em] text-[#2563eb]">Trace</p>
-            <h2 className="mt-3 text-[1.35rem] font-bold tracking-[-0.02em] text-[#111827]">
+          <section className="public-cta mt-14 p-8 sm:p-10">
+            <p className="public-kicker">Trace</p>
+            <h2 className="mt-3 text-[1.625rem] font-semibold tracking-[-0.025em] text-foreground">
               Stay informed without the overwhelm
             </h2>
-            <p className="mt-4 max-w-xl text-[14px] leading-[1.7] landing-muted">
+            <p className="public-body mt-4 max-w-xl">
               Trace groups related stories from 50+ sources into one clean daily briefing. AI summaries, key points, and community context so you catch up in minutes, not hours.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
@@ -297,8 +296,8 @@ export default async function BlogPostPage({ params }: PageProps) {
 
           {/* Related posts */}
           {relatedPosts.length > 0 && (
-            <section className="mt-14 pt-8 border-t border-[#e5e7eb]">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#9ca3af] mb-5">Related Articles</h2>
+            <section className="public-rule mt-14 border-t pt-8">
+              <h2 className="public-kicker mb-5 text-secondary">Related articles</h2>
               <div className="grid gap-4 sm:grid-cols-3">
                 {relatedPosts.map((related) => (
                   <Link
@@ -306,9 +305,9 @@ export default async function BlogPostPage({ params }: PageProps) {
                     href={`/blog/${related.slug}`}
                     className="group landing-card block p-5 transition-all hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]"
                   >
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#2563eb]">{related.tag}</p>
-                    <h3 className="mt-2 text-[14px] font-semibold leading-snug text-[#111827]">{related.title}</h3>
-                    <p className="mt-2 text-[12px] leading-[1.6] landing-muted line-clamp-2">{related.excerpt}</p>
+                    <p className="public-kicker">{related.tag}</p>
+                    <h3 className="mt-2 text-[16px] font-semibold leading-snug text-foreground">{related.title}</h3>
+                    <p className="mt-2 line-clamp-2 text-[15px] leading-[1.65] text-secondary">{related.excerpt}</p>
                   </Link>
                 ))}
               </div>
@@ -326,7 +325,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               <Link
                 key={link.href}
                 href={link.href}
-                className="rounded-full border border-[#e5e7eb] bg-white px-3.5 py-1.5 text-[12px] font-medium text-[#6b7280] transition-all hover:text-[#111827] hover:border-[#d1d5db]"
+                className="public-chip"
               >
                 {link.label}
               </Link>

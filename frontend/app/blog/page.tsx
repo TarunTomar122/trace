@@ -9,14 +9,14 @@ import { standaloneBlogPosts } from "./standalone-content";
 import { generateCollectionPageSchema, SITE_BASE_URL } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Blog | Trace — Tech News, Productivity & AI Insights",
+  title: "Blog | Trace | Tech News, Productivity & AI Insights",
   description:
     "Read expert guides on staying updated with tech news, beating information overload, and building better news consumption habits. AI-powered tools, RSS readers, and productivity tips for developers and tech professionals.",
   alternates: {
     canonical: "https://www.yourtrace.online/blog"
   },
   openGraph: {
-    title: "Blog | Trace — Tech News, Productivity & AI Insights",
+    title: "Blog | Trace | Tech News, Productivity & AI Insights",
     description:
       "Expert guides on staying updated with tech news, beating information overload, and building better news consumption habits.",
     url: "https://www.yourtrace.online/blog",
@@ -51,7 +51,7 @@ export default function BlogPage() {
   const [featuredPost, ...remainingPosts] = allPosts;
 
   const collectionSchema = generateCollectionPageSchema(
-    "Blog | Trace — Tech News, Productivity & AI Insights",
+    "Blog | Trace | Tech News, Productivity & AI Insights",
     "Expert guides on staying updated with tech news, beating information overload, and building better information consumption habits.",
     `${SITE_BASE_URL}/blog`,
     [
@@ -72,12 +72,12 @@ export default function BlogPage() {
       <section className="px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl pt-12 pb-10 sm:pt-20 sm:pb-14">
           <div className="max-w-3xl">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.15em] text-[#2563eb]">Blog</p>
-            <h1 className="mt-4 text-[2.5rem] font-bold tracking-[-0.04em] leading-[0.95] text-[#111827] sm:text-[3.75rem]">
+            <p className="public-kicker">Blog</p>
+            <h1 className="public-title mt-4">
               Guides & insights for<br className="hidden sm:block" />
               smarter tech reading
             </h1>
-            <p className="mt-5 max-w-xl text-[16px] leading-[1.8] landing-muted">
+            <p className="public-deck mt-5">
               Expert guides on tech news aggregation, productivity, AI tools, and building better information diets.
               Written for developers, founders, and anyone drowning in tabs.
             </p>
@@ -100,28 +100,27 @@ export default function BlogPage() {
                   alt={featuredPost.title}
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-white/30 md:hidden" />
               </div>
               <div className="flex flex-col justify-center p-6 sm:p-10">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#2563eb] mb-3">
+                <p className="public-kicker mb-3">
                   {featuredPost.tag}
                 </p>
-                <h2 className="text-[1.5rem] font-bold tracking-[-0.025em] leading-tight text-[#111827] sm:text-[1.75rem]">
+                <h2 className="text-[1.75rem] font-semibold tracking-[-0.03em] leading-tight text-foreground sm:text-[2rem]">
                   {featuredPost.title}
                 </h2>
-                <p className="mt-3 text-[15px] leading-[1.7] landing-muted line-clamp-3">
+                <p className="mt-4 line-clamp-3 text-[16px] leading-[1.72] text-secondary">
                   {featuredPost.excerpt}
                 </p>
                 <div className="mt-5 flex items-center gap-4">
-                  <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#2563eb] transition-colors group-hover:text-[#1d4ed8]">
+                  <span className="public-link inline-flex items-center gap-1.5 text-[13px]">
                     Read article
                     <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
                   </span>
-                  <span className="flex items-center gap-1 text-[11px] text-[#9ca3af]">
+                  <span className="public-meta flex items-center gap-1">
                     <Clock size={11} />
                     {featuredPost.readTime}
                   </span>
-                  <span className="flex items-center gap-1 text-[11px] text-[#9ca3af]">
+                  <span className="public-meta flex items-center gap-1">
                     <Calendar size={11} />
                     {featuredPost.date}
                   </span>
@@ -140,7 +139,7 @@ export default function BlogPage() {
               <Link
                 key={cat.key}
                 href={cat.key === "all" ? "/blog" : `/blog/category/${cat.key}`}
-                className="rounded-full border border-[#e5e7eb] bg-white px-4 py-2 text-[13px] font-medium text-[#6b7280] transition-all hover:text-[#111827] hover:border-[#d1d5db] hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+                className="public-chip"
               >
                 {cat.label}
               </Link>
@@ -170,22 +169,22 @@ export default function BlogPage() {
                 </div>
                 <div className="flex flex-1 flex-col p-5">
                   <div className="flex items-center gap-2 mb-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#2563eb]">
+                    <p className="public-kicker">
                       {post.tag}
                     </p>
                   </div>
-                  <h2 className="text-[1.1rem] font-bold tracking-[-0.015em] leading-snug text-[#111827]">
+                  <h2 className="text-[1.25rem] font-semibold tracking-[-0.02em] leading-snug text-foreground">
                     {post.title}
                   </h2>
-                  <p className="mt-2 flex-1 text-[13px] leading-[1.7] landing-muted line-clamp-3">
+                  <p className="mt-3 flex-1 line-clamp-3 text-[15px] leading-[1.7] text-secondary">
                     {post.excerpt}
                   </p>
-                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-[#e5e7eb]">
-                    <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#2563eb] transition-colors group-hover:text-[#1d4ed8]">
+                  <div className="public-rule mt-5 flex items-center justify-between border-t pt-4">
+                    <span className="public-link inline-flex items-center gap-1.5 text-[12px]">
                       Read article
                       <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
                     </span>
-                    <span className="flex items-center gap-1 text-[11px] text-[#9ca3af]">
+                    <span className="public-meta flex items-center gap-1">
                       <Clock size={10} />
                       {post.readTime}
                     </span>
@@ -200,10 +199,10 @@ export default function BlogPage() {
       {/* Newsletter CTA */}
       <section className="px-4 pb-24 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl landing-card p-10 text-center sm:p-14">
-          <h2 className="text-[1.5rem] font-bold tracking-[-0.025em] text-[#111827] sm:text-[1.75rem]">
+          <h2 className="text-[1.75rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[2rem]">
             Get the latest posts in your inbox
           </h2>
-          <p className="mt-3 text-[15px] leading-[1.7] landing-muted">
+          <p className="public-body mx-auto mt-3 max-w-xl">
             Weekly guides on tech news, productivity, and AI tools. No spam, just useful stuff.
           </p>
           <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">

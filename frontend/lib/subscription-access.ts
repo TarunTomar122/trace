@@ -76,11 +76,11 @@ export function resolveFeedAccess({
   if (clientProfileFresh && hasActiveSubscription(clientProfile)) {
     return { hasAccess: true, pending: false, verificationFailed: false };
   }
-  if (clientProfileFresh) {
-    return { hasAccess: false, pending: false, verificationFailed: false };
-  }
   if (serverHasAccess) {
     return { hasAccess: true, pending: false, verificationFailed: false };
+  }
+  if (clientProfileFresh) {
+    return { hasAccess: false, pending: false, verificationFailed: false };
   }
   if (authLoading || signedIn) {
     return {

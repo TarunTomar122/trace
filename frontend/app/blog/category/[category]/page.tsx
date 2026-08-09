@@ -36,7 +36,7 @@ const CATEGORY_META: Record<string, { label: string; description: string }> = {
   },
   research: {
     label: "Research",
-    description: "Evidence-based analysis of information overload, attention economics, and calm technology — grounded in academic research.",
+    description: "Evidence-based analysis of information overload, attention economics, and calm technology, grounded in academic research.",
   },
 };
 
@@ -52,7 +52,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: "Category Not Found | Trace Blog" };
   }
 
-  const title = `${meta.label} — Trace Blog`;
+  const title = `${meta.label} | Trace Blog`;
   const description = meta.description;
   const url = `${SITE_BASE_URL}/blog/category/${category}`;
 
@@ -102,7 +102,7 @@ export default async function CategoryPage({ params }: PageProps) {
   ]);
 
   const collectionSchema = generateCollectionPageSchema(
-    `${meta.label} — Trace Blog`,
+    `${meta.label} | Trace Blog`,
     meta.description,
     categoryUrl,
     posts.map((p) => `${SITE_BASE_URL}/blog/${p.slug}`),
@@ -127,19 +127,19 @@ export default async function CategoryPage({ params }: PageProps) {
             {/* Breadcrumb link */}
             <Link
               href="/blog"
-              className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.25em] text-[#9ca3af] transition-colors hover:text-[#111827]"
+              className="public-meta inline-flex items-center gap-1.5 font-semibold uppercase tracking-[0.2em] transition-colors hover:text-foreground"
             >
               <ArrowLeft size={12} />
               All articles
             </Link>
 
-            <p className="mt-6 text-[12px] font-semibold uppercase tracking-[0.15em] text-[#2563eb]">
+            <p className="public-kicker mt-6">
               {meta.label}
             </p>
-            <h1 className="mt-3 text-[2.5rem] font-bold tracking-[-0.04em] leading-[0.95] text-[#111827] sm:text-[3.75rem]">
+            <h1 className="public-title mt-3">
               {meta.label}
             </h1>
-            <p className="mt-4 max-w-xl text-[16px] leading-[1.8] landing-muted">
+            <p className="public-deck mt-4">
               {meta.description}
             </p>
           </div>
@@ -154,10 +154,10 @@ export default async function CategoryPage({ params }: PageProps) {
               <Link
                 key={key}
                 href={`/blog/category/${key}`}
-                className={`rounded-full border px-3.5 py-1.5 text-[12px] font-medium transition-all ${
+                className={`public-chip ${
                   key === category
-                    ? "bg-[#2563eb] text-white border-[#2563eb]"
-                    : "border-[#e5e7eb] bg-white text-[#6b7280] hover:text-[#111827] hover:border-[#d1d5db]"
+                    ? "public-chip-active"
+                    : ""
                 }`}
               >
                 {cat.label}
@@ -165,10 +165,10 @@ export default async function CategoryPage({ params }: PageProps) {
             ))}
             <Link
               href="/blog"
-              className={`rounded-full border px-3.5 py-1.5 text-[12px] font-medium transition-all ${
+              className={`public-chip ${
                 !category
-                  ? "bg-[#2563eb] text-white border-[#2563eb]"
-                  : "border-[#e5e7eb] bg-white text-[#6b7280] hover:text-[#111827] hover:border-[#d1d5db]"
+                  ? "public-chip-active"
+                  : ""
               }`}
             >
               All Posts
@@ -182,10 +182,10 @@ export default async function CategoryPage({ params }: PageProps) {
         <div className="mx-auto max-w-7xl">
           {posts.length === 0 ? (
             <div className="py-16 text-center">
-              <p className="text-[15px] landing-muted">No articles in this category yet.</p>
+              <p className="public-body">No articles in this category yet.</p>
               <Link
                 href="/blog"
-                className="mt-3 inline-flex items-center gap-1 text-[13px] font-medium text-[#2563eb] hover:text-[#1d4ed8]"
+                className="public-link mt-3 inline-flex items-center gap-1 text-[14px]"
               >
                 Browse all articles <ArrowRight size={13} />
               </Link>
@@ -207,18 +207,18 @@ export default async function CategoryPage({ params }: PageProps) {
                     />
                   </div>
                   <div className="p-5">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#2563eb]">
+                    <p className="public-kicker">
                       {post.tag}
                     </p>
-                    <h2 className="mt-2 text-[15px] font-bold leading-snug text-[#111827]">
+                    <h2 className="mt-2 text-[1.25rem] font-semibold leading-snug tracking-[-0.02em] text-foreground">
                       {post.title}
                     </h2>
-                    <p className="mt-2 text-[12px] leading-[1.6] landing-muted line-clamp-2">
+                    <p className="mt-3 line-clamp-3 text-[15px] leading-[1.7] text-secondary">
                       {post.excerpt}
                     </p>
-                    <div className="mt-3 flex items-center gap-3">
-                      <span className="text-[11px] text-[#9ca3af]">{post.author}</span>
-                      <span className="flex items-center gap-1 text-[11px] text-[#9ca3af]">
+                    <div className="public-meta mt-4 flex items-center gap-3">
+                      <span>{post.author}</span>
+                      <span className="flex items-center gap-1">
                         <Clock size={10} />
                         {post.readTime}
                       </span>

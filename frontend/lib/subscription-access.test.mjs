@@ -34,7 +34,7 @@ test('recognizes active access from either web or app subscriptions', () => {
   );
 });
 
-test('fresh client profile overrides a stale signed server entitlement', () => {
+test('active access from either fresh profile source wins', () => {
   assert.deepEqual(
     resolveFeedAccess({
       serverHasAccess: false,
@@ -56,7 +56,7 @@ test('fresh client profile overrides a stale signed server entitlement', () => {
       authLoading: false,
       signedIn: true,
     }),
-    { hasAccess: false, pending: false, verificationFailed: false },
+    { hasAccess: true, pending: false, verificationFailed: false },
   );
 });
 

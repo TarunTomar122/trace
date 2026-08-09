@@ -1,66 +1,48 @@
 "use client";
 
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { Check, ExternalLink, Github, Loader2, Share2 } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { Bookmark, Check, ExternalLink, Lock, Share2, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useAuth } from '@/contexts/AuthContext';
+import { ArticleImage } from '@/components/ArticleImage';
+import type { FeedItem, TrendingTopic } from '@/lib/firestore';
+import {
+  trackCheckoutClicked,
+  trackFeedItemBookmarked,
+  trackFeedItemClicked,
+  trackPaywallShown,
+  trackSummaryOpened,
+} from '@/lib/posthog';
+import type { SummaryAccessResult } from '@/lib/free-reads';
+import { buildArticleShareUrl, buildTopicShareUrl, copyOrShareUrl } from '@/lib/article-share';
+import type { HotTweet } from './FeedOneScreen';
+import { type FeedListItem, getTimeLabel, INTEREST_LABEL } from './FeedUi';
+import { WireFeedLoadingSkeleton } from './FeedBootShell';
 
-const MD_COMPONENTS: Components = {
+const MARKDOWN_COMPONENTS: Components = {
   p: ({ children }) => <>{children}</>,
-  strong: ({ children }) => <strong className="font-semibold text-[#111827]">{children}</strong>,
-  em: ({ children }) => <em className="italic">{children}</em>,
+  strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+  em: ({ children }) => <em>{children}</em>,
   a: ({ children, href }) => (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="text-[#2563eb] hover:underline">
+    <a href={href} target="_blank" rel="noopener noreferrer" className="font-medium text-accent hover:underline">
       {children}
     </a>
   ),
 };
-import { WireFeedLoadingSkeleton, PulseLoadingSkeleton } from './FeedBootShell';
-import { organizeEditionFeed } from './FeedEditionOrganizer';
-import { FeedListItem, INTEREST_LABEL, getTimeLabel } from './FeedUi';
-import {
-  FEED_LIST_SCROLL_KEY,
-  FEED_RESTORE_SCROLL_KEY,
-  FEED_SELECTED_STORY_KEY,
-  getContentFromFeedListItem,
-} from './FeedPulse';
-import { copyOrShareUrl } from '@/lib/article-share';
-import type { FeedItem, TrendingTopic, TopicTimelineEvent } from '@/lib/firestore';
-import type { HotTweet } from './FeedOneScreen';
-import { ArticleImage } from '@/components/ArticleImage';
-import { MediumPaywallGate, FeedListPaywallCta, PulseLockedPreview } from './FeedPaywall';
-import { trackFeedItemClicked, trackSummaryOpened } from '@/lib/posthog';
 
-// ── helpers ───────────────────────────────────────────────────────────────────
-
-function getTodayLabel() {
-  return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
+function getBody(item: FeedListItem): string {
+  if (item.type === 'topic') return (item.data as TrendingTopic).summary || item.preview;
+  const article = item.data as FeedItem;
+  return article.summary?.short_article?.body || article.summary?.short_article?.subtitle || item.preview;
 }
 
 function getKeyPoints(item: FeedListItem): string[] {
-  if (item.type === 'topic') return (item.data as TrendingTopic).key_points ?? [];
-  return (item.data as FeedItem).summary?.short_article?.key_takeaways ?? [];
-}
-
-function getBody(item: FeedListItem): string {
-  if (item.type === 'topic') return (item.data as TrendingTopic).summary ?? '';
-  const sa = (item.data as FeedItem).summary?.short_article;
-  return sa?.body ?? sa?.subtitle ?? item.preview ?? '';
-}
-
-function getPaywallTeaser(item: FeedListItem): string {
-  const raw = getBody(item) || item.preview || '';
-  const plain = raw.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1').replace(/[#>`]/g, '').trim();
-  if (plain.length <= 220) return plain;
-  const cut = plain.slice(0, 220);
-  const lastSpace = cut.lastIndexOf(' ');
-  return `${(lastSpace > 120 ? cut.slice(0, lastSpace) : cut).trim()}…`;
-}
-
-function getTimeline(item: FeedListItem): TopicTimelineEvent[] {
-  if (item.type === 'topic') return (item.data as TrendingTopic).timeline ?? [];
-  return [];
+  if (item.type === 'topic') return (item.data as TrendingTopic).key_points || [];
+  return (item.data as FeedItem).summary?.short_article?.key_takeaways || [];
 }
 
 function getItemUrl(item: FeedListItem): string | undefined {
@@ -69,805 +51,308 @@ function getItemUrl(item: FeedListItem): string | undefined {
   return (item.data as TrendingTopic).articles?.[0]?.url;
 }
 
-function getCategory(item: FeedListItem): string {
-  const id = item.interestId ?? item.tags?.[0];
-  if (!id) return '';
-  return (INTEREST_LABEL[id] ?? id.replace(/-/g, ' ')).toUpperCase();
+function getItemShareUrl(item: FeedListItem): string | null {
+  return item.type === 'article'
+    ? buildArticleShareUrl(item.data as FeedItem)
+    : buildTopicShareUrl(item.data as TrendingTopic);
 }
 
-function stocksBrewUrl(storyId?: string): string {
-  const url = new URL('https://stocksbrew.online/');
-  url.searchParams.set('utm_source', 'trace');
-  url.searchParams.set('utm_medium', 'feed');
-  url.searchParams.set('utm_campaign', 'market_story');
-  if (storyId) url.searchParams.set('utm_content', storyId);
-  return url.toString();
+export function categoryId(item: FeedListItem): string {
+  return item.interestId || item.tags?.find(Boolean) || 'tech';
 }
 
-function formatTimestamp(ts: string): string {
-  try {
-    const d = new Date(ts);
-    return d.toLocaleDateString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
-  } catch { return ts; }
+function categoryLabel(item: FeedListItem): string {
+  const id = categoryId(item);
+  return INTEREST_LABEL[id] || id.replace(/[-_]+/g, ' ');
 }
 
-// ── toggle ────────────────────────────────────────────────────────────────────
-
-function Toggle({ tab, onChange }: { tab: 'news' | 'pulse'; onChange: (t: 'news' | 'pulse') => void }) {
-  return (
-    <div className="inline-flex shrink-0 items-center gap-6">
-      {(['news', 'pulse'] as const).map(t => (
-        <button
-          key={t}
-          type="button"
-          onClick={() => onChange(t)}
-          className={`relative pb-1.5 text-[13px] font-semibold transition-colors ${
-            tab === t ? 'text-[#111827]' : 'text-[#9ca3af] hover:text-[#374151]'
-          }`}
-        >
-          {t === 'news' ? 'News' : 'Pulse'}
-          {tab === t && (
-            <span className="absolute -bottom-px left-0 right-0 h-0.5 rounded-full bg-[#111827]" />
-          )}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ── left pane ─────────────────────────────────────────────────────────────────
-
-function LeftPane({
-  edition,
-  allStories,
-  activeInterest,
-  setActiveInterest,
-  selectedId,
-  onSelect,
-  isItemLocked,
-  listScrollRef,
+function BookmarkButton({
+  active,
+  disabled,
+  onClick,
+  label,
 }: {
-  edition: ReturnType<typeof organizeEditionFeed>;
-  allStories: FeedListItem[];
-  activeInterest: string | null;
-  setActiveInterest: (id: string | null) => void;
-  selectedId: string | null;
-  onSelect: (item: FeedListItem) => void;
-  isItemLocked: (id: string) => boolean;
-  listScrollRef: React.RefObject<HTMLDivElement | null>;
+  active: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  label: string;
 }) {
-  const interestPills = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const s of allStories) {
-      const id = s.interestId ?? s.tags?.[0];
-      if (id && INTEREST_LABEL[id]) counts.set(id, (counts.get(id) ?? 0) + 1);
-    }
-    return Array.from(counts.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([id, count]) => ({ id, count }));
-  }, [allStories]);
-
-  const visibleStories = useMemo(() => {
-    if (!activeInterest) return allStories;
-    return allStories.filter(s => s.interestId === activeInterest || s.tags?.includes(activeInterest));
-  }, [allStories, activeInterest]);
-
-  const effectiveSelected = selectedId ?? allStories[0]?.id;
-
-  const renderStoryRow = (
-    item: FeedListItem,
-    opts?: { blurPx?: number; opacity?: number; locked?: boolean },
-  ) => {
-    const selected = !opts?.locked && item.id === effectiveSelected;
-    const meta = [
-      item.sourceCount > 1 ? `${item.sourceCount} sources` : item.source,
-      item.timestamp ? getTimeLabel(item.timestamp) : null,
-    ].filter(Boolean).join(' · ');
-    const blurred = typeof opts?.blurPx === 'number';
-    const rowClass = `flex w-full gap-4 border-b border-[#e5e7eb]/40 px-6 py-4 text-left ${
-      opts?.locked
-        ? 'cursor-default select-none bg-white'
-        : selected
-          ? 'bg-[#eff6ff]/50'
-          : 'bg-white hover:bg-[#fafafa]'
-    }`;
-
-    const inner = (
-      <div
-        className="flex w-full gap-4"
-        style={blurred ? { filter: `blur(${opts.blurPx}px)`, opacity: opts.opacity } : undefined}
-      >
-        <div className="min-w-0 flex-1">
-          <p className="text-[14px] font-semibold leading-snug text-[#111827] line-clamp-3">
-            {item.title}
-          </p>
-          {meta && (
-            <p className="mt-2 text-[11px] font-medium text-[#9ca3af]">{meta}</p>
-          )}
-        </div>
-        <div className="shrink-0 h-[68px] w-[68px] overflow-hidden rounded-md bg-[#f3f4f6]">
-          <ArticleImage
-            thumbnail={item.thumbnail}
-            title={item.title}
-            fallbackWidth={144}
-            fallbackHeight={144}
-            className="h-full w-full object-cover"
-          />
-        </div>
-      </div>
-    );
-
-    if (opts?.locked) {
-      return (
-        <div className={rowClass} aria-hidden>
-          {inner}
-        </div>
-      );
-    }
-
-    return (
-      <button
-        type="button"
-        data-story-id={item.id}
-        onClick={() => onSelect(item)}
-        className={`group ${rowClass} transition-colors`}
-      >
-        {inner}
-      </button>
-    );
-  };
-
-  const firstLockedIndex = visibleStories.findIndex((item) => isItemLocked(item.id));
-  const lockedRankById = useMemo(() => {
-    const ranks = new Map<string, number>();
-    let rank = 0;
-    for (const item of visibleStories) {
-      if (isItemLocked(item.id)) ranks.set(item.id, ++rank);
-    }
-    return ranks;
-  }, [visibleStories, isItemLocked]);
-  const tailAllLocked = firstLockedIndex >= 0
-    && visibleStories.slice(firstLockedIndex).every((item) => isItemLocked(item.id));
-
-  const renderLockedRow = (item: FeedListItem) => {
-    const rank = lockedRankById.get(item.id) ?? 1;
-    return renderStoryRow(item, {
-      locked: true,
-      blurPx: Math.min(1.5 + (rank - 1) * 1.4, 6),
-      opacity: Math.max(0.5, 0.95 - (rank - 1) * 0.08),
-    });
-  };
-
-  return (
-    <div className="flex min-h-0 w-full flex-col sm:w-[360px] sm:shrink-0 sm:flex-none sm:border-r sm:border-[#e5e7eb]">
-      {/* left header */}
-      <div className="shrink-0 border-b border-[#e5e7eb] bg-white px-6 py-4">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-[15px] font-semibold tracking-tight text-[#111827]">Today&rsquo;s news</h2>
-          <span className="text-[12px] text-[#9ca3af]">{allStories.length} stories</span>
-        </div>
-        {interestPills.length > 0 && (
-          <div className="mt-3 flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none" style={{ scrollbarWidth: 'none' }}>
-            <button
-              type="button"
-              onClick={() => setActiveInterest(null)}
-              className={`rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
-                !activeInterest ? 'bg-[#2563eb] text-white' : 'bg-[#f3f4f6] text-[#6b7280] hover:bg-[#e5e7eb]'
-              }`}
-            >
-              All
-            </button>
-            {interestPills.map(({ id, count }) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setActiveInterest(activeInterest === id ? null : id)}
-                className={`rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
-                  activeInterest === id ? 'bg-[#2563eb] text-white' : 'bg-[#f3f4f6] text-[#6b7280] hover:bg-[#e5e7eb]'
-                }`}
-              >
-                {INTEREST_LABEL[id]}
-                <span className={`ml-1 text-[10px] ${activeInterest === id ? 'text-white/70' : 'text-[#9ca3af]'}`}>
-                  {count}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* story list */}
-      <div ref={listScrollRef} className="relative flex-1 min-h-0 overflow-y-auto bg-white">
-        {tailAllLocked ? (
-          <>
-            {visibleStories.slice(0, firstLockedIndex).map((item) => (
-              <React.Fragment key={item.id}>{renderStoryRow(item)}</React.Fragment>
-            ))}
-            <FeedListPaywallCta />
-            <div className="relative pointer-events-none">
-              {visibleStories.slice(firstLockedIndex).map((item) => (
-                <React.Fragment key={item.id}>{renderLockedRow(item)}</React.Fragment>
-              ))}
-              <div
-                className="absolute inset-x-0 top-0 h-full bg-gradient-to-b from-transparent via-white/70 to-white"
-                aria-hidden
-              />
-            </div>
-          </>
-        ) : (
-          visibleStories.map((item, index) => {
-            const locked = isItemLocked(item.id);
-            const isFirstLocked = locked && index === firstLockedIndex;
-            return (
-              <React.Fragment key={item.id}>
-                {isFirstLocked && <FeedListPaywallCta />}
-                {locked ? renderLockedRow(item) : renderStoryRow(item)}
-              </React.Fragment>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── right pane ────────────────────────────────────────────────────────────────
-
-function StoryShareButton({
-  shareUrl,
-  title,
-}: {
-  shareUrl: string;
-  title: string;
-}) {
-  const [shareLoading, setShareLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const handleShare = useCallback(async () => {
-    setShareLoading(true);
-    try {
-      await copyOrShareUrl(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // ignore clipboard failures
-    } finally {
-      setShareLoading(false);
-    }
-  }, [shareUrl]);
-
   return (
     <button
       type="button"
-      onClick={handleShare}
-      disabled={shareLoading}
-      aria-label="Share article"
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#e5e7eb] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#374151] shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-colors hover:bg-[#f9fafb] disabled:opacity-60"
+      aria-label={label}
+      aria-pressed={active}
+      disabled={disabled}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-background/85 text-foreground shadow-sm ring-1 ring-foreground/10 backdrop-blur transition hover:bg-background disabled:opacity-50"
     >
-      {shareLoading ? (
-        <Loader2 size={14} className="animate-spin" />
-      ) : copied ? (
-        <Check size={14} className="text-green-500" />
-      ) : (
-        <Share2 size={14} />
-      )}
-      {shareLoading ? 'Copying...' : copied ? 'Link copied' : 'Copy link'}
+      <Bookmark size={16} fill={active ? 'currentColor' : 'none'} />
     </button>
   );
 }
 
-function RightPane({ item, isItemLocked }: { item: FeedListItem; isItemLocked: (id: string) => boolean }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const locked = isItemLocked(item.id);
+function StoryCard({
+  item,
+  bookmarked,
+  bookmarkBusy,
+  locked,
+  onOpen,
+  onBookmark,
+}: {
+  item: FeedListItem;
+  bookmarked: boolean;
+  bookmarkBusy: boolean;
+  locked: boolean;
+  onOpen: () => void;
+  onBookmark: () => void;
+}) {
+  return (
+    <article className="group overflow-hidden rounded-[18px] bg-surface p-3 shadow-[0_1px_0_rgba(0,0,0,0.05)] ring-1 ring-foreground/7 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(0,0,0,0.08)] dark:ring-white/10">
+      <div className="relative">
+        <button type="button" onClick={onOpen} className="block w-full text-left" aria-label={`Read ${item.title}`}>
+          <ArticleImage
+            thumbnail={item.thumbnail}
+            title={item.title}
+            alt=""
+            loading="lazy"
+            className="aspect-[16/10] w-full rounded-[12px] object-cover transition-transform duration-300 group-hover:scale-[1.015]"
+          />
+        </button>
+        <div className="absolute right-3 top-3 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+          <BookmarkButton
+            active={bookmarked}
+            disabled={bookmarkBusy}
+            onClick={onBookmark}
+            label={bookmarked ? `Remove bookmark for ${item.title}` : `Bookmark ${item.title}`}
+          />
+        </div>
+      </div>
+      <button type="button" onClick={onOpen} className="block min-h-[132px] w-full px-2 pb-3 pt-5 text-left sm:px-3">
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.17em] text-accent">{categoryLabel(item)}</p>
+          {locked && <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-secondary"><Lock size={11} /> Pro</span>}
+        </div>
+        <h2 className="mt-3 text-[19px] font-semibold leading-[1.28] tracking-[-0.025em] text-foreground sm:text-[20px]">
+          {item.title}
+        </h2>
+      </button>
+    </article>
+  );
+}
+
+export function ReaderModal({
+  item,
+  locked,
+  bookmarked,
+  bookmarkBusy,
+  onBookmark,
+  onClose,
+  restoreFocusTo,
+}: {
+  item: FeedListItem;
+  locked: boolean;
+  bookmarked: boolean;
+  bookmarkBusy: boolean;
+  onBookmark: () => void;
+  onClose: () => void;
+  restoreFocusTo: HTMLElement | null;
+}) {
   const body = getBody(item);
-  const teaser = getPaywallTeaser(item);
   const keyPoints = getKeyPoints(item);
-  const timeline = getTimeline(item);
   const url = getItemUrl(item);
-  const category = getCategory(item);
-  const meta = [
-    category,
-    item.timestamp ? getTimeLabel(item.timestamp) : null,
-    item.sourceCount > 1 ? `${item.sourceCount} sources` : null,
-  ].filter(Boolean).join('  ·  ');
-  const showStocksBrewCta = (item.interestId ?? item.tags?.[0] ?? '').toLowerCase() === 'markets';
-  const shareUrl = useMemo(() => {
-    const content = getContentFromFeedListItem(item);
-    return content?.shareUrl || content?.url || undefined;
-  }, [item]);
+  const shareUrl = getItemShareUrl(item);
+  const source = item.source || (item.data as FeedItem).source_name;
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error'>('idle');
+
+  const copyShareLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await copyOrShareUrl(shareUrl);
+      setShareStatus('copied');
+    } catch {
+      setShareStatus('error');
+    }
+    window.setTimeout(() => setShareStatus('idle'), 2000);
+  };
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
-  }, [item.id]);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+      const focusable = [...dialogRef.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')];
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable.at(-1)!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener('keydown', handleKey);
+      restoreFocusTo?.focus();
+    };
+  }, [onClose, restoreFocusTo]);
 
   return (
-    <div ref={scrollRef} className="hidden min-h-0 flex-1 overflow-y-auto bg-white sm:block">
-      <article className="mx-auto w-full max-w-[720px] px-10 py-10">
-        <div className="flex items-start justify-between gap-4">
-          {meta ? (
-            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[#9ca3af]">
-              {meta}
-            </p>
-          ) : (
-            <span />
-          )}
-          {shareUrl && (
-            <StoryShareButton shareUrl={shareUrl} title={item.title} />
-          )}
+    <div
+      role="dialog"
+      ref={dialogRef}
+      aria-modal="true"
+      aria-labelledby="feed-reader-title"
+      className="fixed inset-0 z-[120] flex items-stretch justify-stretch bg-surface p-0 sm:items-center sm:justify-center sm:bg-black/[0.62] sm:p-6 sm:backdrop-blur-[4px]"
+      onMouseDown={onClose}
+    >
+      <article
+        className="h-[100dvh] w-full overflow-x-hidden overflow-y-auto break-words bg-surface sm:h-auto sm:max-h-[min(780px,calc(100vh-40px))] sm:max-w-[720px] sm:rounded-[14px] sm:border sm:border-border sm:shadow-[0_26px_90px_rgb(0_0_0/28%)]"
+        style={{ fontFamily: "Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="relative overflow-hidden sm:rounded-t-[14px]">
+          <ArticleImage
+            thumbnail={item.thumbnail}
+            title={item.title}
+            alt=""
+            className="max-h-[248px] min-h-[150px] w-full object-cover"
+          />
+          <div className="absolute right-[14px] top-[14px] flex gap-2 [&>button]:size-[38px] [&>button]:border [&>button]:border-white/[0.18] [&>button]:bg-[#0e0e0fc7] [&>button]:text-white [&>button]:ring-0 [&>button:hover]:!bg-[#0e0e0feb] [&_svg]:size-[18px]">
+            <BookmarkButton
+              active={bookmarked}
+              disabled={bookmarkBusy}
+              onClick={onBookmark}
+              label={bookmarked ? `Remove bookmark for ${item.title}` : `Bookmark ${item.title}`}
+            />
+            <button
+              type="button"
+              autoFocus
+              aria-label="Close story"
+              onClick={onClose}
+              className="inline-flex items-center justify-center rounded-full backdrop-blur hover:!bg-[#0e0e0feb]"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
-        {/* headline */}
-        <h1 className="mt-3 text-[28px] font-bold tracking-[-0.02em] text-[#111827] leading-[1.18]">
-          {item.title}
-        </h1>
+        <div className="px-[22px] pb-[34px] pt-[26px] sm:p-[clamp(24px,4vw,44px)]">
+          <h1 id="feed-reader-title" className="max-w-[620px] text-balance text-[clamp(21px,2.6vw,30px)] font-medium leading-[1.12] tracking-[-0.025em] text-foreground">
+            {item.title}
+          </h1>
 
-        {/* hero image */}
-        {item.thumbnail && (
-          <div className="mt-6 overflow-hidden rounded-md bg-[#f3f4f6]">
-            <ArticleImage
-              thumbnail={item.thumbnail}
-              title={item.title}
-              fallbackWidth={1200}
-              fallbackHeight={675}
-              className="aspect-[16/9] w-full object-cover"
-            />
-          </div>
-        )}
-
-        {locked ? (
-          <>
-            {teaser && (
-              <p className="mt-7 text-[15.5px] leading-[1.7] text-[#374151]">
-                {teaser}
-              </p>
-            )}
-            <MediumPaywallGate trackingId="feed_detail_paywall" />
-          </>
-        ) : (
-          <>
-        {/* body */}
-        {body && (
-          <p className="mt-7 text-[15.5px] leading-[1.7] text-[#374151]">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS}>{body}</ReactMarkdown>
-          </p>
-        )}
-
-        {/* key points */}
-        {keyPoints.length > 0 && (
-          <section className="mt-10 border-t border-[#e5e7eb] pt-7">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9ca3af]">Key points</p>
-            <ul className="mt-4 space-y-3">
-              {keyPoints.map((point, i) => (
-                <li key={i} className="flex items-start gap-3 text-[14.5px] leading-[1.6] text-[#374151]">
-                  <span className="mt-[9px] h-1 w-1 shrink-0 rounded-full bg-[#9ca3af]" />
-                  <span>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS}>{point}</ReactMarkdown>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {/* timeline */}
-        {timeline.length > 0 && (
-          <section className="mt-10 border-t border-[#e5e7eb] pt-7">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9ca3af]">Timeline</p>
-            <div className="relative mt-5">
-              <div className="absolute left-[5px] top-1 bottom-1 w-px bg-[#e5e7eb]" />
-              <div className="space-y-6">
-                {timeline.map(event => (
-                  <div key={event.id} className="relative pl-7">
-                    <span className="absolute left-0 top-[7px] block h-[11px] w-[11px] rounded-full border-2 border-white bg-[#d1d5db] ring-1 ring-[#e5e7eb]" />
-                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#9ca3af]">
-                      <span>{formatTimestamp(event.timestamp)}</span>
-                      {event.source_name && (
-                        <>
-                          <span className="text-[#d1d5db]">·</span>
-                          <span className="font-medium uppercase tracking-[0.08em] text-[#6b7280]">{event.source_name}</span>
-                        </>
-                      )}
-                    </div>
-                    <p className="mt-1 text-[14px] font-semibold text-[#111827] leading-snug">{event.title}</p>
-                    {event.summary && (
-                      <p className="mt-1 text-[13px] leading-relaxed text-[#6b7280]">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS}>{event.summary}</ReactMarkdown>
-                      </p>
-                    )}
-                  </div>
-                ))}
+          {locked ? (
+            <div className="relative mt-5 overflow-hidden rounded-[18px] bg-background p-[22px] ring-1 ring-border">
+              <div className="mb-5 flex items-center gap-3">
+                <Image src="/tarat-avatar.jpg" width={38} height={38} alt="Tarat" className="size-[38px] rounded-full object-cover ring-2 ring-background" />
+                <div>
+                  <p className="text-[12px] font-semibold text-foreground">A note from Tarat</p>
+                  <p className="text-[12px] text-secondary">The human making Trace</p>
+                </div>
+              </div>
+              <p className="text-[18px] font-semibold text-foreground">You have used today&rsquo;s five free summaries.</p>
+              <p className="mt-2 max-w-[580px] text-pretty text-[14px] leading-[1.7] text-secondary">Trace is a one-person project. I read every piece of feedback and keep improving it based on what people need. Pro helps me keep building while I start my AI master&rsquo;s at Edinburgh this September.</p>
+              <div className="mt-[18px] flex flex-wrap items-center gap-3">
+                <Link
+                  href="/profile?tab=subscription&intent=checkout"
+                  onClick={() => trackCheckoutClicked('feed_reader_limit')}
+                  className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-foreground px-[15px] py-[10px] text-[13px] font-semibold text-background transition-opacity hover:opacity-85"
+                >
+                  Try Pro free for 3 days
+                </Link>
               </div>
             </div>
-          </section>
-        )}
-
-        {/* read original + share */}
-        {(url || shareUrl) && (
-          <div className="mt-10 border-t border-[#e5e7eb] pt-6">
-            {showStocksBrewCta && (
-              <div className="mb-3">
-                <a
-                  href={stocksBrewUrl(item.id)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#2563eb] hover:underline underline-offset-2"
-                >
-                  Need deeper stock context? Open in StocksBrew <ExternalLink size={13} />
-                </a>
-              </div>
-            )}
-            <div className="flex flex-wrap items-center gap-4">
-              {shareUrl && (
-                <StoryShareButton shareUrl={shareUrl} title={item.title} />
+          ) : (
+            <>
+              {body && (
+                <div className="mt-5 text-pretty text-[16px] font-normal leading-[1.68] text-foreground/88">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{body}</ReactMarkdown>
+                </div>
               )}
-              {url && (
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#2563eb] hover:underline underline-offset-2"
-                >
-                  Read full article <ExternalLink size={13} />
-                </a>
+              {keyPoints.length > 0 && (
+                <ul className="mt-6 space-y-2.5">
+                  {keyPoints.map((point) => (
+                    <li key={point} className="flex gap-2.5 text-pretty text-[15px] font-normal leading-[1.65] text-secondary">
+                      <span aria-hidden="true" className="mt-[0.02em] shrink-0 text-accent">•</span>
+                      <span><ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{point}</ReactMarkdown></span>
+                    </li>
+                  ))}
+                </ul>
               )}
+            </>
+          )}
+          <div className="mt-7 flex flex-wrap items-center justify-between gap-4">
+            {!locked && url ? (
+              <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-accent px-[14px] py-[10px] text-[13px] font-semibold text-accent hover:bg-accent/10">
+                Read original source <ExternalLink size={14} />
+              </a>
+            ) : <span />}
+            <div className="ml-auto flex items-center gap-2.5">
+              <p className="text-right text-[12px] text-secondary">{[source, item.timestamp ? getTimeLabel(item.timestamp) : null].filter(Boolean).join(' · ')}</p>
+              {!locked && shareUrl && (
+                <button
+                  type="button"
+                  onClick={copyShareLink}
+                  aria-label={shareStatus === 'copied' ? 'Link copied' : 'Copy story link'}
+                  title={shareStatus === 'copied' ? 'Link copied' : shareStatus === 'error' ? 'Could not copy link' : 'Copy story link'}
+                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-secondary transition-colors hover:bg-surface-secondary hover:text-foreground active:scale-[0.96]"
+                >
+                  {shareStatus === 'copied' ? <Check size={16} className="text-green-600" /> : <Share2 size={16} />}
+                </button>
+              )}
+              <span className="sr-only" aria-live="polite">{shareStatus === 'copied' ? 'Link copied' : shareStatus === 'error' ? 'Could not copy link' : ''}</span>
             </div>
           </div>
-        )}
-          </>
-        )}
+        </div>
       </article>
     </div>
   );
 }
 
-// ── pulse tab ─────────────────────────────────────────────────────────────────
-
-const PULSE_TWEET_MAX = 3;
-const PULSE_SIDEBAR_MAX = 6;
-const PULSE_READ_MAX = 6;
-
-function PulseSidebarSkeleton({ rows = 4 }: { rows?: number }) {
-  return (
-    <div className="space-y-4">
-      {Array.from({ length: rows }, (_, i) => (
-        <div key={i} className="space-y-2">
-          <div className="h-2 w-20 animate-pulse rounded-full bg-[#f3f4f6]" />
-          <div className={`h-3.5 animate-pulse rounded-full bg-[#f3f4f6] ${i % 2 === 0 ? 'w-full' : 'w-[90%]'}`} />
-          <div className="h-3 w-[75%] animate-pulse rounded-full bg-[#f3f4f6]" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function XIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.742l7.731-8.835L1.254 2.25H8.08l4.261 5.635 5.903-5.635zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-    </svg>
-  );
-}
-
-function HackerNewsIcon() {
-  return (
-    <span className="flex h-4 w-4 items-center justify-center rounded-[2px] bg-[#ff6600] text-[10px] font-medium leading-none text-white" aria-hidden="true">
-      Y
-    </span>
-  );
-}
-
-function PulseSectionTitle({
-  icon,
-  label,
+function SupportingCard({
+  item,
+  tag,
+  bookmarked,
+  bookmarkBusy,
+  onOpen,
+  onBookmark,
 }: {
-  icon?: React.ReactNode;
-  label: string;
+  item: FeedListItem;
+  tag: string;
+  bookmarked: boolean;
+  bookmarkBusy: boolean;
+  onOpen: () => void;
+  onBookmark: () => void;
 }) {
   return (
-    <div className="mb-3 flex items-center gap-2 border-b border-[#e5e7eb] pb-2.5">
-      {icon}
-      <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#374151]">
-        {label}
-      </span>
-    </div>
-  );
-}
-
-function PulseSidebar({
-  tools,
-  tweets,
-  toolsLoading,
-  tweetsLoading,
-  renderSidebarItem,
-  renderTweet,
-}: {
-  tools: FeedListItem[];
-  tweets: HotTweet[];
-  toolsLoading?: boolean;
-  tweetsLoading?: boolean;
-  renderSidebarItem: (
-    item: FeedListItem,
-    opts?: { rank?: number; marker?: boolean; sectionSource?: 'hacker' | 'github'; signalLabel?: string },
-  ) => React.ReactNode;
-  renderTweet: (tweet: HotTweet) => React.ReactNode;
-}) {
-  const sidebarHasContent = tools.length > 0 || tweets.length > 0 || toolsLoading || tweetsLoading;
-  if (!sidebarHasContent) return null;
-
-  return (
-    <div className="mt-10 w-full space-y-10">
-      {(tools.length > 0 || toolsLoading) && (
-        <div>
-          <PulseSectionTitle icon={<Github className="h-4 w-4 text-[#111827]" />} label="GitHub Trending" />
-          {toolsLoading && tools.length === 0 ? (
-            <PulseSidebarSkeleton />
-          ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {tools.slice(0, PULSE_SIDEBAR_MAX).map((item) => renderSidebarItem(item, {
-                marker: true,
-                sectionSource: 'github',
-                signalLabel: item.source === 'Product Hunt' ? 'upvotes' : 'stars today',
-              }))}
-            </div>
-          )}
+    <article className="group relative overflow-hidden rounded-[16px] bg-surface text-left ring-1 ring-foreground/7 transition hover:shadow-lg dark:ring-white/10">
+      <button type="button" onClick={onOpen} className="block w-full text-left" aria-label={`Read ${item.title}`}>
+        <ArticleImage thumbnail={item.thumbnail} title={item.title} alt="" loading="lazy" className="aspect-[16/9] w-full object-cover" />
+        <div className="min-h-[126px] p-5">
+          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-accent">{tag}</p>
+          <h2 className="mt-3 text-[17px] font-semibold leading-[1.35] tracking-[-0.02em] text-foreground group-hover:underline">{item.title}</h2>
         </div>
-      )}
-
-      {(tweets.length > 0 || tweetsLoading) && (
-        <div>
-          <PulseSectionTitle
-            icon={<XIcon className="h-3 w-3 text-[#111827]" />}
-            label="Signals from X"
-          />
-          {tweetsLoading && tweets.length === 0 ? (
-            <PulseSidebarSkeleton />
-          ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {tweets.map(renderTweet)}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Pulse tab ────────────────────────────────────────────────────────────────
-
-function PulseTab({
-  hotTweets,
-  discussions,
-  tools,
-  blogs,
-  isSubscribed,
-  pulseInterests,
-  tweetsLoading,
-  discussionsLoading,
-  toolsLoading,
-}: {
-  hotTweets: HotTweet[];
-  discussions: FeedListItem[];
-  tools: FeedListItem[];
-  blogs: FeedListItem[];
-  isSubscribed: boolean;
-  pulseInterests?: string[];
-  tweetsLoading?: boolean;
-  discussionsLoading?: boolean;
-  toolsLoading?: boolean;
-}) {
-  const pulseTweets = hotTweets
-    .filter((tweet, index, tweets) => {
-      const category = tweet.category.trim().toLowerCase();
-      return !category || tweets.findIndex((candidate) => candidate.category.trim().toLowerCase() === category) === index;
-    })
-    .slice(0, PULSE_TWEET_MAX);
-  const sidebarHasContent = discussions.length > 0 || tools.length > 0 || blogs.length > 0
-    || discussionsLoading || toolsLoading;
-  const isEmpty = !pulseTweets.length && !sidebarHasContent && !tweetsLoading;
-  const visibleTweets = isSubscribed ? pulseTweets : pulseTweets.slice(0, 1);
-  const visibleDiscussions = isSubscribed ? discussions : discussions.slice(0, 2);
-  const visibleTools = isSubscribed ? tools : tools.slice(0, 2);
-  const visibleBlogs = isSubscribed ? blogs.slice(0, PULSE_READ_MAX) : blogs.slice(0, 1);
-
-  if (tweetsLoading && hotTweets.length === 0 && !sidebarHasContent) {
-    return <PulseLoadingSkeleton />;
-  }
-
-  if (isEmpty && isSubscribed) {
-    return (
-      <div className="flex h-full items-center justify-center bg-white">
-        <p className="text-[13px] text-[#9ca3af]">Pulse is on its way</p>
-      </div>
-    );
-  }
-
-  const tweetMeta = (tweet: HotTweet, viewLabel = 'View on X') => (
-    <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-[#9ca3af]">
-      <span>{getTimeLabel(tweet.pubDate)}</span>
-      {tweet.category && (
-        <>
-          <span className="mx-1.5 text-[#d1d5db]">·</span>
-          <span>{tweet.category}</span>
-        </>
-      )}
-      <span className="mx-1.5 text-[#d1d5db]">·</span>
-      <span className="text-[#111827] group-hover:underline underline-offset-2">{viewLabel} →</span>
-    </p>
-  );
-
-  const renderTweetCard = (tweet: HotTweet) => (
-    <a
-      key={tweet.id}
-      href={tweet.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white transition-all hover:border-[#d1d5db] hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)]"
-    >
-      <div className="aspect-[16/9] overflow-hidden bg-[#f3f4f6]">
-        <ArticleImage
-          title={tweet.title}
-          alt=""
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+      </button>
+      <div className="absolute right-3 top-3 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+        <BookmarkButton
+          active={bookmarked}
+          disabled={bookmarkBusy}
+          onClick={onBookmark}
+          label={bookmarked ? `Remove bookmark for ${item.title}` : `Bookmark ${item.title}`}
         />
       </div>
-      <div className="flex flex-1 flex-col p-5">
-        <p className="text-[15px] font-semibold leading-[1.45] text-[#111827] group-hover:underline decoration-[#111827]/20 underline-offset-[3px]">
-          {tweet.title}
-        </p>
-        {tweet.description && (
-          <p className="mt-2 text-[13px] leading-[1.6] text-[#6b7280]">
-            {tweet.description}
-          </p>
-        )}
-        <div className="mt-auto pt-4">{tweetMeta(tweet)}</div>
-      </div>
-    </a>
-  );
-
-  const renderSidebarItem = (
-    item: FeedListItem,
-    opts: { rank?: number; marker?: boolean; sectionSource?: 'hacker' | 'github'; signalLabel?: string } = {},
-  ) => {
-    const url = getItemUrl(item);
-    const signalText = item.signalCount != null && item.signalCount > 0
-      ? `${item.signalCount.toLocaleString()} ${opts.signalLabel ?? 'pts'}`
-      : null;
-
-    return (
-      <a
-        key={item.id}
-        href={url || '#'}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white transition-all hover:border-[#d1d5db] hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)]"
-      >
-        <div className="aspect-[16/9] overflow-hidden bg-[#f3f4f6]">
-          <ArticleImage
-            thumbnail={item.thumbnail}
-            title={item.title}
-            alt=""
-            loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-          />
-        </div>
-        <div className="flex flex-1 flex-col p-5">
-          <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9ca3af]">
-            {opts.rank != null && <span>{String(opts.rank).padStart(2, '0')}</span>}
-            {opts.rank != null && <span>·</span>}
-            <span>{item.source || (opts.sectionSource === 'github' ? 'GitHub Trending' : 'Hacker News')}</span>
-          </div>
-          <p className="text-[13.5px] font-semibold leading-[1.4] text-[#111827] group-hover:underline underline-offset-2 decoration-[#111827]/20">
-            {item.title}
-          </p>
-          {item.preview && (
-            <p className="mt-1 text-[12.5px] leading-[1.5] text-[#6b7280]">
-              {item.preview}
-            </p>
-          )}
-          {signalText && (
-            <p className="mt-auto pt-4 text-[11px] font-medium tabular-nums text-[#9ca3af]">{signalText}</p>
-          )}
-        </div>
-      </a>
-    );
-  };
-
-  const renderTopRead = (item: FeedListItem) => {
-    const url = getItemUrl(item);
-    const article = item.data as FeedItem;
-    const description = article.summary?.short_article?.subtitle || article.description || item.preview;
-    return (
-      <a
-        key={item.id}
-        href={url || '#'}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white transition-all hover:border-[#d1d5db] hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)]"
-      >
-        <div className="aspect-[16/9] overflow-hidden bg-[#f3f4f6]">
-          <ArticleImage
-            thumbnail={item.thumbnail}
-            title={item.title}
-            alt=""
-            loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-          />
-        </div>
-        <div className="flex flex-1 flex-col p-5">
-          {(item.source || item.timestamp) && (
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9ca3af]">
-              {[item.source, item.timestamp ? getTimeLabel(item.timestamp) : ''].filter(Boolean).join(' · ')}
-            </p>
-          )}
-          <h3 className="text-[16px] font-bold leading-[1.35] tracking-[-0.015em] text-[#111827] group-hover:underline decoration-[#111827]/20 underline-offset-[3px]">
-            {item.title}
-          </h3>
-          {description && (
-            <p className="mt-2 text-[13px] leading-[1.7] text-[#6b7280]">{description}</p>
-          )}
-        </div>
-      </a>
-    );
-  };
-
-  return (
-    <div className="h-full overflow-y-auto overscroll-contain bg-white">
-      <div className="mx-auto w-full max-w-[1500px] px-5 py-7 sm:px-8 lg:px-10">
-        <header className="mb-10 border-b border-[#e5e7eb] pb-7">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#9ca3af]">
-            Pulse
-          </p>
-          <h1 className="mt-2 text-[28px] font-bold tracking-[-0.03em] text-[#111827] sm:text-[34px]">
-            {getTodayLabel()}
-          </h1>
-          <p className="mt-2 text-[14px] leading-relaxed text-[#6b7280]">
-            Fresh reads, tools, and discussions for builders. Updated hourly.
-          </p>
-        </header>
-        {(visibleBlogs.length > 0 || visibleDiscussions.length > 0 || discussionsLoading || !isSubscribed) && (
-          <div className="min-w-0">
-            {visibleBlogs.length > 0 && (
-              <div>
-                <PulseSectionTitle label="Top Reads" />
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {visibleBlogs.map(renderTopRead)}
-                </div>
-              </div>
-            )}
-            {(visibleDiscussions.length > 0 || discussionsLoading) && (
-              <div className={visibleBlogs.length > 0 ? 'mt-10' : undefined}>
-                <PulseSectionTitle icon={<HackerNewsIcon />} label="Hacker News" />
-                {discussionsLoading && visibleDiscussions.length === 0 ? (
-                  <PulseSidebarSkeleton />
-                ) : (
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {visibleDiscussions.slice(0, PULSE_SIDEBAR_MAX).map((item, i) => renderSidebarItem(item, {
-                      rank: i + 1,
-                      sectionSource: 'hacker',
-                    }))}
-                  </div>
-                )}
-              </div>
-            )}
-            {!isSubscribed && <PulseLockedPreview interests={pulseInterests} />}
-          </div>
-        )}
-        <PulseSidebar
-          tools={visibleTools}
-          tweets={visibleTweets}
-          toolsLoading={toolsLoading}
-          tweetsLoading={tweetsLoading}
-          renderSidebarItem={renderSidebarItem}
-          renderTweet={renderTweetCard}
-        />
-      </div>
-    </div>
+    </article>
   );
 }
-
-// ── main export ───────────────────────────────────────────────────────────────
 
 export default function FeedTwoPaneLayout({
   isLoading,
@@ -877,14 +362,11 @@ export default function FeedTwoPaneLayout({
   tools = [],
   blogs = [],
   isSubscribed = false,
-  pulseInterests = [],
-  pulseTweetsLoading = false,
-  pulseDiscussionsLoading = false,
-  pulseToolsLoading = false,
-  interestOrder,
-  onSelectStory,
+  freeReadsUsed = 0,
+  onOpenSummary,
   isItemLocked,
-  onTabChange,
+  tab,
+  activeInterest,
 }: {
   isLoading: boolean;
   storyList: FeedListItem[];
@@ -893,174 +375,238 @@ export default function FeedTwoPaneLayout({
   tools?: FeedListItem[];
   blogs?: FeedListItem[];
   isSubscribed?: boolean;
-  pulseInterests?: string[];
-  pulseTweetsLoading?: boolean;
-  pulseDiscussionsLoading?: boolean;
-  pulseToolsLoading?: boolean;
-  interestOrder: string[];
-  onSelectStory: (item: FeedListItem) => void;
+  freeReadsUsed?: number;
+  onOpenSummary: (item: FeedListItem) => Promise<SummaryAccessResult>;
   isItemLocked: (id: string) => boolean;
-  onTabChange?: (tab: 'news' | 'pulse') => void;
+  tab: 'news' | 'pulse';
+  activeInterest: string | null;
 }) {
-  const [tab, setTab] = useState<'news' | 'pulse'>('pulse');
+  const { user } = useAuth();
+  const [selected, setSelected] = useState<{ item: FeedListItem; locked: boolean } | null>(null);
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+  const [bookmarkBusyIds, setBookmarkBusyIds] = useState<Set<string>>(new Set());
+  const [bookmarkMessage, setBookmarkMessage] = useState<string | null>(null);
+  const locallyChangedBookmarks = useRef(new Set<string>());
+  const bookmarkMessageTimerRef = useRef<number | null>(null);
+  const readerOpenerRef = useRef<HTMLElement | null>(null);
 
-  const handleTabChange = (next: 'news' | 'pulse') => {
-    setTab(next);
-    onTabChange?.(next);
-  };
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [activeInterest, setActiveInterest] = useState<string | null>(null);
-  const listScrollRef = useRef<HTMLDivElement>(null);
-  const restoredScrollRef = useRef(false);
+  const showBookmarkMessage = useCallback((message: string) => {
+    if (bookmarkMessageTimerRef.current) window.clearTimeout(bookmarkMessageTimerRef.current);
+    setBookmarkMessage(message);
+    bookmarkMessageTimerRef.current = window.setTimeout(() => setBookmarkMessage(null), 3000);
+  }, []);
 
-  const edition = useMemo(
-    () => organizeEditionFeed(storyList, interestOrder),
-    [storyList, interestOrder],
-  );
-
-  const allStories = useMemo(() => [
-    ...(edition.hero ? [edition.hero.lead, ...edition.hero.sidebar] : []),
-    ...edition.sections.flatMap(s => s.stories),
-    ...edition.latest,
-  ], [edition]);
+  useEffect(() => () => {
+    if (bookmarkMessageTimerRef.current) window.clearTimeout(bookmarkMessageTimerRef.current);
+  }, []);
 
   useEffect(() => {
-    if (restoredScrollRef.current || typeof window === 'undefined') return;
-    if (sessionStorage.getItem(FEED_RESTORE_SCROLL_KEY) !== '1') return;
-    if (allStories.length === 0) return;
+    locallyChangedBookmarks.current.clear();
+    if (!user) setBookmarkedIds(new Set());
+  }, [user]);
 
-    restoredScrollRef.current = true;
-    sessionStorage.removeItem(FEED_RESTORE_SCROLL_KEY);
-
-    const savedId = sessionStorage.getItem(FEED_SELECTED_STORY_KEY);
-    if (savedId && allStories.some((story) => story.id === savedId)) {
-      setSelectedId(savedId);
-    }
-
-    const savedScroll = sessionStorage.getItem(FEED_LIST_SCROLL_KEY);
-    if (!savedScroll) return;
-
-    const top = Number.parseInt(savedScroll, 10);
-    if (!Number.isFinite(top) || top <= 0) return;
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        listScrollRef.current?.scrollTo({ top, behavior: 'auto' });
-      });
-    });
-  }, [allStories]);
-
-  const effectiveSelectedId = selectedId ?? allStories[0]?.id ?? null;
-  const selectedItem = useMemo(
-    () => allStories.find(s => s.id === effectiveSelectedId) ?? null,
-    [allStories, effectiveSelectedId],
+  const visibleStories = useMemo(
+    () => activeInterest ? storyList.filter((item) => categoryId(item) === activeInterest || item.tags?.includes(activeInterest)) : storyList,
+    [activeInterest, storyList],
   );
 
-  const handleSelect = (item: FeedListItem) => {
+  const supportingStories = useMemo(() => [
+    ...blogs.map((item) => ({ item, tag: 'Independent writing' })),
+    ...tools.map((item) => ({ item, tag: 'Tools and launches' })),
+    ...discussions.map((item) => ({ item, tag: 'Discussion' })),
+    ...hotTweets.map((tweet) => ({
+      tag: tweet.category || 'Conversation',
+      item: {
+        id: tweet.id,
+        type: 'article' as const,
+        title: tweet.title,
+        preview: tweet.description,
+        timestamp: tweet.pubDate,
+        source: 'X',
+        sourceCount: 1,
+        tags: [tweet.category || 'Conversation'],
+        url: tweet.url,
+        data: {
+          id: tweet.id,
+          title: tweet.title,
+          description: tweet.description,
+          url: tweet.url,
+          source_name: 'X',
+          published_at: tweet.pubDate,
+        },
+      },
+    })),
+  ].filter(({ item }) => getItemUrl(item)).slice(0, 18), [blogs, discussions, hotTweets, tools]);
+
+  const visibleBookmarkIds = useMemo(
+    () => [...new Set([...storyList, ...supportingStories.map(({ item }) => item)].map(({ id }) => id).filter(Boolean))].slice(0, 100),
+    [storyList, supportingStories],
+  );
+
+  useEffect(() => {
+    if (!user || visibleBookmarkIds.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const token = await user.getIdToken();
+        const groups = Array.from({ length: Math.ceil(visibleBookmarkIds.length / 40) }, (_, index) => visibleBookmarkIds.slice(index * 40, index * 40 + 40));
+        const responses = await Promise.all(groups.map((itemIds) => fetch(`/api/bookmarks?item_ids=${encodeURIComponent(itemIds.join(','))}`, { headers: { Authorization: `Bearer ${token}` } })));
+        if (responses.some((response) => !response.ok)) throw new Error('Bookmark sync failed');
+        const payloads = await Promise.all(responses.map((response) => response.json() as Promise<{ bookmarks?: Array<{ item_id: string }> }>));
+        if (cancelled) return;
+        const savedOnServer = new Set<string>(payloads.flatMap(({ bookmarks }) => bookmarks || []).map(({ item_id }) => item_id));
+        setBookmarkedIds((current) => {
+          const next = new Set(savedOnServer);
+          for (const id of locallyChangedBookmarks.current) {
+            if (current.has(id)) next.add(id);
+            else next.delete(id);
+          }
+          return next;
+        });
+      } catch {
+        if (!cancelled) showBookmarkMessage('Saved stories could not be synced. Try again.');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [showBookmarkMessage, user, visibleBookmarkIds]);
+
+  const openStory = async (item: FeedListItem) => {
+    readerOpenerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     trackFeedItemClicked(item.id, item.type, item.source || 'feed');
-    trackSummaryOpened(item.id, isSubscribed);
-    setSelectedId(item.id);
-    if (typeof window !== 'undefined' && window.innerWidth < 640) {
-      sessionStorage.setItem(FEED_LIST_SCROLL_KEY, String(listScrollRef.current?.scrollTop ?? 0));
-      sessionStorage.setItem(FEED_SELECTED_STORY_KEY, item.id);
-      sessionStorage.setItem(FEED_RESTORE_SCROLL_KEY, '1');
-      onSelectStory(item);
+    const access = await onOpenSummary(item);
+    if (access === 'error') {
+      showBookmarkMessage('Could not verify summary access. Try again.');
+      return;
     }
+    if (access === 'allowed') trackSummaryOpened(item.id, isSubscribed);
+    else trackPaywallShown('feed_reader_limit', { reads_used: freeReadsUsed });
+    setSelected({ item, locked: access === 'denied' });
   };
 
-  useEffect(() => {
-    if (tab !== 'news') return;
+  const closeReader = useCallback(() => setSelected(null), []);
 
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+  const openSupportingStory = (item: FeedListItem) => {
+    readerOpenerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    trackFeedItemClicked(item.id, item.type, item.source || 'pulse');
+    setSelected({ item, locked: false });
+  };
 
-      const stories = allStories;
-      if (stories.length === 0) return;
-
-      const currentIndex = stories.findIndex((s) => s.id === effectiveSelectedId);
-      const startIndex = currentIndex >= 0 ? currentIndex : 0;
-
-      const nextIndex =
-        e.key === 'ArrowDown'
-          ? Math.min(startIndex + 1, stories.length - 1)
-          : Math.max(startIndex - 1, 0);
-
-      const nextItem = stories[nextIndex];
-      if (!nextItem || isItemLocked(nextItem.id)) return;
-
-      e.preventDefault();
-      handleSelect(nextItem);
-
-      requestAnimationFrame(() => {
-        const container = listScrollRef.current;
-        if (!container) return;
-        const el = container.querySelector(`[data-story-id="${nextItem.id}"]`);
-        if (!el) return;
-        const rect = el.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-
-        if (rect.top < containerRect.top) {
-          el.scrollIntoView({ block: 'nearest' });
-        } else if (rect.bottom > containerRect.bottom) {
-          el.scrollIntoView({ block: 'nearest' });
-        }
+  const toggleBookmark = useCallback(async (item: FeedListItem) => {
+    if (!user) {
+      showBookmarkMessage('Sign in to save stories across Trace.');
+      return;
+    }
+    const wasBookmarked = bookmarkedIds.has(item.id);
+    locallyChangedBookmarks.current.add(item.id);
+    setBookmarkBusyIds((current) => new Set(current).add(item.id));
+    setBookmarkedIds((current) => {
+      const next = new Set(current);
+      if (wasBookmarked) next.delete(item.id); else next.add(item.id);
+      return next;
+    });
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(wasBookmarked ? `/api/bookmarks?item_id=${encodeURIComponent(item.id)}` : '/api/bookmarks', {
+        method: wasBookmarked ? 'DELETE' : 'POST',
+        headers: { Authorization: `Bearer ${token}`, ...(wasBookmarked ? {} : { 'Content-Type': 'application/json' }) },
+        body: wasBookmarked ? undefined : JSON.stringify({
+          item_id: item.id,
+          item_metadata: {
+            type: item.type,
+            title: item.title,
+            description: getBody(item),
+            url: getItemUrl(item) || '',
+            thumbnail: item.thumbnail,
+            tags: item.tags || [categoryId(item)],
+            source: item.source,
+            timestamp: item.timestamp,
+          },
+        }),
       });
-    };
+      if (!response.ok) throw new Error('Bookmark request failed');
+      if (!wasBookmarked) trackFeedItemBookmarked(item.id, item.type);
+      showBookmarkMessage(wasBookmarked ? 'Removed from your library.' : 'Saved to your library.');
+    } catch {
+      setBookmarkedIds((current) => {
+        const next = new Set(current);
+        if (wasBookmarked) next.add(item.id); else next.delete(item.id);
+        return next;
+      });
+      showBookmarkMessage('Could not update that bookmark. Try again.');
+    } finally {
+      setBookmarkBusyIds((current) => {
+        const next = new Set(current);
+        next.delete(item.id);
+        return next;
+      });
+    }
+  }, [bookmarkedIds, showBookmarkMessage, user]);
 
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [tab, allStories, effectiveSelectedId, isItemLocked]);
-
-  if (isLoading && storyList.length === 0) {
-    return <WireFeedLoadingSkeleton />;
-  }
+  if (isLoading && storyList.length === 0) return <WireFeedLoadingSkeleton />;
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      {/* tab bar */}
-      <div className="shrink-0 border-b border-[#e5e7eb] bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 pt-3">
-          <Toggle tab={tab} onChange={handleTabChange} />
-          <p className="pb-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-[#9ca3af]">
-            {getTodayLabel()}
-          </p>
-        </div>
+    <div className="bg-background">
+      <div id="feed-start" className="mx-auto w-full max-w-[1540px] [overflow-anchor:none] px-4 py-5 sm:px-7 sm:py-6 lg:px-10">
+        {tab === 'news' ? (
+          <>
+            <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {visibleStories.map((item) => (
+                <StoryCard
+                  key={item.id}
+                  item={item}
+                  locked={isItemLocked(item.id)}
+                  bookmarked={bookmarkedIds.has(item.id)}
+                  bookmarkBusy={bookmarkBusyIds.has(item.id)}
+                  onOpen={() => void openStory(item)}
+                  onBookmark={() => void toggleBookmark(item)}
+                />
+              ))}
+            </div>
+          </>
+        ) : (
+          <section className="mt-8">
+            <div className="max-w-[700px]">
+              <h2 className="text-[24px] font-semibold tracking-[-0.03em]">More from around technology</h2>
+              <p className="mt-2 text-[14px] leading-[1.7] text-secondary">Useful launches, discussions, videos, and independent writing. News remains the main Trace feed.</p>
+            </div>
+            {supportingStories.length > 0 ? (
+              <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {supportingStories.map(({ item, tag }) => (
+                  <SupportingCard
+                    key={item.id}
+                    item={item}
+                    tag={tag}
+                    bookmarked={bookmarkedIds.has(item.id)}
+                    bookmarkBusy={bookmarkBusyIds.has(item.id)}
+                    onOpen={() => openSupportingStory(item)}
+                    onBookmark={() => void toggleBookmark(item)}
+                  />
+                ))}
+              </div>
+            ) : <p className="mt-12 text-[14px] text-secondary">More stories are on the way.</p>}
+          </section>
+        )}
       </div>
 
-      {/* content */}
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div className={`mx-auto flex min-h-0 w-full flex-1 overflow-hidden ${tab === 'pulse' ? 'max-w-none' : 'max-w-6xl'}`}>
-          {tab === 'news' ? (
-            <>
-              <LeftPane
-                edition={edition}
-                allStories={allStories}
-                activeInterest={activeInterest}
-                setActiveInterest={setActiveInterest}
-                selectedId={effectiveSelectedId}
-                onSelect={handleSelect}
-                isItemLocked={isItemLocked}
-                listScrollRef={listScrollRef}
-              />
-              {selectedItem && (
-                <RightPane item={selectedItem} isItemLocked={isItemLocked} />
-              )}
-            </>
-          ) : (
-            <PulseTab
-              hotTweets={hotTweets}
-              discussions={discussions}
-              tools={tools}
-              blogs={blogs}
-              isSubscribed={isSubscribed}
-              pulseInterests={pulseInterests}
-              tweetsLoading={pulseTweetsLoading}
-              discussionsLoading={pulseDiscussionsLoading}
-              toolsLoading={pulseToolsLoading}
-            />
-          )}
-        </div>
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className={bookmarkMessage ? 'fixed bottom-5 left-1/2 z-[140] -translate-x-1/2 rounded-full bg-foreground px-4 py-2.5 text-[12px] font-semibold text-background shadow-xl' : 'sr-only'}
+      >
+        {bookmarkMessage || ''}
       </div>
+      {selected && (
+        <ReaderModal
+          item={selected.item}
+          locked={selected.locked}
+          bookmarked={bookmarkedIds.has(selected.item.id)}
+          bookmarkBusy={bookmarkBusyIds.has(selected.item.id)}
+          onBookmark={() => void toggleBookmark(selected.item)}
+          onClose={closeReader}
+          restoreFocusTo={readerOpenerRef.current}
+        />
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@ Trace New Tab replaces the browser's new-tab page with public technology article
 
 ## Data stored on the device
 
-The last successfully loaded public article pool and its load time are stored locally through `chrome.storage.local`. This keeps new tabs fast and allows cached articles to remain available during temporary network failures.
+The last successfully loaded public article pool and its load time are stored locally through `chrome.storage.local`. This keeps new tabs fast and allows cached articles to remain available during temporary network failures. The extension also stores each bookmarked public story so it remains visible under Saved, plus the IDs of summaries opened that day. These values stay on the device.
 
 ## Data sent to Trace
 

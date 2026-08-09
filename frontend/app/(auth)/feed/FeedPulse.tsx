@@ -3,7 +3,7 @@ import { ExternalLink } from 'lucide-react';
 import { FeedItem, TrendingTopic } from '@/lib/firestore';
 import { getArticleImage, isValidThumbnail } from '@/lib/fallback-images';
 import { PulseBetaBadge } from '@/components/PulseBetaBadge';
-import { buildArticleShareUrl } from '@/lib/article-share';
+import { buildArticleShareUrl, buildTopicShareUrl } from '@/lib/article-share';
 import {
   BriefBody,
   ContentData,
@@ -851,12 +851,6 @@ export type FeedListItem = {
   pulseSources?: Array<{ name: string; title?: string; url: string }>;
   data: TrendingTopic | FeedItem;
 };
-
-function buildTopicShareUrl(topic: TrendingTopic): string | null {
-  const topicSlug = topic.topic_key || topic.id;
-  if (!topicSlug) return null;
-  return `https://www.yourtrace.online/topics/${encodeURIComponent(topicSlug)}`;
-}
 
 const FEED_RETURN_PATH = '/feed';
 export const FEED_RELATED_POOL_KEY = 'trace_feed_related_pool';

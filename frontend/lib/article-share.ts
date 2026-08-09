@@ -1,38 +1,17 @@
 import type { UserProfile } from '@/lib/firestore';
 import { resolveFeedAccess } from '@/lib/subscription-access';
+export {
+  buildArticleShareUrl,
+  FEED_TYPE_PREFIX,
+  normalizeArticleShareId,
+  SHARE_SITE_ORIGIN,
+} from '@/lib/article-share-url';
+export type { ShareableArticle } from '@/lib/article-share-url';
 
-export const SHARE_SITE_ORIGIN = 'https://www.yourtrace.online';
-
-export const FEED_TYPE_PREFIX: Record<string, string> = {
-  for_you: 'fy',
-  trending: 'tr',
-};
-
-export type ShareableArticle = {
-  id: string;
-  feed_type?: string;
-  metadata?: { feed_type?: string };
-};
-
-export function normalizeArticleShareId(article: ShareableArticle): string | null {
-  const rawId = typeof article.id === 'string' ? article.id.trim() : '';
-  if (!rawId) return null;
-
-  if (rawId.startsWith('fy_') || rawId.startsWith('tr_')) {
-    return rawId;
-  }
-
-  const feedType = article.feed_type || article.metadata?.feed_type;
-  const prefix = feedType ? FEED_TYPE_PREFIX[feedType] : null;
-  if (!prefix) return null;
-
-  return `${prefix}_${rawId}`;
-}
-
-export function buildArticleShareUrl(article: ShareableArticle): string | null {
-  const shareId = normalizeArticleShareId(article);
-  if (!shareId) return null;
-  return `${SHARE_SITE_ORIGIN}/articles/${shareId}`;
+export function buildTopicShareUrl(topic: { id?: string; topic_key?: string }): string | null {
+  const topicSlug = topic.topic_key || topic.id;
+  if (!topicSlug) return null;
+  return `https://www.yourtrace.online/topics/${encodeURIComponent(topicSlug)}`;
 }
 
 export type PublicStoryCta = {

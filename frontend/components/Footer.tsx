@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { LineChart, Rss, Smartphone } from 'lucide-react';
+import Image from 'next/image';
+import { ExternalLink, LineChart, Rss, Smartphone } from 'lucide-react';
 
 type DirectoryBadge = {
   name: string;
@@ -11,10 +12,10 @@ function DirectoryBadgeMarquee({ badges }: { badges: DirectoryBadge[] }) {
   if (badges.length === 0) return null;
 
   return (
-    <div aria-label="Trace directory listings" className="mx-auto mt-8 max-w-[1180px] overflow-hidden border-t border-[#e4e1d8] pt-4">
+    <div aria-label="Trace directory listings" className="mx-auto mt-6 max-w-[1180px] overflow-hidden">
       <div className="flex w-max animate-[trace-directory-marquee_28s_linear_infinite] items-center gap-2 hover:[animation-play-state:paused] motion-reduce:animate-none">
         {[...badges, ...badges].map((badge, index) => (
-          <a key={`${badge.name}-${index}`} href={badge.href} target="_blank" rel="noopener noreferrer" className="flex h-6 shrink-0 items-center border border-[#e4e1d8] px-2.5 font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-[#9a9587] transition-colors hover:border-[#c9c4b7] hover:text-[#75705f]">
+          <a key={`${badge.name}-${index}`} href={badge.href} target="_blank" rel="noopener noreferrer" className="flex h-11 shrink-0 items-center rounded-full bg-surface-secondary px-3 font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-secondary hover:text-foreground md:h-7">
             {badge.imageSrc ? <img src={badge.imageSrc} alt={badge.name} className="h-4 w-auto opacity-65 grayscale" /> : badge.name}
           </a>
         ))}
@@ -23,33 +24,48 @@ function DirectoryBadgeMarquee({ badges }: { badges: DirectoryBadge[] }) {
   );
 }
 
-export default function Footer(props: { variant?: 'default' | 'landing'; directoryBadges?: DirectoryBadge[] } = {}) {
+export default function Footer(props: { variant?: 'default' | 'landing'; directoryBadges?: DirectoryBadge[]; stocksBrewMedium?: string } = {}) {
   return (
-    <footer data-variant={props.variant ?? 'default'} className="bg-[#faf9f5] px-5 py-10 sm:px-8">
-      <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-5 border-t border-[#e4e1d8] pt-8">
-        <span className="font-mono text-[11px] font-semibold tracking-[0.24em] text-[#1b1a17]">TRACE</span>
-        <nav className="flex flex-wrap gap-x-5 gap-y-2 text-[12px] text-[#75705f]">
-          <a href="/feed?view=pulse" className="hover:text-[#2557d6]">Pulse</a>
-          <a href="/feed?view=edition" className="hover:text-[#2557d6]">Edition</a>
-          <Link href="/compare" className="hover:text-[#2557d6]">Compare</Link>
-          <Link href="/blog" className="hover:text-[#2557d6]">Guides</Link>
-          <Link href="/resources" className="hover:text-[#2557d6]">Resources</Link>
-          <Link href="/agents" className="hover:text-[#2557d6]">Agents</Link>
-          <Link href="/solutions" className="hover:text-[#2557d6]">Solutions</Link>
-          <Link href="/use-cases" className="hover:text-[#2557d6]">Use cases</Link>
-          <Link href="/newsletters" className="hover:text-[#2557d6]">Newsletter reviews</Link>
-          <a href="/rss.xml" className="inline-flex items-center gap-1 hover:text-[#2557d6]"><Rss size={11} />RSS</a>
-          <Link href="/how-it-works" className="hover:text-[#2557d6]">How it works</Link>
-          <Link href="/privacy-policy" className="hover:text-[#2557d6]">Privacy</Link>
-          <Link href="/terms" className="hover:text-[#2557d6]">Terms</Link>
-          <Link href="/contact" className="hover:text-[#2557d6]">Contact</Link>
-        </nav>
-      </div>
-      <div className="mx-auto mt-6 max-w-[1180px] border-t border-[#e4e1d8] pt-5">
-        <p className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[#75705f]">More from the founder</p>
-        <div className="mt-3 grid gap-4">
-          <div><a href="https://stocksbrew.online/?utm_source=trace&utm_medium=footer" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[12px] font-medium text-[#2557d6] transition-opacity hover:opacity-70"><LineChart size={15} strokeWidth={1.8} />StocksBrew</a><p className="mt-1 text-[12px] text-[#75705f]">Know what to do with your stock.</p></div>
-          <div><a href="/api/affiliate/outbound?target=android_app&next=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Donline.yourtrace.app" className="inline-flex items-center gap-2 text-[12px] font-medium text-[#2557d6] transition-opacity hover:opacity-70"><Smartphone size={15} strokeWidth={1.8} />Trace - Android</a><p className="mt-1 text-[12px] text-[#75705f]">TikTok for news.</p></div>
+    <footer data-variant={props.variant ?? 'default'} className="px-5 py-14 text-foreground sm:px-8 sm:py-20" style={{ backgroundColor: 'var(--surface-secondary)' }}>
+      <div className="mx-auto max-w-[1180px]">
+        <div className="grid grid-cols-2 gap-12 md:grid-cols-4 md:gap-8">
+          <div className="col-span-2 md:col-span-1">
+            <Link href="/" className="inline-flex min-h-11 items-center gap-3">
+              <Image src="/trace-app-icon-v1-180.png" width={34} height={34} alt="" className="h-[34px] w-[34px] rounded-[10px]" />
+              <span className="font-mono text-[12px] font-bold tracking-[0.26em]">TRACE</span>
+            </Link>
+            <p className="mt-5 max-w-[280px] text-pretty text-[15px] leading-[1.65] text-secondary">The fastest way to catch up on tech and AI news.</p>
+          </div>
+
+          <nav aria-label="Explore" className="space-y-3 text-[14px]">
+            <p className="mb-5 text-[12px] font-semibold text-foreground">Explore</p>
+            <a href="/feed" className="flex min-h-11 items-center text-secondary hover:text-foreground md:min-h-0">Feed</a>
+            <Link href="/how-it-works" className="flex min-h-11 items-center text-secondary hover:text-foreground md:min-h-0">How it works</Link>
+            <Link href="/agents" className="flex min-h-11 items-center text-secondary hover:text-foreground md:min-h-0">Agents</Link>
+            <Link href="/#pricing" className="flex min-h-11 items-center text-secondary hover:text-foreground md:min-h-0">Pricing</Link>
+          </nav>
+
+          <nav aria-label="Learn" className="space-y-3 text-[14px]">
+            <p className="mb-5 text-[12px] font-semibold text-foreground">Learn</p>
+            <Link href="/blog" className="flex min-h-11 items-center text-secondary hover:text-foreground md:min-h-0">Guides</Link>
+            <Link href="/resources" className="flex min-h-11 items-center text-secondary hover:text-foreground md:min-h-0">Resources</Link>
+            <Link href="/compare" className="flex min-h-11 items-center text-secondary hover:text-foreground md:min-h-0">Compare</Link>
+            <Link href="/newsletters" className="flex min-h-11 items-center text-secondary hover:text-foreground md:min-h-0">Newsletter reviews</Link>
+            <a href="/rss.xml" className="inline-flex min-h-11 items-center gap-1.5 text-secondary hover:text-foreground md:min-h-0"><Rss size={13} />RSS</a>
+          </nav>
+
+          <nav aria-label="More" className="col-span-2 grid grid-cols-2 gap-x-5 gap-y-3 text-[14px] md:col-span-1 md:block md:space-y-3">
+            <p className="mb-5 text-[12px] font-semibold text-foreground">More</p>
+            <a href="/api/affiliate/outbound?target=android_app&next=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Donline.yourtrace.app" className="inline-flex min-h-11 items-center gap-1.5 text-secondary hover:text-foreground md:min-h-0"><Smartphone size={13} />Android app</a>
+            <a href={`https://stocksbrew.online/?utm_source=trace&utm_medium=${encodeURIComponent(props.stocksBrewMedium || 'footer')}`} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center gap-1.5 text-secondary hover:text-foreground md:min-h-0"><LineChart size={13} strokeWidth={1.8} />StocksBrew <ExternalLink size={11} /></a>
+            <Link href="/privacy-policy" className="flex min-h-11 items-center text-secondary hover:text-foreground md:min-h-0">Privacy</Link>
+            <Link href="/terms" className="flex min-h-11 items-center text-secondary hover:text-foreground md:min-h-0">Terms</Link>
+            <Link href="/contact" className="flex min-h-11 items-center text-secondary hover:text-foreground md:min-h-0">Contact</Link>
+          </nav>
+        </div>
+
+        <div className="mt-14 text-[12px] text-secondary">
+          <p>© 2026 Trace</p>
         </div>
       </div>
       {props.directoryBadges && <DirectoryBadgeMarquee badges={props.directoryBadges} />}

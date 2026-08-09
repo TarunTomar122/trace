@@ -739,7 +739,7 @@ function EditorialHeroCard({ item }: { item: FeedListItem }) {
           </>
         )}
       </div>
-      <h2 className="text-[1.65rem] font-bold text-foreground leading-[1.18] tracking-[-0.025em] mb-2">
+      <h2 className="text-[16px] font-[550] text-foreground leading-[1.35] tracking-[-0.01em] mb-2">
         {item.title}
       </h2>
       {item.preview && (
@@ -778,7 +778,7 @@ function EditorialMediumCard({ item }: { item: FeedListItem }) {
           </>
         )}
       </div>
-      <h3 className="min-h-[3.9rem] text-[15px] font-bold text-foreground leading-snug tracking-[-0.01em] mb-1 line-clamp-3">
+      <h3 className="min-h-[3.9rem] text-[16px] font-[550] text-foreground leading-[1.35] tracking-[-0.01em] mb-1 line-clamp-3">
         {item.title}
       </h3>
       {item.preview && (
@@ -801,7 +801,7 @@ function EditorialSidebarItem({
 
   return (
     <article className={`py-3.5 ${showDivider ? 'border-b border-border/15' : ''}`}>
-      <h4 className="text-[14px] font-semibold text-foreground leading-snug tracking-[-0.01em] mb-1.5 line-clamp-3">
+      <h4 className="text-[16px] font-[550] text-foreground leading-[1.35] tracking-[-0.01em] mb-1.5 line-clamp-3">
         {item.title}
       </h4>
       <div className="flex items-center gap-1.5 text-[10px] text-secondary/50">

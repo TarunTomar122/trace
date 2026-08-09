@@ -1,30 +1,81 @@
+"use client";
+
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
+import { Menu } from 'lucide-react';
+
+const links = [
+  ['Feed', '/feed'],
+  ['Guides', '/blog'],
+  ['Resources', '/resources'],
+  ['How it works', '/how-it-works'],
+  ['Agents', '/agents'],
+  ['Pricing', '/#pricing'],
+  ['Compare', '/compare'],
+  ['Newsletters', '/newsletters'],
+  ['FAQs', '/#questions'],
+] as const;
 
 export default function PublicHeader({
   ctaLabel = 'Start reading',
   ctaHref = '/feed?view=pulse',
+  centerSlot,
+  rightSlot,
+  showMobileNav = true,
 }: {
   ctaLabel?: string;
   ctaHref?: string;
+  centerSlot?: ReactNode;
+  rightSlot?: ReactNode;
+  showMobileNav?: boolean;
   variant?: 'default' | 'landing';
 } = {}) {
+  const hasCenterSlot = Boolean(centerSlot);
+  const [hidden, setHidden] = useState(false);
+  const previousScrollY = useRef(0);
+
+  useEffect(() => {
+    if (!hasCenterSlot) return;
+    previousScrollY.current = window.scrollY;
+    const onScroll = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY < 24) setHidden(false);
+      else if (Math.abs(currentScrollY - previousScrollY.current) > 8) setHidden(currentScrollY > previousScrollY.current);
+      previousScrollY.current = currentScrollY;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [hasCenterSlot]);
+
   return (
-    <header className="sticky top-0 z-50 isolate px-5 sm:px-8" style={{ backgroundColor: '#faf9f5' }}>
-      <div className="mx-auto flex max-w-[1180px] items-center justify-between border-b border-[#e4e1d8] py-4">
-        <Link href="/" className="font-mono text-[12.5px] font-bold tracking-[0.28em] text-[#1b1a17]">
-          TRACE
+    <header className={`${hasCenterSlot ? `sticky top-0 transition-transform duration-200 ${hidden ? '-translate-y-full' : 'translate-y-0'}` : 'relative'} z-50 isolate bg-background`} style={{ padding: '14px clamp(16px, 5vw, 72px)' }}>
+      <style>{'@media(max-width:959px){.public-primary-nav{display:none!important}.public-header-grid{grid-template-columns:1fr auto!important}.public-header-center-slot{grid-column:1/-1;grid-row:2}}@media(min-width:960px){.public-mobile-nav{display:none!important}.public-header-center-slot{grid-column:2;grid-row:1}}'}</style>
+      <div className="public-header-grid relative w-full" style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 1fr) auto minmax(150px, 1fr)', alignItems: 'center', maxWidth: 1120, margin: '0 auto' }}>
+        <Link href="/" className="flex min-h-11 items-center gap-3 text-foreground" style={{ justifySelf: 'start' }}>
+          <Image src="/trace-app-icon-v1-180.png" width={32} height={32} alt="" className="h-8 w-8 rounded-[10px]" />
+          <span className="font-mono text-[12px] font-bold tracking-[0.28em]">TRACE</span>
         </Link>
-        <nav className="hidden items-center gap-5 text-[13px] font-medium text-[#75705f] sm:flex">
-          <a href="/feed?view=pulse" className="transition-colors hover:text-[#2557d6]">Pulse</a>
-          <a href="/feed?view=edition" className="transition-colors hover:text-[#2557d6]">Edition</a>
-          <Link href="/compare" className="transition-colors hover:text-[#2557d6]">Compare</Link>
-          <Link href="/blog" className="transition-colors hover:text-[#2557d6]">Guides</Link>
-          <Link href="/resources" className="transition-colors hover:text-[#2557d6]">Resources</Link>
-          <Link href="/agents" className="transition-colors hover:text-[#2557d6]">Agents</Link>
-        </nav>
-        <Link href={ctaHref} className="border border-[#2557d6] px-3.5 py-1.5 text-[12px] font-semibold text-[#2557d6] transition-colors hover:bg-[#2557d6] hover:text-white">
-          {ctaLabel}
-        </Link>
+        {centerSlot ? (
+          <div className="public-header-center-slot scrollbar-hide min-w-0 overflow-x-auto pb-2 pt-4 min-[960px]:py-0">{centerSlot}</div>
+        ) : (
+          <nav aria-label="Primary" className="public-primary-nav text-[13px] font-medium text-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, whiteSpace: 'nowrap' }}>
+            {links.map(([label, href]) => <Link key={href} href={href} className="transition-colors hover:text-foreground">{label}</Link>)}
+          </nav>
+        )}
+        <div className="flex items-center gap-2" style={{ justifySelf: 'end' }}>
+          {rightSlot ?? <Link href={ctaHref} className="inline-flex min-h-11 items-center rounded-full border border-foreground/15 px-5 py-2.5 text-[13px] font-semibold text-foreground transition-colors hover:bg-surface-secondary" style={{ whiteSpace: 'nowrap' }}>{ctaLabel}</Link>}
+          {!centerSlot && showMobileNav && (
+            <details className="public-mobile-nav relative">
+              <summary aria-label="Open navigation" className="flex size-11 cursor-pointer list-none items-center justify-center rounded-full border border-foreground/15 text-foreground [&::-webkit-details-marker]:hidden">
+                <Menu size={18} aria-hidden="true" />
+              </summary>
+              <nav aria-label="Mobile primary" className="absolute right-0 top-[52px] z-50 grid w-[min(300px,calc(100vw-32px))] gap-1 rounded-[18px] bg-surface p-2 shadow-lg ring-1 ring-foreground/10">
+                {links.map(([label, href]) => <Link key={href} href={href} className="flex min-h-11 items-center rounded-[12px] px-4 text-[14px] font-medium text-foreground hover:bg-surface-secondary">{label}</Link>)}
+              </nav>
+            </details>
+          )}
+        </div>
       </div>
     </header>
   );

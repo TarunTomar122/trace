@@ -33,7 +33,7 @@ test('buildExtensionBrief returns Edition news and ignores Pulse content', () =>
     build_pulse: [feedItem('pulse-2', 'Pulse two')],
   });
 
-  assert.equal(brief.version, 4);
+  assert.equal(brief.version, 5);
   assert.equal(brief.feed_date, '2026-08-05');
   assert.equal(brief.assembled_at, '2026-08-05T06:00:00.000Z');
   assert.deepEqual(brief.articles.map(({ channel }) => channel), ['edition', 'edition']);

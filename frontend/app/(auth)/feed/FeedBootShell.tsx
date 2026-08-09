@@ -1,5 +1,5 @@
-function Skel({ className = '' }: { className?: string }) {
-  return <div className={`wire-skel ${className}`.trim()} aria-hidden />;
+function Skel({ className = '', style }: { className?: string; style?: { width: number } }) {
+  return <div className={`wire-skel ${className}`.trim()} style={style} aria-hidden />;
 }
 
 function WireMastheadSkeleton() {
@@ -140,74 +140,26 @@ export function PulseLoadingSkeleton() {
 /** Two-pane feed skeleton — matches FeedTwoPaneLayout. */
 export function WireFeedLoadingSkeleton() {
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      {/* tab bar */}
-      <div className="shrink-0 border-b border-[#e5e7eb] bg-white">
-        <div className="mx-auto flex max-w-[1500px] items-center justify-between px-10 pt-3 pb-3 sm:px-16 lg:px-24">
-          <div className="flex items-center gap-6">
-            <Skel className="h-3 w-10 rounded-full" />
-            <Skel className="h-3 w-10 rounded-full" />
-          </div>
-          <Skel className="h-2.5 w-28 rounded-full" />
+    <div className="min-h-[calc(100vh-76px)] bg-background">
+      <div className="mx-auto w-full max-w-[1540px] px-4 py-5 sm:px-7 sm:py-6 lg:px-10">
+        <div className="mx-auto flex w-max max-w-full gap-2 overflow-hidden py-2">
+          {[72, 48, 66, 58, 64, 76, 62, 54].map((width) => (
+            <Skel key={width} className="h-8 shrink-0 rounded-full" style={{ width }} />
+          ))}
         </div>
-      </div>
-
-      {/* panes */}
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div className="mx-auto flex min-h-0 w-full max-w-[1500px] flex-1 overflow-hidden px-10 sm:px-16 lg:px-24">
-          {/* left pane */}
-          <div className="flex w-full flex-col sm:w-[360px] sm:shrink-0 sm:border-r sm:border-[#e5e7eb]">
-            {/* left header */}
-            <div className="shrink-0 border-b border-[#e5e7eb] bg-white px-6 py-4">
-              <div className="flex items-baseline justify-between">
-                <Skel className="h-3.5 w-24 rounded-full" />
-                <Skel className="h-2.5 w-14 rounded-full" />
-              </div>
-              {/* pills */}
-              <div className="mt-3 flex gap-1.5">
-                {[40, 52, 44, 44, 52].map((w, i) => (
-                  <div
-                    key={i}
-                    style={{ width: w }}
-                    className="h-6 shrink-0 rounded-full animate-pulse bg-[#f3f4f6]"
-                  />
-                ))}
-              </div>
-            </div>
-            {/* story rows */}
-            <div className="flex-1 min-h-0 overflow-hidden bg-white">
-              {Array.from({ length: 9 }, (_, i) => (
-                <div key={i} className="flex gap-4 border-b border-[#e5e7eb]/40 px-6 py-4">
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <Skel className={`h-3.5 rounded-full ${i % 3 === 0 ? 'w-full' : i % 3 === 1 ? 'w-[85%]' : 'w-[92%]'}`} />
-                    <Skel className={`h-3.5 rounded-full ${i % 2 === 0 ? 'w-[70%]' : 'w-[80%]'}`} />
-                    <Skel className="h-2.5 w-28 rounded-full" />
-                  </div>
-                  <Skel className="h-[68px] w-[68px] shrink-0 rounded-md" />
+        <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 12 }, (_, index) => (
+            <article key={index} className="overflow-hidden rounded-[18px] bg-surface p-3">
+              <Skel className="aspect-[16/10] w-full rounded-[12px]" />
+              <div className="min-h-[132px] px-2 pb-3 pt-5 sm:px-3">
+                <Skel className="h-2.5 w-16 rounded-full" />
+                <div className="mt-4 space-y-2.5">
+                  <Skel className="h-5 w-full rounded-full" />
+                  <Skel className={`h-5 rounded-full ${index % 3 === 0 ? 'w-[72%]' : 'w-[88%]'}`} />
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* right pane — hidden on mobile */}
-          <div className="hidden sm:flex flex-1 flex-col overflow-y-auto bg-white px-10 py-10">
-            <Skel className="h-3 w-32 rounded-full" />
-            <Skel className="mt-4 h-7 w-full max-w-[90%] rounded-full" />
-            <Skel className="mt-2.5 h-7 w-[72%] rounded-full" />
-            <Skel className="mt-3 h-2.5 w-36 rounded-full" />
-            <Skel className="mt-6 aspect-[16/9] w-full rounded-2xl" />
-            <div className="mt-8 space-y-3">
-              {[98, 92, 96, 85, 90].map((w, i) => (
-                <Skel key={i} className={`h-3.5 w-[${w}%] rounded-full`} />
-              ))}
-            </div>
-            <div className="mt-8 rounded-2xl border border-[#e5e7eb] p-5 space-y-3">
-              <Skel className="h-2.5 w-24 rounded-full" />
-              {[90, 80, 85].map((w, i) => (
-                <Skel key={i} className={`h-3 w-[${w}%] rounded-full`} />
-              ))}
-            </div>
-          </div>
+              </div>
+            </article>
+          ))}
         </div>
       </div>
     </div>
@@ -379,40 +331,10 @@ function FeedNavSkeleton() {
 
 export default function FeedBootShell() {
   return (
-    <div className="min-h-screen bg-[#faf9f5] text-[#1b1a17]">
-      <div className="mx-auto max-w-[1500px] px-10 sm:px-16 lg:px-24">
-        <header className="flex items-center justify-between border-b border-[#e4e1d8] py-4">
-          <Skel className="h-3 w-16 rounded-none" />
-          <div className="flex gap-5">
-            <Skel className="h-2.5 w-12 rounded-none" />
-            <Skel className="h-2.5 w-9 rounded-none" />
-            <Skel className="h-2.5 w-12 rounded-none" />
-          </div>
-        </header>
-        <section className="pb-10 pt-14 sm:pt-20">
-          <Skel className="h-3 w-40 rounded-none" />
-          <Skel className="mt-5 h-20 w-full max-w-[600px] rounded-none" />
-          <Skel className="mt-6 h-3 w-80 max-w-full rounded-none" />
-        </section>
-        <div className="border-y border-[#e4e1d8] py-4">
-          <div className="flex gap-6 overflow-hidden">
-            {[72, 58, 66, 82, 74].map((width) => <Skel key={width} className={`h-3 w-[${width}px] shrink-0 rounded-none`} />)}
-          </div>
-        </div>
-        <div className="pt-10">
-          {Array.from({ length: 5 }, (_, i) => (
-            <div key={i} className="flex gap-5 border-t border-[#e4e1d8] py-6 sm:gap-7">
-              <Skel className="hidden h-7 w-7 shrink-0 rounded-none sm:block" />
-              <div className="min-w-0 flex-1 space-y-3">
-                <Skel className={`h-8 max-w-full rounded-none ${i % 2 ? 'w-[78%]' : 'w-[92%]'}`} />
-                <Skel className="h-3.5 w-full rounded-none" />
-                <Skel className="h-3 w-28 rounded-none" />
-              </div>
-              <Skel className="h-[72px] w-[92px] shrink-0 rounded-none sm:h-[96px] sm:w-[128px]" />
-            </div>
-          ))}
-        </div>
-      </div>
+    <div className="min-h-screen bg-background">
+      <PublicHeader ctaLabel="Sign in" ctaHref="/" />
+      <WireFeedLoadingSkeleton />
     </div>
   );
 }
+import PublicHeader from '@/components/PublicHeader';

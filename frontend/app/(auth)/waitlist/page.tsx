@@ -10,8 +10,8 @@ export default function WaitlistPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-[#f4efe7] text-foreground flex items-center justify-center px-4">
-      <div className="max-w-lg w-full text-center">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 text-foreground">
+      <div className="w-full max-w-lg rounded-[24px] bg-surface p-7 text-center ring-1 ring-foreground/7 dark:ring-white/10 sm:p-10">
         <div className="flex items-center justify-center gap-3 mb-12">
           <img src="/trace.webp" alt="Trace" className="h-6 w-auto" />
           <span className="text-sm font-semibold tracking-[0.18em]">TRACE</span>
@@ -30,10 +30,10 @@ export default function WaitlistPage() {
         </h1>
 
         <p className="mx-auto mt-4 max-w-sm text-[15px] leading-relaxed text-secondary">
-          Thanks for joining Trace! We&apos;re putting the finishing touches on your daily feeds — trending topics, personalized articles, and AI summaries.
+          Thanks for joining Trace. We&apos;re putting the finishing touches on your daily AI and tech feed, personalized stories, and summaries.
         </p>
 
-        <div className="mx-auto mt-8 max-w-sm rounded-2xl border border-black/6 bg-white p-5">
+        <div className="mx-auto mt-8 max-w-sm rounded-[16px] bg-surface-secondary p-5">
           <h3 className="text-sm font-semibold mb-1.5">What happens next?</h3>
           <p className="text-sm text-secondary leading-relaxed">
             We&apos;ll send you an email at{' '}

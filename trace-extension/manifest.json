@@ -2,10 +2,22 @@
   "manifest_version": 3,
   "name": "Trace: AI & Tech News in Every New Tab",
   "short_name": "Trace",
-  "version": "0.1.2",
-  "description": "Thirty AI and technology news articles from Trace in every new tab.",
+  "version": "0.2.0",
+  "description": "Catch up on AI and technology news in every new tab.",
   "homepage_url": "https://www.yourtrace.online",
   "permissions": ["storage"],
+  "host_permissions": [
+    "https://www.yourtrace.online/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "externally_connectable": {
+    "matches": [
+      "https://www.yourtrace.online/*"
+    ]
+  },
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },

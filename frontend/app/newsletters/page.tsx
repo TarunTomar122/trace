@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     ...DEFAULT_OPEN_GRAPH,
     title: "Tech Newsletter Reviews & Comparisons | Trace",
     description:
-      "Honest reviews of popular tech newsletters. Ratings, pros, cons — see which are worth your inbox space.",
+      "Honest reviews of popular tech newsletters. Ratings, pros, and cons help you see which are worth your inbox space.",
     url: "https://www.yourtrace.online/newsletters",
     siteName: "Trace",
     type: "website",
@@ -35,20 +35,20 @@ export default function NewslettersHubPage() {
       <main className="px-4 sm:px-6">
         <section className="mx-auto max-w-6xl pt-16 pb-10 sm:pt-24 sm:pb-14">
           <div className="max-w-3xl">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.15em] text-[#2563eb]">Newsletter Reviews</p>
-            <h1 className="mt-4 text-[2.5rem] font-bold tracking-[-0.04em] leading-[0.95] text-[#111827] sm:text-[3.75rem]">
+            <p className="public-kicker">Newsletter reviews</p>
+            <h1 className="public-title mt-4">
               Tech newsletters,<br className="hidden sm:block" />
               actually reviewed
             </h1>
-            <p className="mt-5 max-w-xl text-[16px] leading-[1.8] text-[#6b7280]">
-              Most &ldquo;best newsletters&rdquo; lists are just links. These are real reviews — ratings,
+            <p className="public-deck mt-5">
+              Most &ldquo;best newsletters&rdquo; lists are just links. These are real reviews with ratings,
               pros, cons, and honest takes on whether each one earns its inbox real estate.
             </p>
             <div className="mt-6 flex flex-wrap gap-2 text-sm">
-              <Link href="/compare" className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-[#6b7280] transition-colors hover:text-[#111827]">
+              <Link href="/compare" className="public-chip">
                 Compare Tools
               </Link>
-              <Link href="/solutions" className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-[#6b7280] transition-colors hover:text-[#111827]">
+              <Link href="/solutions" className="public-chip">
                 Solutions
               </Link>
             </div>
@@ -65,37 +65,37 @@ export default function NewslettersHubPage() {
                 style={{ textDecoration: "none", color: "inherit" }}
               >
                 <div className="flex items-center gap-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#9ca3af]">
+                  <div className="public-kicker text-secondary">
                     Review
                   </div>
-                  <span className="text-[#2563eb] text-sm tracking-tight">
+                  <span className="text-sm tracking-tight text-accent">
                     {"★".repeat(item.rating)}{"☆".repeat(5 - item.rating)}
                   </span>
-                  <span className="text-[12px] font-medium text-[#6b7280]">
+                  <span className="public-meta font-medium">
                     {item.rating}/5
                   </span>
                 </div>
-                <h2 className="mt-4 text-2xl font-semibold tracking-tight text-[#111827]">
+                <h2 className="mt-4 text-[1.625rem] font-semibold tracking-[-0.025em] text-foreground">
                   {item.name}
                 </h2>
-                <p className="mt-4 text-sm leading-7 text-[#6b7280]">
+                <p className="mt-4 text-[16px] leading-[1.7] text-secondary">
                   {item.description}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-1.5">
-                  <span className="rounded-full bg-[#eff6ff] px-3 py-1 text-[11px] font-medium text-[#2563eb]">
+                  <span className="public-chip min-h-0 py-1 text-[11px] text-accent">
                     {item.frequency}
                   </span>
                   {item.topics.slice(0, 2).map((t) => (
                     <span
                       key={t}
-                      className="rounded-full border border-[#e5e7eb] px-2.5 py-1 text-[11px] text-[#6b7280]"
+                      className="public-chip min-h-0 py-1 text-[11px]"
                     >
                       {t}
                     </span>
                   ))}
                 </div>
-                <div className="mt-6 text-sm font-semibold text-[#2563eb]">
-                  Read review →
+                <div className="public-link mt-6 text-sm">
+                  Read review
                 </div>
               </Link>
             ))}

@@ -176,7 +176,7 @@ export function PublicFeedCard({
             )}
           </div>
 
-          <p className="text-[17px] font-bold text-foreground leading-snug tracking-[-0.01em]">
+          <p className="text-[16px] font-[550] text-foreground leading-[1.35] tracking-[-0.01em]">
             {stripMarkdown(item.title)}
           </p>
 
@@ -309,7 +309,7 @@ export function PublicTopicCard({
             </span>
           </div>
 
-          <p className="text-[17px] font-bold text-foreground leading-snug tracking-[-0.01em]">
+          <p className="text-[16px] font-[550] text-foreground leading-[1.35] tracking-[-0.01em]">
             {stripMarkdown(topic.title)}
           </p>
 

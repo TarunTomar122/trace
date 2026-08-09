@@ -1,5 +1,6 @@
 import type { FeedItem, V3UserFeed } from './firestore.ts';
 import { decodeHtmlEntities, stripMarkdown } from './feed-article-text.ts';
+import { buildArticleShareUrl } from './article-share-url.ts';
 
 export type ExtensionArticle = {
   id: string;
@@ -13,13 +14,14 @@ export type ExtensionArticle = {
   tag: string;
   source?: string;
   source_url: string;
+  share_url?: string;
   thumbnail?: string;
   published_at?: string;
   key_takeaways: string[];
 };
 
 export type ExtensionBrief = {
-  version: 4;
+  version: 5;
   feed_date: string;
   assembled_at?: string;
   generated_at: string;
@@ -122,6 +124,7 @@ function toExtensionArticle(item: FeedItem): ExtensionArticle | null {
   const source = cleanDisplayText(item.source_name || item.source || matchingSource?.name)
     || new URL(sourceUrl).hostname.replace(/^www\./, '');
   const publishedAt = cleanDisplayText(item.published_at || item.published_date);
+  const shareUrl = buildArticleShareUrl(item);
   const rawTag = (Array.isArray(item.tags) ? item.tags.map(cleanDisplayText).find(Boolean) : undefined)
     || cleanDisplayText(item.interest_id);
   const tag = rawTag.replace(/[-_]+/g, ' ');
@@ -131,12 +134,13 @@ function toExtensionArticle(item: FeedItem): ExtensionArticle | null {
   if (!content.length) return null;
 
   return {
-    id: `edition:${cleanDisplayText(item.id) || sourceUrl}`,
+    id: cleanDisplayText(item.id) || sourceUrl,
     channel: 'edition',
     title,
     summary,
     content,
     source_url: sourceUrl,
+    ...(shareUrl ? { share_url: shareUrl } : {}),
     key_takeaways: Array.isArray(short?.key_takeaways)
       ? short.key_takeaways.map(cleanDisplayText).filter(Boolean).slice(0, 4)
       : [],
@@ -172,7 +176,7 @@ export function buildExtensionBrief(feed: V3UserFeed): ExtensionBrief {
   const edition = buildEdition(editionItems).slice(0, MAX_ARTICLES);
 
   return {
-    version: 4,
+    version: 5,
     feed_date: feed.date,
     ...(feed.assembled_at ? { assembled_at: feed.assembled_at } : {}),
     generated_at: new Date().toISOString(),

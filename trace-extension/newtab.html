@@ -14,6 +14,7 @@
         <span>TRACE</span>
       </a>
       <nav class="filters" id="filters" aria-label="Filter stories"></nav>
+      <a class="account-link" id="account-link" target="_blank" rel="noopener noreferrer">Sign in</a>
     </header>
 
     <main>
@@ -41,6 +42,9 @@
     <dialog class="reader" id="reader" aria-labelledby="reader-title">
       <div class="reader-hero">
         <img id="reader-image" alt="">
+        <button id="reader-bookmark" class="reader-bookmark" type="button" aria-label="Bookmark story" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21l-6-3.5L6 21z"/></svg>
+        </button>
         <button id="reader-close" type="button" aria-label="Close full read">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
         </button>
@@ -51,7 +55,12 @@
         <ul id="reader-takeaways"></ul>
         <div class="reader-actions">
           <a id="reader-link" target="_blank" rel="noopener noreferrer">Read original source <span aria-hidden="true">↗</span></a>
-          <p class="reader-source" id="reader-source"></p>
+          <div class="reader-meta">
+            <p class="reader-source" id="reader-source"></p>
+            <button id="reader-share" type="button" aria-label="Copy story link">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.5M8.2 13.2l7.6 4.5"/></svg>
+            </button>
+          </div>
         </div>
       </article>
     </dialog>

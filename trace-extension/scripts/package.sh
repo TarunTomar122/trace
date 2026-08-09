@@ -15,6 +15,7 @@ zip -q -r "$archive" \
   manifest.json \
   newtab.html \
   newtab.js \
+  background.js \
   styles.css \
   lib/brief.js \
   assets/icon16.png \

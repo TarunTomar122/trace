@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useCallback, Suspense, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { Bookmark, Loader2, Moon, Sun } from 'lucide-react';
 import Link from 'next/link';
-import useSWR, { useSWRConfig } from 'swr';
+import useSWR from 'swr';
+import { useTheme } from 'next-themes';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth } from '@/lib/firebase';
 import { isAlphaMode } from '@/lib/alpha';
@@ -14,28 +15,30 @@ import {
 } from '@/lib/firestore';
 import { trackFeedViewed } from '@/lib/posthog';
 import FeedFooter from '@/components/FeedFooter';
+import PublicHeader from '@/components/PublicHeader';
 import Image from 'next/image';
 import FeedBootShell from './FeedBootShell';
-import { normalizeInterestOrder } from './FeedEditionOrganizer';
 import { type HotTweet } from './FeedOneScreen';
-import FeedTwoPaneLayout from './FeedTwoPaneLayout';
-import { FeedSubscribeClickLock } from './FeedPaywall';
-import { FREE_READS_LIMIT } from '@/lib/free-reads';
+import FeedTwoPaneLayout, { categoryId } from './FeedTwoPaneLayout';
+import {
+  canReadArticle,
+  getLocalFreeReads,
+  recordLocalFreeRead,
+  recordServerFreeRead,
+  syncFreeReadsFromServer,
+  type FreeReadsState,
+  type SummaryAccessState,
+} from '@/lib/free-reads';
 import { pulseLiveToFeedItem } from '@/lib/pulse-live';
 import {
   decodeHtml,
   FeedListItem,
   getArticleSummary,
-  getFeedStoryPath,
   getPreview,
   getTopicDisplay,
-  prepareFeedStoryNavigation,
+  INTEREST_LABEL,
 } from './FeedUi';
 import { FEED_RESTORE_SCROLL_KEY } from './FeedPulse';
-import {
-  feedItemDetailSwrKey,
-  type FeedItemDetailResponse,
-} from '@/lib/feed-item-detail-client';
 
 const FEED_DEBUG_LOGS = process.env.NODE_ENV !== 'production';
 
@@ -164,22 +167,24 @@ function toPulseListItem(item: FeedItem): FeedListItem {
 function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, profile, loading, profileResolved, refreshProfile } = useAuth();
+  const { setTheme } = useTheme();
+  const { user, profile, loading, profileResolved } = useAuth();
   const checkoutReturned = searchParams.get('subscription') === 'success';
   const trackedFeedView = React.useRef(false);
 
-  const [showProWelcome, setShowProWelcome] = useState(false);
-  const [pulseTabActive, setPulseTabActive] = useState(true);
-  const refreshProfileRef = React.useRef(refreshProfile);
+  const [pulseTabActive, setPulseTabActive] = useState(false);
+  const [feedTab, setFeedTab] = useState<'news' | 'pulse'>('news');
+  const [activeInterest, setActiveInterest] = useState<string | null>(null);
+  const [freeReads, setFreeReads] = useState<FreeReadsState>({
+    date: new Date().toISOString().slice(0, 10),
+    ids: [],
+  });
+  const [summaryAccess, setSummaryAccess] = useState<SummaryAccessState>('checking');
   const phasePerfRef = React.useRef({
     startedAt: 0,
     authReady: false,
     listReady: false,
   });
-
-  useEffect(() => {
-    refreshProfileRef.current = refreshProfile;
-  }, [refreshProfile]);
 
   useEffect(() => {
     phasePerfRef.current.startedAt = performance.now();
@@ -212,14 +217,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
 
   const baseFeed = v3Feed ?? initialFeed ?? null;
 
-  const isSubscribedFromProfile = profile?.subscriptionStatus === 'active' || profile?.subscriptionStatus === 'trial'
-    || profile?.appSubscriptionStatus === 'active' || profile?.appSubscriptionStatus === 'trial';
-  const isSubscribedFromFeed = baseFeed?.viewer_profile?.has_access === true
-    || baseFeed?.viewer_profile?.subscription_status === 'active'
-    || baseFeed?.viewer_profile?.subscription_status === 'trial'
-    || baseFeed?.viewer_profile?.app_subscription_status === 'active'
-    || baseFeed?.viewer_profile?.app_subscription_status === 'trial';
-  const isSubscribed = isSubscribedFromProfile || isSubscribedFromFeed;
+  const isSubscribed = summaryAccess === 'pro';
   const pulseDataEnabled = pulseTabActive && isSubscribed;
   const pulsePreviewEnabled = pulseTabActive;
 
@@ -252,13 +250,13 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     )
   );
 
-  const { data: fallbackTrending = [], isLoading: fallbackTrendingLoading } = useSWR<FeedItem[]>(
+  const { data: fallbackTrending = [] } = useSWR<FeedItem[]>(
     shouldLoadFallbackTrending ? 'public-trending' : null,
     trendingFetcher,
     { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
 
-  const { data: hotTweets = [], isLoading: hotTweetsLoading, mutate: mutateHotTweets } = useSWR<HotTweet[]>(
+  const { data: hotTweets = [], mutate: mutateHotTweets } = useSWR<HotTweet[]>(
     pulsePreviewEnabled ? 'hot-tweets' : null,
     hotTweetsFetcher,
     { revalidateOnFocus: true, revalidateOnReconnect: true, dedupingInterval: 60_000 },
@@ -269,9 +267,6 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
       void mutateHotTweets();
     }
   }, [pulseTabActive, mutateHotTweets]);
-
-  /** Guests get the sign-in/upgrade lock. Signed-in free users can browse the list. */
-  const feedInteractionLocked = !user && !loading;
 
   const viewerProfile = effectiveFeed?.viewer_profile;
   const viewerOnboarded = typeof viewerProfile?.onboarded === 'boolean'
@@ -312,58 +307,6 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     return () => globalThis.clearTimeout(timeoutId);
   }, [user, viewerOnboarded, viewerProfileResolved]);
 
-
-  useEffect(() => {
-    if (!checkoutReturned || !user) return;
-    let attempts = 0;
-    const refreshAccess = async () => {
-      attempts += 1;
-      await refreshProfileRef.current();
-      await mutateFeed();
-    };
-    refreshAccess();
-    const interval = setInterval(() => {
-      if (attempts >= 6) { clearInterval(interval); return; }
-      refreshAccess();
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [checkoutReturned, user, mutateFeed]);
-
-  const trendingTopics = useMemo(() => {
-    const topics = effectiveFeed?.trending_topics || [];
-    return [...topics].sort((a, b) => {
-      if (a.is_featured && !b.is_featured) return -1;
-      if (!a.is_featured && b.is_featured) return 1;
-      return (b.popularity_score || 0) - (a.popularity_score || 0);
-    });
-  }, [effectiveFeed?.trending_topics]);
-
-  const effectiveInterests = useMemo(() => {
-    const fromProfile = Array.isArray(profile?.interests)
-      ? profile.interests.filter((interest): interest is string => typeof interest === 'string' && interest.trim().length > 0)
-      : [];
-    const fromFeedViewerProfile = Array.isArray(effectiveFeed?.viewer_profile?.interests)
-      ? effectiveFeed.viewer_profile.interests.filter(
-          (interest): interest is string => typeof interest === 'string' && interest.trim().length > 0
-        )
-      : [];
-    const merged = fromProfile.length > 0 ? fromProfile : fromFeedViewerProfile;
-    return normalizeInterestOrder(merged);
-  }, [profile?.interests, effectiveFeed?.viewer_profile?.interests]);
-
-  const userInterests = useMemo(() => new Set(effectiveInterests), [effectiveInterests]);
-
-  const visibleTrendingTopics = useMemo(() => trendingTopics, [trendingTopics]);
-
-  useEffect(() => {
-    if (!profileResolved || isSubscribed) return;
-    try {
-      if (sessionStorage.getItem('trace-show-pro-welcome') === '1') {
-        sessionStorage.removeItem('trace-show-pro-welcome');
-        setShowProWelcome(true);
-      }
-    } catch { /* ignore */ }
-  }, [profileResolved, isSubscribed]);
 
   const currentList = useMemo(() => {
     const list: {
@@ -497,18 +440,88 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     [currentList],
   );
 
-  const freeStoryIds = useMemo(
-    () => new Set(newsFeedList.slice(0, FREE_READS_LIMIT).map((item) => item.id)),
-    [newsFeedList],
-  );
+  const feedFilters = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of newsFeedList) {
+      const id = categoryId(item);
+      counts.set(id, (counts.get(id) || 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  }, [newsFeedList]);
+
+  const selectFeed = useCallback((tab: 'news' | 'pulse', interest: string | null = null) => {
+    setFeedTab(tab);
+    setActiveInterest(interest);
+    if (tab === 'pulse') setPulseTabActive(true);
+    requestAnimationFrame(() => document.getElementById('feed-start')?.scrollIntoView({ behavior: 'smooth' }));
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (loading) return () => { cancelled = true; };
+    if (!user) {
+      queueMicrotask(() => {
+        if (!cancelled) {
+          setFreeReads(getLocalFreeReads());
+          setSummaryAccess('free');
+        }
+      });
+      return () => { cancelled = true; };
+    }
+
+    queueMicrotask(() => {
+      if (!cancelled) setSummaryAccess('checking');
+    });
+    void syncFreeReadsFromServer(() => user.getIdToken()).then((result) => {
+      if (!cancelled && result) {
+        setFreeReads(result.state);
+        setSummaryAccess(result.access);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [loading, user]);
+
+  useEffect(() => {
+    if (!checkoutReturned || !user) return;
+    let cancelled = false;
+    let attempts = 0;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const refreshAccess = async () => {
+      attempts += 1;
+      const result = await syncFreeReadsFromServer(() => user.getIdToken());
+      if (cancelled) return;
+      if (result) {
+        setFreeReads(result.state);
+        setSummaryAccess(result.access);
+      }
+      await mutateFeed();
+      if (!cancelled && result?.access !== 'pro' && attempts < 6) {
+        timeout = setTimeout(refreshAccess, 4000);
+      }
+    };
+    void refreshAccess();
+    return () => {
+      cancelled = true;
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [checkoutReturned, user, mutateFeed]);
 
   const isItemLocked = useCallback(
-    (itemId: string) => {
-      if (isSubscribed) return false;
-      return !freeStoryIds.has(itemId);
-    },
-    [isSubscribed, freeStoryIds],
+    (itemId: string) => !canReadArticle(freeReads, itemId, summaryAccess),
+    [freeReads, summaryAccess],
   );
+
+  const handleOpenSummary = useCallback(async (item: FeedListItem) => {
+    if (user) {
+      const result = await recordServerFreeRead(item.id, () => user.getIdToken());
+      if (result.state) setFreeReads(result.state);
+      if (result.access) setSummaryAccess(result.access);
+      return result.status;
+    }
+    const status = recordLocalFreeRead(item.id);
+    setFreeReads(getLocalFreeReads());
+    return status;
+  }, [user]);
 
   const discussions = useMemo((): FeedListItem[] => {
     const merged = dedupePulseItems([
@@ -519,7 +532,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
       return effectiveFeed.pulse.map(toPulseListItem);
     }
     return merged.map(toPulseListItem);
-  }, [effectiveFeed?.daily_pulse?.discussions, effectiveFeed?.community_pulse, effectiveFeed?.pulse]);
+  }, [effectiveFeed]);
 
   const tools = useMemo((): FeedListItem[] => {
     const merged = dedupePulseItems([
@@ -527,16 +540,16 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
       ...(effectiveFeed?.build_pulse ?? []),
     ]);
     return merged.map(toPulseListItem);
-  }, [effectiveFeed?.daily_pulse?.tools, effectiveFeed?.build_pulse]);
+  }, [effectiveFeed]);
 
   const blogs = useMemo((): FeedListItem[] => {
     const merged = dedupePulseItems(effectiveFeed?.daily_pulse?.blogs ?? []);
     return merged.map(toPulseListItem);
-  }, [effectiveFeed?.daily_pulse?.blogs]);
+  }, [effectiveFeed]);
 
   const needsLiveDiscussions = pulsePreviewEnabled && discussions.length === 0;
   const needsLiveTools = pulsePreviewEnabled && tools.length === 0;
-  const { data: livePulse, isLoading: livePulseLoading } = useSWR<PulseLiveResponse | null>(
+  const { data: livePulse } = useSWR<PulseLiveResponse | null>(
     pulsePreviewEnabled && (needsLiveDiscussions || needsLiveTools) ? 'pulse-live' : null,
     pulseLiveFetcher,
     { revalidateOnFocus: false, dedupingInterval: 900000 },
@@ -554,53 +567,11 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     return live.map((item) => toPulseListItem(pulseLiveToFeedItem(item)));
   }, [tools, livePulse?.tools]);
 
-  const pulseTweetsLoading = pulsePreviewEnabled && hotTweetsLoading && hotTweets.length === 0;
-  const pulseDiscussionsLoading = pulsePreviewEnabled && needsLiveDiscussions && livePulseLoading && pulseDiscussions.length === 0;
-  const pulseToolsLoading = pulsePreviewEnabled && needsLiveTools && livePulseLoading && pulseTools.length === 0;
-
   useEffect(() => {
     if (trackedFeedView.current || currentList.length === 0) return;
     trackedFeedView.current = true;
     trackFeedViewed(currentList.length, !isSubscribed);
   }, [isSubscribed, currentList.length]);
-
-  const handleSelectStory = useCallback((item: FeedListItem) => {
-    prepareFeedStoryNavigation(item, newsFeedList, { locked: isItemLocked(item.id) });
-    router.push(getFeedStoryPath(item));
-  }, [router, newsFeedList, isItemLocked]);
-
-  // ── Seed SWR cache with inline detail data ──
-  // Bootstrap now ships every item fully hydrated, so every click should be
-  // instant. We just prime the SWR cache for each item so the detail hook
-  // hits a cache entry instead of firing /api/feed/item.
-  const { mutate: globalMutate } = useSWRConfig();
-  const prefetchedRef = React.useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!isSubscribed) return;
-    if (!effectiveFeed) return;
-
-    const seed = (id: string, kind: 'article' | 'topic', item: FeedItem | TrendingTopic) => {
-      if (!id || prefetchedRef.current.has(id)) return;
-      prefetchedRef.current.add(id);
-      globalMutate(
-        feedItemDetailSwrKey(id),
-        { kind, item } as FeedItemDetailResponse,
-        { revalidate: false },
-      );
-    };
-
-    const articleBuckets: FeedItem[][] = [
-      effectiveFeed.for_you || [],
-      effectiveFeed.trending || [],
-    ];
-    for (const bucket of articleBuckets) {
-      for (const item of bucket) seed(item.id, 'article', item);
-    }
-    for (const topic of effectiveFeed.trending_topics || []) {
-      seed(topic.id, 'topic', topic);
-    }
-  }, [isSubscribed, effectiveFeed, globalMutate]);
 
   const hasFeedResponse = typeof v3Feed !== 'undefined';
   // Any feed payload (SSR or SWR) with at least one rendered section is enough
@@ -644,38 +615,62 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
   }
 
   return (
-    <div className="flex flex-col bg-white">
-      <header className="shrink-0 border-b border-[#e5e7eb] bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
-          <Link href="/" prefetch={false} className="flex items-center gap-2.5 no-underline" style={{ color: 'inherit' }}>
-            <img src="/trace.webp" alt="Trace" className="h-5 w-auto" />
-            <span className="text-[13px] font-bold tracking-[0.14em] text-[#111827]">TRACE</span>
-          </Link>
-          {user?.photoURL ? (
-            <Link href="/profile" prefetch={false}>
-              <img src={user.photoURL} alt="Profile" className="h-8 w-8 rounded-full border border-[#e5e7eb]" />
-            </Link>
-          ) : (
-            <Link
-              href="/profile"
-              prefetch={false}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#111827] text-white"
+    <div className="flex min-h-screen flex-col bg-background">
+      <PublicHeader
+        centerSlot={
+          <nav aria-label="Feed filters" className="scrollbar-hide flex w-max items-center gap-2">
+            <button type="button" aria-pressed={feedTab === 'news' && activeInterest === null} onClick={() => selectFeed('news')} className={`shrink-0 rounded-full px-3.5 py-2 text-[11px] font-semibold ${feedTab === 'news' && activeInterest === null ? 'bg-foreground text-background' : 'bg-surface text-secondary hover:text-foreground'}`}>All news</button>
+            {feedFilters.map(([id]) => (
+              <button key={id} type="button" aria-pressed={feedTab === 'news' && activeInterest === id} onClick={() => selectFeed('news', id)} className={`shrink-0 rounded-full px-3.5 py-2 text-[11px] font-semibold capitalize ${feedTab === 'news' && activeInterest === id ? 'bg-foreground text-background' : 'bg-surface text-secondary hover:text-foreground'}`}>
+                {INTEREST_LABEL[id] || id.replace(/[-_]+/g, ' ')}
+              </button>
+            ))}
+            <button type="button" aria-pressed={feedTab === 'pulse'} onClick={() => selectFeed('pulse')} className={`shrink-0 rounded-full px-3.5 py-2 text-[11px] font-semibold ${feedTab === 'pulse' ? 'bg-foreground text-background' : 'bg-surface text-secondary hover:text-foreground'}`}>Pulse</button>
+          </nav>
+        }
+        rightSlot={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark')}
+              aria-label="Toggle color theme"
+              className="inline-flex size-10 items-center justify-center rounded-full text-secondary hover:bg-surface-secondary hover:text-foreground"
             >
-              <span className="text-[12px] font-semibold">{user?.email?.[0]?.toUpperCase() || 'U'}</span>
-            </Link>
-          )}
-        </div>
-      </header>
+              <Moon size={17} aria-hidden="true" className="dark:hidden" />
+              <Sun size={17} aria-hidden="true" className="hidden dark:block" />
+            </button>
+            {user && (
+              <Link
+                href="/bookmarks"
+                aria-label="Saved stories"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-full px-3 text-[12px] font-semibold text-secondary hover:bg-surface-secondary hover:text-foreground"
+              >
+                <Bookmark size={16} aria-hidden="true" />
+                <span className="hidden sm:inline">Saved</span>
+              </Link>
+            )}
+            {user?.photoURL ? (
+              <Link href="/profile" prefetch={false}>
+                <Image src={user.photoURL} width={36} height={36} alt="Profile" className="h-9 w-9 rounded-full border border-border" unoptimized />
+              </Link>
+            ) : (
+              <Link href="/" prefetch={false} className="rounded-full border border-border bg-surface px-4 py-2 text-[12px] font-semibold text-foreground">
+                Sign in
+              </Link>
+            )}
+          </div>
+        }
+      />
 
       {checkoutReturned && (
-        <div className="shrink-0 mx-4 mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 sm:mx-6">
+        <div className="mx-4 mt-3 shrink-0 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 sm:mx-6">
           <div className="flex items-center gap-3">
             <Loader2 size={16} className={`text-amber-600 ${isSubscribed ? '' : 'animate-spin'}`} />
             <div>
-              <p className="text-sm font-medium text-[#111827]">
+              <p className="text-sm font-medium text-foreground">
                 {isSubscribed ? 'Trace Pro is active.' : 'Activating your Pro access...'}
               </p>
-              <p className="text-xs text-[#6b7280]">
+              <p className="text-xs text-secondary">
                 {isSubscribed
                   ? 'Your full feed is unlocked.'
                   : 'Your payment went through. Your full feed should unlock in a moment.'}
@@ -685,8 +680,7 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
         </div>
       )}
 
-      {/* feed panel — fixed viewport height so left/right panes scroll internally */}
-      <div className="h-[calc(100vh-61px)] min-h-0 relative overflow-hidden border-b border-[#e5e7eb]">
+      <div className="relative min-h-[calc(100vh-76px)]">
         <FeedTwoPaneLayout
           isLoading={isLoading}
           storyList={newsFeedList as FeedListItem[]}
@@ -695,18 +689,12 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
           tools={pulseTools}
           blogs={blogs}
           isSubscribed={isSubscribed}
-          pulseInterests={effectiveInterests}
-          pulseTweetsLoading={pulseTweetsLoading}
-          pulseDiscussionsLoading={pulseDiscussionsLoading}
-          pulseToolsLoading={pulseToolsLoading}
-          interestOrder={effectiveInterests}
-          onSelectStory={handleSelectStory}
+          freeReadsUsed={freeReads.ids.length}
+          onOpenSummary={handleOpenSummary}
           isItemLocked={isItemLocked}
-          onTabChange={(tab) => {
-            if (tab === 'pulse') setPulseTabActive(true);
-          }}
+          tab={feedTab}
+          activeInterest={activeInterest}
         />
-        <FeedSubscribeClickLock active={feedInteractionLocked} defaultOpen={showProWelcome} />
       </div>
 
       <FeedFooter />

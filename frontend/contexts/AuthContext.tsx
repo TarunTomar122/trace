@@ -81,14 +81,6 @@ function setPendingPostAuthIntent(intent: SignInIntent | null) {
 
 export { getPostAuthDestination } from '@/lib/landing-routing';
 
-function isPopupFallbackEnvironment() {
-  if (typeof window === 'undefined') return false;
-  const ua = window.navigator.userAgent || '';
-  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
-  const isEmbedded = /(FBAN|FBAV|Instagram|Line|LinkedInApp|wv|WebView)/i.test(ua);
-  return isMobile || isEmbedded;
-}
-
 function shouldFallbackToRedirect(errorCode?: string) {
   return errorCode === 'auth/popup-blocked'
     || errorCode === 'auth/operation-not-supported-in-this-environment';
@@ -324,7 +316,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const errorCode = typeof error === 'object' && error && 'code' in error ? String(error.code) : undefined;
       const errorMessage = error instanceof Error ? error.message : 'Sign-in failed';
 
-      if (shouldFallbackToRedirect(errorCode) && isPopupFallbackEnvironment()) {
+      if (shouldFallbackToRedirect(errorCode)) {
         await signInWithRedirect(auth, googleProvider);
         return { status: 'redirecting', intent };
       }

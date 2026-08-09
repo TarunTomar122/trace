@@ -1,65 +1,31 @@
 export const HOME_PRODUCT_DESCRIPTION =
-  'Trace is a focused AI and developer news aggregator for technology news, open-source projects, technical discussions, videos, and independent writing.';
+  'Trace groups AI and technology news into a short personalized feed, so you can catch model launches, company changes, layoffs, security updates, and new trends in five minutes.';
 
 export const HOME_FAQ_ITEMS = [
   {
-    q: 'What is Trace?',
-    a: 'Trace is a focused AI and developer news aggregator. It combines technology news with open-source projects, technical discussions, videos, and independent practitioner writing.',
+    q: 'Is Trace free?',
+    a: 'Yes. The free plan includes your AI and technology news feed, five unique AI summaries each day, original source links, and bookmarks with a free account.',
   },
   {
-    q: 'Which sources does Trace bring together?',
-    a: 'Trace follows developer-focused sources including Hacker News, GitHub, independent engineering blogs, AI research and product teams, technical creators, and product launch communities.',
+    q: 'What counts as one AI summary?',
+    a: 'Opening a new story summary counts once. You can reopen the same summary without using another read, and original publisher links remain available without a limit.',
   },
   {
-    q: 'How does Trace reduce information overload?',
-    a: 'Trace groups related coverage, summarizes the useful context, and keeps original source links attached. The live Pulse shows what is moving while the daily Edition gives you a finite catch-up view.',
+    q: 'Where does Trace get its news?',
+    a: 'Trace follows established technology publications, company announcements, research teams, and useful independent sources. Related reports are grouped while every original link stays attached.',
   },
   {
-    q: 'Can I personalize Trace for my interests?',
-    a: 'Yes. After signing in, you can build a feed around the technology and builder topics you care about instead of following one generic news homepage.',
-  },
-  {
-    q: 'Can I explore Trace without an account?',
-    a: 'Yes. You can browse homepage previews, guides, comparisons, and daily archive pages without an account. Sign in to open the live feed and use personalized reading features.',
-  },
-  {
-    q: 'What does Trace Pro include?',
-    a: 'Trace Pro includes the complete feed, every summary and key takeaway, source links, bookmarks, and read-only Agent Access. You can try it for 3 days with no charge during the trial.',
+    q: 'Does Trace link to the original publisher?',
+    a: 'Yes. Every story keeps its original publisher link, so you can read the complete report and support the publication that produced it.',
   },
   {
     q: 'Where can I use Trace?',
-    a: 'Trace is available on the web and as an Android app on Google Play.',
-  },
-] as const;
-
-export const HOME_COMPARISON_ROWS = [
-  {
-    label: 'Daily catch-up',
-    manual: 'Open and refresh separate news sites, repositories, blogs, and community feeds.',
-    trace: 'Scan one live Pulse or finish a finite daily Edition.',
+    a: 'Trace is available as a Chrome new-tab extension, a web feed, and an Android app. On iPhone or iPad, open Trace in Safari and use Add to Home Screen for an app-like shortcut.',
   },
   {
-    label: 'Duplicate coverage',
-    manual: 'Work out which links describe the same story and what each source adds.',
-    trace: 'Related coverage is grouped into one story with its source trail intact.',
+    q: 'What does Trace Pro include?',
+    a: 'Trace Pro includes unlimited AI summaries in the web feed, search across your complete saved archive, the complete daily archive, the full personalized feed, and read-only Agent Access. It is $2.99 a month after a 3-day free trial.',
   },
-  {
-    label: 'Developer context',
-    manual: 'Track news, projects, discussions, videos, and practitioner writing separately.',
-    trace: 'See those surfaces together in one builder-focused feed.',
-  },
-  {
-    label: 'Going deeper',
-    manual: 'Keep a personal tab stack or reading backlog.',
-    trace: 'Open the original source only when a story deserves more time.',
-  },
-] as const;
-
-export const HOME_INTENT_LINKS = [
-  { href: '/blog/free-news-aggregators-for-developers', label: 'News aggregators for developers' },
-  { href: '/blog/how-to-stay-updated-on-tech-without-doomscrolling', label: 'Stay current without doomscrolling' },
-  { href: '/compare/rss-reader-alternative', label: 'Trace vs RSS readers' },
-  { href: '/blog/ai-news-for-developers', label: 'AI news for developers' },
 ] as const;
 
 export function generateHomeApplicationSchema(): Record<string, unknown> {
@@ -70,25 +36,26 @@ export function generateHomeApplicationSchema(): Record<string, unknown> {
     name: 'Trace',
     url: 'https://www.yourtrace.online/',
     description: HOME_PRODUCT_DESCRIPTION,
-    applicationCategory: 'DeveloperApplication',
-    operatingSystem: 'Web, Android',
-    downloadUrl: 'https://play.google.com/store/apps/details?id=online.yourtrace.app',
+    applicationCategory: 'NewsApplication',
+    operatingSystem: 'Web, Chrome, Android',
+    downloadUrl: 'https://chromewebstore.google.com/detail/cblkklekbejbpcaihfogdmaoofmikbk',
     featureList: [
-      'AI and developer news aggregation',
+      'AI and technology news aggregation',
       'Related story grouping with source links',
-      'Open-source project discovery',
-      'Technical discussion and video summaries',
-      'Live Pulse and finite daily Edition',
+      'Personalized AI and technology news feed',
+      'AI summaries for major technology stories',
+      'Bookmarks synced across web devices',
       'Read-only Agent Access for AI tools',
     ],
     audience: {
       '@type': 'Audience',
-      audienceType: 'Software developers and technology professionals',
+      audienceType: 'People who follow artificial intelligence and technology news',
     },
     publisher: {
       '@id': 'https://www.yourtrace.online/#organization',
     },
     sameAs: [
+      'https://chromewebstore.google.com/detail/cblkklekbejbpcaihfogdmaoofmikbk',
       'https://play.google.com/store/apps/details?id=online.yourtrace.app',
     ],
   };

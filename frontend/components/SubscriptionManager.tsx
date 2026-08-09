@@ -440,23 +440,24 @@ export default function SubscriptionManager() {
         transition={{ duration: 0.4, ease: 'easeOut' }}
         className="space-y-4"
       >
-        <div className="grid overflow-hidden border border-[#e4e1d8] md:grid-cols-[minmax(0,1fr)_290px]">
+        <div className="grid overflow-hidden rounded-[18px] bg-surface-secondary ring-1 ring-foreground/7 dark:ring-white/10 md:grid-cols-[minmax(0,1fr)_300px]">
           <div className="p-7 sm:p-9">
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[#2557d6]">{planName}</p>
-            <h2 className="mt-4 font-serif text-[36px] leading-[1.02] tracking-[-0.025em] text-[#1b1a17]">
-              Read the complete feed.
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">{planName}</p>
+            <h2 className="mt-4 text-[32px] font-semibold leading-[1.05] tracking-[-0.035em] text-foreground">
+              Keep the whole story within reach.
             </h2>
-            <p className="mt-4 max-w-[520px] text-[14px] leading-[1.7] text-[#75705f]">
-              Get every news story, project, discussion, video summary, key takeaway, and source link.
+            <p className="mt-4 max-w-[520px] text-[14px] leading-[1.7] text-secondary">
+              Unlimited AI summaries, searchable saved posts, the complete daily archive, and Agent Access.
             </p>
           </div>
-          <div className="flex flex-col justify-center bg-[#2557d6] p-7 text-white">
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">3 days on us</p>
-            <p className="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em]">Try Trace Pro free</p>
+          <div className="flex flex-col justify-center bg-foreground p-7 text-background">
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] opacity-65">3 days free</p>
+            <p className="mt-2 text-[28px] font-semibold leading-[1.05] tracking-[-0.035em]">Try Trace Pro</p>
+            <p className="mt-2 text-[13px] opacity-70">Then {priceDisplay}/month. Cancel anytime.</p>
             <button
               onClick={handleSubscribe}
               disabled={isCreatingCheckout}
-              className="mt-6 flex items-center justify-center gap-2 bg-white py-3 text-[13px] font-semibold text-[#2557d6] transition-colors hover:bg-[#f5f3ed] disabled:opacity-50"
+              className="mt-6 flex items-center justify-center gap-2 rounded-full bg-background py-3 text-[13px] font-semibold text-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {isCreatingCheckout ? (
                 <><Loader2 className="animate-spin" size={15} />Setting up...</>
@@ -464,17 +465,17 @@ export default function SubscriptionManager() {
                 <>Start your free trial</>
               )}
             </button>
-            <p className="mt-3 text-center text-[11px] text-white/70">No charge for 3 days · Cancel anytime.</p>
+            <p className="mt-3 text-center text-[11px] opacity-65">No charge for the first 3 days.</p>
           </div>
         </div>
 
         {error && (
-          <div className="border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+          <div className="rounded-[14px] bg-red-500/8 p-3 text-sm text-red-600 ring-1 ring-red-500/15 dark:text-red-400">
             {error}
           </div>
         )}
 
-        <p className="text-[11px] text-[#75705f]">
+        <p className="text-[11px] text-secondary">
           Questions? tomartarun2001@gmail.com
         </p>
       </motion.div>
@@ -487,15 +488,15 @@ export default function SubscriptionManager() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="border border-[#e4e1d8] bg-transparent p-6 md:p-8"
+        className="rounded-[18px] bg-surface-secondary p-6 ring-1 ring-foreground/7 dark:ring-white/10 md:p-8"
       >
         <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center border border-[#e4e1d8] bg-[#f5f3ed]">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface">
               {getStatusIcon(status)}
             </div>
             <div>
-              <h3 className="font-serif text-[28px] leading-none text-[#1b1a17]">
+              <h3 className="text-[26px] font-semibold leading-none tracking-[-0.03em] text-foreground">
                 {planName}
               </h3>
               <p className={`text-sm font-medium mt-0.5 ${getStatusColor(status)}`}>
@@ -504,14 +505,14 @@ export default function SubscriptionManager() {
             </div>
           </div>
           {hasAccess && (
-            <span className="border border-[#2557d6] px-3 py-1.5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[#2557d6]">
+            <span className="rounded-full bg-surface px-3 py-1.5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.14em] text-accent">
               Active
             </span>
           )}
         </div>
 
         {/* Subscription Details */}
-        <div className="mb-6 space-y-3 border-y border-[#e4e1d8] py-4">
+        <div className="mb-6 space-y-3 rounded-[14px] bg-surface p-4">
           {status === 'trial' && subscriptionStatus?.trialEndDate && (
             <div className="flex items-center gap-3 text-sm">
               <Calendar size={16} className="text-secondary" />
@@ -573,7 +574,7 @@ export default function SubscriptionManager() {
                   <button
                     onClick={handleResumeSubscription}
                     disabled={isResuming}
-                  className="flex w-full items-center justify-center gap-2 bg-[#2557d6] py-3 text-sm font-medium text-white transition-colors hover:bg-[#1d48b4] disabled:opacity-50"
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-foreground py-3 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-50"
                   >
                     {isResuming ? (
                       <>
@@ -588,7 +589,7 @@ export default function SubscriptionManager() {
               ) : !showCancelConfirm ? (
                 <button
                   onClick={() => setShowCancelConfirm(true)}
-                  className="w-full border border-[#e4e1d8] py-3 text-sm font-medium text-[#a24d43] transition-colors hover:border-[#a24d43] hover:bg-[#f7ebe8]"
+                  className="w-full rounded-full bg-surface py-3 text-sm font-medium text-red-600 ring-1 ring-red-500/20 transition-colors hover:bg-red-500/5 dark:text-red-400"
                 >
                   Cancel Subscription
                 </button>
@@ -601,13 +602,13 @@ export default function SubscriptionManager() {
                     <button
                       onClick={() => handleCancelSubscription(false)}
                       disabled={isCancelling}
-                    className="flex-1 bg-[#a24d43] py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#813a32] disabled:opacity-50"
+                    className="flex-1 rounded-full bg-red-600 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                     >
                       {isCancelling ? 'Cancelling...' : 'Cancel at Period End'}
                     </button>
                     <button
                       onClick={() => setShowCancelConfirm(false)}
-                    className="flex-1 border border-[#e4e1d8] py-2.5 text-sm font-medium text-[#75705f] transition-colors hover:border-[#1b1a17] hover:text-[#1b1a17]"
+                    className="flex-1 rounded-full bg-surface py-2.5 text-sm font-medium text-secondary ring-1 ring-foreground/10 transition-colors hover:text-foreground"
                     >
                       Keep Subscription
                     </button>
@@ -621,7 +622,7 @@ export default function SubscriptionManager() {
             <button
               onClick={handleSubscribe}
               disabled={isCreatingCheckout}
-              className="flex w-full items-center justify-center gap-2 bg-[#2557d6] py-4 text-sm font-medium text-white transition-colors hover:bg-[#1d48b4] disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-foreground py-4 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {isCreatingCheckout ? (
                 <>
@@ -640,7 +641,7 @@ export default function SubscriptionManager() {
       </motion.div>
 
       {/* Help Text */}
-      <p className="text-center text-xs text-[#75705f]">
+      <p className="text-center text-xs text-secondary">
         Questions? tomartarun2001@gmail.com
       </p>
     </div>

@@ -26,22 +26,22 @@ export default function SubscribePage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#faf9f5] px-5 text-[#1b1a17]">
-      <div className="w-full max-w-[420px] border border-[#e4e1d8] p-7 text-center sm:p-9">
-        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#2557d6]">
+    <main className="flex min-h-screen items-center justify-center bg-background px-5 text-foreground">
+      <div className="w-full max-w-[420px] rounded-[22px] bg-surface p-7 text-center ring-1 ring-foreground/7 dark:ring-white/10 sm:p-9">
+        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
           Trace Pro
         </p>
         <h1 className="mt-4 text-[28px] font-semibold tracking-[-0.03em]">
-          Try the complete builder feed free for 3 days
+          Try the complete AI and tech feed free for 3 days
         </h1>
-        <p className="mt-3 text-[14px] leading-[1.7] text-[#75705f]">
-          Continue with Google to start your trial. No charge for 3 days.
+        <p className="mt-3 text-[14px] leading-[1.7] text-secondary">
+          Continue with Google to start your trial. Then $2.99 a month. Cancel anytime.
         </p>
         <button
           type="button"
           disabled={loading || Boolean(user)}
           onClick={() => void continueToCheckout()}
-          className="mt-7 w-full bg-[#1b1a17] px-5 py-3.5 text-[13px] font-semibold text-white disabled:opacity-50"
+          className="mt-7 w-full rounded-full bg-foreground px-5 py-3.5 text-[13px] font-semibold text-background transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {loading || user ? 'Loading checkout…' : 'Start free trial with Google'}
         </button>

@@ -1,120 +1,118 @@
 "use client";
 
 import { useMemo } from 'react';
-import { Play } from 'lucide-react';
-import type { V3UserFeed } from '@/lib/firestore';
-import type { FeedListItem } from '@/app/(auth)/feed/FeedUi';
-import {
-  INK,
-  MUTED,
-  buildPulseEdition,
-  editionSerif,
-  sentencePreview,
-} from '@/app/wip/feed-edition/edition-shared';
+import Image from 'next/image';
+import { Bookmark } from 'lucide-react';
 import { ArticleImage } from '@/components/ArticleImage';
+import type { FeedItem, V3UserFeed } from '@/lib/firestore';
+import { decodeHtmlEntities } from '@/lib/feed-article-text';
 
-type PreviewSignal = {
-  item: FeedListItem;
-  section: string;
+type DemoStory = {
+  id: string;
+  title: string;
+  tag: string;
+  thumbnail?: string | null;
 };
 
-const FEATURED_MATCHES = [
-  (signal: PreviewSignal) => signal.item.title.includes('moeru-ai / airi'),
-  (signal: PreviewSignal) => signal.item.title.includes('PGSimCity'),
-  (signal: PreviewSignal) => signal.item.source === 'AI Engineer',
-];
-
-function isVideo(item: FeedListItem): boolean {
-  return /(?:youtube\.com|youtu\.be)/i.test(item.url || '');
+function storyTag(item: FeedItem): string {
+  const value = item.tags?.find(Boolean) || item.interest_id || 'Tech';
+  return value.replace(/[-_]+/g, ' ');
 }
 
-function previewThumbnail(item: FeedListItem): string | null | undefined {
-  if (item.thumbnail) return item.thumbnail;
-  try {
-    const url = new URL(item.url || '');
-    const videoId = url.hostname.includes('youtu.be')
-      ? url.pathname.slice(1)
-      : url.searchParams.get('v');
-    return videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : undefined;
-  } catch {
-    return undefined;
-  }
+function collectStories(feed: V3UserFeed | null): DemoStory[] {
+  if (!feed) return [];
+  const items = [
+    ...(feed.for_you || []),
+    ...(feed.trending || []),
+    ...(feed.trending_topics || []).flatMap((topic) => topic.articles || []),
+  ];
+  const seen = new Set<string>();
+
+  return items.flatMap((item) => {
+    if (item.type === 'brief' || !item.id || !item.title || seen.has(item.id)) return [];
+    seen.add(item.id);
+    return [{
+      id: item.id,
+      title: decodeHtmlEntities(item.title),
+      tag: storyTag(item),
+      thumbnail: item.thumbnail,
+    }];
+  }).slice(0, 12);
 }
 
-function pickSignals(feed: V3UserFeed | null): PreviewSignal[] {
-  const sections = buildPulseEdition(feed);
-  const signals = sections.flatMap((section) =>
-    section.items.map((item) => ({ item, section: section.label })),
-  );
-  const selected: PreviewSignal[] = [];
-
-  for (const match of FEATURED_MATCHES) {
-    const signal = signals.find((candidate) =>
-      !selected.some(({ item }) => item.id === candidate.item.id) && match(candidate),
-    );
-    if (signal) selected.push(signal);
-  }
-  for (const section of sections) {
-    const signal = signals.find((candidate) =>
-      candidate.section === section.label
-      && !selected.some(({ item }) => item.id === candidate.item.id),
-    );
-    if (signal && selected.length < 3) selected.push(signal);
-  }
-  return selected.slice(0, 3);
-}
-
-function PreviewCard({ signal }: { signal: PreviewSignal }) {
-  const { item, section } = signal;
-  const video = isVideo(item);
-
+function StoryCard({ story, compact = false }: { story: DemoStory; compact?: boolean }) {
   return (
-    <a href="/feed?view=pulse" className="group flex h-full flex-col border-r border-[#e4e1d8] p-5 last:border-r-0 hover:bg-[#f5f3ed]">
-      <div className="relative">
-        <ArticleImage
-          thumbnail={previewThumbnail(item)}
-          title={item.title}
-          alt=""
-          className="aspect-[16/9] w-full border border-[#e4e1d8] object-cover"
-        />
-        {video && (
-          <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 bg-[#faf9f5] px-2.5 py-1.5 font-mono text-[9px] font-semibold uppercase tracking-[0.14em]">
-            <Play size={10} fill="currentColor" /> Video
-          </span>
-        )}
+    <article
+      className={`group relative flex h-full flex-col overflow-hidden bg-surface text-foreground ${compact ? 'gap-3 rounded-[10px] p-3 ring-1 ring-foreground/7' : 'rounded-[18px] p-3 shadow-[0_1px_0_rgba(0,0,0,0.05)]'}`}
+    >
+      <ArticleImage
+        thumbnail={story.thumbnail}
+        title={story.title}
+        alt=""
+        className={compact ? 'aspect-[16/9] w-full rounded-[7px] bg-surface-secondary object-cover sm:h-[135px] sm:aspect-auto' : 'aspect-[16/10] w-full rounded-[12px] bg-surface-secondary object-cover'}
+      />
+      <button
+        type="button"
+        aria-label={`Bookmark ${story.title}`}
+        className="absolute right-6 top-6 z-10 inline-flex size-[34px] items-center justify-center rounded-full bg-[#0e0e0f]/80 text-white opacity-0 shadow-sm ring-1 ring-white/25 transition-opacity hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100"
+      >
+        <Bookmark size={14} aria-hidden="true" />
+      </button>
+      <div className={compact ? 'px-1 pb-2' : 'min-h-[132px] px-3 pb-3 pt-5'}>
+        <p className={`font-mono font-semibold uppercase text-accent ${compact ? 'text-[9px] tracking-[0.12em]' : 'text-[10px] tracking-[0.17em]'}`}>{story.tag}</p>
+        <h3 className={compact ? 'mt-2 line-clamp-3 text-[16px] font-[550] leading-[1.35] text-foreground' : 'mt-3 text-[20px] font-semibold leading-[1.28] tracking-[-0.025em] text-foreground'}>
+          {story.title}
+        </h3>
       </div>
-      <span className="mt-5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#2557d6]">
-        {section}
-      </span>
-      <h3 className={`${editionSerif.className} mt-3 text-[23px] leading-[1.16] group-hover:text-[#2557d6]`} style={{ color: INK }}>
-        {item.title}
-      </h3>
-      {item.preview && (
-        <p className="mt-3 text-[13px] leading-[1.6]" style={{ color: MUTED }}>
-          {sentencePreview(item.preview, 1)}
-        </p>
-      )}
-      <span className="mt-auto pt-5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.12em]" style={{ color: MUTED }}>
-        {item.source}
-      </span>
-    </a>
+    </article>
+  );
+}
+
+function ChromeDemo({ stories }: { stories: DemoStory[] }) {
+  const filters = ['All', 'AI', 'Engineering', 'Markets', 'Startups', 'Tech', 'UX design', 'Saved'];
+  return (
+    <div className="rounded-[18px] bg-surface-secondary p-2 shadow-2xl ring-1 ring-foreground/10 sm:p-3">
+      <div className="rounded-t-[10px] bg-surface-tertiary px-3 pb-2 pt-2.5">
+        <div className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#ffbd2e]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
+          <span className="ml-4 rounded-t-md bg-surface-secondary px-5 py-2 text-[9px] text-foreground">Trace New Tab</span>
+          <span className="text-[13px] text-secondary">+</span>
+        </div>
+        <div className="mt-2 flex items-center gap-3 text-[11px] text-secondary">
+          <span aria-hidden="true">‹</span><span aria-hidden="true">›</span><span aria-hidden="true">↻</span>
+          <span className="flex-1 rounded-full bg-surface px-4 py-2 text-left text-foreground">chrome://newtab</span>
+          <span aria-hidden="true">⋮</span>
+        </div>
+      </div>
+      <div className="rounded-b-[10px] bg-background px-3 pb-4 pt-5 sm:px-5 sm:pb-5 sm:pt-6">
+        <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:grid sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:gap-8">
+          <span className="flex items-center gap-2 font-mono text-[9px] font-bold tracking-[0.24em] text-foreground"><Image src="/trace-app-icon-v1-180.png" width={24} height={24} alt="" style={{ width: 24, height: 24, borderRadius: 7 }} /> TRACE</span>
+          <div className="flex min-w-0 gap-1 overflow-x-auto pb-1 sm:justify-center sm:overflow-hidden sm:pb-0">
+            {filters.map((filter, index) => <span key={filter} className={`shrink-0 rounded-full px-2.5 py-1.5 text-[9px] ${index === 0 ? 'bg-foreground font-semibold text-background' : 'text-secondary'}`}>{filter}</span>)}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {stories.slice(0, 12).map((story, index) => (
+            <div key={story.id} className={`h-full ${index >= 8 ? 'hidden lg:block' : index >= 4 ? 'hidden sm:block' : ''}`}>
+              <StoryCard story={story} compact />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
 export default function HomeEditionPreview({ feed }: { feed: V3UserFeed | null }) {
-  const signals = useMemo(() => pickSignals(feed), [feed]);
+  const stories = useMemo(() => collectStories(feed), [feed]);
 
-  if (!signals.length) return null;
+  if (!stories.length) return null;
 
   return (
-    <section className="border border-[#e4e1d8] bg-[#faf9f5]">
-      <div className="flex items-center justify-between border-b border-[#e4e1d8] px-5 py-5 sm:px-8">
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#2557d6]">Live from Trace</span>
-        <a href="/feed?view=pulse" className="text-[12px] font-semibold text-[#2557d6] hover:underline">Open feed</a>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3">
-        {signals.map((signal) => <PreviewCard key={signal.item.id} signal={signal} />)}
-      </div>
+    <section aria-label="See Trace in Chrome">
+      <ChromeDemo stories={stories} />
     </section>
   );
 }

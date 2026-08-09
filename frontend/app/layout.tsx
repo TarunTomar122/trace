@@ -30,10 +30,10 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: "Trace — A feed for builders",
+  title: "Trace: AI and tech news in five minutes",
   description:
-    "Aggregated tech news and the practical engineering, design, and product work behind it.",
-  keywords: ["AI summaries", "trending news", "content curation", "daily briefing", "topic overviews", "RSS alternative"],
+    "Trace groups AI and technology news into a short personalized feed wherever you read.",
+  keywords: ["AI news", "technology news", "AI summaries", "daily tech briefing", "Chrome new tab news", "news aggregator"],
   authors: [{ name: "Trace", url: "https://www.yourtrace.online" }],
   creator: "Trace",
   publisher: "Trace",
@@ -51,23 +51,23 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://www.yourtrace.online",
     siteName: "Trace",
-    title: "Trace — A feed for builders",
+    title: "Trace: AI and tech news in five minutes",
     description:
-      "Aggregated tech news and the practical engineering, design, and product work behind it.",
+      "Trace groups AI and technology news into a short personalized feed wherever you read.",
     images: [
       {
         url: "https://www.yourtrace.online/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Trace — A feed for builders",
+        alt: "Trace AI and technology news feed",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Trace — A feed for builders",
+    title: "Trace: AI and tech news in five minutes",
     description:
-      "Tech news, build logs, architecture, open source, design, and product in one feed.",
+      "A short personalized feed for model launches, company changes, layoffs, security, and new technology trends.",
     images: ["https://www.yourtrace.online/twitter-image"],
   },
   robots: {
@@ -110,7 +110,7 @@ export default function RootLayout({
         "@id": "https://www.yourtrace.online/#website",
         "url": "https://www.yourtrace.online",
         "name": "Trace",
-        "description": "Trace is a feed for builders: aggregated tech news plus build logs, architecture, open source, design, and product thinking."
+        "description": "Trace groups AI and technology news into a short personalized feed wherever you read."
       },
       {
         "@type": "Organization",

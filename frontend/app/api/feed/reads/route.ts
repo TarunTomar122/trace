@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminFirestore } from '@/lib/firebase-admin';
 import { TRACE_SESSION_COOKIE_NAME, verifyTraceSession } from '@/lib/server-session';
+import { FREE_READS_LIMIT } from '@/lib/free-reads';
+import { hasActiveSubscription } from '@/lib/subscription-access';
 
 function getTodayDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -43,16 +45,23 @@ export async function GET(request: NextRequest) {
     }
 
     const today = getTodayDate();
+    const profile = await adminFirestore.collection('user_profiles').doc(uid).get();
+    if (hasActiveSubscription(profile.data())) {
+      return NextResponse.json(
+        { access: 'pro', date: today, ids: [], count: 0 },
+        { headers: { 'Cache-Control': 'private, no-store' } },
+      );
+    }
+
     const docRef = adminFirestore.collection('free_reads').doc(`${uid}_${today}`);
     const doc = await docRef.get();
     const data = doc.exists ? doc.data() : null;
     const ids: string[] = data?.ids || [];
 
-    return NextResponse.json({
-      date: today,
-      ids,
-      count: ids.length,
-    });
+    return NextResponse.json(
+      { access: 'free', date: today, ids, count: ids.length },
+      { headers: { 'Cache-Control': 'private, no-store' } },
+    );
   } catch (error) {
     console.error('[api/feed/reads] GET error:', error);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
@@ -77,6 +86,14 @@ export async function POST(request: NextRequest) {
     }
 
     const today = getTodayDate();
+    const profile = await adminFirestore.collection('user_profiles').doc(uid).get();
+    if (hasActiveSubscription(profile.data())) {
+      return NextResponse.json(
+        { access: 'pro', date: today, canRead: true, count: 0, ids: [] },
+        { headers: { 'Cache-Control': 'private, no-store' } },
+      );
+    }
+
     const docRef = adminFirestore.collection('free_reads').doc(`${uid}_${today}`);
 
     const result = await adminFirestore.runTransaction(async (transaction) => {
@@ -87,7 +104,7 @@ export async function POST(request: NextRequest) {
         return { canRead: true, count: ids.length, ids };
       }
 
-      if (ids.length >= 3) {
+      if (ids.length >= FREE_READS_LIMIT) {
         return { canRead: false, count: ids.length, ids };
       }
 
@@ -96,12 +113,16 @@ export async function POST(request: NextRequest) {
       return { canRead: true, count: newIds.length, ids: newIds };
     });
 
-    return NextResponse.json({
-      date: today,
-      canRead: result.canRead,
-      count: result.count,
-      ids: result.ids,
-    });
+    return NextResponse.json(
+      {
+        access: 'free',
+        date: today,
+        canRead: result.canRead,
+        count: result.count,
+        ids: result.ids,
+      },
+      { headers: { 'Cache-Control': 'private, no-store' } },
+    );
   } catch (error) {
     console.error('[api/feed/reads] POST error:', error);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });

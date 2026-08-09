@@ -37,22 +37,22 @@ export default function CompareHubPage() {
       <main className="px-4 sm:px-6">
         <section className="mx-auto max-w-6xl pt-16 pb-10 sm:pt-24 sm:pb-14">
           <div className="max-w-3xl">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.15em] text-[#2563eb]">
+            <p className="public-kicker">
               Comparison Guides
             </p>
-            <h1 className="mt-4 text-[2.5rem] font-bold tracking-[-0.04em] leading-[0.95] text-[#111827] sm:text-[3.75rem]">
+            <h1 className="public-title mt-4">
               Better ways to follow tech news<br className="hidden sm:block" />
               without building another reading backlog
             </h1>
-            <p className="mt-5 max-w-xl text-[16px] leading-[1.8] text-[#6b7280]">
+            <p className="public-deck mt-5">
               These pages are for people comparing Trace with RSS readers, traditional news apps,
               and other ways of keeping up. The idea is simple: less scrolling, more context.
             </p>
             <div className="mt-6 flex flex-wrap gap-2 text-sm">
-              <Link href="/blog" className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-[#6b7280] transition-colors hover:text-[#111827]">
+              <Link href="/blog" className="public-chip">
                 Research
               </Link>
-              <Link href="/tools" className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-[#6b7280] transition-colors hover:text-[#111827]">
+              <Link href="/tools" className="public-chip">
                 Tools
               </Link>
             </div>
@@ -68,17 +68,17 @@ export default function CompareHubPage() {
                 className="landing-card p-7 transition-all hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]"
                 style={{ textDecoration: "none", color: "inherit" }}
               >
-                <div className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#9ca3af]">
+                <div className="public-kicker text-secondary">
                   Comparison
                 </div>
-                <h2 className="mt-4 text-2xl font-semibold tracking-tight text-[#111827]">
+                <h2 className="mt-4 text-[1.625rem] font-semibold tracking-[-0.025em] text-foreground">
                   {page.heroTitle}
                 </h2>
-                <p className="mt-4 text-sm leading-7 text-[#6b7280]">
+                <p className="mt-4 text-[16px] leading-[1.7] text-secondary">
                   {page.description}
                 </p>
-                <div className="mt-6 text-sm font-semibold text-[#2563eb]">
-                  Read guide →
+                <div className="public-link mt-6 text-sm">
+                  Read guide
                 </div>
               </Link>
             ))}

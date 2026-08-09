@@ -16,20 +16,20 @@ export async function POST(request: NextRequest) {
 
     // Verify webhook signature
     const WEBHOOK_SECRET = process.env.DODO_WEBHOOK_SECRET;
-    if (WEBHOOK_SECRET && webhookId && webhookTimestamp && webhookSignature) {
-      try {
-        const webhook = new Webhook(WEBHOOK_SECRET);
-        await webhook.verify(rawBody, {
-          'webhook-id': webhookId,
-          'webhook-timestamp': webhookTimestamp,
-          'webhook-signature': webhookSignature,
-        });
-      } catch (error) {
-        console.error('Webhook verification failed:', error);
-        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-      }
-    } else {
-      console.warn('Webhook verification skipped - missing secret or headers');
+    if (!WEBHOOK_SECRET || !webhookId || !webhookTimestamp || !webhookSignature) {
+      console.error('Webhook verification unavailable');
+      return NextResponse.json({ error: 'Webhook verification unavailable' }, { status: 503 });
+    }
+    try {
+      const webhook = new Webhook(WEBHOOK_SECRET);
+      await webhook.verify(rawBody, {
+        'webhook-id': webhookId,
+        'webhook-timestamp': webhookTimestamp,
+        'webhook-signature': webhookSignature,
+      });
+    } catch (error) {
+      console.error('Webhook verification failed:', error);
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
     // Extract event data

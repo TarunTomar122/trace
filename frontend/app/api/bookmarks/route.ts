@@ -1,47 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminFirestore } from '@/lib/firebase-admin';
+import { FieldPath } from 'firebase-admin/firestore';
+import { adminFirestore } from '@/lib/firebase-admin';
+import {
+  bookmarkQueryTerms,
+  bookmarkSearchText,
+  decodeBookmarkCursor,
+  encodeBookmarkCursor,
+  normalizeBookmarkPayload,
+  searchTermsForBookmark,
+} from '@/lib/bookmarks';
+import { getSignedInUid } from '@/lib/request-auth';
+import { hasActiveSubscription } from '@/lib/subscription-access';
+
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+};
+
+const json = (body: unknown, init?: { status?: number }) => NextResponse.json(body, {
+  ...init,
+  headers: CORS_HEADERS,
+});
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Internal server error';
+}
 
 export async function POST(request: NextRequest) {
   try {
-    if (!adminAuth || !adminFirestore) {
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    if (!adminFirestore) {
+      return json({ error: 'Server configuration error' }, { status: 500 });
+    }
+    const userId = await getSignedInUid(request);
+    if (!userId) return json({ error: 'Unauthorized' }, { status: 401 });
+
+    let bookmark;
+    try {
+      bookmark = normalizeBookmarkPayload(await request.json());
+    } catch (error) {
+      return json({ error: getErrorMessage(error) }, { status: 400 });
     }
 
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    const userId = decodedToken.uid;
-
-    const body = await request.json();
-    const { item_id, item_metadata } = body;
-
-    if (!item_id || !item_metadata) {
-      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
-    }
-
-    // Reference to user bookmarks collection
     const bookmarksRef = adminFirestore
       .collection('user_bookmarks')
       .doc(userId)
       .collection('items')
-      .doc(item_id);
+      .doc(bookmark.itemId);
 
-    // Save bookmark
-    await bookmarksRef.set({
-      item_id,
-      item_metadata,
-      bookmarked_at: new Date().toISOString(),
+    const now = new Date().toISOString();
+    await adminFirestore.runTransaction(async (transaction) => {
+      const existing = await transaction.get(bookmarksRef);
+      transaction.set(bookmarksRef, {
+        item_id: bookmark.itemId,
+        item_metadata: bookmark.metadata,
+        bookmarked_at: existing.data()?.bookmarked_at || now,
+        updated_at: now,
+        search_text: bookmarkSearchText(bookmark.metadata),
+        search_terms: searchTermsForBookmark(bookmark.metadata),
+      });
     });
 
-    return NextResponse.json({ success: true, message: 'Bookmark saved' });
-  } catch (error: any) {
+    return json({ success: true, message: 'Bookmark saved' });
+  } catch (error: unknown) {
     console.error('Error saving bookmark:', error);
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+    return json(
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -49,37 +73,80 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    if (!adminAuth || !adminFirestore) {
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    if (!adminFirestore) {
+      return json({ error: 'Server configuration error' }, { status: 500 });
+    }
+    const userId = await getSignedInUid(request);
+    if (!userId) return json({ error: 'Unauthorized' }, { status: 401 });
+    const itemIds = [...new Set(
+      new URL(request.url).searchParams.get('item_ids')?.split(',').map((id) => id.trim()).filter(Boolean) || []
+    )].filter((id) => id.length <= 256 && !id.includes('/')).slice(0, 100);
+
+    if (itemIds.length > 0) {
+      const collection = adminFirestore.collection('user_bookmarks').doc(userId).collection('items');
+      const docs = await adminFirestore.getAll(...itemIds.map((id) => collection.doc(id)));
+      return json({
+        bookmarks: docs.filter((doc) => doc.exists).map((doc) => ({ ...doc.data(), id: doc.id })),
+      });
     }
 
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const searchParams = new URL(request.url).searchParams;
+    const pageSize = Math.min(Math.max(Number(searchParams.get('limit')) || 100, 1), 100);
+    const cursorValue = searchParams.get('cursor');
+    const cursor = cursorValue ? decodeBookmarkCursor(cursorValue) : null;
+    if (cursorValue && !cursor) {
+      return json({ error: 'Invalid cursor' }, { status: 400 });
     }
 
-    const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    const userId = decodedToken.uid;
+    const requestedTokens = bookmarkQueryTerms(searchParams.get('q') || '');
+    if (searchParams.has('q') && requestedTokens.length === 0) {
+      return json({ bookmarks: [], nextCursor: null });
+    }
+    if (requestedTokens.length > 0) {
+      const profile = await adminFirestore.collection('user_profiles').doc(userId).get();
+      if (!profile.exists || !hasActiveSubscription(profile.data())) {
+        return json({ error: 'Trace Pro is required for saved archive search' }, { status: 403 });
+      }
+    }
 
-    // Get all bookmarks for user
-    const bookmarksSnapshot = await adminFirestore
-      .collection('user_bookmarks')
-      .doc(userId)
-      .collection('items')
-      .orderBy('bookmarked_at', 'desc')
-      .get();
+    const collection = adminFirestore.collection('user_bookmarks').doc(userId).collection('items');
+    const scanSize = requestedTokens.length > 0 ? Math.min(pageSize * 4, 400) : pageSize + 1;
+    let query = requestedTokens.length > 0
+      ? collection.where('search_terms', 'array-contains', requestedTokens.sort((a, b) => b.length - a.length)[0])
+      : collection.orderBy('bookmarked_at', 'desc');
+    query = query.orderBy(FieldPath.documentId(), 'desc').limit(scanSize);
 
-    const bookmarks = bookmarksSnapshot.docs.map(doc => ({
+    if (cursor) {
+      query = requestedTokens.length > 0
+        ? query.startAfter(cursor.id)
+        : query.startAfter(cursor.bookmarkedAt, cursor.id);
+    }
+
+    const bookmarksSnapshot = await query.get();
+    const matchingDocs = requestedTokens.length > 0
+      ? bookmarksSnapshot.docs.filter((doc) => requestedTokens.every((token) => String(doc.data().search_text || '').split(' ').some((word) => word.startsWith(token))))
+      : bookmarksSnapshot.docs;
+    const pageDocs = matchingDocs.slice(0, pageSize);
+    const cursorDoc = pageDocs.length === pageSize ? pageDocs.at(-1) : bookmarksSnapshot.docs.at(-1);
+
+    const bookmarks = pageDocs.map(doc => ({
       ...doc.data(),
       id: doc.id,
     }));
 
-    return NextResponse.json({ bookmarks });
-  } catch (error: any) {
+    return json({
+      bookmarks,
+      nextCursor: cursorDoc && (pageDocs.length === pageSize || bookmarksSnapshot.docs.length === scanSize)
+        ? encodeBookmarkCursor({
+            bookmarkedAt: String(cursorDoc.data().bookmarked_at || ''),
+            id: cursorDoc.id,
+          })
+        : null,
+    });
+  } catch (error: unknown) {
     console.error('Error fetching bookmarks:', error);
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+    return json(
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -87,27 +154,18 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    if (!adminAuth || !adminFirestore) {
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    if (!adminFirestore) {
+      return json({ error: 'Server configuration error' }, { status: 500 });
     }
-
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    const userId = decodedToken.uid;
+    const userId = await getSignedInUid(request);
+    if (!userId) return json({ error: 'Unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
     const itemId = searchParams.get('item_id');
 
-    if (!itemId) {
-      return NextResponse.json({ error: 'Item ID required' }, { status: 400 });
+    if (!itemId || itemId.length > 256 || itemId.includes('/')) {
+      return json({ error: 'Item ID required' }, { status: 400 });
     }
-
-    // Delete bookmark
     await adminFirestore
       .collection('user_bookmarks')
       .doc(userId)
@@ -115,13 +173,16 @@ export async function DELETE(request: NextRequest) {
       .doc(itemId)
       .delete();
 
-    return NextResponse.json({ success: true, message: 'Bookmark removed' });
-  } catch (error: any) {
+    return json({ success: true, message: 'Bookmark removed' });
+  } catch (error: unknown) {
     console.error('Error removing bookmark:', error);
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+    return json(
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
 }
 
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+}

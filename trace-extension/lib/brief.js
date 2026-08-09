@@ -1,5 +1,6 @@
 const CACHE_TTL_MS = 15 * 60 * 1000;
 const MAX_POOL_SIZE = 60;
+export const FREE_SUMMARY_LIMIT = 5;
 
 function assertObject(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -21,7 +22,7 @@ function safeUrl(value, label) {
   return url.toString();
 }
 
-function normalizeArticle(value) {
+function normalizeArticle(value, responseVersion = 5) {
   assertObject(value, 'Article');
   if (typeof value.id !== 'string' || !value.id.trim()) throw new TypeError('Article id is required');
   if (value.channel !== 'edition') throw new TypeError('Edition article channel is required');
@@ -43,14 +44,18 @@ function normalizeArticle(value) {
     : [];
   if (!content.length) throw new TypeError('Article full-read content is required');
 
+  const id = responseVersion === 4 ? value.id.trim().replace(/^edition:/, '') : value.id.trim();
+  const shareUrl = value.share_url || (/^(?:fy|tr)_/.test(id) ? `https://www.yourtrace.online/articles/${id}` : '');
+
   return {
-    id: value.id.trim(),
+    id,
     channel: value.channel,
     title: value.title.trim(),
     summary: typeof value.summary === 'string' ? value.summary.trim() : '',
     content,
     tag: value.tag.trim(),
     sourceUrl: safeUrl(value.source_url, 'Article source'),
+    shareUrl: shareUrl ? safeUrl(shareUrl, 'Article share URL') : '',
     source: typeof value.source === 'string' ? value.source.trim() : '',
     publishedAt: typeof value.published_at === 'string' ? value.published_at.trim() : '',
     keyTakeaways: Array.isArray(value.key_takeaways)
@@ -60,9 +65,55 @@ function normalizeArticle(value) {
   };
 }
 
+export function normalizeBookmarks(value) {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set();
+  return value.map((article) => normalizeArticle({
+    ...article,
+    source_url: article?.sourceUrl,
+    share_url: article?.shareUrl,
+    published_at: article?.publishedAt,
+    key_takeaways: article?.keyTakeaways,
+  })).filter((article) => {
+    if (seen.has(article.id)) return false;
+    seen.add(article.id);
+    return true;
+  });
+}
+
+export function normalizeRemoteBookmarks(value) {
+  if (!Array.isArray(value)) return [];
+  return normalizeBookmarks(value.flatMap((bookmark) => {
+    const metadata = bookmark?.item_metadata;
+    if (!metadata || typeof bookmark?.item_id !== 'string') return [];
+    const description = typeof metadata.description === 'string' && metadata.description.trim()
+      ? metadata.description.trim()
+      : metadata.title;
+    const shareUrl = /^(?:fy|tr)_/.test(bookmark.item_id)
+      ? `https://www.yourtrace.online/articles/${bookmark.item_id}`
+      : '';
+    const sourceUrl = metadata.url || shareUrl;
+    if (!sourceUrl) return [];
+    return [{
+      id: bookmark.item_id,
+      channel: 'edition',
+      title: metadata.title,
+      summary: description,
+      content: [{ type: 'paragraph', text: description }],
+      tag: Array.isArray(metadata.tags) && metadata.tags[0] ? metadata.tags[0] : 'Saved',
+      sourceUrl,
+      shareUrl,
+      source: metadata.source || '',
+      publishedAt: metadata.timestamp || '',
+      keyTakeaways: [],
+      ...(metadata.thumbnail ? { thumbnail: metadata.thumbnail } : {}),
+    }];
+  }));
+}
+
 export function normalizeArticlePool(payload) {
   assertObject(payload, 'Article response');
-  if (payload.version !== 4) throw new TypeError('Unsupported article response version');
+  if (![4, 5].includes(payload.version)) throw new TypeError('Unsupported article response version');
   if (typeof payload.feed_date !== 'string' || !payload.feed_date.trim()) {
     throw new TypeError('Article feed date is required');
   }
@@ -71,7 +122,7 @@ export function normalizeArticlePool(payload) {
   const seen = new Set();
   const articles = payload.articles
     .slice(0, MAX_POOL_SIZE)
-    .map(normalizeArticle)
+    .map((article) => normalizeArticle(article, payload.version))
     .filter((article) => {
       if (seen.has(article.id) || seen.has(article.sourceUrl)) return false;
       seen.add(article.id);
@@ -84,7 +135,7 @@ export function normalizeArticlePool(payload) {
   }
 
   return {
-    version: 4,
+    version: 5,
     feedDate: payload.feed_date.trim(),
     generatedAt: typeof payload.generated_at === 'string' ? payload.generated_at : null,
     articles,
@@ -100,7 +151,7 @@ function shuffle(items, random) {
   return shuffled;
 }
 
-export function selectRandomArticles(articles, limit = 15, random = Math.random) {
+export function selectRandomArticles(articles, limit = 31, random = Math.random) {
   const count = Math.max(0, Math.trunc(limit));
   return shuffle(articles, random).slice(0, count);
 }
@@ -112,4 +163,18 @@ export function filterArticlesByTag(articles, tag) {
 export function isCacheFresh(cachedAt, now = Date.now()) {
   const timestamp = typeof cachedAt === 'string' ? Date.parse(cachedAt) : Number.NaN;
   return Number.isFinite(timestamp) && now >= timestamp && now - timestamp < CACHE_TTL_MS;
+}
+
+export function normalizeSummaryReads(value, date = new Date().toISOString().slice(0, 10)) {
+  if (!value || value.date !== date || !Array.isArray(value.ids)) return { date, ids: [] };
+  return { date, ids: [...new Set(value.ids.filter((id) => typeof id === 'string' && id))] };
+}
+
+export function canOpenSummary(reads, articleId, hasProAccess = false) {
+  return hasProAccess || reads.ids.includes(articleId) || reads.ids.length < FREE_SUMMARY_LIMIT;
+}
+
+export function addSummaryRead(reads, articleId) {
+  if (reads.ids.includes(articleId) || reads.ids.length >= FREE_SUMMARY_LIMIT) return reads;
+  return { ...reads, ids: [...reads.ids, articleId] };
 }

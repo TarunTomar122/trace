@@ -103,41 +103,42 @@ export default function ResourcesHubPage() {
       <main className="px-4 sm:px-6">
         <section className="mx-auto max-w-6xl pt-16 pb-10 sm:pt-24 sm:pb-14">
           <div className="max-w-3xl">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.15em] text-[#2563eb]">Resources</p>
-            <h1 className="mt-4 text-[2.5rem] font-bold tracking-[-0.04em] leading-[0.95] text-[#111827] sm:text-[3.75rem]">
+            <p className="public-kicker">Resources</p>
+            <h1 className="public-title mt-4">
               Everything you need<br className="hidden sm:block" />
               to read smarter
             </h1>
-            <p className="mt-5 max-w-xl text-[16px] leading-[1.8] text-[#6b7280]">
-              Guides, comparisons, use cases, and tool reviews — organized by what you&apos;re
+            <p className="public-deck mt-5">
+              Guides, comparisons, use cases, and tool reviews, organized by what you&apos;re
               trying to solve. Pick a section and go.
             </p>
           </div>
         </section>
 
         <section className="mx-auto max-w-6xl pb-20">
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-x-12 gap-y-12 md:grid-cols-2 xl:grid-cols-3">
             {RESOURCE_SECTIONS.map((section) => (
-              <div key={section.title} className="landing-card p-7">
-                <h2 className="text-xl font-semibold tracking-tight text-[#111827]">
+              <section key={section.title} className="public-list-section">
+                <h2 className="text-[1.5rem] font-semibold tracking-[-0.025em] text-foreground">
                   {section.title}
                 </h2>
-                <p className="mt-2 text-sm leading-relaxed text-[#6b7280]">
+                <p className="mt-2 text-[16px] leading-[1.65] text-secondary">
                   {section.description}
                 </p>
-                <ul className="mt-4 space-y-1.5">
+                <ul className="mt-5 space-y-3">
                   {section.links.map((link) => (
                     <li key={link.href}>
                       <Link
                         href={link.href}
-                        className="text-sm font-medium text-[#2563eb] transition-colors hover:text-[#1d4ed8]"
+                        className="group flex items-start justify-between gap-4 text-[15px] font-medium leading-6 text-foreground transition-colors hover:text-accent"
                       >
-                        {link.label} →
+                        <span>{link.label}</span>
+                        <span aria-hidden="true" className="text-secondary transition-transform group-hover:translate-x-0.5">↗</span>
                       </Link>
                     </li>
                   ))}
                 </ul>
-              </div>
+              </section>
             ))}
           </div>
         </section>

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import LandingPageClient from "../LandingPageClient";
-import { blogPosts } from "@/app/blog/content";
 import type { V3UserFeed } from '@/lib/firestore';
 import { StructuredDataList } from '@/components/StructuredData';
 import {
@@ -11,22 +10,21 @@ import {
 import { generateFAQSchema } from '@/lib/seo';
 
 export const metadata: Metadata = {
-  title: "Trace — AI and developer news in one focused feed",
+  title: "Trace: AI and tech news in five minutes",
   description: HOME_PRODUCT_DESCRIPTION,
   keywords: [
-    "developer news aggregator",
     "AI news aggregator",
     "tech news aggregator",
+    "AI news feed",
+    "technology news app",
     "daily tech briefing",
-    "open-source project discovery",
-    "technical discussion summaries",
-    "RSS alternative",
+    "Chrome new tab news",
   ],
   alternates: {
     canonical: "https://www.yourtrace.online/",
   },
   openGraph: {
-    title: "Trace — AI and developer news in one focused feed",
+    title: "Trace: AI and tech news in five minutes",
     description: HOME_PRODUCT_DESCRIPTION,
     url: "https://www.yourtrace.online",
     type: "website",
@@ -36,13 +34,13 @@ export const metadata: Metadata = {
         url: "https://www.yourtrace.online/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Trace — AI and developer news in one focused feed",
+        alt: "Trace AI and technology news feed",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Trace — AI and developer news in one focused feed",
+    title: "Trace: AI and tech news in five minutes",
     description: HOME_PRODUCT_DESCRIPTION,
     images: ["https://www.yourtrace.online/twitter-image"],
   },
@@ -62,17 +60,7 @@ export default async function HomePage() {
           ),
         ]}
       />
-      <LandingPageClient
-        editionFeed={editionFeed}
-        recentBlogPosts={[...blogPosts]
-          .sort((a, b) => Date.parse(b.date) - Date.parse(a.date))
-          .slice(0, 3)
-          .map((post) => ({
-            href: `/blog/${post.slug}`,
-            date: post.date,
-            title: post.title,
-          }))}
-      />
+      <LandingPageClient editionFeed={editionFeed} />
     </>
   );
 }
