@@ -19,6 +19,7 @@ import {
 } from '@/lib/posthog';
 import type { SummaryAccessResult } from '@/lib/free-reads';
 import { buildArticleShareUrl, buildTopicShareUrl, copyOrShareUrl } from '@/lib/article-share';
+import { addReaderHistoryState, isReaderHistoryState } from '@/lib/reader-history';
 import type { HotTweet } from './FeedOneScreen';
 import { type FeedListItem, getTimeLabel, INTEREST_LABEL } from './FeedUi';
 import { WireFeedLoadingSkeleton } from './FeedBootShell';
@@ -166,7 +167,15 @@ export function ReaderModal({
   const shareUrl = getItemShareUrl(item);
   const source = item.source || (item.data as FeedItem).source_name;
   const dialogRef = useRef<HTMLDivElement>(null);
+  const readerHistoryActiveRef = useRef(false);
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error'>('idle');
+
+  const closeReader = useCallback(() => {
+    const consumeHistory = readerHistoryActiveRef.current && isReaderHistoryState(window.history.state);
+    readerHistoryActiveRef.current = false;
+    onClose();
+    if (consumeHistory) window.history.back();
+  }, [onClose]);
 
   const copyShareLink = async () => {
     if (!shareUrl) return;
@@ -180,10 +189,20 @@ export function ReaderModal({
   };
 
   useEffect(() => {
+    if (!isReaderHistoryState(window.history.state)) {
+      window.history.pushState(addReaderHistoryState(window.history.state, item.id), '', window.location.href);
+    }
+    readerHistoryActiveRef.current = true;
+
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    const handlePopState = () => {
+      if (!readerHistoryActiveRef.current) return;
+      readerHistoryActiveRef.current = false;
+      closeReader();
+    };
     const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') closeReader();
       if (event.key !== 'Tab' || !dialogRef.current) return;
       const focusable = [...dialogRef.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')];
       if (focusable.length === 0) return;
@@ -197,13 +216,15 @@ export function ReaderModal({
         first.focus();
       }
     };
+    window.addEventListener('popstate', handlePopState);
     window.addEventListener('keydown', handleKey);
     return () => {
       document.body.style.overflow = previous;
+      window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('keydown', handleKey);
       restoreFocusTo?.focus();
     };
-  }, [onClose, restoreFocusTo]);
+  }, [closeReader, item.id, restoreFocusTo]);
 
   return (
     <div
@@ -212,7 +233,7 @@ export function ReaderModal({
       aria-modal="true"
       aria-labelledby="feed-reader-title"
       className="fixed inset-0 z-[120] flex items-stretch justify-stretch bg-surface p-0 sm:items-center sm:justify-center sm:bg-black/[0.62] sm:p-6 sm:backdrop-blur-[4px]"
-      onMouseDown={onClose}
+      onMouseDown={closeReader}
     >
       <article
         className="h-[100dvh] w-full overflow-x-hidden overflow-y-auto break-words bg-surface sm:h-auto sm:max-h-[min(780px,calc(100vh-40px))] sm:max-w-[720px] sm:rounded-[14px] sm:border sm:border-border sm:shadow-[0_26px_90px_rgb(0_0_0/28%)]"
@@ -237,7 +258,7 @@ export function ReaderModal({
               type="button"
               autoFocus
               aria-label="Close story"
-              onClick={onClose}
+              onClick={closeReader}
               className="inline-flex items-center justify-center rounded-full backdrop-blur hover:!bg-[#0e0e0feb]"
             >
               <X size={18} />
@@ -470,17 +491,23 @@ export default function FeedTwoPaneLayout({
     return () => { cancelled = true; };
   }, [showBookmarkMessage, user, visibleBookmarkIds]);
 
-  const openStory = async (item: FeedListItem) => {
+  const openStory = (item: FeedListItem) => {
     readerOpenerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     trackFeedItemClicked(item.id, item.type, item.source || 'feed');
-    const access = await onOpenSummary(item);
-    if (access === 'error') {
-      showBookmarkMessage('Could not verify summary access. Try again.');
-      return;
-    }
-    if (access === 'allowed') trackSummaryOpened(item.id, isSubscribed);
-    else trackPaywallShown('feed_reader_limit', { reads_used: freeReadsUsed });
-    setSelected({ item, locked: access === 'denied' });
+    setSelected({ item, locked: isItemLocked(item.id) });
+    void onOpenSummary(item).then((access) => {
+      if (access === 'error') {
+        showBookmarkMessage('Could not verify summary access. Try again.');
+        return;
+      }
+      if (access === 'allowed') {
+        trackSummaryOpened(item.id, isSubscribed);
+        setSelected((current) => current?.item.id === item.id && current.locked ? { ...current, locked: false } : current);
+        return;
+      }
+      trackPaywallShown('feed_reader_limit', { reads_used: freeReadsUsed });
+      setSelected((current) => current?.item.id === item.id ? { ...current, locked: true } : current);
+    });
   };
 
   const closeReader = useCallback(() => setSelected(null), []);
