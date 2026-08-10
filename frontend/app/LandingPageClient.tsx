@@ -19,9 +19,9 @@ import AgentAccessLanding from '@/components/AgentAccessLanding';
 import HomeEditionPreview from './HomeEditionPreview';
 import type { V3UserFeed } from '@/lib/firestore';
 import { HOME_FAQ_ITEMS } from '@/lib/home-seo';
+import { CHROME_EXTENSION_URL } from '@/lib/product-links';
 import { SUBSCRIPTION_PRICE_DEFAULT } from '@/lib/subscription-pricing';
 
-const CHROME_EXTENSION_URL = process.env.NEXT_PUBLIC_CHROME_EXTENSION_URL || 'https://chromewebstore.google.com/detail/cblkklekbejbpcaihfogdmaoofmikbk';
 const CHROME_CTA_LABEL = 'Add Chrome Extension';
 const CHROME_EXTENSION_AVAILABLE = true;
 const ANDROID_URL = '/api/affiliate/outbound?target=android_app&next=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Donline.yourtrace.app';

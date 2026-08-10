@@ -14,7 +14,7 @@ test('homepage application schema contains only truthful product facts', () => {
   assert.equal(application.operatingSystem, 'Web, Chrome, Android');
   assert.equal(
     application.downloadUrl,
-    'https://chromewebstore.google.com/detail/cblkklekbejbpcaihfogdmaoofmikbk',
+    'https://chromewebstore.google.com/detail/cblkklekbejbbpcaihfogdmaoofmikbk?utm_source=item-share-cb',
   );
   assert.match(application.description, /AI and technology news/);
   assert.equal('aggregateRating' in application, false);

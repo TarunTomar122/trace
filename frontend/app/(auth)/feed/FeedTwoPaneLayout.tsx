@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Bookmark, Check, ExternalLink, Lock, Share2, X } from 'lucide-react';
+import { Bookmark, Check, Chrome, ExternalLink, Lock, Share2, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -23,6 +23,9 @@ import { addReaderHistoryState, isReaderHistoryState } from '@/lib/reader-histor
 import type { HotTweet } from './FeedOneScreen';
 import { type FeedListItem, getTimeLabel, INTEREST_LABEL } from './FeedUi';
 import { WireFeedLoadingSkeleton } from './FeedBootShell';
+import { CHROME_EXTENSION_URL } from '@/lib/product-links';
+
+const CHROME_NOTICE_DISMISSED_KEY = 'trace.chrome-extension-notice.dismissed.v1';
 
 const MARKDOWN_COMPONENTS: Components = {
   p: ({ children }) => <>{children}</>,
@@ -407,6 +410,7 @@ export default function FeedTwoPaneLayout({
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [bookmarkBusyIds, setBookmarkBusyIds] = useState<Set<string>>(new Set());
   const [bookmarkMessage, setBookmarkMessage] = useState<string | null>(null);
+  const [showChromeNotice, setShowChromeNotice] = useState(false);
   const locallyChangedBookmarks = useRef(new Set<string>());
   const bookmarkMessageTimerRef = useRef<number | null>(null);
   const readerOpenerRef = useRef<HTMLElement | null>(null);
@@ -419,6 +423,15 @@ export default function FeedTwoPaneLayout({
 
   useEffect(() => () => {
     if (bookmarkMessageTimerRef.current) window.clearTimeout(bookmarkMessageTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    setShowChromeNotice(window.localStorage.getItem(CHROME_NOTICE_DISMISSED_KEY) !== '1');
+  }, []);
+
+  const dismissChromeNotice = useCallback(() => {
+    window.localStorage.setItem(CHROME_NOTICE_DISMISSED_KEY, '1');
+    setShowChromeNotice(false);
   }, []);
 
   useEffect(() => {
@@ -574,6 +587,33 @@ export default function FeedTwoPaneLayout({
   return (
     <div className="bg-background">
       <div id="feed-start" className="mx-auto w-full max-w-[1540px] [overflow-anchor:none] px-4 py-5 sm:px-7 sm:py-6 lg:px-10">
+        {showChromeNotice && (
+          <aside className="flex items-center gap-3 rounded-2xl bg-surface px-4 py-3.5 text-foreground shadow-sm ring-1 ring-foreground/10 sm:px-5" aria-label="Trace Chrome extension announcement">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
+              <Chrome size={17} aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[14px] font-semibold">Trace is now available for Chrome.</p>
+              <p className="mt-0.5 hidden text-[12px] text-secondary sm:block">Get your AI and tech feed in every new tab.</p>
+            </div>
+            <a
+              href={CHROME_EXTENSION_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 rounded-full bg-foreground px-4 py-2 text-[12px] font-semibold text-background transition-opacity hover:opacity-80"
+            >
+              Add to Chrome
+            </a>
+            <button
+              type="button"
+              aria-label="Dismiss Chrome extension announcement"
+              onClick={dismissChromeNotice}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition hover:bg-foreground/5 hover:text-foreground"
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
+          </aside>
+        )}
         {tab === 'news' ? (
           <>
             <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

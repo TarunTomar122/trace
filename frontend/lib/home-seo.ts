@@ -1,3 +1,5 @@
+import { CHROME_EXTENSION_URL } from './product-links.ts';
+
 export const HOME_PRODUCT_DESCRIPTION =
   'Trace groups AI and technology news into a short personalized feed, so you can catch model launches, company changes, layoffs, security updates, and new trends in five minutes.';
 
@@ -38,7 +40,7 @@ export function generateHomeApplicationSchema(): Record<string, unknown> {
     description: HOME_PRODUCT_DESCRIPTION,
     applicationCategory: 'NewsApplication',
     operatingSystem: 'Web, Chrome, Android',
-    downloadUrl: 'https://chromewebstore.google.com/detail/cblkklekbejbpcaihfogdmaoofmikbk',
+    downloadUrl: CHROME_EXTENSION_URL,
     featureList: [
       'AI and technology news aggregation',
       'Related story grouping with source links',
@@ -55,7 +57,7 @@ export function generateHomeApplicationSchema(): Record<string, unknown> {
       '@id': 'https://www.yourtrace.online/#organization',
     },
     sameAs: [
-      'https://chromewebstore.google.com/detail/cblkklekbejbpcaihfogdmaoofmikbk',
+      CHROME_EXTENSION_URL,
       'https://play.google.com/store/apps/details?id=online.yourtrace.app',
     ],
   };
