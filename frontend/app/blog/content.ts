@@ -21,6 +21,221 @@ export type BlogPost = {
 
 export const blogPosts: BlogPost[] = [
   {
+    slug: "best-chrome-extensions-tech-news",
+    title: "Best Chrome Extensions for Tech News in 2026: 7 Useful Picks",
+    subtitle: "A practical comparison of new-tab feeds, developer dashboards, RSS readers, and AI news extensions that help you stay current without opening another inbox.",
+    tag: "Chrome Extensions",
+    category: "comparisons",
+    excerpt: "Compare seven Chrome extensions for AI and tech news, including new-tab feeds, developer news dashboards, and RSS readers. See which one fits your reading habit.",
+    author: "Trace Editorial",
+    readTime: "11 min read",
+    date: "August 11, 2026",
+    image: "https://images.unsplash.com/photo-1547658719-da2b51169166?w=1200&h=630&fit=crop&auto=format",
+    sources: [
+      { title: "Trace: AI & Tech News in Every New Tab", url: "https://chromewebstore.google.com/detail/trace-ai-tech-news-in-eve/cblkklekbejbbpcaihfogdmaoofmikbk", publisher: "Chrome Web Store" },
+      { title: "daily.dev", url: "https://daily.dev/", publisher: "daily.dev" },
+      { title: "Hackertab: Dev News & GitHub in New Tab", url: "https://chromewebstore.google.com/detail/hackertab-%E2%80%93-dev-news-gith/ocoipcahhaedjhnpoanfflhbdcpmalmp", publisher: "Chrome Web Store" },
+      { title: "DevFeed", url: "https://chromewebstore.google.com/detail/devfeed/ngeffbagehkcmkpbmnopghjjfcgnmbmf", publisher: "Chrome Web Store" },
+      { title: "New Tab Feed Reader", url: "https://chromewebstore.google.com/detail/new-tab-feed-reader/knlpbkchghnfbkkheldhpkhbkaclocjh", publisher: "Chrome Web Store" },
+      { title: "RSS Feed Reader by Feeder", url: "https://chromewebstore.google.com/detail/rss-feed-reader/pnjaodmkngahhkoihejjehlcdlnohgmp", publisher: "Chrome Web Store" },
+      { title: "Inoreader browser extension", url: "https://chromewebstore.google.com/detail/inoreader-read-later-and/kfimphpokifbjgmjflanmfeppcjimgah", publisher: "Chrome Web Store" },
+    ],
+    sections: [
+      {
+        heading: "Quick Picks",
+        bullets: [
+          "Best for a broad AI and technology briefing in every new tab: Trace.",
+          "Best for personalized developer articles and community discovery: daily.dev.",
+          "Best for GitHub Trending, Hacker News, and custom developer sources: Hackertab.",
+          "Best lightweight developer dashboard with local bookmarks: DevFeed.",
+          "Best for building a private new-tab page from your own RSS feeds: New Tab Feed Reader.",
+          "Best established toolbar-based RSS extension: Feeder.",
+          "Best companion for an advanced cross-device reading system: Inoreader.",
+        ],
+      },
+      {
+        heading: "What Makes a Good Tech News Chrome Extension?",
+        paragraphs: [
+          "The best extension fits the moment when you already want news. A new-tab feed works during natural browser breaks. A toolbar reader waits for a deliberate click. A read-later extension helps after you find something worth keeping.",
+          "Judge each product on four things: source range, duplicate handling, reading speed, and permissions. A long feature list matters less than whether the extension helps you understand what changed and return to work.",
+        ],
+        bullets: [
+          "Relevant sources are visible and original links remain available.",
+          "Repeated coverage is grouped or easy to filter.",
+          "Cached content makes a new tab feel instant rather than dependent on a fresh request.",
+          "Topic controls are clear enough to change without rebuilding the feed.",
+          "Permissions match the product's stated job.",
+        ],
+      },
+      {
+        heading: "1. Trace: Best for AI and Tech News in Every New Tab",
+        paragraphs: [
+          "[Trace for Chrome](https://chromewebstore.google.com/detail/trace-ai-tech-news-in-eve/cblkklekbejbbpcaihfogdmaoofmikbk) replaces a blank new tab with a visual feed covering AI, engineering, markets, startups, design, and technology.",
+          "Each card opens a concise summary with key takeaways and a link to the original publisher. Filters let you narrow the mix, while bookmarks sync with the Trace web feed after sign-in.",
+          "Trace is strongest when you want broad awareness with a stopping point. It selects a finite set from a larger current pool and caches that pool for fast new tabs instead of fetching the feed every time you press Command-T or Ctrl-T.",
+          "Choose Trace when model releases, company moves, security incidents, product news, and developer changes all matter. Choose a source-first RSS tool when your main requirement is monitoring a fixed publication list.",
+        ],
+      },
+      {
+        heading: "2. daily.dev: Best for Personalized Developer Discovery",
+        paragraphs: [
+          "daily.dev turns the new tab into a personalized stream of developer articles and discussions ranked around your stack. It is built for ongoing discovery rather than a finite industry briefing.",
+          "Choose daily.dev when tutorials, open-source projects, and practitioner writing should dominate the feed. Choose Trace when you also need company, market, product, and AI news in the same daily scan.",
+          "The [daily.dev alternatives guide](/blog/daily-dev-alternatives) compares the wider category if you want a smaller community, exact RSS control, or a fixed email instead.",
+        ],
+      },
+      {
+        heading: "3. Hackertab: Best for GitHub and Developer Sources",
+        paragraphs: [
+          "Hackertab combines GitHub Trending, Hacker News, Dev.to, Medium, Reddit, and optional RSS feeds on the new-tab page. Filters can focus the dashboard by language, framework, or topic.",
+          "It is a good fit when repositories and developer communities are the signal you care about most. Its Chrome Web Store listing also highlights hourly updates, bookmarks, dark mode, and an open-source codebase.",
+          "Choose Hackertab for a configurable developer command center. Choose Trace when you want reporting reconciled across technology publications with summaries attached before you open the source.",
+        ],
+      },
+      {
+        heading: "4. DevFeed: Best Lightweight Developer Dashboard",
+        paragraphs: [
+          "DevFeed pulls from Dev.to, Hacker News, GitHub Trending, and Hashnode. It offers topic filters, several layouts, a reading drawer, and browser-synced bookmarks without requiring an account.",
+          "Its narrow developer focus makes the product easy to understand. It is useful for code and community discovery, but it does not aim to be a complete briefing across technology companies, markets, product launches, and policy.",
+        ],
+      },
+      {
+        heading: "5. New Tab Feed Reader: Best for Private RSS Control",
+        paragraphs: [
+          "New Tab Feed Reader turns the new tab into a local RSS and Atom dashboard. You choose the feeds, folders, layout, refresh interval, and whether read articles remain visible.",
+          "This is the strongest option here for readers who want explicit source ownership and local storage. The tradeoff is maintenance: you select sources, manage duplicates, and decide what deserves attention.",
+          "Choose it when privacy and source control outweigh automatic grouping. Our [news aggregator vs RSS reader guide](/blog/news-aggregator-vs-rss-reader) explains that choice in more detail.",
+        ],
+      },
+      {
+        heading: "6. Feeder: Best Established Toolbar RSS Reader",
+        paragraphs: [
+          "Feeder keeps RSS and Atom updates in the browser toolbar rather than replacing the new tab. It can detect feeds, organize subscriptions into folders, show unread items, and notify you when selected sources publish.",
+          "Choose Feeder when you already know which sites matter and want updates close at hand. The toolbar model is less intrusive than a new-tab feed, but it also relies on you remembering to open it.",
+        ],
+      },
+      {
+        heading: "7. Inoreader: Best for a Full Monitoring Workflow",
+        paragraphs: [
+          "Inoreader's extension is a companion to its broader reading service. It helps you discover RSS feeds, save pages, and route material into an organized account that also works outside Chrome.",
+          "Choose Inoreader when news is research infrastructure and you need rules, folders, saved searches, newsletters, and long-term organization. Choose a new-tab product when setup should be minimal and the daily scan is the whole job.",
+        ],
+      },
+      {
+        heading: "Which Extension Should You Install?",
+        paragraphs: [
+          "Start with the behavior you want. Use Trace for a broad and bounded AI and tech briefing. Use daily.dev, Hackertab, or DevFeed for developer discovery. Use New Tab Feed Reader or Feeder when choosing every source matters most.",
+          "One primary feed is usually enough. If you add a second tool, give it a different job, such as saving long reads or monitoring one critical source. Two overlapping feeds recreate the noise an extension should remove.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "ai-news-every-new-tab-chrome",
+    title: "How to Get AI News in Every New Tab in Chrome",
+    subtitle: "Turn Chrome's most repeated screen into a fast AI and technology briefing, without refreshing a feed on every tab or surrendering your browsing history.",
+    tag: "Chrome Guide",
+    category: "guides",
+    excerpt: "Learn how to put AI and technology news on every Chrome new tab, choose useful filters, keep tabs fast with caching, and check extension permissions before installing.",
+    author: "Trace Editorial",
+    readTime: "9 min read",
+    date: "August 11, 2026",
+    image: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=1200&h=630&fit=crop&auto=format",
+    sources: [
+      { title: "Trace: AI & Tech News in Every New Tab", url: "https://chromewebstore.google.com/detail/trace-ai-tech-news-in-eve/cblkklekbejbbpcaihfogdmaoofmikbk", publisher: "Chrome Web Store" },
+      { title: "Override Chrome pages", url: "https://developer.chrome.com/docs/extensions/develop/ui/override-chrome-pages", publisher: "Chrome for Developers" },
+      { title: "Protect user privacy", url: "https://developer.chrome.com/docs/extensions/develop/security-privacy/user-privacy", publisher: "Chrome for Developers" },
+      { title: "chrome.storage API", url: "https://developer.chrome.com/docs/extensions/reference/api/storage", publisher: "Chrome for Developers" },
+      { title: "Hackertab: Dev News & GitHub in New Tab", url: "https://chromewebstore.google.com/detail/hackertab-%E2%80%93-dev-news-gith/ocoipcahhaedjhnpoanfflhbdcpmalmp", publisher: "Chrome Web Store" },
+      { title: "New Tab Feed Reader", url: "https://chromewebstore.google.com/detail/new-tab-feed-reader/knlpbkchghnfbkkheldhpkhbkaclocjh", publisher: "Chrome Web Store" },
+    ],
+    sections: [
+      {
+        heading: "Quick Answer",
+        paragraphs: [
+          "Install a new-tab news extension, choose a small set of topics, and let the extension cache a current article pool locally. Your next tabs can render from that cache while the feed refreshes on a sensible schedule.",
+          "[Trace for Chrome](https://chromewebstore.google.com/detail/trace-ai-tech-news-in-eve/cblkklekbejbbpcaihfogdmaoofmikbk) is built for this workflow.",
+          "It shows AI and technology stories, summaries, source links, bookmarks, and topic filters directly on the new-tab page.",
+        ],
+      },
+      {
+        heading: "Why Put News on the New-Tab Page?",
+        paragraphs: [
+          "A normal news habit begins with a decision to visit a site, open a newsletter, or scroll a social feed. A new-tab briefing uses a moment already built into browser work, so catching up does not need another reminder.",
+          "The placement can also become distracting. The feed needs a finite set, strong visual hierarchy, and a clear way to open the original reporting.",
+          "If every tab creates an endless timeline, the shortcut has replaced one attention trap with another.",
+        ],
+      },
+      {
+        heading: "Step 1: Choose the Right Kind of New-Tab Feed",
+        paragraphs: [
+          "There are three common models. A curated news extension chooses the stories. A personalized developer feed learns from topics and behavior. An RSS new-tab reader shows the sources you configure yourself.",
+          "Use a curated feed when speed matters. Use a personalized feed when discovery around your stack matters. Use RSS when exact source coverage and local control matter more than automatic grouping.",
+          "If you want to compare products first, see the [best Chrome extensions for tech news](/blog/best-chrome-extensions-tech-news).",
+        ],
+      },
+      {
+        heading: "Step 2: Install Trace from the Chrome Web Store",
+        paragraphs: [
+          "Open the [Trace Chrome Web Store listing](https://chromewebstore.google.com/detail/trace-ai-tech-news-in-eve/cblkklekbejbbpcaihfogdmaoofmikbk), select Add to Chrome, and confirm the installation. Open a new tab after Chrome finishes.",
+          "Chrome allows one extension at a time to override the new-tab page. Installing another new-tab extension later can replace the current one, so disable competing overrides in chrome://extensions if the expected page does not appear.",
+          "Chrome's own extension guidance says override pages should stay quick and small because people expect built-in browser pages to open instantly. A useful news extension should treat that as a product requirement, not a polish detail.",
+        ],
+      },
+      {
+        heading: "Step 3: Start with Two or Three Filters",
+        paragraphs: [
+          "Trace includes filters for AI, engineering, markets, design, technology, startups, and saved stories. Begin with the broad feed, then use the categories that match decisions you make at work.",
+          "An AI engineer might keep AI and engineering. A founder may add markets and startups. A product designer may use AI, design, and technology. More filters do not create a better briefing if every category receives equal attention.",
+        ],
+      },
+      {
+        heading: "Step 4: Read the Summary, Then Check the Source",
+        paragraphs: [
+          "A summary is a triage layer. It should explain the event, identify the consequence, and help you decide whether the source deserves time. It should never hide the original link.",
+          "Open the card for context and key takeaways. Use Read original source for capability claims, pricing, policy, security details, research results, or anything you may repeat in your own work.",
+          "Share sends the canonical Trace story link, while bookmarks keep useful stories in the same saved library as the web feed after you sign in. That makes the new tab an entry point rather than a separate information silo.",
+        ],
+      },
+      {
+        heading: "Why Every New Tab Should Not Trigger a Network Request",
+        paragraphs: [
+          "A new tab is latency-sensitive and opened frequently. Fetching the complete feed every time wastes requests, adds visible loading, and makes the experience depend on the network even when the last current pool is still useful.",
+          "Trace caches the public article pool in extension storage for one hour. Each new tab selects a fresh random set from that cached pool. A new request happens only when the cache is missing or has expired.",
+          "Chrome documents extension storage as an asynchronous, persistent store available to extension pages and service workers. It is the right place for a bounded article cache and interface state that should survive normal browser use.",
+        ],
+      },
+      {
+        heading: "Check Permissions Before You Trust a News Extension",
+        paragraphs: [
+          "A new-tab news product does not automatically need access to every page you visit. Chrome recommends requesting the narrowest permissions needed because less access means less data an extension can accidentally expose.",
+          "Trace requests Chrome storage and access to yourtrace.online. It does not request browsing history, tabs, active-page access, content scripts, or permission to modify the sites you visit.",
+          "For any extension, read the permissions prompt and the privacy disclosure. If a simple news dashboard asks to read every website, understand the user-facing reason before installing it.",
+        ],
+      },
+      {
+        heading: "A Five-Minute New-Tab News Routine",
+        bullets: [
+          "Scan the broad feed once near the start of the day.",
+          "Open no more than three summaries that affect current work.",
+          "Check the original source before using a technical or financial claim.",
+          "Bookmark one durable story instead of leaving several tabs open.",
+          "Use category filters for later checks rather than rereading the whole feed.",
+        ],
+        paragraphs: [
+          "The goal is not to consume news on every new tab. The goal is to make a useful briefing available at the moment you choose to check, then let the browser return to being a work surface.",
+        ],
+      },
+      {
+        heading: "When a New-Tab Feed Is the Wrong Tool",
+        paragraphs: [
+          "Use alerts when one event needs immediate action. Use an RSS monitor when exact sources must never be missed. Use a weekly reading list when the work rewards depth and the daily news cycle adds little value.",
+          "A new-tab feed is best for broad orientation. It helps you see what changed across AI and technology without making news another destination you must remember to visit.",
+        ],
+      },
+    ],
+  },
+  {
     slug: "ai-agent-live-tech-news",
     title: "How to Give an AI Agent Live Tech News Instead of Generic Web Search",
     subtitle: "A practical way to give Claude, ChatGPT, Codex, or a custom agent current structured technology news, builds, and technical conversations.",
