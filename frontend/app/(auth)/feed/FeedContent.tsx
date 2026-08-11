@@ -479,12 +479,25 @@ export type ContentData = {
   articleSources?: { name: string; title: string; url: string }[];
 };
 
+export function stocksBrewUrl(storyId?: string): string {
+  const url = new URL('https://stocksbrew.online/');
+  url.searchParams.set('utm_source', 'trace');
+  url.searchParams.set('utm_medium', 'feed');
+  url.searchParams.set('utm_campaign', 'market_story');
+  if (storyId) url.searchParams.set('utm_content', storyId);
+  return url.toString();
+}
+
 export function ContentPanel({
   content,
   isLoadingDetail = false,
+  showStocksBrewCta = false,
+  storyId,
 }: {
   content: ContentData;
   isLoadingDetail?: boolean;
+  showStocksBrewCta?: boolean;
+  storyId?: string;
 }) {
   const [shareLoading, setShareLoading] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
@@ -684,6 +697,17 @@ export function ContentPanel({
               })}
             </div>
           </div>
+        )}
+
+        {showStocksBrewCta && (
+          <a
+            href={stocksBrewUrl(storyId)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-secondary transition-colors hover:text-foreground"
+          >
+            Interested in the stock market? Check out StocksBrew <ExternalLink size={13} />
+          </a>
         )}
 
         {(content.shareUrl || content.url) && (
