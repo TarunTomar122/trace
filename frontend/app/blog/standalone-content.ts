@@ -32,10 +32,10 @@ export const standaloneBlogPosts: StandaloneBlogPost[] = [
   },
   {
     slug: "flipboard-alternatives",
-    title: "Flipboard Alternatives: 6 Better News Apps for 2026",
+    title: "Best Flipboard Alternative in 2026: 6 Apps Compared",
     tag: "Comparisons",
     category: "comparisons",
-    excerpt: "Compare six Flipboard alternatives, including Trace, Feedly, and Inoreader, for a faster and more focused tech-news workflow.",
+    excerpt: "Looking for a Flipboard alternative? Compare Trace, Feedly, Inoreader, NewsBlur, SmartNews, and Artifact by price, control, AI summaries, and reading style.",
     readTime: "10 min read",
     date: "June 22, 2026",
     image: "https://images.unsplash.com/photo-1432821596592-e2c18b78144f?w=1200&h=630&fit=crop&auto=format",
