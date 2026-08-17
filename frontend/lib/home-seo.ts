@@ -6,7 +6,7 @@ export const HOME_PRODUCT_DESCRIPTION =
 export const HOME_FAQ_ITEMS = [
   {
     q: 'Is Trace free?',
-    a: 'Yes. The free plan includes your AI and technology news feed, five unique AI summaries each day, original source links, and bookmarks with a free account.',
+    a: 'Yes. The free plan includes your AI and technology news feed, three unique AI summaries each day, original source links, and bookmarks with a free account.',
   },
   {
     q: 'What counts as one AI summary?',

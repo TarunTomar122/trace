@@ -11,7 +11,7 @@ import {
 
 const today = '2026-08-05';
 
-test('free users can choose any five unique summaries', () => {
+test('free users can choose any three unique summaries', () => {
   let state = { date: today, ids: [] };
 
   for (let index = 0; index < FREE_READS_LIMIT; index += 1) {

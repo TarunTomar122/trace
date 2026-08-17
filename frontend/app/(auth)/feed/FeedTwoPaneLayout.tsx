@@ -283,7 +283,7 @@ export function ReaderModal({
                   <p className="text-[12px] text-secondary">The human making Trace</p>
                 </div>
               </div>
-              <p className="text-[18px] font-semibold text-foreground">You have used today&rsquo;s five free summaries.</p>
+              <p className="text-[18px] font-semibold text-foreground">You have used today&rsquo;s three free summaries.</p>
               <p className="mt-2 max-w-[580px] text-pretty text-[14px] leading-[1.7] text-secondary">Trace is a one-person project. I read every piece of feedback and keep improving it based on what people need. Pro helps me keep building while I start my AI master&rsquo;s at Edinburgh this September.</p>
               <div className="mt-[18px] flex flex-wrap items-center gap-3">
                 <Link

@@ -9,6 +9,7 @@ import {
   normalizeSummaryReads,
   selectRandomArticles,
 } from './lib/brief.js';
+import { captureExtensionDailyActive, captureExtensionEvent } from './lib/analytics.js';
 
 const CACHE_KEY = 'trace.extension.article-pool.v5';
 const READS_KEY = 'trace.extension.summary-reads.v1';
@@ -174,7 +175,7 @@ function renderReadLimit() {
   const panel = document.createElement('div');
   panel.className = 'reader-paywall';
   const title = document.createElement('h2');
-  title.textContent = 'You have used today’s five free summaries.';
+  title.textContent = 'You have used today’s three free summaries.';
   const description = document.createElement('p');
   description.textContent = account
     ? 'Try Trace Pro free for 3 days to keep reading. Original publisher links always stay open.'
@@ -186,7 +187,10 @@ function renderReadLimit() {
   action.target = '_blank';
   action.rel = 'noopener noreferrer';
   action.textContent = account ? 'Try Pro free for 3 days' : 'Continue with Google';
-  action.addEventListener('click', () => void chrome.storage.local.set({ [CHECKOUT_PENDING_KEY]: true }));
+  action.addEventListener('click', () => {
+    void chrome.storage.local.set({ [CHECKOUT_PENDING_KEY]: true });
+    void captureExtensionEvent(account ? 'extension_checkout_clicked' : 'extension_sign_in_clicked');
+  });
   panel.append(title, description, action);
   elements.readerBody.append(panel);
 }
@@ -339,6 +343,11 @@ async function toggleBookmark(article) {
       [BOOKMARKS_SYNCED_AT_KEY]: new Date().toISOString(),
     });
     bookmarkedArticles = next;
+    void captureExtensionEvent('extension_story_bookmarked', {
+      story_id: article.id,
+      tag: article.tag,
+      action: removing ? 'removed' : 'saved',
+    });
   });
   try {
     await bookmarkWriteQueue;
@@ -366,7 +375,14 @@ function createArticleCard(article) {
   const open = document.createElement('button');
   open.className = 'article-open';
   open.type = 'button';
-  open.addEventListener('click', () => openReader(article));
+  open.addEventListener('click', () => {
+    void captureExtensionEvent('extension_story_opened', {
+      story_id: article.id,
+      tag: article.tag,
+      has_pro: Boolean(account?.hasAccess),
+    });
+    void openReader(article);
+  });
 
   if (article.thumbnail) {
     const image = document.createElement('img');
@@ -448,7 +464,7 @@ async function fetchPool() {
   }
 }
 
-async function loadArticles() {
+async function loadArticles({ silent = false } = {}) {
   elements.error.hidden = true;
 
   try {
@@ -461,6 +477,10 @@ async function loadArticles() {
     }
     renderPool(pool);
   } catch (error) {
+    if (silent && currentPool) {
+      console.warn('Trace extension background refresh failed', error);
+      return;
+    }
     if (!currentPool) {
       elements.loading.hidden = true;
       elements.articles.hidden = true;
@@ -473,7 +493,6 @@ async function loadArticles() {
 }
 
 async function start() {
-  showLoading();
   renderAccount();
   const stored = await chrome.storage.local.get([CACHE_KEY, READS_KEY, BOOKMARKS_KEY, BOOKMARK_OWNER_KEY]);
   const cached = stored[CACHE_KEY];
@@ -484,6 +503,18 @@ async function start() {
     bookmarkedArticles = new Map();
     console.error('Trace ignored invalid bookmark data', error);
   }
+
+  let cachedPool = null;
+  if (cached?.payload) {
+    try {
+      cachedPool = normalizeArticlePool(cached.payload);
+      renderPool(cachedPool);
+    } catch {
+      await chrome.storage.local.remove(CACHE_KEY);
+    }
+  }
+  if (!cachedPool) showLoading();
+
   try {
     await loadAccount();
     if (!account && stored[BOOKMARK_OWNER_KEY]) {
@@ -494,27 +525,41 @@ async function start() {
     console.warn('Trace account refresh failed', error);
   }
 
-  if (cached?.payload) {
-    try {
-      renderPool(normalizeArticlePool(cached.payload));
-      if (isCacheFresh(cached.cachedAt) || !navigator.onLine) {
-        try { await syncBookmarks(); } catch (error) { console.warn('Trace bookmark sync failed', error); }
-        return;
-      }
-    } catch {
-      await chrome.storage.local.remove(CACHE_KEY);
-    }
+  const trackDailyActive = (cacheState) => captureExtensionDailyActive({
+    article_count: currentPool?.articles.length || 0,
+    cache_state: cacheState,
+    extension_version: chrome.runtime.getManifest().version,
+    has_account: Boolean(account),
+    has_pro: Boolean(account?.hasAccess),
+  });
+
+  if (cachedPool && (isCacheFresh(cached.cachedAt) || !navigator.onLine)) {
+    void trackDailyActive('fresh');
+    try { await syncBookmarks(); } catch (error) { console.warn('Trace bookmark sync failed', error); }
+    return;
+  }
+
+  if (cachedPool) {
+    void trackDailyActive('stale');
+    void loadArticles({ silent: true });
+    try { await syncBookmarks(); } catch (error) { console.warn('Trace bookmark sync failed', error); }
+    return;
   }
 
   await loadArticles();
+  void trackDailyActive('miss');
   try { await syncBookmarks(); } catch (error) { console.warn('Trace bookmark sync failed', error); }
 }
 
-elements.retry.addEventListener('click', loadArticles);
+elements.retry.addEventListener('click', () => {
+  if (!currentPool) showLoading();
+  void loadArticles();
+});
 elements.filters.addEventListener('click', (event) => {
   const button = event.target.closest('button');
   if (!button) return;
   activeTag = button.dataset.tag;
+  void captureExtensionEvent('extension_filter_changed', { filter: activeTag || 'all' });
   elements.filters.querySelectorAll('button').forEach((option) => {
     option.setAttribute('aria-pressed', String(option === button));
   });
@@ -529,9 +574,23 @@ elements.readerShare.addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(readerArticle.shareUrl || readerArticle.sourceUrl);
     elements.readerShare.setAttribute('aria-label', 'Link copied');
+    void captureExtensionEvent('extension_story_shared', {
+      story_id: readerArticle.id,
+      tag: readerArticle.tag,
+    });
   } catch (error) {
     console.error('Trace could not copy the story link', error);
   }
+});
+elements.readerLink.addEventListener('click', () => {
+  if (!readerArticle) return;
+  void captureExtensionEvent('extension_source_opened', {
+    story_id: readerArticle.id,
+    tag: readerArticle.tag,
+  });
+});
+elements.accountLink.addEventListener('click', () => {
+  if (!account) void captureExtensionEvent('extension_sign_in_clicked');
 });
 elements.readerImage.addEventListener('error', () => {
   elements.readerImage.removeAttribute('src');

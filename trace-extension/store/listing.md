@@ -18,7 +18,7 @@ Features:
 
 - A fresh selection on every new tab
 - AI, engineering, markets, startups, technology, and design filters
-- Five free summaries each day, with unlimited summaries on Trace Pro
+- Three free summaries each day, with unlimited summaries on Trace Pro
 - Google sign-in and shared Pro access across Trace web and the extension
 - Signed-in bookmarks that sync with your Trace account
 - A Saved filter for returning to stories later
@@ -29,7 +29,7 @@ Features:
 
 Privacy:
 
-Trace does not read browsing history, inspect open tabs, inject scripts into websites, or track activity on other pages. Local storage keeps the feed cache, reading progress, account connection, and saved stories. Trace website access is used only for the news feed, Google account connection, subscription access, and bookmark sync. Public article thumbnails load from their listed image hosts.
+Trace does not read browsing history, inspect open tabs, inject scripts into websites, or track activity on other pages. Local storage keeps the feed cache, reading progress, account connection, saved stories, a random installation identifier, and the last daily analytics event. Trace website access is used for the news feed, Google account connection, subscription access, bookmark sync, and limited extension analytics. Analytics records product actions and technical state without story titles, article text, source URLs, email addresses, browsing history, or activity from other websites. Public article thumbnails load from their listed image hosts.
 
 ## Category
 
@@ -41,7 +41,11 @@ Replace the browser's new-tab page with a focused AI and technology news feed fr
 
 ## Permission justification
 
-`storage` saves the article cache, reading progress, connected account session, and bookmarks. Access to `yourtrace.online` loads the feed, connects Google sign-in, checks subscription access, and syncs bookmarks.
+`storage` saves the article cache, reading progress, connected account session, bookmarks, and anonymous analytics state. Access to `yourtrace.online` loads the feed, connects Google sign-in, checks subscription access, syncs bookmarks, and sends limited extension analytics.
+
+## Chrome Web Store data disclosure
+
+Select Personally identifiable information, Authentication information, and User activity. Do not select Financial and payment information, Location, Web history, or Website content. Certify that Trace does not sell or transfer user data outside approved use cases.
 
 ## Ready assets
 

@@ -70,7 +70,7 @@ const HOW_IT_WORKS = [
 const FREE_FEATURES = [
   'A personalized AI and tech news feed',
   CHROME_EXTENSION_AVAILABLE ? '30 headlines in every new Chrome tab' : '30 headlines in your daily feed',
-  'Five unique AI summaries every day',
+  'Three unique AI summaries every day',
   'Unlimited original source links',
   'Topic filters for the stories you follow',
   'Bookmarks with a free Trace account',

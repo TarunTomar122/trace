@@ -115,7 +115,7 @@ function ProfileContent() {
               <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-accent">{isSubscribed ? 'Pro plan' : 'Free plan'}</p>
               <h2 className="mt-3 text-[22px] font-semibold tracking-[-0.025em]">{isSubscribed ? 'Your full Trace is active' : 'Your daily Trace is ready'}</h2>
               <p className="mt-2 text-[14px] leading-[1.65] text-secondary">
-                {isSubscribed ? 'Unlimited summaries, searchable saved posts, daily archives, and Agent Access.' : 'Thirty headlines, five AI summaries a day, original sources, filters, and bookmarks.'}
+                {isSubscribed ? 'Unlimited summaries, searchable saved posts, daily archives, and Agent Access.' : 'Thirty headlines, three AI summaries a day, original sources, filters, and bookmarks.'}
               </p>
               <button type="button" onClick={() => setActiveTab('subscription')} className="mt-6 rounded-full bg-foreground px-4 py-2.5 text-[12px] font-semibold text-background">
                 {isSubscribed ? 'Manage plan' : 'Try Pro free'}
