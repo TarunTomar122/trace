@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Bookmark } from 'lucide-react';
 import { ArticleImage } from '@/components/ArticleImage';
@@ -40,9 +41,18 @@ function collectStories(feed: V3UserFeed | null): DemoStory[] {
   }).slice(0, 12);
 }
 
-function StoryCard({ story, compact = false }: { story: DemoStory; compact?: boolean }) {
+function StoryCard({ story, compact = false, onOpen }: { story: DemoStory; compact?: boolean; onOpen: () => void }) {
   return (
     <article
+      role="link"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
       className={`group relative flex h-full flex-col overflow-hidden bg-surface text-foreground ${compact ? 'gap-3 rounded-[10px] p-3 ring-1 ring-foreground/7' : 'rounded-[18px] p-3 shadow-[0_1px_0_rgba(0,0,0,0.05)]'}`}
     >
       <ArticleImage
@@ -54,6 +64,7 @@ function StoryCard({ story, compact = false }: { story: DemoStory; compact?: boo
       <button
         type="button"
         aria-label={`Bookmark ${story.title}`}
+        onClick={onOpen}
         className="absolute right-6 top-6 z-10 inline-flex size-[34px] items-center justify-center rounded-full bg-[#0e0e0f]/80 text-white opacity-0 shadow-sm ring-1 ring-white/25 transition-opacity hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100"
       >
         <Bookmark size={14} aria-hidden="true" />
@@ -68,7 +79,7 @@ function StoryCard({ story, compact = false }: { story: DemoStory; compact?: boo
   );
 }
 
-function ChromeDemo({ stories }: { stories: DemoStory[] }) {
+function ChromeDemo({ stories, onOpen }: { stories: DemoStory[]; onOpen: () => void }) {
   const filters = ['All', 'AI', 'Engineering', 'Markets', 'Startups', 'Tech', 'UX design', 'Saved'];
   return (
     <div className="rounded-[18px] bg-surface-secondary p-2 shadow-2xl ring-1 ring-foreground/10 sm:p-3">
@@ -90,13 +101,13 @@ function ChromeDemo({ stories }: { stories: DemoStory[] }) {
         <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:grid sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:gap-8">
           <span className="flex items-center gap-2 font-mono text-[9px] font-bold tracking-[0.24em] text-foreground"><Image src="/trace-app-icon-v1-180.png" width={24} height={24} alt="" style={{ width: 24, height: 24, borderRadius: 7 }} /> TRACE</span>
           <div className="flex min-w-0 gap-1 overflow-x-auto pb-1 sm:justify-center sm:overflow-hidden sm:pb-0">
-            {filters.map((filter, index) => <span key={filter} className={`shrink-0 rounded-full px-2.5 py-1.5 text-[9px] ${index === 0 ? 'bg-foreground font-semibold text-background' : 'text-secondary'}`}>{filter}</span>)}
+            {filters.map((filter, index) => <button key={filter} type="button" onClick={onOpen} className={`shrink-0 rounded-full px-2.5 py-1.5 text-[9px] ${index === 0 ? 'bg-foreground font-semibold text-background' : 'text-secondary'}`}>{filter}</button>)}
           </div>
         </div>
         <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {stories.slice(0, 12).map((story, index) => (
             <div key={story.id} className={`h-full ${index >= 8 ? 'hidden lg:block' : index >= 4 ? 'hidden sm:block' : ''}`}>
-              <StoryCard story={story} compact />
+              <StoryCard story={story} compact onOpen={onOpen} />
             </div>
           ))}
         </div>
@@ -106,13 +117,14 @@ function ChromeDemo({ stories }: { stories: DemoStory[] }) {
 }
 
 export default function HomeEditionPreview({ feed }: { feed: V3UserFeed | null }) {
+  const router = useRouter();
   const stories = useMemo(() => collectStories(feed), [feed]);
 
   if (!stories.length) return null;
 
   return (
     <section aria-label="See Trace in Chrome">
-      <ChromeDemo stories={stories} />
+      <ChromeDemo stories={stories} onOpen={() => router.push('/feed')} />
     </section>
   );
 }
