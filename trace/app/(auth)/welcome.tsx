@@ -584,7 +584,7 @@ export default function WelcomeScreen() {
               Welcome to Trace
             </ThemedText>
             <Text style={[styles.landingSubtitle, { color: Colors[colorScheme].muted }]}>
-              Get your daily brief in 30 seconds. That&apos;s it.
+              The fastest way to catch up on tech and AI news.
             </Text>
           </View>
 

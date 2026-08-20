@@ -6,9 +6,7 @@ import {
   ChevronRight,
   Settings,
   Flame,
-  Crown,
   LogOut,
-  Mail,
   Star,
   Trash2,
   Bell,
@@ -23,10 +21,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
-import { updateUserProfile } from '@/lib/firestore';
-import { getStreakData, recordAppOpen, StreakData } from '@/lib/streaks';
+import { recordAppOpen, StreakData } from '@/lib/streaks';
 import { enablePushNotifications, disablePushNotifications } from '@/lib/notifications';
-import * as StoreReview from 'expo-store-review';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -189,36 +185,18 @@ export default function ProfileScreen() {
   const isDark = colorScheme === 'dark';
   const { toggleTheme } = useTheme();
   const { user, profile, signOut, refreshProfile, deleteAccount } = useAuth();
-  const {
-    isProUser,
-    isEarlyAdopter,
-    loading: rcLoading,
-    refreshCustomerInfo,
-    presentCustomerCenter,
-    presentPaywall,
-  } = useRevenueCat();
+  const { isEarlyAdopter } = useRevenueCat();
   const [streak, setStreak] = useState<StreakData | null>(null);
-  const [newsletterEnabled, setNewsletterEnabled] = useState(profile?.newsletterOptIn !== false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(profile?.pushNotificationsEnabled !== false);
-  const [isAccessResolving, setIsAccessResolving] = useState(true);
   const refreshProfileRef = useRef(refreshProfile);
-  const refreshCustomerInfoRef = useRef(refreshCustomerInfo);
 
   useEffect(() => {
     refreshProfileRef.current = refreshProfile;
   }, [refreshProfile]);
 
   useEffect(() => {
-    refreshCustomerInfoRef.current = refreshCustomerInfo;
-  }, [refreshCustomerInfo]);
-
-  useEffect(() => {
     recordAppOpen().then(setStreak);
   }, []);
-
-  useEffect(() => {
-    setNewsletterEnabled(profile?.newsletterOptIn !== false);
-  }, [profile?.newsletterOptIn]);
 
   useEffect(() => {
     setNotificationsEnabled(profile?.pushNotificationsEnabled !== false);
@@ -232,22 +210,7 @@ export default function ProfileScreen() {
         if (active) setStreak(nextStreak);
       });
 
-      if (!user?.uid) {
-        setIsAccessResolving(false);
-        return () => {
-          active = false;
-        };
-      }
-
-      setIsAccessResolving(true);
-      void Promise.allSettled([
-        refreshProfileRef.current(),
-        refreshCustomerInfoRef.current(),
-      ]).finally(() => {
-        if (active) {
-          setIsAccessResolving(false);
-        }
-      });
+      if (user?.uid) void refreshProfileRef.current();
 
       return () => {
         active = false;
@@ -257,19 +220,6 @@ export default function ProfileScreen() {
 
   const displayName = profile?.displayName || profile?.name || user?.displayName || 'User';
   const email = profile?.email || user?.email || '';
-
-  const handleNewsletterToggle = async (value: boolean) => {
-    setNewsletterEnabled(value);
-    if (user?.uid) {
-      try {
-        await updateUserProfile(user.uid, { newsletterOptIn: value } as any);
-        await refreshProfile();
-      } catch (error) {
-        console.error('Failed to update newsletter preference:', error);
-        setNewsletterEnabled(!value);
-      }
-    }
-  };
 
   const handleNotificationsToggle = async (value: boolean) => {
     setNotificationsEnabled(value);
@@ -294,10 +244,6 @@ export default function ProfileScreen() {
         setNotificationsEnabled(!value);
       }
     }
-  };
-
-  const handleManageSubscription = async () => {
-    await presentCustomerCenter();
   };
 
   const handleSignOut = async () => {
@@ -366,19 +312,11 @@ export default function ProfileScreen() {
           </View>
 
           {/* Badges — between avatar and name, rotated per design */}
-          {(isProUser || isEarlyAdopter) && (
+          {isEarlyAdopter && (
             <View style={styles.badges}>
-              {isProUser && (
-                <View style={[styles.badge, { backgroundColor: `${ACCENT_ORANGE}18`, transform: [{ rotate: '-6deg' }] }]}>
-                  <Crown size={11} color={ACCENT_ORANGE} />
-                  <Text style={[styles.badgeText, { color: ACCENT_ORANGE }]}>Pro</Text>
-                </View>
-              )}
-              {isEarlyAdopter && (
-                <View style={[styles.badge, { backgroundColor: '#F5F0FF', transform: [{ rotate: '-6deg' }] }]}>
-                  <Text style={[styles.badgeText, { color: '#8051DE' }]}>Early Access</Text>
-                </View>
-              )}
+              <View style={[styles.badge, { backgroundColor: '#F5F0FF', transform: [{ rotate: '-6deg' }] }]}>
+                <Text style={[styles.badgeText, { color: '#8051DE' }]}>Early Access</Text>
+              </View>
             </View>
           )}
 
@@ -391,22 +329,6 @@ export default function ProfileScreen() {
         {/* Activity Heatmap */}
         <ActivityHeatmap streak={streak} colorScheme={colorScheme} />
 
-        {/* Upgrade card (non-Pro only) */}
-        {!isProUser && !rcLoading && !isAccessResolving && (
-          <View style={[styles.upgradeCard, { backgroundColor: `${Colors[colorScheme].accent}12`, borderColor: `${ACCENT_ORANGE}30` }]}>
-            <View style={styles.upgradeHeader}>
-              <Crown size={18} color={ACCENT_ORANGE} />
-              <Text style={[styles.upgradeTitle, { color: Colors[colorScheme].text }]}>Unlock Pro</Text>
-            </View>
-            <Text style={[styles.upgradeDesc, { color: Colors[colorScheme].muted }]}>
-              Unlimited articles, deep dives, and personalized summaries.
-            </Text>
-            <Pressable onPress={() => presentPaywall()} style={styles.upgradeBtn}>
-              <Text style={styles.upgradeBtnText}>Start Free Trial</Text>
-            </Pressable>
-          </View>
-        )}
-
         {/* Preferences — flat rows, no card */}
         <Text style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>Preferences</Text>
         <MenuRow
@@ -415,22 +337,6 @@ export default function ProfileScreen() {
           subtitle="Interests, sources, goals"
           colorScheme={colorScheme}
           onPress={() => router.push('/preferences')}
-        />
-        <MenuRow
-          icon={Mail}
-          label="Newsletter"
-          subtitle="Weekly digest emails"
-          colorScheme={colorScheme}
-          onPress={() => {}}
-          showChevron={false}
-          rightElement={
-            <Switch
-              value={newsletterEnabled}
-              onValueChange={handleNewsletterToggle}
-              trackColor={switchTrackColor}
-              thumbColor={switchThumbColor(newsletterEnabled)}
-            />
-          }
         />
         <MenuRow
           icon={Bell}
@@ -635,40 +541,6 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 64,
-  },
-
-  // Upgrade Card
-  upgradeCard: {
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  upgradeHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  upgradeTitle: {
-    fontFamily: FontFamilySerif.semiBold,
-    fontSize: 17,
-  },
-  upgradeDesc: {
-    fontFamily: FontFamily.regular,
-    fontSize: 13,
-    lineHeight: 19,
-    marginBottom: 16,
-  },
-  upgradeBtn: {
-    backgroundColor: ACCENT_ORANGE,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  upgradeBtnText: {
-    fontFamily: FontFamily.bold,
-    color: '#fff',
-    fontSize: 15,
   },
 
   // Section label

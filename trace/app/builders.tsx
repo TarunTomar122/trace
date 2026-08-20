@@ -42,15 +42,13 @@ export default function BuildersScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.eyebrow, { color: colors.accent }]}>ABOUT TRACE</Text>
-        <Text style={[styles.title, { color: colors.text }]}>Built with care.</Text>
         <Text style={[styles.body, { color: colors.muted }]}>
-          Trace is built by Tarun Tomar and Monisha Priya. Tarun is the engineer behind the app, an indie builder and AI master&apos;s student at the University of Edinburgh who started Trace to make technology news calmer and worth opening. Monisha designed the entire experience, shaping the visual language and UI/UX from the first screen to the last. They are engaged and build Trace together.
+          Trace is built by Tarun and Monisha, who are deeply in love with each other and also engaged. Tarun is the engineer behind the app and an indie app builder and AI master&apos;s student at the University of Edinburgh. Monisha is a UX designer. She designed the entire experience, shaping the visual language and everything from the first to last screen. Together they wanted to build something that can help them stay on top of tech and AI news without having to scroll through ten different things every single day.
         </Text>
 
         <View style={styles.links}>
-          <BuilderLink label="Tarun&apos;s digital garden" url={TARUN_URL} color={colors.text} />
-          <BuilderLink label="Monisha&apos;s portfolio" url={MONISHA_URL} color={colors.text} />
+          <BuilderLink label="🌱 Tarun&apos;s digital garden" url={TARUN_URL} color={colors.text} />
+          <BuilderLink label="🎨 Monisha&apos;s portfolio" url={MONISHA_URL} color={colors.text} />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -70,18 +68,6 @@ const styles = StyleSheet.create({
   backButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontFamily: FontFamilySerif.semiBold, fontSize: 19, lineHeight: 25 },
   content: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 48 },
-  eyebrow: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: 11,
-    letterSpacing: 1.6,
-    marginBottom: 10,
-  },
-  title: {
-    fontFamily: FontFamilySerif.bold,
-    fontSize: 30,
-    lineHeight: 36,
-    marginBottom: 16,
-  },
   body: { fontFamily: FontFamily.regular, fontSize: 16, lineHeight: 25 },
   links: { gap: 12, marginTop: 28 },
   linkRow: {
