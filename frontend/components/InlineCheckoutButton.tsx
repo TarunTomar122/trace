@@ -5,10 +5,7 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { auth } from "@/lib/firebase";
 import { trackCheckoutClicked } from "@/lib/posthog";
-import {
-  SUBSCRIPTION_PRICE_DEFAULT,
-  SUBSCRIPTION_PRICE_INDIA,
-} from "@/lib/subscription-pricing";
+import { SUBSCRIPTION_PRICE_DEFAULT } from "@/lib/subscription-pricing";
 
 interface PricingPreview {
   trialDays: number;
@@ -16,11 +13,6 @@ interface PricingPreview {
   pricingOffer: "india" | "default";
 }
 
-const INDIA_PREVIEW: PricingPreview = {
-  trialDays: 1,
-  priceDisplay: SUBSCRIPTION_PRICE_INDIA,
-  pricingOffer: "india",
-};
 const DEFAULT_PREVIEW: PricingPreview = {
   trialDays: 3,
   priceDisplay: SUBSCRIPTION_PRICE_DEFAULT,
@@ -28,13 +20,6 @@ const DEFAULT_PREVIEW: PricingPreview = {
 };
 
 function guessClientPreview(): PricingPreview {
-  if (typeof window === "undefined") return DEFAULT_PREVIEW;
-  try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (tz === "Asia/Kolkata") return INDIA_PREVIEW;
-    const lang = (navigator.language || "").toLowerCase();
-    if (lang === "en-in" || lang.endsWith("-in")) return INDIA_PREVIEW;
-  } catch {}
   return DEFAULT_PREVIEW;
 }
 
@@ -74,8 +59,8 @@ export function InlineCheckoutButton({
         if (!cancelled && data?.priceDisplay) {
           setPreview({
             trialDays: typeof data.trialDays === "number" ? data.trialDays : preview.trialDays,
-            priceDisplay: data.priceDisplay,
-            pricingOffer: data.pricingOffer === "india" ? "india" : "default",
+            priceDisplay: SUBSCRIPTION_PRICE_DEFAULT,
+            pricingOffer: "default",
           });
         }
       } catch {}
@@ -150,8 +135,7 @@ export function InlineCheckoutButton({
     }
   };
 
-  const buttonLabel =
-    label || `Try Pro free for ${preview.trialDays} ${preview.trialDays === 1 ? "day" : "days"}`;
+  const buttonLabel = label || `Try Pro`;
 
   const baseClass =
     variant === "dark"
@@ -178,8 +162,8 @@ export function InlineCheckoutButton({
         )}
       </button>
       {showPrice && (
-        <p className="mt-2 text-center text-[11px] leading-none text-secondary/50">
-          {preview.priceDisplay} after {preview.trialDays} {preview.trialDays === 1 ? "day" : "days"} · Cancel anytime
+        <p className="mt-2 text-center text-[11px] leading-none text-foreground/60">
+          {preview.priceDisplay} after trial · Cancel anytime
         </p>
       )}
       {error && <p className="mt-2 text-center text-xs text-red-500">{error}</p>}

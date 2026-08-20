@@ -27,6 +27,7 @@ const requiredFiles = [
   'styles.css',
   'newtab.js',
   'background.js',
+  'lib/analytics.js',
   'lib/brief.js',
   ...Object.values(manifest.icons),
 ];
@@ -39,8 +40,13 @@ const html = await read('newtab.html');
 assert.doesNotMatch(html, /<script(?![^>]+src=)/i, 'inline scripts are not allowed');
 assert.doesNotMatch(html, /\son[a-z]+\s*=/i, 'inline event handlers are not allowed');
 assert.match(html, /<script type="module" src="newtab\.js"><\/script>/);
+assert.match(
+  html,
+  /id="loading"[^>]*\shidden(?:\s|>)/,
+  'the loading skeleton must stay hidden until the extension confirms there is no cache',
+);
 
-const javascript = `${await read('newtab.js')}\n${await read('background.js')}\n${await read('lib/brief.js')}`;
+const javascript = `${await read('newtab.js')}\n${await read('background.js')}\n${await read('lib/analytics.js')}\n${await read('lib/brief.js')}`;
 assert.doesNotMatch(javascript, /\beval\s*\(|\bnew\s+Function\b/);
 assert.doesNotMatch(javascript, /import\s+[^;]*https?:\/\//);
 
@@ -50,6 +56,7 @@ const textFiles = [
   'styles.css',
   'newtab.js',
   'background.js',
+  'lib/analytics.js',
   'lib/brief.js',
   'README.md',
   'PRIVACY.md',

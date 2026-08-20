@@ -26,30 +26,15 @@ import type { HotTweet } from './FeedOneScreen';
 import { type FeedListItem, getTimeLabel, INTEREST_LABEL } from './FeedUi';
 import { WireFeedLoadingSkeleton } from './FeedBootShell';
 import { CHROME_EXTENSION_URL } from '@/lib/product-links';
-import {
-  SUBSCRIPTION_PRICE_DEFAULT,
-  SUBSCRIPTION_PRICE_INDIA,
-} from '@/lib/subscription-pricing';
+import { SUBSCRIPTION_PRICE_DEFAULT } from '@/lib/subscription-pricing';
 import { InlineCheckoutButton } from '@/components/InlineCheckoutButton';
 
 function guessPriceDisplay(): string {
-  if (typeof window === 'undefined') return SUBSCRIPTION_PRICE_DEFAULT;
-  try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (tz === 'Asia/Kolkata') return SUBSCRIPTION_PRICE_INDIA;
-    const lang = (navigator.language || '').toLowerCase();
-    if (lang === 'en-in' || lang.endsWith('-in')) return SUBSCRIPTION_PRICE_INDIA;
-  } catch {
-    /* ignore */
-  }
   return SUBSCRIPTION_PRICE_DEFAULT;
 }
 
 function guessPricingPreview(): { trialDays: number; priceDisplay: string } {
-  const isIndia = guessPriceDisplay() === SUBSCRIPTION_PRICE_INDIA;
-  return isIndia
-    ? { trialDays: 1, priceDisplay: SUBSCRIPTION_PRICE_INDIA }
-    : { trialDays: 3, priceDisplay: SUBSCRIPTION_PRICE_DEFAULT };
+  return { trialDays: 3, priceDisplay: SUBSCRIPTION_PRICE_DEFAULT };
 }
 
 const CHROME_NOTICE_DISMISSED_KEY = 'trace.chrome-extension-notice.dismissed.v1';
@@ -311,14 +296,14 @@ export function ReaderModal({
                 </div>
               </div>
               <p className="text-[18px] font-semibold text-foreground">You&apos;ve used {FREE_READS_LIMIT} free reads today.</p>
-              <p className="mt-2 max-w-[580px] text-pretty text-[14px] leading-[1.7] text-secondary">Trace is a one-person project. I read every piece of feedback and keep improving it based on what people need. Pro unlocks unlimited summaries and keeps the feed ad-free while I start my AI master&apos;s at Edinburgh this September.</p>
+              <p className="mt-2 max-w-[580px] text-pretty text-[14px] leading-[1.7] text-foreground/75">Trace is a one-person project. I read every piece of feedback and keep improving it based on what people need. Pro unlocks unlimited summaries and keeps the feed ad-free while I start my AI master&apos;s at Edinburgh this September.</p>
               <div className="mt-[18px]">
-                <InlineCheckoutButton trackingSource="feed_reader_limit" variant="dark" className="w-full sm:w-auto" />
-                <p className="mt-2 text-[11px] text-secondary/50">
-                  {(() => { const p = guessPricingPreview(); return `${p.priceDisplay} after ${p.trialDays} ${p.trialDays === 1 ? "day" : "days"} · Cancel anytime`; })()}
+                <InlineCheckoutButton trackingSource="feed_reader_limit" variant="dark" className="w-full sm:w-auto" label="Try Pro" showPrice={false} />
+                <p className="mt-2 text-[11px] font-medium text-foreground/60">
+                  {(() => { const p = guessPricingPreview(); return `${p.priceDisplay} after trial · Cancel anytime`; })()}
                 </p>
               </div>
-              <div className="mt-4 flex items-center gap-2 text-[11px] text-secondary/45">
+              <div className="mt-4 flex items-center gap-2 text-[11px] font-medium text-foreground/60">
                 <span className="inline-flex items-center gap-1 rounded-full bg-foreground/6 px-2.5 py-1">
                   <Check size={11} className="text-emerald-600/70" /> Unlimited reads
                 </span>
@@ -419,6 +404,7 @@ export default function FeedTwoPaneLayout({
   blogs = [],
   isSubscribed = false,
   freeReadsUsed = 0,
+  summaryAccess = 'checking' as 'checking' | 'pro' | 'free',
   onOpenSummary,
   isItemLocked,
   tab,
@@ -432,6 +418,7 @@ export default function FeedTwoPaneLayout({
   blogs?: FeedListItem[];
   isSubscribed?: boolean;
   freeReadsUsed?: number;
+  summaryAccess?: 'checking' | 'pro' | 'free';
   onOpenSummary: (item: FeedListItem) => Promise<SummaryAccessResult>;
   isItemLocked: (id: string) => boolean;
   tab: 'news' | 'pulse';
@@ -659,7 +646,7 @@ export default function FeedTwoPaneLayout({
             </button>
           </aside>
         )}
-        {!isSubscribed && (() => {
+        {summaryAccess === 'free' && (() => {
           const lifetimeHit = lifetimeCount >= FREE_READS_LIFETIME_LIMIT;
           const isCapped = freeReadsUsed >= FREE_READS_LIMIT || lifetimeHit;
           return (
@@ -678,13 +665,13 @@ export default function FeedTwoPaneLayout({
                       ? `${FREE_READS_LIMIT - freeReadsUsed} free ${FREE_READS_LIMIT - freeReadsUsed === 1 ? "read" : "reads"} left today`
                       : `${FREE_READS_LIMIT} free reads today`}
                 </p>
-                <p className="text-[11px] text-secondary/60">
+                <p className="text-[11px] font-medium text-foreground/65">
                   {isCapped
-                    ? `${guessPricingPreview().priceDisplay} after ${guessPricingPreview().trialDays}-day trial · Cancel anytime`
+                    ? `${guessPricingPreview().priceDisplay} after trial · Cancel anytime`
                     : `Pro unlocks unlimited summaries · ${guessPricingPreview().priceDisplay} after trial`}
                 </p>
                 {lifetimeHit && (
-                  <p className="text-[10px] text-amber-700/70 mt-0.5">Free limit reached — daily resets no longer apply. {FREE_READS_LIFETIME_LIMIT} total free reads used.</p>
+                  <p className="text-[10px] font-medium text-amber-700 mt-0.5">Free limit reached — daily resets no longer apply. {FREE_READS_LIFETIME_LIMIT} total free reads used.</p>
                 )}
               </div>
             </div>
@@ -702,7 +689,7 @@ export default function FeedTwoPaneLayout({
                 variant="dark"
                 className="!mt-0 [&>p]:hidden"
                 showPrice={false}
-                label={isCapped ? `Unlock unlimited` : `Try Pro free`}
+                label={`Try Pro`}
               />
             </div>
           </div>

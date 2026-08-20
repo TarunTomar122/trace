@@ -50,10 +50,26 @@ TYPE_COLORS = {
 }
 
 
+FREE_TEASER_UPSELL_HTML = """
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top: 24px; background-color: #fffbeb; border: 1px solid #f59e0b; border-radius: 12px; overflow: hidden;">
+  <tr><td style="padding: 20px 24px;">
+    <p style="margin:0 0 6px 0; font-size: 14px; font-weight: 700; color: #92400e; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">You're on the free teaser — 3 stories</p>
+    <p style="margin:0 0 12px 0; font-size: 13px; color: #78350f; line-height: 1.6; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Pro unlocks the full 8-story brief + archive + personalized feed. $2.99/month after 3-day trial — cancel anytime.</p>
+    <a href="https://www.yourtrace.online/profile?tab=subscription&intent=checkout" style="display:inline-block; padding:10px 18px; background:#18181b; color:#fff; text-decoration:none; border-radius:999px; font-size:13px; font-weight:600; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Unlock full brief →</a>
+    <p style="margin:10px 0 0 0; font-size:11px; color:#a16207; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Free teaser limited to latest 100 free users due to Brevo free tier — Pro is unlimited.</p>
+  </td></tr>
+</table>
+"""
+FREE_TEASER_UPSSELL_TEXT = """
+---
+Free teaser: you got 3 of 8 stories. Unlock the full brief + archive at https://www.yourtrace.online/profile?tab=subscription&intent=checkout ($2.99/mo after trial)
+"""
+
 def _generate_newsletter_html(
     items: list[dict],
     user_name: str,
     date: str,
+    is_teaser: bool = False,
 ) -> str:
     """
     Generate HTML email content from newsletter items using templates.
@@ -121,6 +137,8 @@ def _generate_newsletter_html(
     html = html.replace("{{DATE}}", display_date)
     html = html.replace("{{USER_NAME_GREETING}}", user_name_greeting)
     html = html.replace("{{ITEM_COUNT}}", str(len(items)))
+    if is_teaser:
+        items_html += FREE_TEASER_UPSELL_HTML
     html = html.replace("{{ITEMS_HTML}}", items_html)
 
     return html
@@ -130,6 +148,7 @@ def _generate_newsletter_text(
     items: list[dict],
     user_name: str,
     date: str,
+    is_teaser: bool = False,
 ) -> str:
     """Generate plain text version of the newsletter."""
     user_greeting = f", {user_name.split()[0]}" if user_name else ""
@@ -321,8 +340,12 @@ def send_newsletters_for_all_users(
     print(f"Dry run: {dry_run}")
     print("-" * 40)
 
-    # Get opted-in users
-    users = store.get_newsletter_opted_in_users()
+    # Get opted-in users — paid + free teaser (capped 100)
+    paid_users = store.get_newsletter_opted_in_users()
+    free_users = store.get_free_opted_in_users(limit=100)
+    seen = {u.get("uid") for u in paid_users}
+    users = paid_users + [u for u in free_users if u.get("uid") not in seen]
+    print(f"Recipients: {len(paid_users)} paid + {len(free_users)} free teaser (capped)")
 
     results = {
         "date": date,

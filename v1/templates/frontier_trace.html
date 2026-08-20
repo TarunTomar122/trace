@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Daily Trace</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f4f5; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f4f5;">
+    <tr><td align="center" style="padding:24px 12px;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:640px; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <!-- HEADER -->
+        <tr><td style="padding:28px 32px 0 32px;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td style="vertical-align:middle;">
+                <a href="https://yourtrace.online" style="text-decoration:none; display:inline-block;">
+                  <img src="https://www.yourtrace.online/trace-app-icon-v1-1024.png" alt="Trace" width="32" height="32" style="display:inline-block; vertical-align:middle; border:0; border-radius:8px; object-fit:cover;" />
+                  <span style="font-size:17px; color:#18181b; font-weight:800; letter-spacing:1.6px; text-transform:uppercase; vertical-align:middle; margin-left:8px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">TRACE</span>
+                </a>
+                <div style="margin-top:4px; font-size:12px; color:#71717a; font-weight:500;">The Daily Brief &nbsp;·&nbsp; {{DATE}} &nbsp;·&nbsp; Pro delivers 8 stories</div>
+              </td>
+              <td align="right" style="vertical-align:top;">
+                <a href="https://yourtrace.online/feed" style="font-size:11px; color:#a1a1aa; text-decoration:none; border:1px solid #e4e4e7; border-radius:999px; padding:6px 12px; display:inline-block; font-weight:600;">View in feed →</a>
+              </td>
+            </tr>
+          </table>
+          <div style="margin-top:20px; height:3px; background-color:#18181b; border-radius:999px;"></div>
+        </td></tr>
+
+        <!-- TOP 7 -->
+        <tr><td style="padding:24px 32px 0 32px;">
+          {{TOP7_HTML}}
+        </td></tr>
+
+        <!-- TOP BUILDS -->
+        <tr><td style="padding:8px 32px 0 32px;">
+          <div style="margin-top:8px; border-top:1px solid #e4e4e7; padding-top:24px;">
+            <p style="margin:0 0 8px 0; font-size:11px; font-weight:800; letter-spacing:1.4px; text-transform:uppercase; color:#18181b;">Top builds</p>
+            <p style="margin:0 0 16px 0; font-size:12px; color:#71717a; line-height:1.5;">3 tools and launches the community is talking about.</p>
+            {{BUILDS_HTML}}
+          </div>
+        </td></tr>
+
+        <!-- FROM THE COMMUNITY -->
+        <tr><td style="padding:8px 32px 0 32px;">
+          <div style="margin-top:8px; border-top:1px solid #e4e4e7; padding-top:24px;">
+            <p style="margin:0 0 8px 0; font-size:11px; font-weight:800; letter-spacing:1.4px; text-transform:uppercase; color:#18181b;">From the community</p>
+            <p style="margin:0 0 16px 0; font-size:12px; color:#71717a; line-height:1.5;">One conversation from Pulse worth your time.</p>
+            {{FORUM_HTML}}
+          </div>
+        </td></tr>
+
+        <!-- PRO UPSSELL (only for free teaser, hidden for pro) -->
+        {{PRO_AD_HTML}}
+
+        <!-- CTA -->
+        <tr><td align="center" style="padding:28px 32px 32px 32px;">
+          <a href="https://yourtrace.online/feed" style="display:inline-block; padding:13px 28px; background-color:#18181b; color:#ffffff; text-decoration:none; border-radius:999px; font-size:14px; font-weight:700; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; letter-spacing:0.2px;">View your full feed →</a>
+          <p style="margin:12px 0 0 0; font-size:12px; color:#a1a1aa;">Daily at 10am IST · <a href="https://yourtrace.online/profile" style="color:#71717a; text-decoration:underline;">Manage preferences</a></p>
+        </td></tr>
+
+        <!-- FOOTER -->
+        <tr><td style="background-color:#fafafa; padding:20px 32px; border-top:1px solid #e4e4e7;">
+          <p style="margin:0 0 6px 0; font-size:12px; color:#a1a1aa; line-height:1.6; text-align:center;">Curated by AI, personalized for you, delivered by <a href="https://yourtrace.online" style="color:#18181b; font-weight:700; text-decoration:none;">Trace</a>.</p>
+          <p style="margin:0; font-size:11px; color:#a1a1aa; line-height:1.6; text-align:center;">
+            <a href="https://yourtrace.online/profile" style="color:#a1a1aa; text-decoration:underline;">Preferences</a> · <a href="https://yourtrace.online/profile" style="color:#a1a1aa; text-decoration:underline;">Unsubscribe</a> · <a href="https://yourtrace.online" style="color:#a1a1aa; text-decoration:underline;">yourtrace.online</a>
+          </p>
+          <p style="margin:10px 0 0 0; font-size:10px; color:#d4d4d8; line-height:1.5; text-align:center;">Free teaser is 3 stories. Pro gets 8 plus archive. Free limited to latest 100 due to Brevo free tier.</p>
+        </td></tr>
+
+      </table>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:640px; margin-top:16px;">
+        <tr><td align="center" style="padding:8px 20px;">
+          <p style="margin:0; font-size:11px; color:#a1a1aa; text-align:center;">We send this daily at 10am IST. <a href="https://yourtrace.online/profile" style="color:#a1a1aa; text-decoration:underline;">Unsubscribe</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

@@ -36,7 +36,7 @@ export const Colors = {
     secondary: '#CAC4D0',
     border: '#49454F',
     muted: '#CAC4D0',
-    card: '#211F26',
+    card: '#2B2930',
     surfaceVariant: '#49454F',
     accent: '#F59E0B',
     accentForeground: '#1C1B1F',

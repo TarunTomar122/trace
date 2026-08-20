@@ -16,7 +16,6 @@ import {
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Image as ExpoImage } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -1082,13 +1081,10 @@ export default function UnifiedFeedScreen() {
           );
         })}
       </ScrollView>
-      <View style={styles.viewToggleWrap}>
-        <LinearGradient
+      <View style={[styles.viewToggleWrap, { backgroundColor: Colors[colorScheme].card }]}> 
+        <View
           pointerEvents="none"
-          colors={[`${Colors[colorScheme].card}00`, Colors[colorScheme].card]}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 1, y: 0.5 }}
-          style={styles.viewToggleFade}
+          style={[styles.viewToggleMask, { backgroundColor: Colors[colorScheme].background }]}
         />
         <Pressable
           onPress={() => {
@@ -2173,19 +2169,17 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
-    padding: 2,
-    gap: 2,
+    borderRadius: 8,
     position: 'relative',
     zIndex: 1,
   },
-  viewToggleFade: {
+  viewToggleMask: {
     position: 'absolute',
     top: 0,
     bottom: 0,
-    left: -30,
-    right: 0,
-    borderRadius: 10,
+    left: -32,
+    width: 32,
+    borderRadius: 8,
   },
   viewToggleBtn: {
     width: 32,

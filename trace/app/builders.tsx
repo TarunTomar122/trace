@@ -6,7 +6,7 @@ import { ChevronLeft, ExternalLink } from 'lucide-react-native';
 import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-const TARUN_URL = 'https://tarun.space';
+const TARUN_URL = 'https://tarat.space';
 const MONISHA_URL = 'https://monfolio.framer.website/';
 
 function BuilderLink({ label, url, color }: { label: string; url: string; color: string }) {

@@ -80,7 +80,7 @@ function ProPaywallCard({
 }
 
 const INDIA_PRICING = {
-  priceDisplay: SUBSCRIPTION_PRICE_INDIA,
+  priceDisplay: SUBSCRIPTION_PRICE_DEFAULT,
   compareAtPriceDisplay: null as string | null,
   pricingOffer: 'india' as const,
   trialDays: 3,
@@ -93,14 +93,6 @@ const DEFAULT_PRICING = {
 };
 
 function guessClientPricing() {
-  try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (tz === 'Asia/Kolkata') return INDIA_PRICING;
-    const lang = (navigator.language || '').toLowerCase();
-    if (lang === 'en-in' || lang.endsWith('-in')) return INDIA_PRICING;
-  } catch {
-    /* ignore */
-  }
   return DEFAULT_PRICING;
 }
 
@@ -137,7 +129,7 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
         });
         if (!response.ok) return;
         const data = await response.json();
-        if (!cancelled) setPricingPreview(data);
+        if (!cancelled) setPricingPreview({ ...data, priceDisplay: SUBSCRIPTION_PRICE_DEFAULT });
       } catch {
         /* non-fatal */
       }
@@ -374,7 +366,7 @@ export function PaywallGate() {
   // Default on server; client guess applied in useEffect before API confirms
   const [pricingPreview, setPricingPreview] = React.useState<typeof INDIA_PRICING | typeof DEFAULT_PRICING>(DEFAULT_PRICING);
 
-  // Still confirm with server in background (handles VPN / edge cases)
+  // Still confirm with server in background (handles VPN / edge cases) — display stays $2.99
   React.useEffect(() => {
     let cancelled = false;
     // Apply client-side timezone/locale guess immediately (synchronous, no round-trip)
@@ -387,7 +379,7 @@ export function PaywallGate() {
         });
         if (!response.ok) return;
         const data = await response.json();
-        if (!cancelled) setPricingPreview(data);
+        if (!cancelled) setPricingPreview({ ...data, priceDisplay: SUBSCRIPTION_PRICE_DEFAULT });
       } catch {}
     };
     void confirm();
