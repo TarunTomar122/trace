@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Image as ExpoImage } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -1044,6 +1045,7 @@ export default function UnifiedFeedScreen() {
   const renderPills = () => (
     <View style={styles.pillsSection}>
       <ScrollView
+        style={styles.pillsScroll}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.pillsContainer}>
@@ -1080,7 +1082,14 @@ export default function UnifiedFeedScreen() {
           );
         })}
       </ScrollView>
-      <View style={[styles.viewToggleWrap, { backgroundColor: Colors[colorScheme].card }]}>
+      <View style={styles.viewToggleWrap}>
+        <LinearGradient
+          pointerEvents="none"
+          colors={[`${Colors[colorScheme].card}00`, Colors[colorScheme].card]}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={styles.viewToggleFade}
+        />
         <Pressable
           onPress={() => {
             setViewMode('card');
@@ -2143,6 +2152,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 8,
   },
+  pillsScroll: {
+    flex: 1,
+    minWidth: 0,
+  },
   pill: {
     paddingHorizontal: 14,
     paddingVertical: 6,
@@ -2163,6 +2176,16 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 2,
     gap: 2,
+    position: 'relative',
+    zIndex: 1,
+  },
+  viewToggleFade: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: -30,
+    right: 0,
+    borderRadius: 10,
   },
   viewToggleBtn: {
     width: 32,

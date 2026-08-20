@@ -261,12 +261,23 @@ export function DeckStoryCard({
             </View>
             <Pressable
               onPress={onShare}
-              style={styles.shareBtn}
+              style={[
+                styles.shareBtn,
+                {
+                  backgroundColor: colorScheme === 'dark'
+                    ? Colors.dark.surfaceVariant
+                    : 'rgba(255,255,255,0.92)',
+                },
+              ]}
               hitSlop={8}
               disabled={shareBusy}
               accessibilityRole="button"
               accessibilityLabel="Share story">
-              <Share2 size={16} color="#1B1B1B" strokeWidth={2} />
+              <Share2
+                size={16}
+                color={colorScheme === 'dark' ? Colors.dark.icon : INS.textHead}
+                strokeWidth={2}
+              />
             </Pressable>
           </View>
 
@@ -435,7 +446,6 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.92)',
     alignItems: 'center',
     justifyContent: 'center',
   },

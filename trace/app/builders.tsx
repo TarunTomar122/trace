@@ -7,7 +7,7 @@ import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const TARUN_URL = 'https://tarun.space';
-const MONISHA_URL = 'https://www.behance.net/gallery/126860289/Mon-Folio-%282021%29';
+const MONISHA_URL = 'https://monfolio.framer.website/';
 
 function BuilderLink({ label, url, color }: { label: string; url: string; color: string }) {
   return (
@@ -43,7 +43,16 @@ export default function BuildersScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={[styles.body, { color: colors.muted }]}>
-          Trace is built by Tarun and Monisha, who are deeply in love with each other and also engaged. Tarun is the engineer behind the app and an indie app builder and AI master&apos;s student at the University of Edinburgh. Monisha is a UX designer. She designed the entire experience, shaping the visual language and everything from the first to last screen. Together they wanted to build something that can help them stay on top of tech and AI news without having to scroll through ten different things every single day.
+          Trace is built by Tarun and Monisha, who were deeply in love with each other and also engaged.
+        </Text>
+        <Text style={[styles.body, styles.paragraph, { color: colors.muted }]}>
+          Tarun is the engineer behind the app in India, a builder in India, and a master&apos;s student at the University of Edinburgh.
+        </Text>
+        <Text style={[styles.body, styles.paragraph, { color: colors.muted }]}>
+          Monisha is a UX designer. She designed the entire experience, shaping the visual language and everything from the first to last screen.
+        </Text>
+        <Text style={[styles.body, styles.paragraph, { color: colors.muted }]}>
+          Together they wanted to build something that can help them stay on top of tech and AI news without having to scroll through ten different things every single day.
         </Text>
 
         <View style={styles.links}>
@@ -69,6 +78,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontFamily: FontFamilySerif.semiBold, fontSize: 19, lineHeight: 25 },
   content: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 48 },
   body: { fontFamily: FontFamily.regular, fontSize: 16, lineHeight: 25 },
+  paragraph: { marginTop: 18 },
   links: { gap: 12, marginTop: 28 },
   linkRow: {
     minHeight: 52,
