@@ -1081,11 +1081,7 @@ export default function UnifiedFeedScreen() {
           );
         })}
       </ScrollView>
-      <View style={[styles.viewToggleWrap, { backgroundColor: Colors[colorScheme].card }]}> 
-        <View
-          pointerEvents="none"
-          style={[styles.viewToggleMask, { backgroundColor: Colors[colorScheme].background }]}
-        />
+      <View style={[styles.viewToggleWrap, { backgroundColor: Colors[colorScheme].card }]}>
         <Pressable
           onPress={() => {
             setViewMode('card');
@@ -2166,20 +2162,15 @@ const styles = StyleSheet.create({
   },
   viewToggleWrap: {
     marginLeft: 8,
+    width: 96,
     flexShrink: 0,
     flexDirection: 'row',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     borderRadius: 8,
+    overflow: 'hidden',
     position: 'relative',
     zIndex: 1,
-  },
-  viewToggleMask: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: -32,
-    width: 32,
-    borderRadius: 8,
   },
   viewToggleBtn: {
     width: 32,
