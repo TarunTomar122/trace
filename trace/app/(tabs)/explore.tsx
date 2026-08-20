@@ -118,7 +118,7 @@ export default function ProfileScreen() {
     );
   };
 
-  const cardBg = isDark ? '#1a1a1a' : '#f7f7f5';
+  const cardBg = Colors[colorScheme].card;
 
   return (
     <SafeAreaView
@@ -138,7 +138,7 @@ export default function ProfileScreen() {
               priority="high"
             />
           ) : (
-            <View style={[s.avatarFallback, { backgroundColor: isDark ? '#2a2a2a' : '#e5e5e5' }]}>
+            <View style={[s.avatarFallback, { backgroundColor: Colors[colorScheme].surfaceVariant }]}>
               <Text style={[s.avatarInitial, { color: Colors[colorScheme].text }]}>
                 {user?.displayName?.charAt(0) || '?'}
               </Text>
@@ -153,14 +153,14 @@ export default function ProfileScreen() {
           {(profile?.role || profile?.seniority) && (
             <View style={s.badgeRow}>
               {profile?.role && (
-                <View style={[s.badge, { backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0' }]}>
+                <View style={[s.badge, { backgroundColor: Colors[colorScheme].surfaceVariant }]}>
                   <Text style={[s.badgeText, { color: Colors[colorScheme].text }]}>
                     {lookupLabel(ROLES as unknown as { id: string; label: string }[], profile.role)}
                   </Text>
                 </View>
               )}
               {profile?.seniority && (
-                <View style={[s.badge, { backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0' }]}>
+                <View style={[s.badge, { backgroundColor: Colors[colorScheme].surfaceVariant }]}>
                   <Text style={[s.badgeText, { color: Colors[colorScheme].text }]}>
                     {lookupLabel(SENIORITY_LEVELS as unknown as { id: string; label: string }[], profile.seniority)}
                   </Text>
@@ -183,7 +183,7 @@ export default function ProfileScreen() {
                   Current
                 </Text>
               </View>
-              <View style={[s.statDivider, { backgroundColor: isDark ? '#333' : '#e5e5e5' }]} />
+              <View style={[s.statDivider, { backgroundColor: Colors[colorScheme].border }]} />
               <View style={s.stat}>
                 <Trophy size={18} color={ACCENT} strokeWidth={2} />
                 <Text style={[s.statValue, { color: Colors[colorScheme].text }]}>
@@ -193,7 +193,7 @@ export default function ProfileScreen() {
                   Best
                 </Text>
               </View>
-              <View style={[s.statDivider, { backgroundColor: isDark ? '#333' : '#e5e5e5' }]} />
+              <View style={[s.statDivider, { backgroundColor: Colors[colorScheme].border }]} />
               <View style={s.stat}>
                 <Calendar size={18} color={ACCENT} strokeWidth={2} />
                 <Text style={[s.statValue, { color: Colors[colorScheme].text }]}>
@@ -300,7 +300,7 @@ export default function ProfileScreen() {
             </Pressable>
           )}
           {isOnboarded && (
-            <View style={[s.menuDivider, { backgroundColor: isDark ? '#333' : '#e5e5e5' }]} />
+            <View style={[s.menuDivider, { backgroundColor: Colors[colorScheme].border }]} />
           )}
           <Pressable
             style={s.menuRow}
@@ -309,7 +309,7 @@ export default function ProfileScreen() {
             <Text style={[s.menuText, { color: Colors[colorScheme].text }]}>Privacy Policy</Text>
             <ExternalLink size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
           </Pressable>
-          <View style={[s.menuDivider, { backgroundColor: isDark ? '#333' : '#e5e5e5' }]} />
+          <View style={[s.menuDivider, { backgroundColor: Colors[colorScheme].border }]} />
           <Pressable
             style={s.menuRow}
             onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)}>
@@ -317,7 +317,7 @@ export default function ProfileScreen() {
             <Text style={[s.menuText, { color: Colors[colorScheme].text }]}>Terms of Service</Text>
             <ExternalLink size={16} color={Colors[colorScheme].muted} strokeWidth={1.5} />
           </Pressable>
-          <View style={[s.menuDivider, { backgroundColor: isDark ? '#333' : '#e5e5e5' }]} />
+          <View style={[s.menuDivider, { backgroundColor: Colors[colorScheme].border }]} />
           <Pressable
             style={s.menuRow}
             onPress={() => WebBrowser.openBrowserAsync(CONTACT_URL)}>
@@ -345,9 +345,9 @@ export default function ProfileScreen() {
               <Switch
                 value={newsletterOptIn}
                 onValueChange={handleNewsletterToggle}
-                trackColor={{ false: isDark ? '#333' : '#d4d4d4', true: ACCENT }}
+                trackColor={{ false: Colors[colorScheme].border, true: ACCENT }}
                 thumbColor="#fff"
-                ios_backgroundColor={isDark ? '#333' : '#d4d4d4'}
+                ios_backgroundColor={Colors[colorScheme].border}
               />
             </View>
           </View>

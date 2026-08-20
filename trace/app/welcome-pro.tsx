@@ -44,9 +44,9 @@ export default function WelcomeProScreen() {
         showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={[styles.iconCircle, { backgroundColor: ACCENT }]}>
-            <Crown size={40} color="#fff" strokeWidth={2.5} />
+            <Crown size={40} color={Colors[colorScheme].accentForeground} strokeWidth={2.5} />
           </View>
-          <ThemedText style={styles.title}>You're Pro now!</ThemedText>
+          <ThemedText style={styles.title}>You&apos;re Pro now!</ThemedText>
           <ThemedText style={[styles.subtitle, { color: Colors[colorScheme].muted }]}>
             Your personalized feed is being built. Trending topics, For You articles, and deep dives — all tailored to you.
           </ThemedText>
@@ -85,7 +85,7 @@ export default function WelcomeProScreen() {
         <Pressable
           onPress={handleContinue}
           style={[styles.continueButton, { backgroundColor: ACCENT }]}>
-          <ThemedText style={styles.continueButtonText}>Go to my feed</ThemedText>
+          <ThemedText style={[styles.continueButtonText, { color: Colors[colorScheme].accentForeground }]}>Go to my feed</ThemedText>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -178,6 +178,5 @@ const styles = StyleSheet.create({
   continueButtonText: {
     fontSize: 17,
     fontFamily: FontFamily.semiBold,
-    color: '#fff',
   },
 });

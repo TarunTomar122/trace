@@ -131,9 +131,9 @@ export default function BookmarksScreen() {
           </ThemedText>
           <Pressable
             onPress={() => presentPaywall()}
-            style={[styles.upgradeButton, { backgroundColor: '#F59E0B' }]}
+            style={[styles.upgradeButton, { backgroundColor: Colors[colorScheme].accent }]}
           >
-            <ThemedText style={[styles.upgradeButtonText, { color: '#fff' }]}>
+            <ThemedText style={[styles.upgradeButtonText, { color: Colors[colorScheme].accentForeground }]}>
               Upgrade to Pro
             </ThemedText>
           </Pressable>

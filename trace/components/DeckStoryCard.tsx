@@ -16,7 +16,7 @@ import { Share2 } from 'lucide-react-native';
 import { captureRef } from 'react-native-view-shot';
 import RNShare from 'react-native-share';
 
-import { FontFamily } from '@/constants/theme';
+import { Colors, FontFamily } from '@/constants/theme';
 import { FeedItem, TrendingTopic } from '@/lib/firestore';
 import { getArticleImage } from '@/lib/fallback-images';
 import { decodeHtmlEntities } from '@/lib/text-decode';
@@ -36,10 +36,10 @@ const INS = {
   sub: '#B8B8B8',
 };
 const INS_DARK = {
-  canvas: '#101010',
-  textHead: '#F2F2F2',
-  textBody: '#A3A3A3',
-  sub: '#8C8C8C',
+  canvas: Colors.dark.card,
+  textHead: Colors.dark.text,
+  textBody: Colors.dark.muted,
+  sub: Colors.dark.muted,
 };
 
 

@@ -1,7 +1,10 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
-type ThemeMode = 'light' | 'dark' | 'system';
+type ThemeMode = 'light' | 'dark';
 type ColorScheme = 'light' | 'dark';
+
+const THEME_MODE_KEY = 'trace_theme_mode_v1';
 
 type ThemeContextType = {
   themeMode: ThemeMode;
@@ -12,15 +15,29 @@ type ThemeContextType = {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-// Force light mode for all users — dark mode toggle is hidden for now.
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  const [themeMode, setThemeModeState] = useState<ThemeMode>('light');
+
+  useEffect(() => {
+    void AsyncStorage.getItem(THEME_MODE_KEY)
+      .then((savedMode) => {
+        if (savedMode === 'light' || savedMode === 'dark') setThemeModeState(savedMode);
+      })
+      .catch(() => {});
+  }, []);
+
+  const setThemeMode = useCallback((mode: ThemeMode) => {
+    setThemeModeState(mode);
+    void AsyncStorage.setItem(THEME_MODE_KEY, mode).catch(() => {});
+  }, []);
+
   return (
     <ThemeContext.Provider
       value={{
-        themeMode: 'light',
-        colorScheme: 'light',
-        setThemeMode: () => {},
-        toggleTheme: () => {},
+        themeMode,
+        colorScheme: themeMode,
+        setThemeMode,
+        toggleTheme: () => setThemeMode(themeMode === 'dark' ? 'light' : 'dark'),
       }}
     >
       {children}

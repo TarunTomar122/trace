@@ -242,7 +242,6 @@ export function TrendingCard({ item, colorScheme, onPress, accentColor = '#F9731
     setCurrentSlide(slide);
   };
 
-  const textBg = colorScheme === 'dark' ? '#1a1a1a' : '#fff';
 
   return (
     <View style={tStyles.container}>
@@ -706,7 +705,7 @@ export function DeepDiveCard({ item, colorScheme, onPress, accentColor = '#0EA5E
   const handleImageError = () => setImageUrl(fallbackUrl);
   const accent = accentColor;
 
-  const cardBg = colorScheme === 'dark' ? '#161616' : '#f5f5f0';
+  const cardBg = colorScheme === 'dark' ? Colors[colorScheme].card : '#f5f5f0';
 
   return (
     <Pressable onPress={onPress} style={[ddStyles.card, { backgroundColor: cardBg }]}>

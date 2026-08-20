@@ -1080,7 +1080,7 @@ export default function UnifiedFeedScreen() {
           );
         })}
       </ScrollView>
-      <View style={[styles.viewToggleWrap, { backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#f0f0f0' }]}>
+      <View style={[styles.viewToggleWrap, { backgroundColor: Colors[colorScheme].card }]}>
         <Pressable
           onPress={() => {
             setViewMode('card');
@@ -1089,7 +1089,7 @@ export default function UnifiedFeedScreen() {
           }}
           style={[
             styles.viewToggleBtn,
-            viewMode === 'card' && { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#fff' },
+            viewMode === 'card' && { backgroundColor: Colors[colorScheme].card },
           ]}>
           <LayoutGrid
             size={16}
@@ -1106,7 +1106,7 @@ export default function UnifiedFeedScreen() {
           }}
           style={[
             styles.viewToggleBtn,
-            viewMode === 'list' && { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#fff' },
+            viewMode === 'list' && { backgroundColor: Colors[colorScheme].card },
           ]}>
           <List
             size={16}
@@ -1380,11 +1380,11 @@ export default function UnifiedFeedScreen() {
                     : null;
                 const isDark = colorScheme === 'dark';
                 return (
-                  <View style={[styles.upNextBar, { backgroundColor: isDark ? '#1a1a1a' : '#ebebeb', paddingBottom: 16 + insets.bottom }]}>
+                  <View style={[styles.upNextBar, { backgroundColor: Colors[colorScheme].card, paddingBottom: 16 + insets.bottom }]}>
                     {nextTitle ? (
                       <View style={styles.upNextRow}>
-                        <Text style={[styles.upNextLabel, { color: isDark ? '#8C8C8C' : '#B8B8B8' }]}>Up next</Text>
-                        <Text style={[styles.upNextTitle, { color: isDark ? '#F2F2F2' : '#1B1B1B' }]} numberOfLines={1}>
+                        <Text style={[styles.upNextLabel, { color: Colors[colorScheme].muted }]}>Up next</Text>
+                        <Text style={[styles.upNextTitle, { color: Colors[colorScheme].text }]} numberOfLines={1}>
                           {nextTitle}
                         </Text>
                       </View>
@@ -1410,7 +1410,7 @@ export default function UnifiedFeedScreen() {
           ) : (
             <View style={styles.padded}>
               <View style={styles.emptyState}>
-                <View style={[styles.emptyIllus, { backgroundColor: colorScheme === 'dark' ? '#1a1a2e' : '#f5f3ff' }]}>
+                <View style={[styles.emptyIllus, { backgroundColor: Colors[colorScheme].surfaceVariant }]}>
                   <DigestIllus width={44} height={44} color={Colors[colorScheme].text} />
                 </View>
                 <ThemedText style={[styles.emptyText, { color: Colors[colorScheme].muted }]}>
@@ -1470,13 +1470,13 @@ function FeedBuildingLoader({ colorScheme }: { colorScheme: 'light' | 'dark' }) 
   }, []);
 
   const step = BUILD_STEPS[stepIdx];
-  const cardBg = colorScheme === 'dark' ? '#1a1a2e' : '#e8ffc9';
+  const cardBg = colorScheme === 'dark' ? Colors[colorScheme].card : '#e8ffc9';
   const StepIcon = step.icon === 'compass' ? Compass : step.icon === 'cpu' ? Cpu : BookOpen;
 
   return (
     <Animated.View entering={FadeIn.duration(500)} style={buildStyles.container}>
       <View style={[buildStyles.card, { backgroundColor: cardBg }]}>
-        <View style={[buildStyles.iconCircle, { backgroundColor: colorScheme === 'dark' ? '#2a2a4e' : 'rgba(255,255,255,0.6)' }]}>
+        <View style={[buildStyles.iconCircle, { backgroundColor: colorScheme === 'dark' ? Colors[colorScheme].surfaceVariant : 'rgba(255,255,255,0.6)' }]}>
           <StepIcon size={32} color={ACCENT_ORANGE} strokeWidth={1.5} />
         </View>
         <Text style={[buildStyles.title, { color: Colors[colorScheme].text }]}>
@@ -1762,13 +1762,13 @@ function SkeletonLoader({ colorScheme, viewMode }: { colorScheme: 'light' | 'dar
     opacity: shimmerOpacity.value,
   }));
 
-  const skeletonBg = colorScheme === 'dark' ? '#2a2a2a' : '#e8e8e8';
+  const skeletonBg = colorScheme === 'dark' ? Colors[colorScheme].surfaceVariant : '#e8e8e8';
 
   if (viewMode === 'list') {
     return (
       <View style={styles.skeletonContainer}>
         {[1, 2, 3, 4, 5].map((i) => (
-          <View key={i} style={[styles.skeletonListItem, { borderBottomColor: colorScheme === 'dark' ? '#1a1a1a' : '#f0f0f0' }]}>
+          <View key={i} style={[styles.skeletonListItem, { borderBottomColor: colorScheme === 'dark' ? Colors[colorScheme].card : '#f0f0f0' }]}>
             <View style={{ flex: 1, gap: 8 }}>
               <Animated.View style={[{ width: 80, height: 10, borderRadius: 4, backgroundColor: skeletonBg }, shimmerStyle]} />
               <Animated.View style={[{ width: '90%', height: 14, borderRadius: 4, backgroundColor: skeletonBg }, shimmerStyle]} />

@@ -251,7 +251,7 @@ export default function PreferencesHub() {
                 </View>
                 {sel && (
                   <View style={[styles.checkCircle, { backgroundColor: ACCENT }]}>
-                    <Check size={11} color="#fff" strokeWidth={3} />
+                    <Check size={11} color={Colors[colorScheme].accentForeground} strokeWidth={3} />
                   </View>
                 )}
               </Pressable>
@@ -288,7 +288,7 @@ export default function PreferencesHub() {
                 </View>
                 {sel && (
                   <View style={[styles.checkCircle, { backgroundColor: ACCENT }]}>
-                    <Check size={11} color="#fff" strokeWidth={3} />
+                    <Check size={11} color={Colors[colorScheme].accentForeground} strokeWidth={3} />
                   </View>
                 )}
               </Pressable>
@@ -326,7 +326,7 @@ export default function PreferencesHub() {
                   }]}>
                   {sel && (
                     <View style={[styles.checkDot, { backgroundColor: ACCENT }]}>
-                      <Check size={9} color="#fff" strokeWidth={3} />
+                      <Check size={9} color={Colors[colorScheme].accentForeground} strokeWidth={3} />
                     </View>
                   )}
                   <ThemedText style={[styles.chipText, { color: sel ? ACCENT : Colors[colorScheme].text }]}>
@@ -374,7 +374,7 @@ export default function PreferencesHub() {
                 </View>
                 {sel && (
                   <View style={[styles.checkCircle, { backgroundColor: ACCENT }]}>
-                    <Check size={11} color="#fff" strokeWidth={3} />
+                    <Check size={11} color={Colors[colorScheme].accentForeground} strokeWidth={3} />
                   </View>
                 )}
               </Pressable>
@@ -395,11 +395,11 @@ export default function PreferencesHub() {
               if (goalsHasChanges && selectedGoals.length > 0) await handleSaveGoals();
             }}
             disabled={isSavingAnything}
-            style={[styles.fixedSaveBtn, { opacity: isSavingAnything ? 0.6 : 1 }]}>
+            style={[styles.fixedSaveBtn, { backgroundColor: Colors[colorScheme].foreground, opacity: isSavingAnything ? 0.6 : 1 }]}>
             {isSavingAnything ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={Colors[colorScheme].background} />
             ) : (
-              <ThemedText style={styles.fixedSaveBtnText}>Save</ThemedText>
+              <ThemedText style={[styles.fixedSaveBtnText, { color: Colors[colorScheme].background }]}>Save</ThemedText>
             )}
           </Pressable>
         </View>
@@ -531,10 +531,9 @@ const styles = StyleSheet.create({
   fixedSaveBtn: {
     height: 52,
     borderRadius: 14,
-    backgroundColor: '#111',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
   },
-  fixedSaveBtnText: { color: '#fff', fontSize: 16, fontFamily: FontFamily.bold },
+  fixedSaveBtnText: { fontSize: 16, fontFamily: FontFamily.bold },
 });

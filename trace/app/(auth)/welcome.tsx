@@ -49,8 +49,8 @@ function MockStoryCard({
   tag?: string;
   colorScheme: 'light' | 'dark';
 }) {
-  const bg = colorScheme === 'dark' ? '#1a1a1a' : '#fff';
-  const border = colorScheme === 'dark' ? '#2a2a2a' : '#e8e8e8';
+  const bg = Colors[colorScheme].card;
+  const border = Colors[colorScheme].border;
   const textCol = Colors[colorScheme].text;
   const mutedCol = Colors[colorScheme].muted;
   return (
@@ -58,11 +58,11 @@ function MockStoryCard({
       <View style={mStyles.cardTop}>
         {source && (
           <View style={mStyles.badge}>
-            <Text style={mStyles.badgeText}>{source}</Text>
+            <Text style={[mStyles.badgeText, { color: mutedCol }]}>{source}</Text>
           </View>
         )}
         {tag && (
-          <View style={[mStyles.tag, { backgroundColor: colorScheme === 'dark' ? '#1a1200' : '#FFF7ED' }]}>
+          <View style={[mStyles.tag, { backgroundColor: `${Colors[colorScheme].accent}18` }]}>
             <Text style={[mStyles.tagText, { color: '#F59E0B' }]}>{tag}</Text>
           </View>
         )}
@@ -75,19 +75,19 @@ function MockStoryCard({
 }
 
 function BlankCard({ colorScheme }: { colorScheme: 'light' | 'dark' }) {
-  const bg = colorScheme === 'dark' ? '#1a1a1a' : '#fff';
-  const border = colorScheme === 'dark' ? '#2a2a2a' : '#e8e8e8';
+  const bg = Colors[colorScheme].card;
+  const border = Colors[colorScheme].border;
   return (
     <View style={[mStyles.blankCard, { backgroundColor: bg, borderColor: border }]}>
-      <View style={[mStyles.blankLine, { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#e8e8e8' }]} />
-      <View style={[mStyles.blankLineShort, { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#e8e8e8' }]} />
+      <View style={[mStyles.blankLine, { backgroundColor: Colors[colorScheme].border }]} />
+      <View style={[mStyles.blankLineShort, { backgroundColor: Colors[colorScheme].border }]} />
     </View>
   );
 }
 
 function MockSourceChip({ label, colorScheme }: { label: string; colorScheme: 'light' | 'dark' }) {
-  const bg = colorScheme === 'dark' ? '#1a1a1a' : '#f5f5f5';
-  const border = colorScheme === 'dark' ? '#2a2a2a' : '#e8e8e8';
+  const bg = Colors[colorScheme].card;
+  const border = Colors[colorScheme].border;
   return (
     <View style={[mStyles.chip, { backgroundColor: bg, borderColor: border }]}>
       <Text style={[mStyles.chipText, { color: Colors[colorScheme].text }]}>{label}</Text>
@@ -137,7 +137,7 @@ function SlideMockCards({
           <BlankCard colorScheme={colorScheme} />
         </View>
         <View style={mStyles.frontCard}>
-          <View style={[mStyles.categoryCard, { backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#fff', borderColor: colorScheme === 'dark' ? '#2a2a2a' : '#e8e8e8' }]}>
+          <View style={[mStyles.categoryCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
             <View style={mStyles.catRow}>
               <View style={[mStyles.catIcon, { backgroundColor: colorScheme === 'dark' ? '#0a1a0a' : '#F0FDF4' }]}>
                 <Cpu size={16} color="#22c55e" />
@@ -169,7 +169,7 @@ function SlideMockCards({
         <BlankCard colorScheme={colorScheme} />
       </View>
       <View style={mStyles.frontCard}>
-        <View style={[mStyles.sourcesCard, { backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#fff', borderColor: colorScheme === 'dark' ? '#2a2a2a' : '#e8e8e8' }]}>
+        <View style={[mStyles.sourcesCard, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
           <View style={mStyles.sourcesHeader}>
             <Layers size={14} color={Colors[colorScheme].muted} />
             <Text style={[mStyles.sourcesHeaderText, { color: Colors[colorScheme].muted }]}>Sources today</Text>
@@ -178,7 +178,7 @@ function SlideMockCards({
             {['TechCrunch', 'The Verge', 'HN', 'Reddit', 'Wired', 'Ars', 'Reuters', 'Bloomberg', '9to5', 'TC', 'X', 'Discord'].map((s) => (
               <MockSourceChip key={s} label={s} colorScheme={colorScheme} />
             ))}
-            <View style={[mStyles.moreChip, { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#f0f0f0' }]}>
+            <View style={[mStyles.moreChip, { backgroundColor: Colors[colorScheme].surfaceVariant }]}>
               <Text style={[mStyles.moreChipText, { color: Colors[colorScheme].muted }]}>+90 more</Text>
             </View>
           </View>
@@ -513,12 +513,10 @@ export default function WelcomeScreen() {
                     style={[
                       styles.referralOption,
                       {
-                        backgroundColor: isSelected
-                          ? (colorScheme === 'dark' ? '#1a1608' : '#FFF7ED')
-                          : colorScheme === 'dark' ? '#1a1a1a' : '#f5f5f5',
+                        backgroundColor: isSelected ? `${Colors[colorScheme].accent}18` : Colors[colorScheme].card,
                         borderColor: isSelected
-                          ? '#F59E0B'
-                          : colorScheme === 'dark' ? '#1a1a1a' : '#f5f5f5',
+                          ? Colors[colorScheme].accent
+                          : Colors[colorScheme].border,
                       },
                     ]}
                   >

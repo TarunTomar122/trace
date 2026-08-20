@@ -77,7 +77,7 @@ export default function EditInterestsScreen() {
         showsVerticalScrollIndicator={false}>
 
         <ThemedText style={[styles.desc, { color: Colors[colorScheme].muted }]}>
-          Choose topics you want in your "For You" feed. Pick as many as you like.
+          Choose topics you want in your &quot;For You&quot; feed. Pick as many as you like.
         </ThemedText>
 
         <View style={styles.grid}>
@@ -96,7 +96,7 @@ export default function EditInterestsScreen() {
                 ]}>
                 {sel && (
                   <View style={[styles.checkDot, { backgroundColor: ACCENT }]}>
-                    <Check size={10} color="#fff" strokeWidth={3} />
+                    <Check size={10} color={Colors[colorScheme].accentForeground} strokeWidth={3} />
                   </View>
                 )}
                 <ThemedText
@@ -119,8 +119,8 @@ export default function EditInterestsScreen() {
             styles.saveBtn,
             { backgroundColor: ACCENT, opacity: saving || !hasChanges || selected.length === 0 ? 0.4 : 1 },
           ]}>
-          {saving && <ActivityIndicator size="small" color="#000" style={{ marginRight: 8 }} />}
-          <ThemedText style={styles.saveBtnText}>Save</ThemedText>
+          {saving && <ActivityIndicator size="small" color={Colors[colorScheme].accentForeground} style={{ marginRight: 8 }} />}
+          <ThemedText style={[styles.saveBtnText, { color: Colors[colorScheme].accentForeground }]}>Save</ThemedText>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -171,5 +171,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
   },
-  saveBtnText: { color: '#000', fontSize: 15, fontFamily: FontFamily.bold },
+  saveBtnText: { fontSize: 15, fontFamily: FontFamily.bold },
 });

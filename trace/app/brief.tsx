@@ -116,7 +116,6 @@ export default function BriefScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const insets = useSafeAreaInsets();
   const item = getCurrentArticle();
-  const isDark = colorScheme === 'dark';
 
   const lastScrollY = useSharedValue(0);
   const headerTranslateY = useSharedValue(0);
@@ -203,7 +202,7 @@ export default function BriefScreen() {
                 <Pressable
                   key={i}
                   onPress={() => WebBrowser.openBrowserAsync(block.url)}
-                  style={[s.linkCard, { backgroundColor: isDark ? '#1a1a1a' : '#f3f4f6' }]}>
+                  style={[s.linkCard, { backgroundColor: Colors[colorScheme].card }]}>
                   <View style={{ flex: 1, gap: 2 }}>
                     <Text style={[s.linkName, { color: Colors[colorScheme].text }]} numberOfLines={1}>
                       {block.name}
@@ -235,11 +234,11 @@ export default function BriefScreen() {
         <SafeAreaView edges={['top']} style={{ flex: 1 }}>
           <View style={s.headerRow}>
             <Pressable onPress={() => router.back()} hitSlop={12} style={s.headerBtn}>
-              <ChevronLeft size={22} color={isDark ? '#fff' : '#000'} strokeWidth={2} />
+              <ChevronLeft size={22} color={Colors[colorScheme].text} strokeWidth={2} />
             </Pressable>
             <View style={s.headerRight}>
               <Pressable hitSlop={12} style={s.headerBtn}>
-                <Share2 size={18} color={isDark ? '#fff' : '#000'} strokeWidth={1.8} />
+                <Share2 size={18} color={Colors[colorScheme].text} strokeWidth={1.8} />
               </Pressable>
             </View>
           </View>

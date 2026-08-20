@@ -575,9 +575,9 @@ export default function OnboardingScreen() {
             ]}
           >
             {isSubmitting && (
-              <ActivityIndicator size="small" color="#000" style={{ marginRight: 8 }} />
+              <ActivityIndicator size="small" color={Colors[colorScheme].accentForeground} style={{ marginRight: 8 }} />
             )}
-            <ThemedText style={styles.continueBtnText}>
+            <ThemedText style={[styles.continueBtnText, { color: Colors[colorScheme].accentForeground }]}>
               {isSubmitting
                 ? 'Building your feed...'
                 : step === TOTAL_STEPS
@@ -585,7 +585,7 @@ export default function OnboardingScreen() {
                   : 'Continue'}
             </ThemedText>
             {!isSubmitting && (
-              <ArrowRight size={16} color="#000" strokeWidth={2.5} style={{ marginLeft: 6 }} />
+              <ArrowRight size={16} color={Colors[colorScheme].accentForeground} strokeWidth={2.5} style={{ marginLeft: 6 }} />
             )}
           </Pressable>
         </View>
@@ -742,5 +742,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     borderRadius: 14,
   },
-  continueBtnText: { fontSize: 16, fontFamily: FontFamily.bold, color: '#000' },
+  continueBtnText: { fontSize: 16, fontFamily: FontFamily.bold },
 });
