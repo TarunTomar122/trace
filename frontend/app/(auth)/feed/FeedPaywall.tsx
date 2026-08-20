@@ -10,6 +10,7 @@ import {
   SUBSCRIPTION_PRICE_DEFAULT,
   SUBSCRIPTION_PRICE_INDIA,
 } from '@/lib/subscription-pricing';
+import { InlineCheckoutButton } from '@/components/InlineCheckoutButton';
 
 function pricingBulletText(line: string): string {
   return line.replace(/^[\s\S]*?\s{2,}/, '').trim() || line;
@@ -68,16 +69,12 @@ function ProPaywallCard({
           </li>
         ))}
       </ul>
-      <Link
-        href="/profile?tab=subscription&intent=checkout"
-        prefetch={false}
-        onClick={() => trackCheckoutClicked(trackingId)}
-        className={`mt-5 inline-flex items-center justify-center rounded-full bg-[#111827] font-semibold text-white transition-all hover:bg-[#1f2937] ${
-          compact ? 'px-4 py-2 text-[12px]' : 'px-6 py-2.5 text-sm'
-        }`}
-      >
-        Get tomorrow&rsquo;s brief
-      </Link>
+      <InlineCheckoutButton
+        trackingSource={trackingId}
+        variant="dark"
+        className="mt-5"
+        label="Get tomorrow's brief"
+      />
     </div>
   );
 }
@@ -86,11 +83,13 @@ const INDIA_PRICING = {
   priceDisplay: SUBSCRIPTION_PRICE_INDIA,
   compareAtPriceDisplay: null as string | null,
   pricingOffer: 'india' as const,
+  trialDays: 3,
 };
 const DEFAULT_PRICING = {
   priceDisplay: SUBSCRIPTION_PRICE_DEFAULT,
   compareAtPriceDisplay: SUBSCRIPTION_COMPARE_AT_DEFAULT,
   pricingOffer: 'default' as const,
+  trialDays: 3,
 };
 
 function guessClientPricing() {
@@ -188,8 +187,20 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
     setError(null);
     const result = await signInWithGoogle('checkout', { rememberIntent: true });
     if (result.status === 'success') {
-      // Sign-in succeeded, redirect to profile/subscription or let the post-auth redirect handle it
-      window.location.href = '/profile?tab=subscription&intent=checkout';
+      // Direct checkout after sign-in — no extra hop to /profile
+      try {
+        const token = await result.user.getIdToken();
+        const res = await fetch('/api/subscription/create-checkout', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to create checkout');
+        window.location.href = data.checkoutUrl;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Something went wrong');
+        setSignInLoading(false);
+      }
     } else if (result.status === 'redirecting') {
       // Redirect-based sign-in in progress — page will reload
       return;
@@ -244,10 +255,10 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
             {!user ? (
               <>
                 <h2 id="feed-subscribe-lock-heading" className="text-[1.35rem] font-bold tracking-tight text-foreground leading-snug">
-                  Try Trace Pro free for 3 days
+                  Try Trace Pro free for {pricingPreview.trialDays} {pricingPreview.trialDays === 1 ? 'day' : 'days'}
                 </h2>
                 <p className="mt-2.5 text-[13px] leading-relaxed text-secondary/55">
-                  Sign in to start your 3-day free trial. No charge until the trial ends.
+                  Sign in to start your trial — {pricingPreview.priceDisplay} after {pricingPreview.trialDays} {pricingPreview.trialDays === 1 ? 'day' : 'days'}. No charge until the trial ends.
                 </p>
                 <div className="mt-5 space-y-2.5">
                   {LANDING_PRICING_BULLET_POINTS.map((line) => (
@@ -280,10 +291,10 @@ export function FeedSubscribeClickLock({ active, defaultOpen = false }: { active
             ) : (
               <>
                 <h2 id="feed-subscribe-lock-heading" className="text-[1.35rem] font-bold tracking-tight text-foreground leading-snug">
-                  Try Trace Pro free for 3 days
+                  Try Trace Pro free for {pricingPreview.trialDays} {pricingPreview.trialDays === 1 ? 'day' : 'days'}
                 </h2>
                 <p className="mt-2.5 text-[13px] leading-relaxed text-secondary/55">
-                  Get unlimited reads with no charge for 3 days. Cancel anytime.
+                  Get unlimited reads — {pricingPreview.priceDisplay} after {pricingPreview.trialDays} {pricingPreview.trialDays === 1 ? 'day' : 'days'}. Cancel anytime.
                 </p>
                 <div className="mt-5 space-y-2.5">
                   {LANDING_PRICING_BULLET_POINTS.map((line) => (
@@ -343,15 +354,13 @@ export function InlineUnlockBanner({ storyCount, freeReadsUsed = 0 }: { storyCou
             </p>
           </div>
         </div>
-        <Link
-          href="/profile?tab=subscription&intent=checkout"
-          prefetch={false}
-          onClick={() => trackCheckoutClicked('feed_inline_unlock_banner', { story_count: storyCount, free_reads_used: freeReadsUsed })}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-foreground/90"
-        >
-          <Sparkles size={14} />
-          Try Pro free for 3 days
-        </Link>
+        <InlineCheckoutButton
+          trackingSource="feed_inline_unlock_banner"
+          variant="dark"
+          showPrice={false}
+          className="shrink-0"
+          extraProps={{ story_count: storyCount, free_reads_used: freeReadsUsed }}
+        />
       </div>
     </div>
   );
@@ -436,7 +445,7 @@ export function PaywallGate() {
           Your five-minute tech brief,<br />ready every morning.
         </h2>
         <p className="text-[14px] text-secondary/50 mb-10 leading-relaxed">
-          Try Trace Pro free for 3 days. No charge until the trial ends.
+          Try Trace Pro free for {pricingPreview.trialDays} {pricingPreview.trialDays === 1 ? 'day' : 'days'}. {pricingPreview.priceDisplay} after trial. No charge until the trial ends.
         </p>
 
         <div className="space-y-5 mb-10">
@@ -457,10 +466,10 @@ export function PaywallGate() {
           disabled={loading}
           className="flex items-center justify-center gap-2 w-full py-3.5 rounded-full text-[13px] font-semibold bg-foreground text-background transition-all hover:bg-foreground/90 hover:shadow-md hover:shadow-black/10 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:scale-100"
         >
-          {loading ? <><Loader2 size={14} className="animate-spin" />Setting up...</> : 'Start your free trial'}
+          {loading ? <><Loader2 size={14} className="animate-spin" />Setting up...</> : `Try free for ${pricingPreview.trialDays} days — ${pricingPreview.priceDisplay} after`}
         </button>
         <p className="text-[11px] text-secondary/35 mt-2.5 text-center">
-          No charge for 3 days · Cancel anytime
+          {pricingPreview.priceDisplay} after {pricingPreview.trialDays} {pricingPreview.trialDays === 1 ? 'day' : 'days'} · Cancel anytime
         </p>
       </div>
     </div>
@@ -533,15 +542,14 @@ export function PulseLockedPreview({
       </ul>
 
       <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-[12px] text-white/45">Free for 3 days · Cancel anytime</p>
-        <Link
-          href="/profile?tab=subscription&intent=checkout"
-          prefetch={false}
-          onClick={() => trackCheckoutClicked('pulse_locked')}
-          className="inline-flex shrink-0 items-center justify-center rounded-full bg-white px-5 py-2.5 text-[13px] font-semibold text-[#111827] transition-colors hover:bg-white/90"
-        >
-          Try Pro free for 3 days
-        </Link>
+        <p className="text-[12px] text-white/45">{SUBSCRIPTION_PRICE_DEFAULT} after trial · Cancel anytime</p>
+        <InlineCheckoutButton
+          trackingSource="pulse_locked"
+          variant="light"
+          className="shrink-0 [&>p]:hidden"
+          showPrice={false}
+          label="Try Pro free for 3 days"
+        />
       </div>
     </div>
   );

@@ -1,5 +1,10 @@
 const FREE_READS_KEY = 'trace_free_reads_v1';
+const FREE_READS_LIFETIME_KEY = 'trace_free_reads_lifetime_v1';
 export const FREE_READS_LIMIT = 3;
+// Lifetime cap creates urgency for casual readers who never hit the daily limit.
+// After 5 total reads across days, the daily reset no longer grants new reads.
+// This is intentionally client-enforced; server still enforces daily 3 for anti-abuse.
+export const FREE_READS_LIFETIME_LIMIT = 5;
 
 export interface FreeReadsState {
   date: string; // YYYY-MM-DD
@@ -10,16 +15,52 @@ export type SummaryAccessResult = 'allowed' | 'denied' | 'error';
 export type SummaryAccessState = 'checking' | 'pro' | 'free';
 type GetIdToken = () => Promise<string>;
 
+export function getLifetimeReads(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(FREE_READS_LIFETIME_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.filter((id): id is string => typeof id === 'string');
+    if (parsed && Array.isArray(parsed.ids)) return parsed.ids.filter((id: unknown): id is string => typeof id === 'string');
+  } catch {}
+  return [];
+}
+
+export function getLifetimeReadsCount(): number {
+  return getLifetimeReads().length;
+}
+
+function appendLifetimeRead(articleId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const ids = getLifetimeReads();
+    if (ids.includes(articleId)) return;
+    if (ids.length >= FREE_READS_LIFETIME_LIMIT) return;
+    const next = [...ids, articleId];
+    localStorage.setItem(FREE_READS_LIFETIME_KEY, JSON.stringify(next));
+  } catch {}
+}
+
+export function isLifetimeLimitReached(): boolean {
+  return getLifetimeReadsCount() >= FREE_READS_LIFETIME_LIMIT;
+}
+
 export function canReadArticle(
   state: FreeReadsState,
   articleId: string,
   access: SummaryAccessState = 'free',
 ): boolean {
-  return access !== 'free' || state.ids.includes(articleId) || state.ids.length < FREE_READS_LIMIT;
+  if (access !== 'free') return true;
+  if (state.ids.includes(articleId)) return true;
+  // Lifetime cap: casual readers who hit 5 total reads lose daily reset
+  if (isLifetimeLimitReached() && !getLifetimeReads().includes(articleId)) return false;
+  return state.ids.length < FREE_READS_LIMIT;
 }
 
 export function addFreeRead(state: FreeReadsState, articleId: string): FreeReadsState {
   if (state.ids.includes(articleId) || state.ids.length >= FREE_READS_LIMIT) return state;
+  if (isLifetimeLimitReached() && !getLifetimeReads().includes(articleId)) return state;
   return { ...state, ids: [...state.ids, articleId] };
 }
 
@@ -58,7 +99,10 @@ export function recordLocalFreeRead(articleId: string): SummaryAccessResult {
   try {
     const state = getLocalFreeReads();
     if (!canReadArticle(state, articleId)) return 'denied';
-    localStorage.setItem(FREE_READS_KEY, JSON.stringify(addFreeRead(state, articleId)));
+    const next = addFreeRead(state, articleId);
+    localStorage.setItem(FREE_READS_KEY, JSON.stringify(next));
+    // Only count successful new reads toward lifetime
+    if (next.ids.length !== state.ids.length) appendLifetimeRead(articleId);
     return 'allowed';
   } catch {
     return 'error';
@@ -143,9 +187,13 @@ export async function recordServerFreeRead(
           FREE_READS_KEY,
           JSON.stringify({ date: data.date, ids: data.ids })
         );
+        if (data.canRead) appendLifetimeRead(articleId);
       } catch {
         // The server accepted the read. Local mirroring must not hide it.
       }
+    } else if (data.canRead) {
+      // Server today !== local today (midnight edge) — still count toward lifetime on success
+      try { appendLifetimeRead(articleId); } catch {}
     }
     return {
       status: data.canRead ? 'allowed' : 'denied',

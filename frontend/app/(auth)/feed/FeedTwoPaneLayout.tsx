@@ -3,11 +3,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Bookmark, Check, Chrome, ExternalLink, Lock, Share2, X } from 'lucide-react';
+import { Bookmark, Check, Chrome, ExternalLink, Lock, Share2, X, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useAuth } from '@/contexts/AuthContext';
+import { auth } from '@/lib/firebase';
 import { ArticleImage } from '@/components/ArticleImage';
 import type { FeedItem, TrendingTopic } from '@/lib/firestore';
 import {
@@ -18,12 +19,38 @@ import {
   trackSummaryOpened,
 } from '@/lib/posthog';
 import type { SummaryAccessResult } from '@/lib/free-reads';
+import { FREE_READS_LIMIT, FREE_READS_LIFETIME_LIMIT, getLifetimeReadsCount, isLifetimeLimitReached } from '@/lib/free-reads';
 import { buildArticleShareUrl, buildTopicShareUrl, copyOrShareUrl } from '@/lib/article-share';
 import { addReaderHistoryState, isReaderHistoryState } from '@/lib/reader-history';
 import type { HotTweet } from './FeedOneScreen';
 import { type FeedListItem, getTimeLabel, INTEREST_LABEL } from './FeedUi';
 import { WireFeedLoadingSkeleton } from './FeedBootShell';
 import { CHROME_EXTENSION_URL } from '@/lib/product-links';
+import {
+  SUBSCRIPTION_PRICE_DEFAULT,
+  SUBSCRIPTION_PRICE_INDIA,
+} from '@/lib/subscription-pricing';
+import { InlineCheckoutButton } from '@/components/InlineCheckoutButton';
+
+function guessPriceDisplay(): string {
+  if (typeof window === 'undefined') return SUBSCRIPTION_PRICE_DEFAULT;
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz === 'Asia/Kolkata') return SUBSCRIPTION_PRICE_INDIA;
+    const lang = (navigator.language || '').toLowerCase();
+    if (lang === 'en-in' || lang.endsWith('-in')) return SUBSCRIPTION_PRICE_INDIA;
+  } catch {
+    /* ignore */
+  }
+  return SUBSCRIPTION_PRICE_DEFAULT;
+}
+
+function guessPricingPreview(): { trialDays: number; priceDisplay: string } {
+  const isIndia = guessPriceDisplay() === SUBSCRIPTION_PRICE_INDIA;
+  return isIndia
+    ? { trialDays: 1, priceDisplay: SUBSCRIPTION_PRICE_INDIA }
+    : { trialDays: 3, priceDisplay: SUBSCRIPTION_PRICE_DEFAULT };
+}
 
 const CHROME_NOTICE_DISMISSED_KEY = 'trace.chrome-extension-notice.dismissed.v1';
 
@@ -283,16 +310,21 @@ export function ReaderModal({
                   <p className="text-[12px] text-secondary">The human making Trace</p>
                 </div>
               </div>
-              <p className="text-[18px] font-semibold text-foreground">You have used today&rsquo;s three free summaries.</p>
-              <p className="mt-2 max-w-[580px] text-pretty text-[14px] leading-[1.7] text-secondary">Trace is a one-person project. I read every piece of feedback and keep improving it based on what people need. Pro helps me keep building while I start my AI master&rsquo;s at Edinburgh this September.</p>
-              <div className="mt-[18px] flex flex-wrap items-center gap-3">
-                <Link
-                  href="/profile?tab=subscription&intent=checkout"
-                  onClick={() => trackCheckoutClicked('feed_reader_limit')}
-                  className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-foreground px-[15px] py-[10px] text-[13px] font-semibold text-background transition-opacity hover:opacity-85"
-                >
-                  Try Pro free for 3 days
-                </Link>
+              <p className="text-[18px] font-semibold text-foreground">You&apos;ve used {FREE_READS_LIMIT} free reads today.</p>
+              <p className="mt-2 max-w-[580px] text-pretty text-[14px] leading-[1.7] text-secondary">Trace is a one-person project. I read every piece of feedback and keep improving it based on what people need. Pro unlocks unlimited summaries and keeps the feed ad-free while I start my AI master&apos;s at Edinburgh this September.</p>
+              <div className="mt-[18px]">
+                <InlineCheckoutButton trackingSource="feed_reader_limit" variant="dark" className="w-full sm:w-auto" />
+                <p className="mt-2 text-[11px] text-secondary/50">
+                  {(() => { const p = guessPricingPreview(); return `${p.priceDisplay} after ${p.trialDays} ${p.trialDays === 1 ? "day" : "days"} · Cancel anytime`; })()}
+                </p>
+              </div>
+              <div className="mt-4 flex items-center gap-2 text-[11px] text-secondary/45">
+                <span className="inline-flex items-center gap-1 rounded-full bg-foreground/6 px-2.5 py-1">
+                  <Check size={11} className="text-emerald-600/70" /> Unlimited reads
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-foreground/6 px-2.5 py-1">
+                  <Check size={11} className="text-emerald-600/70" /> Resets daily
+                </span>
               </div>
             </div>
           ) : (
@@ -411,9 +443,22 @@ export default function FeedTwoPaneLayout({
   const [bookmarkBusyIds, setBookmarkBusyIds] = useState<Set<string>>(new Set());
   const [bookmarkMessage, setBookmarkMessage] = useState<string | null>(null);
   const [showChromeNotice, setShowChromeNotice] = useState(false);
+  const [lifetimeCount, setLifetimeCount] = useState(0);
   const locallyChangedBookmarks = useRef(new Set<string>());
   const bookmarkMessageTimerRef = useRef<number | null>(null);
   const readerOpenerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setLifetimeCount(getLifetimeReadsCount());
+    const onStorage = () => setLifetimeCount(getLifetimeReadsCount());
+    window.addEventListener('storage', onStorage);
+    // also listen for local updates via custom event after recordLocalFreeRead
+    const interval = setInterval(() => setLifetimeCount(getLifetimeReadsCount()), 1000);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      clearInterval(interval);
+    };
+  }, [freeReadsUsed]);
 
   const showBookmarkMessage = useCallback((message: string) => {
     if (bookmarkMessageTimerRef.current) window.clearTimeout(bookmarkMessageTimerRef.current);
@@ -614,6 +659,55 @@ export default function FeedTwoPaneLayout({
             </button>
           </aside>
         )}
+        {!isSubscribed && (() => {
+          const lifetimeHit = lifetimeCount >= FREE_READS_LIFETIME_LIMIT;
+          const isCapped = freeReadsUsed >= FREE_READS_LIMIT || lifetimeHit;
+          return (
+          <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-amber-500/15 bg-amber-500/[0.06] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/15 text-amber-700">
+                <Lock size={14} />
+              </span>
+              <div>
+                <p className="text-[13px] font-semibold text-foreground">
+                  {lifetimeHit
+                    ? `You've read ${lifetimeCount} stories — unlock unlimited`
+                    : isCapped
+                    ? `You've used ${freeReadsUsed}/${FREE_READS_LIMIT} free reads today`
+                    : freeReadsUsed > 0
+                      ? `${FREE_READS_LIMIT - freeReadsUsed} free ${FREE_READS_LIMIT - freeReadsUsed === 1 ? "read" : "reads"} left today`
+                      : `${FREE_READS_LIMIT} free reads today`}
+                </p>
+                <p className="text-[11px] text-secondary/60">
+                  {isCapped
+                    ? `${guessPricingPreview().priceDisplay} after ${guessPricingPreview().trialDays}-day trial · Cancel anytime`
+                    : `Pro unlocks unlimited summaries · ${guessPricingPreview().priceDisplay} after trial`}
+                </p>
+                {lifetimeHit && (
+                  <p className="text-[10px] text-amber-700/70 mt-0.5">Free limit reached — daily resets no longer apply. {FREE_READS_LIFETIME_LIMIT} total free reads used.</p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-1">
+                {Array.from({ length: FREE_READS_LIMIT }).map((_, i) => (
+                  <span
+                    key={i}
+                    className={`h-1.5 w-8 rounded-full ${i < (lifetimeHit ? FREE_READS_LIMIT : freeReadsUsed) ? "bg-amber-500" : "bg-amber-500/20"}`}
+                  />
+                ))}
+              </div>
+              <InlineCheckoutButton
+                trackingSource="feed_meter_bar"
+                variant="dark"
+                className="!mt-0 [&>p]:hidden"
+                showPrice={false}
+                label={isCapped ? `Unlock unlimited` : `Try Pro free`}
+              />
+            </div>
+          </div>
+          );
+        })()}
         {tab === 'news' ? (
           <>
             <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
