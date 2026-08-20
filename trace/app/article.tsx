@@ -521,17 +521,26 @@ export default function ArticleScreen() {
       {/* Floating header */}
       <SafeAreaView style={nStyles.floatingHeader} edges={['top']} pointerEvents="box-none">
         <View style={nStyles.floatingHeaderRow}>
-          <Pressable onPress={() => router.back()} hitSlop={12} style={nStyles.floatingBtn}>
-            <ChevronLeft size={22} color="#000" strokeWidth={2} />
+          <Pressable
+            onPress={() => router.back()}
+            hitSlop={12}
+            style={[nStyles.floatingBtn, { backgroundColor: colorScheme === 'dark' ? Colors.dark.surfaceVariant : 'rgba(255,255,255,0.8)' }]}>
+            <ChevronLeft size={22} color={Colors[colorScheme].icon} strokeWidth={2} />
           </Pressable>
           <View style={nStyles.floatingHeaderRight}>
             {isTrending && (
-              <Pressable onPress={handleShare} hitSlop={12} style={nStyles.floatingBtn}>
-                <Share2 size={18} color="#000" strokeWidth={1.8} />
+              <Pressable
+                onPress={handleShare}
+                hitSlop={12}
+                style={[nStyles.floatingBtn, { backgroundColor: colorScheme === 'dark' ? Colors.dark.surfaceVariant : 'rgba(255,255,255,0.8)' }]}>
+                <Share2 size={18} color={Colors[colorScheme].icon} strokeWidth={1.8} />
               </Pressable>
             )}
-            <Pressable onPress={handleReadOriginal} hitSlop={12} style={nStyles.floatingBtn}>
-              <ExternalLink size={18} color="#000" strokeWidth={1.8} />
+            <Pressable
+              onPress={handleReadOriginal}
+              hitSlop={12}
+              style={[nStyles.floatingBtn, { backgroundColor: colorScheme === 'dark' ? Colors.dark.surfaceVariant : 'rgba(255,255,255,0.8)' }]}>
+              <ExternalLink size={18} color={Colors[colorScheme].icon} strokeWidth={1.8} />
             </Pressable>
           </View>
         </View>

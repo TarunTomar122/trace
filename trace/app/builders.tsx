@@ -43,13 +43,10 @@ export default function BuildersScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={[styles.body, { color: colors.muted }]}>
-          Trace is built by Tarun and Monisha, who were deeply in love with each other and also engaged.
+          Trace is built by Tarun and Monisha, who are deeply in love with each other and also engaged.
         </Text>
         <Text style={[styles.body, styles.paragraph, { color: colors.muted }]}>
-          Tarun is the engineer behind the app in India, a builder in India, and a master&apos;s student at the University of Edinburgh.
-        </Text>
-        <Text style={[styles.body, styles.paragraph, { color: colors.muted }]}>
-          Monisha is a UX designer. She designed the entire experience, shaping the visual language and everything from the first to last screen.
+          Tarun is the engineer behind this app, an indie app developer, and a master&apos;s student in AI at the University of Edinburgh. Monisha is an experienced UX designer. She designed the entire experience, shaping the visual language and everything from the first to last screen.
         </Text>
         <Text style={[styles.body, styles.paragraph, { color: colors.muted }]}>
           Together they wanted to build something that can help them stay on top of tech and AI news without having to scroll through ten different things every single day.

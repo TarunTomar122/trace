@@ -486,23 +486,30 @@ export default function TopicScreen() {
       <Animated.View style={[styles.floatingHeader, headerAnimatedStyle]}>
         <SafeAreaView edges={['top']} style={{ flex: 1 }} pointerEvents="box-none">
           <View style={styles.header}>
-            <Pressable onPress={() => router.back()} hitSlop={12} style={styles.headerBtn}>
-              <ChevronLeft size={22} color="#000" strokeWidth={2} />
+            <Pressable
+              onPress={() => router.back()}
+              hitSlop={12}
+              style={[styles.headerBtn, { backgroundColor: colorScheme === 'dark' ? Colors.dark.surfaceVariant : 'rgba(255,255,255,0.8)' }]}>
+              <ChevronLeft size={22} color={Colors[colorScheme].icon} strokeWidth={2} />
             </Pressable>
             <View style={styles.headerRight}>
               {sourceUrl && (
                 <Pressable
                   onPress={() => WebBrowser.openBrowserAsync(sourceUrl)}
                   hitSlop={12}
-                  style={styles.headerBtn}>
-                  <ExternalLink size={18} color="#000" strokeWidth={1.8} />
+                  style={[styles.headerBtn, { backgroundColor: colorScheme === 'dark' ? Colors.dark.surfaceVariant : 'rgba(255,255,255,0.8)' }]}>
+                  <ExternalLink size={18} color={Colors[colorScheme].icon} strokeWidth={1.8} />
                 </Pressable>
               )}
-              <Pressable onPress={handleShare} hitSlop={12} style={styles.headerBtn} disabled={isSharing}>
+              <Pressable
+                onPress={handleShare}
+                hitSlop={12}
+                style={[styles.headerBtn, { backgroundColor: colorScheme === 'dark' ? Colors.dark.surfaceVariant : 'rgba(255,255,255,0.8)' }]}
+                disabled={isSharing}>
                 {isSharing ? (
-                  <ActivityIndicator size="small" color="#000" />
+                  <ActivityIndicator size="small" color={Colors[colorScheme].icon} />
                 ) : (
-                  <Share2 size={18} color="#000" strokeWidth={1.8} />
+                  <Share2 size={18} color={Colors[colorScheme].icon} strokeWidth={1.8} />
                 )}
               </Pressable>
             </View>
