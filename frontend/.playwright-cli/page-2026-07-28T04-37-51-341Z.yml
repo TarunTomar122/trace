@@ -1,0 +1,134 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - banner [ref=e4]:
+        - link "TRACE" [ref=e5] [cursor=pointer]:
+          - /url: /
+        - navigation "Trace" [ref=e6]:
+          - link "Pulse" [ref=e7] [cursor=pointer]:
+            - /url: /feed?view=pulse
+          - link "Edition" [ref=e8] [cursor=pointer]:
+            - /url: /feed?view=edition
+          - link "Profile" [ref=e9] [cursor=pointer]:
+            - /url: /profile
+      - generic [ref=e10]:
+        - paragraph [ref=e11]: TUESDAY · JULY 28 · 2026
+        - heading "Today in tech." [level=1] [ref=e12]
+        - paragraph [ref=e13]: 6 min to catch up · 47 stories · 6 topics · 38 sources
+      - generic [ref=e15]:
+        - link "All (47)" [ref=e16] [cursor=pointer]:
+          - /url: "#edition-top"
+        - link "ai (17)" [ref=e17] [cursor=pointer]:
+          - /url: "#edition-section-ai"
+        - link "startups (4)" [ref=e18] [cursor=pointer]:
+          - /url: "#edition-section-startups"
+        - link "markets (11)" [ref=e19] [cursor=pointer]:
+          - /url: "#edition-section-markets"
+        - link "engineering (5)" [ref=e20] [cursor=pointer]:
+          - /url: "#edition-section-engineering"
+        - link "design (6)" [ref=e21] [cursor=pointer]:
+          - /url: "#edition-section-ux-design"
+        - link "tech (4)" [ref=e22] [cursor=pointer]:
+          - /url: "#edition-section-tech"
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - paragraph [ref=e25]: 01 · AI
+          - generic [ref=e26]: 17 stories
+        - generic [ref=e27]:
+          - article [ref=e28]:
+            - button "Amodei Opposes Ban on Open-Weight AI Models 01 Amodei Opposes Ban on Open-Weight AI Models Dario Amodei, CEO of Anthropic, has publicly rejected calls for a ban on open-weight AI models, advocating instead for rigorous safety testing protocols. 3 sources · 3h ago" [ref=e29] [cursor=pointer]:
+              - img "Amodei Opposes Ban on Open-Weight AI Models" [ref=e31]
+              - generic [ref=e32]:
+                - generic [ref=e33]: "01"
+                - heading "Amodei Opposes Ban on Open-Weight AI Models" [level=2] [ref=e34]
+                - paragraph [ref=e35]: Dario Amodei, CEO of Anthropic, has publicly rejected calls for a ban on open-weight AI models, advocating instead for rigorous safety testing protocols.
+                - generic [ref=e36]: 3 sources · 3h ago
+          - article [ref=e37]:
+            - button "Moonshot AI Unveils Kimi K3 Model and LM Studio Bionic Integration 02 Moonshot AI Unveils Kimi K3 Model and LM Studio Bionic Integration Moonshot AI has launched the Kimi K3, a 2. 2 sources · 4h ago" [ref=e38] [cursor=pointer]:
+              - img "Moonshot AI Unveils Kimi K3 Model and LM Studio Bionic Integration" [ref=e40]
+              - generic [ref=e41]:
+                - generic [ref=e42]: "02"
+                - heading "Moonshot AI Unveils Kimi K3 Model and LM Studio Bionic Integration" [level=2] [ref=e43]
+                - paragraph [ref=e44]: Moonshot AI has launched the Kimi K3, a 2.
+                - generic [ref=e45]: 2 sources · 4h ago
+          - article [ref=e46]:
+            - button "Microsoft Launches MAI-Cyber-1-Flash for Enhanced Cybersecurity 03 Microsoft Launches MAI-Cyber-1-Flash for Enhanced Cybersecurity Microsoft has introduced its first AI model for cybersecurity, MAI-Cyber-1-Flash, which aims to identify vulnerabilities in complex codebases. 3 sources · 5h ago" [ref=e47] [cursor=pointer]:
+              - img "Microsoft Launches MAI-Cyber-1-Flash for Enhanced Cybersecurity" [ref=e49]
+              - generic [ref=e50]:
+                - generic [ref=e51]: "03"
+                - heading "Microsoft Launches MAI-Cyber-1-Flash for Enhanced Cybersecurity" [level=2] [ref=e52]
+                - paragraph [ref=e53]: Microsoft has introduced its first AI model for cybersecurity, MAI-Cyber-1-Flash, which aims to identify vulnerabilities in complex codebases.
+                - generic [ref=e54]: 3 sources · 5h ago
+          - article [ref=e55]:
+            - button "Satya Nadella says companies that trust one AI for everything may not survive 04 Satya Nadella says companies that trust one AI for everything may not survive Nadella warns against over-reliance on single AI models. TechCrunch · 7h ago" [ref=e56] [cursor=pointer]:
+              - img "Satya Nadella says companies that trust one AI for everything may not survive" [ref=e58]
+              - generic [ref=e59]:
+                - generic [ref=e60]: "04"
+                - heading "Satya Nadella says companies that trust one AI for everything may not survive" [level=2] [ref=e61]
+                - paragraph [ref=e62]: Nadella warns against over-reliance on single AI models.
+                - generic [ref=e63]: TechCrunch · 7h ago
+          - article [ref=e64]:
+            - 'button "PSA: Your Claude shared chats and Artifacts may have ended up on Google 05 PSA: Your Claude shared chats and Artifacts may have ended up on Google Claude chats and Artifacts exposed on Google search. TechCrunch · 8h ago" [ref=e65] [cursor=pointer]':
+              - 'img "PSA: Your Claude shared chats and Artifacts may have ended up on Google" [ref=e67]'
+              - generic [ref=e68]:
+                - generic [ref=e69]: "05"
+                - 'heading "PSA: Your Claude shared chats and Artifacts may have ended up on Google" [level=2] [ref=e70]'
+                - paragraph [ref=e71]: Claude chats and Artifacts exposed on Google search.
+                - generic [ref=e72]: TechCrunch · 8h ago
+          - generic [ref=e73]:
+            - generic [ref=e74]:
+              - generic:
+                - article:
+                  - button:
+                    - generic:
+                      - heading [level=2]: Nvidia and OpenAI Discuss $250 Billion Backstop
+              - generic:
+                - article:
+                  - button:
+                    - generic:
+                      - heading [level=2]: OpenAI says more workers are using ChatGPT to do other people's jobs
+            - complementary [ref=e76]:
+              - paragraph [ref=e77]: Pro · The full edition
+              - paragraph [ref=e78]: Read the full day in about six minutes, with every story and source in one place.
+              - generic [ref=e79]:
+                - button "Try Trace Pro" [ref=e80] [cursor=pointer]
+                - generic [ref=e81]: Cancel anytime
+      - generic [ref=e83]:
+        - paragraph [ref=e84]: Colophon
+        - paragraph [ref=e85]: 47 stories reconciled from 38 sources.
+        - paragraph [ref=e86]: Edition of tuesday · july 28 · 2026. Stories are grouped from primary sources, deduplicated, and summarized; claims that cannot be verified are omitted. Trace is an independent daily reference, not affiliated with the companies it covers. Found an error? Write to the editor.
+      - contentinfo [ref=e87]:
+        - generic [ref=e88]:
+          - generic [ref=e89]: Trace
+          - navigation "Explore Trace" [ref=e90]:
+            - link "Trending" [ref=e91] [cursor=pointer]:
+              - /url: /trending
+            - link "Blog" [ref=e92] [cursor=pointer]:
+              - /url: /blog
+            - link "Compare" [ref=e93] [cursor=pointer]:
+              - /url: /compare
+            - link "Contact" [ref=e94] [cursor=pointer]:
+              - /url: /contact
+            - link "Privacy" [ref=e95] [cursor=pointer]:
+              - /url: /privacy-policy
+            - link "Terms" [ref=e96] [cursor=pointer]:
+              - /url: /terms
+        - paragraph [ref=e97]: © 2026 Trace · Independent daily tech reference
+        - generic [ref=e98]:
+          - paragraph [ref=e99]: More from the founder
+          - generic [ref=e100]:
+            - generic [ref=e101]:
+              - link "StocksBrew" [ref=e102] [cursor=pointer]:
+                - /url: https://stocksbrew.online/?utm_source=trace&utm_medium=edition_footer
+              - paragraph [ref=e106]: Know what to do with your stock.
+            - generic [ref=e107]:
+              - link "Trace - Android" [ref=e108] [cursor=pointer]:
+                - /url: /api/affiliate/outbound?target=android_app&next=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Donline.yourtrace.app
+              - paragraph [ref=e111]: TikTok for news.
+    - generic [ref=e113]:
+      - generic [ref=e114]: tier
+      - button "free" [ref=e115] [cursor=pointer]
+      - button "pro" [ref=e116] [cursor=pointer]
+      - generic [ref=e118]: img
+      - button "on" [ref=e119] [cursor=pointer]
+  - button "Open Next.js Dev Tools" [ref=e125] [cursor=pointer]

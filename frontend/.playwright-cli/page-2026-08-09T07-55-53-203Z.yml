@@ -1,0 +1,311 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - link "TRACE" [ref=e5] [cursor=pointer]:
+          - /url: /
+        - navigation "Feed filters" [ref=e8]:
+          - button "All news" [pressed] [ref=e9] [cursor=pointer]
+          - button "Markets" [ref=e10] [cursor=pointer]
+          - button "Engineering" [ref=e11] [cursor=pointer]
+          - button "Design" [ref=e12] [cursor=pointer]
+          - button "AI" [ref=e13] [cursor=pointer]
+          - button "Startups" [ref=e14] [cursor=pointer]
+          - button "Tech" [ref=e15] [cursor=pointer]
+          - button "Pulse" [ref=e16] [cursor=pointer]
+        - generic [ref=e18]:
+          - button "Toggle color theme" [ref=e19] [cursor=pointer]
+          - link "Sign in" [ref=e22] [cursor=pointer]:
+            - /url: /
+    - generic [ref=e24]:
+      - generic [ref=e26]:
+        - article [ref=e27]:
+          - generic [ref=e28]:
+            - button "Read Myspace eyes comeback as an an 'antidote' to social media fatigue — but it may be a long shot" [active] [ref=e29] [cursor=pointer]
+            - button "Bookmark Myspace eyes comeback as an an 'antidote' to social media fatigue — but it may be a long shot" [ref=e31] [cursor=pointer]
+          - button [ref=e34] [cursor=pointer]:
+            - paragraph [ref=e36]: Startups
+            - heading "Myspace eyes comeback as an an 'antidote' to social media fatigue — but it may be a long shot" [level=2] [ref=e37]
+        - article [ref=e38]:
+          - generic [ref=e39]:
+            - button "Read New leak may reveal the iPhone Ultra’s two launch colors" [ref=e40] [cursor=pointer]
+            - button "Bookmark New leak may reveal the iPhone Ultra’s two launch colors" [ref=e42] [cursor=pointer]
+          - button [ref=e45] [cursor=pointer]:
+            - paragraph [ref=e47]: Design
+            - heading "New leak may reveal the iPhone Ultra’s two launch colors" [level=2] [ref=e48]
+        - article [ref=e49]:
+          - generic [ref=e50]:
+            - button "Read Verizon mobile service restored after outage for thousands of customers in the U.S." [ref=e51] [cursor=pointer]
+            - button "Bookmark Verizon mobile service restored after outage for thousands of customers in the U.S." [ref=e53] [cursor=pointer]
+          - button [ref=e56] [cursor=pointer]:
+            - paragraph [ref=e58]: Tech
+            - heading "Verizon mobile service restored after outage for thousands of customers in the U.S." [level=2] [ref=e59]
+        - article [ref=e60]:
+          - generic [ref=e61]:
+            - button "Read Planned Amazon data center could become the biggest climate polluter in the U.S." [ref=e62] [cursor=pointer]
+            - button "Bookmark Planned Amazon data center could become the biggest climate polluter in the U.S." [ref=e64] [cursor=pointer]
+          - button [ref=e67] [cursor=pointer]:
+            - paragraph [ref=e69]: Engineering
+            - heading "Planned Amazon data center could become the biggest climate polluter in the U.S." [level=2] [ref=e70]
+        - article [ref=e71]:
+          - generic [ref=e72]:
+            - 'button "Read iOS 27: The easiest beta to forget about" [ref=e73] [cursor=pointer]'
+            - 'button "Bookmark iOS 27: The easiest beta to forget about" [ref=e75] [cursor=pointer]'
+          - button [ref=e78] [cursor=pointer]:
+            - paragraph [ref=e80]: Design
+            - 'heading "iOS 27: The easiest beta to forget about" [level=2] [ref=e81]'
+        - article [ref=e82]:
+          - generic [ref=e83]:
+            - button "Read Broadcom (AVGO) Pairs AI Chip Boom With A Software Security Push" [ref=e84] [cursor=pointer]
+            - button "Bookmark Broadcom (AVGO) Pairs AI Chip Boom With A Software Security Push" [ref=e86] [cursor=pointer]
+          - button [ref=e89] [cursor=pointer]:
+            - paragraph [ref=e91]: Markets
+            - heading "Broadcom (AVGO) Pairs AI Chip Boom With A Software Security Push" [level=2] [ref=e92]
+        - article [ref=e93]:
+          - generic [ref=e94]:
+            - button "Read Jim Cramer Praises Exchange Duopoly CME Group (CME) and Cboe (CBOE)" [ref=e95] [cursor=pointer]
+            - button "Bookmark Jim Cramer Praises Exchange Duopoly CME Group (CME) and Cboe (CBOE)" [ref=e97] [cursor=pointer]
+          - button [ref=e100] [cursor=pointer]:
+            - paragraph [ref=e102]: Markets
+            - heading "Jim Cramer Praises Exchange Duopoly CME Group (CME) and Cboe (CBOE)" [level=2] [ref=e103]
+        - article [ref=e104]:
+          - generic [ref=e105]:
+            - 'button "Read AMD (AMD) Buys Taalas: Is AI Inference the Next Battleground With Nvidia?" [ref=e106] [cursor=pointer]'
+            - 'button "Bookmark AMD (AMD) Buys Taalas: Is AI Inference the Next Battleground With Nvidia?" [ref=e108] [cursor=pointer]'
+          - button [ref=e111] [cursor=pointer]:
+            - paragraph [ref=e113]: Startups
+            - 'heading "AMD (AMD) Buys Taalas: Is AI Inference the Next Battleground With Nvidia?" [level=2] [ref=e114]'
+        - article [ref=e115]:
+          - generic [ref=e116]:
+            - button "Read OpenAI acquires presentation startup NextSlide" [ref=e117] [cursor=pointer]
+            - button "Bookmark OpenAI acquires presentation startup NextSlide" [ref=e119] [cursor=pointer]
+          - button [ref=e122] [cursor=pointer]:
+            - paragraph [ref=e124]: Startups
+            - heading "OpenAI acquires presentation startup NextSlide" [level=2] [ref=e125]
+        - article [ref=e126]:
+          - generic [ref=e127]:
+            - 'button "Read Indie App Spotlight: ‘Pocket Jam’ helps you learn and practice your favorite songs" [ref=e128] [cursor=pointer]'
+            - 'button "Bookmark Indie App Spotlight: ‘Pocket Jam’ helps you learn and practice your favorite songs" [ref=e130] [cursor=pointer]'
+          - button [ref=e133] [cursor=pointer]:
+            - paragraph [ref=e135]: Design
+            - 'heading "Indie App Spotlight: ‘Pocket Jam’ helps you learn and practice your favorite songs" [level=2] [ref=e136]'
+        - article [ref=e137]:
+          - generic [ref=e138]:
+            - button "Read Buc-ee’s dodges John Oliver to sue another small business" [ref=e139] [cursor=pointer]
+            - button "Bookmark Buc-ee’s dodges John Oliver to sue another small business" [ref=e141] [cursor=pointer]
+          - button [ref=e144] [cursor=pointer]:
+            - paragraph [ref=e146]: Startups
+            - heading "Buc-ee’s dodges John Oliver to sue another small business" [level=2] [ref=e147]
+        - article [ref=e148]:
+          - generic [ref=e149]:
+            - button "Read Apple TV welcomes back Ted Lasso with a clever new commercial" [ref=e150] [cursor=pointer]
+            - button "Bookmark Apple TV welcomes back Ted Lasso with a clever new commercial" [ref=e152] [cursor=pointer]
+          - button [ref=e155] [cursor=pointer]:
+            - paragraph [ref=e157]: Startups
+            - heading "Apple TV welcomes back Ted Lasso with a clever new commercial" [level=2] [ref=e158]
+        - article [ref=e159]:
+          - generic [ref=e160]:
+            - button "Read Next big push in ETF industry? Why these risk assets are gaining traction as interest rate uncertainty persists" [ref=e161] [cursor=pointer]
+            - button "Bookmark Next big push in ETF industry? Why these risk assets are gaining traction as interest rate uncertainty persists" [ref=e163] [cursor=pointer]
+          - button [ref=e166] [cursor=pointer]:
+            - paragraph [ref=e168]: Markets
+            - heading "Next big push in ETF industry? Why these risk assets are gaining traction as interest rate uncertainty persists" [level=2] [ref=e169]
+        - article [ref=e170]:
+          - generic [ref=e171]:
+            - button "Read Google’s top hacker hunter explains why hacking groups get codenames" [ref=e172] [cursor=pointer]
+            - button "Bookmark Google’s top hacker hunter explains why hacking groups get codenames" [ref=e174] [cursor=pointer]
+          - button [ref=e177] [cursor=pointer]:
+            - paragraph [ref=e179]: Engineering
+            - heading "Google’s top hacker hunter explains why hacking groups get codenames" [level=2] [ref=e180]
+        - article [ref=e181]:
+          - generic [ref=e182]:
+            - button "Read Google's AI claimed Flock cameras hold $650 in gold and 23 pounds of copper — It was duped by meme" [ref=e183] [cursor=pointer]
+            - button "Bookmark Google's AI claimed Flock cameras hold $650 in gold and 23 pounds of copper — It was duped by meme" [ref=e185] [cursor=pointer]
+          - button [ref=e188] [cursor=pointer]:
+            - paragraph [ref=e190]: AI
+            - heading "Google's AI claimed Flock cameras hold $650 in gold and 23 pounds of copper — It was duped by meme" [level=2] [ref=e191]
+        - article [ref=e192]:
+          - generic [ref=e193]:
+            - button "Read Musician and entrepreneur Tom Vek is building a digital music player, but don’t call it retro" [ref=e194] [cursor=pointer]
+            - button "Bookmark Musician and entrepreneur Tom Vek is building a digital music player, but don’t call it retro" [ref=e196] [cursor=pointer]
+          - button [ref=e199] [cursor=pointer]:
+            - paragraph [ref=e201]: Design
+            - heading "Musician and entrepreneur Tom Vek is building a digital music player, but don’t call it retro" [level=2] [ref=e202]
+        - article [ref=e203]:
+          - generic [ref=e204]:
+            - 'button "Read Pixel 11: All of the last-minute leaks [Video]" [ref=e205] [cursor=pointer]'
+            - 'button "Bookmark Pixel 11: All of the last-minute leaks [Video]" [ref=e207] [cursor=pointer]'
+          - button [ref=e210] [cursor=pointer]:
+            - paragraph [ref=e212]: Design
+            - 'heading "Pixel 11: All of the last-minute leaks [Video]" [level=2] [ref=e213]'
+        - article [ref=e214]:
+          - generic [ref=e215]:
+            - button "Read Anthropic sets Claude Code to Auto Mode by default to protect developers from bad approvals" [ref=e216] [cursor=pointer]
+            - button "Bookmark Anthropic sets Claude Code to Auto Mode by default to protect developers from bad approvals" [ref=e218] [cursor=pointer]
+          - button [ref=e221] [cursor=pointer]:
+            - paragraph [ref=e223]: Engineering
+            - heading "Anthropic sets Claude Code to Auto Mode by default to protect developers from bad approvals" [level=2] [ref=e224]
+        - article [ref=e225]:
+          - generic [ref=e226]:
+            - button "Read Google’s Pixel Watch 5 takes notes from the Fitbit Air in latest leak" [ref=e227] [cursor=pointer]
+            - button "Bookmark Google’s Pixel Watch 5 takes notes from the Fitbit Air in latest leak" [ref=e229] [cursor=pointer]
+          - button [ref=e232] [cursor=pointer]:
+            - paragraph [ref=e234]: Design
+            - heading "Google’s Pixel Watch 5 takes notes from the Fitbit Air in latest leak" [level=2] [ref=e235]
+        - article [ref=e236]:
+          - generic [ref=e237]:
+            - button "Read Here’s why Apple is skipping its M6 Pro and M6 Max chips to accelerate M7 launch" [ref=e238] [cursor=pointer]
+            - button "Bookmark Here’s why Apple is skipping its M6 Pro and M6 Max chips to accelerate M7 launch" [ref=e240] [cursor=pointer]
+          - button [ref=e243] [cursor=pointer]:
+            - paragraph [ref=e245]: AI
+            - heading "Here’s why Apple is skipping its M6 Pro and M6 Max chips to accelerate M7 launch" [level=2] [ref=e246]
+        - article [ref=e247]:
+          - generic [ref=e248]:
+            - button "Read Readers rate AI-generated short stories higher than human ones until they learn a machine wrote them" [ref=e249] [cursor=pointer]
+            - button "Bookmark Readers rate AI-generated short stories higher than human ones until they learn a machine wrote them" [ref=e251] [cursor=pointer]
+          - button [ref=e254] [cursor=pointer]:
+            - paragraph [ref=e256]: AI
+            - heading "Readers rate AI-generated short stories higher than human ones until they learn a machine wrote them" [level=2] [ref=e257]
+        - article [ref=e258]:
+          - generic [ref=e259]:
+            - button "Read Here’s how we played the massive rebound in AI stocks this week" [ref=e260] [cursor=pointer]
+            - button "Bookmark Here’s how we played the massive rebound in AI stocks this week" [ref=e262] [cursor=pointer]
+          - button [ref=e265] [cursor=pointer]:
+            - paragraph [ref=e267]: Markets
+            - heading "Here’s how we played the massive rebound in AI stocks this week" [level=2] [ref=e268]
+        - article [ref=e269]:
+          - generic [ref=e270]:
+            - 'button "Read Apple @ Work: What IDC’s latest shipments mean for the MacBook Neo and Air in the enterprise" [ref=e271] [cursor=pointer]'
+            - 'button "Bookmark Apple @ Work: What IDC’s latest shipments mean for the MacBook Neo and Air in the enterprise" [ref=e273] [cursor=pointer]'
+          - button [ref=e276] [cursor=pointer]:
+            - paragraph [ref=e278]: Markets
+            - 'heading "Apple @ Work: What IDC’s latest shipments mean for the MacBook Neo and Air in the enterprise" [level=2] [ref=e279]'
+        - article [ref=e280]:
+          - generic [ref=e281]:
+            - button "Read UAE says one of its ships was targeted by missile as U.S.-Iran tensions over Strait of Hormuz remain high" [ref=e282] [cursor=pointer]
+            - button "Bookmark UAE says one of its ships was targeted by missile as U.S.-Iran tensions over Strait of Hormuz remain high" [ref=e284] [cursor=pointer]
+          - button [ref=e287] [cursor=pointer]:
+            - paragraph [ref=e289]: Markets
+            - heading "UAE says one of its ships was targeted by missile as U.S.-Iran tensions over Strait of Hormuz remain high" [level=2] [ref=e290]
+        - article [ref=e291]:
+          - generic [ref=e292]:
+            - button "Read Wall Street Is Losing Confidence in GoDaddy’s (GDDY) AI Strategy. Should Investors?" [ref=e293] [cursor=pointer]
+            - button "Bookmark Wall Street Is Losing Confidence in GoDaddy’s (GDDY) AI Strategy. Should Investors?" [ref=e295] [cursor=pointer]
+          - button [ref=e298] [cursor=pointer]:
+            - paragraph [ref=e300]: Markets
+            - heading "Wall Street Is Losing Confidence in GoDaddy’s (GDDY) AI Strategy. Should Investors?" [level=2] [ref=e301]
+        - article [ref=e302]:
+          - generic [ref=e303]:
+            - button "Read Ted Benna built the 401(k) 40 years ago — now he says it fails lower-income workers and is pushing a simpler alternative" [ref=e304] [cursor=pointer]
+            - button "Bookmark Ted Benna built the 401(k) 40 years ago — now he says it fails lower-income workers and is pushing a simpler alternative" [ref=e306] [cursor=pointer]
+          - button [ref=e309] [cursor=pointer]:
+            - paragraph [ref=e311]: Markets
+            - heading "Ted Benna built the 401(k) 40 years ago — now he says it fails lower-income workers and is pushing a simpler alternative" [level=2] [ref=e312]
+        - article [ref=e313]:
+          - generic [ref=e314]:
+            - button "Read Is football AI-proof? Why tech investors wanted a slice of the World Cup" [ref=e315] [cursor=pointer]
+            - button "Bookmark Is football AI-proof? Why tech investors wanted a slice of the World Cup" [ref=e317] [cursor=pointer]
+          - button [ref=e320] [cursor=pointer]:
+            - paragraph [ref=e322]: Markets
+            - heading "Is football AI-proof? Why tech investors wanted a slice of the World Cup" [level=2] [ref=e323]
+        - article [ref=e324]:
+          - generic [ref=e325]:
+            - button "Read Hugging Face hack marks start of dangerous AI cyber era and many firms 'don't even know it'" [ref=e326] [cursor=pointer]
+            - button "Bookmark Hugging Face hack marks start of dangerous AI cyber era and many firms 'don't even know it'" [ref=e328] [cursor=pointer]
+          - button [ref=e331] [cursor=pointer]:
+            - paragraph [ref=e333]: AI
+            - heading "Hugging Face hack marks start of dangerous AI cyber era and many firms 'don't even know it'" [level=2] [ref=e334]
+        - article [ref=e335]:
+          - generic [ref=e336]:
+            - button "Read My favorite feel-good show is back" [ref=e337] [cursor=pointer]
+            - button "Bookmark My favorite feel-good show is back" [ref=e339] [cursor=pointer]
+          - button [ref=e342] [cursor=pointer]:
+            - paragraph [ref=e344]: Tech
+            - heading "My favorite feel-good show is back" [level=2] [ref=e345]
+        - article [ref=e346]:
+          - generic [ref=e347]:
+            - button "Read The first self-driving vehicle on Mars has proven to be a smashing success" [ref=e348] [cursor=pointer]
+            - button "Bookmark The first self-driving vehicle on Mars has proven to be a smashing success" [ref=e350] [cursor=pointer]
+          - button [ref=e353] [cursor=pointer]:
+            - paragraph [ref=e355]: Engineering
+            - heading "The first self-driving vehicle on Mars has proven to be a smashing success" [level=2] [ref=e356]
+        - article [ref=e357]:
+          - generic [ref=e358]:
+            - button "Read Backflip AI turns 3D scans into editable CAD models in minutes instead of hours" [ref=e359] [cursor=pointer]
+            - button "Bookmark Backflip AI turns 3D scans into editable CAD models in minutes instead of hours" [ref=e361] [cursor=pointer]
+          - button [ref=e364] [cursor=pointer]:
+            - paragraph [ref=e366]: Engineering
+            - heading "Backflip AI turns 3D scans into editable CAD models in minutes instead of hours" [level=2] [ref=e367]
+        - article [ref=e368]:
+          - generic [ref=e369]:
+            - button "Read Fields Medalist who published a paper on AI-driven human extinction now works for OpenAI" [ref=e370] [cursor=pointer]
+            - button "Bookmark Fields Medalist who published a paper on AI-driven human extinction now works for OpenAI" [ref=e372] [cursor=pointer]
+          - button [ref=e375] [cursor=pointer]:
+            - paragraph [ref=e377]: AI
+            - heading "Fields Medalist who published a paper on AI-driven human extinction now works for OpenAI" [level=2] [ref=e378]
+        - article [ref=e379]:
+          - generic [ref=e380]:
+            - 'button "Read Crab Odyssey: Crustacean Wandered the Seas in a Bottle for Months, Scientists Find" [ref=e381] [cursor=pointer]'
+            - 'button "Bookmark Crab Odyssey: Crustacean Wandered the Seas in a Bottle for Months, Scientists Find" [ref=e383] [cursor=pointer]'
+          - button [ref=e386] [cursor=pointer]:
+            - paragraph [ref=e388]: Engineering
+            - 'heading "Crab Odyssey: Crustacean Wandered the Seas in a Bottle for Months, Scientists Find" [level=2] [ref=e389]'
+        - article [ref=e390]:
+          - generic [ref=e391]:
+            - button "Read xAI's Imagine Image 2.0 lands just behind OpenAI's GPT-Image-2 in Arena benchmarks" [ref=e392] [cursor=pointer]
+            - button "Bookmark xAI's Imagine Image 2.0 lands just behind OpenAI's GPT-Image-2 in Arena benchmarks" [ref=e394] [cursor=pointer]
+          - button [ref=e397] [cursor=pointer]:
+            - paragraph [ref=e399]: AI
+            - heading "xAI's Imagine Image 2.0 lands just behind OpenAI's GPT-Image-2 in Arena benchmarks" [level=2] [ref=e400]
+        - article [ref=e401]:
+          - generic [ref=e402]:
+            - button "Read Cloudflare's Precursor Detects Bots and AI Agents Through Continuous Behavioral Analysis" [ref=e403] [cursor=pointer]
+            - button "Bookmark Cloudflare's Precursor Detects Bots and AI Agents Through Continuous Behavioral Analysis" [ref=e405] [cursor=pointer]
+          - button [ref=e408] [cursor=pointer]:
+            - paragraph [ref=e410]: Engineering
+            - heading "Cloudflare's Precursor Detects Bots and AI Agents Through Continuous Behavioral Analysis" [level=2] [ref=e411]
+      - status [ref=e412]
+    - contentinfo [ref=e413]:
+      - generic [ref=e414]:
+        - generic [ref=e415]:
+          - generic [ref=e416]:
+            - link "TRACE" [ref=e417] [cursor=pointer]:
+              - /url: /
+            - paragraph [ref=e419]: The fastest way to catch up on tech and AI news.
+          - navigation "Explore" [ref=e420]:
+            - paragraph [ref=e421]: Explore
+            - link "Feed" [ref=e422] [cursor=pointer]:
+              - /url: /feed
+            - link "How it works" [ref=e423] [cursor=pointer]:
+              - /url: /how-it-works
+            - link "Agents" [ref=e424] [cursor=pointer]:
+              - /url: /agents
+            - link "Pricing" [ref=e425] [cursor=pointer]:
+              - /url: /#pricing
+          - navigation "Learn" [ref=e426]:
+            - paragraph [ref=e427]: Learn
+            - link "Guides" [ref=e428] [cursor=pointer]:
+              - /url: /blog
+            - link "Resources" [ref=e429] [cursor=pointer]:
+              - /url: /resources
+            - link "Compare" [ref=e430] [cursor=pointer]:
+              - /url: /compare
+            - link "Newsletter reviews" [ref=e431] [cursor=pointer]:
+              - /url: /newsletters
+            - link "RSS" [ref=e432] [cursor=pointer]:
+              - /url: /rss.xml
+          - navigation "More" [ref=e437]:
+            - paragraph [ref=e438]: More
+            - link "Android app" [ref=e439] [cursor=pointer]:
+              - /url: /api/affiliate/outbound?target=android_app&next=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Donline.yourtrace.app
+            - link "StocksBrew" [ref=e442] [cursor=pointer]:
+              - /url: https://stocksbrew.online/?utm_source=trace&utm_medium=feed_footer
+            - link "Privacy" [ref=e450] [cursor=pointer]:
+              - /url: /privacy-policy
+            - link "Terms" [ref=e451] [cursor=pointer]:
+              - /url: /terms
+            - link "Contact" [ref=e452] [cursor=pointer]:
+              - /url: /contact
+        - paragraph [ref=e454]: © 2026 Trace
+  - button "Open Next.js Dev Tools" [ref=e460] [cursor=pointer]
+  - alert [ref=e464]

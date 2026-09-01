@@ -1,0 +1,124 @@
+Fuzzy-Matching News Headlines Without an LLM
+
+The same launch can reach a news feed through six different URLs.
+
+The company announcement, two rewrites, a Hacker News submission, a blog post, and a GitHub repo may all describe one event.
+
+Exact title matching catches almost none of them.
+
+For Trace, I wanted a matcher that was fast, cheap, and easy to debug. The useful baseline ended up being token overlap with a few strict guardrails.
+
+Normalize what does not matter
+
+Start by making titles comparable:
+
+1. Convert to lowercase.
+2. Remove punctuation.
+3. Collapse whitespace.
+4. Drop short words and stopwords.
+5. Ignore broad topic words such as “model,” “startup,” and “launch.”
+
+Those broad words create false matches. Two headlines containing “AI model launch” may describe completely different events.
+
+The useful words are usually names, products, actions, versions, and numbers.
+
+const STOPWORDS = new Set([
+  "a", "an", "and", "for", "from", "how",
+  "in", "is", "of", "on", "the", "to", "with"
+]);
+
+const BROAD_WORDS = new Set([
+  "model", "agent", "startup", "launch",
+  "funding", "technology", "company"
+]);
+
+function tokens(title: string): Set<string> {
+  const words = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter(word => word.length >= 4)
+    .filter(word => !STOPWORDS.has(word))
+    .filter(word => !BROAD_WORDS.has(word));
+
+  return new Set(words);
+}
+
+Score the meaningful overlap
+
+I use the overlap coefficient:
+
+shared tokens / size of the smaller token set
+
+Using the smaller set matters because one publisher may add a lot of framing around a short original title.
+
+“Acme releases Orion 2”
+
+and
+
+“Why Acme’s new Orion 2 release matters for developers”
+
+should still score highly.
+
+function similarity(a: string, b: string): number {
+  const left = tokens(a);
+  const right = tokens(b);
+
+  if (!left.size || !right.size) return 0;
+
+  const shared = [...left]
+    .filter(word => right.has(word))
+    .length;
+
+  if (shared < 2) return 0;
+
+  return shared / Math.min(left.size, right.size);
+}
+
+function isSameStory(a: string, b: string): boolean {
+  return similarity(a, b) >= 0.5;
+}
+
+Requiring two shared tokens is important. One matching company name is not enough.
+
+A threshold of 0.5 is a starting point, not a universal truth. Tune it against real headline pairs from your own feed.
+
+Protect against false merges
+
+Leaving a duplicate is annoying. Merging two different stories can hide useful information.
+
+I bias toward precision and apply a few checks before grouping:
+
+• Conflicting version numbers mean different stories.
+• Conflicting funding amounts need review.
+• A shared company name alone is never enough.
+• Broad topics are not events.
+• Items published far apart need stronger evidence.
+
+“Apple is struggling with AI” and “Apple acquired an AI startup” are related. They are not the same story.
+
+Similarity should answer “same event?” rather than “same subject?”
+
+Avoid comparing every title with every other title
+
+Pairwise comparison becomes O(n²). That is fine for 30 headlines and wasteful for 30,000.
+
+Before scoring, put items into small candidate buckets using cheap signals:
+
+• publication date window
+• shared company or product token
+• exact URL host and path
+• matching version number
+
+Run fuzzy comparison only inside those buckets.
+
+This keeps the matcher deterministic and makes bad decisions inspectable. When two stories are grouped incorrectly, I can see the tokens, score, threshold, and guardrail that caused it.
+
+That is the whole system:
+
+Normalize the titles. Remove noisy words. Require two meaningful matches. Score overlap. Reject obvious conflicts. Compare only plausible candidates.
+
+It will not catch every paraphrase, but it removes a large share of duplicate coverage without turning story grouping into a black box.
+
+I use this approach in Trace to keep repeated technology coverage from taking over the feed: https://www.yourtrace.online

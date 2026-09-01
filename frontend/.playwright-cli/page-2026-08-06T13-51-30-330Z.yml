@@ -1,0 +1,208 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - link "TRACE" [ref=e5] [cursor=pointer]:
+          - /url: /
+        - navigation [ref=e6]:
+          - link "Feed" [ref=e7] [cursor=pointer]:
+            - /url: /feed
+          - link "Guides" [ref=e8] [cursor=pointer]:
+            - /url: /blog
+          - link "Resources" [ref=e9] [cursor=pointer]:
+            - /url: /resources
+          - link "Agents" [ref=e10] [cursor=pointer]:
+            - /url: /agents
+        - generic [ref=e11]:
+          - button "Use dark theme" [ref=e12] [cursor=pointer]
+          - link "Sign in" [ref=e15] [cursor=pointer]:
+            - /url: /profile?tab=subscription
+    - article [ref=e16]:
+      - generic [ref=e17]:
+        - link "Blog" [ref=e18] [cursor=pointer]:
+          - /url: /blog
+        - generic [ref=e21]:
+          - paragraph [ref=e22]: Tools & Comparisons
+          - heading "Best Daily Tech News Apps in 2026" [level=1] [ref=e23]
+          - paragraph [ref=e24]: Seven ways to catch up on technology news every day, from a concise brief to RSS, community discussion, and a classic industry front page.
+          - generic [ref=e25]:
+            - generic [ref=e26]: Trace Editorial
+            - generic [ref=e27]: 10 min read
+            - generic [ref=e31]: August 3, 2026
+        - img "Best Daily Tech News Apps in 2026" [ref=e35]
+      - generic [ref=e36]:
+        - navigation "Table of contents" [ref=e37]:
+          - paragraph [ref=e38]: In this guide
+          - list [ref=e39]:
+            - listitem [ref=e40]:
+              - link "1. Quick Picks" [ref=e41] [cursor=pointer]:
+                - /url: "#quick-picks"
+            - listitem [ref=e42]:
+              - link "2. The Difference Between a Daily Brief and Another Feed" [ref=e43] [cursor=pointer]:
+                - /url: "#the-difference-between-a-daily-brief-and-another-feed"
+            - listitem [ref=e44]:
+              - 'link "3. 1. Trace: Best for a Clear Daily Catch-Up" [ref=e45] [cursor=pointer]':
+                - /url: "#1-trace-best-for-a-clear-daily-catch-up"
+            - listitem [ref=e46]:
+              - 'link "4. 2. Techmeme: Best for Fast Industry Headlines" [ref=e47] [cursor=pointer]':
+                - /url: "#2-techmeme-best-for-fast-industry-headlines"
+            - listitem [ref=e48]:
+              - 'link "5. 3. Google News: Best for Breadth" [ref=e49] [cursor=pointer]':
+                - /url: "#3-google-news-best-for-breadth"
+            - listitem [ref=e50]:
+              - 'link "6. 4. Feedly and Inoreader: Best for Exact Monitoring" [ref=e51] [cursor=pointer]':
+                - /url: "#4-feedly-and-inoreader-best-for-exact-monitoring"
+            - listitem [ref=e52]:
+              - 'link "7. 5. Hacker News: Best for the Conversation" [ref=e53] [cursor=pointer]':
+                - /url: "#5-hacker-news-best-for-the-conversation"
+            - listitem [ref=e54]:
+              - link "8. Build a Daily Habit That Does Not Expand" [ref=e55] [cursor=pointer]:
+                - /url: "#build-a-daily-habit-that-does-not-expand"
+        - generic [ref=e56]:
+          - generic [ref=e57]:
+            - heading "Quick Picks" [level=2] [ref=e58]
+            - list [ref=e59]:
+              - listitem [ref=e60]:
+                - generic [ref=e62]: "Best daily app when you want a short, source-backed technology brief: Trace."
+              - listitem [ref=e63]:
+                - generic [ref=e65]: "Best for the major technology-industry stories: Techmeme."
+              - listitem [ref=e66]:
+                - generic [ref=e68]: "Best for a personalized general-news feed: Google News."
+              - listitem [ref=e69]:
+                - generic [ref=e71]: "Best for a private source list and monitoring rules: Feedly or Inoreader."
+              - listitem [ref=e72]:
+                - generic [ref=e74]: "Best for developer and founder discussion: Hacker News."
+          - generic [ref=e75]:
+            - heading "The Difference Between a Daily Brief and Another Feed" [level=2] [ref=e76]
+            - paragraph [ref=e77]: Most news products are designed to keep producing the next item. That is useful when you are deliberately researching a topic. It is expensive when you only need to know what changed today.
+            - paragraph [ref=e78]: A daily tech news app should make the day legible. It should group duplicate reporting, separate confirmed facts from commentary, show the original sources, and give you a reasonable endpoint. Otherwise it is a social feed with a more professional color palette.
+          - generic [ref=e79]:
+            - 'heading "1. Trace: Best for a Clear Daily Catch-Up" [level=2] [ref=e80]'
+            - paragraph [ref=e81]: "Trace combines technology reporting, launches, builds, and community signal into grouped stories. Every item is meant to answer a simple question: what moved, why does it matter, and where can I verify it?"
+            - paragraph [ref=e82]: Use Trace when you want to begin with a concise overview and open only the source links that matter to your work. The free trial of Pro is useful if you want the complete daily edition before committing.
+          - generic [ref=e83]:
+            - 'heading "2. Techmeme: Best for Fast Industry Headlines" [level=2] [ref=e84]'
+            - paragraph [ref=e85]: Techmeme is excellent at surfacing the companies, products, and market stories the technology press is following. Its value is a shared view of the industry rather than a feed that adapts to an individual role.
+            - paragraph [ref=e86]: Use it when you want the front page of tech. Add a more personalized tool if your daily work is centered on a specific framework, platform, or technical discipline.
+          - generic [ref=e87]:
+            - 'heading "3. Google News: Best for Breadth" [level=2] [ref=e88]'
+            - paragraph [ref=e89]: Google News is convenient for a broad mix of local, world, business, and technology coverage. It can be a good default when technology is only one part of the news you need to follow.
+            - paragraph [ref=e90]: The trade-off is focus. A broad personalized feed can mix consumer stories, general business reporting, and click-driven headlines with the engineering or product news you actually need.
+          - generic [ref=e91]:
+            - 'heading "4. Feedly and Inoreader: Best for Exact Monitoring" [level=2] [ref=e92]'
+            - paragraph [ref=e93]: RSS tools are strongest when you must not miss updates from particular companies, projects, or security sources. You choose every feed, add rules where needed, and keep the system auditable.
+            - paragraph [ref=e94]: They are less convenient for a broad daily catch-up because every outlet can produce its own version of the same event. Use them for a deliberate monitoring layer, not as a substitute for curation.
+          - generic [ref=e95]:
+            - 'heading "5. Hacker News: Best for the Conversation" [level=2] [ref=e96]'
+            - paragraph [ref=e97]: Hacker News provides a fast view of the developer and founder conversation around launches, research, infrastructure, and tools. A strong thread can add detail that reporting misses or challenge an overconfident claim.
+            - paragraph [ref=e98]: Use it after the news brief, not before it. Community attention is a useful signal, but it does not guarantee breadth or reliability on its own.
+          - generic [ref=e99]:
+            - heading "Build a Daily Habit That Does Not Expand" [level=2] [ref=e100]
+            - paragraph [ref=e101]: The right daily tech news app makes this routine easier. If it makes you feel that you still have more to read after every session, move that product to a research role and keep a finite brief as the default.
+            - list [ref=e102]:
+              - listitem [ref=e103]:
+                - generic [ref=e105]: Set one ten-minute catch-up window.
+              - listitem [ref=e106]:
+                - generic [ref=e108]: Scan grouped stories before opening individual links.
+              - listitem [ref=e109]:
+                - generic [ref=e111]: Open at most two source links for deeper reading.
+              - listitem [ref=e112]:
+                - generic [ref=e114]: Keep one community surface for interpretation.
+              - listitem [ref=e115]:
+                - generic [ref=e117]: Save durable analysis for a weekly reading block instead of today’s brief.
+        - generic [ref=e118]:
+          - heading "Sources & further reading" [level=2] [ref=e119]
+          - generic [ref=e120]:
+            - link "Techmeme about page · Techmeme" [ref=e121] [cursor=pointer]:
+              - /url: https://www.techmeme.com/about
+              - generic [ref=e126]:
+                - text: Techmeme about page
+                - generic [ref=e127]: · Techmeme
+            - link "Feedly product overview · Feedly" [ref=e128] [cursor=pointer]:
+              - /url: https://feedly.com/
+              - generic [ref=e133]:
+                - text: Feedly product overview
+                - generic [ref=e134]: · Feedly
+            - link "Google News help · Google" [ref=e135] [cursor=pointer]:
+              - /url: https://support.google.com/googlenews/
+              - generic [ref=e140]:
+                - text: Google News help
+                - generic [ref=e141]: · Google
+            - link "Hacker News API · Y Combinator" [ref=e142] [cursor=pointer]:
+              - /url: https://github.com/HackerNews/API
+              - generic [ref=e147]:
+                - text: Hacker News API
+                - generic [ref=e148]: · Y Combinator
+        - generic [ref=e149]:
+          - paragraph [ref=e150]: Trace
+          - heading "Stay informed without the overwhelm" [level=2] [ref=e151]
+          - paragraph [ref=e152]: Trace groups related stories from 50+ sources into one clean daily briefing. AI summaries, key points, and community context so you catch up in minutes, not hours.
+          - link "Start with Trace" [ref=e154] [cursor=pointer]:
+            - /url: /profile?tab=subscription
+        - generic [ref=e155]:
+          - heading "Related articles" [level=2] [ref=e156]
+          - generic [ref=e157]:
+            - link [ref=e158] [cursor=pointer]:
+              - /url: /blog/best-tech-news-aggregator-apps
+              - paragraph [ref=e159]: Tools & Comparisons
+              - heading "The 7 Best Tech News Aggregator Apps in 2026" [level=3] [ref=e160]
+              - paragraph [ref=e161]: Looking for the best tech news aggregator? We tested 15+ apps and ranked the top 7 based on curation quality, AI features, source coverage, and reading experience. Feedly, Inoreader, Trace, and more.
+            - link [ref=e162] [cursor=pointer]:
+              - /url: /blog/feedly-alternatives
+              - paragraph [ref=e163]: Tools & Comparisons
+              - heading "5 Best Feedly Alternatives for Reading Tech News in 2026" [level=3] [ref=e164]
+              - paragraph [ref=e165]: Looking for a Feedly alternative? Whether you want AI curation, better search, open-source options, or a completely different approach to news, we compared the 5 best alternatives for 2026.
+            - link [ref=e166] [cursor=pointer]:
+              - /url: /blog/best-rss-reader-apps
+              - paragraph [ref=e167]: Tools & Comparisons
+              - heading "The 5 Best RSS Reader Apps in 2026 (Free & Paid)" [level=3] [ref=e168]
+              - paragraph [ref=e169]: Looking for the best RSS reader? We compared Feedly, Inoreader, NewsBlur, FreshRSS, and Miniflux across features, pricing, and user experience. Find the right RSS reader for your workflow.
+        - generic [ref=e170]:
+          - link "All articles" [ref=e171] [cursor=pointer]:
+            - /url: /blog
+          - link "Compare guides" [ref=e172] [cursor=pointer]:
+            - /url: /compare
+          - link "Free tools" [ref=e173] [cursor=pointer]:
+            - /url: /tools
+          - link "Trending topics" [ref=e174] [cursor=pointer]:
+            - /url: /trending
+    - contentinfo [ref=e175]:
+      - generic [ref=e176]:
+        - generic [ref=e177]:
+          - generic [ref=e178]: TRACE
+          - navigation [ref=e179]:
+            - link "Feed" [ref=e180] [cursor=pointer]:
+              - /url: /feed
+            - link "Guides" [ref=e181] [cursor=pointer]:
+              - /url: /blog
+            - link "Resources" [ref=e182] [cursor=pointer]:
+              - /url: /resources
+            - link "Agents" [ref=e183] [cursor=pointer]:
+              - /url: /agents
+            - link "Solutions" [ref=e184] [cursor=pointer]:
+              - /url: /solutions
+            - link "Use cases" [ref=e185] [cursor=pointer]:
+              - /url: /use-cases
+            - link "Newsletter reviews" [ref=e186] [cursor=pointer]:
+              - /url: /newsletters
+            - link "RSS" [ref=e187] [cursor=pointer]:
+              - /url: /rss.xml
+            - link "How it works" [ref=e192] [cursor=pointer]:
+              - /url: /how-it-works
+            - link "Privacy" [ref=e193] [cursor=pointer]:
+              - /url: /privacy-policy
+            - link "Terms" [ref=e194] [cursor=pointer]:
+              - /url: /terms
+            - link "Contact" [ref=e195] [cursor=pointer]:
+              - /url: /contact
+        - generic [ref=e196]:
+          - generic [ref=e197]:
+            - link "StocksBrew" [ref=e198] [cursor=pointer]:
+              - /url: https://stocksbrew.online/?utm_source=trace&utm_medium=footer
+            - paragraph [ref=e202]: Know what to do with your stock.
+          - generic [ref=e203]:
+            - link "Trace for Android" [ref=e204] [cursor=pointer]:
+              - /url: /api/affiliate/outbound?target=android_app&next=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Donline.yourtrace.app
+            - paragraph [ref=e207]: Your AI and tech feed on Android.
+  - button "Open Next.js Dev Tools" [ref=e213] [cursor=pointer]
+  - alert [ref=e217]

@@ -1044,7 +1044,6 @@ export default function UnifiedFeedScreen() {
   const renderPills = () => (
     <View style={styles.pillsSection}>
       <ScrollView
-        style={styles.pillsScroll}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.pillsContainer}>
@@ -2144,10 +2143,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 8,
   },
-  pillsScroll: {
-    flex: 1,
-    minWidth: 0,
-  },
   pill: {
     paddingHorizontal: 14,
     paddingVertical: 6,
@@ -2162,15 +2157,12 @@ const styles = StyleSheet.create({
   },
   viewToggleWrap: {
     marginLeft: 8,
-    width: 96,
     flexShrink: 0,
     flexDirection: 'row',
-    justifyContent: 'flex-end',
     alignItems: 'center',
-    borderRadius: 8,
-    overflow: 'hidden',
-    position: 'relative',
-    zIndex: 1,
+    borderRadius: 10,
+    padding: 2,
+    gap: 2,
   },
   viewToggleBtn: {
     width: 32,

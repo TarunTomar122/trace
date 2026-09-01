@@ -46,10 +46,10 @@ export default function BuildersScreen() {
           Trace is built by Tarun and Monisha, who are deeply in love with each other and also engaged.
         </Text>
         <Text style={[styles.body, styles.paragraph, { color: colors.muted }]}>
-          Tarun is the engineer behind this app, an indie app developer, and a master&apos;s student in AI at the University of Edinburgh. Monisha is an experienced UX designer. She designed the entire experience, shaping the visual language and everything from the first to last screen.
+          Tarun is the engineer behind this app, an indie app developer, and a master&apos;s student in AI at the University of Edinburgh. Monisha is a UX designer by day, and she is the reason this app has a non-distracting, easy-to-use experience.
         </Text>
         <Text style={[styles.body, styles.paragraph, { color: colors.muted }]}>
-          Together they wanted to build something that can help them stay on top of tech and AI news without having to scroll through ten different things every single day.
+          Together they built something that can help them and other people stay on top of tech and AI news without scrolling through ten apps or paying for it.
         </Text>
 
         <View style={styles.links}>

@@ -1,0 +1,34 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e6]: "Caution: Make sure you trust this website before entering"
+    - generic [ref=e7]:
+      - text: This website is served through
+      - link "pinggy.io" [ref=e8] [cursor=pointer]:
+        - /url: https://pinggy.io/
+      - paragraph [ref=e9]: "Website IP: 2405:201:401a:8129:2196:dd4e:344d:db18"
+    - paragraph [ref=e10]: Enter this website only if you trust whoever sent the link to you. Be careful about disclosing personal or financial information like passwords, phone numbers, or credit cards.
+    - generic [ref=e11]:
+      - button "Enter site" [ref=e12] [cursor=pointer]
+      - button "Go back" [ref=e13] [cursor=pointer]
+    - paragraph [ref=e14]: By clicking "Enter site" you consent to our use of cookies.
+  - generic [ref=e15]:
+    - paragraph [ref=e16]: How to avoid this page?
+    - paragraph [ref=e17]: This page is shown to visitors of free Pinggy tunnels for security reasons. Visitors to your site will only see it once. You can avoid this page by doing one of the following.
+    - list [ref=e18]:
+      - listitem [ref=e19]:
+        - text: This page is for browsers only. If you try to use this as an
+        - generic [ref=e20]: API
+        - text: ", it will just work fine."
+      - listitem [ref=e21]:
+        - text: Set and send a
+        - code [ref=e22]: X-Pinggy-No-Screen
+        - text: request header with any value.
+      - listitem [ref=e23]:
+        - text: Or, use a custom/non-standard
+        - code [ref=e24]: User-Agent
+        - text: request header.
+      - listitem [ref=e25]:
+        - text: Or, please
+        - link "upgrade to Pinggy Pro" [ref=e26] [cursor=pointer]:
+          - /url: https://pinggy.io/#prices
+        - text: .

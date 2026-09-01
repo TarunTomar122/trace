@@ -1,0 +1,257 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - banner [ref=e4]:
+        - link "TRACE" [ref=e5] [cursor=pointer]:
+          - /url: /
+        - navigation "Trace" [ref=e6]:
+          - link "Edition" [ref=e7] [cursor=pointer]:
+            - /url: /feed?view=edition
+          - link "Pulse" [ref=e8] [cursor=pointer]:
+            - /url: /feed?view=pulse
+          - link "Profile" [ref=e9] [cursor=pointer]:
+            - /url: /profile
+      - generic [ref=e10]:
+        - paragraph [ref=e11]: MONDAY · JULY 27 · 2026
+        - generic [ref=e12]:
+          - heading "A feed for builders." [level=1] [ref=e13]
+          - paragraph [ref=e14]: Build logs, architecture, open source, design, and product thinking for developers, designers, PMs, and founders.
+        - paragraph [ref=e15]: 22 signals · aggregated hourly
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - generic [ref=e18]:
+            - generic [ref=e19]:
+              - paragraph [ref=e23]: 01 · How it gets built
+              - heading "Build logs, architecture breakdowns, and product lessons worth keeping." [level=2] [ref=e24]
+            - generic [ref=e25]: 6 signals
+          - generic [ref=e26]:
+            - article [ref=e28]:
+              - 'button "The Pulse: What can we learn from Bun’s rapid Rust rewrite with AI? Pragmatic Engineer · 18d ago The Pulse: What can we learn from Bun’s rapid Rust rewrite with AI?" [ref=e29] [cursor=pointer]':
+                - 'img "The Pulse: What can we learn from Bun’s rapid Rust rewrite with AI?" [ref=e31]'
+                - generic [ref=e32]:
+                  - generic [ref=e33]: Pragmatic Engineer · 18d ago
+                  - 'heading "The Pulse: What can we learn from Bun’s rapid Rust rewrite with AI?" [level=2] [ref=e34]'
+            - article [ref=e37]:
+              - button "Microservice dogma nearly tanked our seed round LeadDev · 12d ago Microservice dogma nearly tanked our seed round" [ref=e38] [cursor=pointer]:
+                - img "Microservice dogma nearly tanked our seed round" [ref=e40]
+                - generic [ref=e41]:
+                  - generic [ref=e42]: LeadDev · 12d ago
+                  - heading "Microservice dogma nearly tanked our seed round" [level=2] [ref=e43]
+            - article [ref=e46]:
+              - 'button "No Dumb Questions: What is the AI bottleneck? Stack Overflow Blog · 3d ago No Dumb Questions: What is the AI bottleneck?" [ref=e47] [cursor=pointer]':
+                - 'img "No Dumb Questions: What is the AI bottleneck?" [ref=e49]'
+                - generic [ref=e50]:
+                  - generic [ref=e51]: Stack Overflow Blog · 3d ago
+                  - 'heading "No Dumb Questions: What is the AI bottleneck?" [level=2] [ref=e52]'
+            - article [ref=e55]:
+              - button "Context engineering with Dex Horthy Pragmatic Engineer · 12d ago Context engineering with Dex Horthy" [ref=e56] [cursor=pointer]:
+                - img "Context engineering with Dex Horthy" [ref=e58]
+                - generic [ref=e59]:
+                  - generic [ref=e60]: Pragmatic Engineer · 12d ago
+                  - heading "Context engineering with Dex Horthy" [level=2] [ref=e61]
+            - article [ref=e64]:
+              - button "It’s time to rethink how we measure engineering productivity LeadDev · 11d ago It’s time to rethink how we measure engineering productivity" [ref=e65] [cursor=pointer]:
+                - img "It’s time to rethink how we measure engineering productivity" [ref=e67]
+                - generic [ref=e68]:
+                  - generic [ref=e69]: LeadDev · 11d ago
+                  - heading "It’s time to rethink how we measure engineering productivity" [level=2] [ref=e70]
+            - article [ref=e73]:
+              - button "Announcing Fugu-Ultra v1.1 🐡 TLDR AI Announcing Fugu-Ultra v1.1 🐡" [ref=e74] [cursor=pointer]:
+                - img "Announcing Fugu-Ultra v1.1 🐡" [ref=e76]
+                - generic [ref=e77]:
+                  - generic [ref=e78]: TLDR AI
+                  - heading "Announcing Fugu-Ultra v1.1 🐡" [level=2] [ref=e79]
+        - generic [ref=e81]:
+          - generic [ref=e82]:
+            - generic [ref=e83]:
+              - paragraph [ref=e88]: 02 · Builder conversations
+              - heading "What developers, designers, PMs, and founders are debating right now." [level=2] [ref=e89]
+            - generic [ref=e90]: 8 signals
+          - generic [ref=e91]:
+            - article [ref=e93]:
+              - link "Kill The Cookie Banner Hacker News · 908 sources Kill The Cookie Banner The article discusses the elimination of cookie banners, primarily differentiating by advocating for user privacy without intrusive consent mechanisms. 908 signals" [ref=e94] [cursor=pointer]:
+                - /url: https://killthecookiebanner.eu/
+                - img "Kill The Cookie Banner" [ref=e96]
+                - generic [ref=e97]:
+                  - generic [ref=e98]: Hacker News · 908 sources
+                  - heading "Kill The Cookie Banner" [level=2] [ref=e99]
+                  - paragraph [ref=e100]: The article discusses the elimination of cookie banners, primarily differentiating by advocating for user privacy without intrusive consent mechanisms.
+                  - generic [ref=e101]: 908 signals
+            - article [ref=e104]:
+              - link "US citizen charged after GrapheneOS phone wipes during airport search Hacker News · 480 sources US citizen charged after GrapheneOS phone wipes during airport search A US citizen was charged after their GrapheneOS phone wiped data during an airport search, highlighting privacy features that can hinder investigations. 480 signals" [ref=e105] [cursor=pointer]:
+                - /url: https://www.techspot.com/news/113236-us-prosecutors-charge-atlanta-man-after-grapheneos-phone.html
+                - img "US citizen charged after GrapheneOS phone wipes during airport search" [ref=e107]
+                - generic [ref=e108]:
+                  - generic [ref=e109]: Hacker News · 480 sources
+                  - heading "US citizen charged after GrapheneOS phone wipes during airport search" [level=2] [ref=e110]
+                  - paragraph [ref=e111]: A US citizen was charged after their GrapheneOS phone wiped data during an airport search, highlighting privacy features that can hinder investigations.
+                  - generic [ref=e112]: 480 signals
+            - article [ref=e115]:
+              - link "Physically accurate black hole you can put in your room Show HN · 187 sources Physically accurate black hole you can put in your room A web-based app simulates a black hole with real relativistic physics, allowing users to visualize effects in AR or VR environments. 187 signals" [ref=e116] [cursor=pointer]:
+                - /url: https://blackhole.plav.in
+                - img "Physically accurate black hole you can put in your room" [ref=e118]
+                - generic [ref=e119]:
+                  - generic [ref=e120]: Show HN · 187 sources
+                  - heading "Physically accurate black hole you can put in your room" [level=2] [ref=e121]
+                  - paragraph [ref=e122]: A web-based app simulates a black hole with real relativistic physics, allowing users to visualize effects in AR or VR environments.
+                  - generic [ref=e123]: 187 signals
+            - article [ref=e126]:
+              - link "Reverse Minesweeper Show HN · 182 sources Reverse Minesweeper Reverse Minesweeper is a puzzle game where players uncover safe squares instead of avoiding mines, reversing the traditional gameplay mechanics of Minesweeper. 182 signals" [ref=e127] [cursor=pointer]:
+                - /url: https://sunflowersgame.com/
+                - img "Reverse Minesweeper" [ref=e129]
+                - generic [ref=e130]:
+                  - generic [ref=e131]: Show HN · 182 sources
+                  - heading "Reverse Minesweeper" [level=2] [ref=e132]
+                  - paragraph [ref=e133]: Reverse Minesweeper is a puzzle game where players uncover safe squares instead of avoiding mines, reversing the traditional gameplay mechanics of Minesweeper.
+                  - generic [ref=e134]: 182 signals
+            - article [ref=e137]:
+              - link "Android May Soon Restrict On-Device ADB, Affecting Shizuku, libadb and Developers Hacker News · 898 sources Android May Soon Restrict On-Device ADB, Affecting Shizuku, libadb and Developers Android may soon restrict on-device ADB, which will primarily impact tools like Shizuku and libadb used by developers. 898 signals" [ref=e138] [cursor=pointer]:
+                - /url: https://kitsumed.github.io/blog/posts/android-may-soon-restrict-on-device-adb/
+                - img "Android May Soon Restrict On-Device ADB, Affecting Shizuku, libadb and Developers" [ref=e140]
+                - generic [ref=e141]:
+                  - generic [ref=e142]: Hacker News · 898 sources
+                  - heading "Android May Soon Restrict On-Device ADB, Affecting Shizuku, libadb and Developers" [level=2] [ref=e143]
+                  - paragraph [ref=e144]: Android may soon restrict on-device ADB, which will primarily impact tools like Shizuku and libadb used by developers.
+                  - generic [ref=e145]: 898 signals
+            - article [ref=e148]:
+              - link "Open-weight AI is having its Kubernetes moment Hacker News · 349 sources Open-weight AI is having its Kubernetes moment Open-weight AI models allow for greater transparency and collaboration compared to closed models, similar to how Kubernetes transformed container orchestration. 349 signals" [ref=e149] [cursor=pointer]:
+                - /url: https://tobi.knaup.me/2026-07-25-open-weight-ai-is-having-its-kubernetes-moment/
+                - img "Open-weight AI is having its Kubernetes moment" [ref=e151]
+                - generic [ref=e152]:
+                  - generic [ref=e153]: Hacker News · 349 sources
+                  - heading "Open-weight AI is having its Kubernetes moment" [level=2] [ref=e154]
+                  - paragraph [ref=e155]: Open-weight AI models allow for greater transparency and collaboration compared to closed models, similar to how Kubernetes transformed container orchestration.
+                  - generic [ref=e156]: 349 signals
+            - article [ref=e159]:
+              - link "Brolly, a plain-text weather forecast site Show HN · 161 sources Brolly, a plain-text weather forecast site Brolly is a minimalist, plain-text weather forecast site that emphasizes usability with a single long scrollable column for mobile devices. 161 signals" [ref=e160] [cursor=pointer]:
+                - /url: https://brolly.sh/forecast/RWFP2qW8
+                - img "Brolly, a plain-text weather forecast site" [ref=e162]
+                - generic [ref=e163]:
+                  - generic [ref=e164]: Show HN · 161 sources
+                  - heading "Brolly, a plain-text weather forecast site" [level=2] [ref=e165]
+                  - paragraph [ref=e166]: Brolly is a minimalist, plain-text weather forecast site that emphasizes usability with a single long scrollable column for mobile devices.
+                  - generic [ref=e167]: 161 signals
+            - article [ref=e170]:
+              - link "I made some transistor animations Show HN · 151 sources I made some transistor animations The transistor animations showcase various types of transistors with realistic visuals and clarity, differentiating by including less common devices like IGBTs and SCRs. 151 signals" [ref=e171] [cursor=pointer]:
+                - /url: https://brandonli.net/semisim/animations
+                - img "I made some transistor animations" [ref=e173]
+                - generic [ref=e174]:
+                  - generic [ref=e175]: Show HN · 151 sources
+                  - heading "I made some transistor animations" [level=2] [ref=e176]
+                  - paragraph [ref=e177]: The transistor animations showcase various types of transistors with realistic visuals and clarity, differentiating by including less common devices like IGBTs and SCRs.
+                  - generic [ref=e178]: 151 signals
+        - generic [ref=e180]:
+          - generic [ref=e181]:
+            - generic [ref=e182]:
+              - paragraph [ref=e186]: 03 · Open source & tools
+              - heading "Repos, launches, and project roadmaps with real momentum." [level=2] [ref=e187]
+            - generic [ref=e188]: 8 signals
+          - generic [ref=e189]:
+            - article [ref=e191]:
+              - link "I made an open-source laptop from scratch Show HN · 3237 sources I made an open-source laptop from scratch Byran engineered an open-source laptop from scratch, differentiating it by its complete transparency and accessibility through GitHub. 3237 signals" [ref=e192] [cursor=pointer]:
+                - /url: https://www.byran.ee/posts/creation/
+                - img "I made an open-source laptop from scratch" [ref=e194]
+                - generic [ref=e195]:
+                  - generic [ref=e196]: Show HN · 3237 sources
+                  - heading "I made an open-source laptop from scratch" [level=2] [ref=e197]
+                  - paragraph [ref=e198]: Byran engineered an open-source laptop from scratch, differentiating it by its complete transparency and accessibility through GitHub.
+                  - generic [ref=e199]: 3237 signals
+            - article [ref=e202]:
+              - link "A retro video game console I've been working on in my free time Show HN · 2690 sources A retro video game console I've been working on in my free time The retro video game console features customizable hardware components, allowing users to modify performance and aesthetics according to personal preferences. 2690 signals" [ref=e203] [cursor=pointer]:
+                - /url: https://internalregister.github.io/2019/03/14/Homebrew-Console.html
+                - img "A retro video game console I've been working on in my free time" [ref=e205]
+                - generic [ref=e206]:
+                  - generic [ref=e207]: Show HN · 2690 sources
+                  - heading "A retro video game console I've been working on in my free time" [level=2] [ref=e208]
+                  - paragraph [ref=e209]: The retro video game console features customizable hardware components, allowing users to modify performance and aesthetics according to personal preferences.
+                  - generic [ref=e210]: 2690 signals
+            - article [ref=e213]:
+              - link "Redbean – Single-file distributable web server Show HN · 1998 sources Redbean – Single-file distributable web server Redbean is a single-file distributable web server, differentiating itself by requiring no installation or configuration for immediate deployment. 1998 signals" [ref=e214] [cursor=pointer]:
+                - /url: https://justine.lol/redbean/index.html
+                - img "Redbean – Single-file distributable web server" [ref=e216]
+                - generic [ref=e217]:
+                  - generic [ref=e218]: Show HN · 1998 sources
+                  - heading "Redbean – Single-file distributable web server" [level=2] [ref=e219]
+                  - paragraph [ref=e220]: Redbean is a single-file distributable web server, differentiating itself by requiring no installation or configuration for immediate deployment.
+                  - generic [ref=e221]: 1998 signals
+            - article [ref=e224]:
+              - link "pbakaus / impeccable GitHub Trending · 413 sources pbakaus / impeccable Impeccable is a design language that enhances AI capabilities in design, differentiating itself by focusing on user experience and aesthetic coherence. 413 signals" [ref=e225] [cursor=pointer]:
+                - /url: https://github.com/pbakaus/impeccable
+                - img "pbakaus / impeccable" [ref=e227]
+                - generic [ref=e228]:
+                  - generic [ref=e229]: GitHub Trending · 413 sources
+                  - heading "pbakaus / impeccable" [level=2] [ref=e230]
+                  - paragraph [ref=e231]: Impeccable is a design language that enhances AI capabilities in design, differentiating itself by focusing on user experience and aesthetic coherence.
+                  - generic [ref=e232]: 413 signals
+            - article [ref=e235]:
+              - link "alibaba / open-code-review GitHub Trending · 431 sources alibaba / open-code-review Alibaba's Open-Code-Review is a hybrid architecture tool that combines deterministic pipelines with an LLM Agent for precise code review comments. 431 signals" [ref=e236] [cursor=pointer]:
+                - /url: https://github.com/alibaba/open-code-review
+                - img "alibaba / open-code-review" [ref=e238]
+                - generic [ref=e239]:
+                  - generic [ref=e240]: GitHub Trending · 431 sources
+                  - heading "alibaba / open-code-review" [level=2] [ref=e241]
+                  - paragraph [ref=e242]: Alibaba's Open-Code-Review is a hybrid architecture tool that combines deterministic pipelines with an LLM Agent for precise code review comments.
+                  - generic [ref=e243]: 431 signals
+            - article [ref=e246]:
+              - link "anthropics / claude-cookbooks GitHub Trending · 132 sources anthropics / claude-cookbooks Anthropics/Claude-Cookbooks is a collection of notebooks that demonstrate innovative uses of the Claude AI model. 132 signals" [ref=e247] [cursor=pointer]:
+                - /url: https://github.com/anthropics/claude-cookbooks
+                - img "anthropics / claude-cookbooks" [ref=e249]
+                - generic [ref=e250]:
+                  - generic [ref=e251]: GitHub Trending · 132 sources
+                  - heading "anthropics / claude-cookbooks" [level=2] [ref=e252]
+                  - paragraph [ref=e253]: Anthropics/Claude-Cookbooks is a collection of notebooks that demonstrate innovative uses of the Claude AI model.
+                  - generic [ref=e254]: 132 signals
+            - article [ref=e257]:
+              - link "block / buzz GitHub Trending · 2491 sources block / buzz Block/Buzz is a hive mind communication platform that differentiates itself by enabling collaborative decision-making among users in real-time. 2491 signals" [ref=e258] [cursor=pointer]:
+                - /url: https://github.com/block/buzz
+                - img "block / buzz" [ref=e260]
+                - generic [ref=e261]:
+                  - generic [ref=e262]: GitHub Trending · 2491 sources
+                  - heading "block / buzz" [level=2] [ref=e263]
+                  - paragraph [ref=e264]: Block/Buzz is a hive mind communication platform that differentiates itself by enabling collaborative decision-making among users in real-time.
+                  - generic [ref=e265]: 2491 signals
+            - article [ref=e268]:
+              - link "Gemini Pro 3 imagines the HN front page 10 years from now Show HN · 3346 sources Gemini Pro 3 imagines the HN front page 10 years from now Gemini Pro 3 is an AI tool that predicts future content trends, differentiating itself by visualizing the HN front page a decade ahead. 3346 signals" [ref=e269] [cursor=pointer]:
+                - /url: https://dosaygo-studio.github.io/hn-front-page-2035/news
+                - img "Gemini Pro 3 imagines the HN front page 10 years from now" [ref=e271]
+                - generic [ref=e272]:
+                  - generic [ref=e273]: Show HN · 3346 sources
+                  - heading "Gemini Pro 3 imagines the HN front page 10 years from now" [level=2] [ref=e274]
+                  - paragraph [ref=e275]: Gemini Pro 3 is an AI tool that predicts future content trends, differentiating itself by visualizing the HN front page a decade ahead.
+                  - generic [ref=e276]: 3346 signals
+      - contentinfo [ref=e278]:
+        - generic [ref=e279]:
+          - generic [ref=e280]: Trace
+          - navigation "Explore Trace" [ref=e281]:
+            - link "Trending" [ref=e282] [cursor=pointer]:
+              - /url: /trending
+            - link "Blog" [ref=e283] [cursor=pointer]:
+              - /url: /blog
+            - link "Compare" [ref=e284] [cursor=pointer]:
+              - /url: /compare
+            - link "Contact" [ref=e285] [cursor=pointer]:
+              - /url: /contact
+            - link "Privacy" [ref=e286] [cursor=pointer]:
+              - /url: /privacy-policy
+            - link "Terms" [ref=e287] [cursor=pointer]:
+              - /url: /terms
+        - paragraph [ref=e288]: © 2026 Trace · Independent daily tech reference
+        - generic [ref=e289]:
+          - paragraph [ref=e290]: More from the founder
+          - generic [ref=e291]:
+            - generic [ref=e292]:
+              - link "StocksBrew" [ref=e293] [cursor=pointer]:
+                - /url: https://stocksbrew.online/?utm_source=trace&utm_medium=edition_footer
+              - paragraph [ref=e297]: Know what to do with your stock.
+            - generic [ref=e298]:
+              - link "Trace - Android" [ref=e299] [cursor=pointer]:
+                - /url: /api/affiliate/outbound?target=android_app&next=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Donline.yourtrace.app
+              - paragraph [ref=e302]: TikTok for news.
+    - generic [ref=e304]:
+      - generic [ref=e305]: tier
+      - button "free" [ref=e306] [cursor=pointer]
+      - button "pro" [ref=e307] [cursor=pointer]
+      - generic [ref=e309]: img
+      - button "on" [ref=e310] [cursor=pointer]
+  - button "Open Next.js Dev Tools" [ref=e316] [cursor=pointer]
+  - alert [ref=e320]

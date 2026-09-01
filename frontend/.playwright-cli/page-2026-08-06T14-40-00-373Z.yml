@@ -1,0 +1,414 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e7] [cursor=pointer]
+  - alert [ref=e11]
+  - generic [ref=e12]:
+    - banner [ref=e13]:
+      - generic [ref=e14]:
+        - link "TRACE" [ref=e15] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e17]:
+          - button "Use dark theme" [ref=e18] [cursor=pointer]
+          - link "Sign in" [ref=e21] [cursor=pointer]:
+            - /url: /
+    - generic [ref=e23]:
+      - generic [ref=e24]:
+        - navigation "Feed filters" [ref=e25]:
+          - generic [ref=e26]:
+            - button "All news" [pressed] [ref=e27] [cursor=pointer]
+            - button "AI" [ref=e28] [cursor=pointer]
+            - button "Markets" [ref=e29] [cursor=pointer]
+            - button "Engineering" [ref=e30] [cursor=pointer]
+            - button "Design" [ref=e31] [cursor=pointer]
+            - button "Tech" [ref=e32] [cursor=pointer]
+            - button "Startups" [ref=e33] [cursor=pointer]
+            - button "Pulse" [ref=e34] [cursor=pointer]
+        - generic [ref=e35]:
+          - article [ref=e36]:
+            - generic [ref=e37]:
+              - button "Read Vision Pro is a niche product, but an incredibly valuable one in the right hands" [ref=e38] [cursor=pointer]
+              - button "Bookmark Vision Pro is a niche product, but an incredibly valuable one in the right hands" [ref=e40] [cursor=pointer]
+            - button [ref=e43] [cursor=pointer]:
+              - paragraph [ref=e45]: Tech
+              - heading "Vision Pro is a niche product, but an incredibly valuable one in the right hands" [level=2] [ref=e46]
+          - article [ref=e47]:
+            - generic [ref=e48]:
+              - button "Read Hadrian valued at nearly $8 billion after fresh funding as money pours into defense tech" [ref=e49] [cursor=pointer]
+              - button "Bookmark Hadrian valued at nearly $8 billion after fresh funding as money pours into defense tech" [ref=e51] [cursor=pointer]
+            - button [ref=e54] [cursor=pointer]:
+              - paragraph [ref=e56]: Startups
+              - heading "Hadrian valued at nearly $8 billion after fresh funding as money pours into defense tech" [level=2] [ref=e57]
+          - article [ref=e58]:
+            - generic [ref=e59]:
+              - button "Read Versant raises 2026 outlook on strength of platforms segment and advertising momentum" [ref=e60] [cursor=pointer]
+              - button "Bookmark Versant raises 2026 outlook on strength of platforms segment and advertising momentum" [ref=e62] [cursor=pointer]
+            - button [ref=e65] [cursor=pointer]:
+              - paragraph [ref=e67]: Markets
+              - heading "Versant raises 2026 outlook on strength of platforms segment and advertising momentum" [level=2] [ref=e68]
+          - article [ref=e69]:
+            - generic [ref=e70]:
+              - 'button "Read The Return Of The Repeat Founder: Inside YC’s Growing Class Of Second-Timers" [ref=e71] [cursor=pointer]'
+              - 'button "Bookmark The Return Of The Repeat Founder: Inside YC’s Growing Class Of Second-Timers" [ref=e73] [cursor=pointer]'
+            - button [ref=e76] [cursor=pointer]:
+              - paragraph [ref=e78]: Startups
+              - 'heading "The Return Of The Repeat Founder: Inside YC’s Growing Class Of Second-Timers" [level=2] [ref=e79]'
+          - article [ref=e80]:
+            - generic [ref=e81]:
+              - button "Read Hey Google, Assistant isn’t going away quietly" [ref=e82] [cursor=pointer]
+              - button "Bookmark Hey Google, Assistant isn’t going away quietly" [ref=e84] [cursor=pointer]
+            - button [ref=e87] [cursor=pointer]:
+              - paragraph [ref=e89]: AI
+              - heading "Hey Google, Assistant isn’t going away quietly" [level=2] [ref=e90]
+          - article [ref=e91]:
+            - generic [ref=e92]:
+              - button "Read Nintendo beats earnings thanks to US tariff refunds it won’t share with gamers" [ref=e93] [cursor=pointer]
+              - button "Bookmark Nintendo beats earnings thanks to US tariff refunds it won’t share with gamers" [ref=e95] [cursor=pointer]
+            - button [ref=e98] [cursor=pointer]:
+              - paragraph [ref=e100]: Markets
+              - heading "Nintendo beats earnings thanks to US tariff refunds it won’t share with gamers" [level=2] [ref=e101]
+          - article [ref=e102]:
+            - generic [ref=e103]:
+              - button "Read OpenAI developer warns the \"tireless eagle eyes of a million models\" are coming for your exposed API keys and crypto wallets" [ref=e104] [cursor=pointer]
+              - button "Bookmark OpenAI developer warns the \"tireless eagle eyes of a million models\" are coming for your exposed API keys and crypto wallets" [ref=e106] [cursor=pointer]
+            - button [ref=e109] [cursor=pointer]:
+              - paragraph [ref=e111]: Engineering
+              - heading "OpenAI developer warns the \"tireless eagle eyes of a million models\" are coming for your exposed API keys and crypto wallets" [level=2] [ref=e112]
+          - article [ref=e113]:
+            - generic [ref=e114]:
+              - 'button "Read Presentation: From ms to µs: OSS Valkey Architecture Patterns for Modern AI" [ref=e115] [cursor=pointer]'
+              - 'button "Bookmark Presentation: From ms to µs: OSS Valkey Architecture Patterns for Modern AI" [ref=e117] [cursor=pointer]'
+            - button [ref=e120] [cursor=pointer]:
+              - paragraph [ref=e122]: Engineering
+              - 'heading "Presentation: From ms to µs: OSS Valkey Architecture Patterns for Modern AI" [level=2] [ref=e123]'
+          - article [ref=e124]:
+            - generic [ref=e125]:
+              - button "Read OpenAI Challenges Apple's Trade Secrets Lawsuit" [ref=e126] [cursor=pointer]
+              - button "Bookmark OpenAI Challenges Apple's Trade Secrets Lawsuit" [ref=e128] [cursor=pointer]
+            - button [ref=e131] [cursor=pointer]:
+              - paragraph [ref=e133]: AI
+              - heading "OpenAI Challenges Apple's Trade Secrets Lawsuit" [level=2] [ref=e134]
+          - article [ref=e135]:
+            - generic [ref=e136]:
+              - button "Read Khanna to introduce 'Data Center Bill of Rights' as fight over AI power plants heats up" [ref=e137] [cursor=pointer]
+              - button "Bookmark Khanna to introduce 'Data Center Bill of Rights' as fight over AI power plants heats up" [ref=e139] [cursor=pointer]
+            - button [ref=e142] [cursor=pointer]:
+              - paragraph [ref=e144]: AI
+              - heading "Khanna to introduce 'Data Center Bill of Rights' as fight over AI power plants heats up" [level=2] [ref=e145]
+          - article [ref=e146]:
+            - generic [ref=e147]:
+              - button "Read SoftBank gets $8.2 billion boost from Intel as OpenAI takes a backseat" [ref=e148] [cursor=pointer]
+              - button "Bookmark SoftBank gets $8.2 billion boost from Intel as OpenAI takes a backseat" [ref=e150] [cursor=pointer]
+            - button [ref=e153] [cursor=pointer]:
+              - paragraph [ref=e155]: Markets
+              - heading "SoftBank gets $8.2 billion boost from Intel as OpenAI takes a backseat" [level=2] [ref=e156]
+          - article [ref=e157]:
+            - generic [ref=e158]:
+              - 'button "Read Article: Runtime-Agnostic AI Workflows: A Pattern for Production Durability and Fast Eval Iteration" [ref=e159] [cursor=pointer]'
+              - 'button "Bookmark Article: Runtime-Agnostic AI Workflows: A Pattern for Production Durability and Fast Eval Iteration" [ref=e161] [cursor=pointer]'
+            - button [ref=e164] [cursor=pointer]:
+              - paragraph [ref=e166]: Engineering
+              - 'heading "Article: Runtime-Agnostic AI Workflows: A Pattern for Production Durability and Fast Eval Iteration" [level=2] [ref=e167]'
+          - article [ref=e168]:
+            - generic [ref=e169]:
+              - button "Read Google is expanding its AI empire — and losing the people who built it" [ref=e170] [cursor=pointer]
+              - button "Bookmark Google is expanding its AI empire — and losing the people who built it" [ref=e172] [cursor=pointer]
+            - button [ref=e175] [cursor=pointer]:
+              - paragraph [ref=e177]: AI
+              - heading "Google is expanding its AI empire — and losing the people who built it" [level=2] [ref=e178]
+          - article [ref=e179]:
+            - generic [ref=e180]:
+              - 'button "Read Pods as Workers, Not Agents: Rethinking the Deployment Unit for AI Agents on Kubernetes" [ref=e181] [cursor=pointer]'
+              - 'button "Bookmark Pods as Workers, Not Agents: Rethinking the Deployment Unit for AI Agents on Kubernetes" [ref=e183] [cursor=pointer]'
+            - button [ref=e186] [cursor=pointer]:
+              - paragraph [ref=e188]: Engineering
+              - 'heading "Pods as Workers, Not Agents: Rethinking the Deployment Unit for AI Agents on Kubernetes" [level=2] [ref=e189]'
+          - article [ref=e190]:
+            - generic [ref=e191]:
+              - button "Read AI or real? BBC analyses viral China disaster videos" [ref=e192] [cursor=pointer]
+              - button "Bookmark AI or real? BBC analyses viral China disaster videos" [ref=e194] [cursor=pointer]
+            - button [ref=e197] [cursor=pointer]:
+              - paragraph [ref=e199]: AI
+              - heading "AI or real? BBC analyses viral China disaster videos" [level=2] [ref=e200]
+          - article [ref=e201]:
+            - generic [ref=e202]:
+              - 'button "Read Cashing in on SpaceX: ''Every chance I get, I''ll sell a little more''" [ref=e203] [cursor=pointer]'
+              - 'button "Bookmark Cashing in on SpaceX: ''Every chance I get, I''ll sell a little more''" [ref=e205] [cursor=pointer]'
+            - button [ref=e208] [cursor=pointer]:
+              - paragraph [ref=e210]: Markets
+              - 'heading "Cashing in on SpaceX: ''Every chance I get, I''ll sell a little more''" [level=2] [ref=e211]'
+          - article [ref=e212]:
+            - generic [ref=e213]:
+              - button "Read Chinese Renewable Energy Giant Envision Launches Data Center" [ref=e214] [cursor=pointer]
+              - button "Bookmark Chinese Renewable Energy Giant Envision Launches Data Center" [ref=e216] [cursor=pointer]
+            - button [ref=e219] [cursor=pointer]:
+              - paragraph [ref=e221]: AI
+              - heading "Chinese Renewable Energy Giant Envision Launches Data Center" [level=2] [ref=e222]
+          - article [ref=e223]:
+            - generic [ref=e224]:
+              - button "Read Abode launches new Apple Home-compatible sensors for garages, gates, more" [ref=e225] [cursor=pointer]
+              - button "Bookmark Abode launches new Apple Home-compatible sensors for garages, gates, more" [ref=e227] [cursor=pointer]
+            - button [ref=e230] [cursor=pointer]:
+              - paragraph [ref=e232]: Design
+              - heading "Abode launches new Apple Home-compatible sensors for garages, gates, more" [level=2] [ref=e233]
+          - article [ref=e234]:
+            - generic [ref=e235]:
+              - button "Read Elon Musk’s attempt at an AI Wikipedia hasn’t been updated in months" [ref=e236] [cursor=pointer]
+              - button "Bookmark Elon Musk’s attempt at an AI Wikipedia hasn’t been updated in months" [ref=e238] [cursor=pointer]
+            - button [ref=e241] [cursor=pointer]:
+              - paragraph [ref=e243]: AI
+              - heading "Elon Musk’s attempt at an AI Wikipedia hasn’t been updated in months" [level=2] [ref=e244]
+          - article [ref=e245]:
+            - generic [ref=e246]:
+              - button "Read Flaws in Apple’s Private Relay expose IP addresses" [ref=e247] [cursor=pointer]
+              - button "Bookmark Flaws in Apple’s Private Relay expose IP addresses" [ref=e249] [cursor=pointer]
+            - button [ref=e252] [cursor=pointer]:
+              - paragraph [ref=e254]: Engineering
+              - heading "Flaws in Apple’s Private Relay expose IP addresses" [level=2] [ref=e255]
+          - article [ref=e256]:
+            - generic [ref=e257]:
+              - button "Read Major Leadership Changes at Google and DeepMind" [ref=e258] [cursor=pointer]
+              - button "Bookmark Major Leadership Changes at Google and DeepMind" [ref=e260] [cursor=pointer]
+            - button [ref=e263] [cursor=pointer]:
+              - paragraph [ref=e265]: AI
+              - heading "Major Leadership Changes at Google and DeepMind" [level=2] [ref=e266]
+          - article [ref=e267]:
+            - generic [ref=e268]:
+              - button "Read Zoox Launches Paid Robotaxi Service in Las Vegas" [ref=e269] [cursor=pointer]
+              - button "Bookmark Zoox Launches Paid Robotaxi Service in Las Vegas" [ref=e271] [cursor=pointer]
+            - button [ref=e274] [cursor=pointer]:
+              - paragraph [ref=e276]: Tech
+              - heading "Zoox Launches Paid Robotaxi Service in Las Vegas" [level=2] [ref=e277]
+          - article [ref=e278]:
+            - generic [ref=e279]:
+              - 'button "Read D-Wave on rails: Company tests entanglement on its dual-rail qubits" [ref=e280] [cursor=pointer]'
+              - 'button "Bookmark D-Wave on rails: Company tests entanglement on its dual-rail qubits" [ref=e282] [cursor=pointer]'
+            - button [ref=e285] [cursor=pointer]:
+              - paragraph [ref=e287]: Tech
+              - 'heading "D-Wave on rails: Company tests entanglement on its dual-rail qubits" [level=2] [ref=e288]'
+          - article [ref=e289]:
+            - generic [ref=e290]:
+              - button "Read Sandisk stock steady ahead of AI highflier's earnings" [ref=e291] [cursor=pointer]
+              - button "Bookmark Sandisk stock steady ahead of AI highflier's earnings" [ref=e293] [cursor=pointer]
+            - button [ref=e296] [cursor=pointer]:
+              - paragraph [ref=e298]: Markets
+              - heading "Sandisk stock steady ahead of AI highflier's earnings" [level=2] [ref=e299]
+          - article [ref=e300]:
+            - generic [ref=e301]:
+              - button "Read Mistral's open model Shieldstral matches much larger safety models at a fraction of the size" [ref=e302] [cursor=pointer]
+              - button "Bookmark Mistral's open model Shieldstral matches much larger safety models at a fraction of the size" [ref=e304] [cursor=pointer]
+            - button [ref=e307] [cursor=pointer]:
+              - paragraph [ref=e309]: AI
+              - heading "Mistral's open model Shieldstral matches much larger safety models at a fraction of the size" [level=2] [ref=e310]
+          - article [ref=e311]:
+            - generic [ref=e312]:
+              - button "Read Gilead Slumps As Long-Term Uncertainty Clouds Massive HIV Beat" [ref=e313] [cursor=pointer]
+              - button "Bookmark Gilead Slumps As Long-Term Uncertainty Clouds Massive HIV Beat" [ref=e315] [cursor=pointer]
+            - button [ref=e318] [cursor=pointer]:
+              - paragraph [ref=e320]: Markets
+              - heading "Gilead Slumps As Long-Term Uncertainty Clouds Massive HIV Beat" [level=2] [ref=e321]
+          - article [ref=e322]:
+            - generic [ref=e323]:
+              - 'button "Read Reddit is introducing a new moderator: AI" [ref=e324] [cursor=pointer]'
+              - 'button "Bookmark Reddit is introducing a new moderator: AI" [ref=e326] [cursor=pointer]'
+            - button [ref=e329] [cursor=pointer]:
+              - paragraph [ref=e331]: AI
+              - 'heading "Reddit is introducing a new moderator: AI" [level=2] [ref=e332]'
+          - article [ref=e333]:
+            - generic [ref=e334]:
+              - button "Read Google’s Top AI Brains Are Leaving to Launch Discovery Loop" [ref=e335] [cursor=pointer]
+              - button "Bookmark Google’s Top AI Brains Are Leaving to Launch Discovery Loop" [ref=e337] [cursor=pointer]
+            - button [ref=e340] [cursor=pointer]:
+              - paragraph [ref=e342]: Startups
+              - heading "Google’s Top AI Brains Are Leaving to Launch Discovery Loop" [level=2] [ref=e343]
+          - article [ref=e344]:
+            - generic [ref=e345]:
+              - button "Read UK's job market is splitting in two as AI demand surges while knowledge work postings crater" [ref=e346] [cursor=pointer]
+              - button "Bookmark UK's job market is splitting in two as AI demand surges while knowledge work postings crater" [ref=e348] [cursor=pointer]
+            - button [ref=e351] [cursor=pointer]:
+              - paragraph [ref=e353]: AI
+              - heading "UK's job market is splitting in two as AI demand surges while knowledge work postings crater" [level=2] [ref=e354]
+          - article [ref=e355]:
+            - generic [ref=e356]:
+              - button "Read Manager of DRAM memory chip stock trade blockbuster ETF is back with new AI thematic bet" [ref=e357] [cursor=pointer]
+              - button "Bookmark Manager of DRAM memory chip stock trade blockbuster ETF is back with new AI thematic bet" [ref=e359] [cursor=pointer]
+            - button [ref=e362] [cursor=pointer]:
+              - paragraph [ref=e364]: Markets
+              - heading "Manager of DRAM memory chip stock trade blockbuster ETF is back with new AI thematic bet" [level=2] [ref=e365]
+          - article [ref=e366]:
+            - generic [ref=e367]:
+              - button "Read Google clearing out official Pixel 10 cases ahead of Pixel 11 launch" [ref=e368] [cursor=pointer]
+              - button "Bookmark Google clearing out official Pixel 10 cases ahead of Pixel 11 launch" [ref=e370] [cursor=pointer]
+            - button [ref=e373] [cursor=pointer]:
+              - paragraph [ref=e375]: Design
+              - heading "Google clearing out official Pixel 10 cases ahead of Pixel 11 launch" [level=2] [ref=e376]
+          - article [ref=e377]:
+            - generic [ref=e378]:
+              - button "Read Rogue AI Agents Launch Hacking Attempts During Cybersecurity Tests" [ref=e379] [cursor=pointer]
+              - button "Bookmark Rogue AI Agents Launch Hacking Attempts During Cybersecurity Tests" [ref=e381] [cursor=pointer]
+            - button [ref=e384] [cursor=pointer]:
+              - paragraph [ref=e386]: AI
+              - heading "Rogue AI Agents Launch Hacking Attempts During Cybersecurity Tests" [level=2] [ref=e387]
+          - article [ref=e388]:
+            - generic [ref=e389]:
+              - button "Read TechCrunch Disrupt 2026’s Real World AI Stage features robots, automated factories, and extinct animals" [ref=e390] [cursor=pointer]
+              - button "Bookmark TechCrunch Disrupt 2026’s Real World AI Stage features robots, automated factories, and extinct animals" [ref=e392] [cursor=pointer]
+            - button [ref=e395] [cursor=pointer]:
+              - paragraph [ref=e397]: AI
+              - heading "TechCrunch Disrupt 2026’s Real World AI Stage features robots, automated factories, and extinct animals" [level=2] [ref=e398]
+          - article [ref=e399]:
+            - generic [ref=e400]:
+              - button "Read Pixel Watch 5 leaked marketing images surface one week before launch" [ref=e401] [cursor=pointer]
+              - button "Bookmark Pixel Watch 5 leaked marketing images surface one week before launch" [ref=e403] [cursor=pointer]
+            - button [ref=e406] [cursor=pointer]:
+              - paragraph [ref=e408]: Design
+              - heading "Pixel Watch 5 leaked marketing images surface one week before launch" [level=2] [ref=e409]
+          - article [ref=e410]:
+            - generic [ref=e411]:
+              - button "Read Ted Lasso Season 4 Premieres with New Cast and Storylines" [ref=e412] [cursor=pointer]
+              - button "Bookmark Ted Lasso Season 4 Premieres with New Cast and Storylines" [ref=e414] [cursor=pointer]
+            - button [ref=e417] [cursor=pointer]:
+              - paragraph [ref=e419]: Design
+              - heading "Ted Lasso Season 4 Premieres with New Cast and Storylines" [level=2] [ref=e420]
+          - article [ref=e421]:
+            - generic [ref=e422]:
+              - button "Read Anthropic is hiring an AI chip design team" [ref=e423] [cursor=pointer]
+              - button "Bookmark Anthropic is hiring an AI chip design team" [ref=e425] [cursor=pointer]
+            - button [ref=e428] [cursor=pointer]:
+              - paragraph [ref=e430]: Engineering
+              - heading "Anthropic is hiring an AI chip design team" [level=2] [ref=e431]
+          - article [ref=e432]:
+            - generic [ref=e433]:
+              - button "Read Sunbird Relaunches iMessage App for Android Users" [ref=e434] [cursor=pointer]
+              - button "Bookmark Sunbird Relaunches iMessage App for Android Users" [ref=e436] [cursor=pointer]
+            - button [ref=e439] [cursor=pointer]:
+              - paragraph [ref=e441]: Design
+              - heading "Sunbird Relaunches iMessage App for Android Users" [level=2] [ref=e442]
+          - article [ref=e443]:
+            - generic [ref=e444]:
+              - button "Read JioHotstar Explains the Distributed Engineering Behind Personalized Ad Requests at Streaming Scale" [ref=e445] [cursor=pointer]
+              - button "Bookmark JioHotstar Explains the Distributed Engineering Behind Personalized Ad Requests at Streaming Scale" [ref=e447] [cursor=pointer]
+            - button [ref=e450] [cursor=pointer]:
+              - paragraph [ref=e452]: Engineering
+              - heading "JioHotstar Explains the Distributed Engineering Behind Personalized Ad Requests at Streaming Scale" [level=2] [ref=e453]
+          - article [ref=e454]:
+            - generic [ref=e455]:
+              - button "Read Disney Plus to Feature TikTok Creator Videos" [ref=e456] [cursor=pointer]
+              - button "Bookmark Disney Plus to Feature TikTok Creator Videos" [ref=e458] [cursor=pointer]
+            - button [ref=e461] [cursor=pointer]:
+              - paragraph [ref=e463]: Design
+              - heading "Disney Plus to Feature TikTok Creator Videos" [level=2] [ref=e464]
+          - article [ref=e465]:
+            - generic [ref=e466]:
+              - button "Read Black Forest Labs makes FLUX 3 Video generally available and claims it beats Seedance 2.0" [ref=e467] [cursor=pointer]
+              - button "Bookmark Black Forest Labs makes FLUX 3 Video generally available and claims it beats Seedance 2.0" [ref=e469] [cursor=pointer]
+            - button [ref=e472] [cursor=pointer]:
+              - paragraph [ref=e474]: AI
+              - heading "Black Forest Labs makes FLUX 3 Video generally available and claims it beats Seedance 2.0" [level=2] [ref=e475]
+          - article [ref=e476]:
+            - generic [ref=e477]:
+              - button "Read We're adding to our position in a chipmaker as the AI trade regains its footing" [ref=e478] [cursor=pointer]
+              - button "Bookmark We're adding to our position in a chipmaker as the AI trade regains its footing" [ref=e480] [cursor=pointer]
+            - button [ref=e483] [cursor=pointer]:
+              - paragraph [ref=e485]: Markets
+              - heading "We're adding to our position in a chipmaker as the AI trade regains its footing" [level=2] [ref=e486]
+          - article [ref=e487]:
+            - generic [ref=e488]:
+              - button "Read TikTok is telling people to put their phones into the fridge, and repair shops are happy" [ref=e489] [cursor=pointer]
+              - button "Bookmark TikTok is telling people to put their phones into the fridge, and repair shops are happy" [ref=e491] [cursor=pointer]
+            - button [ref=e494] [cursor=pointer]:
+              - paragraph [ref=e496]: Tech
+              - heading "TikTok is telling people to put their phones into the fridge, and repair shops are happy" [level=2] [ref=e497]
+          - article [ref=e498]:
+            - generic [ref=e499]:
+              - button "Read SpaceX Stock Drops Amid Surge in AI Spending" [ref=e500] [cursor=pointer]
+              - button "Bookmark SpaceX Stock Drops Amid Surge in AI Spending" [ref=e502] [cursor=pointer]
+            - button [ref=e505] [cursor=pointer]:
+              - paragraph [ref=e507]: Markets
+              - heading "SpaceX Stock Drops Amid Surge in AI Spending" [level=2] [ref=e508]
+          - article [ref=e509]:
+            - generic [ref=e510]:
+              - button "Read Uber issues weaker-than-expected bookings, earnings forecasts for third quarter" [ref=e511] [cursor=pointer]
+              - button "Bookmark Uber issues weaker-than-expected bookings, earnings forecasts for third quarter" [ref=e513] [cursor=pointer]
+            - button [ref=e516] [cursor=pointer]:
+              - paragraph [ref=e518]: Markets
+              - heading "Uber issues weaker-than-expected bookings, earnings forecasts for third quarter" [level=2] [ref=e519]
+          - article [ref=e520]:
+            - generic [ref=e521]:
+              - button "Read Indian EV startup River raises $120M Series C to scale production, launch more models" [ref=e522] [cursor=pointer]
+              - button "Bookmark Indian EV startup River raises $120M Series C to scale production, launch more models" [ref=e524] [cursor=pointer]
+            - button [ref=e527] [cursor=pointer]:
+              - paragraph [ref=e529]: Startups
+              - heading "Indian EV startup River raises $120M Series C to scale production, launch more models" [level=2] [ref=e530]
+          - article [ref=e531]:
+            - generic [ref=e532]:
+              - button "Read Google to Retire Assistant on Mobile Devices" [ref=e533] [cursor=pointer]
+              - button "Bookmark Google to Retire Assistant on Mobile Devices" [ref=e535] [cursor=pointer]
+            - button [ref=e538] [cursor=pointer]:
+              - paragraph [ref=e540]: AI
+              - heading "Google to Retire Assistant on Mobile Devices" [level=2] [ref=e541]
+          - article [ref=e542]:
+            - generic [ref=e543]:
+              - button "Read US appeals court allows Perplexity's AI shopping agent back on Amazon" [ref=e544] [cursor=pointer]
+              - button "Bookmark US appeals court allows Perplexity's AI shopping agent back on Amazon" [ref=e546] [cursor=pointer]
+            - button [ref=e549] [cursor=pointer]:
+              - paragraph [ref=e551]: AI
+              - heading "US appeals court allows Perplexity's AI shopping agent back on Amazon" [level=2] [ref=e552]
+          - article [ref=e553]:
+            - generic [ref=e554]:
+              - button "Read Anthropic's Mythos created fake identities to fool humans in new cyber incident" [ref=e555] [cursor=pointer]
+              - button "Bookmark Anthropic's Mythos created fake identities to fool humans in new cyber incident" [ref=e557] [cursor=pointer]
+            - button [ref=e560] [cursor=pointer]:
+              - paragraph [ref=e562]: AI
+              - heading "Anthropic's Mythos created fake identities to fool humans in new cyber incident" [level=2] [ref=e563]
+          - article [ref=e564]:
+            - generic [ref=e565]:
+              - button "Read Alibaba, DeepSeek push China’s AI model race towards lower costs" [ref=e566] [cursor=pointer]
+              - button "Bookmark Alibaba, DeepSeek push China’s AI model race towards lower costs" [ref=e568] [cursor=pointer]
+            - button [ref=e571] [cursor=pointer]:
+              - paragraph [ref=e573]: AI
+              - heading "Alibaba, DeepSeek push China’s AI model race towards lower costs" [level=2] [ref=e574]
+          - article [ref=e575]:
+            - generic [ref=e576]:
+              - button "Read PRISM2 model uses clinical dialogue to interpret pathology slides" [ref=e577] [cursor=pointer]
+              - button "Bookmark PRISM2 model uses clinical dialogue to interpret pathology slides" [ref=e579] [cursor=pointer]
+            - button [ref=e582] [cursor=pointer]:
+              - paragraph [ref=e584]: AI
+              - heading "PRISM2 model uses clinical dialogue to interpret pathology slides" [level=2] [ref=e585]
+      - status [ref=e586]
+    - contentinfo [ref=e587]:
+      - generic [ref=e588]:
+        - generic [ref=e589]:
+          - generic [ref=e590]: TRACE
+          - navigation [ref=e591]:
+            - link "Feed" [ref=e592] [cursor=pointer]:
+              - /url: /feed
+            - link "Guides" [ref=e593] [cursor=pointer]:
+              - /url: /blog
+            - link "Resources" [ref=e594] [cursor=pointer]:
+              - /url: /resources
+            - link "Agents" [ref=e595] [cursor=pointer]:
+              - /url: /agents
+            - link "Solutions" [ref=e596] [cursor=pointer]:
+              - /url: /solutions
+            - link "Use cases" [ref=e597] [cursor=pointer]:
+              - /url: /use-cases
+            - link "Newsletter reviews" [ref=e598] [cursor=pointer]:
+              - /url: /newsletters
+            - link "RSS" [ref=e599] [cursor=pointer]:
+              - /url: /rss.xml
+            - link "How it works" [ref=e604] [cursor=pointer]:
+              - /url: /how-it-works
+            - link "Privacy" [ref=e605] [cursor=pointer]:
+              - /url: /privacy-policy
+            - link "Terms" [ref=e606] [cursor=pointer]:
+              - /url: /terms
+            - link "Contact" [ref=e607] [cursor=pointer]:
+              - /url: /contact
+        - generic [ref=e608]:
+          - generic [ref=e609]:
+            - link "StocksBrew" [ref=e610] [cursor=pointer]:
+              - /url: https://stocksbrew.online/?utm_source=trace&utm_medium=feed_footer
+            - paragraph [ref=e614]: Know what to do with your stock.
+          - generic [ref=e615]:
+            - link "Trace for Android" [ref=e616] [cursor=pointer]:
+              - /url: /api/affiliate/outbound?target=android_app&next=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Donline.yourtrace.app
+            - paragraph [ref=e619]: Your AI and tech feed on Android.

@@ -1,0 +1,176 @@
+- generic [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e103] [cursor=pointer]
+  - alert [ref=e107]
+  - generic [ref=e108]:
+    - banner [ref=e109]:
+      - generic [ref=e110]:
+        - link "TRACE" [ref=e111] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e113]:
+          - button "Use dark theme" [ref=e114] [cursor=pointer]
+          - link "Sign in" [ref=e117] [cursor=pointer]:
+            - /url: /
+    - generic [ref=e119]:
+      - generic [ref=e120]:
+        - navigation "Feed filters" [ref=e121]:
+          - generic [ref=e122]:
+            - button "All news" [ref=e123] [cursor=pointer]
+            - button "AI" [ref=e124] [cursor=pointer]
+            - button "Markets" [ref=e125] [cursor=pointer]
+            - button "Engineering" [ref=e126] [cursor=pointer]
+            - button "Design" [ref=e127] [cursor=pointer]
+            - button "Tech" [ref=e128] [cursor=pointer]
+            - button "Startups" [ref=e129] [cursor=pointer]
+            - button "Pulse" [active] [pressed] [ref=e130] [cursor=pointer]
+        - generic [ref=e716]:
+          - generic [ref=e717]:
+            - heading "More from around technology" [level=2] [ref=e718]
+            - paragraph [ref=e719]: Useful launches, discussions, videos, and independent writing. News remains the main Trace feed.
+          - generic [ref=e720]:
+            - article [ref=e721]:
+              - 'button "Read Incident Report: unsanctioned agent behaviour during cyber testing" [ref=e722] [cursor=pointer]':
+                - generic [ref=e723]:
+                  - paragraph [ref=e724]: Independent writing
+                  - 'heading "Incident Report: unsanctioned agent behaviour during cyber testing" [level=2] [ref=e725]'
+              - 'button "Bookmark Incident Report: unsanctioned agent behaviour during cyber testing" [ref=e727] [cursor=pointer]'
+            - article [ref=e730]:
+              - 'button "Read Gadgets: Personal app vibe coding that is actually safe — Kenton Varda, Cloudflare" [ref=e731] [cursor=pointer]':
+                - generic [ref=e732]:
+                  - paragraph [ref=e733]: Independent writing
+                  - 'heading "Gadgets: Personal app vibe coding that is actually safe — Kenton Varda, Cloudflare" [level=2] [ref=e734]'
+              - 'button "Bookmark Gadgets: Personal app vibe coding that is actually safe — Kenton Varda, Cloudflare" [ref=e736] [cursor=pointer]'
+            - article [ref=e739]:
+              - 'button "Read LLM Evals: Everything You Need to Know" [ref=e740] [cursor=pointer]':
+                - generic [ref=e741]:
+                  - paragraph [ref=e742]: Independent writing
+                  - 'heading "LLM Evals: Everything You Need to Know" [level=2] [ref=e743]'
+              - 'button "Bookmark LLM Evals: Everything You Need to Know" [ref=e745] [cursor=pointer]'
+            - article [ref=e748]:
+              - button "Read New release of LLM adds support for reasoning traces, OpenAI Responses, server-side tools, and smarter logging" [ref=e749] [cursor=pointer]:
+                - generic [ref=e750]:
+                  - paragraph [ref=e751]: Independent writing
+                  - heading "New release of LLM adds support for reasoning traces, OpenAI Responses, server-side tools, and smarter logging" [level=2] [ref=e752]
+              - button "Bookmark New release of LLM adds support for reasoning traces, OpenAI Responses, server-side tools, and smarter logging" [ref=e754] [cursor=pointer]
+            - article [ref=e757]:
+              - button "Read The Revenge of the Data Scientist" [ref=e758] [cursor=pointer]:
+                - generic [ref=e759]:
+                  - paragraph [ref=e760]: Independent writing
+                  - heading "The Revenge of the Data Scientist" [level=2] [ref=e761]
+              - button "Bookmark The Revenge of the Data Scientist" [ref=e763] [cursor=pointer]
+            - article [ref=e766]:
+              - button "Read Anthropic and OpenAI agents went rogue — again" [ref=e767] [cursor=pointer]:
+                - generic [ref=e768]:
+                  - paragraph [ref=e769]: Independent writing
+                  - heading "Anthropic and OpenAI agents went rogue — again" [level=2] [ref=e770]
+              - button "Bookmark Anthropic and OpenAI agents went rogue — again" [ref=e772] [cursor=pointer]
+            - article [ref=e775]:
+              - button "Read addyosmani / agent-skills" [ref=e776] [cursor=pointer]:
+                - generic [ref=e777]:
+                  - paragraph [ref=e778]: Tools and launches
+                  - heading "addyosmani / agent-skills" [level=2] [ref=e779]
+              - button "Bookmark addyosmani / agent-skills" [ref=e781] [cursor=pointer]
+            - article [ref=e784]:
+              - button "Read Non.io, a Reddit-like platform Ive been working on for the last 4 years" [ref=e785] [cursor=pointer]:
+                - generic [ref=e786]:
+                  - paragraph [ref=e787]: Tools and launches
+                  - heading "Non.io, a Reddit-like platform Ive been working on for the last 4 years" [level=2] [ref=e788]
+              - button "Bookmark Non.io, a Reddit-like platform Ive been working on for the last 4 years" [ref=e790] [cursor=pointer]
+            - article [ref=e793]:
+              - button "Read Significant-Gravitas / AutoGPT" [ref=e794] [cursor=pointer]:
+                - generic [ref=e795]:
+                  - paragraph [ref=e796]: Tools and launches
+                  - heading "Significant-Gravitas / AutoGPT" [level=2] [ref=e797]
+              - button "Bookmark Significant-Gravitas / AutoGPT" [ref=e799] [cursor=pointer]
+            - article [ref=e802]:
+              - button "Read Can’t afford Bloomberg Terminal? No prob, I built the next best thing" [ref=e803] [cursor=pointer]:
+                - generic [ref=e804]:
+                  - paragraph [ref=e805]: Tools and launches
+                  - heading "Can’t afford Bloomberg Terminal? No prob, I built the next best thing" [level=2] [ref=e806]
+              - button "Bookmark Can’t afford Bloomberg Terminal? No prob, I built the next best thing" [ref=e808] [cursor=pointer]
+            - article [ref=e811]:
+              - button "Read huangruiteng / loopx" [ref=e812] [cursor=pointer]:
+                - generic [ref=e813]:
+                  - paragraph [ref=e814]: Tools and launches
+                  - heading "huangruiteng / loopx" [level=2] [ref=e815]
+              - button "Bookmark huangruiteng / loopx" [ref=e817] [cursor=pointer]
+            - article [ref=e820]:
+              - button "Read cloudflare / computer" [ref=e821] [cursor=pointer]:
+                - generic [ref=e822]:
+                  - paragraph [ref=e823]: Tools and launches
+                  - heading "cloudflare / computer" [level=2] [ref=e824]
+              - button "Bookmark cloudflare / computer" [ref=e826] [cursor=pointer]
+            - article [ref=e829]:
+              - button "Read A retro video game console I've been working on in my free time" [ref=e830] [cursor=pointer]:
+                - generic [ref=e831]:
+                  - paragraph [ref=e832]: Tools and launches
+                  - heading "A retro video game console I've been working on in my free time" [level=2] [ref=e833]
+              - button "Bookmark A retro video game console I've been working on in my free time" [ref=e835] [cursor=pointer]
+            - article [ref=e838]:
+              - button "Read Redbean – Single-file distributable web server" [ref=e839] [cursor=pointer]:
+                - generic [ref=e840]:
+                  - paragraph [ref=e841]: Tools and launches
+                  - heading "Redbean – Single-file distributable web server" [level=2] [ref=e842]
+              - button "Bookmark Redbean – Single-file distributable web server" [ref=e844] [cursor=pointer]
+            - article [ref=e847]:
+              - 'button "Read Changes at Google DeepMind: Demis Hassabis from CEO to Chair, Jeff Dean departs" [ref=e848] [cursor=pointer]':
+                - generic [ref=e849]:
+                  - paragraph [ref=e850]: Discussion
+                  - 'heading "Changes at Google DeepMind: Demis Hassabis from CEO to Chair, Jeff Dean departs" [level=2] [ref=e851]'
+              - 'button "Bookmark Changes at Google DeepMind: Demis Hassabis from CEO to Chair, Jeff Dean departs" [ref=e853] [cursor=pointer]'
+            - article [ref=e856]:
+              - button "Read demake – one source project compiles to any retro game console ROM" [ref=e857] [cursor=pointer]:
+                - generic [ref=e858]:
+                  - paragraph [ref=e859]: Discussion
+                  - heading "demake – one source project compiles to any retro game console ROM" [level=2] [ref=e860]
+              - button "Bookmark demake – one source project compiles to any retro game console ROM" [ref=e862] [cursor=pointer]
+            - article [ref=e865]:
+              - button "Read Discovery Loop" [ref=e866] [cursor=pointer]:
+                - generic [ref=e867]:
+                  - paragraph [ref=e868]: Discussion
+                  - heading "Discovery Loop" [level=2] [ref=e869]
+              - button "Bookmark Discovery Loop" [ref=e871] [cursor=pointer]
+            - article [ref=e874]:
+              - button "Read jujutsu 0.44.0" [ref=e875] [cursor=pointer]:
+                - generic [ref=e876]:
+                  - paragraph [ref=e877]: Discussion
+                  - heading "jujutsu 0.44.0" [level=2] [ref=e878]
+              - button "Bookmark jujutsu 0.44.0" [ref=e880] [cursor=pointer]
+      - status [ref=e682]
+    - contentinfo [ref=e683]:
+      - generic [ref=e684]:
+        - generic [ref=e685]:
+          - generic [ref=e686]: TRACE
+          - navigation [ref=e687]:
+            - link "Feed" [ref=e688] [cursor=pointer]:
+              - /url: /feed
+            - link "Guides" [ref=e689] [cursor=pointer]:
+              - /url: /blog
+            - link "Resources" [ref=e690] [cursor=pointer]:
+              - /url: /resources
+            - link "Agents" [ref=e691] [cursor=pointer]:
+              - /url: /agents
+            - link "Solutions" [ref=e692] [cursor=pointer]:
+              - /url: /solutions
+            - link "Use cases" [ref=e693] [cursor=pointer]:
+              - /url: /use-cases
+            - link "Newsletter reviews" [ref=e694] [cursor=pointer]:
+              - /url: /newsletters
+            - link "RSS" [ref=e695] [cursor=pointer]:
+              - /url: /rss.xml
+            - link "How it works" [ref=e700] [cursor=pointer]:
+              - /url: /how-it-works
+            - link "Privacy" [ref=e701] [cursor=pointer]:
+              - /url: /privacy-policy
+            - link "Terms" [ref=e702] [cursor=pointer]:
+              - /url: /terms
+            - link "Contact" [ref=e703] [cursor=pointer]:
+              - /url: /contact
+        - generic [ref=e704]:
+          - generic [ref=e705]:
+            - link "StocksBrew" [ref=e706] [cursor=pointer]:
+              - /url: https://stocksbrew.online/?utm_source=trace&utm_medium=feed_footer
+            - paragraph [ref=e710]: Know what to do with your stock.
+          - generic [ref=e711]:
+            - link "Trace for Android" [ref=e712] [cursor=pointer]:
+              - /url: /api/affiliate/outbound?target=android_app&next=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Donline.yourtrace.app
+            - paragraph [ref=e715]: Your AI and tech feed on Android.

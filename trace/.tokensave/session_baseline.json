@@ -1,0 +1,13 @@
+{
+  "quality_signal": 7560,
+  "files_analyzed": 110,
+  "dimensions": {
+    "acyclicity": 1.0,
+    "depth": 1.0,
+    "equality": 0.3138959131385459,
+    "redundancy": 0.7963636363636364,
+    "modularity": 0.9878048780487805,
+    "coverage_discipline": 1.0
+  },
+  "timestamp": 1785155380
+}
