@@ -1,5 +1,5 @@
 import type { FeedItem, TrendingTopic } from '@/lib/firestore';
-import { isSameStoryTitle } from '@/lib/feed-story-dedupe';
+import { dedupeByStoryTitle, isSameStoryTitle } from '@/lib/feed-story-dedupe';
 
 /** Rolling freshness window for news feed sections (trending, topics, for_you). */
 export const FEED_CONTENT_MAX_AGE_HOURS = 24;
@@ -119,7 +119,7 @@ export function applyFeedDedupe<
     trending_topics?: TrendingTopic[];
   },
 >(feed: T): T {
-  const forYou = dedupeFeedItems(feed.for_you || []);
+  const forYou = dedupeByStoryTitle(dedupeFeedItems(feed.for_you || []));
   const trendingTopics = dedupeTrendingTopics(feed.trending_topics || []);
   const topicArticleUrls = new Set<string>();
   for (const topic of trendingTopics) {
@@ -142,7 +142,7 @@ export function applyFeedDedupe<
     return true;
   });
 
-  const trendingFiltered = dedupeFeedItems(feed.trending || []).filter((item) => {
+  const trendingFiltered = dedupeByStoryTitle(dedupeFeedItems(feed.trending || [])).filter((item) => {
     const urlKey = canonicalUrlKey(item.url);
     return !urlKey || !topicArticleUrls.has(urlKey);
   });
