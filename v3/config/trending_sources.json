@@ -100,6 +100,13 @@
       "source_weight": 1.1
     },
     {
+      "interest_id": "tech",
+      "name": "AlternativeTo News",
+      "url": "https://feed.alternativeto.net/news/all/",
+      "type": "rss",
+      "source_weight": 0.95
+    },
+    {
       "interest_id": "markets",
       "name": "Yahoo Finance Tech",
       "url": "https://finance.yahoo.com/news/rssindex",

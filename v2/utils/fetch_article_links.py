@@ -167,13 +167,14 @@ def _dedupe_articles_keep_order(
             merged[url] = {
                 "url": url,
                 "title": item.get("title", ""),
+                "description": item.get("description", ""),
                 "published_date": item.get("published_date", ""),
                 "og_image": item.get("og_image", ""),
             }
             order.append(url)
             continue
         existing = merged[url]
-        for field in ("title", "published_date", "og_image"):
+        for field in ("title", "description", "published_date", "og_image"):
             if not existing.get(field) and item.get(field):
                 existing[field] = item[field]
     return [merged[url] for url in order]
@@ -182,11 +183,18 @@ def _dedupe_articles_keep_order(
 def _first_text(node: ET.Element, paths: list[str]) -> str:
     for path in paths:
         found = node.find(path)
-        if found is not None and found.text:
-            text = found.text.strip()
+        if found is not None:
+            text = " ".join(found.itertext()).strip()
             if text:
                 return text
     return ""
+
+
+def _clean_rss_description(raw: str) -> str:
+    if not raw:
+        return ""
+    text = BeautifulSoup(raw, "html.parser").get_text(" ", strip=True)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def _extract_image_from_xml_node(node: ET.Element, base_url: str) -> str:
@@ -233,6 +241,9 @@ def _extract_from_rss_or_atom(
         if not normalized:
             continue
         title = _first_text(item, ["title", "{*}title"])
+        description = _clean_rss_description(
+            _first_text(item, ["description", "{*}description", "{*}summary", "{*}encoded"])
+        )
         published = _first_text(
             item,
             ["pubDate", "{*}published", "{*}updated", "{*}date"],
@@ -241,6 +252,7 @@ def _extract_from_rss_or_atom(
             {
                 "url": normalized,
                 "title": title,
+                "description": description,
                 "published_date": _to_iso_datetime(published),
                 "og_image": _extract_image_from_xml_node(item, base_url),
             }
@@ -256,11 +268,15 @@ def _extract_from_rss_or_atom(
             if not normalized:
                 continue
             title = _first_text(entry, ["{*}title", "title"])
+            description = _clean_rss_description(
+                _first_text(entry, ["{*}summary", "{*}description", "{*}content"])
+            )
             published = _first_text(entry, ["{*}published", "{*}updated"])
             articles.append(
                 {
                     "url": normalized,
                     "title": title,
+                    "description": description,
                     "published_date": _to_iso_datetime(published),
                     "og_image": _extract_image_from_xml_node(entry, base_url),
                 }
@@ -276,6 +292,7 @@ def _extract_from_rss_or_atom(
                     {
                         "url": normalized,
                         "title": "",
+                        "description": "",
                         "published_date": "",
                         "og_image": "",
                     }
@@ -310,6 +327,7 @@ def _extract_from_sitemap(
             {
                 "url": normalized,
                 "title": "",
+                "description": "",
                 "published_date": lastmod,
                 "og_image": "",
             }

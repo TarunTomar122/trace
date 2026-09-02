@@ -1760,7 +1760,13 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
             published = art.published_date if hasattr(art, "published_date") else art.get("published_date", "")
             og_image = art.og_image if hasattr(art, "og_image") else art.get("og_image", "")
 
-            result_content = fetch_content(url)
+            rss_description = art.description if hasattr(art, "description") else art.get("description", "")
+            if rss_description and len(rss_description) >= 500:
+                result_content = {"content": rss_description, "image": "", "source": "rss"}
+            else:
+                result_content = fetch_content(url)
+                if not result_content["content"] and rss_description:
+                    result_content = {"content": rss_description, "image": "", "source": "rss"}
             content = result_content["content"]
             if not content:
                 _log(f"  No content for {url}")
@@ -1992,7 +1998,8 @@ def build_global_feed(
         if not summary:
             continue
         classified_interest = _normalize_trending_interest_id(
-            str(summary.get("interest_id", "")).strip() or str(item.get("interest_id", "")).strip()
+            str(summary.get("interest_id", "")).strip()
+            or str(item.get("interest_id", "")).strip()
         )
         item["interest_id"] = classified_interest
         feed_items.append(_build_feed_item(item, summary))
@@ -2003,7 +2010,8 @@ def build_global_feed(
         if not isinstance(summary, dict):
             continue
         classified_interest = _normalize_trending_interest_id(
-            str(summary.get("interest_id", "")).strip() or str(item.get("interest_id", "")).strip()
+            str(summary.get("interest_id", "")).strip()
+            or str(item.get("interest_id", "")).strip()
         )
         item["interest_id"] = classified_interest
 

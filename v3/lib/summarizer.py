@@ -214,7 +214,13 @@ RULES:
   ai, tech, startups, markets, engineering, product-design, marketing
 - Pick the interest_id based on the actual story itself, not the publisher.
 - Prefer narrower lanes when clearly supported:
-  frontier labs/model launches/AI agents/AI policy -> ai
+  model launches, AI products or assistants, AI agents, agent frameworks,
+  LLMs, MCP, generative-AI features, and AI policy -> ai
+  If a product update adds a material AI assistant, agent, research, or
+  language-model capability, use ai even when it also lists ordinary UI or
+  workflow changes.
+  use product-design, tech, or engineering only when AI is incidental and
+  not the core development
   startup funding/M&A/ecosystem/founder news -> startups
   earnings/public markets/company strategy/M&A at large companies -> markets
   developer tools/infra/security/platform engineering -> engineering
