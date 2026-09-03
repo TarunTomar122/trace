@@ -116,12 +116,15 @@ export default async function FeedScreen() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const topic = urlToTopic.get(it.url);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const coverage = topic ? (topic.articles || []).filter((a: any) => a?.url).map((a: any) => {
+    let coverage = topic ? (topic.articles || []).filter((a: any) => a?.url).map((a: any) => {
       let src = a.source_name || a.source || '';
       let dom = '';
       try { dom = new URL(a.url).hostname.replace(/^www\./, ''); } catch {}
       return { title: a.title || '', source: src || dom, url: a.url, time: timeAgo(a.published_date) };
     }) : [];
+    if (coverage.length === 0 && it.url) {
+      coverage = [{ title: it.title || '', source, url: it.url, time: timeAgo(it.published_date) }];
+    }
     return {
       id: it.id || it.url || String(i),
       rank: i + 1,

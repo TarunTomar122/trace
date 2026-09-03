@@ -6,6 +6,9 @@ import {
   HOME_PRODUCT_DESCRIPTION,
 } from '@/lib/home-seo';
 import { generateFAQSchema } from '@/lib/seo';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { TRACE_SESSION_COOKIE_NAME, verifyTraceSession } from '@/lib/server-session';
 import LandingScreen from '@/components/feed-v2/LandingScreen';
 
 export const metadata: Metadata = {
@@ -30,7 +33,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  // signed-in readers skip the pitch: straight to the feed
+  const sessionCookie = (await cookies()).get(TRACE_SESSION_COOKIE_NAME)?.value;
+  if (sessionCookie && verifyTraceSession(sessionCookie)) {
+    redirect('/feed');
+  }
   return (
     <>
       <StructuredDataList

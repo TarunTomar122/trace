@@ -773,7 +773,7 @@ function Detail({ story, onBack, onShare, marked, toggleMark }: { story: FeedSto
             </ul>
           </div>
         )}
-        {story.coverage.length > 1 && (
+        {story.coverage.length > 0 && (
           <div className="detail-coverage">
             <h2 className="section-label">Coverage · {story.coverage.length} sources</h2>
             <ol className="coverage-list">
@@ -845,7 +845,14 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
         </div>
       </header>
       <div className="detail profile">
-        <div className="banner" />
+        <div className="banner">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`https://picsum.photos/seed/${encodeURIComponent(user?.email || 'trace')}/1200/320`}
+            alt=""
+            loading="lazy"
+          />
+        </div>
         <div className="avatar-row">
           {user?.photoURL ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -940,9 +947,10 @@ const css = `
 @media (max-width: 687px) {
   .xw .bottom-nav {
     display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 300;
-    height: 52px; background: rgba(255,255,255,0.92); backdrop-filter: blur(12px);
+    min-height: 52px; background: rgba(255,255,255,0.92); backdrop-filter: blur(12px);
     border-top: 1px solid var(--line);
     justify-content: space-around; align-items: center;
+    padding: 8px 0 calc(16px + env(safe-area-inset-bottom));
   }
   .xw .bn-item {
     display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -954,7 +962,8 @@ const css = `
   .xw .post { padding: 14px 14px 4px; }
   .xw .post-title { font-size: 17px; }
   .xw .post-img { border-radius: 12px; margin-top: 8px; }
-  .xw .feed { padding-bottom: 84px; }
+  .xw .feed { padding-bottom: 104px; }
+  .xw .detail { padding-bottom: 112px; }
   .xw .head { padding: 0 14px; }
   .xw .detail-body { margin: 10px 14px 4px; }
   .xw .detail-title { margin: 8px 14px 4px; font-size: 21px; }
@@ -1047,7 +1056,8 @@ const css = `
   .xw .post { padding: 14px 14px 4px; }
   .xw .post-title { font-size: 17px; }
   .xw .post-img { border-radius: 12px; margin-top: 8px; }
-  .xw .feed { padding-bottom: 84px; }
+  .xw .feed { padding-bottom: 104px; }
+  .xw .detail { padding-bottom: 112px; }
   .xw .head { padding: 0 14px; }
   .xw .detail-body { margin: 10px 14px 4px; }
   .xw .detail-title { margin: 8px 14px 4px; font-size: 21px; }
@@ -1204,7 +1214,8 @@ const css = `
 .xw .rail-sum { font-size: 13px; line-height: 19px; color: var(--text-2); }
 
 /* profile view */
-.xw .banner { height: 110px; background: var(--hover); border-bottom: 1px solid var(--line); }
+.xw .banner { height: 130px; overflow: hidden; background: var(--hover); border-bottom: 1px solid var(--line); }
+.xw .banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .xw .avatar-row { display: flex; align-items: flex-end; justify-content: space-between; padding: 0 18px; margin-top: -44px; }
 .xw .avatar { width: 92px; height: 92px; border-radius: 50%; border: 4px solid #fff; background: #fff; object-fit: contain; }
 .xw .save-btn {
