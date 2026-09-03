@@ -117,6 +117,18 @@ def _parse_args() -> argparse.Namespace:
         default="pro",
         help="User tier - 'free' generates fewer items",
     )
+    p.add_argument(
+        "--enrich-coverage",
+        action="store_true",
+        help="Enrich thin trending topics via Firecrawl (trending job only)",
+    )
+    p.add_argument(
+        "--skip-notifications",
+        action="store_true",
+        help="Skip interest push notifications (trending job only)",
+    )
+    p.add_argument("--enrich-top", type=int, default=10)
+    p.add_argument("--enrich-max-per-topic", type=int, default=4)
     return p.parse_args()
 
 
@@ -219,6 +231,33 @@ def main() -> None:
         extra.extend(["--audience", args.audience])
     if args.tier:
         extra.extend(["--tier", args.tier])
+    # enrichment flags travel only to the trending job (stripped elsewhere)
+    if args.enrich_coverage:
+        extra.append("--enrich-coverage")
+    if args.skip_notifications:
+        extra.append("--skip-notifications")
+    if args.enrich_top != 10:
+        extra.extend(["--enrich-top", str(args.enrich_top)])
+    if args.enrich_max_per_topic != 4:
+        extra.extend(["--enrich-max-per-topic", str(args.enrich_max_per_topic)])
+
+    def _strip_enrich(args_list: list[str]) -> list[str]:
+        """Remove valueless --enrich-coverage and valued enrich flags."""
+        out: list[str] = []
+        skip_next = False
+        for a in args_list:
+            if skip_next:
+                skip_next = False
+                continue
+            if a in ("--enrich-top", "--enrich-max-per-topic"):
+                skip_next = True
+                continue
+            if a in ("--enrich-coverage", "--skip-notifications"):
+                continue
+            out.append(a)
+        return out
+
+    extra_no_enrich = _strip_enrich(extra)
 
     build_jobs = ["for_you", "pulse", "trending"]
     users_file = ""
@@ -304,7 +343,7 @@ def main() -> None:
             if name == "trending":
                 job_extra = _filter_args(extra, ("--audience", "--users-file", "--tier", "--user-id"))
             else:
-                job_extra = _filter_args(extra, ("--tier",))
+                job_extra = _filter_args(extra_no_enrich, ("--tier",))
             if mode == "pool_only":
                 job_extra.append("--pool-only")
             elif mode == "skip_pool":
@@ -341,7 +380,7 @@ def main() -> None:
             if job_name == "trending":
                 job_extra = _filter_args_seq(extra, ("--audience", "--users-file", "--tier", "--user-id"))
             else:
-                job_extra = _filter_args_seq(extra, ("--tier",))
+                job_extra = _filter_args_seq(extra_no_enrich, ("--tier",))
             if mode == "pool_only":
                 job_extra.append("--pool-only")
             elif mode == "skip_pool":
@@ -355,7 +394,7 @@ def main() -> None:
     if run_all or "assemble" in requested:
         _log("--- Assemble feeds ---")
         # Filter out --tier as assemble doesn't support it
-        assemble_extra = [a for i, a in enumerate(extra) if a != "--tier" and (i == 0 or extra[i-1] != "--tier")]
+        assemble_extra = [a for i, a in enumerate(_strip_enrich(extra)) if a != "--tier" and (i == 0 or _strip_enrich(extra)[i-1] != "--tier")]
         _run_module(JOBS["assemble"]["module"], assemble_extra)
 
     run_newsletter = (

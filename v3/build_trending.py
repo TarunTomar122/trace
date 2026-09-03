@@ -274,6 +274,10 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--pool-only", action="store_true", help="Only refresh pool, don't build feed")
     p.add_argument("--skip-notifications", action="store_true", help="Skip interest-matched push notifications")
     p.add_argument("--limit-per-source", type=int, default=DEFAULT_LIMIT_PER_SOURCE)
+    p.add_argument("--enrich-coverage", action="store_true", help="Enrich thin topics via Firecrawl search (default off; Actions unchanged)")
+    p.add_argument("--enrich-top", type=int, default=10, help="Top N topics to enrich")
+    p.add_argument("--enrich-max-per-topic", type=int, default=4, help="Max new outlets per topic")
+    p.add_argument("--firecrawl-url", default="", help="Firecrawl base URL (default $FIRECRAWL_URL or localhost:3002)")
     p.add_argument("--max-age-hours", type=int, default=DEFAULT_MAX_AGE_HOURS)
     p.add_argument("--date", default="", help="Target date (default: today IST)")
     return p.parse_args()
@@ -1301,6 +1305,10 @@ def _build_trending_topics_payload(
     ranked_items: list[dict[str, Any]],
     summary_map: dict[str, dict[str, Any] | None],
     max_topics: int = 20,
+    enrich: bool = False,
+    enrich_top: int = 10,
+    enrich_max_per_topic: int = 4,
+    firecrawl_url: str = "",
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -1337,6 +1345,19 @@ def _build_trending_topics_payload(
         entity_counts[entity] += 1
         if len(selected) >= max_topics:
             break
+
+    enrich_stats: dict[str, int] = {}
+    if enrich:
+        from v3.enrich_coverage import enrich_clusters  # noqa: E402
+
+        _log("Enriching thin topics via Firecrawl search")
+        enrich_stats = enrich_clusters(
+            selected,
+            firecrawl_url=firecrawl_url or os.getenv("FIRECRAWL_URL", "http://localhost:3002"),
+            top_n=enrich_top,
+            max_per_topic=enrich_max_per_topic,
+        )
+        _log(f"Enrichment done: {enrich_stats}")
 
     # Pre-compute per-cluster data (timelines, IDs, fallback titles) — all CPU-bound
     cluster_data: list[dict[str, Any]] = []
@@ -1845,6 +1866,7 @@ def _build_feed_item(pool_item: dict[str, Any], summary: dict[str, Any] | None) 
         "url": url,
         "title": pool_item.get("title", ""),
         "type": "news",
+        **({"enriched": True} if pool_item.get("enriched") else {}),
         "source": domain,
         "source_name": pool_item.get("source_name", domain),
         "interest_id": item_interest,
@@ -2024,6 +2046,10 @@ def build_global_feed(
         ranked_items=ranked_for_topics,
         summary_map=summary_map,
         max_topics=20,
+        enrich=bool(getattr(args, "enrich_coverage", False)),
+        enrich_top=int(getattr(args, "enrich_top", 10) or 10),
+        enrich_max_per_topic=int(getattr(args, "enrich_max_per_topic", 4) or 4),
+        firecrawl_url=str(getattr(args, "firecrawl_url", "") or ""),
     )
     _log(
         f"Built {len(trending_topics)} grouped topics "
