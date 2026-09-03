@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { cookies } from 'next/headers';
+import { unstable_cache } from 'next/cache';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { TRACE_SESSION_COOKIE_NAME, verifyTraceSession, isTraceSessionProfileFresh } from '@/lib/server-session';
 import { hasActiveSubscription } from '@/lib/subscription-access';
@@ -10,21 +11,26 @@ import FeedSkeleton from './FeedSkeleton';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Doc = Record<string, any>;
 
-let feedCache: { at: number; v: { date: string; data: Doc } | null } | null = null;
+// Shared request cache (survives across serverless instances, unlike a
+// module-level Map): feed data is at most 5 minutes stale, session stays live.
+const getCachedFeed = unstable_cache(
+  async (): Promise<{ date: string; data: Doc } | null> => {
+    const { adminFirestore } = await import('@/lib/firebase-admin');
+    if (!adminFirestore) return null;
+    const ref = adminFirestore.collection('v3_user_feeds').doc('_global').collection('daily');
+    const snap = await ref.orderBy('__name__', 'desc').limit(2).get();
+    for (const doc of snap.docs) {
+      const data = doc.data();
+      if ((data.trending || []).length > 0) return { date: doc.id, data };
+    }
+    return null;
+  },
+  ['global-feed'],
+  { revalidate: 300 },
+);
 
 async function loadFeed(): Promise<{ date: string; data: Doc } | null> {
-  if (feedCache && Date.now() - feedCache.at < 5 * 60_000) return feedCache.v;
-  const { adminFirestore } = await import('@/lib/firebase-admin');
-  if (!adminFirestore) return null;
-  const ref = adminFirestore.collection('v3_user_feeds').doc('_global').collection('daily');
-  const snap = await ref.orderBy('__name__', 'desc').limit(2).get();
-  let v: { date: string; data: Doc } | null = null;
-  for (const doc of snap.docs) {
-    const data = doc.data();
-    if ((data.trending || []).length > 0) { v = { date: doc.id, data }; break; }
-  }
-  feedCache = { at: Date.now(), v };
-  return v;
+  return getCachedFeed();
 }
 
 function thumb(url?: string | null): string | null {

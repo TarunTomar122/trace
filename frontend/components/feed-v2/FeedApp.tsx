@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveFeedAccess } from '@/lib/subscription-access';
 import { updateUserProfile } from '@/lib/firestore';
@@ -119,11 +119,15 @@ export default function FeedApp({
   });
   const pro = serverPro || access.hasAccess;
   const accessPending = access.pending;
-  const router = useRouter();
   const params = useSearchParams();
   const pathname = usePathname();
-  const storyParam = params.get('story');
-  const pulseParam = params.get('pulse');
+  // View state lives client-side: the feed data is already here, so opening
+  // a story must never hit the server. URL is kept in sync via History API
+  // (shareable, back-button friendly) without triggering Next navigation.
+  const [view, setView] = useState<{ story: string | null; pulse: string | null }>(() => ({
+    story: params.get('story'),
+    pulse: params.get('pulse'),
+  }));
 
   const [tab, setTab] = useState<string>('all');
   const [marks, setMarks] = useState<Set<string>>(new Set());
@@ -161,6 +165,19 @@ export default function FeedApp({
     setProfile(hydrated);
     setSavedProfile(hydrated);
   }, [user, authProfile]);
+
+  // browser back/forward: sync view from URL (no server fetch)
+  useEffect(() => {
+    const onPop = () => {
+      const q = new URLSearchParams(window.location.search);
+      setView({ story: q.get('story'), pulse: q.get('pulse') });
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  const storyParam = view.story;
+  const pulseParam = view.pulse;
 
   // detail opened: start at the top (.main keeps its scroll position otherwise)
   useEffect(() => {
@@ -203,18 +220,24 @@ export default function FeedApp({
   }
   function openStory(s: FeedStory) {
     if (mainRef.current) savedScroll.current = mainRef.current.scrollTop;
-    router.push(`${base()}?story=${encodeURIComponent(s.id)}`, { scroll: false });
+    setView({ story: s.id, pulse: null });
+    window.history.pushState(null, '', `${base()}?story=${encodeURIComponent(s.id)}`);
   }
   function openPulseItem(t: PulseItem) {
     if (mainRef.current) savedScroll.current = mainRef.current.scrollTop;
-    router.push(`${base()}?pulse=${encodeURIComponent(t.id)}`, { scroll: false });
+    setView({ story: null, pulse: t.id });
+    window.history.pushState(null, '', `${base()}?pulse=${encodeURIComponent(t.id)}`);
   }
   function goBack() {
-    router.push(base(), { scroll: false });
+    setView({ story: null, pulse: null });
+    window.history.replaceState(null, '', base());
   }
   function go(t: string) {
     setTab(t);
-    router.push(base(), { scroll: false });
+    if (view.story || view.pulse) {
+      setView({ story: null, pulse: null });
+      window.history.replaceState(null, '', base());
+    }
   }
 
   function share(id: string) {
@@ -1088,8 +1111,9 @@ const css = `
 .xw .locked-title { filter: blur(4px); user-select: none; }
 .xw .lock-note { display: flex; align-items: center; gap: 6px; margin: 8px 0 10px; font-size: 13px; font-weight: 650; color: var(--text-2); }
 .xw .post-img {
-  width: 100%; max-height: 510px; object-fit: cover;
+  width: 100%; aspect-ratio: 16 / 10; max-height: 510px; object-fit: cover;
   border-radius: 16px; margin: 10px 0 6px; display: block;
+  background: var(--hover);
 }
 .xw .post-sources { margin: 8px 0 0; font-size: 13px; line-height: 16px; color: var(--text-3); }
 .xw .post-sum { margin: 6px 0 0; font-size: 14px; line-height: 20px; color: var(--text-2); }
