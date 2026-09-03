@@ -83,14 +83,26 @@ export default async function FeedScreen() {
     return out.slice(0, 4);
   }
 
-  // Home order: multi-source (grouped) stories first, then trend score within each tier.
+  // Home order: multi-source (grouped) stories first, shuffled within each
+  // tier on every load so the feed feels fresh. Trend score breaks no ties
+  // on purpose: shuffle is the point.
+  function shuffle<T>(arr: T[]): T[] {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const news: any[] = [...(data.trending || [])].sort((a: Doc, b: Doc) => {
-    const ga = groupSources(a).length > 1 ? 0 : 1;
-    const gb = groupSources(b).length > 1 ? 0 : 1;
-    if (ga !== gb) return ga - gb;
-    return Number(b?.metadata?.trend_score || 0) - Number(a?.metadata?.trend_score || 0);
-  });
+  const news: any[] = (() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const all: any[] = [...(data.trending || [])];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const grouped = all.filter((it: any) => groupSources(it).length > 1);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const singles = all.filter((it: any) => groupSources(it).length <= 1);
+    return [...shuffle(grouped), ...shuffle(singles)];
+  })();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const stories = news.map((it: any, i: number) => {
