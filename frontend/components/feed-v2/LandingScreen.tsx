@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import HomeEditionPreview from '@/app/HomeEditionPreview';
+import Footer from '@/components/Footer';
 import { adminFirestore } from '@/lib/firebase-admin';
 
 const CHROME_EXTENSION_URL = 'https://chromewebstore.google.com/detail/trace-ai-tech-news-in-eve/cblkklekbejbbpcaihfogdmaoofmikbk';
@@ -48,6 +49,21 @@ const PRO_FEATURES = [
   'The complete daily news archive',
   'Full personalized Pulse',
   'Read-only Agent Access',
+];
+
+const AGENT_STEPS = [
+  {
+    title: 'Connect in one command',
+    body: 'Add Trace as an MCP server in Claude, Codex, or Cursor with your Pro agent key. Read-only by design: it can never post, delete, or change anything.',
+  },
+  {
+    title: 'Read the same ranked feed',
+    body: 'Your agent queries the ranked daily edition, Pulse tools and discussions, and your saved archive. Same signal you read, zero tab-switching.',
+  },
+  {
+    title: 'Build it into the workflow',
+    body: 'Morning briefings in Slack, pre-meeting company dossiers, code-review context on new releases. One HTTPS call returns structured JSON your agent can quote.',
+  },
 ];
 
 const FAQ = [
@@ -234,6 +250,27 @@ export default async function LandingScreen() {
         </div>
       </section>
 
+      <section className="section" id="agents">
+        <h2 className="section-title">Plug Trace into your agent</h2>
+        <p className="section-sub">Give Claude, Codex, Cursor, or your own stack a live read on tech: the ranked feed, Pulse, and archive search over one read-only connection.</p>
+        <div className="steps">
+          {AGENT_STEPS.map((s, i) => (
+            <article key={s.title} className="card">
+              <span className="step-num">{String(i + 1).padStart(2, '0')}</span>
+              <h3 className="card-title">{s.title}</h3>
+              <p className="card-body">{s.body}</p>
+            </article>
+          ))}
+        </div>
+        <div className="agent-snippet">
+          <code>codex mcp add trace --url https://www.yourtrace.online/api/mcp</code>
+        </div>
+        <div className="demo-cta" style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Link href="/agents" className="btn-ghost">Agent setup guide</Link>
+          <Link href="/subscribe" className="btn-primary">Get Pro + agent access</Link>
+        </div>
+      </section>
+
       <section className="final-cta">
         <h2 className="hero-title" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)' }}>
           Tomorrow morning, be the person who already knows.
@@ -244,22 +281,7 @@ export default async function LandingScreen() {
         </div>
       </section>
 
-      <footer className="footer">
-        <div className="foot-in">
-          <span className="foot-brand">Trace</span>
-          <span className="foot-links">
-            <a href="/blog">Blog</a>
-            <a href="/compare">Compare</a>
-            <a href="/privacy-policy">Privacy</a>
-            <a href="/contact">Contact</a>
-            <a href="https://stocksbrew.online" target="_blank" rel="noreferrer">StocksBrew</a>
-            <a href="https://www.tarat.space" target="_blank" rel="noreferrer">tarat.space</a>
-            <a href={CHROME_EXTENSION_URL} target="_blank" rel="noreferrer">Chrome</a>
-            <a href={ANDROID_URL} target="_blank" rel="noreferrer">Android</a>
-          </span>
-          <span className="foot-copy">Built by Tarat · © 2026</span>
-        </div>
-      </footer>
+      <Footer variant="landing" />
     </main>
   );
 }
@@ -319,6 +341,8 @@ const css = `
 .lp .section#demo { max-width: 1280px; }
 .lp .demo-wrap { max-width: 100%; margin: 0 auto; border: 1px solid var(--line); border-radius: 24px; overflow: hidden; --foreground: #0f1419; --secondary: #536471; --background: #ffffff; --surface: #ffffff; }
 .lp .demo-cta { text-align: center; margin-top: 24px; }
+.lp .agent-snippet { max-width: 640px; margin: 28px auto 0; background: #0f1419; border-radius: 14px; padding: 16px 18px; overflow-x: auto; }
+.lp .agent-snippet code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.6; color: #e7e9ea; white-space: nowrap; }
 
 .lp .steps { display: grid; grid-template-columns: 1fr; gap: 16px; }
 @media (min-width: 780px) { .lp .steps { grid-template-columns: 1fr 1fr 1fr; } }

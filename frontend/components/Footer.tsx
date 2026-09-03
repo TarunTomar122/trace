@@ -41,7 +41,7 @@ export default function Footer(props: { variant?: 'default' | 'landing'; directo
             <a href="/feed" className="flex min-h-11 items-center text-secondary hover:text-foreground md:min-h-0">Feed</a>
             <Link href="/how-it-works" className="flex min-h-11 items-center text-secondary hover:text-foreground md:min-h-0">How it works</Link>
             <Link href="/agents" className="flex min-h-11 items-center text-secondary hover:text-foreground md:min-h-0">Agents</Link>
-            <Link href="/#pricing" className="flex min-h-11 items-center text-secondary hover:text-foreground md:min-h-0">Pricing</Link>
+            <Link href="/subscribe" className="flex min-h-11 items-center text-secondary hover:text-foreground md:min-h-0">Pricing</Link>
           </nav>
 
           <nav aria-label="Learn" className="space-y-3 text-[14px]">

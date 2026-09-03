@@ -886,6 +886,19 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
             </div>
             <p className="section-hint">Pro unlocks the whole day, Pulse and your profile.</p>
           </div>
+
+        <div className="profile-section">
+          <h2 className="section-label">Agent access</h2>
+          <div className="chip-row">
+            <span className="pick on">{pro ? "MCP + brief API" : "Pro only"}</span>
+            <a className="pick" href="/agents">Setup guide</a>
+          </div>
+          <p className="section-hint">
+            {pro
+              ? "Connect Claude, Codex, or Cursor to your ranked feed over one read-only key. Grab it in the setup guide."
+              : "Pro connects your AI agent to the ranked feed, Pulse, and archive over MCP. One key, read-only."}
+          </p>
+        </div>
       </div>
     </>
   );
