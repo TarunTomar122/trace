@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { resolveFeedAccess } from '@/lib/subscription-access';
 import { updateUserProfile } from '@/lib/firestore';
 import ProCheckoutButton from './ProCheckoutButton';
+import { bodyParagraphs } from '@/lib/body-text';
 import {
   Bookmark, Share, ArrowLeft, User, Check, Star,
   Home, Sparkles, TrendingUp, Rocket, Code2, Cpu, PenTool, MessageCircle, BookOpen, Lock,
@@ -92,39 +93,6 @@ function mapRole(r?: string | null): string {
   if (s.includes('invest')) return 'investor';
   if (s.includes('student') || s.includes('learn')) return 'student';
   return 'engineer';
-}
-
-const DOT = '\uE000';
-
-// Hide periods that don't end sentences (U.S., Mr., 5.1, initials)
-// so the splitter doesn't break mid-abbreviation.
-function protectAbbr(text: string): string {
-  return text
-    .replace(/\b(U\.S|U\.K|E\.U|U\.N|Mr|Mrs|Ms|Dr|St|Jr|Sr|vs|etc|e\.g|i\.e)\./gi, (m) => m.replace(/\./g, DOT))
-    .replace(/\b([A-Z])\./g, `$1${DOT}`)
-    .replace(/(\d)\.(\d)/g, `$1${DOT}$2`);
-}
-
-function bodyParagraphs(text: string): string[] {
-  const clean = protectAbbr((text || '').replace(/\s+/g, ' ').trim());
-  if (!clean) return [];
-  const un = (s: string) => s.split(DOT).join('.');
-  const sentences = clean.match(/[^.!?]+[.!?]+["')\]]*|[^.!?]+$/g) || [clean];
-  const paras: string[] = [];
-  let cur = '';
-  for (const s of sentences) {
-    const t = s.trim();
-    if (!t) continue;
-    const curWords = cur ? cur.split(/\s+/).length : 0;
-    if (cur && (curWords + t.split(/\s+/).length > 38 || cur.length + t.length > 230)) {
-      paras.push(un(cur.trim()));
-      cur = t;
-    } else {
-      cur = (cur + ' ' + t).trim();
-    }
-  }
-  if (cur) paras.push(un(cur.trim()));
-  return paras.length > 1 ? paras : [un(clean)];
 }
 
 function renderBold(text: string): React.ReactNode {

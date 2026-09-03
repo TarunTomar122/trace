@@ -65,9 +65,30 @@ def _display_date(date: str) -> str:
         return date
 
 
+def _topic_coverage(feed: dict[str, Any]) -> dict[str, int]:
+    """Map article URL -> number of outlets covering that story."""
+    coverage: dict[str, int] = {}
+    topics = feed.get("trending_topics", [])
+    if isinstance(topics, list):
+        for topic in topics:
+            if not isinstance(topic, dict):
+                continue
+            articles = topic.get("articles", [])
+            count = int(topic.get("article_count") or topic.get("source_count") or 0)
+            if count <= 0 and isinstance(articles, list):
+                count = len(articles)
+            if isinstance(articles, list):
+                for row in articles:
+                    url = str((row or {}).get("url", "")).strip()
+                    if url:
+                        coverage[url] = max(coverage.get(url, 0), count)
+    return coverage
+
+
 def _candidate_stories(feed: dict[str, Any]) -> list[dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
     used_urls: set[str] = set()
+    coverage = _topic_coverage(feed)
 
     topics = feed.get("trending_topics", [])
     if isinstance(topics, list):
@@ -92,6 +113,7 @@ def _candidate_stories(feed: dict[str, Any]) -> list[dict[str, Any]]:
                 "thumbnail": topic.get("thumbnail") or article.get("thumbnail", ""),
             })
             url = str(story.get("url", "")).strip()
+            story["_coverage"] = coverage.get(url, 1)
             candidates.append(story)
             used_urls.add(url)
 
@@ -102,6 +124,8 @@ def _candidate_stories(feed: dict[str, Any]) -> list[dict[str, Any]]:
                 continue
             url = str(row.get("url", "")).strip()
             if url and url not in used_urls:
+                row = dict(row)
+                row["_coverage"] = coverage.get(url, 1)
                 candidates.append(row)
                 used_urls.add(url)
     return candidates
@@ -112,8 +136,13 @@ def _pick_items(feed: dict[str, Any]) -> list[dict[str, Any]]:
     selected: list[dict[str, Any]] = []
     used_urls: set[str] = set()
 
+    # prefer widely-covered stories within each interest, then float the
+    # 3 most-covered picks to the very top (email opens with them)
+    by_coverage = sorted(
+        eligible, key=lambda r: (-int(r.get("_coverage") or 1), eligible.index(r))
+    )
     for interest, limit in NEWS_STORY_COUNTS.items():
-        for row in eligible:
+        for row in by_coverage:
             if row.get("interest_id") != interest:
                 continue
             url = str(row.get("url", "")).strip()
@@ -123,6 +152,10 @@ def _pick_items(feed: dict[str, Any]) -> list[dict[str, Any]]:
             used_urls.add(url)
             if sum(item.get("interest_id") == interest for item in selected) >= limit:
                 break
+    top = [x for x in selected if x.get("newsletter_group") == "top_stories"]
+    rest = [x for x in selected if x.get("newsletter_group") != "top_stories"]
+    top.sort(key=lambda r: -int(r.get("_coverage") or 1))
+    selected = top + rest
 
     pulse = (feed.get("daily_pulse_roles") or {}).get("developer", {})
     if isinstance(pulse, dict):
@@ -494,10 +527,55 @@ def _image_url(item: dict[str, Any]) -> str:
     return ""
 
 
-def _paragraph_html(text: str) -> str:
-    paragraphs = [escape(part.strip()) for part in re.split(r"\n\s*\n", text) if part.strip()]
+_DOT = ""
+
+_ABBR_RE = re.compile(r"\b(U\.S|U\.K|E\.U|U\.N|Mr|Mrs|Ms|Dr|St|Jr|Sr|vs|etc|e\.g|i\.e)\.", re.IGNORECASE)
+
+
+def _protect_abbr(text: str) -> str:
+    text = _ABBR_RE.sub(lambda m: m.group(0).replace(".", _DOT), text)
+    text = re.sub(r"\b([A-Z])\.", lambda m: m.group(1) + _DOT, text)
+    text = re.sub(r"(\d)\.(\d)", lambda m: m.group(1) + _DOT + m.group(2), text)
+    return text
+
+
+def _split_sentences(text: str) -> list[str]:
+    hidden = _protect_abbr(text)
+    parts = re.findall(r"[^.!?]+[.!?]+[\"')\]]*|[^.!?]+$", hidden) or [hidden]
+    return [p.replace(_DOT, ".").strip() for p in parts if p.strip()]
+
+
+def _chunk_paragraphs(text: str, max_paras: int) -> list[str]:
+    sentences: list[str] = []
+    for block in re.split(r"\n\s*\n", text):
+        sentences.extend(_split_sentences(block))
+    sentences = [x for x in sentences if x]
+    if not sentences:
+        return []
+    if len(sentences) <= max_paras:
+        return sentences
+    total_words = sum(len(x.split()) for x in sentences)
+    per_para = max(1, -(-total_words // max_paras))
+    paras: list[str] = []
+    cur: list[str] = []
+    cur_words = 0
+    for sent in sentences:
+        words = len(sent.split())
+        if cur and cur_words + words > per_para and len(paras) < max_paras - 1:
+            paras.append(" ".join(cur))
+            cur, cur_words = [sent], words
+        else:
+            cur.append(sent)
+            cur_words += words
+    if cur:
+        paras.append(" ".join(cur))
+    return paras[:max_paras]
+
+
+def _paragraph_html(text: str, max_paras: int = 2) -> str:
+    paragraphs = [escape(part) for part in _chunk_paragraphs(text, max_paras)]
     return "".join(
-        f'<p style="margin: 0 0 12px 0; font-size: 15px; color: #4f4c45; '
+        f'<p style="margin: 0 0 12px 0; font-size: 15px; color: #0f1419; '
         f'line-height: 1.7; font-family: -apple-system, BlinkMacSystemFont, '
         f'\'Segoe UI\', sans-serif;">{paragraph}</p>'
         for paragraph in paragraphs
@@ -508,9 +586,9 @@ def _render_item(item: dict[str, Any]) -> str:
     title = escape(str(item.get("title", "Untitled")).removeprefix("Article: ").strip())
     url = escape(str(item.get("url", "#")))
     source = escape(_source_name(item))
-    summary_html = _paragraph_html(_summary_body(item))
-    image_url = escape(_image_url(item))
     group = str(item.get("newsletter_group", "top_stories"))
+    summary_html = _paragraph_html(_summary_body(item), max_paras=3 if group == "briefing" else 2)
+    image_url = escape(_image_url(item))
     label = (
         str(item.get("interest_id", "tech")).replace("-", " ").upper()
         if group == "top_stories"
@@ -518,17 +596,17 @@ def _render_item(item: dict[str, Any]) -> str:
     )
     label = escape(label)
     takeaway_html = "".join(
-        '<tr><td style="width: 16px; padding: 0 8px 8px 0; color: #2f5bd5; '
+        '<tr><td style="width: 16px; padding: 0 8px 8px 0; color: #1d9bf0; '
         'font-size: 16px; line-height: 1.45; vertical-align: top;">&bull;</td>'
-        f'<td style="padding: 0 0 8px 0; color: #4f4c45; font-size: 14px; '
+        f'<td style="padding: 0 0 8px 0; color: #0f1419; font-size: 14px; '
         "line-height: 1.55; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', "
         f'sans-serif; vertical-align: top;">{escape(takeaway)}</td></tr>'
         for takeaway in _key_takeaways(item)
     )
     takeaways_block = (
-        '<p style="margin: 18px 0 10px 0; color: #2f5bd5; font-size: 11px; '
-        'font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 800; '
-        'letter-spacing: 1.2px; text-transform: uppercase;">Key takeaways</p>'
+        '<p style="margin: 18px 0 10px 0; color: #1d9bf0; font-size: 11px; '
+        'font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', sans-serif; font-weight: 800; '
+        'letter-spacing: 0.12em; text-transform: uppercase;">Key takeaways</p>'
         f'<table width="100%" cellpadding="0" cellspacing="0" border="0">{takeaway_html}</table>'
     ) if takeaway_html else ""
     image_block = (
@@ -541,16 +619,16 @@ def _render_item(item: dict[str, Any]) -> str:
         '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0;">'
         f"{image_block}"
         '<tr><td style="padding: 18px 0 26px 0;">'
-        f'<p style="margin: 0 0 9px 0; font-size: 11px; color: #777268; letter-spacing: 1.1px; '
-        f'font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700;">{label} &nbsp;&middot;&nbsp; {source}</p>'
+        f'<p style="margin: 0 0 9px 0; font-size: 11px; color: #1d9bf0; letter-spacing: 0.12em; '
+        f'font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', sans-serif; font-weight: 800; text-transform: uppercase;">{label} &nbsp;&middot;&nbsp; {source}</p>'
         f'<a href="{url}" style="display: block; margin: 0 0 10px 0; font-size: 25px; '
-        "font-family: Georgia, 'Times New Roman', serif; font-weight: 700; "
-        f'color: #171714; text-decoration: none; line-height: 1.2;">{title}</a>'
+        "font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-weight: 800; letter-spacing: -0.02em; "
+        f'color: #0f1419; text-decoration: none; line-height: 1.25;">{title}</a>'
         f"{summary_html}"
         f"{takeaways_block}"
         "</td></tr>"
         '<tr><td style="padding: 0 0 30px 0;"><table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
-        '<td height="1" style="height: 1px; line-height: 1px; font-size: 1px; background: #d8d2c8;">&nbsp;</td>'
+        '<td height="1" style="height: 1px; line-height: 1px; font-size: 1px; background: #eff3f4;">&nbsp;</td>'
         "</tr></table></td></tr></table>"
     )
 
@@ -565,13 +643,6 @@ def _generate_html(
     edition = edition or {}
     selected = _apply_editorial(_pick_items(feed), edition)
 
-    intro_html = (
-        '<p style="margin: 0; font-size: 15px; color: #625f57; line-height: 1.7; '
-        "font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;\">"
-        f"{escape(str(edition.get('intro') or 'The top AI, startup, and engineering stories from today, plus what builders are making and discussing.'))}"
-        "</p>"
-    )
-
     stories_html = ""
     for group, label in (
         ("top_stories", "Top stories"),
@@ -583,15 +654,15 @@ def _generate_html(
         if not rows:
             continue
         stories_html += (
-            '<p style="margin: 24px 0 14px 0; color: #2f5bd5; font-size: 11px; '
-            'font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 800; '
-            f'letter-spacing: 1.5px; text-transform: uppercase;">{escape(label)}</p>'
+            '<p style="margin: 24px 0 14px 0; color: #1d9bf0; font-size: 11px; '
+            'font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', sans-serif; font-weight: 800; '
+            f'letter-spacing: 0.12em; text-transform: uppercase;">{escape(label)}</p>'
         )
         stories_html += "".join(_render_item(item) for item in rows)
 
     html = tpl.replace("{{DATE}}", _display_date(date))
     html = html.replace("{{STORY_COUNT}}", str(len(selected)))
-    html = html.replace("{{INTRO_HTML}}", intro_html)
+
     html = html.replace("{{STORIES_HTML}}", stories_html)
 
     subject = str(edition.get("subject") or "").strip()
