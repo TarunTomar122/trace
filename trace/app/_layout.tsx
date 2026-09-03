@@ -316,7 +316,6 @@ function RootLayoutNav() {
         <Stack.Screen name="topic" options={{ presentation: 'card', animation: 'default' }} />
         <Stack.Screen name="paywall" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="contact" options={{ presentation: 'card', animation: 'default' }} />
-        <Stack.Screen name="builders" options={{ presentation: 'card', animation: 'default' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />

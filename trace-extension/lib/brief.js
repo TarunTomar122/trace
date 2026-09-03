@@ -1,6 +1,6 @@
-const CACHE_TTL_MS = 60 * 60 * 1000;
+const CACHE_TTL_MS = 15 * 60 * 1000;
 const MAX_POOL_SIZE = 60;
-export const FREE_SUMMARY_LIMIT = 3;
+export const FREE_SUMMARY_LIMIT = 5;
 
 function assertObject(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {

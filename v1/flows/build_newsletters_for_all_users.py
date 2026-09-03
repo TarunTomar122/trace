@@ -54,14 +54,9 @@ def build_newsletters_for_all_users(
     print(f"Dry run: {dry_run}")
     print("-" * 40)
 
-    # Get opted-in users — paid first, then free teaser (capped to 100 to respect Brevo)
-    paid_users = store.get_newsletter_opted_in_users()
-    print(f"Found {len(paid_users)} opted-in subscribed users")
-    free_users = store.get_free_opted_in_users(limit=100)
-    print(f"Found {len(free_users)} free opted-in users (capped teaser)")
-    # Paid first, free second; dedupe by uid
-    seen = {u.get("uid") for u in paid_users}
-    users = paid_users + [u for u in free_users if u.get("uid") not in seen]
+    # Get opted-in users
+    users = store.get_newsletter_opted_in_users()
+    print(f"Found {len(users)} opted-in subscribed users")
 
     results = {
         "date": date,

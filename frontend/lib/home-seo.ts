@@ -1,12 +1,10 @@
-import { CHROME_EXTENSION_URL } from './product-links.ts';
-
 export const HOME_PRODUCT_DESCRIPTION =
   'Trace groups AI and technology news into a short personalized feed, so you can catch model launches, company changes, layoffs, security updates, and new trends in five minutes.';
 
 export const HOME_FAQ_ITEMS = [
   {
     q: 'Is Trace free?',
-    a: 'Yes. The free plan includes your AI and technology news feed, three unique AI summaries each day, original source links, and bookmarks with a free account.',
+    a: 'Yes. The free plan includes your AI and technology news feed, five unique AI summaries each day, original source links, and bookmarks with a free account.',
   },
   {
     q: 'What counts as one AI summary?',
@@ -40,7 +38,7 @@ export function generateHomeApplicationSchema(): Record<string, unknown> {
     description: HOME_PRODUCT_DESCRIPTION,
     applicationCategory: 'NewsApplication',
     operatingSystem: 'Web, Chrome, Android',
-    downloadUrl: CHROME_EXTENSION_URL,
+    downloadUrl: 'https://chromewebstore.google.com/detail/cblkklekbejbpcaihfogdmaoofmikbk',
     featureList: [
       'AI and technology news aggregation',
       'Related story grouping with source links',
@@ -57,7 +55,7 @@ export function generateHomeApplicationSchema(): Record<string, unknown> {
       '@id': 'https://www.yourtrace.online/#organization',
     },
     sameAs: [
-      CHROME_EXTENSION_URL,
+      'https://chromewebstore.google.com/detail/cblkklekbejbpcaihfogdmaoofmikbk',
       'https://play.google.com/store/apps/details?id=online.yourtrace.app',
     ],
   };

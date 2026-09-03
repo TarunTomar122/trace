@@ -12,7 +12,7 @@ State toggles in the floating bar: `?tier=free|pro`, `?img=on`.
 Centered masthead, blue-serif stats row ("N min to catch up" — finally surfaces
 `FeedEditionOrganizer.readMinutes`), contents filter bar, numbered topic sections with
 inline-expand stories, locked sections as blurred wireframe rows + one calm
-"PRO · THE FULL EDITION" box (free = first 3 stories, `FREE_READS_LIMIT` applies).
+"PRO · THE FULL EDITION" box (free = first 3 stories, `FREE_READS_LIMIT` unchanged).
 
 Open questions being evaluated on the route:
 - `?img=on` — rationed imagery: one lead photo ("front-page photo") + images revealed

@@ -203,8 +203,8 @@ export default function ArticleScreen() {
           <Text style={[nStyles.emptyBody, { color: Colors[colorScheme].muted }]}>
             This article is no longer in memory. Go back to the feed and open it again.
           </Text>
-          <Pressable style={[nStyles.emptyButton, { backgroundColor: Colors[colorScheme].foreground }]} onPress={() => router.replace('/(tabs)')}>
-            <Text style={[nStyles.emptyButtonText, { color: Colors[colorScheme].background }]}>Back to feed</Text>
+          <Pressable style={nStyles.emptyButton} onPress={() => router.replace('/(tabs)')}>
+            <Text style={nStyles.emptyButtonText}>Back to feed</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -379,7 +379,7 @@ export default function ArticleScreen() {
               onError={() => setImgError(true)}
             />
           ) : (
-            <View style={[nStyles.heroImg, { backgroundColor: isDark ? Colors[colorScheme].card : '#ece7df' }]} />
+            <View style={[nStyles.heroImg, { backgroundColor: isDark ? '#1c1c1c' : '#ece7df' }]} />
           )}
           {/* Overlay for dimming */}
           <View style={nStyles.heroOverlayDim} />
@@ -424,7 +424,7 @@ export default function ArticleScreen() {
           {hasAccess ? (
             <View style={nStyles.body}>
               {keyTakeaways && keyTakeaways.length > 0 && (
-                <View style={[nStyles.takeawaysCard, { backgroundColor: isDark ? Colors[colorScheme].card : '#fffbeb' }]}>
+                <View style={[nStyles.takeawaysCard, { backgroundColor: isDark ? '#1a1a1a' : '#fffbeb' }]}>
                   <Text style={nStyles.takeawaysLabel}>KEY TAKEAWAYS</Text>
                   {keyTakeaways.map((t: string, i: number) => (
                     <View key={i} style={nStyles.bulletRow}>
@@ -447,7 +447,7 @@ export default function ArticleScreen() {
               ))}
 
               {whyItMatters && (
-                <View style={[nStyles.whyCard, { backgroundColor: isDark ? Colors[colorScheme].card : '#f9fafb' }]}>
+                <View style={[nStyles.whyCard, { backgroundColor: isDark ? '#1a1a1a' : '#f9fafb' }]}>
                   <Text style={[nStyles.whyLabel, { color: ACCENT }]}>WHY IT MATTERS</Text>
                   <RichText style={[nStyles.whyText, { color: Colors[colorScheme].text }]}>
                     {whyItMatters}
@@ -462,7 +462,7 @@ export default function ArticleScreen() {
                     <Pressable
                       key={`${src.url}-${i}`}
                       onPress={() => src.url ? WebBrowser.openBrowserAsync(src.url) : undefined}
-                      style={[nStyles.inlineSourceCard, { backgroundColor: isDark ? Colors[colorScheme].card : '#f8f9fa' }]}>
+                      style={[nStyles.inlineSourceCard, { backgroundColor: isDark ? '#1a1a1a' : '#f8f9fa' }]}>
                       <View style={{ flex: 1, gap: 2 }}>
                         <Text style={[nStyles.inlineSourceName, { color: textColor }]} numberOfLines={1}>
                           {src.name}
@@ -492,8 +492,8 @@ export default function ArticleScreen() {
               </View>
 
               <View style={nStyles.paywallContainer}>
-                <View style={[nStyles.paywallCard, { backgroundColor: isDark ? Colors[colorScheme].card : '#f8f9fa' }]}>
-                  <View style={[nStyles.paywallIcon, { backgroundColor: `${Colors[colorScheme].accent}18` }]}>
+                <View style={[nStyles.paywallCard, { backgroundColor: isDark ? '#1a1a1a' : '#f8f9fa' }]}>
+                  <View style={[nStyles.paywallIcon, { backgroundColor: isDark ? '#2e2216' : '#fffbeb' }]}>
                     <Lock size={22} color={ACCENT} strokeWidth={2} />
                   </View>
                   <Text style={[nStyles.paywallTitle, { color: Colors[colorScheme].text }]}>
@@ -502,8 +502,8 @@ export default function ArticleScreen() {
                   <Text style={[nStyles.paywallDesc, { color: Colors[colorScheme].muted }]}>
                     Every article, distilled to what matters most — so you learn more, faster.
                   </Text>
-                  <Pressable style={[nStyles.paywallBtn, { backgroundColor: Colors[colorScheme].foreground }]} onPress={() => presentPaywall()}>
-                    <Text style={[nStyles.paywallBtnText, { color: Colors[colorScheme].background }]}>Start 3-day free trial</Text>
+                  <Pressable style={nStyles.paywallBtn} onPress={() => presentPaywall()}>
+                    <Text style={nStyles.paywallBtnText}>Start 3-day free trial</Text>
                   </Pressable>
                   <Pressable style={nStyles.readOriginalLink} onPress={handleReadOriginal}>
                     <ExternalLink size={14} color={Colors[colorScheme].muted} strokeWidth={1.5} />
@@ -521,26 +521,17 @@ export default function ArticleScreen() {
       {/* Floating header */}
       <SafeAreaView style={nStyles.floatingHeader} edges={['top']} pointerEvents="box-none">
         <View style={nStyles.floatingHeaderRow}>
-          <Pressable
-            onPress={() => router.back()}
-            hitSlop={12}
-            style={[nStyles.floatingBtn, { backgroundColor: colorScheme === 'dark' ? Colors.dark.surfaceVariant : 'rgba(255,255,255,0.8)' }]}>
-            <ChevronLeft size={22} color={Colors[colorScheme].icon} strokeWidth={2} />
+          <Pressable onPress={() => router.back()} hitSlop={12} style={nStyles.floatingBtn}>
+            <ChevronLeft size={22} color="#000" strokeWidth={2} />
           </Pressable>
           <View style={nStyles.floatingHeaderRight}>
             {isTrending && (
-              <Pressable
-                onPress={handleShare}
-                hitSlop={12}
-                style={[nStyles.floatingBtn, { backgroundColor: colorScheme === 'dark' ? Colors.dark.surfaceVariant : 'rgba(255,255,255,0.8)' }]}>
-                <Share2 size={18} color={Colors[colorScheme].icon} strokeWidth={1.8} />
+              <Pressable onPress={handleShare} hitSlop={12} style={nStyles.floatingBtn}>
+                <Share2 size={18} color="#000" strokeWidth={1.8} />
               </Pressable>
             )}
-            <Pressable
-              onPress={handleReadOriginal}
-              hitSlop={12}
-              style={[nStyles.floatingBtn, { backgroundColor: colorScheme === 'dark' ? Colors.dark.surfaceVariant : 'rgba(255,255,255,0.8)' }]}>
-              <ExternalLink size={18} color={Colors[colorScheme].icon} strokeWidth={1.8} />
+            <Pressable onPress={handleReadOriginal} hitSlop={12} style={nStyles.floatingBtn}>
+              <ExternalLink size={18} color="#000" strokeWidth={1.8} />
             </Pressable>
           </View>
         </View>

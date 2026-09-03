@@ -26,13 +26,12 @@ function DirectoryBadgeMarquee({ badges }: { badges: DirectoryBadge[] }) {
 
 export default function Footer(props: { variant?: 'default' | 'landing'; directoryBadges?: DirectoryBadge[]; stocksBrewMedium?: string } = {}) {
   return (
-    <footer data-variant={props.variant ?? 'default'} className="px-5 py-14 text-foreground sm:px-8 sm:py-20" style={{ backgroundColor: 'var(--surface-secondary)' }}>
+    <footer data-variant={props.variant ?? 'default'} className="border-t border-[#eff3f4] px-5 py-14 text-[#0f1419] sm:px-8 sm:py-20" style={{ backgroundColor: '#ffffff' }}>
       <div className="mx-auto max-w-[1180px]">
         <div className="grid grid-cols-2 gap-12 md:grid-cols-4 md:gap-8">
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="inline-flex min-h-11 items-center gap-3">
-              <Image src="/trace-app-icon-v1-180.png" width={34} height={34} alt="" className="h-[34px] w-[34px] rounded-[10px]" />
-              <span className="font-mono text-[12px] font-bold tracking-[0.26em]">TRACE</span>
+              <Image src="/trace.webp" width={64} height={28} alt="" className="h-7 w-auto" />
             </Link>
             <p className="mt-5 max-w-[280px] text-pretty text-[15px] leading-[1.65] text-secondary">The fastest way to catch up on tech and AI news.</p>
           </div>

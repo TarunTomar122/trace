@@ -214,8 +214,8 @@ export default function TopicScreen() {
           <Text style={[styles.emptyBody, { color: Colors[colorScheme].muted }]}>
             This topic is no longer in memory. Go back to the feed and open it again.
           </Text>
-          <Pressable style={[styles.emptyButton, { backgroundColor: Colors[colorScheme].foreground }]} onPress={() => router.replace('/(tabs)')}>
-            <Text style={[styles.emptyButtonText, { color: Colors[colorScheme].background }]}>Back to feed</Text>
+          <Pressable style={styles.emptyButton} onPress={() => router.replace('/(tabs)')}>
+            <Text style={styles.emptyButtonText}>Back to feed</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -312,7 +312,7 @@ export default function TopicScreen() {
               resizeMode="cover"
             />
           ) : (
-            <View style={[styles.heroImage, { backgroundColor: isDark ? Colors[colorScheme].card : '#222' }]} />
+            <View style={[styles.heroImage, { backgroundColor: isDark ? '#1c1c1c' : '#222' }]} />
           )}
 
           {/* Overlay for dimming */}
@@ -463,8 +463,8 @@ export default function TopicScreen() {
 
             {/* In-page paywall */}
             <View style={styles.paywallContainer}>
-              <View style={[styles.paywallCard, { backgroundColor: isDark ? Colors[colorScheme].card : '#f8f9fa' }]}>
-                <View style={[styles.paywallIcon, { backgroundColor: `${Colors[colorScheme].accent}18` }]}>
+              <View style={[styles.paywallCard, { backgroundColor: isDark ? '#1a1a1a' : '#f8f9fa' }]}>
+                <View style={[styles.paywallIcon, { backgroundColor: isDark ? '#2e2216' : '#fffbeb' }]}>
                   <Lock size={22} color={ACCENT} strokeWidth={2} />
                 </View>
                 <Text style={[styles.paywallTitle, { color: Colors[colorScheme].text }]}>
@@ -473,8 +473,8 @@ export default function TopicScreen() {
                 <Text style={[styles.paywallDesc, { color: Colors[colorScheme].muted }]}>
                   Get key takeaways, multi-source timelines, and daily briefs — all in one place.
                 </Text>
-                <Pressable style={[styles.paywallBtn, { backgroundColor: Colors[colorScheme].foreground }]} onPress={() => presentPaywall()}>
-                  <Text style={[styles.paywallBtnText, { color: Colors[colorScheme].background }]}>Start 3-day free trial</Text>
+                <Pressable style={styles.paywallBtn} onPress={() => presentPaywall()}>
+                  <Text style={styles.paywallBtnText}>Start 3-day free trial</Text>
                 </Pressable>
               </View>
             </View>
@@ -486,30 +486,23 @@ export default function TopicScreen() {
       <Animated.View style={[styles.floatingHeader, headerAnimatedStyle]}>
         <SafeAreaView edges={['top']} style={{ flex: 1 }} pointerEvents="box-none">
           <View style={styles.header}>
-            <Pressable
-              onPress={() => router.back()}
-              hitSlop={12}
-              style={[styles.headerBtn, { backgroundColor: colorScheme === 'dark' ? Colors.dark.surfaceVariant : 'rgba(255,255,255,0.8)' }]}>
-              <ChevronLeft size={22} color={Colors[colorScheme].icon} strokeWidth={2} />
+            <Pressable onPress={() => router.back()} hitSlop={12} style={styles.headerBtn}>
+              <ChevronLeft size={22} color="#000" strokeWidth={2} />
             </Pressable>
             <View style={styles.headerRight}>
               {sourceUrl && (
                 <Pressable
                   onPress={() => WebBrowser.openBrowserAsync(sourceUrl)}
                   hitSlop={12}
-                  style={[styles.headerBtn, { backgroundColor: colorScheme === 'dark' ? Colors.dark.surfaceVariant : 'rgba(255,255,255,0.8)' }]}>
-                  <ExternalLink size={18} color={Colors[colorScheme].icon} strokeWidth={1.8} />
+                  style={styles.headerBtn}>
+                  <ExternalLink size={18} color="#000" strokeWidth={1.8} />
                 </Pressable>
               )}
-              <Pressable
-                onPress={handleShare}
-                hitSlop={12}
-                style={[styles.headerBtn, { backgroundColor: colorScheme === 'dark' ? Colors.dark.surfaceVariant : 'rgba(255,255,255,0.8)' }]}
-                disabled={isSharing}>
+              <Pressable onPress={handleShare} hitSlop={12} style={styles.headerBtn} disabled={isSharing}>
                 {isSharing ? (
-                  <ActivityIndicator size="small" color={Colors[colorScheme].icon} />
+                  <ActivityIndicator size="small" color="#000" />
                 ) : (
-                  <Share2 size={18} color={Colors[colorScheme].icon} strokeWidth={1.8} />
+                  <Share2 size={18} color="#000" strokeWidth={1.8} />
                 )}
               </Pressable>
             </View>

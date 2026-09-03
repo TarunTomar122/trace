@@ -31,10 +31,7 @@ from v1.storage import FirestoreStore
 
 
 # Maximum items to include in newsletter
-MAX_NEWSLETTER_ITEMS_PRO = 8
-MAX_NEWSLETTER_ITEMS_FREE = 3
-# Cap free-tier sends to respect Brevo free tier
-FREE_NEWSLETTER_RECIPIENT_LIMIT = 100
+MAX_NEWSLETTER_ITEMS = 8
 
 
 def _get_today_ist_date() -> str:
@@ -275,22 +272,14 @@ def build_newsletter_for_user(
             "date": date,
         }
 
-    # Check if user has newsletter opt-in (explicit flag)
-    from v1.newsletter_preferences import is_newsletter_enabled
-    from v1.storage import is_user_subscribed
-
-    if not is_newsletter_enabled(profile):
+    # Check if user has newsletter opt-in (default True)
+    if not profile.get("newsletterOptIn", True):
         return {
             "success": False,
             "error": "User has opted out of newsletter",
             "user_id": user_id,
             "date": date,
         }
-
-    is_pro = is_user_subscribed(profile)
-    max_items = MAX_NEWSLETTER_ITEMS_PRO if is_pro else MAX_NEWSLETTER_ITEMS_FREE
-    if not is_pro:
-        print(f"  Free tier — teaser limit {max_items} items (pro would get {MAX_NEWSLETTER_ITEMS_PRO})")
 
     # Get user's feed
     feed_items = _get_user_feed(store, user_id, date)
@@ -304,8 +293,8 @@ def build_newsletter_for_user(
 
     print(f"  Found {len(feed_items)} non-video feed items")
 
-    # Select items that have summaries (no LLM needed) — free gets teaser
-    selected_items = _select_items_with_summaries(feed_items, max_items=max_items)
+    # Select items that have summaries (no LLM needed)
+    selected_items = _select_items_with_summaries(feed_items)
 
     if not selected_items:
         return {
@@ -346,14 +335,13 @@ def build_newsletter_for_user(
 
         newsletter_items.append(newsletter_item)
 
-    # Generate email subject — teaser signals upsell for free
-    if is_pro:
-        email_subject = f"Your Daily Trace - {len(newsletter_items)} picks for {date}"
-    else:
-        remaining = MAX_NEWSLETTER_ITEMS_PRO - len(newsletter_items)
-        email_subject = f"Your Daily Trace — {len(newsletter_items)} free + {remaining} Pro-only for {date}"
+    # Generate email subject
+    email_subject = (
+        f"Your Daily Trace - "
+        f"{len(newsletter_items)} picks for {date}"
+    )
 
-    # Build newsletter document — flag free teaser for template upsell
+    # Build newsletter document
     newsletter_data = {
         "date": date,
         "user_id": user_id,
@@ -365,8 +353,6 @@ def build_newsletter_for_user(
         "email_text": "",  # Generated when sending
         "status": "draft",
         "error": None,
-        "is_pro": is_pro,
-        "teaser": not is_pro,
     }
 
     # Save to Firestore

@@ -19,7 +19,7 @@ const links = [
 
 export default function PublicHeader({
   ctaLabel = 'Start reading',
-  ctaHref = '/feed?view=pulse',
+  ctaHref = '/feed',
   centerSlot,
   rightSlot,
   showMobileNav = true,
@@ -49,12 +49,11 @@ export default function PublicHeader({
   }, [hasCenterSlot]);
 
   return (
-    <header className={`${hasCenterSlot ? `sticky top-0 transition-transform duration-200 ${hidden ? '-translate-y-full' : 'translate-y-0'}` : 'relative'} z-50 isolate bg-background`} style={{ padding: '14px clamp(16px, 5vw, 72px)' }}>
+    <header className={`${hasCenterSlot ? `sticky top-0 transition-transform duration-200 ${hidden ? '-translate-y-full' : 'translate-y-0'}` : 'relative'} z-50 isolate bg-white/90 backdrop-blur-md border-b border-[#eff3f4]`} style={{ padding: '14px clamp(16px, 5vw, 72px)' }}>
       <style>{'@media(max-width:959px){.public-primary-nav{display:none!important}.public-header-grid{grid-template-columns:1fr auto!important}.public-header-center-slot{grid-column:1/-1;grid-row:2}}@media(min-width:960px){.public-mobile-nav{display:none!important}.public-header-center-slot{grid-column:2;grid-row:1}}'}</style>
       <div className="public-header-grid relative w-full" style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 1fr) auto minmax(150px, 1fr)', alignItems: 'center', maxWidth: 1120, margin: '0 auto' }}>
         <Link href="/" className="flex min-h-11 items-center gap-3 text-foreground" style={{ justifySelf: 'start' }}>
-          <Image src="/trace-app-icon-v1-180.png" width={32} height={32} alt="" className="h-8 w-8 rounded-[10px]" />
-          <span className="font-mono text-[12px] font-bold tracking-[0.28em]">TRACE</span>
+          <Image src="/trace.webp" width={64} height={28} alt="" className="h-7 w-auto" />
         </Link>
         {centerSlot ? (
           <div className="public-header-center-slot scrollbar-hide min-w-0 overflow-x-auto pb-2 pt-4 min-[960px]:py-0">{centerSlot}</div>
@@ -64,7 +63,7 @@ export default function PublicHeader({
           </nav>
         )}
         <div className="flex items-center gap-2" style={{ justifySelf: 'end' }}>
-          {rightSlot ?? <Link href={ctaHref} className="inline-flex min-h-11 items-center rounded-full border border-foreground/15 px-5 py-2.5 text-[13px] font-semibold text-foreground transition-colors hover:bg-surface-secondary" style={{ whiteSpace: 'nowrap' }}>{ctaLabel}</Link>}
+          {rightSlot ?? <Link href={ctaHref} className="inline-flex min-h-10 items-center rounded-full bg-[#1d9bf0] px-5 py-2 text-[13px] font-bold text-white transition-colors hover:bg-[#1a8cd8]" style={{ whiteSpace: 'nowrap' }}>{ctaLabel}</Link>}
           {!centerSlot && showMobileNav && (
             <details className="public-mobile-nav relative">
               <summary aria-label="Open navigation" className="flex size-11 cursor-pointer list-none items-center justify-center rounded-full border border-foreground/15 text-foreground [&::-webkit-details-marker]:hidden">

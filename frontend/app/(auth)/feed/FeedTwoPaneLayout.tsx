@@ -3,12 +3,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Bookmark, Check, Chrome, ExternalLink, Lock, Share2, X, Sparkles } from 'lucide-react';
+import { Bookmark, Check, ExternalLink, Lock, Share2, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useAuth } from '@/contexts/AuthContext';
-import { auth } from '@/lib/firebase';
 import { ArticleImage } from '@/components/ArticleImage';
 import type { FeedItem, TrendingTopic } from '@/lib/firestore';
 import {
@@ -19,25 +18,11 @@ import {
   trackSummaryOpened,
 } from '@/lib/posthog';
 import type { SummaryAccessResult } from '@/lib/free-reads';
-import { FREE_READS_LIMIT, FREE_READS_LIFETIME_LIMIT, getLifetimeReadsCount, isLifetimeLimitReached } from '@/lib/free-reads';
 import { buildArticleShareUrl, buildTopicShareUrl, copyOrShareUrl } from '@/lib/article-share';
 import { addReaderHistoryState, isReaderHistoryState } from '@/lib/reader-history';
 import type { HotTweet } from './FeedOneScreen';
 import { type FeedListItem, getTimeLabel, INTEREST_LABEL } from './FeedUi';
 import { WireFeedLoadingSkeleton } from './FeedBootShell';
-import { CHROME_EXTENSION_URL } from '@/lib/product-links';
-import { SUBSCRIPTION_PRICE_DEFAULT } from '@/lib/subscription-pricing';
-import { InlineCheckoutButton } from '@/components/InlineCheckoutButton';
-
-function guessPriceDisplay(): string {
-  return SUBSCRIPTION_PRICE_DEFAULT;
-}
-
-function guessPricingPreview(): { trialDays: number; priceDisplay: string } {
-  return { trialDays: 3, priceDisplay: SUBSCRIPTION_PRICE_DEFAULT };
-}
-
-const CHROME_NOTICE_DISMISSED_KEY = 'trace.chrome-extension-notice.dismissed.v1';
 
 const MARKDOWN_COMPONENTS: Components = {
   p: ({ children }) => <>{children}</>,
@@ -295,21 +280,16 @@ export function ReaderModal({
                   <p className="text-[12px] text-secondary">The human making Trace</p>
                 </div>
               </div>
-              <p className="text-[18px] font-semibold text-foreground">You&apos;ve used {FREE_READS_LIMIT} free reads today.</p>
-              <p className="mt-2 max-w-[580px] text-pretty text-[14px] leading-[1.7] text-foreground/75">Trace is a one-person project. I read every piece of feedback and keep improving it based on what people need. Pro unlocks unlimited summaries and keeps the feed ad-free while I start my AI master&apos;s at Edinburgh this September.</p>
-              <div className="mt-[18px]">
-                <InlineCheckoutButton trackingSource="feed_reader_limit" variant="dark" className="w-full sm:w-auto" label="Try Pro" showPrice={false} />
-                <p className="mt-2 text-[11px] font-medium text-foreground/60">
-                  {(() => { const p = guessPricingPreview(); return `${p.priceDisplay} after trial · Cancel anytime`; })()}
-                </p>
-              </div>
-              <div className="mt-4 flex items-center gap-2 text-[11px] font-medium text-foreground/60">
-                <span className="inline-flex items-center gap-1 rounded-full bg-foreground/6 px-2.5 py-1">
-                  <Check size={11} className="text-emerald-600/70" /> Unlimited reads
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-foreground/6 px-2.5 py-1">
-                  <Check size={11} className="text-emerald-600/70" /> Resets daily
-                </span>
+              <p className="text-[18px] font-semibold text-foreground">You have used today&rsquo;s five free summaries.</p>
+              <p className="mt-2 max-w-[580px] text-pretty text-[14px] leading-[1.7] text-secondary">Trace is a one-person project. I read every piece of feedback and keep improving it based on what people need. Pro helps me keep building while I start my AI master&rsquo;s at Edinburgh this September.</p>
+              <div className="mt-[18px] flex flex-wrap items-center gap-3">
+                <Link
+                  href="/profile?tab=subscription&intent=checkout"
+                  onClick={() => trackCheckoutClicked('feed_reader_limit')}
+                  className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-foreground px-[15px] py-[10px] text-[13px] font-semibold text-background transition-opacity hover:opacity-85"
+                >
+                  Try Pro free for 3 days
+                </Link>
               </div>
             </div>
           ) : (
@@ -404,7 +384,6 @@ export default function FeedTwoPaneLayout({
   blogs = [],
   isSubscribed = false,
   freeReadsUsed = 0,
-  summaryAccess = 'checking' as 'checking' | 'pro' | 'free',
   onOpenSummary,
   isItemLocked,
   tab,
@@ -418,7 +397,6 @@ export default function FeedTwoPaneLayout({
   blogs?: FeedListItem[];
   isSubscribed?: boolean;
   freeReadsUsed?: number;
-  summaryAccess?: 'checking' | 'pro' | 'free';
   onOpenSummary: (item: FeedListItem) => Promise<SummaryAccessResult>;
   isItemLocked: (id: string) => boolean;
   tab: 'news' | 'pulse';
@@ -429,23 +407,9 @@ export default function FeedTwoPaneLayout({
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [bookmarkBusyIds, setBookmarkBusyIds] = useState<Set<string>>(new Set());
   const [bookmarkMessage, setBookmarkMessage] = useState<string | null>(null);
-  const [showChromeNotice, setShowChromeNotice] = useState(false);
-  const [lifetimeCount, setLifetimeCount] = useState(0);
   const locallyChangedBookmarks = useRef(new Set<string>());
   const bookmarkMessageTimerRef = useRef<number | null>(null);
   const readerOpenerRef = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setLifetimeCount(getLifetimeReadsCount());
-    const onStorage = () => setLifetimeCount(getLifetimeReadsCount());
-    window.addEventListener('storage', onStorage);
-    // also listen for local updates via custom event after recordLocalFreeRead
-    const interval = setInterval(() => setLifetimeCount(getLifetimeReadsCount()), 1000);
-    return () => {
-      window.removeEventListener('storage', onStorage);
-      clearInterval(interval);
-    };
-  }, [freeReadsUsed]);
 
   const showBookmarkMessage = useCallback((message: string) => {
     if (bookmarkMessageTimerRef.current) window.clearTimeout(bookmarkMessageTimerRef.current);
@@ -455,15 +419,6 @@ export default function FeedTwoPaneLayout({
 
   useEffect(() => () => {
     if (bookmarkMessageTimerRef.current) window.clearTimeout(bookmarkMessageTimerRef.current);
-  }, []);
-
-  useEffect(() => {
-    setShowChromeNotice(window.localStorage.getItem(CHROME_NOTICE_DISMISSED_KEY) !== '1');
-  }, []);
-
-  const dismissChromeNotice = useCallback(() => {
-    window.localStorage.setItem(CHROME_NOTICE_DISMISSED_KEY, '1');
-    setShowChromeNotice(false);
   }, []);
 
   useEffect(() => {
@@ -619,82 +574,6 @@ export default function FeedTwoPaneLayout({
   return (
     <div className="bg-background">
       <div id="feed-start" className="mx-auto w-full max-w-[1540px] [overflow-anchor:none] px-4 py-5 sm:px-7 sm:py-6 lg:px-10">
-        {showChromeNotice && (
-          <aside className="flex items-center gap-3 rounded-2xl bg-surface px-4 py-3.5 text-foreground shadow-sm ring-1 ring-foreground/10 sm:px-5" aria-label="Trace Chrome extension announcement">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
-              <Chrome size={17} aria-hidden="true" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[14px] font-semibold">Trace is now available for Chrome.</p>
-              <p className="mt-0.5 hidden text-[12px] text-secondary sm:block">Get your AI and tech feed in every new tab.</p>
-            </div>
-            <a
-              href={CHROME_EXTENSION_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 rounded-full bg-foreground px-4 py-2 text-[12px] font-semibold text-background transition-opacity hover:opacity-80"
-            >
-              Add to Chrome
-            </a>
-            <button
-              type="button"
-              aria-label="Dismiss Chrome extension announcement"
-              onClick={dismissChromeNotice}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition hover:bg-foreground/5 hover:text-foreground"
-            >
-              <X size={16} aria-hidden="true" />
-            </button>
-          </aside>
-        )}
-        {summaryAccess === 'free' && (() => {
-          const lifetimeHit = lifetimeCount >= FREE_READS_LIFETIME_LIMIT;
-          const isCapped = freeReadsUsed >= FREE_READS_LIMIT || lifetimeHit;
-          return (
-          <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-amber-500/15 bg-amber-500/[0.06] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/15 text-amber-700">
-                <Lock size={14} />
-              </span>
-              <div>
-                <p className="text-[13px] font-semibold text-foreground">
-                  {lifetimeHit
-                    ? `You've read ${lifetimeCount} stories — unlock unlimited`
-                    : isCapped
-                    ? `You've used ${freeReadsUsed}/${FREE_READS_LIMIT} free reads today`
-                    : freeReadsUsed > 0
-                      ? `${FREE_READS_LIMIT - freeReadsUsed} free ${FREE_READS_LIMIT - freeReadsUsed === 1 ? "read" : "reads"} left today`
-                      : `${FREE_READS_LIMIT} free reads today`}
-                </p>
-                <p className="text-[11px] font-medium text-foreground/65">
-                  {isCapped
-                    ? `${guessPricingPreview().priceDisplay} after trial · Cancel anytime`
-                    : `Pro unlocks unlimited summaries · ${guessPricingPreview().priceDisplay} after trial`}
-                </p>
-                {lifetimeHit && (
-                  <p className="text-[10px] font-medium text-amber-700 mt-0.5">Free limit reached — daily resets no longer apply. {FREE_READS_LIFETIME_LIMIT} total free reads used.</p>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="hidden sm:flex items-center gap-1">
-                {Array.from({ length: FREE_READS_LIMIT }).map((_, i) => (
-                  <span
-                    key={i}
-                    className={`h-1.5 w-8 rounded-full ${i < (lifetimeHit ? FREE_READS_LIMIT : freeReadsUsed) ? "bg-amber-500" : "bg-amber-500/20"}`}
-                  />
-                ))}
-              </div>
-              <InlineCheckoutButton
-                trackingSource="feed_meter_bar"
-                variant="dark"
-                className="!mt-0 [&>p]:hidden"
-                showPrice={false}
-                label={`Try Pro`}
-              />
-            </div>
-          </div>
-          );
-        })()}
         {tab === 'news' ? (
           <>
             <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

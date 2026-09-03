@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+import PageShell from '@/components/feed-v2/PageShell';
 import { Metadata } from "next";
 import { DEFAULT_OPEN_GRAPH } from "@/lib/seo";
 
@@ -13,10 +15,6 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PrivacyPolicyLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return children;
+export default function SegmentLayout({ children }: { children: ReactNode }) {
+  return <PageShell chrome={false}>{children}</PageShell>;
 }

@@ -31,7 +31,7 @@ export const metadata: Metadata = {
 export default function UseCasesHubPage() {
   return (
     <div className="landing-page landing-grid-bg min-h-screen">
-      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
+      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/feed" />
       <main className="px-4 sm:px-6">
         <section className="mx-auto max-w-6xl pt-16 pb-10 sm:pt-24 sm:pb-14">
           <div className="max-w-3xl">

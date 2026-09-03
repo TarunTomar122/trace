@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
+  reactStrictMode: false,
   trailingSlash: false,
   turbopack: {
     root: projectRoot,
@@ -35,6 +36,15 @@ const nextConfig: NextConfig = {
         destination: 'https://www.yourtrace.online/:path*',
         permanent: true,
       },
+      // retired legacy surfaces (redesigned experience lives in /feed)
+      { source: '/trending', destination: '/feed', permanent: true },
+      { source: '/trending/:topic', destination: '/feed', permanent: true },
+      { source: '/daily', destination: '/feed', permanent: true },
+      { source: '/daily/:date', destination: '/feed', permanent: true },
+      { source: '/topics/:id', destination: '/feed', permanent: true },
+      { source: '/bookmarks', destination: '/feed', permanent: true },
+      { source: '/profile', destination: '/feed', permanent: true },
+      { source: '/feed/article', destination: '/feed', permanent: true },
       {
         source: "/:path+/",
         destination: "/:path+",

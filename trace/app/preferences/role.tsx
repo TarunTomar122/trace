@@ -81,7 +81,7 @@ export default function EditRoleScreen() {
               </View>
               {sel && (
                 <View style={[styles.checkCircle, { backgroundColor: ACCENT }]}>
-                  <Check size={12} color={Colors[colorScheme].accentForeground} strokeWidth={3} />
+                  <Check size={12} color="#fff" strokeWidth={3} />
                 </View>
               )}
             </Pressable>
@@ -112,7 +112,7 @@ export default function EditRoleScreen() {
               </View>
               {sel && (
                 <View style={[styles.checkCircle, { backgroundColor: ACCENT }]}>
-                  <Check size={12} color={Colors[colorScheme].accentForeground} strokeWidth={3} />
+                  <Check size={12} color="#fff" strokeWidth={3} />
                 </View>
               )}
             </Pressable>
@@ -129,8 +129,8 @@ export default function EditRoleScreen() {
             styles.saveBtn,
             { backgroundColor: ACCENT, opacity: saving || !hasChanges || !canSave ? 0.4 : 1 },
           ]}>
-          {saving && <ActivityIndicator size="small" color={Colors[colorScheme].accentForeground} style={{ marginRight: 8 }} />}
-          <ThemedText style={[styles.saveBtnText, { color: Colors[colorScheme].accentForeground }]}>Save</ThemedText>
+          {saving && <ActivityIndicator size="small" color="#000" style={{ marginRight: 8 }} />}
+          <ThemedText style={styles.saveBtnText}>Save</ThemedText>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -183,5 +183,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
   },
-  saveBtnText: { fontSize: 15, fontFamily: FontFamily.bold },
+  saveBtnText: { color: '#000', fontSize: 15, fontFamily: FontFamily.bold },
 });

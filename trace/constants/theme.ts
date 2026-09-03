@@ -4,6 +4,7 @@
  */
 
 const tintColorLight = '#0a0a0a';
+const tintColorDark = '#fafafa';
 
 export const Colors = {
   light: {
@@ -18,30 +19,19 @@ export const Colors = {
     border: '#b0b0b0',
     muted: '#6f6f6f',
     card: '#ffffff',
-    surfaceVariant: '#e7e0ec',
-    accent: '#F59E0B',
-    accentForeground: '#0a0a0a',
-    danger: '#B3261E',
-    dangerSoft: '#F9DEDC',
   },
   dark: {
-    // Material baseline dark roles: dark grey surfaces with light on-surface text.
-    text: '#E6E1E5',
-    background: '#1C1B1F',
-    tint: '#D0BCFF',
-    icon: '#CAC4D0',
-    tabIconDefault: '#CAC4D0',
-    tabIconSelected: '#D0BCFF',
-    foreground: '#E6E1E5',
-    secondary: '#CAC4D0',
-    border: '#49454F',
-    muted: '#CAC4D0',
-    card: '#2B2930',
-    surfaceVariant: '#49454F',
-    accent: '#F59E0B',
-    accentForeground: '#1C1B1F',
-    danger: '#F2B8B5',
-    dangerSoft: '#8C1D18',
+    text: '#fafafa',
+    background: '#0a0a0a',
+    tint: tintColorDark,
+    icon: '#b0b0b0',
+    tabIconDefault: '#b0b0b0',
+    tabIconSelected: tintColorDark,
+    foreground: '#fafafa',
+    secondary: '#c4c4c4',
+    border: '#2c2c2c',
+    muted: '#9a9a9a',
+    card: '#151515',
   },
 };
 

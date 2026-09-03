@@ -43,5 +43,6 @@ class TrendingTopicClusteringTests(unittest.TestCase):
         self.assertEqual(len(clusters), 1)
         self.assertEqual(len(clusters[0]["items"]), 2)
 
+
 if __name__ == "__main__":
     unittest.main()

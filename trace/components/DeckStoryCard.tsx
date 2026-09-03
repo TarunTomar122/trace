@@ -16,7 +16,7 @@ import { Share2 } from 'lucide-react-native';
 import { captureRef } from 'react-native-view-shot';
 import RNShare from 'react-native-share';
 
-import { Colors, FontFamily } from '@/constants/theme';
+import { FontFamily } from '@/constants/theme';
 import { FeedItem, TrendingTopic } from '@/lib/firestore';
 import { getArticleImage } from '@/lib/fallback-images';
 import { decodeHtmlEntities } from '@/lib/text-decode';
@@ -36,10 +36,10 @@ const INS = {
   sub: '#B8B8B8',
 };
 const INS_DARK = {
-  canvas: Colors.dark.card,
-  textHead: Colors.dark.text,
-  textBody: Colors.dark.muted,
-  sub: Colors.dark.muted,
+  canvas: '#101010',
+  textHead: '#F2F2F2',
+  textBody: '#A3A3A3',
+  sub: '#8C8C8C',
 };
 
 
@@ -261,23 +261,12 @@ export function DeckStoryCard({
             </View>
             <Pressable
               onPress={onShare}
-              style={[
-                styles.shareBtn,
-                {
-                  backgroundColor: colorScheme === 'dark'
-                    ? Colors.dark.surfaceVariant
-                    : 'rgba(255,255,255,0.92)',
-                },
-              ]}
+              style={styles.shareBtn}
               hitSlop={8}
               disabled={shareBusy}
               accessibilityRole="button"
               accessibilityLabel="Share story">
-              <Share2
-                size={16}
-                color={colorScheme === 'dark' ? Colors.dark.icon : INS.textHead}
-                strokeWidth={2}
-              />
+              <Share2 size={16} color="#1B1B1B" strokeWidth={2} />
             </Pressable>
           </View>
 
@@ -446,6 +435,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.92)',
     alignItems: 'center',
     justifyContent: 'center',
   },

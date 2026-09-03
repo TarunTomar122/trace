@@ -46,7 +46,7 @@ export default function ExtensionConnectClient({
         });
       });
       setStatus('connected');
-      if (checkout) window.location.assign('/profile?tab=subscription&intent=checkout');
+      if (checkout) window.location.assign('/subscribe');
     } catch (error) {
       started.current = false;
       setStatus('error');

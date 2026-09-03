@@ -13,10 +13,10 @@ export default function ContactScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
   const bg = Colors[colorScheme].background;
-  const text = Colors[colorScheme].text;
-  const muted = Colors[colorScheme].muted;
+  const text = isDark ? '#fff' : '#0A0A0A';
+  const muted = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.6)';
   const link = isDark ? '#7CB8FF' : '#2563EB';
-  const cardBg = Colors[colorScheme].card;
+  const cardBg = isDark ? '#1c1c1c' : '#f5f5f5';
 
   const openMail = () => {
     Linking.openURL(
@@ -28,9 +28,9 @@ export default function ContactScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: bg }]} edges={['top']}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
-          <ChevronLeft size={24} color={Colors[colorScheme].text} strokeWidth={2} />
+          <ChevronLeft size={24} color={isDark ? '#fff' : '#0A0A0A'} strokeWidth={2} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: Colors[colorScheme].text }]}>Contact us</Text>
+        <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#312D2D' }]}>Contact us</Text>
       </View>
 
       <ScrollView

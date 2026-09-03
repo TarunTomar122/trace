@@ -14,7 +14,7 @@ test('homepage application schema contains only truthful product facts', () => {
   assert.equal(application.operatingSystem, 'Web, Chrome, Android');
   assert.equal(
     application.downloadUrl,
-    'https://chromewebstore.google.com/detail/cblkklekbejbbpcaihfogdmaoofmikbk?utm_source=item-share-cb',
+    'https://chromewebstore.google.com/detail/cblkklekbejbpcaihfogdmaoofmikbk',
   );
   assert.match(application.description, /AI and technology news/);
   assert.equal('aggregateRating' in application, false);
@@ -30,7 +30,7 @@ test('homepage FAQs explain the free plan, sources, products, and Pro', () => {
 
   assert.equal(new Set(questions).size, questions.length);
   assert.ok(HOME_FAQ_ITEMS.every((item) => item.a.length > 40));
-  assert.match(freeFaq.a, /three unique AI summaries/i);
+  assert.match(freeFaq.a, /five unique AI summaries/i);
   assert.ok(questions.includes('Where can I use Trace?'));
   assert.ok(questions.includes('What does Trace Pro include?'));
 });

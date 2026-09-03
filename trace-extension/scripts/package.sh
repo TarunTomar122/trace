@@ -17,7 +17,6 @@ zip -q -r "$archive" \
   newtab.js \
   background.js \
   styles.css \
-  lib/analytics.js \
   lib/brief.js \
   assets/icon16.png \
   assets/icon32.png \

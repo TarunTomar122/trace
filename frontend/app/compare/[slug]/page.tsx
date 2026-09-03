@@ -107,7 +107,7 @@ export default async function CompareDetailPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
-      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
+      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/feed" />
       <main className="px-4 sm:px-6">
         <article className="mx-auto max-w-5xl pt-16 pb-20 sm:pt-24">
           <div className="max-w-3xl">
@@ -167,7 +167,7 @@ export default async function CompareDetailPage({ params }: PageProps) {
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                href="/feed?view=pulse"
+                href="/feed"
                 className="rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-85"
               >
                 Start with Trace

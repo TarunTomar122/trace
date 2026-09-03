@@ -6,7 +6,7 @@ import Footer from "@/components/Footer";
 export default function ArticleNotFound() {
   return (
     <div className="landing-page landing-grid-bg min-h-screen flex flex-col">
-      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
+      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/feed" />
 
       <main className="flex flex-1 items-center justify-center px-4 py-16">
         <div className="text-center max-w-md">

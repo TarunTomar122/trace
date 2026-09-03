@@ -690,7 +690,6 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
           blogs={blogs}
           isSubscribed={isSubscribed}
           freeReadsUsed={freeReads.ids.length}
-          summaryAccess={summaryAccess}
           onOpenSummary={handleOpenSummary}
           isItemLocked={isItemLocked}
           tab={feedTab}

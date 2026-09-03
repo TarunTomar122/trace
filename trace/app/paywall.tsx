@@ -90,15 +90,16 @@ function TimelineItem({
   isLast?: boolean;
   colorScheme: 'light' | 'dark';
 }) {
+  const isDark = colorScheme === 'dark';
   return (
     <View style={tlStyles.row}>
       {/* Left: icon + line */}
       <View style={tlStyles.leftCol}>
-        <View style={[tlStyles.iconWrap, { backgroundColor: `${Colors[colorScheme].accent}18` }]}>
+        <View style={[tlStyles.iconWrap, { backgroundColor: isDark ? '#1a1408' : '#fffbeb' }]}>
           {icon}
         </View>
         {!isLast && (
-          <View style={[tlStyles.line, { backgroundColor: Colors[colorScheme].border }]} />
+          <View style={[tlStyles.line, { backgroundColor: isDark ? '#1f2937' : '#e5e7eb' }]} />
         )}
       </View>
       {/* Right: text */}
@@ -168,6 +169,7 @@ function StepPrimer({
   onNext: () => void;
   onClose: () => void;
 }) {
+  const isDark = colorScheme === 'dark';
   return (
     <ScrollView
       contentContainerStyle={styles.scrollContent}
@@ -188,8 +190,8 @@ function StepPrimer({
       <View style={styles.benefitsList}>
         {FREE_FEATURES.map((f, i) => (
           <View key={i} style={styles.benefitRow}>
-            <View style={[styles.checkCircle, { backgroundColor: `${Colors[colorScheme].accent}18` }]}>
-              <Check size={14} color={Colors[colorScheme].accent} strokeWidth={3} />
+            <View style={[styles.checkCircle, { backgroundColor: isDark ? '#1a1408' : '#fffbeb' }]}>
+              <Check size={14} color="#F59E0B" strokeWidth={3} />
             </View>
             <ThemedText style={[styles.benefitText, { color: Colors[colorScheme].text }]}>
               {f}
@@ -204,8 +206,8 @@ function StepPrimer({
       <View style={styles.benefitsList}>
         {PRO_FEATURES.map((f, i) => (
           <View key={i} style={styles.benefitRow}>
-            <View style={[styles.checkCircle, { backgroundColor: `${Colors[colorScheme].accent}18` }]}>
-              <Zap size={14} color={Colors[colorScheme].accent} strokeWidth={2.5} />
+            <View style={[styles.checkCircle, { backgroundColor: '#F59E0B18' }]}>
+              <Zap size={14} color="#F59E0B" strokeWidth={2.5} />
             </View>
             <ThemedText style={[styles.benefitText, { color: Colors[colorScheme].text }]}>
               {f}
@@ -214,10 +216,10 @@ function StepPrimer({
         ))}
       </View>
 
-      <Pressable onPress={onNext} style={[styles.ctaButton, { marginTop: 28, backgroundColor: Colors[colorScheme].foreground }]}>
-        <Gift size={18} color={Colors[colorScheme].background} strokeWidth={2} />
-        <Text style={[styles.ctaText, { color: Colors[colorScheme].background }]}>Try the full app for {TRIAL_DAYS} days</Text>
-        <ArrowRight size={18} color={Colors[colorScheme].background} strokeWidth={2.5} />
+      <Pressable onPress={onNext} style={[styles.ctaButton, { marginTop: 28 }]}>
+        <Gift size={18} color="#fff" strokeWidth={2} />
+        <Text style={styles.ctaText}>Try the full app for {TRIAL_DAYS} days</Text>
+        <ArrowRight size={18} color="#fff" strokeWidth={2.5} />
       </Pressable>
 
       <Pressable onPress={onClose} style={styles.skipButton}>
@@ -286,9 +288,9 @@ function StepReminder({
         />
       </View>
 
-      <Pressable onPress={onNext} style={[styles.ctaButton, { backgroundColor: Colors[colorScheme].foreground }]}>
-        <Text style={[styles.ctaText, { color: Colors[colorScheme].background }]}>Show me the plans</Text>
-        <ArrowRight size={18} color={Colors[colorScheme].background} strokeWidth={2.5} />
+      <Pressable onPress={onNext} style={styles.ctaButton}>
+        <Text style={styles.ctaText}>Show me the plans</Text>
+        <ArrowRight size={18} color="#fff" strokeWidth={2.5} />
       </Pressable>
 
       <Pressable onPress={onClose} style={styles.skipButton}>
@@ -326,6 +328,7 @@ function StepPaywall({
   isBillingReady: boolean;
   fromOnboarding: boolean;
 }) {
+  const isDark = colorScheme === 'dark';
   const selectedPackage = packages.find((p) => p.planId === selectedPlan)?.pkg;
   const ctaDisabled = !selectedPackage || isPurchasing || !isBillingReady;
 
@@ -347,8 +350,8 @@ function StepPaywall({
         <View style={styles.benefitsList}>
           {BENEFITS.map((benefit, i) => (
             <View key={i} style={styles.benefitRow}>
-              <View style={[styles.checkCircle, { backgroundColor: `${Colors[colorScheme].accent}18` }]}>
-                <Check size={14} color={Colors[colorScheme].accent} strokeWidth={3} />
+              <View style={[styles.checkCircle, { backgroundColor: '#F59E0B18' }]}>
+                <Check size={14} color="#F59E0B" strokeWidth={3} />
               </View>
               <ThemedText style={[styles.benefitText, { color: Colors[colorScheme].text }]}>
                 {benefit}
@@ -370,8 +373,10 @@ function StepPaywall({
                 style={[
                   styles.planCard,
                   {
-                    backgroundColor: isSelected ? `${Colors[colorScheme].accent}18` : Colors[colorScheme].card,
-                    borderColor: isSelected ? Colors[colorScheme].accent : Colors[colorScheme].border,
+                    backgroundColor: isSelected
+                      ? (isDark ? '#1a1608' : '#FFF7ED')
+                      : (isDark ? '#1a1a1a' : '#f5f5f5'),
+                    borderColor: isSelected ? '#F59E0B' : (isDark ? '#1a1a1a' : '#f5f5f5'),
                   },
                 ]}>
                 <View style={styles.planLeft}>
@@ -379,8 +384,8 @@ function StepPaywall({
                     <View style={styles.planLabelRow}>
                       <ThemedText style={styles.planLabel}>{config.label}</ThemedText>
                       {config.badge && (
-                        <View style={[styles.planBadge, { backgroundColor: Colors[colorScheme].accent }]}>
-                          <Text style={[styles.planBadgeText, { color: Colors[colorScheme].accentForeground }]}>{config.badge}</Text>
+                        <View style={styles.planBadge}>
+                          <Text style={styles.planBadgeText}>{config.badge}</Text>
                         </View>
                       )}
                     </View>
@@ -410,15 +415,14 @@ function StepPaywall({
         disabled={ctaDisabled}
         style={[
           styles.ctaButton,
-          { backgroundColor: Colors[colorScheme].foreground },
           ctaDisabled && { opacity: 0.5 },
         ]}>
         {isPurchasing ? (
-          <ActivityIndicator size="small" color={Colors[colorScheme].background} />
+          <ActivityIndicator size="small" color="#fff" />
         ) : (
           <>
-            <Zap size={18} color={Colors[colorScheme].background} strokeWidth={2} />
-            <Text style={[styles.ctaText, { color: Colors[colorScheme].background }]}>
+            <Zap size={18} color="#fff" strokeWidth={2} />
+            <Text style={styles.ctaText}>
               {!isBillingReady
                 ? 'Preparing billing...'
                 : fromOnboarding
@@ -718,6 +722,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.semiBold,
   },
   planBadge: {
+    backgroundColor: '#F59E0B',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
@@ -725,6 +730,7 @@ const styles = StyleSheet.create({
   planBadgeText: {
     fontSize: 10,
     fontFamily: FontFamily.bold,
+    color: '#fff',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },

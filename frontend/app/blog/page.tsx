@@ -66,7 +66,7 @@ export default function BlogPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionSchema) }}
       />
-      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
+      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/feed" />
 
       {/* Hero */}
       <section className="px-4 sm:px-6 lg:px-8">
@@ -207,7 +207,7 @@ export default function BlogPage() {
           </p>
           <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
             <Link
-              href="/profile?tab=subscription"
+              href="/subscribe"
               className="landing-btn landing-btn-primary landing-btn-lg inline-flex"
             >
               Subscribe to Trace

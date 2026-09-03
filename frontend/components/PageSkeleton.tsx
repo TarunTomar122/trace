@@ -1,5 +1,5 @@
-const sk = 'animate-pulse rounded-full bg-[#e4e1d8]';
-const skBlock = 'animate-pulse bg-[#e4e1d8]';
+const sk = 'animate-pulse rounded-full bg-[#eff3f4]';
+const skBlock = 'animate-pulse bg-[#eff3f4]';
 
 function SkeletonLine({ className }: { className: string }) {
   return <div className={`${sk} ${className}`} />;
@@ -105,9 +105,9 @@ export function GenericListSkeleton({ rows = 6 }: { rows?: number }) {
         <div className={`${skBlock} mt-5 h-12 w-full max-w-md`} />
         <div className={`${sk} mt-5 h-3 w-64`} />
       </section>
-      <div className="border-y border-[#e4e1d8]">
+      <div className="border-y border-[#eff3f4]">
         {Array.from({ length: rows }, (_, i) => (
-          <div key={i} className="border-b border-[#e4e1d8] py-6 last:border-0">
+          <div key={i} className="border-b border-[#eff3f4] py-6 last:border-0">
             <div className={`${skBlock} mb-3 h-7 w-3/4`} />
             <div className={`${sk} mb-1 h-3.5 w-full`} />
             <div className={`${sk} h-3.5 w-2/3`} />
@@ -124,13 +124,13 @@ export function GenericListSkeleton({ rows = 6 }: { rows?: number }) {
 
 export function PageShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#faf9f5] text-[#1b1a17]">
-      <header className="mx-auto max-w-[1500px] border-b border-[#e4e1d8] px-10 py-4 sm:px-16 lg:px-24">
+    <div className="min-h-screen bg-white text-[#0f1419]">
+      <header className="mx-auto max-w-[1500px] border-b border-[#eff3f4] px-10 py-4 sm:px-16 lg:px-24">
         <div className="flex items-center justify-between">
-          <div className="h-3 w-16 animate-pulse bg-[#e4e1d8]" />
+          <div className="h-3 w-16 animate-pulse bg-[#eff3f4]" />
           <div className="flex items-center gap-5">
             {[44, 36, 52].map((w, i) => (
-              <div key={i} style={{ width: w }} className="h-2.5 animate-pulse bg-[#e4e1d8]" />
+              <div key={i} style={{ width: w }} className="h-2.5 animate-pulse bg-[#eff3f4]" />
             ))}
           </div>
         </div>

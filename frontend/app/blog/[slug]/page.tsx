@@ -154,7 +154,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
-      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
+      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/feed" />
 
       <article className="px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-5xl pt-12 sm:pt-18">
@@ -286,10 +286,16 @@ export default async function BlogPostPage({ params }: PageProps) {
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                href="/profile?tab=subscription"
+                href="/subscribe"
                 className="landing-btn landing-btn-primary landing-btn-sm"
               >
                 Start with Trace
+              </Link>
+              <Link
+                href="/feed"
+                className="landing-btn landing-btn-secondary landing-btn-sm"
+              >
+                Read today&apos;s feed
               </Link>
             </div>
           </section>
@@ -320,7 +326,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               { href: "/blog", label: "All articles" },
               { href: "/compare", label: "Compare guides" },
               { href: "/tools", label: "Free tools" },
-              { href: "/trending", label: "Trending topics" },
+              { href: "/feed", label: "Today's feed" },
             ].map((link) => (
               <Link
                 key={link.href}

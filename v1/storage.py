@@ -362,36 +362,6 @@ class FirestoreStore:
 
         return users
 
-    def get_free_opted_in_users(self, limit: int = 100) -> list[dict[str, Any]]:
-        """Get free (non-pro) users who opted in, capped to latest `limit`.
-
-        Used for teaser sends to stay within Brevo free tier.
-        Ordered by createdAt desc if available.
-        """
-        candidates: list[tuple[float, dict]] = []
-        for doc in self.db.collection("user_profiles").stream():
-            data = doc.to_dict()
-            if is_user_subscribed(data):
-                continue
-            if not is_newsletter_enabled(data):
-                continue
-            # timestamp for ordering
-            ts = 0.0
-            raw = data.get("createdAt") or data.get("onboardedAt") or data.get("subscribedAt")
-            try:
-                if hasattr(raw, "timestamp"):
-                    ts = float(raw.timestamp())
-                elif isinstance(raw, str):
-                    from datetime import datetime
-                    ts = datetime.fromisoformat(raw.replace("Z", "+00:00")).timestamp()
-                elif isinstance(raw, dict) and "_seconds" in raw:
-                    ts = float(raw["_seconds"])
-            except Exception:
-                ts = 0
-            candidates.append((ts, {"uid": doc.id, **_serialize_firestore(data)}))
-        candidates.sort(key=lambda x: x[0], reverse=True)
-        return [u for _, u in candidates[:limit]]
-
     # =========================================================
     # FREE NEWSLETTER SUBSCRIBERS
     # =========================================================
@@ -414,11 +384,8 @@ class FirestoreStore:
             for doc in docs
         ]
 
-    FREE_NEWSLETTER_LIMIT = 100
-
     def get_all_free_newsletter_emails(
         self,
-        limit: int | None = None,
     ) -> set[str]:
         """Get deduplicated set of emails for free newsletter.
 
@@ -429,11 +396,7 @@ class FirestoreStore:
 
         Excludes emails of users who already get the paid
         newsletter (trial/active with newsletterOptIn).
-        Caps to latest FREE_NEWSLETTER_LIMIT (100) to respect Brevo free tier —
-        override with limit=None for full set (e.g. dry-run counts).
         """
-        if limit is None:
-            limit = self.FREE_NEWSLETTER_LIMIT
         # 1. Paid newsletter emails (to exclude)
         paid_users = self.get_newsletter_opted_in_users()
         paid_emails = {
@@ -442,67 +405,32 @@ class FirestoreStore:
             if u.get("email")
         }
 
-        # 2. Free subscribers from landing page — ordered by subscribedAt desc, capped
+        # 2. Free subscribers from landing page
         free_subs = self.get_free_newsletter_subscribers()
-        # sort by subscribedAt desc if available
-        def _sub_ts(s: dict) -> float:
-            v = s.get("subscribedAt") or s.get("createdAt") or ""
-            try:
-                if hasattr(v, "timestamp"):
-                    return v.timestamp()
-                if isinstance(v, str):
-                    from datetime import datetime
-                    return datetime.fromisoformat(v.replace("Z", "+00:00")).timestamp()
-            except Exception:
-                return 0
-            return 0
-        free_subs_sorted = sorted(free_subs, key=_sub_ts, reverse=True)
-        if limit is not None:
-            free_subs_sorted = free_subs_sorted[:limit]
-        free_with_ts: list[tuple[str, float]] = []
-        for s in free_subs_sorted:
-            em = (s.get("email") or "").lower()
-            if em and em not in paid_emails:
-                free_with_ts.append((em, _sub_ts(s)))
+        free_emails = {
+            s.get("email", "").lower()
+            for s in free_subs
+            if s.get("email")
+        }
 
-        # 3. All user profiles without active sub — also capped
-        # We only need to fill up to limit after landing-page subs
-        remaining = limit - len(free_with_ts) if limit is not None else None
-        if remaining is None or remaining > 0:
-            for doc in self.db.collection("user_profiles").stream():
-                if remaining is not None and len(free_with_ts) >= limit:
-                    break
-                data = doc.to_dict()
-                email = (data.get("email") or "").lower()
-                explicitly_opted_in = is_newsletter_enabled(data)
-                if (
-                    email
-                    and not is_user_subscribed(data)
-                    and explicitly_opted_in
-                    and email not in paid_emails
-                    and email not in {e for e, _ in free_with_ts}
-                ):
-                    # use createdAt/onboardedAt for ordering — approximate by adding with 0 ts then sort later
-                    ts = 0
-                    try:
-                        raw = data.get("createdAt") or data.get("onboardedAt")
-                        if hasattr(raw, "timestamp"):
-                            ts = raw.timestamp()
-                        elif isinstance(raw, str):
-                            from datetime import datetime
-                            ts = datetime.fromisoformat(raw.replace("Z", "+00:00")).timestamp()
-                        elif isinstance(raw, dict) and "_seconds" in raw:
-                            ts = float(raw["_seconds"])
-                    except Exception:
-                        ts = 0
-                    free_with_ts.append((email, ts))
+        # 3. All user profiles without active sub
+        all_docs = (
+            self.db.collection("user_profiles").stream()
+        )
+        for doc in all_docs:
+            data = doc.to_dict()
+            email = (data.get("email") or "").lower()
+            explicitly_opted_in = is_newsletter_enabled(data)
+            if (
+                email
+                and not is_user_subscribed(data)
+                and explicitly_opted_in
+            ):
+                free_emails.add(email)
 
-        # Sort combined and cap to limit
-        free_with_ts.sort(key=lambda x: x[1], reverse=True)
-        if limit is not None:
-            free_with_ts = free_with_ts[:limit]
-        free_emails = {e for e, _ in free_with_ts}
-        # Remove empty strings (safety)
+        # Remove anyone already getting paid newsletter
+        free_emails -= paid_emails
+        # Remove empty strings
         free_emails.discard("")
 
         return free_emails

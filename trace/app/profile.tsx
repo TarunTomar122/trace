@@ -6,23 +6,24 @@ import {
   ChevronRight,
   Settings,
   Flame,
+  Crown,
   LogOut,
+  Mail,
   Star,
   Trash2,
   Bell,
   HelpCircle,
-  Moon,
-  Users,
 } from 'lucide-react-native';
 
 import { TRACE_SUPPORT_EMAIL } from '@/constants/contact';
 import { Colors, FontFamily, FontFamilySerif } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
-import { recordAppOpen, StreakData } from '@/lib/streaks';
+import { updateUserProfile } from '@/lib/firestore';
+import { getStreakData, recordAppOpen, StreakData } from '@/lib/streaks';
 import { enablePushNotifications, disablePushNotifications } from '@/lib/notifications';
+import * as StoreReview from 'expo-store-review';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -56,19 +57,19 @@ function ActivityHeatmap({ streak, colorScheme }: { streak: StreakData | null; c
   const inactiveDot = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)';
 
   return (
-    <View style={[heatmapStyles.card, { backgroundColor: Colors[colorScheme].card }]}>
+    <View style={[heatmapStyles.card, { backgroundColor: isDark ? '#1c1c1c' : '#fff' }]}>
       <View style={heatmapStyles.header}>
         <View style={heatmapStyles.streakRow}>
           <Flame size={16} color={STAT_ORANGE} fill={STAT_ORANGE} />
-          <Text style={[heatmapStyles.streakCount, { color: Colors[colorScheme].text }]}>
+          <Text style={[heatmapStyles.streakCount, { color: isDark ? '#fff' : '#000' }]}>
             {currentStreak}
           </Text>
-          <Text style={[heatmapStyles.streakLabel, { color: Colors[colorScheme].muted }]}>
+          <Text style={[heatmapStyles.streakLabel, { color: isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)' }]}>
             day streak
           </Text>
         </View>
         {longestStreak > 0 && (
-          <Text style={[heatmapStyles.best, { color: Colors[colorScheme].muted }]}>
+          <Text style={[heatmapStyles.best, { color: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)' }]}>
             best {longestStreak}
           </Text>
         )}
@@ -155,15 +156,15 @@ type MenuRowProps = {
 };
 
 function MenuRow({ icon: Icon, label, subtitle, colorScheme, onPress, showChevron = true, danger, rightElement, isLast }: MenuRowProps) {
-  const iconBg = danger ? `${Colors[colorScheme].dangerSoft}60` : Colors[colorScheme].surfaceVariant;
-  const iconColor = danger ? Colors[colorScheme].danger : Colors[colorScheme].icon;
-  const labelColor = danger ? Colors[colorScheme].danger : Colors[colorScheme].text;
-  const dividerColor = Colors[colorScheme].border;
+  const isDark = colorScheme === 'dark';
+  const iconBg = danger ? '#EF444415' : isDark ? '#2a2a2a' : '#ECECF0';
+  const iconColor = danger ? '#EF4444' : '#717182';
+  const labelColor = danger ? '#EF4444' : isDark ? '#fff' : '#000000';
+  const dividerColor = isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8';
 
   return (
     <Pressable
       onPress={onPress}
-      accessible={rightElement == null}
       style={[styles.menuRow, !isLast && { borderBottomWidth: 1, borderBottomColor: dividerColor }]}>
       <View style={[styles.menuIcon, { backgroundColor: iconBg }]}>
         <Icon size={20} color={iconColor} strokeWidth={1.7} />
@@ -171,10 +172,10 @@ function MenuRow({ icon: Icon, label, subtitle, colorScheme, onPress, showChevro
       <View style={styles.menuText}>
         <Text style={[styles.menuLabel, { color: labelColor }]}>{label}</Text>
         {subtitle && (
-          <Text style={[styles.menuSubtitle, { color: Colors[colorScheme].muted }]}>{subtitle}</Text>
+          <Text style={[styles.menuSubtitle, { color: isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.6)' }]}>{subtitle}</Text>
         )}
       </View>
-      {rightElement ?? (showChevron && <ChevronRight size={20} color={Colors[colorScheme].border} strokeWidth={1.5} />)}
+      {rightElement ?? (showChevron && <ChevronRight size={20} color={isDark ? 'rgba(255,255,255,0.3)' : '#CBCED4'} strokeWidth={1.5} />)}
     </Pressable>
   );
 }
@@ -183,20 +184,37 @@ export default function ProfileScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
-  const { toggleTheme } = useTheme();
   const { user, profile, signOut, refreshProfile, deleteAccount } = useAuth();
-  const { isEarlyAdopter } = useRevenueCat();
+  const {
+    isProUser,
+    isEarlyAdopter,
+    loading: rcLoading,
+    refreshCustomerInfo,
+    presentCustomerCenter,
+    presentPaywall,
+  } = useRevenueCat();
   const [streak, setStreak] = useState<StreakData | null>(null);
+  const [newsletterEnabled, setNewsletterEnabled] = useState(profile?.newsletterOptIn !== false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(profile?.pushNotificationsEnabled !== false);
+  const [isAccessResolving, setIsAccessResolving] = useState(true);
   const refreshProfileRef = useRef(refreshProfile);
+  const refreshCustomerInfoRef = useRef(refreshCustomerInfo);
 
   useEffect(() => {
     refreshProfileRef.current = refreshProfile;
   }, [refreshProfile]);
 
   useEffect(() => {
+    refreshCustomerInfoRef.current = refreshCustomerInfo;
+  }, [refreshCustomerInfo]);
+
+  useEffect(() => {
     recordAppOpen().then(setStreak);
   }, []);
+
+  useEffect(() => {
+    setNewsletterEnabled(profile?.newsletterOptIn !== false);
+  }, [profile?.newsletterOptIn]);
 
   useEffect(() => {
     setNotificationsEnabled(profile?.pushNotificationsEnabled !== false);
@@ -210,7 +228,22 @@ export default function ProfileScreen() {
         if (active) setStreak(nextStreak);
       });
 
-      if (user?.uid) void refreshProfileRef.current();
+      if (!user?.uid) {
+        setIsAccessResolving(false);
+        return () => {
+          active = false;
+        };
+      }
+
+      setIsAccessResolving(true);
+      void Promise.allSettled([
+        refreshProfileRef.current(),
+        refreshCustomerInfoRef.current(),
+      ]).finally(() => {
+        if (active) {
+          setIsAccessResolving(false);
+        }
+      });
 
       return () => {
         active = false;
@@ -220,6 +253,19 @@ export default function ProfileScreen() {
 
   const displayName = profile?.displayName || profile?.name || user?.displayName || 'User';
   const email = profile?.email || user?.email || '';
+
+  const handleNewsletterToggle = async (value: boolean) => {
+    setNewsletterEnabled(value);
+    if (user?.uid) {
+      try {
+        await updateUserProfile(user.uid, { newsletterOptIn: value } as any);
+        await refreshProfile();
+      } catch (error) {
+        console.error('Failed to update newsletter preference:', error);
+        setNewsletterEnabled(!value);
+      }
+    }
+  };
 
   const handleNotificationsToggle = async (value: boolean) => {
     setNotificationsEnabled(value);
@@ -244,6 +290,10 @@ export default function ProfileScreen() {
         setNotificationsEnabled(!value);
       }
     }
+  };
+
+  const handleManageSubscription = async () => {
+    await presentCustomerCenter();
   };
 
   const handleSignOut = async () => {
@@ -283,7 +333,7 @@ export default function ProfileScreen() {
     );
   };
 
-  const switchTrackColor = { false: Colors[colorScheme].border, true: `${ACCENT_ORANGE}90` };
+  const switchTrackColor = { false: isDark ? '#3a3a3a' : '#CBCED4', true: `${ACCENT_ORANGE}90` };
   const switchThumbColor = (on: boolean) => on ? ACCENT_ORANGE : '#fff';
 
   return (
@@ -294,9 +344,9 @@ export default function ProfileScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
-          <ChevronLeft size={24} color={Colors[colorScheme].text} strokeWidth={2} />
+          <ChevronLeft size={24} color={isDark ? '#fff' : '#0A0A0A'} strokeWidth={2} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: Colors[colorScheme].text }]}>Profile</Text>
+        <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#312D2D' }]}>Profile</Text>
       </View>
 
       <ScrollView
@@ -312,25 +362,49 @@ export default function ProfileScreen() {
           </View>
 
           {/* Badges — between avatar and name, rotated per design */}
-          {isEarlyAdopter && (
+          {(isProUser || isEarlyAdopter) && (
             <View style={styles.badges}>
-              <View style={[styles.badge, { backgroundColor: '#F5F0FF', transform: [{ rotate: '-6deg' }] }]}>
-                <Text style={[styles.badgeText, { color: '#8051DE' }]}>Early Access</Text>
-              </View>
+              {isProUser && (
+                <View style={[styles.badge, { backgroundColor: `${ACCENT_ORANGE}18`, transform: [{ rotate: '-6deg' }] }]}>
+                  <Crown size={11} color={ACCENT_ORANGE} />
+                  <Text style={[styles.badgeText, { color: ACCENT_ORANGE }]}>Pro</Text>
+                </View>
+              )}
+              {isEarlyAdopter && (
+                <View style={[styles.badge, { backgroundColor: '#F5F0FF', transform: [{ rotate: '-6deg' }] }]}>
+                  <Text style={[styles.badgeText, { color: '#8051DE' }]}>Early Access</Text>
+                </View>
+              )}
             </View>
           )}
 
-          <Text style={[styles.profileName, { color: Colors[colorScheme].text }]}>{displayName}</Text>
+          <Text style={[styles.profileName, { color: isDark ? '#fff' : '#000000' }]}>{displayName}</Text>
           {email !== '' && (
-            <Text style={[styles.profileEmail, { color: Colors[colorScheme].muted }]}>{email}</Text>
+            <Text style={[styles.profileEmail, { color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.6)' }]}>{email}</Text>
           )}
         </View>
 
         {/* Activity Heatmap */}
         <ActivityHeatmap streak={streak} colorScheme={colorScheme} />
 
+        {/* Upgrade card (non-Pro only) */}
+        {!isProUser && !rcLoading && !isAccessResolving && (
+          <View style={[styles.upgradeCard, { backgroundColor: isDark ? '#2a1a10' : '#fff8f0', borderColor: `${ACCENT_ORANGE}30` }]}>
+            <View style={styles.upgradeHeader}>
+              <Crown size={18} color={ACCENT_ORANGE} />
+              <Text style={[styles.upgradeTitle, { color: isDark ? '#fff' : '#000' }]}>Unlock Pro</Text>
+            </View>
+            <Text style={[styles.upgradeDesc, { color: isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.6)' }]}>
+              Unlimited articles, deep dives, and personalized summaries.
+            </Text>
+            <Pressable onPress={() => presentPaywall()} style={styles.upgradeBtn}>
+              <Text style={styles.upgradeBtnText}>Start Free Trial</Text>
+            </Pressable>
+          </View>
+        )}
+
         {/* Preferences — flat rows, no card */}
-        <Text style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>Preferences</Text>
+        <Text style={[styles.sectionLabel, { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.45)' }]}>Preferences</Text>
         <MenuRow
           icon={Settings}
           label="Feed Preferences"
@@ -339,12 +413,29 @@ export default function ProfileScreen() {
           onPress={() => router.push('/preferences')}
         />
         <MenuRow
+          icon={Mail}
+          label="Newsletter"
+          subtitle="Weekly digest emails"
+          colorScheme={colorScheme}
+          onPress={() => {}}
+          showChevron={false}
+          rightElement={
+            <Switch
+              value={newsletterEnabled}
+              onValueChange={handleNewsletterToggle}
+              trackColor={switchTrackColor}
+              thumbColor={switchThumbColor(newsletterEnabled)}
+            />
+          }
+        />
+        <MenuRow
           icon={Bell}
           label="Push Notifications"
           subtitle="Daily briefings & alerts"
           colorScheme={colorScheme}
           onPress={() => {}}
           showChevron={false}
+          isLast
           rightElement={
             <Switch
               value={notificationsEnabled}
@@ -354,29 +445,9 @@ export default function ProfileScreen() {
             />
           }
         />
-        <MenuRow
-          icon={Moon}
-          label="Dark mode"
-          subtitle={isDark ? 'On' : 'Off'}
-          colorScheme={colorScheme}
-          onPress={toggleTheme}
-          showChevron={false}
-          isLast
-          rightElement={
-            <Switch
-              value={isDark}
-              onValueChange={toggleTheme}
-              accessibilityLabel="Dark mode"
-              accessibilityRole="switch"
-              accessibilityState={{ checked: isDark }}
-              trackColor={switchTrackColor}
-              thumbColor={switchThumbColor(isDark)}
-            />
-          }
-        />
 
         {/* Support */}
-        <Text style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>Support</Text>
+        <Text style={[styles.sectionLabel, { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.45)' }]}>Support</Text>
         <MenuRow
           icon={HelpCircle}
           label="Contact us"
@@ -390,18 +461,11 @@ export default function ProfileScreen() {
           subtitle="Love Trace? Leave a review!"
           colorScheme={colorScheme}
           onPress={handleRateApp}
-        />
-        <MenuRow
-          icon={Users}
-          label="Meet the builders"
-          subtitle="The people behind Trace"
-          colorScheme={colorScheme}
-          onPress={() => router.push('/builders' as Href)}
           isLast
         />
 
         {/* Account Actions */}
-        <Text style={[styles.sectionLabel, { color: Colors[colorScheme].muted }]}>Account</Text>
+        <Text style={[styles.sectionLabel, { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.45)' }]}>Account</Text>
         <MenuRow
           icon={LogOut}
           label="Sign Out"
@@ -420,7 +484,7 @@ export default function ProfileScreen() {
           isLast
         />
 
-        <Text style={[styles.footer, { color: Colors[colorScheme].muted }]}>
+        <Text style={[styles.footer, { color: isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)' }]}>
           Trace v1.0.0
         </Text>
       </ScrollView>
@@ -541,6 +605,40 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 64,
+  },
+
+  // Upgrade Card
+  upgradeCard: {
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  upgradeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  upgradeTitle: {
+    fontFamily: FontFamilySerif.semiBold,
+    fontSize: 17,
+  },
+  upgradeDesc: {
+    fontFamily: FontFamily.regular,
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 16,
+  },
+  upgradeBtn: {
+    backgroundColor: ACCENT_ORANGE,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  upgradeBtnText: {
+    fontFamily: FontFamily.bold,
+    color: '#fff',
+    fontSize: 15,
   },
 
   // Section label

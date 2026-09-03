@@ -47,7 +47,6 @@ import {
   PulseReadHero,
   PulseSectionHeader,
   PulseToolCard,
-  stocksBrewUrl,
   stripMarkdown,
 } from './FeedUi';
 
@@ -82,6 +81,15 @@ export const HOT_TWEETS_TAB_KEY = '__hot_tweets__';
 
 function isMarketsFilter(key: string): boolean {
   return key.trim().toLowerCase() === 'markets';
+}
+
+function stocksBrewUrl(storyId?: string): string {
+  const url = new URL('https://stocksbrew.online/');
+  url.searchParams.set('utm_source', 'trace');
+  url.searchParams.set('utm_medium', 'feed');
+  url.searchParams.set('utm_campaign', 'market_story');
+  if (storyId) url.searchParams.set('utm_content', storyId);
+  return url.toString();
 }
 
 /** Compact = scroll feed; Split = classic two-pane (header control) */
@@ -1350,7 +1358,7 @@ function DesktopArticlePageView({
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 rounded-full border border-[#2563eb]/25 bg-[#2563eb]/5 px-4 py-2 text-[13px] font-semibold text-[#2563eb] transition-colors hover:bg-[#2563eb]/10"
                   >
-                    Interested in the stock market? Check out StocksBrew
+                    Need deeper stock context? Open in StocksBrew
                     <ExternalLink size={13} />
                   </a>
                 </div>
@@ -1828,11 +1836,6 @@ export default function FeedBriefingView({
 }: FeedBriefingViewProps) {
   const resolvedIsItemLocked = isItemLocked ?? (typeof isLocked === 'function' ? isLocked : () => isLocked);
   const selectedIsLocked = selectedId ? resolvedIsItemLocked(selectedId) : false;
-  const selectedListItem = useMemo(
-    () => filteredList.find((item) => item.id === selectedId) ?? null,
-    [filteredList, selectedId]
-  );
-  const showStocksBrewCta = isMarketsFilter(selectedListItem?.interestId || selectedListItem?.tags?.[0] || '');
   const [lgUp, setLgUp] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const mobileArticleRef = useRef<HTMLDivElement>(null);
@@ -2042,12 +2045,7 @@ export default function FeedBriefingView({
             </div>
           ) : selectedContent ? (
             <div key={selectedId} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-              <ContentPanel
-                content={selectedContent}
-                isLoadingDetail={isContentLoading || isContentRefreshing}
-                showStocksBrewCta={showStocksBrewCta}
-                storyId={selectedId ?? undefined}
-              />
+              <ContentPanel content={selectedContent} isLoadingDetail={isContentLoading || isContentRefreshing} />
             </div>
           ) : isContentLoading ? (
             <ArticleContentSkeleton key={`skeleton-${selectedId}`} />
@@ -2070,8 +2068,6 @@ export default function FeedBriefingView({
           ? getArticleImage(selectedContent?.thumbnail || story?.thumbnail || null, selectedContent?.title || story?.title || '')
           : null;
         const briefFmt = selectedContent?.body ? looksLikeBriefBody(selectedContent.body) : false;
-        const mobileStory = mobileContentList.find((item) => item.id === selectedId) ?? null;
-        const showMobileStocksBrewCta = isMarketsFilter(mobileStory?.interestId || mobileStory?.tags?.[0] || '');
 
         return (
           <div ref={mobileArticleRef} className="fixed inset-0 z-[70] bg-background overflow-y-auto md:hidden">
@@ -2210,17 +2206,6 @@ export default function FeedBriefingView({
                         ))}
                       </div>
                     </div>
-                  )}
-
-                  {showMobileStocksBrewCta && (
-                    <a
-                      href={stocksBrewUrl(selectedId ?? undefined)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-secondary transition-colors active:text-foreground"
-                    >
-                      Interested in the stock market? Check out StocksBrew <ExternalLink size={13} />
-                    </a>
                   )}
 
                   {(selectedContent?.shareUrl || selectedContent?.url) && (

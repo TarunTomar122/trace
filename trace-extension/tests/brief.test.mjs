@@ -161,15 +161,15 @@ test('web bookmarks become extension stories with canonical share links', () => 
   assert.equal(saved.shareUrl, 'https://www.yourtrace.online/articles/tr_story-1');
 });
 
-test('isCacheFresh applies the local one hour request window', () => {
+test('isCacheFresh applies the local 15 minute request window', () => {
   const now = Date.parse('2026-08-05T12:00:00.000Z');
 
-  assert.equal(isCacheFresh('2026-08-05T11:00:01.000Z', now), true);
-  assert.equal(isCacheFresh('2026-08-05T11:00:00.000Z', now), false);
+  assert.equal(isCacheFresh('2026-08-05T11:45:01.000Z', now), true);
+  assert.equal(isCacheFresh('2026-08-05T11:45:00.000Z', now), false);
   assert.equal(isCacheFresh('invalid', now), false);
 });
 
-test('free summaries count three unique stories per day', () => {
+test('free summaries count five unique stories per day', () => {
   const date = '2026-08-05';
   let reads = normalizeSummaryReads(null, date);
 

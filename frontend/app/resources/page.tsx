@@ -91,7 +91,7 @@ const RESOURCE_SECTIONS = [
     links: [
       { label: "How It Works", href: "/how-it-works" },
       { label: "Tools Directory", href: "/tools" },
-      { label: "Open the feed", href: "/feed?view=pulse" },
+      { label: "Open the feed", href: "/feed" },
     ],
   },
 ];
@@ -99,7 +99,7 @@ const RESOURCE_SECTIONS = [
 export default function ResourcesHubPage() {
   return (
     <div className="landing-page landing-grid-bg min-h-screen">
-      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
+      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/feed" />
       <main className="px-4 sm:px-6">
         <section className="mx-auto max-w-6xl pt-16 pb-10 sm:pt-24 sm:pb-14">
           <div className="max-w-3xl">

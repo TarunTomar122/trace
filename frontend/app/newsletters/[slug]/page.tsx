@@ -82,7 +82,7 @@ export default async function NewsletterDetailPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/profile?tab=subscription" />
+      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/feed" />
       <main className="px-4 sm:px-6">
         <article className="mx-auto max-w-5xl pt-16 pb-20 sm:pt-24">
           <div className="max-w-3xl">
@@ -211,7 +211,7 @@ export default async function NewsletterDetailPage({ params }: PageProps) {
                 Compare Tools
               </Link>
               <Link
-                href="/feed?view=pulse"
+                href="/feed"
                 className="public-chip"
               >
                 Get Started

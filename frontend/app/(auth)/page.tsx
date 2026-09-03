@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import LandingPageClient from "../LandingPageClient";
-import type { V3UserFeed } from '@/lib/firestore';
 import { StructuredDataList } from '@/components/StructuredData';
 import {
   generateHomeApplicationSchema,
@@ -8,6 +6,7 @@ import {
   HOME_PRODUCT_DESCRIPTION,
 } from '@/lib/home-seo';
 import { generateFAQSchema } from '@/lib/seo';
+import LandingScreen from '@/components/feed-v2/LandingScreen';
 
 export const metadata: Metadata = {
   title: "Trace: AI and tech news in five minutes",
@@ -28,28 +27,10 @@ export const metadata: Metadata = {
     description: HOME_PRODUCT_DESCRIPTION,
     url: "https://www.yourtrace.online",
     type: "website",
-    siteName: "Trace",
-    images: [
-      {
-        url: "https://www.yourtrace.online/opengraph-image",
-        width: 1200,
-        height: 630,
-        alt: "Trace AI and technology news feed",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Trace: AI and tech news in five minutes",
-    description: HOME_PRODUCT_DESCRIPTION,
-    images: ["https://www.yourtrace.online/twitter-image"],
   },
 };
 
-export default async function HomePage() {
-  const editionFeed = await import('@/lib/feed-server')
-    .then(({ getPublicBootstrapFeed }) => getPublicBootstrapFeed('developer'))
-    .catch((): V3UserFeed | null => null);
+export default function HomePage() {
   return (
     <>
       <StructuredDataList
@@ -60,7 +41,7 @@ export default async function HomePage() {
           ),
         ]}
       />
-      <LandingPageClient editionFeed={editionFeed} />
+      <LandingScreen />
     </>
   );
 }

@@ -16,9 +16,9 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "10 Best AI News Apps in 2026 (Compared) | Trace",
+  title: "Best AI News Apps in 2026: 10 Tools Compared | Trace",
   description:
-    "Compare the 10 best AI news apps of 2026, including Trace, Feedly, Ground News, Particle, and Inoreader. Find the best app for summaries, bias, RSS, and tech news.",
+    "Looking for the best AI news app? We tested 10 options including Trace, Feedly, and Ground News. Find the right one for developers and founders in 2026.",
   keywords: [
     "best AI news app",
     "best AI news app android",
@@ -35,14 +35,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "article",
-    title: "10 Best AI News Apps in 2026 (Compared)",
+    title: "Best AI News Apps in 2026 (That Actually Respect Your Time)",
     description:
-      "Compare AI news apps for summaries, bias awareness, RSS control, and technology coverage.",
+      "We tested 10 AI news apps so you don't have to. Find the right one for developers, founders, and product managers.",
     url: `${SITE_BASE_URL}/blog/best-ai-news-apps-2026`,
     siteName: "Trace",
     locale: "en_US",
     publishedTime: "2026-05-04T00:00:00Z",
-    modifiedTime: "2026-08-12T00:00:00Z",
+    modifiedTime: "2026-05-04T00:00:00Z",
     authors: ["https://x.com/tarat_211"],
     images: [
       {
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "10 Best AI News Apps in 2026 (Compared)",
+    title: "Best AI News Apps in 2026 (That Actually Respect Your Time)",
     description:
       "We tested 10 AI news apps so you don't have to. Find the right one for developers and founders.",
     images: [`${SITE_BASE_URL}/twitter-image`],
@@ -66,12 +66,12 @@ export const metadata: Metadata = {
 export default function BlogPost() {
   // ─── Structured Data ───
   const blogPostSchema = generateBlogPostingSchema({
-    headline: "10 Best AI News Apps in 2026 (Compared)",
+    headline: "Best AI News Apps in 2026 (That Actually Respect Your Time)",
     description:
       "Comprehensive comparison of the top AI-powered news apps for 2026, including Trace, Feedly, Ground News, Inshorts, and Particle. Find the right news app for developers, founders, and product managers.",
     url: `${SITE_BASE_URL}/blog/best-ai-news-apps-2026`,
     datePublished: "2026-05-04T00:00:00Z",
-    dateModified: "2026-08-12T00:00:00Z",
+    dateModified: "2026-05-04T00:00:00Z",
     authorName: "Tarun Tomar",
     authorUrl: "https://x.com/tarat_211",
   });
@@ -146,7 +146,7 @@ export default function BlogPost() {
             className={`text-4xl font-bold text-gray-900 dark:text-white mt-2 mb-4 ${spaceGrotesk.variable}`}
             style={{ fontFamily: "var(--font-space-grotesk)" }}
           >
-            10 Best AI News Apps in 2026 (Compared)
+            Best AI News Apps in 2026 (That Actually Respect Your Time)
           </h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
             <span>
@@ -159,10 +159,10 @@ export default function BlogPost() {
 
         <div className="prose prose-lg dark:prose-invert max-w-none">
           <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
-            Trace is best for a finite AI and technology briefing, Ground News
-            for comparing coverage, Feedly for source control, and Particle for
-            personalized summaries. We compared ten apps by coverage, summary
-            quality, transparency, price, and daily reading experience.
+            The average person spends 2+ hours daily on news apps. Most of that
+            time is wasted on clickbait, infinite scroll, and algorithmic rabbit
+            holes. We tested 10 AI news apps to find the ones that actually
+            respect your time.
           </p>
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
@@ -372,16 +372,6 @@ export default function BlogPost() {
               Read Next
             </h3>
             <ul className="space-y-2">
-              <li>
-                <Link href="/blog/best-chrome-extensions-tech-news" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  Best Chrome Extensions for Tech News in 2026 →
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog/ai-news-digest-tools" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  Best AI News Digest Tools in 2026 →
-                </Link>
-              </li>
               <li>
                 <Link href="/blog/feedly-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">
                   Feedly Alternatives: 7 Free Options That Are Actually Better →
