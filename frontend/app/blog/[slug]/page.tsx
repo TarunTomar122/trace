@@ -5,6 +5,7 @@ import { ArrowLeft, ExternalLink, Clock, Calendar } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
+import { InlineTraceCTA, StickyBlogBar } from "@/components/BlogCTA";
 import { ArticleImage } from "@/components/ArticleImage";
 import { blogPosts } from "../content";
 import {
@@ -247,6 +248,7 @@ export default async function BlogPostPage({ params }: PageProps) {
                     ))}
                   </ul>
                 )}
+                {index === 1 && <InlineTraceCTA slug={post.slug} />}
               </section>
             ))}
           </div>
@@ -340,6 +342,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         </div>
       </article>
 
+      <StickyBlogBar slug={post.slug} />
       <Footer variant="landing" />
     </div>
   );

@@ -88,7 +88,7 @@ export default function BlogPost() {
   ]);
 
   return (
-    <EditorialArticleShell>
+    <EditorialArticleShell slug="newsblur-alternatives">
       <StructuredDataList schemas={[blogPostSchema, breadcrumbSchema, faqSchema]} />
       <div className="max-w-3xl mx-auto px-4 py-16">
         <nav aria-label="Breadcrumb" className="mb-6">

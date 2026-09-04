@@ -106,7 +106,7 @@ export default function BlogPost() {
   ]);
 
   return (
-    <EditorialArticleShell>
+    <EditorialArticleShell slug="free-news-aggregators-for-developers">
       <StructuredDataList schemas={[blogPostSchema, breadcrumbSchema, faqSchema]} />
 
       <div className="max-w-3xl mx-auto px-4 py-16">

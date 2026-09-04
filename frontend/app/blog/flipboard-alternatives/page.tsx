@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
 import { StructuredDataList } from "@/components/StructuredData";
 import EditorialArticleShell from "@/components/EditorialArticleShell";
+import { InlineTraceCTA } from "@/components/BlogCTA";
 import {
   SITE_BASE_URL,
   generateBlogPostingSchema,
@@ -106,7 +107,7 @@ export default function BlogPost() {
   ]);
 
   return (
-    <EditorialArticleShell>
+    <EditorialArticleShell slug="flipboard-alternatives">
       <StructuredDataList schemas={[blogPostSchema, breadcrumbSchema, faqSchema]} />
 
       <div className="max-w-3xl mx-auto px-4 py-16">
@@ -172,7 +173,7 @@ export default function BlogPost() {
                 </tr>
               </thead>
               <tbody>
-                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Trace</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Tech News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Multi-source</td></tr>
+                <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium"><Link href="/feed?utm_source=blog&utm_medium=comparison_table&utm_campaign=flipboard-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Trace</Link></td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Tech News</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Multi-source</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Feedly</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $8/mo</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">RSS Control</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Pro only</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Inoreader</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $10/mo</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Power Users</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Pro only</td></tr>
                 <tr><td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">NewsBlur</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $36/yr</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Open Source</td><td className="border border-gray-200 dark:border-gray-800 px-4 py-2">No</td></tr>
@@ -200,6 +201,11 @@ export default function BlogPost() {
             <li>Fast list-based scanning (vs Flipboard&apos;s slower cards)</li>
             <li>Natural endpoint — you know when you&apos;re done</li>
           </ul>
+
+          <InlineTraceCTA
+            slug="flipboard-alternatives"
+            blurb="Switching from Flipboard takes zero setup: Trace already reads 50+ tech sources every morning and hands you one ranked briefing with AI summaries."
+          />
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
             2. Feedly — Best for Source Control
@@ -265,7 +271,7 @@ export default function BlogPost() {
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             Flipboard is great for casual weekend browsing. But for daily tech news,
-            you need speed and depth, not beauty. <strong>Trace</strong> gives you
+            you need speed and depth, not beauty. <Link href="/feed?utm_source=blog&utm_medium=verdict&utm_campaign=flipboard-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Trace</Link> gives you
             AI-curated tech news in 10 minutes. <strong>Feedly</strong> gives you RSS
             control. Both are free and both are faster than Flipboard.
           </p>

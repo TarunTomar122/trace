@@ -273,6 +273,15 @@ export function trackLandingCTAClicked(variant: string, location: string, props?
   posthog.capture("landing_cta_clicked", { variant, location, ...props });
 }
 
+export function trackBlogCtaClicked(postSlug: string, location: string, destination: string) {
+  posthog.capture("blog_cta_clicked", {
+    post_slug: postSlug,
+    location,
+    destination,
+    surface: "web",
+  });
+}
+
 /** Pro welcome modal auto-shown on /feed after a new user completes onboarding. */
 export function trackFeedProWelcomeShown(props?: Record<string, unknown>) {
   posthog.capture("feed_pro_welcome_shown", {
