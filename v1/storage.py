@@ -45,15 +45,24 @@ class FirestoreStore:
     """Firestore store for v1 topics-based system."""
     
     def __init__(self) -> None:
+        from backend.localdb.backend_selector import select_firestore_client, trace_db_mode
+
+        mode = trace_db_mode()
+        if mode != "firebase":
+            # LocalDB/dual: the selector builds the Firestore-shaped client
+            # (dual still initializes Firebase internally for reads).
+            self.db = select_firestore_client()
+            return
+
         from firebase_admin import credentials, firestore, initialize_app
         import firebase_admin
-        
+
         if not firebase_admin._apps:
             # Option 1: JSON string directly (for GitHub Actions)
             service_account_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", "").strip()
             # Option 2: File path (for local development)
             service_account_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "").strip()
-            
+
             if service_account_json:
                 # Parse JSON string directly
                 cred = credentials.Certificate(json.loads(service_account_json))
@@ -64,7 +73,7 @@ class FirestoreStore:
                 initialize_app(cred)
             else:
                 raise ValueError("Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT_PATH")
-        
+
         self.db = firestore.client()
     
     # =========================================================================

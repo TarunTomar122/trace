@@ -226,6 +226,9 @@ def _save_checkpoint(path: Path, state: dict[str, Any]) -> None:
 
 
 def _firestore_client(project_id: str | None) -> Any:
+    from backend.patches.firestore_stream import disable_broken_firestore_stream_retry
+
+    disable_broken_firestore_stream_retry()
     try:
         import firebase_admin
         from firebase_admin import credentials, firestore
