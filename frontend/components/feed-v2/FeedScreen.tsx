@@ -123,11 +123,16 @@ async function siteVisitorsLastMonth(): Promise<number> {
   }
 }
 
+// PostHog is the truth. Until the Vercel key lands, the Firestore count
+// understates reach, so floor the fallback at a conservative 1.5K.
+const FALLBACK_REACH = 1500;
+
 const getMonthlyReach = unstable_cache(
   async (): Promise<number> => {
     const visitors = await siteVisitorsLastMonth();
     if (visitors > 0) return visitors;
-    return monthlyActiveCount();
+    const actives = await monthlyActiveCount();
+    return Math.max(actives, FALLBACK_REACH);
   },
   ['monthly-reach'],
   { revalidate: 21600 },
