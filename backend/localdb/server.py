@@ -102,6 +102,9 @@ class LocalDBRequestHandler(BaseHTTPRequestHandler):
     def _authorised(self) -> bool:
         header = self.headers.get("Authorization", "")
         token = header[7:] if header.startswith("Bearer ") else self.headers.get("X-LocalDB-Token", "")
+        # Pasted env values often carry stray whitespace (Vercel dashboard,
+        # trailing newlines). Bearer tokens never contain it legitimately.
+        token = token.strip()
         return bool(token) and hmac.compare_digest(token, self.server.api_token)
 
     def _require_auth(self) -> bool:
