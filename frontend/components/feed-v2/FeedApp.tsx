@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveFeedAccess } from '@/lib/subscription-access';
+import FeedSkeleton from './FeedSkeleton';
 import ProCheckoutButton from './ProCheckoutButton';
 import {
   trackCheckoutClicked,
@@ -149,6 +150,7 @@ function storeSort(mode: 'top' | 'recent'): void {
 
 export default function FeedApp({
   stories, pulse, promoted = [], monthlyReach = 0, generated, serverPro = false,
+  initialStoryId = null, unlockedId = null,
 }: {
   stories: FeedStory[];
   pulse: { tools: PulseItem[]; discussions: PulseItem[]; blogs: PulseItem[] };
@@ -156,11 +158,15 @@ export default function FeedApp({
   monthlyReach?: number;
   generated: string | null;
   serverPro?: boolean;
+  /** Pre-open a story (shared article page). Falls back to ?story= when present. */
+  initialStoryId?: string | null;
+  /** This story always opens full — the shared link must work for everyone. */
+  unlockedId?: string | null;
 }) {
   const reachLine = monthlyReach > 0 ? `${fmtReach(monthlyReach)} readers last month` : 'Seen by builders daily';
   const { user, profile: authProfile, loading: authLoading, profileResolved, profileFresh, profileRefreshFailed, signInWithGoogle, signOut, refreshProfile } = useAuth();
   const access = resolveFeedAccess({
-    serverHasAccess: false,
+    serverHasAccess: serverPro,
     clientProfile: authProfile,
     clientProfileFresh: profileFresh,
     clientProfileRefreshFailed: profileRefreshFailed,
@@ -175,7 +181,7 @@ export default function FeedApp({
   // a story must never hit the server. URL is kept in sync via History API
   // (shareable, back-button friendly) without triggering Next navigation.
   const [view, setView] = useState<{ story: string | null; pulse: string | null }>(() => ({
-    story: params.get('story'),
+    story: params.get('story') ?? initialStoryId,
     pulse: params.get('pulse'),
   }));
 
@@ -562,12 +568,7 @@ export default function FeedApp({
   );
 
   if (authLoading && !mounted) {
-    return (
-      <div className="xw">
-        <style>{css}</style>
-        <div style={{ margin: 'auto', color: 'var(--text-3)', fontSize: 14 }}>Checking your membership…</div>
-      </div>
-    );
+    return <FeedSkeleton />;
   }
 
   return (
@@ -637,7 +638,7 @@ export default function FeedApp({
             <PulseDetail item={openPulse} onBack={goBack} onShare={share} marked={marks.has(openPulse.id)} toggleMark={toggleMark} />
           )
         ) : open ? (
-          !pro && open.rank > FREE_LIMIT ? (
+          !pro && open.rank > FREE_LIMIT && open.id !== unlockedId ? (
             <PaywallPlate what="This story" lockedCount={0} />
           ) : (
             <Detail story={open} onBack={goBack} onShare={share} marked={marks.has(open.id)} toggleMark={toggleMark} />
