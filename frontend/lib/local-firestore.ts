@@ -160,6 +160,14 @@ export class LocalQuery {
         select: this.selected,
       },
     });
+    if (!response.ok) {
+      let message = `LocalDB query failed (${response.status})`;
+      try {
+        const errorBody = await response.json() as { error?: string };
+        if (errorBody.error) message = errorBody.error;
+      } catch {}
+      throw new Error(message);
+    }
     const body = await response.json() as { documents?: LocalDocumentPayload[] };
     return new LocalQuerySnapshot((body.documents || []).map((document) => new LocalDocumentSnapshot(
       new LocalDocumentReference(this.client, document.path),
