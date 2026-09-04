@@ -5,4 +5,4 @@ After=network.target
 [Service]
 Type=oneshot
 User=ubuntu
-ExecStart=/home/ubuntu/trace/backend/vps/backup-trace-localdb.sh
+ExecStart=/opt/trace-localdb/backend/vps/backup-trace-localdb.sh

@@ -3,10 +3,10 @@
 # Installed as trace-localdb-backup.service/.timer (see below). Configure:
 #   /etc/trace/backup.env -> TRACE_BACKUP_REMOTE (e.g. "b2:trace-backups"), RETENTION_DAYS
 set -euo pipefail
-cd /home/ubuntu/trace
+cd /opt/trace-localdb
 
-DATA_DIR="/srv/trace-data/localdb"
-BACKUP_DIR="/srv/trace-data/backups"
+DATA_DIR="/srv/tikrr-data/trace-data/localdb"
+BACKUP_DIR="/srv/tikrr-data/trace-data/backups"
 ENV_FILE="/etc/trace/backup.env"
 STAMP="$(date -u +%Y-%m-%dT%H%M%SZ)"
 DEST="$BACKUP_DIR/documents-$STAMP.sqlite3"
@@ -16,7 +16,7 @@ DEST="$BACKUP_DIR/documents-$STAMP.sqlite3"
 : "${RETENTION_DAYS:=30}"
 
 mkdir -p "$BACKUP_DIR"
-/home/ubuntu/trace/.venv/bin/python - "$DATA_DIR/documents.sqlite3" "$DEST" <<'EOF'
+/usr/bin/python3 - "$DATA_DIR/documents.sqlite3" "$DEST" <<'EOF'
 import sys
 from backend.localdb import LocalDocumentStore
 src, dest = sys.argv[1], sys.argv[2]

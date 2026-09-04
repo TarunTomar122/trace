@@ -9,7 +9,7 @@ the pipeline runs in `dual` mode indefinitely, so both stores stay current.
 
 ```
 Vercel (Next.js) ──HTTPS──▶ Caddy (db.yourtrace.online) ─▶ 127.0.0.1:8502 (trace-localdb.service)
-VPS pipeline ──SQLite/loopback──▶ /srv/trace-data/localdb/documents.sqlite3
+VPS pipeline ──SQLite/loopback──▶ /srv/tikrr-data/trace-data/localdb/documents.sqlite3
 ```
 
 - `TRACE_DB=firebase|local|dual` (Python pipeline, `v1/storage.py` selector).
@@ -76,8 +76,8 @@ the live pipeline runs — that is normal; re-export to converge.
 ```bash
 # 0. DNS: db.yourtrace.online -> A 144.217.6.112 (proxy OFF)
 # 1. data volume (50 GB disk, e.g. mounted at /srv):
-sudo mkdir -p /srv/trace-data/localdb /srv/trace-data/backups /etc/trace
-sudo chown ubuntu:ubuntu /srv/trace-data /srv/trace-data/localdb /srv/trace-data/backups /etc/trace
+sudo mkdir -p /srv/tikrr-data/trace-data/localdb /srv/tikrr-data/trace-data/backups /etc/trace
+sudo chown ubuntu:ubuntu /srv/tikrr-data/trace-data /srv/tikrr-data/trace-data/localdb /srv/tikrr-data/trace-data/backups /etc/trace
 # 2. env (chmod 600):
 sudo cp backend/vps/trace-localdb.env.example /etc/trace/localdb.env
 sudo nano /etc/trace/localdb.env   # set LOCALDB_API_TOKEN
@@ -90,11 +90,11 @@ caddy reload   # (or systemctl reload caddy)
 sudo cp backend/vps/trace-localdb-backup.service backend/vps/trace-localdb-backup.timer /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl enable --now trace-localdb-backup.timer
 # 4. seed the DB: copy a parity-verified documents.sqlite3 to
-#    /srv/trace-data/localdb/ (or run the backfill on the VPS), then:
+#    /srv/tikrr-data/trace-data/localdb/ (or run the backfill on the VPS), then:
 curl http://127.0.0.1:8502/health
 # 5. pipeline dual-write: add to ~/trace/.env on the VPS:
 TRACE_DB=dual
-TRACE_LOCALDB_PATH=/srv/trace-data/localdb/documents.sqlite3
+TRACE_LOCALDB_PATH=/srv/tikrr-data/trace-data/localdb/documents.sqlite3
 # 6. GitHub Actions dual-write: repo secrets TRACE_DB=dual + LOCALDB_* vars,
 #    then extend daily-pipeline.yml env (TODO).
 ```
