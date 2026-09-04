@@ -17,7 +17,6 @@ import { readAffiliateAttribution } from '@/lib/affiliate';
 import { identifyUser, resetUser, trackSignIn, trackSignOut, trackSignUp } from '@/lib/posthog';
 import {
   clearAuthSessionCache,
-  isAuthSessionCacheFresh,
   optimisticProfileFromCache,
   readAuthSessionCache,
   writeAuthSessionCache,
@@ -238,18 +237,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(firebaseUser);
 
       if (firebaseUser) {
-        setProfileFresh(false);
         setProfileRefreshFailed(false);
         const cached = readAuthSessionCache();
-        const cachedProfileFresh = Boolean(
-          cached?.uid === firebaseUser.uid && isAuthSessionCacheFresh(cached)
-        );
-        if (cached?.uid === firebaseUser.uid) {
+        // Trust the cache for display (fail-open for members): a stale pro
+        // verdict beats paywalling a paying user. Background revalidation
+        // below converges upgrades and refreshes data within seconds.
+        const hasTrustedCache = Boolean(cached && cached.uid === firebaseUser.uid);
+        if (hasTrustedCache && cached) {
           const optimistic = optimisticProfileFromCache(firebaseUser, cached);
           setProfile(optimistic);
-          setProfileFresh(cachedProfileFresh);
+          setProfileFresh(true);
           setProfileResolved(true);
         } else {
+          setProfileFresh(false);
           setProfile(null);
           setProfileResolved(false);
         }
@@ -286,9 +286,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           name: firebaseUser.displayName,
           onboarded: cached?.onboarded || false,
         });
-        if (!cachedProfileFresh) {
-          void loadProfileInBackground();
-        }
+        // Always revalidate in the background: converges upgrades, refreshes
+        // the server session cookie, and rewrites the cache. Failures keep
+        // the trusted (possibly pro) verdict — never downgrade on error.
+        void loadProfileInBackground();
       } else {
         clearAuthSessionCache();
         setProfile(null);

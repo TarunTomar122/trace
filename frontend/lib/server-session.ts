@@ -1,8 +1,11 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 
 export const TRACE_SESSION_COOKIE_NAME = 'trace_session';
-export const TRACE_SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000;
-export const TRACE_SESSION_PROFILE_FRESH_AGE_MS = 60_000;
+// Session + embedded profile trusted for 36h. The cookie is HMAC-signed so
+// the client can't forge `hasAccess`. Deliberate tradeoff: a cancelled user
+// may keep Pro UI until refresh, which beats paywalling a paying user.
+export const TRACE_SESSION_MAX_AGE_MS = 36 * 60 * 60 * 1000;
+export const TRACE_SESSION_PROFILE_FRESH_AGE_MS = 36 * 60 * 60 * 1000;
 
 // Optional viewer profile fields embedded in the session cookie so the feed
 // page SSR can skip a Firestore user-profile read. These are signed (HMAC),
