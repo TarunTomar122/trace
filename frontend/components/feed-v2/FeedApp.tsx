@@ -1125,6 +1125,7 @@ function PulseFeed({ items, title, mode, onOpen, marks, toggleMark, share }: {
                   ? (e) => {
                       // The title link already opens a tab; don't open a second one.
                       if ((e.target as HTMLElement).closest('a')) return;
+                      trackFeedItemClicked(t.id, 'discussion', t.source || '');
                       window.open(t.url, '_blank', 'noopener,noreferrer');
                     }
                   : undefined
@@ -1146,7 +1147,13 @@ function PulseFeed({ items, title, mode, onOpen, marks, toggleMark, share }: {
             </div>
             <h2 className="post-title">
               {mode === 'inline' ? (
-                <a className="post-link" href={t.url} target="_blank" rel="noreferrer">{t.title}</a>
+                <a
+                  className="post-link"
+                  href={t.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => trackFeedItemClicked(t.id, 'discussion', t.source || '')}
+                >{t.title}</a>
               ) : (
                 t.title
               )}

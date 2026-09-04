@@ -9,6 +9,7 @@ import json
 import os
 import re
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from html import escape
 from pathlib import Path
@@ -749,6 +750,46 @@ def _resolve_recipients(
     return out
 
 
+def _log(msg: str) -> None:
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{ts}] [three-feed-newsletter] {msg}", flush=True)
+
+
+def _wait_for_complete_mix(
+    store: Any,
+    target_date: str,
+    wait_minutes: int,
+    poll_seconds: int = 300,
+) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
+    """Reload the feed until the content mix is complete or time runs out.
+
+    The newsletter cron has no ordering guarantee against the feed builders
+    (morning builds + hourly pulse). Without this wait, a delayed builder
+    means the newsletter reads a partial doc and silently sends nothing.
+    """
+    deadline = time.time() + max(wait_minutes, 0) * 60
+    attempt = 0
+    feed: dict[str, Any] | None = None
+    items: list[dict[str, Any]] = []
+    while True:
+        attempt += 1
+        feed = _load_newsletter_feed(store, target_date)
+        items = _pick_items(feed) if feed else []
+        if _has_required_mix(items):
+            if attempt > 1:
+                _log(f"content mix complete after {attempt} attempts")
+            return feed, items
+        remaining = deadline - time.time()
+        if remaining <= 0:
+            _log(f"content mix still incomplete after {attempt} attempts; giving up")
+            return feed, items
+        _log(
+            f"content mix incomplete (attempt {attempt}); "
+            f"rechecking in {int(min(poll_seconds, remaining))}s"
+        )
+        time.sleep(min(poll_seconds, remaining))
+
+
 def send_three_feed_newsletter(
     *,
     date: str,
@@ -765,6 +806,16 @@ def send_three_feed_newsletter(
 
     feed = _load_newsletter_feed(store, target_date)
     items = _pick_items(feed) if feed else []
+    wait_minutes = int(os.getenv("NEWSLETTER_WAIT_MINUTES", "60") or 0)
+    if (
+        not dry_run
+        and wait_minutes > 0
+        and target_date == _today_ist()
+        and not _has_required_mix(items)
+    ):
+        # Today's builders may still be running (delayed morning pipeline,
+        # in-progress hourly pulse). Wait for the mix instead of skipping.
+        feed, items = _wait_for_complete_mix(store, target_date, wait_minutes)
     if not _has_required_mix(items):
         return {"success": False, "error": "incomplete newsletter content mix", "date": target_date}
 
@@ -856,6 +907,10 @@ def main() -> None:
         dry_run=args.dry_run,
     )
     print(json.dumps(result, indent=2))
+    # Fail loudly: a silent success hid a missed send day (exit 0 with
+    # success:false). The scheduler + workflow now go red instead.
+    if not result.get("success"):
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
