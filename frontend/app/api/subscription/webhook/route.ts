@@ -47,26 +47,46 @@ export async function POST(request: NextRequest) {
     if (!adminDb) throw new Error('Firestore not initialized');
     const db = adminDb;
 
-    // One-time tool-promo payments never touch subscriptions.
+    // Tool-promo payments (one-time or $19/mo subscription) never touch
+    // the reader's own subscription.
     if (eventData.metadata?.type === 'tool_promo') {
       const toolId = String(eventData.metadata?.tool_id || '');
       if (!toolId) {
         console.error('tool_promo webhook without tool_id');
         return NextResponse.json({ error: 'Missing tool_id' }, { status: 400 });
       }
-      if (eventType === 'payment.succeeded' || eventType === 'checkout.completed') {
-        const now = new Date();
+      const now = new Date();
+      const thirtyDays = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      if (
+        eventType === 'payment.succeeded' ||
+        eventType === 'checkout.completed' ||
+        eventType === 'subscription.created' ||
+        eventType === 'subscription.active'
+      ) {
         await db.collection('promoted_tools').doc(toolId).set(
           {
             status: 'active',
             activated_at: now,
-            expires_at: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+            expires_at: thirtyDays,
             payment_id: eventData.payment_id || eventData.checkout_id || eventData.session_id || null,
+            subscription_id: eventData.subscription_id || null,
             updated_at: now,
           },
           { merge: true },
         );
-        console.log(`Tool promo activated: ${toolId}`);
+        console.log(`Tool promo activated: ${toolId} (${eventType})`);
+      } else if (eventType === 'subscription.renewed') {
+        await db.collection('promoted_tools').doc(toolId).set(
+          { status: 'active', expires_at: thirtyDays, updated_at: now },
+          { merge: true },
+        );
+        console.log(`Tool promo renewed: ${toolId}`);
+      } else if (eventType === 'subscription.cancelled' || eventType === 'subscription.expired') {
+        await db.collection('promoted_tools').doc(toolId).set(
+          { status: 'cancelled', updated_at: now },
+          { merge: true },
+        );
+        console.log(`Tool promo ended: ${toolId} (${eventType})`);
       } else {
         console.log(`Tool promo event ignored: ${eventType} for ${toolId}`);
       }

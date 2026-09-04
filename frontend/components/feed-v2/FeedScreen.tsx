@@ -66,24 +66,71 @@ const getPromotedTools = unstable_cache(
   { revalidate: 300 },
 );
 
-const getWeeklyReach = unstable_cache(
-  async (): Promise<number> => {
-    try {
-      const { adminFirestore } = await import('@/lib/firebase-admin');
-      if (!adminFirestore) return 0;
-      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const snap = await adminFirestore
-        .collection('user_profiles')
-        .where('lastActiveAt', '>', weekAgo)
-        .count()
-        .get();
-      return snap.data().count || 0;
-    } catch {
-      return 0;
+// Unique visitors to /feed over the last 30 days (PostHog $pageview),
+// falling back to the signed-in monthly-active count from Firestore.
+async function monthlyActiveCount(): Promise<number> {
+  try {
+    const { adminFirestore } = await import('@/lib/firebase-admin');
+    if (!adminFirestore) return 0;
+    const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const snap = await adminFirestore
+      .collection('user_profiles')
+      .where('lastActiveAt', '>', monthAgo)
+      .count()
+      .get();
+    return snap.data().count || 0;
+  } catch {
+    return 0;
+  }
+}
+
+let cachedPhProject: string | null = null;
+
+async function siteVisitorsLastMonth(): Promise<number> {
+  const personalKey = process.env.POSTHOG_PERSONAL_API_KEY;
+  if (!personalKey) return 0;
+  const host = (process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com').replace(/\/$/, '');
+  try {
+    if (!cachedPhProject) {
+      const res = await fetch(`${host}/api/projects/`, {
+        headers: { Authorization: `Bearer ${personalKey}` },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!res.ok) return 0;
+      const data = await res.json();
+      const id = data?.results?.[0]?.id;
+      if (!id) return 0;
+      cachedPhProject = String(id);
     }
+    const res = await fetch(`${host}/api/projects/${cachedPhProject}/query/`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${personalKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: {
+          kind: 'HogQLQuery',
+          query:
+            "SELECT count(DISTINCT distinct_id) AS visitors FROM events WHERE event = '$pageview' AND timestamp >= toStartOfMonth(now() - INTERVAL 1 MONTH) AND timestamp < toStartOfMonth(now())",
+        },
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return 0;
+    const data = await res.json();
+    const n = Number(data?.results?.[0]?.[0]);
+    return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+const getMonthlyReach = unstable_cache(
+  async (): Promise<number> => {
+    const visitors = await siteVisitorsLastMonth();
+    if (visitors > 0) return visitors;
+    return monthlyActiveCount();
   },
-  ['weekly-reach'],
-  { revalidate: 3600 },
+  ['monthly-reach'],
+  { revalidate: 21600 },
 );
 
 function thumb(url?: string | null): string | null {
@@ -139,29 +186,22 @@ export default async function FeedScreen() {
         if (h && h !== domain && !out.includes(h)) out.push(h);
       } catch { /* skip bad urls */ }
     }
-    return out.slice(0, 4);
+    return out;
   }
 
-  // Home order: multi-source (grouped) stories first, shuffled within each
-  // tier on every load so the feed feels fresh. Trend score breaks no ties
-  // on purpose: shuffle is the point.
-  function shuffle<T>(arr: T[]): T[] {
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-  }
+  // Home order: most sources first (3+ counts as 3), most recent breaks ties.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const news: any[] = (() => {
+  const news: any[] = [...(data.trending || [])]
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const all: any[] = [...(data.trending || [])];
+    .map((it: any) => ({ it, n: Math.min(groupSources(it).length, 3) }))
+    .sort((a, b) => {
+      if (b.n !== a.n) return b.n - a.n;
+      const ta = Date.parse(a.it?.published_date || '') || 0;
+      const tb = Date.parse(b.it?.published_date || '') || 0;
+      return tb - ta;
+    })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const grouped = all.filter((it: any) => groupSources(it).length > 1);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const singles = all.filter((it: any) => groupSources(it).length <= 1);
-    return [...shuffle(grouped), ...shuffle(singles)];
-  })();
+    .map(({ it }: any) => it);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const stories = news.map((it: any, i: number) => {
@@ -224,7 +264,7 @@ export default async function FeedScreen() {
   // paid tool promos (active + unexpired, newest first) and weekly reach.
   // Cached like the feed so they cost ~zero per request.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [promoted, weeklyReach] = await Promise.all([getPromotedTools(), getWeeklyReach()]);
+  const [promoted, monthlyReach] = await Promise.all([getPromotedTools(), getMonthlyReach()]);
 
   return (
     <AuthProvider>
@@ -233,7 +273,7 @@ export default async function FeedScreen() {
           stories={stories}
           pulse={pulsePayload}
           promoted={promoted}
-          weeklyReach={weeklyReach}
+          monthlyReach={monthlyReach}
           serverPro={serverPro}
           generated={data.daily_pulse_role_generated_at?.developer ? timeAgo(data.daily_pulse_role_generated_at.developer) : null}
         />

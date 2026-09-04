@@ -12,8 +12,9 @@ function hostOf(url: string): string {
   }
 }
 
-// Creates a pending promoted-tool record + a Dodo one-time checkout ($19/week).
-// The subscription webhook flips the record to active on payment success.
+// Creates a pending promoted-tool record + a Dodo checkout for the promo
+// product ($19/mo). The subscription webhook flips the record to active
+// on payment success (one-time or subscription events).
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
