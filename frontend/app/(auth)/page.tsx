@@ -10,6 +10,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { TRACE_SESSION_COOKIE_NAME, verifyTraceSession } from '@/lib/server-session';
 import LandingScreen from '@/components/feed-v2/LandingScreen';
+import LandingAuthRedirect from './LandingAuthRedirect';
 
 export const metadata: Metadata = {
   title: "Trace: AI and tech news in five minutes",
@@ -41,6 +42,7 @@ export default async function HomePage() {
   }
   return (
     <>
+      <LandingAuthRedirect />
       <StructuredDataList
         schemas={[
           generateHomeApplicationSchema(),

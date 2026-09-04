@@ -46,7 +46,33 @@ export async function POST(request: NextRequest) {
 
     if (!adminDb) throw new Error('Firestore not initialized');
     const db = adminDb;
-    
+
+    // One-time tool-promo payments never touch subscriptions.
+    if (eventData.metadata?.type === 'tool_promo') {
+      const toolId = String(eventData.metadata?.tool_id || '');
+      if (!toolId) {
+        console.error('tool_promo webhook without tool_id');
+        return NextResponse.json({ error: 'Missing tool_id' }, { status: 400 });
+      }
+      if (eventType === 'payment.succeeded' || eventType === 'checkout.completed') {
+        const now = new Date();
+        await db.collection('promoted_tools').doc(toolId).set(
+          {
+            status: 'active',
+            activated_at: now,
+            expires_at: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+            payment_id: eventData.payment_id || eventData.checkout_id || eventData.session_id || null,
+            updated_at: now,
+          },
+          { merge: true },
+        );
+        console.log(`Tool promo activated: ${toolId}`);
+      } else {
+        console.log(`Tool promo event ignored: ${eventType} for ${toolId}`);
+      }
+      return NextResponse.json({ received: true });
+    }
+
     // Get user ID from metadata
     let userId = eventData.metadata?.user_id;
     

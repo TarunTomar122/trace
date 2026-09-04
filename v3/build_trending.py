@@ -203,18 +203,30 @@ TOPIC_STOPWORDS = set(DIVERSITY_STOPWORDS) | {
     "governments", "minister", "ministers",
 }
 
-# Only canonicalize TRUE synonyms — keep brand names specific so they cluster tightly
+# Only canonicalize TRUE synonyms — keep brand names specific so they cluster tightly.
+# Product -> company mappings let "Claude is down" and "Anthropic outage"
+# meet under the existing strict rules (no threshold loosening needed).
 TOPIC_TOKEN_CANONICAL = {
     "ceasefire": "war",
     "warfare": "war",
     "gpt4": "openai",
     "gpt3": "openai",
     "chatgpt": "openai",
+    "claude": "anthropic",
+    "grok": "xai",
+    "gemini": "google",
+    "copilot": "microsoft",
+    "siri": "apple",
+    "alexa": "amazon",
+    "iphone": "apple",
+    "android": "google",
+    "pixel": "google",
 }
 
 # Narrow inflection normalization for event tokens that should cluster together.
 # Keep this intentionally small to avoid broad, sloppy stemming.
 TOPIC_EVENT_TOKEN_CANONICAL = {
+    "outages": "outage",
     "leaks": "leak",
     "leaked": "leak",
     "leaking": "leak",

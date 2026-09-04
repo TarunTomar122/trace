@@ -8,7 +8,7 @@ import { updateUserProfile } from '@/lib/firestore';
 import ProCheckoutButton from './ProCheckoutButton';
 import { bodyParagraphs } from '@/lib/body-text';
 import {
-  Bookmark, Share, ArrowLeft, User, Check, Star,
+  Bookmark, Share, ArrowLeft, User, Check, Star, Plus, X,
   Home, Sparkles, TrendingUp, Rocket, Code2, Cpu, PenTool, MessageCircle, BookOpen, Lock,
   type LucideIcon,
 } from 'lucide-react';
@@ -18,6 +18,13 @@ export interface CoverageLink {
   source: string;
   url: string;
   time: string;
+}
+
+export interface PromotedTool {
+  id: string;
+  title: string;
+  url: string;
+  sub: string;
 }
 
 export interface FeedStory {
@@ -100,14 +107,22 @@ function renderBold(text: string): React.ReactNode {
   return parts.map((p, i) => (i % 2 === 1 ? <strong key={i}>{p}</strong> : <span key={i}>{p}</span>));
 }
 
+function fmtReach(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}K`;
+  return String(n);
+}
+
 export default function FeedApp({
-  stories, pulse, generated, serverPro = false,
+  stories, pulse, promoted = [], weeklyReach = 0, generated, serverPro = false,
 }: {
   stories: FeedStory[];
   pulse: { tools: PulseItem[]; discussions: PulseItem[]; blogs: PulseItem[] };
+  promoted?: PromotedTool[];
+  weeklyReach?: number;
   generated: string | null;
   serverPro?: boolean;
 }) {
+  const reachLine = weeklyReach > 0 ? `~${fmtReach(weeklyReach)} readers/wk` : 'Seen by builders daily';
   const { user, profile: authProfile, loading: authLoading, profileResolved, profileFresh, profileRefreshFailed, signInWithGoogle, signOut, refreshProfile } = useAuth();
   const access = resolveFeedAccess({
     serverHasAccess: false,
@@ -138,6 +153,7 @@ export default function FeedApp({
   const [profile, setProfile] = useState<Profile>({ name: '', email: '', role: 'engineer', interests: [] });
   const [savedProfile, setSavedProfile] = useState<Profile>(profile);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [promoOpen, setPromoOpen] = useState(false);
 
   // hydrate bookmarks from the real store when signed in (same store the app uses)
   useEffect(() => {
@@ -351,15 +367,15 @@ export default function FeedApp({
             </a>
           )}
           <nav className="nav">
-            <NavItem icon={Home} label="Home" active={tab === 'all'} onClick={() => go('all')} />
+            <NavItem icon={Home} label="Home" active={tab === 'all'} onClick={() => go('all')} count={stories.length} />
             {cats.map((c) => {
               const Icon = CAT_ICONS[c] || Sparkles;
-              return <NavItem key={c} icon={Icon} label={CAT_LABELS[c] || c} active={tab === c} onClick={() => go(c)} />;
+              return <NavItem key={c} icon={Icon} label={CAT_LABELS[c] || c} active={tab === c} onClick={() => go(c)} count={counts[c]} />;
             })}
-            <NavItem icon={MessageCircle} label="Conversations" active={tab === 'conversations'} onClick={() => go('conversations')} />
-            <NavItem icon={BookOpen} label="Worth reading" active={tab === 'reading'} onClick={() => go('reading')} />
+            <NavItem icon={MessageCircle} label="Conversations" active={tab === 'conversations'} onClick={() => go('conversations')} count={pulse.discussions.length} />
+            <NavItem icon={BookOpen} label="Worth reading" active={tab === 'reading'} onClick={() => go('reading')} count={pulse.blogs.length} />
             <div className="nav-div" />
-            <NavItem icon={Bookmark} label="Bookmarks" active={tab === 'bookmarks'} onClick={() => go('bookmarks')} />
+            <NavItem icon={Bookmark} label="Bookmarks" active={tab === 'bookmarks'} onClick={() => go('bookmarks')} count={marks.size} />
           </nav>
           <div className="side-spacer" />
           <div className="account">
@@ -535,7 +551,27 @@ export default function FeedApp({
             <h2 className="rail-title">Tools</h2>
             <span className="rail-meta">{generated ? `upd ${generated}` : 'hourly'}</span>
           </div>
+          {promoted.length > 0 && (
+            <div className="rail-items">
+              {promoted.map((p) => (
+                <a key={p.id} className="pulse-row" href={p.url} target="_blank" rel="noreferrer">
+                  <RailLogo item={{ url: p.url, source: '' } as PulseItem} />
+                  <span className="pulse-main">
+                    <span className="pulse-title">{p.title} <span className="rail-ad">AD</span></span>
+                    {p.sub ? <span className="rail-sub">{p.sub}</span> : null}
+                  </span>
+                </a>
+              ))}
+            </div>
+          )}
           <RailSection items={pulse.tools} />
+          <button className="promo-slot" onClick={() => setPromoOpen(true)}>
+            <span className="promo-plus"><Plus size={18} /></span>
+            <span className="pulse-main">
+              <span className="pulse-title">Promote your tool here</span>
+              <span className="rail-sub">{reachLine} · $19/week</span>
+            </span>
+          </button>
         </div>
       </aside>
 
@@ -548,14 +584,81 @@ export default function FeedApp({
       </nav>
 
       {toast && <div className="toast">{toast}</div>}
+      {promoOpen && (
+        <PromoteModal
+          onClose={() => setPromoOpen(false)}
+          onSignIn={() => signInWithGoogle()}
+          signedIn={!!user}
+          getToken={async () => (user ? user.getIdToken() : '')}
+        />
+      )}
     </div>
   );
 }
 
-function NavItem({ icon: Icon, label, active, onClick }: { icon: LucideIcon; label: string; active: boolean; onClick: () => void }) {
+function PromoteModal({ onClose, onSignIn, signedIn, getToken }: {
+  onClose: () => void; onSignIn: () => void; signedIn: boolean;
+  getToken: () => Promise<string>;
+}) {
+  const [link, setLink] = useState('');
+  const [title, setTitle] = useState('');
+  const [subtext, setSubtext] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function pay() {
+    if (busy) return;
+    if (!signedIn) { onSignIn(); return; }
+    setBusy(true);
+    setError(null);
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/tools/promote', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: link, title, subtext }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not open checkout');
+      if (!data.checkoutUrl) throw new Error('Could not open checkout');
+      window.location.href = data.checkoutUrl;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="promo-overlay" onClick={onClose}>
+      <div className="promo-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="promo-head">
+          <h2 className="promo-title">Promote your tool</h2>
+          <button className="promo-x" onClick={onClose} aria-label="Close"><X size={18} /></button>
+        </div>
+        <p className="promo-price">$19/week · live in Tools within minutes of payment</p>
+        <label className="promo-label">Tool link
+          <input className="promo-input" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://yourtool.com" inputMode="url" />
+        </label>
+        <label className="promo-label">Title
+          <input className="promo-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="mytool / my-tool" maxLength={80} />
+        </label>
+        <label className="promo-label">One-line description
+          <input className="promo-input" value={subtext} onChange={(e) => setSubtext(e.target.value)} placeholder="What it does, in one line" maxLength={160} />
+        </label>
+        {error ? <p className="promo-error">{error}</p> : null}
+        <button className="promo-pay" onClick={pay} disabled={busy}>
+          {busy ? 'Opening checkout…' : signedIn ? 'Pay $19/week' : 'Sign in to continue'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function NavItem({ icon: Icon, label, active, onClick, count }: { icon: LucideIcon; label: string; active: boolean; onClick: () => void; count?: number }) {
   return (
     <button className={`nav-item${active ? ' active' : ''}`} onClick={onClick}>
       <span className="nav-with-ic"><Icon size={22} /> {label}</span>
+      {count !== undefined && <span className="nav-count">{count}</span>}
     </button>
   );
 }
@@ -1001,6 +1104,10 @@ const css = `
 .xw .nav-item:hover { background-color: var(--line); }
 .xw .nav-item.active { font-weight: 800; background-color: transparent; }
 .xw .nav-with-ic { display: inline-flex; align-items: center; gap: 18px; }
+.xw .nav-count {
+  font-size: 12px; font-weight: 500; color: var(--text-2); background: var(--hover);
+  padding: 2px 8px; border-radius: 9999px; font-variant-numeric: tabular-nums;
+}
 .xw .nav-div { height: 1px; background: var(--line); margin: 10px 12px; }
 .xw .side-foot { padding: 20px 18px; font-size: 13px; line-height: 16px; color: var(--text-3); }
 .xw .side-spacer { flex: 1; min-height: 24px; }
@@ -1213,6 +1320,45 @@ const css = `
 .xw .pulse-row:hover { background: var(--line); }
 .xw .pulse-title { font-size: 15px; font-weight: 400; line-height: 20px; letter-spacing: -0.008em; }
 .xw .rail-sub { display: block; font-size: 13px; font-weight: 400; line-height: 18px; color: var(--text-2); overflow-wrap: break-word; }
+.xw .rail-ad { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: var(--text-3); border: 1px solid var(--line); border-radius: 4px; padding: 1px 4px; vertical-align: 1px; white-space: nowrap; }
+.xw .promo-slot {
+  display: flex; flex-direction: row; gap: 10px; align-items: center; text-align: left;
+  margin: 4px 12px 12px; padding: 12px; width: calc(100% - 24px);
+  border: 1.5px dashed var(--text-3); border-radius: 12px; background: transparent;
+  cursor: pointer; color: inherit; font: inherit;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.xw .promo-slot:hover { border-color: var(--blue); background: var(--hover); }
+.xw .promo-plus {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--hover); color: var(--text-2);
+}
+.xw .promo-slot:hover .promo-plus { background: rgba(29,155,240,0.12); color: var(--blue); }
+.xw .promo-overlay {
+  position: fixed; inset: 0; z-index: 400; background: rgba(15,20,25,0.45);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.xw .promo-modal { width: 100%; max-width: 420px; background: #fff; border-radius: 20px; padding: 22px 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+.xw .promo-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.xw .promo-title { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+.xw .promo-x { border: none; background: transparent; cursor: pointer; color: var(--text-2); padding: 6px; border-radius: 50%; }
+.xw .promo-x:hover { background: var(--hover); }
+.xw .promo-price { margin: 0 0 16px; font-size: 13.5px; color: var(--text-2); }
+.xw .promo-label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 12px; }
+.xw .promo-input {
+  display: block; width: 100%; box-sizing: border-box; margin-top: 6px;
+  border: 1px solid var(--line); border-radius: 12px; padding: 11px 12px;
+  font-size: 15px; font-family: inherit; color: var(--text); background: #fff; outline: none;
+}
+.xw .promo-input:focus { border-color: var(--blue); }
+.xw .promo-error { margin: 0 0 12px; font-size: 13px; color: #f91880; }
+.xw .promo-pay {
+  width: 100%; height: 46px; border: none; border-radius: 9999px;
+  background: var(--blue); color: #fff; font-size: 15px; font-weight: 700; font-family: inherit;
+  cursor: pointer;
+}
+.xw .promo-pay:disabled { opacity: 0.7; cursor: wait; }
 .xw .rail-stars { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 12px; font-weight: 600; line-height: 16px; color: var(--text-2); font-variant-numeric: tabular-nums; }
 .xw .rail-stars svg { flex-shrink: 0; }
 .xw .rail-sig { font-size: 12.5px; font-weight: 600; color: var(--text-3); font-variant-numeric: tabular-nums; }

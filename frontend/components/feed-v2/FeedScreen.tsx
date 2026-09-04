@@ -33,6 +33,59 @@ async function loadFeed(): Promise<{ date: string; data: Doc } | null> {
   return getCachedFeed();
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const getPromotedTools = unstable_cache(
+  async (): Promise<any[]> => {
+    try {
+      const { adminFirestore } = await import('@/lib/firebase-admin');
+      if (!adminFirestore) return [];
+      const snap = await adminFirestore.collection('promoted_tools').where('status', '==', 'active').get();
+      const now = Date.now();
+      return snap.docs
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((d) => ({ id: d.id, ...(d.data() as Doc) }))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((t: any) => {
+          const exp = t.expires_at;
+          const ms =
+            exp && typeof exp.toMillis === 'function' ? exp.toMillis()
+            : exp instanceof Date ? exp.getTime()
+            : 0;
+          return !ms || ms > now;
+        })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .sort((a: any, b: any) => Number(b.created_at?.toMillis?.() || 0) - Number(a.created_at?.toMillis?.() || 0))
+        .slice(0, 3)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((t: any) => ({ id: t.id, title: t.title || '', url: t.url || '#', sub: t.subtext || '' }));
+    } catch {
+      return [];
+    }
+  },
+  ['promoted-tools'],
+  { revalidate: 300 },
+);
+
+const getWeeklyReach = unstable_cache(
+  async (): Promise<number> => {
+    try {
+      const { adminFirestore } = await import('@/lib/firebase-admin');
+      if (!adminFirestore) return 0;
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const snap = await adminFirestore
+        .collection('user_profiles')
+        .where('lastActiveAt', '>', weekAgo)
+        .count()
+        .get();
+      return snap.data().count || 0;
+    } catch {
+      return 0;
+    }
+  },
+  ['weekly-reach'],
+  { revalidate: 3600 },
+);
+
 function thumb(url?: string | null): string | null {
   if (!url || typeof url !== 'string' || url.length < 10) return null;
   if (url.includes('placeholder') || url.includes('default')) return null;
@@ -168,12 +221,19 @@ export default async function FeedScreen() {
     blogs: toPulse(pulse.blogs),
   };
 
+  // paid tool promos (active + unexpired, newest first) and weekly reach.
+  // Cached like the feed so they cost ~zero per request.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [promoted, weeklyReach] = await Promise.all([getPromotedTools(), getWeeklyReach()]);
+
   return (
     <AuthProvider>
       <Suspense fallback={<FeedSkeleton />}>
         <FeedApp
           stories={stories}
           pulse={pulsePayload}
+          promoted={promoted}
+          weeklyReach={weeklyReach}
           serverPro={serverPro}
           generated={data.daily_pulse_role_generated_at?.developer ? timeAgo(data.daily_pulse_role_generated_at.developer) : null}
         />
