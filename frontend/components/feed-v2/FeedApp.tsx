@@ -303,6 +303,12 @@ export default function FeedApp({
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
+  // Membership is already resolved server-side (session cookie), so paint
+  // immediately after mount instead of blocking on Firebase init. The gate
+  // below only holds for the very first paint (server + hydration agree).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const storyParam = view.story;
   const pulseParam = view.pulse;
 
@@ -326,15 +332,6 @@ export default function FeedApp({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-
-  if (authLoading) {
-    return (
-      <div className="xw">
-        <style>{css}</style>
-        <div style={{ margin: 'auto', color: 'var(--text-3)', fontSize: 14 }}>Checking your membership…</div>
-      </div>
-    );
-  }
 
   function showToast(msg: string) {
     setToast(msg);
@@ -521,6 +518,15 @@ export default function FeedApp({
       ))}
     </>
   );
+
+  if (authLoading && !mounted) {
+    return (
+      <div className="xw">
+        <style>{css}</style>
+        <div style={{ margin: 'auto', color: 'var(--text-3)', fontSize: 14 }}>Checking your membership…</div>
+      </div>
+    );
+  }
 
   return (
     <div className="xw">
