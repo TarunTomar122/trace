@@ -194,19 +194,21 @@ export default async function FeedScreen() {
     return out;
   }
 
-  // Home order: most sources first (3+ counts as 3), most recent breaks ties.
+  // Home default (Top mode): most-grouped first, recency breaks ties.
+  // (Client re-sorts for Recent mode / other tabs; stories carry ts.)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const news: any[] = [...(data.trending || [])]
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .map((it: any) => ({ it, n: Math.min(groupSources(it).length, 3) }))
-    .sort((a, b) => {
-      if (b.n !== a.n) return b.n - a.n;
-      const ta = Date.parse(a.it?.published_date || '') || 0;
-      const tb = Date.parse(b.it?.published_date || '') || 0;
-      return tb - ta;
-    })
+    .map((it: any) => ({
+      it,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      n: groupSources(it).length,
+      ts: Date.parse(it?.published_date || '') || 0,
+    }))
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .map(({ it }: any) => it);
+    .sort((a: any, b: any) => b.n - a.n || b.ts - a.ts)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((m: any) => m.it);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const stories = news.map((it: any, i: number) => {
@@ -241,6 +243,7 @@ export default async function FeedScreen() {
       sourceNames: source ? [source] : [],
       coverage,
       time: timeAgo(it.published_date),
+      ts: Date.parse(it?.published_date || '') || 0,
       cat: it.interest_id || 'tech',
       url: it.url || '#',
     };

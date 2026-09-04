@@ -22,7 +22,7 @@ import {
 } from '@/lib/posthog';
 import { bodyParagraphs } from '@/lib/body-text';
 import {
-  Bookmark, Share, ArrowLeft, User, Check, Star, Plus, X, ArrowRight,
+  Bookmark, Share, ArrowLeft, User, Check, Star, Plus, X, ArrowRight, Flame, Clock,
   Home, Sparkles, TrendingUp, Rocket, Code2, Cpu, PenTool, MessageCircle, BookOpen, Lock,
   type LucideIcon,
 } from 'lucide-react';
@@ -53,6 +53,7 @@ export interface FeedStory {
   sourceNames: string[];
   coverage: CoverageLink[];
   time: string;
+  ts: number;
   cat: string;
   url: string;
 }
@@ -364,6 +365,7 @@ export default function FeedApp({
   }
   function go(t: string) {
     if (t !== tab) trackFeedFilterChanged(t, tab, { surface: 'feed_v2' });
+    setSortOverride(null);
     setTab(t);
     if (view.story || view.pulse) {
       setView({ story: null, pulse: null });
@@ -451,7 +453,21 @@ export default function FeedApp({
   for (const s of stories) counts[s.cat] = (counts[s.cat] || 0) + 1;
   const cats = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
   const isProfile = tab === 'profile';
-  const visible = tab === 'all' ? stories : stories.filter((s) => s.cat === tab);
+  // sort: Top on Home, Recent elsewhere; toggle overrides until tab changes.
+  const [sortOverride, setSortOverride] = useState<null | 'top' | 'recent'>(null);
+  const sortMode = sortOverride ?? (tab === 'all' ? 'top' : 'recent');
+  const byRecent = (a: FeedStory, b: FeedStory) => (b.ts || 0) - (a.ts || 0);
+  const byTop = (a: FeedStory, b: FeedStory) =>
+    b.sources.length - a.sources.length || byRecent(a, b);
+  const visible = (() => {
+    const list = tab === 'all' ? [...stories] : stories.filter((s) => s.cat === tab);
+    return list.sort(sortMode === 'top' ? byTop : byRecent);
+  })();
+  function setSort(next: 'top' | 'recent') {
+    if (next === sortMode) return;
+    setSortOverride(next);
+    trackFeedFilterChanged(`sort:${next}`, `sort:${sortMode}`, { surface: 'feed_v2' });
+  }
   const open = storyParam ? stories.find((s) => s.id === storyParam) || null : null;
   const allPulse = [...pulse.tools, ...pulse.discussions, ...pulse.blogs];
   const openPulse = pulseParam ? allPulse.find((t) => t.id === pulseParam) || null : null;
@@ -706,6 +722,23 @@ export default function FeedApp({
             <header className="head">
               <h1 className="head-title">{tab === 'all' ? 'Home' : CAT_LABELS[tab] || tab}</h1>
               <span className="head-meta">{isFree ? `5 of ${visible.length}` : visible.length}</span>
+              <span className="post-spacer" />
+              <div className="sort-seg" role="group" aria-label="Sort stories">
+                <button
+                  className={`sort-opt${sortMode === 'top' ? ' on' : ''}`}
+                  onClick={() => setSort('top')}
+                  aria-pressed={sortMode === 'top'}
+                >
+                  <Flame size={14} /> Top
+                </button>
+                <button
+                  className={`sort-opt${sortMode === 'recent' ? ' on' : ''}`}
+                  onClick={() => setSort('recent')}
+                  aria-pressed={sortMode === 'recent'}
+                >
+                  <Clock size={14} /> Recent
+                </button>
+              </div>
             </header>
             <div className="feed">
               {full.map((s) => (
@@ -1522,6 +1555,19 @@ const css = `
 .xw .head-title { margin: 0; font-size: 20px; font-weight: 700; }
 .xw .head-sub { margin: 0; font-size: 12.5px; color: var(--text-3); }
 .xw .head-meta { font-size: 13px; color: var(--text-3); margin-left: auto; }
+.xw .sort-seg {
+  display: inline-flex; align-items: center; gap: 2px;
+  border: 1px solid var(--line); border-radius: 9999px; padding: 2px;
+  background: var(--hover); white-space: nowrap;
+}
+.xw .sort-opt {
+  display: inline-flex; align-items: center; gap: 4px;
+  border: none; background: transparent; color: var(--text-2);
+  font-size: 12.5px; font-weight: 700; font-family: inherit;
+  border-radius: 9999px; padding: 5px 10px; cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.xw .sort-opt.on { background: #fff; color: var(--text); box-shadow: 0 1px 3px rgba(15,20,25,0.12); }
 .xw .head-spacer { width: 34px; }
 .xw .back {
   width: 34px; height: 34px; border-radius: 9999px; border: none;
