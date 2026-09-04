@@ -151,11 +151,16 @@ export function trackFeedSourceClicked(input: {
   posthog.capture(FEED_EVENTS.sourceClicked, storyInteractionProperties(input));
 }
 
-export function trackFeedFilterChanged(filter: string, previousFilter: string) {
+export function trackFeedFilterChanged(
+  filter: string,
+  previousFilter: string,
+  props?: Record<string, unknown>,
+) {
   posthog.capture(FEED_EVENTS.filterChanged, {
     surface: "web",
     filter,
     previous_filter: previousFilter,
+    ...props,
   });
 }
 
@@ -186,12 +191,33 @@ export function trackFeedItemDownvoted(itemId: string, itemType: string) {
   posthog.capture("feed_item_downvoted", { item_id: itemId, item_type: itemType });
 }
 
-export function trackFeedItemBookmarked(itemId: string, itemType: string) {
-  posthog.capture("feed_item_bookmarked", { item_id: itemId, item_type: itemType });
+export function trackFeedItemBookmarked(
+  itemId: string,
+  itemType: string,
+  props?: Record<string, unknown>,
+) {
+  posthog.capture("feed_item_bookmarked", {
+    item_id: itemId,
+    item_type: itemType,
+    surface: "web",
+    ...props,
+  });
 }
 
-export function trackFeedItemSeen(itemId: string) {
-  posthog.capture("feed_item_seen", { item_id: itemId });
+export function trackShareInitiated(itemId: string, props?: Record<string, unknown>) {
+  posthog.capture("share_initiated", { item_id: itemId, surface: "web", ...props });
+}
+
+export function trackPromoModalOpened(props?: Record<string, unknown>) {
+  posthog.capture("promo_modal_opened", { surface: "web", ...props });
+}
+
+export function trackPromoSubmitted(props?: Record<string, unknown>) {
+  posthog.capture("promo_submitted", { surface: "web", ...props });
+}
+
+export function trackPurchaseCompleted(product: "pro" | "tool_promo") {
+  posthog.capture("purchase_completed", { surface: "web", product });
 }
 
 // Profile events
@@ -208,10 +234,16 @@ export function trackSubscriptionCancelled(plan: string) {
 }
 
 // Conversion funnel events
-export function trackSummaryOpened(itemId: string, isPaidUser: boolean) {
+export function trackSummaryOpened(
+  itemId: string,
+  isPaidUser: boolean,
+  props?: Record<string, unknown>,
+) {
   posthog.capture("summary_opened", {
     item_id: itemId,
     is_paid_user: isPaidUser,
+    surface: "web",
+    ...props,
   });
 }
 

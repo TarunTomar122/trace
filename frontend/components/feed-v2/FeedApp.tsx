@@ -6,6 +6,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { resolveFeedAccess } from '@/lib/subscription-access';
 import { updateUserProfile } from '@/lib/firestore';
 import ProCheckoutButton from './ProCheckoutButton';
+import {
+  trackCheckoutClicked,
+  trackFeedFilterChanged,
+  trackFeedItemBookmarked,
+  trackFeedItemClicked,
+  trackFeedViewed,
+  trackPaywallShown,
+  trackProfileUpdated,
+  trackPromoModalOpened,
+  trackPromoSubmitted,
+  trackPurchaseCompleted,
+  trackShareInitiated,
+  trackSubscriptionCancelled,
+  trackSummaryOpened,
+} from '@/lib/posthog';
 import { bodyParagraphs } from '@/lib/body-text';
 import {
   Bookmark, Share, ArrowLeft, User, Check, Star, Plus, X, ArrowRight,
@@ -211,11 +226,45 @@ export default function FeedApp({
       window.removeEventListener('pointerup', onUp);
     };
   }, [tab]);
+
+  // purchase return (?subscription=success / ?tool_promo=success):
+  // refresh status, celebrate once, then clean the URL.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const kind =
+      q.get('subscription') === 'success' ? 'pro'
+      : q.get('tool_promo') === 'success' ? 'promo'
+      : null;
+    if (!kind) return;
+    window.history.replaceState(null, '', base());
+    refreshProfile().catch(() => null);
+    trackPurchaseCompleted(kind === 'promo' ? 'tool_promo' : kind);
+    setCelebrate(kind);
+    (async () => {
+      try {
+        const confetti = (await import('canvas-confetti')).default;
+        const colors = ['#1D9BF0', '#0F1419', '#00BA7C', '#FFD400'];
+        confetti({ particleCount: 90, spread: 75, origin: { y: 0.25 }, colors });
+        setTimeout(
+          () => confetti({ particleCount: 60, angle: 60, spread: 60, origin: { x: 0, y: 0.4 }, colors }),
+          250,
+        );
+        setTimeout(
+          () => confetti({ particleCount: 60, angle: 120, spread: 60, origin: { x: 1, y: 0.4 }, colors }),
+          400,
+        );
+      } catch {
+        /* confetti is garnish */
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [profile, setProfile] = useState<Profile>({ name: '', email: '', role: 'engineer', interests: [] });
   const [savedProfile, setSavedProfile] = useState<Profile>(profile);
   const [savingProfile, setSavingProfile] = useState(false);
   const [promoOpen, setPromoOpen] = useState(false);
+  const [celebrate, setCelebrate] = useState<null | 'pro' | 'promo'>(null);
 
   // hydrate bookmarks from the real store when signed in (same store the app uses)
   useEffect(() => {
@@ -300,17 +349,25 @@ export default function FeedApp({
     if (mainRef.current) savedScroll.current = mainRef.current.scrollTop;
     setView({ story: s.id, pulse: null });
     window.history.pushState(null, '', `${base()}?story=${encodeURIComponent(s.id)}`);
+    trackSummaryOpened(s.id, pro, {
+      surface: 'feed_v2', item_type: 'story', source: s.source,
+      position: s.rank, sources_count: s.sources.length,
+    });
   }
   function openPulseItem(t: PulseItem) {
     if (mainRef.current) savedScroll.current = mainRef.current.scrollTop;
     setView({ story: null, pulse: t.id });
     window.history.pushState(null, '', `${base()}?pulse=${encodeURIComponent(t.id)}`);
+    trackSummaryOpened(t.id, pro, {
+      surface: 'feed_v2', item_type: 'pulse', source: t.source,
+    });
   }
   function goBack() {
     setView({ story: null, pulse: null });
     window.history.replaceState(null, '', base());
   }
   function go(t: string) {
+    if (t !== tab) trackFeedFilterChanged(t, tab, { surface: 'feed_v2' });
     setTab(t);
     if (view.story || view.pulse) {
       setView({ story: null, pulse: null });
@@ -319,6 +376,7 @@ export default function FeedApp({
   }
 
   function share(id: string) {
+    trackShareInitiated(id, { surface: 'feed_v2' });
     const url = `${window.location.origin}/story/${id}`;
     if (navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(url).then(
@@ -339,6 +397,7 @@ export default function FeedApp({
       } as Parameters<typeof updateUserProfile>[1]);
       await refreshProfile().catch(() => null);
       setSavedProfile(profile);
+      trackProfileUpdated(['role', 'interests']);
       showToast('Profile saved — tomorrow’s feed uses it');
     } catch {
       showToast('Could not save profile — try again');
@@ -355,8 +414,11 @@ export default function FeedApp({
       return next;
     });
     showToast(isMarked ? 'Removed from Bookmarks' : 'Added to Bookmarks');
-    if (!user) return; // signed out: local only
     const meta = stories.find((s) => s.id === id) || allPulse.find((t) => t.id === id);
+    trackFeedItemBookmarked(id, stories.some((s) => s.id === id) ? 'story' : 'pulse', {
+      surface: 'feed_v2', action: isMarked ? 'removed' : 'saved',
+    });
+    if (!user) return; // signed out: local only
     try {
       const token = await user.getIdToken();
       if (isMarked) {
@@ -401,13 +463,28 @@ export default function FeedApp({
   const markedStories = stories.filter((s) => marks.has(s.id));
   const markedPulse = allPulse.filter((t) => marks.has(t.id));
 
+  // feed viewed (once per mount) + paywall impression (once per session).
+  const viewedRef = useRef(false);
+  const paywallRef = useRef(false);
+  useEffect(() => {
+    if (viewedRef.current) return;
+    viewedRef.current = true;
+    trackFeedViewed(stories.length, !pro, 'edition', pro ? 'pro' : 'free', user ? 'authenticated' : 'guest');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (paywallRef.current || pro || locked.length === 0) return;
+    paywallRef.current = true;
+    trackPaywallShown('feed_free_limit', { locked_count: locked.length });
+  }, [pro, locked.length]);
+
   // detail view open? (URL-driven)
   const detailOpen = !!open || !!openPulse;
 
   // tools carousel cards (rendered twice for a seamless infinite loop).
   const toolCards = (dup: string) => (
     <>
-      <a key={`house-${dup}`} className="tool-card" href="https://stocksbrew.online" target="_blank" rel="noreferrer">
+      <a key={`house-${dup}`} className="tool-card" href="https://stocksbrew.online" target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked('house-stocksbrew', 'house_ad', 'stocksbrew')}>
         <span className="tool-card-top">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className="fav-solo" style={{ borderRadius: 5 }} src="https://www.google.com/s2/favicons?domain=stocksbrew.online&sz=64" alt="" loading="lazy" />
@@ -417,7 +494,7 @@ export default function FeedApp({
         <span className="tool-card-sub">Reads fundamentals, earnings and news, then tells you exactly what to do.</span>
       </a>
       {promoted.map((p) => (
-        <a key={`${p.id}-${dup}`} className="tool-card" href={p.url} target="_blank" rel="noreferrer">
+        <a key={`${p.id}-${dup}`} className="tool-card" href={p.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(p.id, 'promo', '')}>
           <span className="tool-card-top">
             {domainOf(p.url) ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -430,7 +507,7 @@ export default function FeedApp({
         </a>
       ))}
       {pulse.tools.map((t) => (
-        <a key={`${t.id}-${dup}`} className="tool-card" href={t.url} target="_blank" rel="noreferrer">
+        <a key={`${t.id}-${dup}`} className="tool-card" href={t.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(t.id, 'pulse', t.source || '')}>
           <span className="tool-card-top">
             {domainOf(t.url) ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -522,6 +599,9 @@ export default function FeedApp({
             profile={profile} setProfile={setProfile} storyCount={stories.length}
             dirty={dirty} saving={savingProfile} onSave={saveProfile}
             pro={pro} onBack={() => go('all')}
+            notify={showToast}
+            getToken={async () => (user ? user.getIdToken() : '')}
+            onSubscriptionChanged={() => { refreshProfile().catch(() => null); }}
             user={user ? { displayName: user.displayName, email: user.email, photoURL: user.photoURL } : null}
             authProfile={authProfile}
             onSignOut={() => { signOut(); go('all'); }}
@@ -669,7 +749,7 @@ export default function FeedApp({
           {promoted.length > 0 && (
             <div className="rail-items">
               {promoted.map((p) => (
-                <a key={p.id} className="pulse-row" href={p.url} target="_blank" rel="noreferrer">
+                <a key={p.id} className="pulse-row" href={p.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(p.id, 'promo', '')}>
                   <RailLogo item={{ url: p.url, source: '' } as PulseItem} />
                   <span className="pulse-main">
                     <span className="pulse-title">{p.title} <span className="rail-ad">AD</span></span>
@@ -680,7 +760,7 @@ export default function FeedApp({
             </div>
           )}
           <div className="rail-items">
-            <a className="pulse-row" href="https://stocksbrew.online" target="_blank" rel="noreferrer">
+            <a className="pulse-row" href="https://stocksbrew.online" target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked('house-stocksbrew', 'house_ad', 'stocksbrew')}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img className="fav-solo" style={{ borderRadius: 5, alignSelf: 'flex-start', marginTop: 2 }} src="https://www.google.com/s2/favicons?domain=stocksbrew.online&sz=64" alt="" loading="lazy" />
               <span className="pulse-main">
@@ -711,6 +791,47 @@ export default function FeedApp({
           getToken={async () => (user ? user.getIdToken() : '')}
         />
       )}
+      {celebrate && <WelcomeModal kind={celebrate} onClose={() => setCelebrate(null)} />}
+    </div>
+  );
+}
+
+function WelcomeModal({ kind, onClose }: { kind: 'pro' | 'promo'; onClose: () => void }) {
+  const isPro = kind === 'pro';
+  const perks = isPro
+    ? [
+      'The full ranked feed, no 5-story cap',
+      'Full summaries with key points',
+      'Pulse: Conversations and Worth reading',
+      'Profile-ranked picks plus the daily email brief',
+    ]
+    : [
+      'Your tool is featured in Tools for 30 days',
+      'Seen across the feed on desktop and mobile',
+      'Support anytime: tomartarun2001@gmail.com',
+    ];
+  return (
+    <div className="promo-overlay" onClick={onClose}>
+      <div className="promo-modal celebrate-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="celebrate-badge"><Check size={26} /></div>
+        <h2 className="promo-title celebrate-title">
+          {isPro ? 'Welcome to Pro' : 'Your tool is live'}
+        </h2>
+        <p className="promo-price celebrate-sub">
+          {isPro
+            ? 'Payment confirmed. Thanks for backing Trace, here is what just unlocked.'
+            : 'Payment confirmed. Thanks for backing Trace, your promo is now running.'}
+        </p>
+        <ul className="perk-list">
+          {perks.map((p) => (
+            <li key={p}><Check size={16} /><span>{p}</span></li>
+          ))}
+        </ul>
+        <button className="promo-pay" onClick={onClose}>
+          {isPro ? 'Start exploring' : 'Nice'}
+        </button>
+        {isPro && <p className="promo-support">$3/mo · cancel anytime in Profile</p>}
+      </div>
     </div>
   );
 }
@@ -740,6 +861,8 @@ function PromoteModal({ onClose, onSignIn, signedIn, getToken }: {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not open checkout');
       if (!data.checkoutUrl) throw new Error('Could not open checkout');
+      trackPromoSubmitted({ domain: domainOf(link) });
+      trackCheckoutClicked('tool_promo', { domain: domainOf(link) });
       window.location.href = data.checkoutUrl;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -847,7 +970,7 @@ function topTools(tools: PulseItem[]): PulseItem[] {
 
 function PromoSlot({ monthlyReach, onOpen }: { monthlyReach: number; onOpen: () => void }) {
   return (
-    <button className="promo-slot" onClick={onOpen}>
+    <button className="promo-slot" onClick={() => { trackPromoModalOpened(); onOpen(); }}>
       <span className="promo-badge"><Rocket size={20} /></span>
       <span className="promo-copy">
         <span className="promo-headline">{monthlyReach > 0 ? `Get discovered by ${fmtReach(monthlyReach)} monthly tech readers` : 'Get discovered by thousands of monthly tech readers'}</span>
@@ -862,7 +985,7 @@ function RailSection({ items }: { items: PulseItem[] }) {
   return (
     <div className="rail-items">
       {items.map((t) => (
-        <a key={t.id} className="pulse-row" href={t.url} target="_blank" rel="noreferrer">
+        <a key={t.id} className="pulse-row" href={t.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(t.id, 'pulse', t.source || '')}>
           <RailLogo item={t} />
           <span className="pulse-main">
             <span className="pulse-title">{t.title}</span>
@@ -991,7 +1114,7 @@ function PulseDetail({ item, onBack, onShare, marked, toggleMark }: { item: Puls
         <div className="detail-actions">
           <Actions id={item.id} size={20} marked={marked} onToggleMark={toggleMark} onShare={onShare} />
         </div>
-        <a className="detail-link" href={item.url} target="_blank" rel="noreferrer">Open at {item.source} ›</a>
+        <a className="detail-link" href={item.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(item.id, 'pulse', item.source || '')}>Open at {item.source} ›</a>
       </div>
     </>
   );
@@ -1039,7 +1162,7 @@ function Detail({ story, onBack, onShare, marked, toggleMark }: { story: FeedSto
             <ol className="coverage-list">
               {story.coverage.map((c, j) => (
                 <li key={`${c.url}-${j}`}>
-                  <a className="coverage-row" href={c.url} target="_blank" rel="noreferrer">
+                  <a className="coverage-row" href={c.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(story.id, 'story', c.source || '')}>
                     {domainOf(c.url) ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img className="fav-solo" src={`https://www.google.com/s2/favicons?domain=${domainOf(c.url)}&sz=64`} alt="" loading="lazy" />
@@ -1078,12 +1201,68 @@ function PaywallPlate({ what, lockedCount }: { what: string; lockedCount: number
   );
 }
 
-function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, pro, onBack, user, authProfile, onSignOut, onSignIn }: {
+function CancelModal({ onClose, getToken, onDone }: {
+  onClose: () => void; getToken: () => Promise<string>; onDone: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const miss = [
+    'Back to 5 free stories a day',
+    'Summaries shrink, key points go away',
+    'Pulse locks: no Conversations, no Worth reading',
+    'Profile ranking and the daily email brief stop',
+  ];
+  async function confirm() {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/subscription/cancel', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cancelAtPeriodEnd: true }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not cancel');
+      trackSubscriptionCancelled('pro');
+      onDone();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="promo-overlay" onClick={onClose}>
+      <div className="promo-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="promo-head">
+          <h2 className="promo-title">Before you go</h2>
+          <button className="promo-x" onClick={onClose} aria-label="Close"><X size={18} /></button>
+        </div>
+        <p className="promo-price">Cancelling means giving these up at the end of your billing period.</p>
+        <ul className="perk-list miss-list">
+          {miss.map((m) => (
+            <li key={m}><X size={16} /><span>{m}</span></li>
+          ))}
+        </ul>
+        {error ? <p className="promo-error">{error}</p> : null}
+        <button className="promo-pay" onClick={onClose}>Keep my Pro</button>
+        <button className="cancel-confirm" onClick={confirm} disabled={busy}>
+          {busy ? 'Cancelling…' : 'Yes, cancel Pro'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, pro, onBack, user, authProfile, onSignOut, onSignIn, notify, getToken, onSubscriptionChanged }: {
   profile: Profile; setProfile: (p: Profile) => void; storyCount: number;
   dirty: boolean; saving: boolean; onSave: () => void; pro: boolean; onBack: () => void;
   user: { displayName: string | null; email: string | null; photoURL: string | null } | null;
   authProfile: any; onSignOut: () => void; onSignIn: () => void;
+  notify: (msg: string) => void; getToken: () => Promise<string>; onSubscriptionChanged: () => void;
 }) {
+  const [cancelOpen, setCancelOpen] = useState(false);
   const bio = `${ROLE_LABELS[profile.role] || 'Builder'} following ${profile.interests.length} topics. ${storyCount} stories ranked today.`;
 
   function toggleInterest(t: string) {
@@ -1175,9 +1354,21 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
             <div className="chip-row">
               <span className="pick on">{pro ? "Pro member" : "Free plan"}</span>
               {!pro && <a className="pick" href="https://www.yourtrace.online/subscribe" target="_blank" rel="noreferrer">Go Pro — $3/mo</a>}
+              {pro && <button className="pick pick-danger" onClick={() => setCancelOpen(true)}>Cancel plan</button>}
             </div>
             <p className="section-hint">Pro unlocks the whole day, Pulse and your profile.</p>
           </div>
+          {cancelOpen && (
+            <CancelModal
+              onClose={() => setCancelOpen(false)}
+              getToken={getToken}
+              onDone={() => {
+                setCancelOpen(false);
+                onSubscriptionChanged();
+                notify('Cancelled. Pro stays active until the end of your billing period.');
+              }}
+            />
+          )}
 
         <div className="profile-section">
           <h2 className="section-label">Agent access</h2>
@@ -1555,6 +1746,31 @@ const css = `
 .xw .promo-support { margin: 12px 0 0; font-size: 12.5px; color: var(--text-2); text-align: center; }
 .xw .promo-support a { color: var(--blue); text-decoration: none; }
 .xw .promo-support a:hover { text-decoration: underline; }
+.xw .celebrate-modal { text-align: center; }
+.xw .celebrate-badge {
+  width: 56px; height: 56px; border-radius: 50%; margin: 4px auto 12px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,186,124,0.12); color: #00BA7C;
+}
+.xw .celebrate-title { text-align: center; }
+.xw .celebrate-sub { text-align: center; }
+.xw .perk-list { margin: 0 0 18px; padding: 0; list-style: none; text-align: left; }
+.xw .perk-list li {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 9px 2px; border-bottom: 1px solid var(--line);
+  font-size: 14.5px; font-weight: 600;
+}
+.xw .perk-list li:last-child { border-bottom: none; }
+.xw .perk-list svg { flex-shrink: 0; margin-top: 2px; color: #00BA7C; }
+.xw .miss-list svg { color: #F91880; }
+.xw button.pick { font: inherit; cursor: pointer; }
+.xw .pick-danger { color: #F91880; border-color: rgba(249,24,128,0.4); }
+.xw .cancel-confirm {
+  width: 100%; margin-top: 10px; height: 44px; border: none; background: transparent;
+  color: var(--text-2); font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer;
+}
+.xw .cancel-confirm:hover { color: #F91880; }
+.xw .cancel-confirm:disabled { opacity: 0.6; cursor: wait; }
 .xw .rail-stars { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 12px; font-weight: 600; line-height: 16px; color: var(--text-2); font-variant-numeric: tabular-nums; }
 .xw .rail-stars svg { flex-shrink: 0; }
 .xw .rail-sig { font-size: 12.5px; font-weight: 600; color: var(--text-3); font-variant-numeric: tabular-nums; }

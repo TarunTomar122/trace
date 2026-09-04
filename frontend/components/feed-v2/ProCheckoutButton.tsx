@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { trackCheckoutClicked } from '@/lib/posthog';
 
 /**
  * Takes the reader straight to the Dodo Payments gateway:
@@ -12,10 +13,12 @@ export default function ProCheckoutButton({
   className,
   label = 'Go Pro — $3/mo',
   busyLabel = 'Opening checkout…',
+  source = 'pro_checkout',
 }: {
   className?: string;
   label?: string;
   busyLabel?: string;
+  source?: string;
 }) {
   const { user, signInWithGoogle } = useAuth();
   const [busy, setBusy] = useState(false);
@@ -52,6 +55,7 @@ export default function ProCheckoutButton({
 
   async function onClick() {
     if (busy) return;
+    trackCheckoutClicked(source);
     if (!user) {
       pending.current = true;
       try {

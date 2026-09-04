@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
+import { captureServerEvent } from '@/lib/posthog-server';
 
 const PROMO_PRODUCT_ID = 'pdt_0NmqHrCrNa6vQDowGHn10';
-const PROMO_DAYS = 7;
 
 function hostOf(url: string): string {
   try {
@@ -87,6 +87,10 @@ export async function POST(request: NextRequest) {
     await toolRef.update({
       checkout_session_id: checkoutData.session_id || null,
       updated_at: new Date(),
+    });
+    await captureServerEvent(userId, 'tool_promo_checkout_created', {
+      tool_id: toolRef.id,
+      session_id: checkoutData.session_id || null,
     });
     return NextResponse.json({ checkoutUrl: checkoutData.checkout_url, toolId: toolRef.id });
   } catch (err) {

@@ -75,18 +75,29 @@ export async function POST(request: NextRequest) {
           { merge: true },
         );
         console.log(`Tool promo activated: ${toolId} (${eventType})`);
+        await captureServerEvent(String(eventData.metadata?.user_id || toolId), 'tool_promo_activated', {
+          tool_id: toolId,
+          event_type: eventType,
+        });
       } else if (eventType === 'subscription.renewed') {
         await db.collection('promoted_tools').doc(toolId).set(
           { status: 'active', expires_at: thirtyDays, updated_at: now },
           { merge: true },
         );
         console.log(`Tool promo renewed: ${toolId}`);
+        await captureServerEvent(String(eventData.metadata?.user_id || toolId), 'tool_promo_renewed', {
+          tool_id: toolId,
+        });
       } else if (eventType === 'subscription.cancelled' || eventType === 'subscription.expired') {
         await db.collection('promoted_tools').doc(toolId).set(
           { status: 'cancelled', updated_at: now },
           { merge: true },
         );
         console.log(`Tool promo ended: ${toolId} (${eventType})`);
+        await captureServerEvent(String(eventData.metadata?.user_id || toolId), 'tool_promo_ended', {
+          tool_id: toolId,
+          event_type: eventType,
+        });
       } else {
         console.log(`Tool promo event ignored: ${eventType} for ${toolId}`);
       }
