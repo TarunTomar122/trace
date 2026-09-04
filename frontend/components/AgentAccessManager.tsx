@@ -13,7 +13,7 @@ type KeyStatus = {
 };
 
 export default function AgentAccessManager() {
-  const { user, profile, signInWithGoogle } = useAuth();
+  const { user, profile, loading, signInWithGoogle } = useAuth();
   const [status, setStatus] = useState<KeyStatus | null>(null);
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
@@ -94,6 +94,14 @@ Store the key securely as TRACE_AGENT_KEY. Never commit or print it. After setup
     setCopied(kind);
     window.setTimeout(() => setCopied(null), 1800);
   };
+
+  if (loading) {
+    return (
+      <div className="border border-[#d9dded] bg-white p-6 sm:p-8">
+        <p className="text-[14px] text-[#6d7280]">Checking your sign-in…</p>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
