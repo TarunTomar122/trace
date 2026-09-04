@@ -18,28 +18,19 @@ VPS pipeline ──SQLite/loopback──▶ /srv/tikrr-data/trace-data/localdb/d
   `fallback` = LocalDB primary, per-operation Firebase retry with loud logging.
 - Rollback anywhere = flip the env var, redeploy/restart. Firebase is never deleted.
 
-## Local development
+## Local development (VPS DB is the single source — nothing runs locally)
 
 ```bash
-# one-time: backfill local SQLite from prod Firestore (read-only on Firebase)
-source .env  # FIREBASE_SERVICE_ACCOUNT_PATH
-.venv/bin/python backend/scripts/build_trace_selectors.py
-.venv/bin/python backend/scripts/migrate_firestore_to_local.py \
-  --collections-file backend/config/trace_migration_selectors.generated.txt \
-  --project-id anybrew-7c6c1 \
-  --db data/localdb/documents.sqlite3 \
-  --export data/localdb/firestore-archive.jsonl --apply
-
-# run the server (needs LOCALDB_API_TOKEN)
-LOCALDB_API_TOKEN=local-dev-token .venv/bin/python -m backend.localdb.server \
-  --db data/localdb/documents.sqlite3 --host 127.0.0.1 --port 8502
-
-# web app (frontend/.env.local)
-LOCALDB_URL=http://127.0.0.1:8502
-LOCALDB_API_TOKEN=local-dev-token
-FIRESTORE_BACKEND=local
-npm run dev -- --port 5003   # 5001/5002 are commonly taken
+# frontend/.env.local (gitignored) points at the VPS, same as prod:
+LOCALDB_URL=https://db.yourtrace.online
+LOCALDB_API_TOKEN=<from VPS /etc/trace/localdb.env>
+FIRESTORE_BACKEND=fallback   # or 'local' to force VPS-only reads
+npm run dev
 ```
+
+No local SQLite, no local server. The one exception is the initial backfill,
+which runs once against a scratch SQLite file (see below) that is then
+rsynced to the VPS — never served locally.
 
 Parity check any time:
 
