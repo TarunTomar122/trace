@@ -352,7 +352,13 @@ class LocalTransaction(LocalWriteBatch):
 
 class LocalFirestoreClient:
     def __init__(self, db_path: str | os.PathLike[str] | LocalDocumentStore):
-        self._store = db_path if isinstance(db_path, LocalDocumentStore) else LocalDocumentStore(db_path)
+        # Any object implementing the store surface (get/get_many/
+        # list_collection_documents/iter_collection_group_documents/
+        # apply_operations) is accepted as-is; strings become SQLite stores.
+        if isinstance(db_path, LocalDocumentStore) or hasattr(db_path, "apply_operations"):
+            self._store = db_path
+        else:
+            self._store = LocalDocumentStore(db_path)
 
     def collection(self, collection_id: str) -> CollectionReference:
         return CollectionReference(self, collection_id)

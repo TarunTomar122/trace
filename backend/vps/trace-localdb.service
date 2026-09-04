@@ -1,0 +1,36 @@
+[Unit]
+Description=Trace local document database (LocalDB)
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/trace
+EnvironmentFile=/etc/trace/localdb.env
+ExecStart=/home/ubuntu/trace/.venv/bin/python -m backend.localdb.server --db /srv/trace-data/localdb/documents.sqlite3 --host 127.0.0.1 --port 8502
+Restart=on-failure
+RestartSec=5s
+
+# Keep the service read-only everywhere except its data directory.
+# (ProtectHome=read-only instead of strict because the code lives in /home/ubuntu/trace.)
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+ReadWritePaths=/srv/trace-data
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

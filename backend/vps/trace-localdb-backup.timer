@@ -1,0 +1,10 @@
+[Unit]
+Description=Nightly Trace LocalDB backup
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+RandomizedDelaySec=900
+Persistent=true
+
+[Install]
+WantedBy=timers.target

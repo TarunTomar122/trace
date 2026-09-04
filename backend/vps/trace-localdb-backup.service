@@ -1,0 +1,8 @@
+[Unit]
+Description=Nightly Trace LocalDB backup
+After=network.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+ExecStart=/home/ubuntu/trace/backend/vps/backup-trace-localdb.sh
