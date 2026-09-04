@@ -30,6 +30,7 @@ unified_newsletters
 trending_news
 trending_news/*/topics
 topics
+v3_user_feeds/_global/daily
 v3_user_feeds/05KHduacEzNsJNDqM5sY1fZW6Vj2/daily
 user_feeds/05KHduacEzNsJNDqM5sY1fZW6Vj2/daily
 user_interactions/05KHduacEzNsJNDqM5sY1fZW6Vj2/daily
@@ -3375,6 +3376,11 @@ user_feeds/cAqll6AnJYT66paWG90KCklLjuB2/daily
 user_interactions/cAqll6AnJYT66paWG90KCklLjuB2/daily
 user_bookmarks/cAqll6AnJYT66paWG90KCklLjuB2/items
 user_weekly_wraps/cAqll6AnJYT66paWG90KCklLjuB2/weeks
+v3_user_feeds/cC2GsgaAryRlZHCFv5c8qOPBq3J2/daily
+user_feeds/cC2GsgaAryRlZHCFv5c8qOPBq3J2/daily
+user_interactions/cC2GsgaAryRlZHCFv5c8qOPBq3J2/daily
+user_bookmarks/cC2GsgaAryRlZHCFv5c8qOPBq3J2/items
+user_weekly_wraps/cC2GsgaAryRlZHCFv5c8qOPBq3J2/weeks
 v3_user_feeds/cIIGjF4uFKSTi6DFSyu0pugQL9y1/daily
 user_feeds/cIIGjF4uFKSTi6DFSyu0pugQL9y1/daily
 user_interactions/cIIGjF4uFKSTi6DFSyu0pugQL9y1/daily

@@ -77,6 +77,9 @@ def build_selectors(client) -> list[str]:
     print(f"user_profiles uids: {len(uids)}", file=sys.stderr)
 
     selectors = list(ROOT_COLLECTIONS)
+    # The _global feed sentinel is not a user profile, so it needs an
+    # explicit selector (it has no parent doc and no uid to derive from).
+    selectors.append("v3_user_feeds/_global/daily")
     templates = [template for template, _ in UID_SUBCOLLECTIONS]
     for uid in uids:
         for template in templates:
