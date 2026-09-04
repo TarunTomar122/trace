@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { listFeedOwnerIds } from '@/lib/feed-user-refs';
 import { isInstagramStudioAuthorized } from '@/lib/instagram-studio-auth';
 
 function normalizeInterest(value: string): string {
@@ -39,13 +40,12 @@ async function loadRecentDailyDocsFromAllUsers(maxDays: number = 2) {
     dateIds.push(d.toISOString().slice(0, 10));
   }
 
-  const userRefs = await adminDb.collection('v3_user_feeds').listDocuments();
-  const users = userRefs.slice(0, 1500); // Dev safeguard
+  const ownerIds = await listFeedOwnerIds(adminDb, 1500); // Dev safeguard
   const docs: Array<FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>> = [];
 
-  for (const userRef of users) {
+  for (const ownerId of ownerIds) {
     for (const dateId of dateIds) {
-      const dailyRef = userRef.collection('daily').doc(dateId);
+      const dailyRef = adminDb.collection('v3_user_feeds').doc(ownerId).collection('daily').doc(dateId);
       const snap = await dailyRef.get();
       if (snap.exists) {
         docs.push(snap as FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>);

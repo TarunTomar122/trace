@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldPath } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
+import { listFeedOwnerIds } from '@/lib/feed-user-refs';
 import { isInstagramStudioAuthorized } from '@/lib/instagram-studio-auth';
 import { loadStudioNewsFeed } from '@/lib/instagram-studio-feed';
 
@@ -175,13 +176,12 @@ async function loadRecentDailyDocsFromAllUsers(maxDays: number = 2) {
     const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
     dateIds.push(d.toISOString().slice(0, 10));
   }
-  const userRefs = await adminDb.collection('v3_user_feeds').listDocuments();
   // Filter out _global from user refs
-  const users = userRefs.filter(ref => ref.id !== '_global').slice(0, 1500); // Dev safeguard
+  const users = (await listFeedOwnerIds(adminDb, 1501)).filter(id => id !== '_global').slice(0, 1500); // Dev safeguard
   const docs: Array<FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>> = [];
-  for (const userRef of users) {
+  for (const ownerId of users) {
     for (const dateId of dateIds) {
-      const dailyRef = userRef.collection('daily').doc(dateId);
+      const dailyRef = adminDb.collection('v3_user_feeds').doc(ownerId).collection('daily').doc(dateId);
       const snap = await dailyRef.get();
       if (snap.exists) {
         docs.push(snap as FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>);
