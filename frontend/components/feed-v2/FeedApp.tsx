@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveFeedAccess } from '@/lib/subscription-access';
-import { updateUserProfile } from '@/lib/firestore';
 import ProCheckoutButton from './ProCheckoutButton';
 import {
   trackCheckoutClicked,
@@ -388,10 +387,16 @@ export default function FeedApp({
     setSavingProfile(true);
     try {
       // store the human-readable role label so mapRole() round-trips on reload
-      await updateUserProfile(user.uid, {
-        role: ROLE_LABELS[profile.role] || profile.role,
-        interests: profile.interests,
-      } as Parameters<typeof updateUserProfile>[1]);
+      const response = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          role: ROLE_LABELS[profile.role] || profile.role,
+          interests: profile.interests,
+        }),
+      });
+      if (!response.ok) throw new Error(`Profile save failed (${response.status})`);
       await refreshProfile().catch(() => null);
       setSavedProfile(profile);
       trackProfileUpdated(['role', 'interests']);

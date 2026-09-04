@@ -1,8 +1,8 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
-import { LocalFirestore, localFirestoreFromEnv } from './local-firestore';
+import { localFirestoreFromEnv } from './local-firestore';
 
 export type FirestoreBackendMode = 'firebase' | 'local' | 'fallback';
 
@@ -13,8 +13,10 @@ export function firestoreBackendMode(): FirestoreBackendMode {
 }
 
 let adminAuth: ReturnType<typeof getAuth> | null = null;
-// biome-ignore lint/suspicious/noExplicitAny: local + firebase SDKs share a structural subset
-let adminFirestore: any = null;
+// The selector returns a Firebase- or LocalDB-backed client. Both implement
+// the Firestore surface this app uses; the static type is the admin SDK's
+// Firestore so all existing call sites keep their inferred types.
+let adminFirestore: Firestore | null = null;
 let adminStorage: ReturnType<typeof getStorage> | null = null;
 
 try {
@@ -56,12 +58,12 @@ try {
     );
   }
   if (mode === 'local') {
-    adminFirestore = local;
+    adminFirestore = local as unknown as Firestore;
     console.log('Firestore backend: LocalDB');
   } else if (mode === 'fallback') {
     const primary = local!;
     const secondary = getFirestore();
-    adminFirestore = withFirebaseFallback(primary, secondary);
+    adminFirestore = withFirebaseFallback(primary, secondary) as Firestore;
     console.log('Firestore backend: LocalDB with Firebase fallback');
   } else {
     adminFirestore = getFirestore();
@@ -102,7 +104,19 @@ function withFirebaseFallback(primary: any, secondary: any): any {
         return await primary.runTransaction(callback);
       } catch (error) {
         console.error('[firestore-fallback] transaction via LocalDB failed, retrying on Firebase:', error);
-        return await secondary.runTransaction(callback);
+        // The callback closes over primary-bound refs; re-map them by path
+        // onto Firebase refs before replaying against the admin transaction.
+        return await secondary.runTransaction(async (adminTx: any) => {
+          const byPath = (ref: any) => (ref?.path ? refForPath(secondary, ref.path) : ref);
+          const mappedTx = {
+            get: (ref: any) => adminTx.get(byPath(ref)),
+            set: (ref: any, ...rest: any[]) => adminTx.set(byPath(ref), ...rest),
+            update: (ref: any, ...rest: any[]) => adminTx.update(byPath(ref), ...rest),
+            create: (ref: any, ...rest: any[]) => adminTx.create(byPath(ref), ...rest),
+            delete: (ref: any) => adminTx.delete(byPath(ref)),
+          };
+          return await callback(mappedTx);
+        });
       }
     },
   };

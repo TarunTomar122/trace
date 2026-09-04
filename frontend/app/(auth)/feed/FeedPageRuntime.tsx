@@ -10,8 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { auth } from '@/lib/firebase';
 import { isAlphaMode } from '@/lib/alpha';
 import {
-  V3UserFeed, FeedItem, TrendingTopic,
-  recordLastActive,
+  type V3UserFeed, type FeedItem, type TrendingTopic,
 } from '@/lib/firestore';
 import { trackFeedViewed } from '@/lib/posthog';
 import FeedFooter from '@/components/FeedFooter';
@@ -291,7 +290,12 @@ function FeedPageContent({ initialFeed }: { initialFeed: V3UserFeed | null }) {
     lastActiveMarkedRef.current = user.uid;
 
     const markLastActive = () => {
-      recordLastActive(user.uid).catch(() => {
+      fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ lastActiveAt: new Date().toISOString() }),
+      }).catch(() => {
         lastActiveMarkedRef.current = null;
       });
     };

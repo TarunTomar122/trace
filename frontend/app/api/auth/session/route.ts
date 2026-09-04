@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { FieldValue } from 'firebase-admin/firestore';
 import { adminAuth, adminFirestore } from '@/lib/firebase-admin';
 import {
   createTraceSession,
@@ -15,8 +16,73 @@ function computeHasAccess(profile: any): boolean {
   return hasActiveSubscription(profile);
 }
 
-type SessionProfileResult =
-  | { status: 'found'; profile: TraceSessionProfile }
+const DEFAULT_WEB_INTERESTS = ['ai', 'products', 'tech', 'startups', 'engineering', 'ux-design'];
+
+async function ensureUserProfile(
+  uid: string,
+  identity: { email: string; displayName: string; photoURL: string | null },
+): Promise<'created' | 'fixed' | 'exists' | 'unavailable'> {
+  if (!adminFirestore) return 'unavailable';
+  try {
+    const ref = adminFirestore.collection('user_profiles').doc(uid);
+    const snap = await ref.get();
+    const now = FieldValue.serverTimestamp();
+    if (!snap.exists) {
+      await ref.set({
+        uid,
+        email: identity.email,
+        displayName: identity.displayName,
+        photoURL: identity.photoURL,
+        signupPlatform: 'web',
+        onboarded: true,
+        name: identity.displayName || '',
+        role: 'developer',
+        company: '',
+        location: '',
+        experienceYears: null,
+        currentWork: {},
+        projects: [],
+        goals: {},
+        learningStyle: '',
+        attentionConstraints: '',
+        motivationTriggers: [],
+        interests: [...DEFAULT_WEB_INTERESTS],
+        hobbies: [],
+        skills: [],
+        dislikedTopics: [],
+        sourcePreferences: { youtube: 8, articles: 8, papers: 1, repos: 1, tweets: 5, discussions: 5 },
+        contentDepth: null,
+        contentPreferences: { likes: [], dislikes: [] },
+        favoriteSources: [],
+        subscriptionStatus: 'none',
+        createdAt: now,
+        updatedAt: now,
+        onboardedAt: now,
+      });
+      return 'created';
+    }
+    // Fix-up for web signups that never completed onboarding (mirrors client).
+    const data = snap.data() || {};
+    if (data.signupPlatform === 'web' && !data.onboarded) {
+      await ref.set({
+        onboarded: true,
+        role: data.role || 'developer',
+        interests: Array.isArray(data.interests) && data.interests.length > 0
+          ? data.interests
+          : [...DEFAULT_WEB_INTERESTS],
+        updatedAt: now,
+        onboardedAt: now,
+      }, { merge: true });
+      return 'fixed';
+    }
+    return 'exists';
+  } catch (error) {
+    console.error('[api/auth/session] ensureUserProfile failed:', error);
+    return 'unavailable';
+  }
+}
+
+type SessionProfileResult =  | { status: 'found'; profile: TraceSessionProfile }
   | { status: 'missing' }
   | { status: 'unavailable' };
 
@@ -55,6 +121,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => null) as {
       idToken?: string;
       forceProfileRefresh?: boolean;
+      email?: string;
+      displayName?: string;
+      photoURL?: string | null;
     } | null;
     const idToken = typeof body?.idToken === 'string' ? body.idToken : '';
     if (!idToken) {
@@ -62,6 +131,17 @@ export async function POST(request: NextRequest) {
     }
 
     const decodedToken = await adminAuth.verifyIdToken(idToken);
+    // Create the profile on sign-in when identity details are provided
+    // (replaces client-side getOrCreateUserProfile). Never fails sign-in.
+    if (body && (typeof body.email === 'string' || typeof body.displayName === 'string')) {
+      await ensureUserProfile(decodedToken.uid, {
+        email: typeof body.email === 'string' ? body.email : (decodedToken.email || ''),
+        displayName: typeof body.displayName === 'string' ? body.displayName : (decodedToken.name || ''),
+        photoURL: body.photoURL === null || typeof body.photoURL === 'string'
+          ? body.photoURL
+          : ((decodedToken as { picture?: string }).picture || null),
+      });
+    }
     const existingCookie = request.cookies.get(TRACE_SESSION_COOKIE_NAME)?.value;
     const existingSession = existingCookie ? verifyTraceSession(existingCookie) : null;
     const existingProfileIsFresh = Boolean(

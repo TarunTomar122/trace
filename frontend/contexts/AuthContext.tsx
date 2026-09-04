@@ -11,7 +11,8 @@ import {
   onAuthStateChanged
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
-import { getOrCreateUserProfile, getUserProfile, syncAffiliateAttributionToProfile, syncUserTimezone, UserProfile } from '@/lib/firestore';
+import type { UserProfile } from '@/lib/firestore';
+import { getLocalLocale, getLocalTimezone } from '@/lib/firestore';
 import { readAffiliateAttribution } from '@/lib/affiliate';
 import { identifyUser, resetUser, trackSignIn, trackSignOut, trackSignUp } from '@/lib/posthog';
 import {
@@ -94,16 +95,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profileFresh, setProfileFresh] = useState(false);
   const [profileRefreshFailed, setProfileRefreshFailed] = useState(false);
 
-  const syncServerSession = async (idToken: string, forceProfileRefresh = false) => {
+  const syncServerSession = async (
+    idToken: string,
+    forceProfileRefresh = false,
+    identity?: { email?: string; displayName?: string; photoURL?: string | null },
+  ) => {
     const response = await fetch('/api/auth/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ idToken, forceProfileRefresh }),
+      body: JSON.stringify({ idToken, forceProfileRefresh, ...identity }),
     });
     if (!response.ok) {
       throw new Error(`Server session sync failed (${response.status})`);
     }
+  };
+
+  const fetchProfileFromApi = async (): Promise<UserProfile | null> => {
+    const response = await fetch('/api/profile', { credentials: 'same-origin' });
+    if (response.status === 401) return null;
+    if (!response.ok) {
+      throw new Error(`Profile fetch failed (${response.status})`);
+    }
+    const body = (await response.json()) as { profile?: UserProfile | null };
+    return body.profile ?? null;
+  };
+
+  const patchProfileViaApi = async (patch: Record<string, unknown>): Promise<void> => {
+    const response = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(patch),
+    });
+    if (!response.ok) {
+      throw new Error(`Profile update failed (${response.status})`);
+    }
+  };
+
+  const syncTimezoneViaApi = async (
+    profile: Pick<UserProfile, 'timezone' | 'locale'> | null
+  ): Promise<void> => {
+    const timezone = getLocalTimezone();
+    const locale = getLocalLocale();
+    if (profile?.timezone === timezone && profile?.locale === locale) return;
+    await patchProfileViaApi({ timezone, locale });
   };
 
   const clearServerSession = async () => {
@@ -116,17 +152,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loadProfile = async (firebaseUser: User, options?: { allowCreate?: boolean }) => {
     const allowCreate = options?.allowCreate ?? true;
     try {
-      const userProfile = allowCreate
-        ? await getOrCreateUserProfile(
-            firebaseUser.uid,
-            firebaseUser.email || '',
-            firebaseUser.displayName || '',
-            firebaseUser.photoURL
-          )
-        : await getUserProfile(firebaseUser.uid);
+      if (allowCreate) {
+        // Server creates the profile when identity details are provided.
+        const idToken = await firebaseUser.getIdToken();
+        await syncServerSession(idToken, false, {
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || '',
+          photoURL: firebaseUser.photoURL,
+        });
+      }
+      const userProfile = await fetchProfileFromApi();
       if (userProfile !== null) {
         setProfile(userProfile);
-        void syncUserTimezone(firebaseUser.uid, userProfile);
+        void syncTimezoneViaApi(userProfile).catch(() => null);
         writeAuthSessionCache(firebaseUser, userProfile);
       } else {
         setProfile(null);
@@ -147,7 +185,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const attribution = readAffiliateAttribution();
     if (!attribution?.code) return;
     try {
-      await syncAffiliateAttributionToProfile(uid, attribution);
+      await patchProfileViaApi({
+        affiliateCode: attribution.code,
+        affiliateLandingPath: attribution.landingPath || null,
+        utmSource: attribution.utmSource || null,
+        utmCampaign: attribution.utmCampaign || null,
+        utmMedium: attribution.utmMedium || null,
+      });
       setProfile((prev) => prev ? {
         ...prev,
         affiliateCode: attribution.code,
@@ -166,10 +210,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfileFresh(false);
     setProfileRefreshFailed(false);
     try {
-      const p = await getUserProfile(user.uid);
+      const p = await fetchProfileFromApi();
       setProfile(p);
       if (p) {
-        void syncUserTimezone(user.uid, p);
+        void syncTimezoneViaApi(p).catch(() => null);
         writeAuthSessionCache(user, p);
       } else {
         clearAuthSessionCache();
