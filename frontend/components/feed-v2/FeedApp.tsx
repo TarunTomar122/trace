@@ -127,6 +127,26 @@ function fmtReach(n: number): string {
   return String(n);
 }
 
+const SORT_STORAGE_KEY = 'trace_feed_sort_v1';
+
+function readStoredSort(): null | 'top' | 'recent' {
+  try {
+    if (typeof window === 'undefined') return null;
+    const value = window.localStorage.getItem(SORT_STORAGE_KEY);
+    return value === 'top' || value === 'recent' ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeSort(mode: 'top' | 'recent'): void {
+  try {
+    window.localStorage.setItem(SORT_STORAGE_KEY, mode);
+  } catch {
+    // private mode etc. — preference just won't persist
+  }
+}
+
 export default function FeedApp({
   stories, pulse, promoted = [], monthlyReach = 0, generated, serverPro = false,
 }: {
@@ -365,7 +385,6 @@ export default function FeedApp({
   }
   function go(t: string) {
     if (t !== tab) trackFeedFilterChanged(t, tab, { surface: 'feed_v2' });
-    setSortOverride(null);
     setTab(t);
     if (view.story || view.pulse) {
       setView({ story: null, pulse: null });
@@ -453,8 +472,9 @@ export default function FeedApp({
   for (const s of stories) counts[s.cat] = (counts[s.cat] || 0) + 1;
   const cats = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
   const isProfile = tab === 'profile';
-  // sort: Top on Home, Recent elsewhere; toggle overrides until tab changes.
-  const [sortOverride, setSortOverride] = useState<null | 'top' | 'recent'>(null);
+  // sort: Top on Home, Recent elsewhere; the toggle is a persisted preference
+  // (localStorage) that wins over the per-tab default, across tabs + sessions.
+  const [sortOverride, setSortOverride] = useState<null | 'top' | 'recent'>(() => readStoredSort());
   const sortMode = sortOverride ?? (tab === 'all' ? 'top' : 'recent');
   const byRecent = (a: FeedStory, b: FeedStory) => (b.ts || 0) - (a.ts || 0);
   const byTop = (a: FeedStory, b: FeedStory) =>
@@ -466,6 +486,7 @@ export default function FeedApp({
   function setSort(next: 'top' | 'recent') {
     if (next === sortMode) return;
     setSortOverride(next);
+    storeSort(next);
     trackFeedFilterChanged(`sort:${next}`, `sort:${sortMode}`, { surface: 'feed_v2' });
   }
   const open = storyParam ? stories.find((s) => s.id === storyParam) || null : null;
@@ -1097,8 +1118,22 @@ function PulseFeed({ items, title, mode, onOpen, marks, toggleMark, share }: {
           <article
             key={t.id}
             className="post"
-            onClick={mode === 'detail' && onOpen ? () => onOpen(t) : undefined}
-            style={mode === 'detail' && onOpen ? { cursor: 'pointer' } : undefined}
+            onClick={
+              mode === 'detail' && onOpen
+                ? () => onOpen(t)
+                : mode === 'inline' && t.url
+                  ? (e) => {
+                      // The title link already opens a tab; don't open a second one.
+                      if ((e.target as HTMLElement).closest('a')) return;
+                      window.open(t.url, '_blank', 'noopener,noreferrer');
+                    }
+                  : undefined
+            }
+            style={
+              (mode === 'detail' && onOpen) || (mode === 'inline' && t.url)
+                ? { cursor: 'pointer' }
+                : undefined
+            }
           >
             <div className="post-meta">
               {domainOf(t.url) ? (
