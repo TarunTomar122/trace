@@ -1,14 +1,14 @@
+import { OG_LOGO_DATA_URL, OG_SHOT_DATA_URL } from './og-assets';
+
 const INK = '#1b1a17';
 const CREAM = '#f4f1e8';
 
-const SITE = 'https://www.yourtrace.online';
-
-// og-app-shot.png is 2934x1936; rendered at 980 wide it is 646 tall.
+// og-app-shot is 1960x1293 (2x of the 980x646 slot below).
 const SHOT_W = 980;
 const SHOT_H = 646;
 
 /** Share card in the style of a product launch post: logo, hook, real app shot in a browser frame. */
-export function OgShareImageBody({ assetBase = SITE }: { assetBase?: string }) {
+export function OgShareImageBody() {
   return (
     <div
       style={{
@@ -25,7 +25,7 @@ export function OgShareImageBody({ assetBase = SITE }: { assetBase?: string }) {
     >
       <div style={{ display: 'flex', alignItems: 'center' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={`${assetBase}/trace-logo.png`} alt="" width={28} height={28} />
+        <img src={OG_LOGO_DATA_URL} alt="" width={28} height={28} />
         <span style={{ marginLeft: 12, fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em' }}>
           Trace
         </span>
@@ -35,7 +35,7 @@ export function OgShareImageBody({ assetBase = SITE }: { assetBase?: string }) {
         style={{
           marginTop: 12,
           fontSize: 44,
-          fontWeight: 800,
+          fontWeight: 700,
           lineHeight: 1.05,
           letterSpacing: '-0.03em',
           textAlign: 'center',
@@ -92,7 +92,7 @@ export function OgShareImageBody({ assetBase = SITE }: { assetBase?: string }) {
         </div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-          <img src={`${assetBase}/og-app-shot.png`} alt="" width={SHOT_W} height={SHOT_H} />
+          <img src={OG_SHOT_DATA_URL} alt="" width={SHOT_W} height={SHOT_H} />
         </div>
       </div>
     </div>
