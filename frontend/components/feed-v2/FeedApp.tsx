@@ -372,6 +372,7 @@ export default function FeedApp({
     if (mainRef.current) savedScroll.current = mainRef.current.scrollTop;
     setView({ story: s.id, pulse: null });
     window.history.pushState(null, '', `${base()}?story=${encodeURIComponent(s.id)}`);
+    trackFeedItemClicked(s.id, 'story', s.source || '');
     trackSummaryOpened(s.id, pro, {
       surface: 'feed_v2', item_type: 'story', source: s.source,
       position: s.rank, sources_count: s.sources.length,
@@ -381,6 +382,7 @@ export default function FeedApp({
     if (mainRef.current) savedScroll.current = mainRef.current.scrollTop;
     setView({ story: null, pulse: t.id });
     window.history.pushState(null, '', `${base()}?pulse=${encodeURIComponent(t.id)}`);
+    trackFeedItemClicked(t.id, 'pulse', t.source || '');
     trackSummaryOpened(t.id, pro, {
       surface: 'feed_v2', item_type: 'pulse', source: t.source,
     });
