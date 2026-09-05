@@ -1,8 +1,11 @@
 const INK = '#1b1a17';
 const CREAM = '#f4f1e8';
-const BLUE = '#2557d6';
 
 const SITE = 'https://www.yourtrace.online';
+
+// og-app-shot.png is 2934x1936; rendered at 980 wide it is 646 tall.
+const SHOT_W = 980;
+const SHOT_H = 646;
 
 /** Share card in the style of a product launch post: logo, hook, real app shot in a browser frame. */
 export function OgShareImageBody({ assetBase = SITE }: { assetBase?: string }) {
@@ -16,24 +19,24 @@ export function OgShareImageBody({ assetBase = SITE }: { assetBase?: string }) {
         alignItems: 'center',
         backgroundColor: CREAM,
         color: INK,
-        paddingTop: 32,
+        paddingTop: 30,
+        overflow: 'hidden',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={`${assetBase}/trace-logo.png`} alt="" width={30} height={30} />
-        <span style={{ marginLeft: 12, fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em' }}>
+        <img src={`${assetBase}/trace-logo.png`} alt="" width={28} height={28} />
+        <span style={{ marginLeft: 12, fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em' }}>
           Trace
         </span>
       </div>
 
       <div
         style={{
-          marginTop: 14,
-          maxWidth: 1020,
-          fontSize: 54,
+          marginTop: 12,
+          fontSize: 44,
           fontWeight: 800,
-          lineHeight: 1.04,
+          lineHeight: 1.05,
           letterSpacing: '-0.03em',
           textAlign: 'center',
         }}
@@ -43,12 +46,13 @@ export function OgShareImageBody({ assetBase = SITE }: { assetBase?: string }) {
 
       <div
         style={{
-          marginTop: 22,
-          width: 980,
+          marginTop: 18,
+          width: SHOT_W,
+          flex: 1,
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: '#fff',
-          borderRadius: 16,
+          borderRadius: '16px 16px 0 0',
           overflow: 'hidden',
           boxShadow: '0 24px 70px rgba(27, 26, 23, 0.18)',
         }}
@@ -57,7 +61,7 @@ export function OgShareImageBody({ assetBase = SITE }: { assetBase?: string }) {
           style={{
             display: 'flex',
             alignItems: 'center',
-            height: 42,
+            height: 40,
             backgroundColor: '#f7f5ef',
             borderBottom: '1px solid #e7e2d5',
             padding: '0 18px',
@@ -73,7 +77,7 @@ export function OgShareImageBody({ assetBase = SITE }: { assetBase?: string }) {
               margin: '0 auto',
               display: 'flex',
               alignItems: 'center',
-              height: 26,
+              height: 25,
               padding: '0 22px',
               borderRadius: 9999,
               backgroundColor: '#fff',
@@ -87,7 +91,9 @@ export function OgShareImageBody({ assetBase = SITE }: { assetBase?: string }) {
           <div style={{ width: 52 }} />
         </div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={`${assetBase}/og-app-shot.png`} alt="" width={980} height={358} />
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+          <img src={`${assetBase}/og-app-shot.png`} alt="" width={SHOT_W} height={SHOT_H} />
+        </div>
       </div>
     </div>
   );
