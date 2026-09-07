@@ -51,7 +51,7 @@ from v3.lib.diversity import (  # noqa: E402
 
 CONFIG_PATH = "v3/config/trending_sources.json"
 DEFAULT_LIMIT_PER_SOURCE = 10
-DEFAULT_MAX_AGE_HOURS = 4
+DEFAULT_MAX_AGE_HOURS = 12
 DEFAULT_MAX_FEED_ITEMS = 24
 DEFAULT_DISCOVERY_TOPICS = [
     "openai",
