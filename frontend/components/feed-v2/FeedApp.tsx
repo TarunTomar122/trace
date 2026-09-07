@@ -148,6 +148,34 @@ function storeSort(mode: 'top' | 'recent'): void {
   }
 }
 
+const READ_STORAGE_KEY = 'trace_feed_read_v1';
+
+function todayKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function readStoredReads(): Set<string> {
+  try {
+    if (typeof window === 'undefined') return new Set();
+    const raw = window.localStorage.getItem(READ_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as { date?: string; ids?: string[] };
+    if (parsed.date !== todayKey() || !Array.isArray(parsed.ids)) return new Set();
+    return new Set(parsed.ids);
+  } catch {
+    return new Set();
+  }
+}
+
+function storeReads(ids: Set<string>): void {
+  try {
+    window.localStorage.setItem(READ_STORAGE_KEY, JSON.stringify({ date: todayKey(), ids: [...ids].slice(-200) }));
+  } catch {
+    // private mode etc. — read state just won't persist
+  }
+}
+
 export default function FeedApp({
   stories, pulse, promoted = [], monthlyReach = 0, generated, serverPro = false,
   initialStoryId = null, unlockedId = null,
@@ -187,6 +215,7 @@ export default function FeedApp({
 
   const [tab, setTab] = useState<string>('all');
   const [marks, setMarks] = useState<Set<string>>(new Set());
+  const [readIds, setReadIds] = useState<Set<string>>(() => readStoredReads());
   const [toast, setToast] = useState<string | null>(null);
   const mainRef = useRef<HTMLElement | null>(null);
   const carouselRef = useRef<HTMLDivElement | null>(null);
@@ -371,6 +400,13 @@ export default function FeedApp({
   function openStory(s: FeedStory) {
     if (mainRef.current) savedScroll.current = mainRef.current.scrollTop;
     setView({ story: s.id, pulse: null });
+    setReadIds((cur) => {
+      if (cur.has(s.id)) return cur;
+      const next = new Set(cur);
+      next.add(s.id);
+      storeReads(next);
+      return next;
+    });
     window.history.pushState(null, '', `${base()}?story=${encodeURIComponent(s.id)}`);
     trackFeedItemClicked(s.id, 'story', s.source || '');
     trackSummaryOpened(s.id, pro, {
@@ -510,6 +546,9 @@ export default function FeedApp({
   const markedStories = stories.filter((s) => marks.has(s.id));
   const markedPulse = allPulse.filter((t) => marks.has(t.id));
 
+  // "caught up" when every story in the current list has been opened today.
+  const caughtUp = full.length > 0 && full.every((s) => readIds.has(s.id));
+
   // feed viewed (once per mount) + paywall impression (once per session).
   const viewedRef = useRef(false);
   const paywallRef = useRef(false);
@@ -527,6 +566,20 @@ export default function FeedApp({
 
   // detail view open? (URL-driven)
   const detailOpen = !!open || !!openPulse;
+
+  // Viewing a story counts as reading it — covers shared links and
+  // back-button restores too, not just taps in the list.
+  const openStoryId = open ? open.id : null;
+  useEffect(() => {
+    if (!openStoryId) return;
+    setReadIds((cur) => {
+      if (cur.has(openStoryId)) return cur;
+      const next = new Set(cur);
+      next.add(openStoryId);
+      storeReads(next);
+      return next;
+    });
+  }, [openStoryId]);
 
   // tools carousel cards (rendered twice for a seamless infinite loop).
   const toolCards = (dup: string) => (
@@ -801,6 +854,14 @@ export default function FeedApp({
                   ))}
                   <PaywallPlate what="the full ranked feed" lockedCount={locked.length} />
                 </>
+              )}
+
+              {caughtUp && (
+                <div className="caught-up">
+                  <span className="caught-up-badge"><Check size={18} /></span>
+                  <p className="caught-up-title">You&rsquo;re all caught up</p>
+                  <p className="caught-up-sub">You read all the good stuff. Check back in a few hours for the next refresh.</p>
+                </div>
               )}
             </div>
           </>
@@ -1916,6 +1977,10 @@ const css = `
 .xw .empty { padding: 56px 24px; text-align: center; }
 .xw .empty-title { margin: 0 0 6px; font-size: 21px; font-weight: 800; }
 .xw .empty-sub { margin: 0; font-size: 15px; color: var(--text-2); }
+.xw .caught-up { margin: 10px 0 30px; padding: 38px 24px; text-align: center; border: 1px solid var(--line); border-radius: 18px; background: var(--bg); }
+.xw .caught-up-badge { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 9999px; background: var(--blue); color: #fff; margin-bottom: 12px; }
+.xw .caught-up-title { margin: 0 0 6px; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+.xw .caught-up-sub { margin: 0; font-size: 14px; color: var(--text-2); }
 .xw .toast {
   position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
   background: #0f1419; color: #fff; font-size: 14px; font-weight: 600;
