@@ -1,0 +1,120 @@
+name: Apply Feed Scroll Fix
+
+on:
+  push:
+    branches:
+      - fix/vercel-build-20260908
+    paths:
+      - .github/workflows/feed-scroll-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/feed-tab-scroll
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Apply exact navigation patch
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/components/feed-v2/FeedApp.tsx')
+          source = p.read_text()
+          old = """  function go(t: string) {
+              if (t !== tab) trackFeedFilterChanged(t, tab, { surface: 'feed_v2' });
+              setTab(t);
+              if (view.story || view.pulse) {
+                setView({ story: null, pulse: null });
+                window.history.replaceState(null, '', base());
+              }
+            }"""
+          # Preserve the exact indentation of the existing source.
+          old = '\n'.join(line[6:] for line in old.splitlines())
+          new = """  function go(t: string) {
+            if (t !== tab) {
+              trackFeedFilterChanged(t, tab, { surface: 'feed_v2' });
+              // All tabs share .main. A new tab starts at its own top, not
+              // the previous tab's scroll position. Discard any saved detail
+              // position so the restoration effect cannot undo this reset.
+              savedScroll.current = 0;
+              if (mainRef.current) mainRef.current.scrollTop = 0;
+            }
+            setTab(t);
+            if (view.story || view.pulse) {
+              setView({ story: null, pulse: null });
+              window.history.replaceState(null, '', base());
+            }
+          }"""
+          new = '\n'.join(line[2:] for line in new.splitlines())
+          assert source.count(old) == 1, 'Expected exactly one original tab handler'
+          p.write_text(source.replace(old, new, 1))
+          PY
+          git diff --check
+          git diff -- frontend/components/feed-v2/FeedApp.tsx
+      - name: Regression checks for tab navigation
+        run: |
+          node <<'JS'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const src = fs.readFileSync('frontend/components/feed-v2/FeedApp.tsx', 'utf8');
+          const match = src.match(/  function go\(t: string\) \{[\s\S]*?\n  \}\n\n  function share/);
+          assert.ok(match, 'Tab handler not found');
+          const code = match[0].replace(/\n\n  function share$/, '').replace('t: string', 't');
+          function run({ tab, next, scroll = 450, saved = 200, story = null, pulse = null }) {
+            const main = { scrollTop: scroll };
+            const savedScroll = { current: saved };
+            const calls = [];
+            const context = {
+              tab, view: { story, pulse }, mainRef: { current: main }, savedScroll,
+              trackFeedFilterChanged: (...args) => calls.push(['track', ...args]),
+              setTab: value => calls.push(['tab', value]),
+              setView: value => calls.push(['view', value]),
+              window: { history: { replaceState: () => calls.push(['history']) } },
+              base: () => '/feed',
+            };
+            vm.runInNewContext(code + '\ngo(' + JSON.stringify(next) + ')', context);
+            return { main, savedScroll, calls };
+          }
+          for (const next of ['all', 'ai', 'conversations', 'reading', 'bookmarks', 'profile']) {
+            const result = run({ tab: 'all', next });
+            if (next !== 'all') {
+              assert.equal(result.main.scrollTop, 0, next);
+              assert.equal(result.savedScroll.current, 0, next);
+            } else {
+              assert.equal(result.main.scrollTop, 450);
+              assert.equal(result.savedScroll.current, 200);
+            }
+          }
+          const detail = run({ tab: 'all', next: 'conversations', story: '123' });
+          assert.equal(detail.main.scrollTop, 0);
+          assert.equal(detail.savedScroll.current, 0);
+          assert.ok(detail.calls.some(call => call[0] === 'view'));
+          console.log('Tab-switch and detail-restoration regression checks passed');
+          JS
+      - name: Install and build frontend
+        working-directory: frontend
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Commit verified fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/components/feed-v2/FeedApp.tsx
+          git commit -m 'fix: reset feed scroll when switching tabs'
+          git push origin HEAD:refs/heads/fix/feed-tab-scroll
+          echo "Verified commit: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
