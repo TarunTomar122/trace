@@ -39,24 +39,24 @@ jobs:
                 window.history.replaceState(null, '', base());
               }
             }"""
-          # Preserve the exact indentation of the existing source.
-          old = '\n'.join(line[6:] for line in old.splitlines())
+          # Normalize the indented YAML literal to the exact source block.
+          old = old.replace('\n              ', '\n    ').replace('\n                ', '\n      ').replace('\n            }', '\n  }')
           new = """  function go(t: string) {
-            if (t !== tab) {
-              trackFeedFilterChanged(t, tab, { surface: 'feed_v2' });
-              // All tabs share .main. A new tab starts at its own top, not
-              // the previous tab's scroll position. Discard any saved detail
-              // position so the restoration effect cannot undo this reset.
-              savedScroll.current = 0;
-              if (mainRef.current) mainRef.current.scrollTop = 0;
-            }
-            setTab(t);
-            if (view.story || view.pulse) {
-              setView({ story: null, pulse: null });
-              window.history.replaceState(null, '', base());
-            }
-          }"""
-          new = '\n'.join(line[2:] for line in new.splitlines())
+              if (t !== tab) {
+                trackFeedFilterChanged(t, tab, { surface: 'feed_v2' });
+                // All tabs share .main. A new tab starts at its own top, not
+                // the previous tab's scroll position. Discard any saved detail
+                // position so the restoration effect cannot undo this reset.
+                savedScroll.current = 0;
+                if (mainRef.current) mainRef.current.scrollTop = 0;
+              }
+              setTab(t);
+              if (view.story || view.pulse) {
+                setView({ story: null, pulse: null });
+                window.history.replaceState(null, '', base());
+              }
+            }"""
+          new = new.replace('\n              ', '\n    ').replace('\n                ', '\n      ').replace('\n            }', '\n  }')
           assert source.count(old) == 1, 'Expected exactly one original tab handler'
           p.write_text(source.replace(old, new, 1))
           PY
