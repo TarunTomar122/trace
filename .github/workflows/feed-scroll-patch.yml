@@ -31,32 +31,33 @@ jobs:
           from pathlib import Path
           p = Path('frontend/components/feed-v2/FeedApp.tsx')
           source = p.read_text()
-          old = """  function go(t: string) {
-              if (t !== tab) trackFeedFilterChanged(t, tab, { surface: 'feed_v2' });
-              setTab(t);
-              if (view.story || view.pulse) {
-                setView({ story: null, pulse: null });
-                window.history.replaceState(null, '', base());
-              }
-            }"""
-          # Normalize the indented YAML literal to the exact source block.
-          old = old.replace('\n              ', '\n    ').replace('\n                ', '\n      ').replace('\n            }', '\n  }')
-          new = """  function go(t: string) {
-              if (t !== tab) {
-                trackFeedFilterChanged(t, tab, { surface: 'feed_v2' });
-                // All tabs share .main. A new tab starts at its own top, not
-                // the previous tab's scroll position. Discard any saved detail
-                // position so the restoration effect cannot undo this reset.
-                savedScroll.current = 0;
-                if (mainRef.current) mainRef.current.scrollTop = 0;
-              }
-              setTab(t);
-              if (view.story || view.pulse) {
-                setView({ story: null, pulse: null });
-                window.history.replaceState(null, '', base());
-              }
-            }"""
-          new = new.replace('\n              ', '\n    ').replace('\n                ', '\n      ').replace('\n            }', '\n  }')
+          old = '\n'.join([
+              '  function go(t: string) {',
+              "    if (t !== tab) trackFeedFilterChanged(t, tab, { surface: 'feed_v2' });",
+              '    setTab(t);',
+              '    if (view.story || view.pulse) {',
+              '      setView({ story: null, pulse: null });',
+              "      window.history.replaceState(null, '', base());",
+              '    }',
+              '  }',
+          ])
+          new = '\n'.join([
+              '  function go(t: string) {',
+              '    if (t !== tab) {',
+              "      trackFeedFilterChanged(t, tab, { surface: 'feed_v2' });",
+              '      // All tabs share .main. A new tab starts at its own top, not',
+              "      // the previous tab's scroll position. Discard any saved detail",
+              '      // position so the restoration effect cannot undo this reset.',
+              '      savedScroll.current = 0;',
+              '      if (mainRef.current) mainRef.current.scrollTop = 0;',
+              '    }',
+              '    setTab(t);',
+              '    if (view.story || view.pulse) {',
+              '      setView({ story: null, pulse: null });',
+              "      window.history.replaceState(null, '', base());",
+              '    }',
+              '  }',
+          ])
           assert source.count(old) == 1, 'Expected exactly one original tab handler'
           p.write_text(source.replace(old, new, 1))
           PY
