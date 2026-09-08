@@ -428,7 +428,14 @@ export default function FeedApp({
     window.history.replaceState(null, '', base());
   }
   function go(t: string) {
-    if (t !== tab) trackFeedFilterChanged(t, tab, { surface: 'feed_v2' });
+    if (t !== tab) {
+      trackFeedFilterChanged(t, tab, { surface: 'feed_v2' });
+      // All tabs share .main. A new tab starts at its own top, not
+      // the previous tab's scroll position. Discard any saved detail
+      // position so the restoration effect cannot undo this reset.
+      savedScroll.current = 0;
+      if (mainRef.current) mainRef.current.scrollTop = 0;
+    }
     setTab(t);
     if (view.story || view.pulse) {
       setView({ story: null, pulse: null });
