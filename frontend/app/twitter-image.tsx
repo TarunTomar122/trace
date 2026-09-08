@@ -2,7 +2,9 @@ import { ImageResponse } from 'next/og';
 import { OgShareImageBody } from './og-share-image-body';
 import { OG_FONT_BOLD_B64, OG_FONT_REGULAR_B64 } from './og-fonts';
 
-export const runtime = 'edge';
+// Keep both share-image routes on Node.js so embedded assets do not
+// exceed the Edge Function size limit.
+export const runtime = 'nodejs';
 
 export const alt = 'Trace — A feed for builders';
 
