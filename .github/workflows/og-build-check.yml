@@ -1,0 +1,38 @@
+name: OG Image Build Check
+
+on:
+  push:
+    branches:
+      - fix/vercel-build-20260908
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      - name: Verify metadata image route runtimes
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          for (const route of ['opengraph-image', 'twitter-image']) {
+            const manifest = JSON.parse(fs.readFileSync(`.next/server/app/${route}/route.js.nft.json`, 'utf8'));
+            if (!manifest.files) throw new Error(`Missing trace for ${route}`);
+          }
+          NODE
