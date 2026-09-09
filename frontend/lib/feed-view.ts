@@ -15,12 +15,27 @@ const getCachedFeed = unstable_cache(
     const { adminFirestore } = await import('@/lib/firebase-admin');
     if (!adminFirestore) return null;
     const ref = adminFirestore.collection('v3_user_feeds').doc('_global').collection('daily');
-    const snap = await ref.orderBy('__name__', 'desc').limit(2).get();
+    const snap = await ref.orderBy('__name__', 'desc').limit(5).get();
+    let picked: { date: string; data: Doc } | null = null;
+    let pulseDoc: Doc | null = null;
+    const hasPulse = (data: Doc) => {
+      const dev = data.daily_pulse_roles?.developer;
+      return Boolean(dev && ((dev.tools || []).length > 0 || (dev.discussions || []).length > 0 || (dev.blogs || []).length > 0));
+    };
     for (const doc of snap.docs) {
       const data = doc.data();
-      if ((data.trending || []).length > 0) return { date: doc.id, data };
+      if (!picked && (data.trending || []).length > 0) picked = { date: doc.id, data };
+      if (!pulseDoc && hasPulse(data)) pulseDoc = data;
+      if (picked && pulseDoc) break;
     }
-    return null;
+    if (!picked) return null;
+    // After midnight the new day's doc has trending long before the
+    // 3-hourly pulse merges its sections in — backfill pulse from the
+    // newest doc that has it (same as mobile's snapshot merge).
+    if (pulseDoc && pulseDoc !== picked.data && !hasPulse(picked.data)) {
+      picked = { date: picked.date, data: { ...picked.data, daily_pulse_roles: pulseDoc.daily_pulse_roles } };
+    }
+    return picked;
   },
   ['global-feed'],
   { revalidate: 300 },
