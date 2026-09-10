@@ -18,7 +18,7 @@ const EVENT_ALIASES = {
   onboarding: ['onboarding_completed'],
   feedOpened: ['feed_viewed'],
   storyOpened: ['feed_item_clicked', 'summary_opened'],
-  subscription: ['subscription_started', 'purchase_completed'],
+  subscription: ['subscription_started', 'purchase_completed', 'payment_succeeded', 'subscription_payment_succeeded'],
 };
 
 function asNumber(value: unknown): number {
