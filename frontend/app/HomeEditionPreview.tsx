@@ -2,10 +2,12 @@
 
 import { useMemo } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Bookmark } from 'lucide-react';
 import { ArticleImage } from '@/components/ArticleImage';
 import type { FeedItem, V3UserFeed } from '@/lib/firestore';
 import { decodeHtmlEntities } from '@/lib/feed-article-text';
+import { trackLandingCTAClicked } from '@/lib/posthog';
 
 type DemoStory = {
   id: string;
@@ -103,7 +105,18 @@ function ChromeDemo({ stories, x = false }: { stories: DemoStory[]; x?: boolean 
         <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {stories.slice(0, 12).map((story, index) => (
             <div key={story.id} className={`h-full ${index >= 8 ? 'hidden lg:block' : index >= 4 ? 'hidden sm:block' : ''}`}>
-              <StoryCard story={story} compact x={x} />
+              {x ? (
+                <Link
+                  href={`/story/${story.id}`}
+                  prefetch={false}
+                  className="block h-full"
+                  onClick={() => trackLandingCTAClicked('read', 'demo_card', { destination: 'story', story_id: story.id })}
+                >
+                  <StoryCard story={story} compact x={x} />
+                </Link>
+              ) : (
+                <StoryCard story={story} compact x={x} />
+              )}
             </div>
           ))}
         </div>
