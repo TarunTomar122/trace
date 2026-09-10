@@ -12,6 +12,12 @@ type Experiment = {
   variants?: Array<{ name: string; allocation?: number }>;
   updatedAt?: string;
 };
+type Snapshot = {
+  capturedAt?: string;
+  periodDays?: number;
+  eventBreakdown?: unknown[][];
+  dailyFunnel?: unknown[][];
+};
 
 const EVENT_ALIASES = {
   signups: ['user_signed_up', 'user_signed_up'],
@@ -71,10 +77,13 @@ export async function GET(request: NextRequest) {
 
   const db = localFirestoreFromEnv();
   let experiments: Experiment[] = [];
+  let latestSnapshot: Snapshot | null = null;
   if (db) {
     try {
-      const snapshot = await db.collection('control_plane_experiments').limit(100).get();
-      experiments = snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() || {}) } as Experiment));
+      const experimentSnapshot = await db.collection('control_plane_experiments').limit(100).get();
+      experiments = experimentSnapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() || {}) } as Experiment));
+      const metricsSnapshot = await db.collection('control_plane_metrics').document('latest').get();
+      latestSnapshot = (metricsSnapshot.data() || null) as Snapshot | null;
     } catch (error) {
       warnings.push(error instanceof Error ? error.message : 'LocalDB experiments unavailable');
     }
@@ -93,6 +102,7 @@ export async function GET(request: NextRequest) {
     generatedAt: new Date().toISOString(),
     periodDays: days,
     configured: { posthog: Boolean(process.env.POSTHOG_PERSONAL_API_KEY), localdb: Boolean(db) },
+    persistedSnapshot: latestSnapshot ? { capturedAt: latestSnapshot.capturedAt, periodDays: latestSnapshot.periodDays } : null,
     warnings,
     northStar: { name: 'Paid subscriptions', value: subscriptionUsers, unit: 'unique users' },
     funnel: [

@@ -8,6 +8,7 @@ type Summary = {
   generatedAt: string;
   periodDays: number;
   configured: { posthog: boolean; localdb: boolean };
+  persistedSnapshot: { capturedAt?: string; periodDays?: number } | null;
   warnings: string[];
   northStar: { name: string; value: number; unit: string };
   funnel: FunnelRow[];
@@ -102,7 +103,7 @@ export default function ControlPlanePage() {
     <main className={styles.shell}>
       <header className={styles.header}>
         <div><div className={styles.eyebrow}>TRACE / CONTROL PLANE</div><h1>The product loop</h1><p>Is Trace earning a place in someone’s day?</p></div>
-        <div className={styles.headerActions}><span>Updated {new Date(summary.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span><button onClick={() => void loadSummary()} className={styles.refresh}>Refresh</button><button onClick={() => void logout()} className={styles.logout}>Lock</button></div>
+        <div className={styles.headerActions}><span>Updated {summary.persistedSnapshot?.capturedAt ? new Date(summary.persistedSnapshot.capturedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</span><button onClick={() => void loadSummary()} className={styles.refresh}>Refresh</button><button onClick={() => void logout()} className={styles.logout}>Lock</button></div>
       </header>
 
       {summary.warnings.length > 0 && <section className={styles.notice}><strong>Needs wiring</strong><span>{summary.warnings.join(' ')}</span></section>}
