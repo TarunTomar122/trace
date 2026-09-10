@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import HomeEditionPreview from '@/app/HomeEditionPreview';
+import LandingCtaLink from '@/app/LandingCtaLink';
 import Footer from '@/components/Footer';
 import { adminFirestore } from '@/lib/firebase-admin';
 
@@ -133,7 +134,7 @@ export default async function LandingScreen() {
             <a href="/how-it-works">How it works</a>
             <Link href="/subscribe">Pricing</Link>
             <a href="/blog">Blog</a>
-            <Link href="/feed" className="nav-cta">Open the feed</Link>
+            <LandingCtaLink href="/feed" location="nav" className="nav-cta">Open the feed</LandingCtaLink>
           </nav>
         </div>
       </header>
@@ -144,7 +145,7 @@ export default async function LandingScreen() {
           Tech news from multiple sources, grouped, summarized, and ranked in one feed.
         </p>
         <div className="hero-ctas">
-          <Link href="/feed" className="btn-primary">Open the feed</Link>
+          <LandingCtaLink href="/feed" location="hero" className="btn-primary">Open the feed</LandingCtaLink>
           <a href={CHROME_EXTENSION_URL} target="_blank" rel="noreferrer" className="btn-ghost">Add Chrome Extension</a>
         </div>
 
@@ -159,13 +160,13 @@ export default async function LandingScreen() {
 
       <section className="section" id="demo">
         <h2 className="section-title">Your next Chrome tab</h2>
-        <p className="section-sub">This is the actual feed, live. Ranked, summarized, and yours.</p>
+        <p className="section-sub">This is the actual feed, live. Tap any story to start reading.</p>
         <div className="demo-wrap">
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           <HomeEditionPreview feed={editionFeed} variant="x" />
         </div>
         <div className="demo-cta">
-          <Link href="/feed" className="btn-primary">Open the live feed</Link>
+          <LandingCtaLink href="/feed" location="demo" className="btn-primary">Open the live feed</LandingCtaLink>
         </div>
       </section>
 
@@ -193,7 +194,7 @@ export default async function LandingScreen() {
             <ul className="plan-list">
               {FREE_FEATURES.map((f) => <li key={f}>{f}</li>)}
             </ul>
-            <Link href="/feed" className="btn-ghost plan-btn">Start reading</Link>
+            <LandingCtaLink href="/feed" location="pricing_free" className="btn-ghost plan-btn">Start reading</LandingCtaLink>
           </article>
           <article className="plan plan-pro">
             <p className="plan-tag">Trace Pro</p>
@@ -201,9 +202,9 @@ export default async function LandingScreen() {
             <ul className="plan-list">
               {PRO_FEATURES.map((f) => <li key={f}>{f}</li>)}
             </ul>
-            <Link href="/subscribe" className="btn-primary plan-btn">
+            <LandingCtaLink href="/subscribe" location="pricing_pro" variant="subscribe" className="btn-primary plan-btn">
               Try Pro free for 3 days
-            </Link>
+            </LandingCtaLink>
           </article>
         </div>
       </section>
@@ -267,7 +268,7 @@ export default async function LandingScreen() {
         </div>
         <div className="demo-cta" style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
           <Link href="/agents" className="btn-ghost">Agent setup guide</Link>
-          <Link href="/subscribe" className="btn-primary">Get Pro + agent access</Link>
+          <LandingCtaLink href="/subscribe" location="agents" variant="subscribe" className="btn-primary">Get Pro + agent access</LandingCtaLink>
         </div>
       </section>
 
@@ -276,7 +277,7 @@ export default async function LandingScreen() {
           Tomorrow morning, be the person who already knows.
         </h2>
         <div className="hero-ctas">
-          <Link href="/feed" className="btn-primary">Open the feed</Link>
+          <LandingCtaLink href="/feed" location="final" className="btn-primary">Open the feed</LandingCtaLink>
           <a href={ANDROID_URL} target="_blank" rel="noreferrer" className="btn-ghost">Get the Android app</a>
         </div>
       </section>
