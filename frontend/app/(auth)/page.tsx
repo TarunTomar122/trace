@@ -31,6 +31,14 @@ export const metadata: Metadata = {
     description: HOME_PRODUCT_DESCRIPTION,
     url: "https://www.yourtrace.online",
     type: "website",
+    images: [
+      {
+        url: "https://www.yourtrace.online/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Trace AI and technology news feed",
+      },
+    ],
   },
 };
 

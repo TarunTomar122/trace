@@ -16,6 +16,14 @@ export const metadata: Metadata = {
     description: 'Structured tech news, builds, and conversations through one read-only Trace connection.',
     url: 'https://www.yourtrace.online/agents',
     type: 'website',
+    images: [
+      {
+        url: 'https://www.yourtrace.online/opengraph-image',
+        width: 1200,
+        height: 630,
+        alt: 'Trace live tech news for AI agents',
+      },
+    ],
   },
 };
 
