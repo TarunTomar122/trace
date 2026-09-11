@@ -2,8 +2,14 @@ name: Daily Newsletter
 
 on:
   schedule:
-    # Send each opted-in user's personalized brief after the morning feeds finish.
-    - cron: '30 3 * * *'
+    # Send each opted-in user's personalized brief at ~10:30 Europe/Berlin,
+    # after the morning feeds finish. GitHub cron is UTC-only, so we trigger
+    # at both DST offsets and the first step skips the run that lands outside
+    # the 10:00-10:59 local window:
+    #   08:30 UTC = 10:30 CEST (summer)
+    #   09:30 UTC = 10:30 CET  (winter)
+    - cron: '30 8 * * *'
+    - cron: '30 9 * * *'
 
   workflow_dispatch:
     inputs:
@@ -42,17 +48,35 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Check Europe/Berlin send window
+        id: window
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          hour=$(TZ=Europe/Berlin date +%H)
+          if [ "$hour" = "10" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping: Europe/Berlin local hour is ${hour}, target is 10:30."
+          fi
+
       - name: Set up Python
+        if: steps.window.outputs.ready == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
 
       - name: Install dependencies
+        if: steps.window.outputs.ready == 'true'
         run: |
           pip install -r requirements.txt
 
       - name: Run newsletter jobs
+        if: steps.window.outputs.ready == 'true'
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             python -u -m v3.scheduler --jobs ${{ inputs.jobs }} --audience ${{ inputs.audience }}

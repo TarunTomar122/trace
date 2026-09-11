@@ -21,6 +21,9 @@ push notifications. The VPS mirrors feed-building so we can run hotter
 
 - `flock ~/trace/.pipeline.lock` prevents overlap. `RandomizedDelaySec` spreads load.
 - Newsletter sends and push notifications are **not** on VPS timers (Actions owns them until cutover).
+- `daily-newsletter.yml` sends daily at **10:30 Europe/Berlin**, DST-aware:
+  two UTC crons (08:30 / 09:30) plus a local-hour guard that skips the
+  wrong-season run.
 
 ## Coverage enrichment
 
