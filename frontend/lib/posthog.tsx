@@ -269,6 +269,38 @@ export function trackFeedSubscribeDialogShown(properties?: Record<string, unknow
   });
 }
 
+export const LANDING_CTA_EXPERIMENT_ID = "landing_cta_copy_20260911";
+
+export type LandingCtaAssignment = "control" | "variant";
+
+function stableBucket(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) % 100;
+}
+
+export function getLandingCtaAssignment(): LandingCtaAssignment {
+  if (typeof window === "undefined") return "control";
+  const key = `trace_experiment_${LANDING_CTA_EXPERIMENT_ID}`;
+  const existing = window.localStorage.getItem(key);
+  if (existing === "control" || existing === "variant") return existing;
+  const distinctId = posthog.get_distinct_id() || window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+  const assignment: LandingCtaAssignment = stableBucket(distinctId) < 50 ? "control" : "variant";
+  window.localStorage.setItem(key, assignment);
+  return assignment;
+}
+
+export function trackLandingCtaExposure(assignment: LandingCtaAssignment) {
+  posthog.capture("landing_cta_exposure", {
+    surface: "landing",
+    experiment_id: LANDING_CTA_EXPERIMENT_ID,
+    experiment_variant: assignment,
+  });
+}
+
 export function trackLandingCTAClicked(variant: string, location: string, props?: Record<string, unknown>) {
   posthog.capture("landing_cta_clicked", { variant, location, ...props });
 }
