@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveFeedAccess, hasActiveSubscription } from '@/lib/subscription-access';
@@ -528,12 +528,17 @@ export default function FeedApp({
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
+  const feedAlive = useRef(true);
   function flashBurst(id: string) {
+    if (!feedAlive.current) return;
     setBurstId(id);
     if (burstTimer.current) clearTimeout(burstTimer.current);
     burstTimer.current = setTimeout(() => setBurstId((cur) => (cur === id ? null : cur)), 520);
   }
-  useEffect(() => () => { if (burstTimer.current) clearTimeout(burstTimer.current); }, []);
+  useEffect(() => () => {
+    feedAlive.current = false;
+    if (burstTimer.current) clearTimeout(burstTimer.current);
+  }, []);
 
   // First sign-in: send readers through the role/interests step once.
   const onboardRedirected = useRef(false);
@@ -899,15 +904,20 @@ export default function FeedApp({
     trackFeedFilterChanged(`sort:${next}`, `sort:${sortMode}`, { surface: 'feed_v2' });
   }
   // Sliding pill under the active sort option (transitions.dev tabs-sliding).
-  useEffect(() => {
+  // useLayoutEffect so the selected state paints on the first frame.
+  useLayoutEffect(() => {
     const seg = sortSegRef.current;
-    if (!seg) return;
+    if (!seg) {
+      setSortPill(null);
+      return;
+    }
     const measure = () => {
       const active = seg.querySelector('.sort-opt.on') as HTMLElement | null;
       if (!active) return;
       const segRect = seg.getBoundingClientRect();
       const rect = active.getBoundingClientRect();
-      setSortPill({ left: rect.left - segRect.left, width: rect.width });
+      // Absolutely positioned child sits against the padding box, so drop the border.
+      setSortPill({ left: rect.left - segRect.left - seg.clientLeft, width: rect.width });
     };
     measure();
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
@@ -1436,6 +1446,7 @@ export default function FeedApp({
                     <StoryCard
                       key={s.id}
                       story={s}
+                      burst={burstId === s.id}
                       onClick={() => openStory(s)}
                       marked={marks.has(s.id)}
                       onToggleMark={toggleMark}
@@ -2465,13 +2476,13 @@ const css = `
   border: 1px solid var(--line); border-radius: 9999px; padding: 2px;
   background: var(--hover); white-space: nowrap;
 }
-.xw .sort-pill {
+ .xw .sort-pill {
   position: absolute; top: 2px; left: 0; height: calc(100% - 4px);
   border-radius: 9999px; background: #fff;
   box-shadow: 0 1px 3px rgba(15,20,25,0.12);
   z-index: 0; pointer-events: none;
   transition: transform var(--t-fast) var(--ease-smooth-out), width var(--t-fast) var(--ease-smooth-out);
-  will-change: transform, width;
+  will-change: transform;
 }
 .xw .sort-opt {
   position: relative; z-index: 1;
