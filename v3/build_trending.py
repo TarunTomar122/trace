@@ -641,63 +641,128 @@ def _merge_candidate_pairs(clusters: list[dict[str, Any]]) -> list[tuple[int, in
     return pairs
 
 
-def _topic_merge_prompt(clusters: list[dict[str, Any]], pairs: list[tuple[int, int, set[str]]]) -> str:
+def _topic_merge_prompt(
+    clusters: list[dict[str, Any]],
+    pairs: list[tuple[int, int, set[str]]],
+) -> str:
+    """One call, one contract: a partition of the candidate topics.
+
+    The model sees only deterministic candidate topics (those sharing an
+    entity or two specific tokens) and may only group those numbers. It can
+    therefore select merges, never invent them."""
+    candidate_idx = sorted({i for i, _j, _s in pairs} | {j for _i, j, _s in pairs})
     payload = []
-    for i, j, shared in pairs:
-        items_a = sorted(clusters[i].get("items", []) or [], key=lambda x: -float(x.get("_trend_score", 0.0)))
-        items_b = sorted(clusters[j].get("items", []) or [], key=lambda x: -float(x.get("_trend_score", 0.0)))
+    for idx in candidate_idx:
+        items = sorted(
+            clusters[idx].get("items", []) or [],
+            key=lambda x: -float(x.get("_trend_score", 0.0)),
+        )
         payload.append({
-            "pair": [i + 1, j + 1],
-            "a": {
-                "title": _topic_title(clusters[i]),
-                "headlines": [str(x.get("title", ""))[:120] for x in items_a[:3]],
-            },
-            "b": {
-                "title": _topic_title(clusters[j]),
-                "headlines": [str(x.get("title", ""))[:120] for x in items_b[:3]],
-            },
-            "shared_words": sorted(shared),
+            "number": idx + 1,
+            "title": _topic_title(clusters[idx]),
+            "headlines": [str(x.get("title", ""))[:120] for x in items[:3]],
         })
     return (
-        "You are a strict news editor. Each item is a candidate pair of topics from a daily briefing, "
-        "with the words their titles share. Decide for each pair: do they describe the SAME concrete "
-        "real-world event (same actor doing the same specific thing at the same time)?\n"
+        "You are a strict news editor. Below are numbered topics from a daily briefing. "
+        "Group ONLY the topics that describe the SAME concrete real-world event "
+        "(the same actor doing the same specific thing at the same time).\n"
         "Same company, product family, person, or theme is NOT enough: 'OpenAI launches product A' and "
         "'OpenAI launches product B' are different events; 'OpenAI launches X' and 'Amazon boosts "
-        "OpenAI's ads' are different events. When unsure, answer false.\n\n"
-        'Return JSON {"verdicts": [{"pair": [1,4], "same_event": true, "event": "short shared event"}]} '
-        "with exactly one verdict per input pair, in order.\n\n"
-        f"Pairs:\n{json.dumps(payload, ensure_ascii=False)}"
+        "OpenAI's ads' are different events. When unsure, leave the topic ungrouped.\n\n"
+        "Rules: every number may appear in at most one group; a group needs 2+ numbers; "
+        "omit topics that are not part of a same-event group.\n\n"
+        'Return JSON {"groups": [[1, 4], [2, 3]]} or {"groups": []} when no topics describe '
+        "the same event.\n\n"
+        f"Topics:\n{json.dumps(payload, ensure_ascii=False)}"
     )
 
 
-def _merge_group_is_safe(group: list[dict[str, Any]]) -> bool:
-    """Deterministic backstop: a merge only lands when the topics share a
-    named entity or at least two specific tokens."""
-    if len(group) < 2:
-        return False
-    token_sets = [set(cluster.get("tokens", set()) or set()) for cluster in group]
-    if any(not tokens for tokens in token_sets):
-        return False
-    shared = set.intersection(*token_sets)
-    if shared & ENTITY_TOPIC_TOKENS:
-        return True
-    specific = {t for t in shared if len(t) >= 4}
-    return len(specific) >= 2
+def _validated_merge_groups(raw: Any, n_clusters: int) -> list[list[int]] | None:
+    """Normalize a model partition into clean 1-based groups.
+
+    None means the payload is unusable (so it is never cached and the cached
+    value, if any, is ignored). [] means the model validly proposed nothing.
+    The candidate-edge invariant is enforced later, when groups are expanded
+    into merge components."""
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except (TypeError, ValueError):
+            return None
+    if isinstance(raw, list):
+        groups = raw
+    elif isinstance(raw, dict):
+        groups = raw.get("groups")
+    else:
+        return None
+    if not isinstance(groups, list):
+        return None
+    cleaned: list[list[int]] = []
+    for group in groups:
+        if not isinstance(group, list):
+            continue
+        idxs = sorted({
+            int(x)
+            for x in group
+            if isinstance(x, (int, float)) and not isinstance(x, bool)
+        })
+        idxs = [x for x in idxs if 1 <= x <= n_clusters]
+        if len(idxs) >= 2:
+            cleaned.append(idxs)
+    return cleaned
+
+
+def _merge_components(
+    groups: list[list[int]],
+    candidate_set: set[tuple[int, int]],
+) -> list[list[int]]:
+    """Connected components of the deterministic candidate edges the model
+    endorsed. This is the only path a merge can take: an edge that is not a
+    candidate pair cannot connect anything, so the model cannot fabricate a
+    merge, and a 3+-way split folds in one application."""
+    parent: dict[int, int] = {}
+
+    def find(x: int) -> int:
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a: int, b: int) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[rb] = ra
+
+    for group in groups:
+        for a, b in itertools.combinations(sorted(group), 2):
+            if (a - 1, b - 1) in candidate_set:
+                union(a, b)
+
+    components: dict[int, list[int]] = {}
+    for x in parent:
+        components.setdefault(find(x), []).append(x)
+    return [sorted(c) for c in components.values() if len(c) >= 2]
 
 
 def _apply_topic_merges(
     clusters: list[dict[str, Any]],
     merge_groups: list[list[int]],
 ) -> list[dict[str, Any]]:
-    """Apply validated 1-based merge groups, keeping the highest-ranked slot."""
+    """Apply validated 1-based merge groups, keeping the highest-ranked slot.
+
+    Merged topics are finalized exactly like native clusters: token state is
+    unioned and popularity is recomputed with the same scorer, so ranking,
+    featured selection and enrichment treat them identically."""
     merges: list[list[int]] = []
     used: set[int] = set()
     for group in merge_groups:
-        idxs = sorted({int(i) - 1 for i in group if isinstance(i, (int, float))})
+        idxs = sorted({
+            int(i) - 1
+            for i in group
+            if isinstance(i, (int, float)) and not isinstance(i, bool)
+        })
         if len(idxs) < 2 or any(i < 0 or i >= len(clusters) or i in used for i in idxs):
-            continue
-        if not _merge_group_is_safe([clusters[i] for i in idxs]):
             continue
         merges.append(idxs)
         used.update(idxs)
@@ -722,7 +787,7 @@ def _apply_topic_merges(
         combined["tokens"] = tokens
         combined["token_counts"] = token_counts
         combined["consensus_tokens"] = {t for t, cnt in token_counts.items() if cnt >= 2}
-        combined.pop("popularity_score", None)
+        combined["popularity_score"] = _cluster_popularity_score(combined)
         merged_by_root[root] = combined
 
     out: list[dict[str, Any]] = []
@@ -742,18 +807,22 @@ def _merge_related_topics(
     """Fold same-event topic clusters that the deterministic clusterer split.
 
     Recall comes from deterministic candidate pairs (shared entity or two
-    specific tokens); one cheap LLM call classifies each candidate pair as the
-    same concrete event or not. This keeps precision high — the model can only
-    accept a pair, never invent a merge — and a per-fingerprint cache makes the
-    20-minute refreshes free once the topic set settles. Failures keep the
-    original clusters.
+    specific tokens); one cheap LLM call partitions those topics into
+    same-event groups. Every merge path is a deterministic candidate edge, so
+    the model can only select merges, never invent them, and malformed output
+    (bad JSON, truncation, out-of-range groups) is a no-op rather than a crash
+    or a fabricated merge. A per-fingerprint cache keyed by contract version
+    makes the 20-minute refreshes free once the topic set settles.
     """
-    if len(clusters) < 2 or os.getenv("TRENDING_MERGE_AI", "1").strip() == "0":
+    if len(clusters) < 2 or os.getenv("TRENDING_MERGE_AI", "1").strip().lower() in {
+        "0", "false", "off", "no",
+    }:
         return clusters
 
     pairs = _merge_candidate_pairs(clusters)
     if not pairs:
         return clusters
+    candidate_set = {(i, j) for i, j, _shared in pairs}
 
     fingerprint = hashlib.sha256(
         json.dumps(
@@ -768,14 +837,14 @@ def _merge_related_topics(
             sort_keys=True,
         ).encode("utf-8")
     ).hexdigest()[:16]
-    cache_key = f"topic_merge:{fingerprint}"
-    merge_groups: list[list[int]] | None = None
+    cache_key = f"topic_merge:v2:{fingerprint}"
+    groups: list[list[int]] | None = None
 
     cached = store.get_cached_synthesis(cache_key)
-    if isinstance(cached, dict) and isinstance(cached.get("merge_groups"), list):
-        merge_groups = cached["merge_groups"]
+    if isinstance(cached, dict) and cached.get("ok") is True:
+        groups = _validated_merge_groups(cached.get("groups"), len(clusters))
 
-    if merge_groups is None:
+    if groups is None:
         prompt = _topic_merge_prompt(clusters, pairs)
         try:
             if complete is not None:
@@ -800,56 +869,33 @@ def _merge_related_topics(
                     timeout=45,
                     **kwargs,
                 )
+                if getattr(resp.choices[0], "finish_reason", None) == "length":
+                    _log("Topic merge AI response truncated; keeping clusters as-is")
+                    return clusters
                 raw = resp.choices[0].message.content or "{}"
-            parsed = json.loads(raw)
-            verdicts = parsed.get("verdicts")
-            if not isinstance(verdicts, list):
-                return clusters
-            candidate_set = {(i, j) for i, j, _ in pairs}
-            accepted: list[list[int]] = []
-            for verdict in verdicts:
-                if not isinstance(verdict, dict) or not verdict.get("same_event"):
-                    continue
-                pair = verdict.get("pair")
-                if not isinstance(pair, list) or len(pair) != 2:
-                    continue
-                try:
-                    i, j = int(pair[0]), int(pair[1])
-                except (TypeError, ValueError):
-                    continue
-                if i == j or not (1 <= i <= len(clusters) and 1 <= j <= len(clusters)):
-                    continue
-                if (min(i, j) - 1, max(i, j) - 1) not in candidate_set:
-                    continue
-                accepted.append([i, j])
-            merge_groups = accepted
+            groups = _validated_merge_groups(raw, len(clusters))
         except Exception as exc:
             _log(f"Topic merge AI failed: {exc}")
             return clusters
+        if groups is None:
+            _log("Topic merge AI returned an unusable partition; keeping clusters as-is")
+            return clusters
         try:
             store.cache_synthesis(cache_key, {
-                "merge_groups": merge_groups,
+                "groups": groups,
+                "ok": True,
                 "generated_at": datetime.now(timezone.utc).isoformat(),
             })
         except Exception as exc:
             _log(f"Topic merge cache write failed: {exc}")
 
-    # Greedy non-overlapping application, strongest shared-token pair first.
-    ranked = sorted(
-        merge_groups or [],
-        key=lambda g: -len({t for t in _topic_tokens(_topic_title(clusters[int(g[0]) - 1])) & _topic_tokens(_topic_title(clusters[int(g[1]) - 1])) if len(t) >= 4}),
-    )
-    used: set[int] = set()
-    final_groups: list[list[int]] = []
-    for group in ranked:
-        idxs = [int(x) for x in group if isinstance(x, (int, float))]
-        if len(idxs) != 2 or any(x < 1 or x > len(clusters) or (x - 1) in used for x in idxs):
-            continue
-        final_groups.append(idxs)
-        used.update(x - 1 for x in idxs)
+    components = _merge_components(groups, candidate_set)
+    if not components:
+        return clusters
 
-    merged = _apply_topic_merges(clusters, final_groups)
+    merged = _apply_topic_merges(clusters, components)
     if len(merged) < len(clusters):
+        merged.sort(key=lambda c: float(c.get("popularity_score", 0.0)), reverse=True)
         _log(f"Topic merge: {len(clusters)} topics -> {len(merged)} after folding same-event clusters")
     return merged
 

@@ -31,14 +31,21 @@ Actions keeps push notifications plus manual/replay workflows.
 
 ## Topic merge pass
 
-- `v3/build_trending.py::_merge_related_topics` runs **one** `gpt-4o-mini` call
+- `v3/build_trending.py::_merge_related_topics` runs **one** `gpt-5-mini` call
   after topic selection to fold same-event clusters that the deterministic
   token clusterer splits by wording ("slow the pace" vs "pump the brakes").
-- Guarded: a merge only lands when the topics share a named entity or two
-  specific tokens; failures keep the original clusters.
-- Cached per topic+article fingerprint in `v3_synthesis_cache`, so repeated
-  20-minute refreshes are free. `TRENDING_MERGE_AI=0` disables it,
-  `TRENDING_MERGE_MODEL` overrides the model.
+- Contract: the model returns a partition (`{"groups": [[1,4],[2,3]]}`) of the
+  deterministic candidate topics (titles sharing an entity or two specific
+  tokens). Every applied merge must be a candidate edge, so the model can only
+  select merges — never invent one — and 3+-way splits fold in one pass.
+- Malformed output (bad JSON, truncated response, out-of-range numbers) is a
+  no-op that keeps the deterministic clusters; merged topics recompute
+  `popularity_score` with the native scorer so ranking and enrichment treat
+  them identically.
+- Cached per topic+article fingerprint under `topic_merge:v2:` in
+  `v3_synthesis_cache`, so repeated 20-minute refreshes are free once the topic
+  set settles. `TRENDING_MERGE_AI=0|false|off|no` disables it;
+  `TRENDING_MERGE_MODEL` overrides the model (default `gpt-5-mini`).
 
 ## Coverage enrichment
 
