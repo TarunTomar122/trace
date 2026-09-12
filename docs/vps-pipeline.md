@@ -36,12 +36,15 @@ Actions keeps push notifications plus manual/replay workflows.
   token clusterer splits by wording ("slow the pace" vs "pump the brakes").
 - Contract: the model returns a partition (`{"groups": [[1,4],[2,3]]}`) of the
   deterministic candidate topics (titles sharing an entity or two specific
-  tokens). Every applied merge must be a candidate edge, so the model can only
-  select merges — never invent one — and 3+-way splits fold in one pass.
-- Malformed output (bad JSON, truncated response, out-of-range numbers) is a
-  no-op that keeps the deterministic clusters; merged topics recompute
-  `popularity_score` with the native scorer so ranking and enrichment treat
-  them identically.
+  tokens). Every applied merge connection must be a candidate edge, so the
+  model can only select merges — never invent one — and 3+-way splits fold in
+  one pass. Multi-topic groups are connected components: a group can chain
+  candidate edges (A-B and B-C merge A and C even without a direct signal).
+- Malformed output (bad JSON, truncated response, unusable groups) is a no-op
+  that keeps the deterministic clusters and is never cached; a valid empty
+  partition is cached. Merged topics recompute `popularity_score` with the
+  native scorer and re-sort, so ranking and enrichment treat them
+  identically.
 - Cached per topic+article fingerprint under `topic_merge:v2:` in
   `v3_synthesis_cache`, so repeated 20-minute refreshes are free once the topic
   set settles. `TRENDING_MERGE_AI=0|false|off|no` disables it;

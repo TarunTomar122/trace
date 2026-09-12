@@ -143,12 +143,44 @@ class TopicMergeTests(unittest.TestCase):
         self.assertEqual(len(merged), 2)
         self.assertEqual(store.cache, {})
 
-    def test_groups_of_wrong_type_are_a_no_op(self):
-        for payload in ('{"groups": "false"}', '{"groups": [[1, 99]]}', '{"groups": 3}', "{}"):
+    def test_groups_of_wrong_type_are_a_no_op_and_never_cached(self):
+        for payload in (
+            '{"groups": "false"}',
+            '{"groups": [[1, 99]]}',
+            '{"groups": 3}',
+            '{"groups": [1, 2]}',
+            "[1, 2]",
+            "{}",
+        ):
             store = FakeStore()
-            clusters = anthropic_clusters()
-            merged = _merge_related_topics(store, clusters, complete=lambda _p, p=payload: p)
+            calls = {"n": 0}
+
+            def complete(_prompt, p=payload):
+                calls["n"] += 1
+                return p
+
+            merged = _merge_related_topics(store, anthropic_clusters(), complete=complete)
             self.assertEqual(len(merged), 2, payload)
+            self.assertEqual(store.cache, {}, payload)
+            _merge_related_topics(store, anthropic_clusters(), complete=complete)
+            self.assertEqual(calls["n"], 2, payload)
+
+    def test_cached_non_finite_groups_are_ignored_and_recomputed(self):
+        store = FakeStore()
+        calls = {"n": 0}
+
+        def complete(_prompt):
+            calls["n"] += 1
+            return json.dumps({"groups": [[1, 2]]})
+
+        _merge_related_topics(store, anthropic_clusters(), complete=complete)
+        self.assertEqual(calls["n"], 1)
+        for key in list(store.cache):
+            store.cache[key] = {"groups": [[float("nan"), 2]], "ok": True}
+
+        merged = _merge_related_topics(store, anthropic_clusters(), complete=complete)
+        self.assertEqual(calls["n"], 2)
+        self.assertEqual(len(merged), 1)
 
     def test_valid_empty_partition_is_cached_and_skips_second_call(self):
         store = FakeStore()
@@ -196,20 +228,31 @@ class TopicMergeTests(unittest.TestCase):
         self.assertEqual(len(merged), 1)
 
     def test_kill_switch_values(self):
-        for value in ("0", "false", "OFF", "no"):
-            store = FakeStore()
-            calls = {"n": 0}
-            os.environ["TRENDING_MERGE_AI"] = value
-            try:
+        prior = os.environ.get("TRENDING_MERGE_AI")
+        try:
+            for value in ("0", "false", "OFF", "no"):
+                store = FakeStore()
+                calls = {"n": 0}
+                os.environ["TRENDING_MERGE_AI"] = value
                 merged = _merge_related_topics(
                     store,
                     anthropic_clusters(),
                     complete=lambda _p: calls.__setitem__("n", calls["n"] + 1) or json.dumps({"groups": [[1, 2]]}),
                 )
-            finally:
+                self.assertEqual(len(merged), 2, value)
+                self.assertEqual(calls["n"], 0, value)
+            os.environ["TRENDING_MERGE_AI"] = "1"
+            merged = _merge_related_topics(
+                FakeStore(),
+                anthropic_clusters(),
+                complete=lambda _p: json.dumps({"groups": [[1, 2]]}),
+            )
+            self.assertEqual(len(merged), 1)
+        finally:
+            if prior is None:
                 os.environ.pop("TRENDING_MERGE_AI", None)
-            self.assertEqual(len(merged), 2, value)
-            self.assertEqual(calls["n"], 0, value)
+            else:
+                os.environ["TRENDING_MERGE_AI"] = prior
 
     def test_apply_rejects_overlapping_or_out_of_range_groups(self):
         clusters = anthropic_clusters()
@@ -225,12 +268,42 @@ class TopicMergeTests(unittest.TestCase):
         # No candidate edges: the forged group is inert.
         self.assertEqual(_merge_components([[1, 2, 3]], set()), [])
 
+    def test_merge_resorts_by_recomputed_popularity(self):
+        store = FakeStore()
+        # A 3-source standalone story outranks a merged 2-source topic, so the
+        # merged topic must not simply keep its old slot.
+        big = make_cluster(
+            "Apple Launches iPhone 18 Pro and Pro Max Preorders",
+            "https://a.com/iphone",
+            "A",
+            "tech",
+        )
+        for url, source in (("https://b.com/iphone", "B"), ("https://c.com/iphone", "C")):
+            big["items"].extend(make_cluster("Apple iPhone preorder", url, source, "tech")["items"])
+        clusters = anthropic_clusters() + [big]
+
+        def complete(_prompt):
+            return json.dumps({"groups": [[1, 2]]})
+
+        merged = _merge_related_topics(store, clusters, complete=complete)
+        self.assertEqual(len(merged), 2)
+        self.assertEqual(len(merged[0]["items"]), 3)
+        self.assertEqual(len(merged[1]["items"]), 2)
+        self.assertGreater(merged[0]["popularity_score"], merged[1]["popularity_score"])
+
     def test_validated_groups_normalization(self):
         self.assertIsNone(_validated_merge_groups("not json", 3))
         self.assertIsNone(_validated_merge_groups({"groups": "x"}, 3))
         self.assertEqual(_validated_merge_groups({"groups": []}, 3), [])
         self.assertEqual(_validated_merge_groups({"groups": [[3, 1, 1]]}, 3), [[1, 3]])
         self.assertEqual(_validated_merge_groups({"groups": [[1], [1, 2, 99]]}, 3), [[1, 2]])
+        self.assertEqual(_validated_merge_groups({"groups": [[2.0, 1]]}, 3), [[1, 2]])
+
+    def test_validated_groups_rejects_non_integral_and_non_finite(self):
+        self.assertIsNone(_validated_merge_groups({"groups": [[2.9, 1]]}, 3))
+        self.assertIsNone(_validated_merge_groups({"groups": [[float("nan"), 2]]}, 3))
+        self.assertIsNone(_validated_merge_groups({"groups": [[float("inf"), 2]]}, 3))
+        self.assertIsNone(_validated_merge_groups({"groups": [[True, 2]]}, 3))
 
 
 if __name__ == "__main__":

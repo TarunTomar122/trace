@@ -21,6 +21,7 @@ from collections import Counter, defaultdict
 import hashlib
 import itertools
 import json
+import math
 import os
 import re
 import shutil
@@ -680,10 +681,12 @@ def _topic_merge_prompt(
 def _validated_merge_groups(raw: Any, n_clusters: int) -> list[list[int]] | None:
     """Normalize a model partition into clean 1-based groups.
 
-    None means the payload is unusable (so it is never cached and the cached
-    value, if any, is ignored). [] means the model validly proposed nothing.
-    The candidate-edge invariant is enforced later, when groups are expanded
-    into merge components."""
+    None means the payload is unusable: it is never cached, and a cached value
+    that validates to None is ignored and recomputed (self-healing). [] means
+    the model validly proposed nothing. A non-empty payload that yields no
+    usable group is treated as unusable too, so a malformed response can never
+    be cached as a lasting "no merges". The candidate-edge invariant is
+    enforced later, when groups are expanded into merge components."""
     if isinstance(raw, str):
         try:
             raw = json.loads(raw)
@@ -697,19 +700,25 @@ def _validated_merge_groups(raw: Any, n_clusters: int) -> list[list[int]] | None
         return None
     if not isinstance(groups, list):
         return None
+    if not groups:
+        return []
     cleaned: list[list[int]] = []
     for group in groups:
         if not isinstance(group, list):
             continue
-        idxs = sorted({
-            int(x)
-            for x in group
-            if isinstance(x, (int, float)) and not isinstance(x, bool)
-        })
-        idxs = [x for x in idxs if 1 <= x <= n_clusters]
+        idxs: set[int] = set()
+        for x in group:
+            if isinstance(x, bool) or not isinstance(x, (int, float)):
+                continue
+            value = float(x)
+            if not math.isfinite(value) or not value.is_integer():
+                continue
+            n = int(value)
+            if 1 <= n <= n_clusters:
+                idxs.add(n)
         if len(idxs) >= 2:
-            cleaned.append(idxs)
-    return cleaned
+            cleaned.append(sorted(idxs))
+    return cleaned or None
 
 
 def _merge_components(
@@ -719,7 +728,12 @@ def _merge_components(
     """Connected components of the deterministic candidate edges the model
     endorsed. This is the only path a merge can take: an edge that is not a
     candidate pair cannot connect anything, so the model cannot fabricate a
-    merge, and a 3+-way split folds in one application."""
+    merge, and a 3+-way split folds in one application.
+
+    Components are connected, not cliques: a group can chain candidate edges
+    (A-B and B-C may merge A and C even when their titles share no direct
+    signal). Overlapping groups union into the same component rather than
+    being rejected, which is the safe reading of a non-partition."""
     parent: dict[int, int] = {}
 
     def find(x: int) -> int:
@@ -895,6 +909,9 @@ def _merge_related_topics(
 
     merged = _apply_topic_merges(clusters, components)
     if len(merged) < len(clusters):
+        for cluster in merged:
+            if "popularity_score" not in cluster:
+                cluster["popularity_score"] = _cluster_popularity_score(cluster)
         merged.sort(key=lambda c: float(c.get("popularity_score", 0.0)), reverse=True)
         _log(f"Topic merge: {len(clusters)} topics -> {len(merged)} after folding same-event clusters")
     return merged
