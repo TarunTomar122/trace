@@ -31,9 +31,8 @@ from v1.tools.brevo_client import send_newsletter_email  # noqa: E402
 from v3.lib.store import V3Store  # noqa: E402
 
 NEWSLETTER_INTERESTS = ("ai", "startups", "engineering")
-NEWS_STORY_COUNTS = {"ai": 3, "startups": 1, "engineering": 1}
-PULSE_COUNTS = {"tools": 2, "discussions": 1, "blogs": 1}
-EDITORIAL_VERSION = "builder_digest_v14"
+NEWSLETTER_TOP_STORIES = 7
+EDITORIAL_VERSION = "builder_digest_v15"
 EDITORIAL_MODEL = os.getenv("NEWSLETTER_WRITE_MODEL", "gpt-5-mini")
 
 def _today_ist() -> str:
@@ -137,64 +136,24 @@ def _pick_items(feed: dict[str, Any]) -> list[dict[str, Any]]:
     selected: list[dict[str, Any]] = []
     used_urls: set[str] = set()
 
-    # prefer widely-covered stories within each interest, then float the
-    # 3 most-covered picks to the very top (email opens with them)
+    # Top stories only: most-covered stories first, then feed order.
     by_coverage = sorted(
         eligible, key=lambda r: (-int(r.get("_coverage") or 1), eligible.index(r))
     )
-    for interest, limit in NEWS_STORY_COUNTS.items():
-        for row in by_coverage:
-            if row.get("interest_id") != interest:
-                continue
-            url = str(row.get("url", "")).strip()
-            if not url or url in used_urls:
-                continue
-            selected.append({**row, "newsletter_group": "top_stories"})
-            used_urls.add(url)
-            if sum(item.get("interest_id") == interest for item in selected) >= limit:
-                break
-    top = [x for x in selected if x.get("newsletter_group") == "top_stories"]
-    rest = [x for x in selected if x.get("newsletter_group") != "top_stories"]
-    top.sort(key=lambda r: -int(r.get("_coverage") or 1))
-    selected = top + rest
-
-    pulse = (feed.get("daily_pulse_roles") or {}).get("developer", {})
-    if isinstance(pulse, dict):
-        for section, limit in PULSE_COUNTS.items():
-            rows = pulse.get(section, [])
-            if not isinstance(rows, list):
-                continue
-            group = {
-                "tools": "builds",
-                "discussions": "conversation",
-                "blogs": "briefing",
-            }[section]
-            added = 0
-            for row in rows:
-                if not isinstance(row, dict):
-                    continue
-                url = str(row.get("url", "")).strip()
-                if not url or url in used_urls:
-                    continue
-                selected.append({**row, "newsletter_group": group})
-                used_urls.add(url)
-                added += 1
-                if added >= limit:
-                    break
+    for row in by_coverage:
+        url = str(row.get("url", "")).strip()
+        if not url or url in used_urls:
+            continue
+        selected.append({**row, "newsletter_group": "top_stories"})
+        used_urls.add(url)
+        if len(selected) >= NEWSLETTER_TOP_STORIES:
+            break
 
     return selected
 
 
 def _has_required_mix(items: list[dict[str, Any]]) -> bool:
-    return (
-        all(
-            sum(item.get("interest_id") == interest for item in items) == count
-            for interest, count in NEWS_STORY_COUNTS.items()
-        )
-        and 1 <= sum(item.get("newsletter_group") == "builds" for item in items) <= 2
-        and sum(item.get("newsletter_group") == "conversation" for item in items) == 1
-        and sum(item.get("newsletter_group") == "briefing" for item in items) == 1
-    )
+    return sum(item.get("newsletter_group") == "top_stories" for item in items) == NEWSLETTER_TOP_STORIES
 
 
 def _source_name(item: dict[str, Any]) -> str:
@@ -645,12 +604,7 @@ def _generate_html(
     selected = _apply_editorial(_pick_items(feed), edition)
 
     stories_html = ""
-    for group, label in (
-        ("top_stories", "Top stories"),
-        ("builds", "Builds"),
-        ("conversation", "Conversation"),
-        ("briefing", "Briefing"),
-    ):
+    for group, label in (("top_stories", "Top stories"),):
         rows = [item for item in selected if item.get("newsletter_group") == group]
         if not rows:
             continue

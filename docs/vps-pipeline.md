@@ -1,8 +1,8 @@
 # VPS pipeline (trace jobs on the VPS)
 
-GitHub Actions schedules are **untouched** and still own newsletter sends +
-push notifications. The VPS mirrors feed-building so we can run hotter
-(20-min trending) without Actions minute limits.
+The VPS owns feed-building **and the daily newsletter send** (GitHub cron
+fires hours late, so it can't be trusted for a fixed send time). GitHub
+Actions keeps push notifications plus manual/replay workflows.
 
 ## Box
 
@@ -18,12 +18,14 @@ push notifications. The VPS mirrors feed-building so we can run hotter
 |---|---|---|
 | `trace-pipeline.service/.timer` | every 20 min | `scheduler --jobs trending assemble --audience all --force-pools --enrich-coverage --enrich-top 10` |
 | `trace-pulse.service/.timer` | every 3 h | `scheduler --jobs pulse assemble --audience all --force-pools` |
+| `trace-foryou.service/.timer` | daily 03:30 UTC | `scheduler --jobs for_you --audience all` |
+| `trace-newsletter.service/.timer` | daily 10:30 Europe/Berlin | `v3.flows.send_three_feed_newsletter --audience all` |
 
 - `flock ~/trace/.pipeline.lock` prevents overlap. `RandomizedDelaySec` spreads load.
-- Newsletter sends and push notifications are **not** on VPS timers (Actions owns them until cutover).
-- `daily-newsletter.yml` sends daily at **10:30 Europe/Berlin**, DST-aware:
-  two UTC crons (08:30 / 09:30) plus a local-hour guard that skips the
-  wrong-season run.
+- `trace-newsletter.timer` uses `OnCalendar=*-*-* 10:30:00 Europe/Berlin`, so
+  DST is handled by systemd; `Persistent=true` catches up a missed run.
+- The newsletter sends the **top 7 stories** (no builds/conversations sections).
+  Pull on the VPS after changing `v3/flows/send_three_feed_newsletter.py`.
 
 ## Coverage enrichment
 
