@@ -671,6 +671,21 @@ def _topic_merge_prompt(clusters: list[dict[str, Any]], pairs: list[tuple[int, i
     )
 
 
+def _merge_group_is_safe(group: list[dict[str, Any]]) -> bool:
+    """Deterministic backstop: a merge only lands when the topics share a
+    named entity or at least two specific tokens."""
+    if len(group) < 2:
+        return False
+    token_sets = [set(cluster.get("tokens", set()) or set()) for cluster in group]
+    if any(not tokens for tokens in token_sets):
+        return False
+    shared = set.intersection(*token_sets)
+    if shared & ENTITY_TOPIC_TOKENS:
+        return True
+    specific = {t for t in shared if len(t) >= 4}
+    return len(specific) >= 2
+
+
 def _apply_topic_merges(
     clusters: list[dict[str, Any]],
     merge_groups: list[list[int]],
