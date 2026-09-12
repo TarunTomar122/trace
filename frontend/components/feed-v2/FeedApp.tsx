@@ -294,6 +294,10 @@ export default function FeedApp({
   const [bookmarkQuery, setBookmarkQuery] = useState('');
   const [readIds, setReadIds] = useState<Set<string>>(() => readStoredReads(null));
   const [toast, setToast] = useState<string | null>(null);
+  const [burstId, setBurstId] = useState<string | null>(null);
+  const sortSegRef = useRef<HTMLDivElement | null>(null);
+  const [sortPill, setSortPill] = useState<{ left: number; width: number } | null>(null);
+  const burstTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Older stories are fetched on demand (24-ish per click) for Pro readers,
   // paging back through the daily archive docs.
   const [olderStories, setOlderStories] = useState<FeedStory[]>([]);
@@ -524,6 +528,13 @@ export default function FeedApp({
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
+  function flashBurst(id: string) {
+    setBurstId(id);
+    if (burstTimer.current) clearTimeout(burstTimer.current);
+    burstTimer.current = setTimeout(() => setBurstId((cur) => (cur === id ? null : cur)), 520);
+  }
+  useEffect(() => () => { if (burstTimer.current) clearTimeout(burstTimer.current); }, []);
+
   // First sign-in: send readers through the role/interests step once.
   const onboardRedirected = useRef(false);
   useEffect(() => {
@@ -747,6 +758,7 @@ export default function FeedApp({
       }
       writeGuestBookmarks(guest);
       setBookmarks(guest);
+      if (!isMarked) flashBurst(id);
       showToast(isMarked ? 'Removed from Bookmarks' : 'Saved on this device — sign in to keep it across devices');
       return;
     }
@@ -770,6 +782,7 @@ export default function FeedApp({
           { item_id: id, item_metadata: bookmarkMetadata(id), bookmarked_at: new Date().toISOString() },
           ...cur.filter((b) => b.item_id !== id),
         ]);
+        flashBurst(id);
       }
       showToast(isMarked ? 'Removed from Bookmarks' : 'Added to Bookmarks');
     } catch {
@@ -885,6 +898,27 @@ export default function FeedApp({
     storeSort(next);
     trackFeedFilterChanged(`sort:${next}`, `sort:${sortMode}`, { surface: 'feed_v2' });
   }
+  // Sliding pill under the active sort option (transitions.dev tabs-sliding).
+  useEffect(() => {
+    const seg = sortSegRef.current;
+    if (!seg) return;
+    const measure = () => {
+      const active = seg.querySelector('.sort-opt.on') as HTMLElement | null;
+      if (!active) return;
+      const segRect = seg.getBoundingClientRect();
+      const rect = active.getBoundingClientRect();
+      setSortPill({ left: rect.left - segRect.left, width: rect.width });
+    };
+    measure();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    observer?.observe(seg);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [sortMode, tab, mounted]);
+
   const open = storyParam
     ? allStories.find((s) => s.id === storyParam)
       || (initialStory && initialStory.id === storyParam ? initialStory : null)
@@ -1306,7 +1340,14 @@ export default function FeedApp({
                   : visible.length + olderForTab.length}
               </span>
               <span className="post-spacer" />
-              <div className="sort-seg" role="group" aria-label="Sort stories">
+              <div className="sort-seg" role="group" aria-label="Sort stories" ref={sortSegRef}>
+                {sortPill && (
+                  <span
+                    className="sort-pill"
+                    aria-hidden="true"
+                    style={{ transform: `translateX(${sortPill.left}px)`, width: sortPill.width }}
+                  />
+                )}
                 <button
                   className={`sort-opt${sortMode === 'for_you' ? ' on' : ''}`}
                   onClick={() => setSort('for_you')}
@@ -1350,6 +1391,7 @@ export default function FeedApp({
                     key={s.id}
                     story={s}
                     displayRank={viewRank.get(s.id)}
+                    burst={burstId === s.id}
                     onClick={() => openStory(s)}
                     marked={marks.has(s.id)}
                     onToggleMark={toggleMark}
@@ -1600,7 +1642,7 @@ function NavItem({ icon: Icon, label, active, onClick, count }: { icon: LucideIc
   return (
     <button className={`nav-item${active ? ' active' : ''}`} onClick={onClick}>
       <span className="nav-with-ic"><Icon size={22} /> {label}</span>
-      {count !== undefined && <span className="nav-count">{count}</span>}
+      {count !== undefined && <span key={count} className="nav-count">{count}</span>}
     </button>
   );
 }
@@ -1714,10 +1756,10 @@ function SourceStack({ sources }: { sources: string[] }) {
   );
 }
 
-function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = false, displayRank }: {
+function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = false, displayRank, burst = false }: {
   story: FeedStory; onClick: () => void; marked: boolean;
   onToggleMark: (id: string) => void; onShare: (id: string) => void;
-  locked?: boolean; displayRank?: number;
+  locked?: boolean; displayRank?: number; burst?: boolean;
 }) {
   const rank = displayRank ?? story.rank;
   const onKey = (e: React.KeyboardEvent) => {
@@ -1763,7 +1805,7 @@ function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = fal
         // eslint-disable-next-line @next/next/no-img-element
         <img className="post-img" src={story.img} alt="" loading="lazy" decoding="async" />
       )}
-      <Actions id={story.id} size={18} marked={marked} onToggleMark={onToggleMark} onShare={onShare} />
+      <Actions id={story.id} size={18} marked={marked} onToggleMark={onToggleMark} onShare={onShare} burst={burst} />
     </article>
   );
 }
@@ -1780,10 +1822,10 @@ function EmptyFeed({ title, sub, onRetry, retryLabel = 'Retry' }: {
   );
 }
 
-function Actions({ id, size = 18, marked, onToggleMark, onShare, shareKind = 'story' }: {
+function Actions({ id, size = 18, marked, onToggleMark, onShare, shareKind = 'story', burst = false }: {
   id: string; size?: number; marked: boolean;
   onToggleMark: (id: string) => void; onShare: (id: string, kind?: 'story' | 'pulse') => void;
-  shareKind?: 'story' | 'pulse';
+  shareKind?: 'story' | 'pulse'; burst?: boolean;
 }) {
   const stop = (e: React.MouseEvent) => e.stopPropagation();
 
@@ -1794,6 +1836,7 @@ function Actions({ id, size = 18, marked, onToggleMark, onShare, shareKind = 'st
         onClick={() => onToggleMark(id)}
         aria-label={marked ? 'Remove bookmark' : 'Bookmark this item'}
         aria-pressed={marked}
+        data-burst={burst ? 'true' : undefined}
       >
         <span className="act-ic"><Bookmark size={size} fill={marked ? 'currentColor' : 'none'} /></span>
       </button>
@@ -2280,6 +2323,13 @@ const css = `
   --blue: #1d9bf0;
   --green: #00ba7c;
   --pink: #f91880;
+  --t-quick: 150ms;
+  --t-fast: 250ms;
+  --t-slow: 400ms;
+  --t-very-slow: 500ms;
+  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.36, 0.64, 1);
+  --blur-small: 2px;
   background: var(--bg);
   color: var(--text);
   height: 100vh; overflow: hidden;
@@ -2410,18 +2460,28 @@ const css = `
 .xw .head-sub { margin: 0; font-size: 12.5px; color: var(--text-3); }
 .xw .head-meta { font-size: 13px; color: var(--text-3); margin-left: auto; }
 .xw .sort-seg {
+  position: relative;
   display: inline-flex; align-items: center; gap: 2px;
   border: 1px solid var(--line); border-radius: 9999px; padding: 2px;
   background: var(--hover); white-space: nowrap;
 }
+.xw .sort-pill {
+  position: absolute; top: 2px; left: 0; height: calc(100% - 4px);
+  border-radius: 9999px; background: #fff;
+  box-shadow: 0 1px 3px rgba(15,20,25,0.12);
+  z-index: 0; pointer-events: none;
+  transition: transform var(--t-fast) var(--ease-smooth-out), width var(--t-fast) var(--ease-smooth-out);
+  will-change: transform, width;
+}
 .xw .sort-opt {
+  position: relative; z-index: 1;
   display: inline-flex; align-items: center; gap: 4px;
   border: none; background: transparent; color: var(--text-2);
   font-size: 12.5px; font-weight: 700; font-family: inherit;
   border-radius: 9999px; padding: 5px 10px; cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: color var(--t-quick) ease;
 }
-.xw .sort-opt.on { background: #fff; color: var(--text); box-shadow: 0 1px 3px rgba(15,20,25,0.12); }
+.xw .sort-opt.on { background: transparent; color: var(--text); box-shadow: none; }
 .xw .head-spacer { width: 34px; }
  .xw .back {
   width: 44px; height: 44px; border-radius: 9999px; border: none;
@@ -2531,6 +2591,18 @@ const css = `
   object-fit: contain;
 }
 .xw .fav + .fav { margin-left: -8px; }
+.xw .stack .fav { transition: transform var(--t-fast) var(--ease-smooth-out); }
+.xw .stack:hover .fav { transform: translateY(-3px); }
+.xw .stack:hover .fav:hover { transform: translateY(-5px) scale(1.12); position: relative; z-index: 2; }
+.xw .act-mark[data-burst="true"] .act-ic { animation: t-like-pop 420ms var(--ease-bounce); }
+@keyframes t-like-pop {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.8); }
+  65% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.xw .nav-count { animation: t-count-pop 280ms var(--ease-smooth-out); }
+@keyframes t-count-pop { from { transform: scale(0.7); opacity: 0.4; } to { transform: scale(1); opacity: 1; } }
 
 /* actions */
 .xw .actions { display: flex; justify-content: flex-end; gap: 4px; max-width: 100%; margin-top: 2px; }
@@ -2570,7 +2642,14 @@ const css = `
 .xw .detail-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 /* paywall */
-.xw .paywall { margin: 3rem auto; max-width: 30rem; text-align: center; padding: 0 24px; }
+.xw .paywall {
+  margin: 3rem auto; max-width: 30rem; text-align: center; padding: 0 24px;
+  animation: t-panel-in var(--t-slow) var(--ease-smooth-out);
+}
+@keyframes t-panel-in {
+  from { opacity: 0; transform: translateY(12px); filter: blur(var(--blur-small)); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
 .xw .paywall-badge {
   width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 18px;
   background: rgba(29, 155, 240, 0.1); color: var(--blue);
@@ -2649,6 +2728,13 @@ const css = `
 .xw .promo-overlay {
   position: fixed; inset: 0; z-index: 400; background: rgba(15,20,25,0.45);
   display: flex; align-items: center; justify-content: center; padding: 20px;
+  animation: t-fade-in var(--t-quick) var(--ease-smooth-out);
+}
+@keyframes t-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.xw .promo-modal { animation: t-modal-in var(--t-fast) var(--ease-smooth-out); transform-origin: center; }
+@keyframes t-modal-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
 }
 .xw .promo-modal { width: 100%; max-width: 420px; background: #fff; border-radius: 20px; padding: 22px 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
 .xw .promo-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
@@ -2723,12 +2809,14 @@ const css = `
 .xw .save-btn.pulse { animation: save-pulse 1.6s ease-out infinite; }
 @media (prefers-reduced-motion: reduce) { .xw .save-btn.pulse { animation: none; } }
 .xw .save-note {
+  animation: t-panel-in var(--t-slow) var(--ease-smooth-out);
   display: flex; align-items: center; gap: 9px;
   margin: 10px 18px 0; padding: 10px 12px;
   border: 1px solid rgba(0, 186, 124, 0.35); background: rgba(0, 186, 124, 0.08);
   border-radius: 12px; font-size: 13.5px; font-weight: 600; color: var(--text);
 }
 .xw .save-note-ic {
+  animation: t-check-in var(--t-very-slow) var(--ease-smooth-out);
   display: inline-flex; align-items: center; justify-content: center;
   width: 22px; height: 22px; border-radius: 9999px;
   background: var(--green); color: #fff; flex-shrink: 0;
@@ -2740,6 +2828,11 @@ const css = `
   cursor: pointer; white-space: nowrap; padding: 0;
 }
 .xw .save-note-cta:hover { text-decoration: underline; text-underline-offset: 3px; }
+@keyframes t-check-in {
+  0% { opacity: 0; transform: scale(0.5) rotate(-25deg); filter: blur(4px); }
+  60% { opacity: 1; transform: scale(1.08) rotate(3deg); filter: blur(0); }
+  100% { transform: scale(1) rotate(0); }
+}
 .xw .activating {
   display: flex; align-items: center; gap: 10px;
   margin: 12px 18px 0; padding: 10px 14px;
@@ -2819,5 +2912,16 @@ const css = `
   animation: toast-in 0.2s ease-out; white-space: nowrap;
 }
 @keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
-@media (prefers-reduced-motion: reduce) { .xw .toast { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .xw .toast,
+  .xw .sort-pill,
+  .xw .fav,
+  .xw .act-mark[data-burst="true"] .act-ic,
+  .xw .nav-count,
+  .xw .promo-overlay,
+  .xw .promo-modal,
+  .xw .paywall,
+  .xw .save-note,
+  .xw .save-note-ic { animation: none !important; transition: none !important; }
+}
 `;

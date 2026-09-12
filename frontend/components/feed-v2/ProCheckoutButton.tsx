@@ -106,7 +106,7 @@ export default function ProCheckoutButton({
   return (
     <>
       <button type="button" className={className} onClick={onClick} disabled={busy || loading}>
-        {busy ? busyLabel : label}
+        <span key={busy ? 'busy' : 'idle'} className="t-swap">{busy ? busyLabel : label}</span>
       </button>
       {error ? (
         <p role="alert" style={{ margin: '10px 0 0', fontSize: 13, color: '#f91880' }}>{error}</p>
