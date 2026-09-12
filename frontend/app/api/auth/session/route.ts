@@ -16,12 +16,10 @@ function computeHasAccess(profile: any): boolean {
   return hasActiveSubscription(profile);
 }
 
-const DEFAULT_WEB_INTERESTS = ['ai', 'products', 'tech', 'startups', 'engineering', 'ux-design'];
-
 async function ensureUserProfile(
   uid: string,
   identity: { email: string; displayName: string; photoURL: string | null },
-): Promise<'created' | 'fixed' | 'exists' | 'unavailable'> {
+): Promise<'created' | 'exists' | 'unavailable'> {
   if (!adminFirestore) return 'unavailable';
   try {
     const ref = adminFirestore.collection('user_profiles').doc(uid);
@@ -34,9 +32,9 @@ async function ensureUserProfile(
         displayName: identity.displayName,
         photoURL: identity.photoURL,
         signupPlatform: 'web',
-        onboarded: true,
+        onboarded: false,
         name: identity.displayName || '',
-        role: 'developer',
+        role: '',
         company: '',
         location: '',
         experienceYears: null,
@@ -46,7 +44,7 @@ async function ensureUserProfile(
         learningStyle: '',
         attentionConstraints: '',
         motivationTriggers: [],
-        interests: [...DEFAULT_WEB_INTERESTS],
+        interests: [],
         hobbies: [],
         skills: [],
         dislikedTopics: [],
@@ -61,20 +59,8 @@ async function ensureUserProfile(
       });
       return 'created';
     }
-    // Fix-up for web signups that never completed onboarding (mirrors client).
-    const data = snap.data() || {};
-    if (data.signupPlatform === 'web' && !data.onboarded) {
-      await ref.set({
-        onboarded: true,
-        role: data.role || 'developer',
-        interests: Array.isArray(data.interests) && data.interests.length > 0
-          ? data.interests
-          : [...DEFAULT_WEB_INTERESTS],
-        updatedAt: now,
-        onboardedAt: now,
-      }, { merge: true });
-      return 'fixed';
-    }
+    // Existing profiles keep whatever onboarding state they have — the web
+    // onboarding step flips it when the reader picks role + interests.
     return 'exists';
   } catch (error) {
     console.error('[api/auth/session] ensureUserProfile failed:', error);

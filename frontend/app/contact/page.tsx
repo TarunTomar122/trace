@@ -89,7 +89,7 @@ export default function ContactPage() {
           For subscription cancellations or billing issues on Android, manage your subscription via{' '}
           <strong className="text-[#111827]">Google Play &gt; Account &gt; Subscriptions</strong>.
           For web subscriptions, visit your{' '}
-          <Link href="/profile" className="text-[#2563eb] hover:underline">profile page</Link>.
+          <Link href="/feed?tab=profile" className="text-[#2563eb] hover:underline">profile page</Link>.
         </p>
       </div>
 

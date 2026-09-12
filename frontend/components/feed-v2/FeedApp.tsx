@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { resolveFeedAccess } from '@/lib/subscription-access';
+import { resolveFeedAccess, hasActiveSubscription } from '@/lib/subscription-access';
+import { shortPriceDisplay } from '@/lib/subscription-pricing';
 import FeedSkeleton from './FeedSkeleton';
 import ProCheckoutButton from './ProCheckoutButton';
 import {
@@ -99,7 +100,7 @@ const CAT_ICONS: Record<string, LucideIcon> = {
   startups: Rocket,
 };
 
-const ROLE_LABELS: Record<string, string> = {
+export const ROLE_LABELS: Record<string, string> = {
   engineer: 'Engineer',
   designer: 'Designer',
   founder: 'Founder',
@@ -108,7 +109,7 @@ const ROLE_LABELS: Record<string, string> = {
   student: 'Student',
 };
 
-const ALL_INTERESTS = ['ai', 'markets', 'ux-design', 'engineering', 'tech', 'startups', 'security', 'open-source', 'policy'];
+export const ALL_INTERESTS = ['ai', 'markets', 'ux-design', 'engineering', 'tech', 'startups', 'security', 'open-source', 'policy'];
 const FREE_LIMIT_SIGNED_OUT = 4;
 const FREE_LIMIT_SIGNED_IN = 7;
 
@@ -188,9 +189,55 @@ function storyKey(s: { id: string; url: string }): string {
   return raw.replace(/[#?].*$/, '').replace(/\/$/, '');
 }
 
+interface StoredBookmark {
+  item_id: string;
+  item_metadata?: {
+    title?: string;
+    url?: string;
+    thumbnail?: string;
+    source?: string;
+    description?: string;
+    type?: string;
+  };
+  bookmarked_at?: string;
+}
+
+const GUEST_MARKS_KEY = 'trace_guest_bookmarks_v1';
+
+function readGuestBookmarks(): StoredBookmark[] {
+  try {
+    if (typeof window === 'undefined') return [];
+    const raw = window.localStorage.getItem(GUEST_MARKS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((b): b is StoredBookmark => Boolean(b && typeof b.item_id === 'string'))
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeGuestBookmarks(list: StoredBookmark[]): void {
+  try {
+    window.localStorage.setItem(GUEST_MARKS_KEY, JSON.stringify(list.slice(0, 200)));
+  } catch {
+    // private mode etc. — guest bookmarks just won't persist
+  }
+}
+
+function bookmarkedAgo(iso?: string): string {
+  if (!iso) return '';
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (!Number.isFinite(mins)) return '';
+  if (mins < 60) return `${Math.max(1, mins)}m ago`;
+  const h = Math.round(mins / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.round(h / 24)}d ago`;
+}
+
 export default function FeedApp({
   stories, pulse, promoted = [], monthlyReach = 0, generated, serverPro = false, feedDate = '',
-  initialStoryId = null, unlockedId = null,
+  priceDisplay = '', feedError = false, initialStory = null, initialStoryId = null, unlockedId = null,
 }: {
   stories: FeedStory[];
   pulse: { tools: PulseItem[]; discussions: PulseItem[]; blogs: PulseItem[] };
@@ -200,6 +247,12 @@ export default function FeedApp({
   serverPro?: boolean;
   /** Date id of today's feed doc — cursor start for older stories. */
   feedDate?: string;
+  /** Server-resolved price ("$2.99/month" or "₹49/month") for checkout CTAs. */
+  priceDisplay?: string;
+  /** Global feed load failed server-side — show a retry state, not a blank page. */
+  feedError?: boolean;
+  /** Archived story resolved server-side for a shared link (not in today's feed). */
+  initialStory?: FeedStory | null;
   /** Pre-open a story (shared article page). Falls back to ?story= when present. */
   initialStoryId?: string | null;
   /** This story always opens full — the shared link must work for everyone. */
@@ -219,6 +272,7 @@ export default function FeedApp({
   const accessPending = access.pending;
   const params = useSearchParams();
   const pathname = usePathname();
+  const router = useRouter();
   // View state lives client-side: the feed data is already here, so opening
   // a story must never hit the server. URL is kept in sync via History API
   // (shareable, back-button friendly) without triggering Next navigation.
@@ -227,8 +281,13 @@ export default function FeedApp({
     pulse: params.get('pulse'),
   }));
 
-  const [tab, setTab] = useState<string>('all');
+  const [tab, setTab] = useState<string>(() => {
+    const requested = params.get('tab');
+    return requested === 'profile' || requested === 'bookmarks' ? requested : 'all';
+  });
   const [marks, setMarks] = useState<Set<string>>(new Set());
+  const [bookmarks, setBookmarks] = useState<StoredBookmark[]>([]);
+  const [bookmarkQuery, setBookmarkQuery] = useState('');
   const [readIds, setReadIds] = useState<Set<string>>(() => readStoredReads());
   const [toast, setToast] = useState<string | null>(null);
   // Older stories are fetched on demand (24-ish per click) for Pro readers,
@@ -306,7 +365,10 @@ export default function FeedApp({
   }, [tab]);
 
   // purchase return (?subscription=success / ?tool_promo=success):
-  // refresh status, celebrate once, then clean the URL.
+  // clean the URL, then verify Pro before celebrating — the webhook can lag.
+  const [activating, setActivating] = useState(false);
+  const [proReturnPending, setProReturnPending] = useState(false);
+  const verifyStarted = useRef(false);
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const kind =
@@ -316,27 +378,49 @@ export default function FeedApp({
     if (!kind) return;
     window.history.replaceState(null, '', base());
     refreshProfile().catch(() => null);
-    trackPurchaseCompleted(kind === 'promo' ? 'tool_promo' : kind);
-    setCelebrate(kind);
-    (async () => {
-      try {
-        const confetti = (await import('canvas-confetti')).default;
-        const colors = ['#1D9BF0', '#0F1419', '#00BA7C', '#FFD400'];
-        confetti({ particleCount: 90, spread: 75, origin: { y: 0.25 }, colors });
-        setTimeout(
-          () => confetti({ particleCount: 60, angle: 60, spread: 60, origin: { x: 0, y: 0.4 }, colors }),
-          250,
-        );
-        setTimeout(
-          () => confetti({ particleCount: 60, angle: 120, spread: 60, origin: { x: 1, y: 0.4 }, colors }),
-          400,
-        );
-      } catch {
-        /* confetti is garnish */
-      }
-    })();
+    if (kind === 'promo') {
+      trackPurchaseCompleted('tool_promo');
+      setCelebrate('promo');
+      void fireConfetti();
+      return;
+    }
+    setProReturnPending(true);
+    setActivating(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!proReturnPending || authLoading) return;
+    if (verifyStarted.current) return;
+    verifyStarted.current = true;
+    if (!user) {
+      setProReturnPending(false);
+      setActivating(false);
+      showToast('Payment received — sign in again to activate Pro');
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      let active = pro;
+      for (let attempt = 0; attempt < 6 && !active && !cancelled; attempt++) {
+        const p = await refreshProfile().catch(() => null);
+        active = hasActiveSubscription(p || authProfile);
+        if (!active) await new Promise((r) => setTimeout(r, 1500));
+      }
+      if (cancelled) return;
+      setProReturnPending(false);
+      setActivating(false);
+      if (active) {
+        trackPurchaseCompleted('pro');
+        setCelebrate('pro');
+        void fireConfetti();
+      } else {
+        showToast('Payment received — Pro is still activating. Refresh in a minute.');
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proReturnPending, authLoading, user, authProfile]);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [profile, setProfile] = useState<Profile>({ name: '', email: '', role: 'engineer', interests: [] });
   const [savedProfile, setSavedProfile] = useState<Profile>(profile);
@@ -352,20 +436,45 @@ export default function FeedApp({
     setDailyOn(authProfile.newsletterOptIn === true || authProfile.dailyNewsletterEnabled === true);
   }, [authProfile]);
 
-  // hydrate bookmarks from the real store when signed in (same store the app uses)
+  // hydrate bookmarks from the real store when signed in (same store the app uses).
+  // Guests keep theirs on this device so the tab isn't a lie; on sign-in we
+  // push the local copies into the account once.
   useEffect(() => {
-    if (!user) { setMarks(new Set()); return; }
-    (async () => {
-      try {
-        const token = await user.getIdToken();
-        const res = await fetch('/api/bookmarks?limit=100', { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok) return;
-        const data = await res.json();
-        const ids = (data.bookmarks || []).map((b: { item_id?: string }) => b.item_id).filter(Boolean);
-        setMarks(new Set(ids));
-      } catch { /* offline is fine, local state still works */ }
-    })();
-  }, [user]);
+    if (!user) {
+      const guest = readGuestBookmarks();
+      setMarks(new Set(guest.map((b) => b.item_id)));
+      setBookmarks(guest);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      (async () => {
+        const guest = readGuestBookmarks();
+        if (guest.length) {
+          try {
+            const token = await user.getIdToken();
+            await Promise.allSettled(guest.map((b) => fetch('/api/bookmarks', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ item_id: b.item_id, item_metadata: b.item_metadata }),
+            })));
+            writeGuestBookmarks([]);
+          } catch { /* keep the local copies if the sync fails */ }
+        }
+        try {
+          const token = await user.getIdToken();
+          const q = pro && bookmarkQuery.trim() ? `&q=${encodeURIComponent(bookmarkQuery.trim())}` : '';
+          const res = await fetch(`/api/bookmarks?limit=100${q}`, { headers: { Authorization: `Bearer ${token}` } });
+          if (!res.ok || cancelled) return;
+          const data = await res.json();
+          const rows: StoredBookmark[] = Array.isArray(data.bookmarks) ? data.bookmarks : [];
+          setBookmarks(rows);
+          setMarks(new Set(rows.map((b) => b.item_id)));
+        } catch { /* offline is fine, local state still works */ }
+      })();
+    }, 250);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [user, pro, bookmarkQuery]);
 
   useEffect(() => {
     if (!user) return;
@@ -395,6 +504,17 @@ export default function FeedApp({
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
+  // First sign-in: send readers through the role/interests step once.
+  const onboardRedirected = useRef(false);
+  useEffect(() => {
+    if (onboardRedirected.current) return;
+    if (!user || !profileResolved || !authProfile) return;
+    if (authProfile.onboarded === false) {
+      onboardRedirected.current = true;
+      router.replace('/onboarding');
+    }
+  }, [user, profileResolved, authProfile, router]);
+
   const storyParam = view.story;
   const pulseParam = view.pulse;
 
@@ -414,10 +534,51 @@ export default function FeedApp({
   }, [storyParam, pulseParam, tab]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') goBack(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (promoOpen || celebrate) {
+        setPromoOpen(false);
+        setCelebrate(null);
+        return;
+      }
+      goBack();
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [promoOpen, celebrate]);
+
+  const [signingIn, setSigningIn] = useState(false);
+
+  async function fireConfetti() {
+    try {
+      const confetti = (await import('canvas-confetti')).default;
+      const colors = ['#1D9BF0', '#0F1419', '#00BA7C', '#FFD400'];
+      confetti({ particleCount: 90, spread: 75, origin: { y: 0.25 }, colors });
+      setTimeout(
+        () => confetti({ particleCount: 60, angle: 60, spread: 60, origin: { x: 0, y: 0.4 }, colors }),
+        250,
+      );
+      setTimeout(
+        () => confetti({ particleCount: 60, angle: 120, spread: 60, origin: { x: 1, y: 0.4 }, colors }),
+        400,
+      );
+    } catch {
+      /* confetti is garnish */
+    }
+  }
+
+  async function handleSignIn() {
+    if (signingIn) return;
+    setSigningIn(true);
+    try {
+      const result = await signInWithGoogle();
+      if (result.status === 'error') showToast('Sign-in failed — please try again');
+    } catch {
+      showToast('Sign-in failed — please try again');
+    } finally {
+      setSigningIn(false);
+    }
+  }
 
   function showToast(msg: string) {
     setToast(msg);
@@ -429,15 +590,21 @@ export default function FeedApp({
     return pathname || '/feed';
   }
   function openStory(s: FeedStory) {
+    const blocked = isFree
+      && s.id !== unlockedId
+      && !readIds.has(s.id)
+      && stories.filter((x) => readIds.has(x.id)).length >= freeLimit;
     if (mainRef.current) savedScroll.current = mainRef.current.scrollTop;
     setView({ story: s.id, pulse: null });
-    setReadIds((cur) => {
-      if (cur.has(s.id)) return cur;
-      const next = new Set(cur);
-      next.add(s.id);
-      storeReads(next);
-      return next;
-    });
+    if (!blocked) {
+      setReadIds((cur) => {
+        if (cur.has(s.id)) return cur;
+        const next = new Set(cur);
+        next.add(s.id);
+        storeReads(next);
+        return next;
+      });
+    }
     window.history.pushState(null, '', `${base()}?story=${encodeURIComponent(s.id)}`);
     trackFeedItemClicked(s.id, 'story', s.source || '');
     trackSummaryOpened(s.id, pro, {
@@ -474,12 +641,14 @@ export default function FeedApp({
     }
   }
 
-  function share(id: string) {
+  function share(id: string, kind: 'story' | 'pulse' = 'story') {
     trackShareInitiated(id, { surface: 'feed_v2' });
-    const url = `${window.location.origin}/story/${id}`;
+    const url = kind === 'pulse'
+      ? `${window.location.origin}/feed?pulse=${encodeURIComponent(id)}`
+      : `${window.location.origin}/story/${id}`;
     if (navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(url).then(
-        () => showToast('Link copied — anyone can open this story'),
+        () => showToast(kind === 'pulse' ? 'Link copied — opens in the Pulse tab' : 'Link copied — anyone can open this story'),
         () => showToast(url),
       );
     } else showToast(url);
@@ -520,45 +689,72 @@ export default function FeedApp({
     }
   }
 
-  async function toggleMark(id: string) {
-    const isMarked = marks.has(id);
-    setMarks((cur) => {
-      const next = new Set(cur);
-      if (isMarked) next.delete(id); else next.add(id);
-      return next;
-    });
-    showToast(isMarked ? 'Removed from Bookmarks' : 'Added to Bookmarks');
+  function bookmarkMetadata(id: string) {
     const meta = stories.find((s) => s.id === id)
       || olderStories.find((s) => s.id === id)
       || allPulse.find((t) => t.id === id);
-    trackFeedItemBookmarked(id, stories.some((s) => s.id === id) || olderStories.some((s) => s.id === id) ? 'story' : 'pulse', {
+    return {
+      title: meta?.title || id,
+      type: 'article',
+      url: meta?.url || '',
+      thumbnail: meta?.img || undefined,
+      source: meta?.source || '',
+      description: ('sum' in (meta ?? {}) ? (meta as PulseItem).sum : (meta as FeedStory | undefined)?.body || '').slice(0, 500),
+    };
+  }
+
+  async function toggleMark(id: string) {
+    const isMarked = marks.has(id);
+    const apply = (marked: boolean) => {
+      setMarks((cur) => {
+        const next = new Set(cur);
+        if (marked) next.delete(id); else next.add(id);
+        return next;
+      });
+    };
+    apply(isMarked);
+    const isStory = stories.some((s) => s.id === id) || olderStories.some((s) => s.id === id);
+    trackFeedItemBookmarked(id, isStory ? 'story' : 'pulse', {
       surface: 'feed_v2', action: isMarked ? 'removed' : 'saved',
     });
-    if (!user) return; // signed out: local only
+
+    if (!user) {
+      // Guests: keep them on this device so Saved isn't a lie, and nudge sign-in.
+      const guest = readGuestBookmarks().filter((b) => b.item_id !== id);
+      if (!isMarked) {
+        guest.unshift({ item_id: id, item_metadata: bookmarkMetadata(id), bookmarked_at: new Date().toISOString() });
+      }
+      writeGuestBookmarks(guest);
+      setBookmarks(guest);
+      showToast(isMarked ? 'Removed from Bookmarks' : 'Saved on this device — sign in to keep it across devices');
+      return;
+    }
+
     try {
       const token = await user.getIdToken();
       if (isMarked) {
-        await fetch(`/api/bookmarks?item_ids=${encodeURIComponent(id)}`, {
+        const res = await fetch(`/api/bookmarks?item_id=${encodeURIComponent(id)}`, {
           method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
         });
+        if (!res.ok) throw new Error(`delete failed (${res.status})`);
+        setBookmarks((cur) => cur.filter((b) => b.item_id !== id));
       } else {
-        await fetch('/api/bookmarks', {
+        const res = await fetch('/api/bookmarks', {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            item_id: id,
-            item_metadata: {
-              title: meta?.title || id,
-              type: 'article',
-              url: meta?.url || '',
-              thumbnail: meta?.img || undefined,
-              source: meta?.source || '',
-              description: ('sum' in (meta ?? {}) ? (meta as PulseItem).sum : (meta as FeedStory | undefined)?.body || '').slice(0, 500),
-            },
-          }),
+          body: JSON.stringify({ item_id: id, item_metadata: bookmarkMetadata(id) }),
         });
+        if (!res.ok) throw new Error(`save failed (${res.status})`);
+        setBookmarks((cur) => [
+          { item_id: id, item_metadata: bookmarkMetadata(id), bookmarked_at: new Date().toISOString() },
+          ...cur.filter((b) => b.item_id !== id),
+        ]);
       }
-    } catch { showToast('Could not sync bookmark'); }
+      showToast(isMarked ? 'Removed from Bookmarks' : 'Added to Bookmarks');
+    } catch {
+      apply(isMarked); // revert the optimistic toggle
+      showToast('Could not sync bookmark — try again');
+    }
   }
 
   async function loadOlder() {
@@ -600,8 +796,29 @@ export default function FeedApp({
     }
   }
 
+  async function toggleDailyEmails() {
+    if (!user) { void handleSignIn(); return; }
+    const next = !dailyOn;
+    setDailyOn(next);
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ newsletterOptIn: next, dailyNewsletterEnabled: next }),
+      });
+      if (!res.ok) throw new Error(`Profile save failed (${res.status})`);
+      trackDailyBriefPreferenceChanged(next, 'profile');
+      showToast(next ? 'Daily brief on — see you tomorrow morning' : 'Daily brief off');
+      refreshProfile().catch(() => null);
+    } catch {
+      setDailyOn(!next);
+      showToast('Could not update the daily brief — try again');
+    }
+  }
+
   async function enableDailyEmails() {
-    if (!user) { signInWithGoogle(); return; }
+    if (!user) { void handleSignIn(); return; }
     try {
       const res = await fetch('/api/profile', {
         method: 'PATCH',
@@ -645,20 +862,46 @@ export default function FeedApp({
     storeSort(next);
     trackFeedFilterChanged(`sort:${next}`, `sort:${sortMode}`, { surface: 'feed_v2' });
   }
-  const open = storyParam ? allStories.find((s) => s.id === storyParam) || null : null;
+  const open = storyParam
+    ? allStories.find((s) => s.id === storyParam)
+      || (initialStory && initialStory.id === storyParam ? initialStory : null)
+    : null;
   const allPulse = [...pulse.tools, ...pulse.discussions, ...pulse.blogs];
   const openPulse = pulseParam ? allPulse.find((t) => t.id === pulseParam) || null : null;
   const dirty = JSON.stringify(profile) !== JSON.stringify(savedProfile);
 
+  const proLabel = priceDisplay ? `Go Pro — ${shortPriceDisplay(priceDisplay)}` : 'Go Pro';
   const isFree = !pro;
-  // Signed-out readers get a 4-story preview; a free account unlocks 7.
+  // Signed-out readers get 4 stories/day; a free account gets 7. The quota
+  // counts distinct stories opened today (across tabs), so it can't leak.
   const freeLimit = accessPending || user ? FREE_LIMIT_SIGNED_IN : FREE_LIMIT_SIGNED_OUT;
-  const full = isFree ? visible.slice(0, freeLimit) : visible;
-  const locked = isFree ? visible.slice(freeLimit) : [];
-  const teasers = locked.slice(0, 4);
+  const readTodayCount = stories.filter((s) => readIds.has(s.id)).length;
+  const freeLeft = Math.max(0, freeLimit - readTodayCount);
+  const quotaExhausted = isFree && freeLeft === 0;
+  // Quota is judged on reads BEFORE this story: re-opening something you
+  // already read is always free, and a blocked story never counts as read.
+  const openBlocked = Boolean(open)
+    && isFree
+    && open!.id !== unlockedId
+    && !readIds.has(open!.id)
+    && stories.filter((s) => readIds.has(s.id) && s.id !== open!.id).length >= freeLimit;
+  const full = visible;
 
   const markedStories = allStories.filter((s) => marks.has(s.id));
   const markedPulse = allPulse.filter((t) => marks.has(t.id));
+
+  // Bookmarks tab: stored rows can outlive today's feed, so render them from
+  // the bookmark store and use loaded stories only for the richer card.
+  const searchingBookmarks = Boolean(user) && bookmarkQuery.trim().length > 0;
+  const bookmarkIdSet = new Set(bookmarks.map((b) => b.item_id));
+  const richMarkedStories = markedStories.filter((s) => !searchingBookmarks || bookmarkIdSet.has(s.id));
+  const richMarkedPulse = markedPulse.filter((t) => !searchingBookmarks || bookmarkIdSet.has(t.id));
+  const matchedBookmarkIds = new Set([
+    ...richMarkedStories.map((s) => s.id),
+    ...richMarkedPulse.map((t) => t.id),
+  ]);
+  const extraBookmarks = bookmarks.filter((b) => !matchedBookmarkIds.has(b.item_id));
+  const bookmarkCount = richMarkedStories.length + richMarkedPulse.length + extraBookmarks.length;
 
   // "caught up" when every story in the current list has been opened today.
   // For Pro, hold the card until the archive is exhausted so it never
@@ -678,10 +921,10 @@ export default function FeedApp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
-    if (paywallRef.current || pro || locked.length === 0) return;
+    if (paywallRef.current || !isFree || !quotaExhausted || visible.length === 0) return;
     paywallRef.current = true;
-    trackPaywallShown('feed_free_limit', { locked_count: locked.length, free_limit: freeLimit });
-  }, [pro, locked.length, freeLimit]);
+    trackPaywallShown('feed_free_limit', { free_limit: freeLimit, read_count: readTodayCount });
+  }, [isFree, quotaExhausted, visible.length, freeLimit, readTodayCount]);
 
   // detail view open? (URL-driven)
   const detailOpen = !!open || !!openPulse;
@@ -690,7 +933,7 @@ export default function FeedApp({
   // back-button restores too, not just taps in the list.
   const openStoryId = open ? open.id : null;
   useEffect(() => {
-    if (!openStoryId) return;
+    if (!openStoryId || openBlocked) return;
     setReadIds((cur) => {
       if (cur.has(openStoryId)) return cur;
       const next = new Set(cur);
@@ -698,7 +941,7 @@ export default function FeedApp({
       storeReads(next);
       return next;
     });
-  }, [openStoryId]);
+  }, [openStoryId, openBlocked]);
 
   // tools carousel cards (rendered twice for a seamless infinite loop).
   const toolCards = (dup: string) => (
@@ -775,6 +1018,7 @@ export default function FeedApp({
               const Icon = CAT_ICONS[c] || Sparkles;
               return <NavItem key={c} icon={Icon} label={CAT_LABELS[c] || c} active={tab === c} onClick={() => go(c)} count={counts[c]} />;
             })}
+            <div className="nav-group-label">Pulse</div>
             <NavItem icon={MessageCircle} label="Conversations" active={tab === 'conversations'} onClick={() => go('conversations')} count={pulse.discussions.length} />
             <NavItem icon={BookOpen} label="Worth reading" active={tab === 'reading'} onClick={() => go('reading')} count={pulse.blogs.length} />
             <div className="nav-div" />
@@ -796,8 +1040,8 @@ export default function FeedApp({
                 </span>
               </button>
             ) : (
-              <button className="signin-btn" onClick={() => signInWithGoogle()}>
-                <User size={18} /> Sign in
+              <button className="signin-btn" onClick={handleSignIn} disabled={signingIn}>
+                <User size={18} /> {signingIn ? 'Signing in…' : 'Sign in'}
               </button>
             )}
           </div>
@@ -807,53 +1051,93 @@ export default function FeedApp({
 
       {/* center rail */}
       <main className="main" ref={mainRef}>
+        {activating && (
+          <div className="activating" role="status" aria-live="polite">
+            <span className="activating-spin" /> Activating your subscription…
+          </div>
+        )}
         {openPulse ? (
           !pro && !pulse.blogs.some((b) => b.id === openPulse.id) ? (
-            <PaywallPlate what="Pulse — the builders' radar" ask="pro" dailyOn={dailyOn} onEnableDaily={enableDailyEmails} />
+            <PaywallPlate what="Pulse — the builders' radar" ask="pro" dailyOn={dailyOn} proLabel={proLabel} onEnableDaily={enableDailyEmails} />
           ) : (
             <PulseDetail item={openPulse} onBack={goBack} onShare={share} marked={marks.has(openPulse.id)} toggleMark={toggleMark} />
           )
         ) : open ? (
-          !pro && open.rank > freeLimit && open.id !== unlockedId ? (
+          openBlocked ? (
             <PaywallPlate
               what="This story"
               ask={user ? 'daily' : 'signup'}
               dailyOn={dailyOn}
-              onSignIn={() => signInWithGoogle()}
+              signingIn={signingIn}
+              proLabel={proLabel}
+              onSignIn={handleSignIn}
               onEnableDaily={enableDailyEmails}
             />
           ) : (
             <Detail story={open} onBack={goBack} onShare={share} marked={marks.has(open.id)} toggleMark={toggleMark} />
           )
+        ) : storyParam ? (
+          <EmptyFeed
+            title="Story not found"
+            sub="It may have rolled out of today’s edition."
+            onRetry={goBack}
+            retryLabel="Back to the feed"
+          />
+        ) : pulseParam ? (
+          <EmptyFeed
+            title="Pulse item not found"
+            sub="It may have rolled out of today’s edition."
+            onRetry={goBack}
+            retryLabel="Back to the feed"
+          />
         ) : isProfile ? (
           <ProfileView
             profile={profile} setProfile={setProfile} storyCount={stories.length}
             dirty={dirty} saving={savingProfile} onSave={saveProfile}
             pro={pro} onBack={() => go('all')}
             notice={profileNotice}
+            signingIn={signingIn}
             onEdit={() => setProfileNotice(null)}
             notify={showToast}
+            dailyOn={dailyOn}
+            onToggleDaily={toggleDailyEmails}
             getToken={async () => (user ? user.getIdToken() : '')}
             onSubscriptionChanged={() => { refreshProfile().catch(() => null); }}
             user={user ? { displayName: user.displayName, email: user.email, photoURL: user.photoURL } : null}
             authProfile={authProfile}
             onSignOut={() => { signOut(); go('all'); }}
-            onSignIn={() => signInWithGoogle()}
+            onSignIn={handleSignIn}
           />
         ) : tab === 'bookmarks' ? (
           <>
             <header className="head">
               <h1 className="head-title">Bookmarks</h1>
-              <span className="head-meta">{markedStories.length + markedPulse.length}</span>
+              <span className="head-meta">{bookmarkCount}</span>
+              {user && pro ? (
+                <input
+                  className="bm-search"
+                  type="search"
+                  value={bookmarkQuery}
+                  onChange={(e) => setBookmarkQuery(e.target.value)}
+                  placeholder="Search saved"
+                  aria-label="Search bookmarks"
+                />
+              ) : null}
             </header>
             <div className="feed">
-              {markedStories.length === 0 && markedPulse.length === 0 && (
+              {richMarkedStories.length === 0 && richMarkedPulse.length === 0 && extraBookmarks.length === 0 && (
                 <div className="empty">
-                  <p className="empty-title">Nothing saved yet</p>
-                  <p className="empty-sub">Tap the bookmark on any story and it lands here.</p>
+                  <p className="empty-title">{searchingBookmarks ? 'No saved stories match' : 'Nothing saved yet'}</p>
+                  <p className="empty-sub">
+                    {searchingBookmarks
+                      ? 'Try a different search.'
+                      : user
+                        ? 'Tap the bookmark on any story and it lands here.'
+                        : 'Tap the bookmark on any story — sign in to keep them across devices.'}
+                  </p>
                 </div>
               )}
-              {markedStories.map((s) => (
+              {richMarkedStories.map((s) => (
                 <article key={s.id} className="post" onClick={() => openStory(s)}>
                   <div className="post-meta">
                     <SourceStack sources={s.sources} />
@@ -871,7 +1155,7 @@ export default function FeedApp({
                   <Actions id={s.id} size={18} marked={marks.has(s.id)} onToggleMark={toggleMark} onShare={share} />
                 </article>
               ))}
-              {markedPulse.map((t) => (
+              {richMarkedPulse.map((t) => (
                 <article key={t.id} className="post" onClick={() => openPulseItem(t)}>
                   <div className="post-meta">
                     <span className="post-src">{t.source}</span>
@@ -882,12 +1166,57 @@ export default function FeedApp({
                   <Actions id={t.id} size={18} marked={marks.has(t.id)} onToggleMark={toggleMark} onShare={share} />
                 </article>
               ))}
+              {extraBookmarks.map((b) => {
+                const loadedStory = allStories.find((s) => s.id === b.item_id);
+                const loadedPulse = allPulse.find((t) => t.id === b.item_id);
+                const url = b.item_metadata?.url || '';
+                return (
+                  <article
+                    key={b.item_id}
+                    className="post"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={b.item_metadata?.title || b.item_id}
+                    onClick={() => {
+                      if (loadedStory) openStory(loadedStory);
+                      else if (loadedPulse) openPulseItem(loadedPulse);
+                      else if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter' && e.key !== ' ') return;
+                      e.preventDefault();
+                      if (loadedStory) openStory(loadedStory);
+                      else if (loadedPulse) openPulseItem(loadedPulse);
+                      else if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                    }}
+                  >
+                    <div className="post-meta">
+                      {b.item_metadata?.source ? <span className="post-src">{b.item_metadata.source}</span> : null}
+                      <span className="post-time">{bookmarkedAgo(b.bookmarked_at)}</span>
+                      <span className="post-spacer" />
+                    </div>
+                    <h2 className="post-title">{b.item_metadata?.title || b.item_id}</h2>
+                    {b.item_metadata?.thumbnail ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img className="post-img" src={b.item_metadata.thumbnail} alt="" loading="lazy" decoding="async" />
+                    ) : null}
+                    {b.item_metadata?.description ? (
+                      <p className="post-desc">{b.item_metadata.description}</p>
+                    ) : null}
+                    <Actions id={b.item_id} size={18} marked={marks.has(b.item_id)} onToggleMark={toggleMark} onShare={share} />
+                  </article>
+                );
+              })}
             </div>
           </>
         ) : tab === 'conversations' ? (
           <>
+            <header className="head">
+              <h1 className="head-title">Pulse</h1>
+              <span className="head-meta">{pulse.tools.length + pulse.discussions.length + pulse.blogs.length}</span>
+            </header>
             <div className="tools-carousel-wrap">
-              <div className="tools-carousel-title"><span>Tools</span><span className="head-meta">{1 + promoted.length + pulse.tools.length}</span></div>
+              <div className="tools-carousel-title"><span>Tools</span><span className="head-meta">{promoted.length + pulse.tools.length}</span></div>
               <div className="tools-carousel" ref={carouselRef}>
                 <div className="tools-track">
                   <div className="tools-group">{toolCards('a')}</div>
@@ -927,7 +1256,11 @@ export default function FeedApp({
           <>
             <header className="head">
               <h1 className="head-title">{tab === 'all' ? 'Home' : CAT_LABELS[tab] || tab}</h1>
-              <span className="head-meta">{isFree ? `${freeLimit} of ${visible.length}` : visible.length + olderForTab.length}</span>
+              <span className="head-meta">
+                {isFree
+                  ? (quotaExhausted ? '0 free left' : `${freeLeft} free left`)
+                  : visible.length + olderForTab.length}
+              </span>
               <span className="post-spacer" />
               <div className="sort-seg" role="group" aria-label="Sort stories">
                 <button
@@ -946,41 +1279,52 @@ export default function FeedApp({
                 </button>
               </div>
             </header>
-            <div className="feed">
-              {full.map((s) => (
-                <StoryCard
-                  key={s.id}
-                  story={s}
-                  onClick={() => openStory(s)}
-                  marked={marks.has(s.id)}
-                  onToggleMark={toggleMark}
-                  onShare={share}
-                />
+            <div className="cat-strip" role="tablist" aria-label="Topics">
+              <button className={`cat-chip${tab === 'all' ? ' on' : ''}`} onClick={() => go('all')}>All</button>
+              {cats.map((c) => (
+                <button key={c} className={`cat-chip${tab === c ? ' on' : ''}`} onClick={() => go(c)}>
+                  {CAT_LABELS[c] || c}
+                </button>
               ))}
-
-              {isFree && locked.length > 0 && (
-                <>
-                  {teasers.map((s) => (
-                    <div key={s.id} className="post locked">
-                    <div className="post-meta">
-                      <SourceStack sources={s.sources} />
-                      <span className="post-time">{s.time}</span>
-                      {s.sources.length > 1 && <span className="post-group">· {s.sources.length} sources</span>}
-                      <span className="post-spacer" />
-                      <span className="post-rank">#{s.rank}</span>
-                    </div>
-                      <h2 className="post-title locked-title">{s.title}</h2>
-                      <p className="lock-note"><Lock size={13} /> Unlock with Pro</p>
-                    </div>
-                  ))}
-                  <PaywallPlate
-                    what="the full ranked feed"
-                    ask={user ? 'daily' : 'signup'}
-                    dailyOn={dailyOn}
-                    onSignIn={() => signInWithGoogle()}
-                    onEnableDaily={enableDailyEmails}
+            </div>
+            <div className="feed">
+              {feedError ? (
+                <EmptyFeed
+                  title="Couldn’t load today’s edition"
+                  sub="Something went wrong on our side. Try again in a moment."
+                  onRetry={() => window.location.reload()}
+                />
+              ) : stories.length === 0 ? (
+                <EmptyFeed
+                  title="No stories yet today"
+                  sub="A new edition lands every morning. Check back in a bit."
+                  onRetry={() => window.location.reload()}
+                />
+              ) : (
+                full.map((s, i) => (
+                  <StoryCard
+                    key={s.id}
+                    story={s}
+                    displayRank={i + 1}
+                    locked={isFree && quotaExhausted && !readIds.has(s.id)}
+                    onClick={() => openStory(s)}
+                    marked={marks.has(s.id)}
+                    onToggleMark={toggleMark}
+                    onShare={share}
                   />
-                </>
+                ))
+              )}
+
+              {!feedError && isFree && quotaExhausted && visible.length > 0 && (
+                <PaywallPlate
+                  what="the full ranked feed"
+                  ask={user ? 'daily' : 'signup'}
+                  dailyOn={dailyOn}
+                  signingIn={signingIn}
+                  proLabel={proLabel}
+                  onSignIn={handleSignIn}
+                  onEnableDaily={enableDailyEmails}
+                />
               )}
 
               {!isFree && (tab === 'all' || olderForTab.length > 0) && (
@@ -1019,7 +1363,7 @@ export default function FeedApp({
                 <div className="caught-up">
                   <span className="caught-up-badge"><Check size={18} /></span>
                   <p className="caught-up-title">You&rsquo;re all caught up</p>
-                  <p className="caught-up-sub">You read all the good stuff. Check back in a few hours for the next refresh.</p>
+                  <p className="caught-up-sub">You read all the good stuff. A fresh edition lands tomorrow morning.</p>
                 </div>
               )}
             </div>
@@ -1032,7 +1376,7 @@ export default function FeedApp({
         <div className="rail">
           <div className="rail-head">
             <h2 className="rail-title">Tools</h2>
-            <span className="rail-meta">{generated ? `upd ${generated}` : 'hourly'}</span>
+            <span className="rail-meta">{generated ? `updated ${generated}` : 'hourly'}</span>
           </div>
           {promoted.length > 0 && (
             <div className="rail-items">
@@ -1070,11 +1414,11 @@ export default function FeedApp({
         <button className={`bn-item${isProfile ? ' on' : ''}`} onClick={() => go('profile')}><User size={24} /><span>Profile</span></button>
       </nav>
 
-      {toast && <div className="toast">{toast}</div>}
+      {toast && <div className="toast" role="status" aria-live="polite">{toast}</div>}
       {promoOpen && (
         <PromoteModal
           onClose={() => setPromoOpen(false)}
-          onSignIn={() => signInWithGoogle()}
+          onSignIn={handleSignIn}
           signedIn={!!user}
           getToken={async () => (user ? user.getIdToken() : '')}
         />
@@ -1086,6 +1430,11 @@ export default function FeedApp({
 
 function WelcomeModal({ kind, onClose }: { kind: 'pro' | 'promo'; onClose: () => void }) {
   const isPro = kind === 'pro';
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
   const perks = isPro
     ? [
       'The full ranked feed, no 7-story cap',
@@ -1100,7 +1449,7 @@ function WelcomeModal({ kind, onClose }: { kind: 'pro' | 'promo'; onClose: () =>
     ];
   return (
     <div className="promo-overlay" onClick={onClose}>
-      <div className="promo-modal celebrate-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="promo-modal celebrate-modal" role="dialog" aria-modal="true" aria-label={isPro ? 'Welcome to Pro' : 'Your tool is live'} onClick={(e) => e.stopPropagation()}>
         <div className="celebrate-badge"><Check size={26} /></div>
         <h2 className="promo-title celebrate-title">
           {isPro ? 'Welcome to Pro' : 'Your tool is live'}
@@ -1115,7 +1464,7 @@ function WelcomeModal({ kind, onClose }: { kind: 'pro' | 'promo'; onClose: () =>
             <li key={p}><Check size={16} /><span>{p}</span></li>
           ))}
         </ul>
-        <button className="promo-pay" onClick={onClose}>
+        <button className="promo-pay" onClick={onClose} autoFocus>
           {isPro ? 'Start exploring' : 'Nice'}
         </button>
         {isPro && <p className="promo-support">$3/mo · cancel anytime in Profile</p>}
@@ -1133,6 +1482,12 @@ function PromoteModal({ onClose, onSignIn, signedIn, getToken }: {
   const [subtext, setSubtext] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   async function pay() {
     if (busy) return;
@@ -1160,7 +1515,7 @@ function PromoteModal({ onClose, onSignIn, signedIn, getToken }: {
 
   return (
     <div className="promo-overlay" onClick={onClose}>
-      <div className="promo-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="promo-modal" role="dialog" aria-modal="true" aria-label="Promote your tool" onClick={(e) => e.stopPropagation()}>
         <div className="promo-head">
           <h2 className="promo-title">Promote your tool</h2>
           <button className="promo-x" onClick={onClose} aria-label="Close"><X size={18} /></button>
@@ -1303,19 +1658,49 @@ function SourceStack({ sources }: { sources: string[] }) {
   );
 }
 
-function StoryCard({ story, onClick, marked, onToggleMark, onShare }: {
+function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = false, displayRank }: {
   story: FeedStory; onClick: () => void; marked: boolean;
   onToggleMark: (id: string) => void; onShare: (id: string) => void;
+  locked?: boolean; displayRank?: number;
 }) {
+  const rank = displayRank ?? story.rank;
+  const onKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick();
+    }
+  };
+  if (locked) {
+    return (
+      <article
+        className="post locked"
+        role="button"
+        tabIndex={0}
+        aria-label={`Locked story: ${story.title}`}
+        onClick={onClick}
+        onKeyDown={onKey}
+      >
+        <div className="post-meta">
+          <SourceStack sources={story.sources} />
+          <span className="post-time">{story.time}</span>
+          {story.sources.length > 1 && <span className="post-group">· {story.sources.length} sources</span>}
+          <span className="post-spacer" />
+          <span className="post-rank">#{rank}</span>
+        </div>
+        <h2 className="post-title locked-title">{story.title}</h2>
+        <p className="lock-note"><Lock size={13} /> Unlock with Pro or a free account</p>
+      </article>
+    );
+  }
   return (
-    <article className="post" onClick={onClick}>
+    <article className="post" role="button" tabIndex={0} aria-label={story.title} onClick={onClick} onKeyDown={onKey}>
       <div className="post-meta">
         <SourceStack sources={story.sources} />
         <span className="post-src">{story.source}</span>
         <span className="post-time">{story.time}</span>
         {story.sources.length > 1 && <span className="post-group">· {story.sources.length} sources</span>}
         <span className="post-spacer" />
-        <span className="post-rank">#{story.rank}</span>
+        <span className="post-rank">#{rank}</span>
       </div>
       <h2 className="post-title">{story.title}</h2>
       {story.img && (
@@ -1327,9 +1712,22 @@ function StoryCard({ story, onClick, marked, onToggleMark, onShare }: {
   );
 }
 
-function Actions({ id, size = 18, marked, onToggleMark, onShare }: {
+function EmptyFeed({ title, sub, onRetry, retryLabel = 'Retry' }: {
+  title: string; sub: string; onRetry: () => void; retryLabel?: string;
+}) {
+  return (
+    <div className="empty">
+      <p className="empty-title">{title}</p>
+      <p className="empty-sub">{sub}</p>
+      <button className="empty-retry" onClick={onRetry}>{retryLabel}</button>
+    </div>
+  );
+}
+
+function Actions({ id, size = 18, marked, onToggleMark, onShare, shareKind = 'story' }: {
   id: string; size?: number; marked: boolean;
-  onToggleMark: (id: string) => void; onShare: (id: string) => void;
+  onToggleMark: (id: string) => void; onShare: (id: string, kind?: 'story' | 'pulse') => void;
+  shareKind?: 'story' | 'pulse';
 }) {
   const stop = (e: React.MouseEvent) => e.stopPropagation();
 
@@ -1338,12 +1736,16 @@ function Actions({ id, size = 18, marked, onToggleMark, onShare }: {
       <button
         className={`act act-mark${marked ? ' on' : ''}`}
         onClick={() => onToggleMark(id)}
-        aria-label={marked ? 'Remove bookmark' : 'Bookmark this story'}
+        aria-label={marked ? 'Remove bookmark' : 'Bookmark this item'}
         aria-pressed={marked}
       >
         <span className="act-ic"><Bookmark size={size} fill={marked ? 'currentColor' : 'none'} /></span>
       </button>
-      <button className="act act-share" onClick={() => onShare(id)} aria-label="Share this story">
+      <button
+        className="act act-share"
+        onClick={() => onShare(id, shareKind)}
+        aria-label={shareKind === 'pulse' ? 'Share this pulse item' : 'Share this story'}
+      >
         <span className="act-ic"><Share size={size} /></span>
       </button>
     </div>
@@ -1365,6 +1767,18 @@ function PulseFeed({ items, title, mode, onOpen, marks, toggleMark, share }: {
           <article
             key={t.id}
             className="post"
+            role={mode === 'detail' && onOpen ? 'button' : undefined}
+            tabIndex={mode === 'detail' && onOpen ? 0 : undefined}
+            onKeyDown={
+              mode === 'detail' && onOpen
+                ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onOpen(t);
+                    }
+                  }
+                : undefined
+            }
             onClick={
               mode === 'detail' && onOpen
                 ? () => onOpen(t)
@@ -1410,7 +1824,7 @@ function PulseFeed({ items, title, mode, onOpen, marks, toggleMark, share }: {
               // eslint-disable-next-line @next/next/no-img-element
               <img className="post-img" src={t.img} alt="" loading="lazy" decoding="async" />
             )}
-            <Actions id={t.id} size={18} marked={marks.has(t.id)} onToggleMark={toggleMark} onShare={share} />
+            <Actions id={t.id} size={18} marked={marks.has(t.id)} onToggleMark={toggleMark} onShare={share} shareKind="pulse" />
           </article>
         ))}
       </div>
@@ -1518,12 +1932,14 @@ function Detail({ story, onBack, onShare, marked, toggleMark }: { story: FeedSto
   );
 }
 
-function PaywallPlate({ what, ask, dailyOn, onSignIn, onEnableDaily }: {
+function PaywallPlate({ what, ask, dailyOn, onSignIn, onEnableDaily, signingIn = false, proLabel = 'Go Pro' }: {
   what: string;
   ask: 'signup' | 'daily' | 'pro';
   dailyOn: boolean;
   onSignIn?: () => void;
   onEnableDaily: () => void;
+  signingIn?: boolean;
+  proLabel?: string;
 }) {
   if (ask === 'signup') {
     return (
@@ -1536,8 +1952,10 @@ function PaywallPlate({ what, ask, dailyOn, onSignIn, onEnableDaily }: {
             : <>Today&rsquo;s edition continues with a free account — <b>7 stories a day</b> plus the daily brief by email.</>}
         </p>
         <div className="paywall-actions">
-          <button className="paywall-btn" onClick={onSignIn}>Sign up free with Google</button>
-          <ProCheckoutButton className="paywall-alt" label="Or go Pro — $3/mo" source="paywall_anon_pro" />
+          <button className="paywall-btn" onClick={onSignIn} disabled={signingIn}>
+            {signingIn ? 'Signing in…' : 'Sign up free with Google'}
+          </button>
+          <ProCheckoutButton className="paywall-alt" label={proLabel} source="paywall_anon_pro" />
         </div>
         <p className="paywall-foot">No card needed for the free account. Cancel Pro anytime.</p>
       </div>
@@ -1553,7 +1971,7 @@ function PaywallPlate({ what, ask, dailyOn, onSignIn, onEnableDaily }: {
           Go Pro for <b>the full ranked feed</b>, Pulse and the archive — or get the top stories in your inbox every morning.
         </p>
         <div className="paywall-actions">
-          <ProCheckoutButton className="paywall-btn" />
+          <ProCheckoutButton className="paywall-btn" label={proLabel} />
           <button
             className={`paywall-alt${dailyOn ? ' on' : ''}`}
             onClick={dailyOn ? undefined : onEnableDaily}
@@ -1574,7 +1992,7 @@ function PaywallPlate({ what, ask, dailyOn, onSignIn, onEnableDaily }: {
       <p className="paywall-sub">
         <>{what} is part of <b>Trace Pro</b> — the whole day, ranked and summarized, every morning.</>
       </p>
-      <ProCheckoutButton className="paywall-btn" />
+      <ProCheckoutButton className="paywall-btn" label={proLabel} />
       <p className="paywall-foot">Cancel anytime. Daily brief by email, every morning.</p>
     </div>
   );
@@ -1585,6 +2003,11 @@ function CancelModal({ onClose, getToken, onDone }: {
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
   const miss = [
     'Back to 7 free stories a day',
     'Summaries shrink, key points go away',
@@ -1613,7 +2036,7 @@ function CancelModal({ onClose, getToken, onDone }: {
   }
   return (
     <div className="promo-overlay" onClick={onClose}>
-      <div className="promo-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="promo-modal" role="dialog" aria-modal="true" aria-label="Cancel Pro" onClick={(e) => e.stopPropagation()}>
         <div className="promo-head">
           <h2 className="promo-title">Before you go</h2>
           <button className="promo-x" onClick={onClose} aria-label="Close"><X size={18} /></button>
@@ -1634,13 +2057,14 @@ function CancelModal({ onClose, getToken, onDone }: {
   );
 }
 
-function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, pro, onBack, user, authProfile, onSignOut, onSignIn, notify, getToken, onSubscriptionChanged, notice, onEdit }: {
+function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, pro, onBack, user, authProfile, onSignOut, onSignIn, notify, getToken, onSubscriptionChanged, notice, signingIn = false, onEdit, dailyOn = false, onToggleDaily }: {
   profile: Profile; setProfile: (p: Profile) => void; storyCount: number;
   dirty: boolean; saving: boolean; onSave: () => void; pro: boolean; onBack: () => void;
   user: { displayName: string | null; email: string | null; photoURL: string | null } | null;
   authProfile: any; onSignOut: () => void; onSignIn: () => void;
   notify: (msg: string) => void; getToken: () => Promise<string>; onSubscriptionChanged: () => void;
-  notice?: string | null; onEdit?: () => void;
+  notice?: string | null; signingIn?: boolean; onEdit?: () => void;
+  dailyOn?: boolean; onToggleDaily?: () => void;
 }) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const bio = `${ROLE_LABELS[profile.role] || 'Builder'} following ${profile.interests.length} topics. ${storyCount} stories ranked today.`;
@@ -1676,14 +2100,6 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
         </div>
       )}
       <div className="detail profile">
-        <div className="banner">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`https://picsum.photos/seed/${encodeURIComponent(user?.email || 'trace')}/1200/320`}
-            alt=""
-            loading="lazy"
-          />
-        </div>
         <div className="avatar-row">
           {user?.photoURL ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -1696,7 +2112,9 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
             {user ? (
               <button className="save-btn" onClick={onSignOut}>Sign out</button>
             ) : (
-              <button className="save-btn primary" onClick={onSignIn}>Sign in with Google</button>
+              <button className="save-btn primary" onClick={onSignIn} disabled={signingIn}>
+                {signingIn ? 'Signing in…' : 'Sign in with Google'}
+              </button>
             )}
             {user && (dirty || saving) && (
               <button className={`save-btn primary${dirty ? ' pulse' : ''}`} onClick={onSave} disabled={saving}>
@@ -1713,8 +2131,6 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
             <span><b>{storyCount}</b> stories today</span>
             <span className="post-dot">·</span>
             <span><b>{profile.interests.length}</b> interests</span>
-            <span className="post-dot">·</span>
-            <span><b>7</b> sources followed</span>
           </div>
         </div>
 
@@ -1741,6 +2157,21 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
           <p className={`section-hint${dirty ? ' unsaved' : ''}`}>
             {dirty ? 'Unsaved changes — tap Save changes above.' : 'Your feed re-ranks around these right away.'}
           </p>
+        </div>
+
+        <div className="profile-section">
+          <h2 className="section-label">Daily email brief</h2>
+          <div className="chip-row">
+            <button
+              className={`pick${dailyOn ? ' on' : ''}`}
+              onClick={onToggleDaily}
+              aria-pressed={dailyOn}
+              disabled={!user}
+            >
+              {dailyOn ? <><Check size={14} /> On — top stories every morning</> : 'Get the daily emails'}
+            </button>
+          </div>
+          <p className="section-hint">Lands at 10:30 Europe/Berlin. Turn it off anytime.</p>
         </div>
 
         <div className="profile-section">
@@ -1784,6 +2215,7 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
 const css = `
 .xw {
   --bg: #ffffff;
+  --ink: #0f1419;
   --text: #0f1419;
   --text-2: #536471;
   --text-3: #71767b;
@@ -1802,7 +2234,8 @@ const css = `
 
 /* mobile bottom nav */
 .xw .bottom-nav { display: none; }
-@media (max-width: 687px) {
+.xw .cat-strip { display: none; }
+@media (max-width: 1100px) {
   .xw .bottom-nav {
     display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 300;
     min-height: 52px; background: rgba(255,255,255,0.92); backdrop-filter: blur(12px);
@@ -1816,6 +2249,20 @@ const css = `
     color: var(--text-3); font-size: 10px; font-weight: 600; padding: 4px 12px;
   }
   .xw .bn-item.on { color: var(--text); }
+  .xw .feed { padding-bottom: 104px; }
+  .xw .cat-strip {
+    display: flex; gap: 8px; overflow-x: auto; padding: 10px 14px;
+    border-bottom: 1px solid var(--line); scrollbar-width: none;
+  }
+  .xw .cat-strip::-webkit-scrollbar { display: none; }
+  .xw .cat-chip {
+    white-space: nowrap; padding: 8px 14px; border-radius: 9999px;
+    border: 1px solid var(--line); background: var(--bg);
+    font-size: 13.5px; font-weight: 600; font-family: inherit; cursor: pointer;
+  }
+  .xw .cat-chip.on { background: var(--line); font-weight: 700; }
+}
+@media (max-width: 687px) {
   .xw .main { width: 100%; max-width: 100%; border-left: none; border-right: none; }
   .xw .post { padding: 14px 14px 4px; }
   .xw .post-title { font-size: 17px; }
@@ -1860,6 +2307,7 @@ const css = `
   padding: 2px 8px; border-radius: 9999px; font-variant-numeric: tabular-nums;
 }
 .xw .nav-div { height: 1px; background: var(--line); margin: 10px 12px; }
+.xw .nav-group-label { padding: 12px 18px 4px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
 .xw .side-foot { padding: 20px 18px; font-size: 13px; line-height: 16px; color: var(--text-3); }
 .xw .side-spacer { flex: 1; min-height: 24px; }
 .xw .account { padding: 4px 0 10px; }
@@ -1920,7 +2368,7 @@ const css = `
 .xw .sort-opt.on { background: #fff; color: var(--text); box-shadow: 0 1px 3px rgba(15,20,25,0.12); }
 .xw .head-spacer { width: 34px; }
 .xw .back {
-  width: 34px; height: 34px; border-radius: 9999px; border: none;
+  width: 42px; height: 42px; border-radius: 9999px; border: none;
   background: transparent; color: var(--text); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: background-color 0.2s ease; margin-left: -8px;
@@ -1928,6 +2376,8 @@ const css = `
 .xw .back:hover { background-color: var(--line); }
 
 @media (max-width: 687px) {
+  .xw .act-ic { width: 44px; height: 44px; }
+  .xw .toast { bottom: 72px; }
   .xw .post { padding: 14px 14px 4px; }
   .xw .post-title { font-size: 17px; }
   .xw .post-img { border-radius: 12px; margin-top: 8px; }
@@ -1954,6 +2404,7 @@ const css = `
   transition: background-color 0.2s ease;
 }
 .xw .post:hover { background-color: var(--hover); }
+.xw .post:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 .xw .post.locked { cursor: default; }
 .xw .post.locked:hover { background: transparent; }
 .xw .post-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
@@ -2033,7 +2484,7 @@ const css = `
   color: var(--text-3); font-size: 13px; padding: 0;
 }
 .xw .act-ic {
-  width: 34.75px; height: 34.75px; border-radius: 9999px;
+  width: 40px; height: 40px; border-radius: 9999px;
   display: flex; align-items: center; justify-content: center;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
@@ -2197,9 +2648,7 @@ const css = `
 .xw .rail-sum { font-size: 13px; line-height: 19px; color: var(--text-2); }
 
 /* profile view */
-.xw .banner { height: 130px; overflow: hidden; background: var(--hover); border-bottom: 1px solid var(--line); }
-.xw .banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.xw .avatar-row { display: flex; align-items: flex-end; justify-content: space-between; padding: 0 18px; margin-top: -44px; }
+.xw .avatar-row { display: flex; align-items: flex-end; justify-content: space-between; padding: 14px 18px 0; }
 .xw .avatar { width: 92px; height: 92px; border-radius: 50%; border: 4px solid #fff; background: #fff; object-fit: contain; }
 .xw .save-btn {
   display: inline-flex; align-items: center; gap: 6px;
@@ -2235,6 +2684,19 @@ const css = `
   cursor: pointer; white-space: nowrap; padding: 0;
 }
 .xw .save-note-cta:hover { text-decoration: underline; text-underline-offset: 3px; }
+.xw .activating {
+  display: flex; align-items: center; gap: 10px;
+  margin: 12px 18px 0; padding: 10px 14px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--hover);
+  font-size: 13.5px; font-weight: 600;
+}
+.xw .activating-spin {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--line); border-top-color: var(--blue);
+  animation: act-spin 0.8s linear infinite;
+}
+@keyframes act-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .xw .activating-spin { animation: none; } }
 .xw .profile-id { padding: 10px 18px 4px; }
 .xw .profile-name { margin: 0; font-size: 23px; font-weight: 800; line-height: 28px; }
 .xw .profile-handle { margin: 0 0 10px; font-size: 15px; color: var(--text-3); }
@@ -2254,11 +2716,25 @@ const css = `
 .xw .pick.on { background: var(--line); border-color: var(--line); font-weight: 700; }
 .xw .section-hint { margin: 0; padding: 0 0 14px; font-size: 13px; color: var(--text-3); }
 .xw .section-hint.unsaved { color: #c77700; font-weight: 600; }
+.xw .bm-search {
+  border: 1px solid var(--line); border-radius: 9999px; background: var(--hover);
+  padding: 7px 14px; font-size: 13.5px; font-family: inherit; color: var(--text);
+  outline: none; width: 160px;
+}
+.xw .bm-search:focus { border-color: var(--blue); background: #fff; }
+@media (max-width: 687px) { .xw .bm-search { width: 110px; } }
 
 /* empty state + toast */
 .xw .empty { padding: 56px 24px; text-align: center; }
 .xw .empty-title { margin: 0 0 6px; font-size: 21px; font-weight: 800; }
 .xw .empty-sub { margin: 0; font-size: 15px; color: var(--text-2); }
+.xw .empty-retry {
+  margin-top: 16px; padding: 9px 20px; border-radius: 9999px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--text);
+  font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.xw .empty-retry:hover { background: var(--hover); }
 .xw .caught-up { margin: 10px 0 30px; padding: 38px 24px; text-align: center; border: 1px solid var(--line); border-radius: 18px; background: var(--bg); }
 .xw .caught-up-badge { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 9999px; background: var(--blue); color: #fff; margin-bottom: 12px; }
 .xw .caught-up-title { margin: 0 0 6px; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
@@ -2280,6 +2756,7 @@ const css = `
 .xw .older-error { margin: 0 18px 24px; text-align: center; font-size: 13.5px; font-weight: 600; color: var(--pink); }
 .xw .toast {
   position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  max-width: calc(100vw - 32px); text-align: center;
   background: #0f1419; color: #fff; font-size: 14px; font-weight: 600;
   padding: 12px 20px; border-radius: 9999px; z-index: 900;
   box-shadow: 0 8px 30px rgba(0,0,0,0.25);

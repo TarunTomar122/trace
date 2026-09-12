@@ -177,7 +177,7 @@ export const comparePages: ComparePage[] = [
       {
         question: "Is Trace free?",
         answer:
-          "There is a limited free experience, but the main value is designed as a paid product. The public site is meant to show the workflow, not replace the app.",
+          "The free plan is real: 4 stories as a guest, 7 with a free account, plus a daily email brief. Pro ($2.99/mo) removes the cap and adds Pulse, the archive, and agent access.",
       },
     ],
   },
@@ -306,7 +306,7 @@ export const comparePages: ComparePage[] = [
       },
       {
         label: "Sources",
-        trace: "50+ tech sources including HN, Reddit, Product Hunt, GitHub",
+        trace: "400+ tech sources including HN, Reddit, Product Hunt, GitHub",
         alternative: "Mainstream business publications",
       },
       {
@@ -737,7 +737,7 @@ export const comparePages: ComparePage[] = [
       },
       {
         label: "Coverage",
-        trace: "50+ sources scanned automatically",
+        trace: "400+ sources scanned automatically",
         alternative: "Whatever tabs you remember to open",
       },
       {
@@ -858,7 +858,7 @@ export const comparePages: ComparePage[] = [
       },
       {
         label: "Content discovery",
-        trace: "Curated daily from 50+ sources automatically",
+        trace: "Curated daily from 400+ sources automatically",
         alternative: "You save what you find — discovery depends on you",
       },
       {

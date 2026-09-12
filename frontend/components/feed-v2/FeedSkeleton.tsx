@@ -57,7 +57,7 @@ const css = `
 .xsk .sk-logo { width: 30px; height: 30px; border-radius: 8px; }
 .xsk .sk-word { width: 76px; height: 20px; }
 .xsk .sk-nav { height: 22px; margin: 0 8px 22px; }
-.xsk-main { width: 600px; max-width: 100%; border-left: 1px solid var(--line); border-right: 1px solid var(--line); padding: 20px 16px 40px; }
+.xsk-main { width: 660px; max-width: 100%; border-left: 1px solid var(--line); border-right: 1px solid var(--line); padding: 20px 16px 40px; }
 @media (max-width: 687px) { .xsk-main { border-left: none; border-right: none; } }
 .xsk .sk-head { width: 130px; height: 26px; margin-bottom: 22px; }
 .xsk-post { border-top: 1px solid var(--line); padding: 16px 0 20px; }
@@ -65,8 +65,8 @@ const css = `
 .xsk .sk-title { height: 20px; margin-bottom: 8px; }
 .xsk .sk-title.short { width: 72%; }
 .xsk .sk-img { height: 200px; border-radius: 16px; margin-top: 12px; }
-.xsk-right { width: 350px; flex-shrink: 0; padding: 20px 16px; display: flex; flex-direction: column; gap: 20px; }
-@media (max-width: 1260px) { .xsk-right { display: none; } }
+.xsk-right { width: 330px; flex-shrink: 0; padding: 20px 16px; display: flex; flex-direction: column; gap: 20px; }
+@media (max-width: 1300px) { .xsk-right { display: none; } }
 .xsk-rail { border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
 .xsk .sk-railhead { width: 90px; height: 18px; margin-bottom: 12px; }
 .xsk .sk-row { height: 14px; margin-bottom: 12px; }

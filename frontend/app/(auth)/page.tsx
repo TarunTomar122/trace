@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { StructuredDataList } from '@/components/StructuredData';
 import {
   generateHomeApplicationSchema,
-  HOME_FAQ_ITEMS,
   HOME_PRODUCT_DESCRIPTION,
 } from '@/lib/home-seo';
 import { generateFAQSchema } from '@/lib/seo';
+import { LANDING_FAQ } from '@/components/feed-v2/LandingScreen';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { TRACE_SESSION_COOKIE_NAME, verifyTraceSession } from '@/lib/server-session';
@@ -55,7 +55,7 @@ export default async function HomePage() {
         schemas={[
           generateHomeApplicationSchema(),
           generateFAQSchema(
-            HOME_FAQ_ITEMS.map((item) => ({ question: item.q, answer: item.a })),
+            LANDING_FAQ.map((item) => ({ question: item.q, answer: item.a })),
           ),
         ]}
       />

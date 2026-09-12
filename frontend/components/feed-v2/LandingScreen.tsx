@@ -36,11 +36,12 @@ const HOW_IT_WORKS = [
 
 const FREE_FEATURES = [
   'A personalized AI and tech news feed',
-  '30 headlines in every new Chrome tab',
-  'Five unique AI summaries every day',
+  '31 headlines in every new Chrome tab',
+  '4 stories as a guest, 7 with a free account',
   'Unlimited original source links',
-  'Topic filters for the stories you follow',
+  'Topic filters and For you ranking',
   'Bookmarks with a free Trace account',
+  'Daily email brief (opt-in)',
 ];
 
 const PRO_FEATURES = [
@@ -67,10 +68,10 @@ const AGENT_STEPS = [
   },
 ];
 
-const FAQ = [
+export const LANDING_FAQ = [
   {
     q: 'Is Trace free?',
-    a: 'Yes. The free plan includes your ranked AI and technology feed, five full story briefs every day, unlimited original source links, and bookmarks with a free account. Pro ($3/mo) unlocks the whole day: every brief, full Pulse, and your archive.',
+    a: 'Yes. Guests get 4 stories a day; a free account gets 7, plus the daily email brief if you want it. Pro ($2.99/mo) unlocks the whole day: every brief, full Pulse, and the archive.',
   },
   {
     q: 'What counts as one AI summary?',
@@ -82,23 +83,23 @@ const FAQ = [
   },
   {
     q: 'How is this different from a news aggregator?',
-    a: 'Aggregators hand you a firehose and make ranking your job. Trace hands you the 25 stories that mattered, grouped across outlets, summarized with key points, and ranked for your role. You open it, you read it, you are caught up in under 10 minutes.',
+    a: 'Aggregators hand you a firehose and make ranking your job. Trace hands you the stories that mattered, grouped across outlets, summarized with key points, and ranked for your role. You open it, you read it, you are caught up in under 10 minutes.',
   },
   {
     q: 'How does personalization work?',
-    a: 'Set your role and interests in your profile and tomorrow’s edition is ranked around them: an engineer sees releases and tooling first, a founder sees markets and launches. Same transparent ranking, weighted to your topics. No engagement bait, no outrage optimization.',
+    a: 'Set your role and interests in your profile and your feed re-ranks around them right away: an engineer sees releases and tooling first, a founder sees markets and launches. Same transparent ranking, weighted to your topics. No engagement bait, no outrage optimization.',
   },
   {
     q: 'What is Pulse?',
-    a: 'Pulse is the builders’ radar next to your feed: trending GitHub repos with star counts, Hacker News discussions with points, and worth-reading blog posts. Pro members get the full personalized Pulse; free readers see the top of each list.',
+    a: 'Pulse is the builders’ radar next to your feed: trending GitHub repos with star counts, Hacker News discussions with points, and worth-reading blog posts. Full Pulse is part of Pro.',
   },
   {
     q: 'Can I cancel Pro anytime?',
-    a: 'Yes. Cancel in one click from your profile, no retention call, no exit survey. You keep Pro until the end of the billing period, and your bookmarks and profile stay exactly as they are on the free plan.',
+    a: 'Yes. Cancel anytime from your profile, no retention call, no exit survey. You keep Pro until the end of the billing period, and your bookmarks and profile stay exactly as they are on the free plan.',
   },
   {
     q: 'Is there an app or email version?',
-    a: 'Trace is web-first today, with a Chrome extension that puts the ranked feed in every new tab and an Android app on Google Play. A daily email brief is on the roadmap: Pro members will get first access.',
+    a: 'Trace is web-first today, with a Chrome extension that puts the ranked feed in every new tab and an Android app on Google Play. A daily email brief lands every morning at 10:30 Europe/Berlin — turn it on from your profile.',
   },
 ];
 
@@ -134,6 +135,7 @@ export default async function LandingScreen() {
             <a href="/how-it-works">How it works</a>
             <Link href="/subscribe">Pricing</Link>
             <a href="/blog">Blog</a>
+            <LandingCtaLink href="/feed" location="nav_signin" className="nav-signin">Sign in</LandingCtaLink>
             <LandingCtaLink href="/feed" location="nav" className="nav-cta">Open the feed</LandingCtaLink>
           </nav>
         </div>
@@ -160,11 +162,17 @@ export default async function LandingScreen() {
 
       <section className="section" id="demo">
         <h2 className="section-title">Your next Chrome tab</h2>
-        <p className="section-sub">This is the actual feed, live. Tap any story to start reading.</p>
-        <div className="demo-wrap">
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          <HomeEditionPreview feed={editionFeed} variant="x" />
-        </div>
+        {editionFeed?.trending?.length ? (
+          <>
+            <p className="section-sub">This is the actual feed, live. Tap any story to start reading.</p>
+            <div className="demo-wrap">
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              <HomeEditionPreview feed={editionFeed} variant="x" />
+            </div>
+          </>
+        ) : (
+          <p className="section-sub">A fresh ranked edition lands every morning.</p>
+        )}
         <div className="demo-cta">
           <LandingCtaLink href="/feed" location="demo" className="btn-primary">Open the live feed</LandingCtaLink>
         </div>
@@ -198,12 +206,12 @@ export default async function LandingScreen() {
           </article>
           <article className="plan plan-pro">
             <p className="plan-tag">Trace Pro</p>
-            <p className="plan-price">$3<span>/month</span></p>
+            <p className="plan-price">$2.99<span>/month</span></p>
             <ul className="plan-list">
               {PRO_FEATURES.map((f) => <li key={f}>{f}</li>)}
             </ul>
             <LandingCtaLink href="/subscribe" location="pricing_pro" variant="subscribe" className="btn-primary plan-btn">
-              Try Pro free for 3 days
+              Go Pro
             </LandingCtaLink>
           </article>
         </div>
@@ -242,7 +250,7 @@ export default async function LandingScreen() {
       <section className="section" id="faq">
         <h2 className="section-title">Questions, answered</h2>
         <div className="faq">
-          {FAQ.map((item) => (
+          {LANDING_FAQ.map((item) => (
             <details key={item.q} className="faq-item">
               <summary>{item.q}</summary>
               <p>{item.a}</p>
@@ -291,6 +299,7 @@ const css = `
 .lp {
   --ink: #0f1419;
   --text-2: #536471;
+  --text-3: #71767b;
   --line: #eff3f4;
   --blue: #1d9bf0;
   --hover: #f7f9f9;
@@ -310,7 +319,13 @@ const css = `
   background: var(--blue); color: #fff !important; padding: 8px 16px; border-radius: 9999px; font-weight: 700;
 }
 .lp .nav-cta:hover { background: #1a8cd8; }
-@media (max-width: 640px) { .lp .nav-links a:not(.nav-cta) { display: none; } }
+@media (max-width: 640px) {
+  .lp .nav-in { height: auto; padding: 10px 14px; }
+  .lp .nav-links { gap: 12px; overflow-x: auto; scrollbar-width: none; }
+  .lp .nav-links::-webkit-scrollbar { display: none; }
+  .lp .nav-links a { white-space: nowrap; }
+  .lp .nav-signin { display: none; }
+}
 
 .lp .hero { max-width: 860px; margin: 0 auto; padding: 84px 20px 40px; text-align: center; }
 .lp .hero-title { margin: 0 0 16px; font-size: clamp(2.2rem, 5.5vw, 3.9rem); font-weight: 800; letter-spacing: -0.035em; line-height: 1.04; }
@@ -382,6 +397,9 @@ const css = `
 .lp .faq-item:last-child { border-bottom: none; }
 .lp .faq-item summary { padding: 18px 20px; font-size: 16px; font-weight: 650; cursor: pointer; list-style: none; transition: background-color 0.2s ease; }
 .lp .faq-item summary::-webkit-details-marker { display: none; }
+.lp .faq-item summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lp .faq-item summary::after { content: '+'; font-size: 20px; font-weight: 500; color: var(--text-2); flex-shrink: 0; }
+.lp .faq-item[open] summary::after { content: '−'; }
 .lp .faq-item summary:hover { background: var(--hover); }
 .lp .faq-item p { margin: 0; padding: 0 20px 18px; font-size: 15px; line-height: 1.65; color: var(--text-2); }
 

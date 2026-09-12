@@ -1,7 +1,9 @@
 import { unstable_cache } from 'next/cache';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { TRACE_SESSION_COOKIE_NAME, verifyTraceSession, isTraceSessionProfileFresh } from '@/lib/server-session';
 import { hasActiveSubscription } from '@/lib/subscription-access';
+import { resolveSubscriptionOfferFromHeaders } from '@/lib/subscription-offer';
+import { SUBSCRIPTION_PRICE_DEFAULT } from '@/lib/subscription-pricing';
 import type { FeedStory, PulseItem } from '@/components/feed-v2/FeedApp';
 
 // Server-side feed data builders shared by /feed (FeedScreen) and
@@ -12,30 +14,35 @@ type Doc = Record<string, any>;
 // Shared request cache: feed data is at most 5 minutes stale.
 const getCachedFeed = unstable_cache(
   async (): Promise<{ date: string; data: Doc } | null> => {
-    const { adminFirestore } = await import('@/lib/firebase-admin');
-    if (!adminFirestore) return null;
-    const ref = adminFirestore.collection('v3_user_feeds').doc('_global').collection('daily');
-    const snap = await ref.orderBy('__name__', 'desc').limit(5).get();
-    let picked: { date: string; data: Doc } | null = null;
-    let pulseDoc: Doc | null = null;
-    const hasPulse = (data: Doc) => {
-      const dev = data.daily_pulse_roles?.developer;
-      return Boolean(dev && ((dev.tools || []).length > 0 || (dev.discussions || []).length > 0 || (dev.blogs || []).length > 0));
-    };
-    for (const doc of snap.docs) {
-      const data = doc.data();
-      if (!picked && (data.trending || []).length > 0) picked = { date: doc.id, data };
-      if (!pulseDoc && hasPulse(data)) pulseDoc = data;
-      if (picked && pulseDoc) break;
+    try {
+      const { adminFirestore } = await import('@/lib/firebase-admin');
+      if (!adminFirestore) return null;
+      const ref = adminFirestore.collection('v3_user_feeds').doc('_global').collection('daily');
+      const snap = await ref.orderBy('__name__', 'desc').limit(5).get();
+      let picked: { date: string; data: Doc } | null = null;
+      let pulseDoc: Doc | null = null;
+      const hasPulse = (data: Doc) => {
+        const dev = data.daily_pulse_roles?.developer;
+        return Boolean(dev && ((dev.tools || []).length > 0 || (dev.discussions || []).length > 0 || (dev.blogs || []).length > 0));
+      };
+      for (const doc of snap.docs) {
+        const data = doc.data();
+        if (!picked && (data.trending || []).length > 0) picked = { date: doc.id, data };
+        if (!pulseDoc && hasPulse(data)) pulseDoc = data;
+        if (picked && pulseDoc) break;
+      }
+      if (!picked) return null;
+      // After midnight the new day's doc has trending long before the
+      // 3-hourly pulse merges its sections in — backfill pulse from the
+      // newest doc that has it (same as mobile's snapshot merge).
+      if (pulseDoc && pulseDoc !== picked.data && !hasPulse(picked.data)) {
+        picked = { date: picked.date, data: { ...picked.data, daily_pulse_roles: pulseDoc.daily_pulse_roles } };
+      }
+      return picked;
+    } catch (error) {
+      console.error('[feed-view] failed to load global feed:', error);
+      return null;
     }
-    if (!picked) return null;
-    // After midnight the new day's doc has trending long before the
-    // 3-hourly pulse merges its sections in — backfill pulse from the
-    // newest doc that has it (same as mobile's snapshot merge).
-    if (pulseDoc && pulseDoc !== picked.data && !hasPulse(picked.data)) {
-      picked = { date: picked.date, data: { ...picked.data, daily_pulse_roles: pulseDoc.daily_pulse_roles } };
-    }
-    return picked;
   },
   ['global-feed'],
   { revalidate: 300 },
@@ -183,6 +190,8 @@ export interface FeedViewData {
   generated: string | null;
   serverPro: boolean;
   feedDate: string;
+  priceDisplay: string;
+  feedError: boolean;
 }
 
 /**
@@ -291,6 +300,14 @@ export async function loadFeedViewData(): Promise<FeedViewData> {
   const data = feedResult?.data || {};
   const pulse = data.daily_pulse_roles?.developer || { tools: [], discussions: [], blogs: [] };
 
+  // Localized checkout price (IN gets ₹49) for the paywall CTAs.
+  let priceDisplay = SUBSCRIPTION_PRICE_DEFAULT;
+  try {
+    priceDisplay = resolveSubscriptionOfferFromHeaders(await headers()).priceDisplay;
+  } catch {
+    /* keep the default display */
+  }
+
   const stories = mapTrendingToStories(data.trending, data.trending_topics);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -321,7 +338,30 @@ export async function loadFeedViewData(): Promise<FeedViewData> {
       : null,
     serverPro,
     feedDate,
+    priceDisplay,
+    feedError: !feedResult,
   };
+}
+
+/** Walk recent daily archive docs for a shared story that left today's feed. */
+export async function findStoryInArchive(id: string, maxDays = 10): Promise<FeedStory | null> {
+  try {
+    const { adminFirestore } = await import('@/lib/firebase-admin');
+    if (!adminFirestore) return null;
+    const snap = await adminFirestore
+      .collection('v3_user_feeds').doc('_global').collection('daily')
+      .orderBy('__name__', 'desc')
+      .limit(maxDays + 1)
+      .get();
+    for (const doc of snap.docs) {
+      const data = doc.data() || {};
+      const story = findSharedStory(mapTrendingToStories(data.trending, data.trending_topics), id);
+      if (story) return story;
+    }
+  } catch (error) {
+    console.error('[feed-view] archive story lookup failed:', error);
+  }
+  return null;
 }
 
 /** Find one story by shared id (exact id, then URL-key fallback like StoryShare). */

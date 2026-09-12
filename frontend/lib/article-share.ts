@@ -70,18 +70,18 @@ export function getPublicStoryCta(options: {
 
   if (user) {
     return {
-      href: '/profile?tab=subscription',
+      href: '/feed?tab=profile',
       headerLabel: 'Try Pro',
       promoTitle: 'Unlock your full feed with Trace Pro',
       promoCopy:
         'Get unlimited reads, Pulse signals, and a feed tuned to your interests. Cancel anytime.',
-      buttonLabel: 'Try Pro free for 3 days',
+      buttonLabel: 'Go Pro',
       showPromo: true,
     };
   }
 
   return {
-    href: '/feed?view=pulse',
+    href: '/feed',
     headerLabel: 'Get started',
     promoTitle: 'Build your own personalized feed',
     promoCopy:

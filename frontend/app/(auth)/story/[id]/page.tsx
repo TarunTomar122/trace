@@ -1,15 +1,14 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { AuthProvider } from '@/contexts/AuthContext';
 import FeedApp from '@/components/feed-v2/FeedApp';
 import FeedSkeleton from '@/components/feed-v2/FeedSkeleton';
-import { loadFeedViewData, findSharedStory } from '@/lib/feed-view';
+import { loadFeedViewData, findSharedStory, findStoryInArchive } from '@/lib/feed-view';
 
 export const dynamic = 'force-dynamic';
 
 async function sharedStory(id: string) {
   const { stories } = await loadFeedViewData();
-  return findSharedStory(stories, id);
+  return findSharedStory(stories, id) || await findStoryInArchive(id);
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -60,8 +59,8 @@ function MissingStory() {
 
 export default async function SharedStoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { stories, pulse, promoted, monthlyReach, generated, serverPro, feedDate } = await loadFeedViewData();
-  const story = findSharedStory(stories, id);
+  const { stories, pulse, promoted, monthlyReach, generated, serverPro, feedDate, priceDisplay, feedError } = await loadFeedViewData();
+  const story = findSharedStory(stories, id) || await findStoryInArchive(id);
 
   if (!story) {
     return <MissingStory />;
@@ -71,8 +70,7 @@ export default async function SharedStoryPage({ params }: { params: Promise<{ id
   // tools rail, auth state as /feed) with the story pre-opened — and the
   // shared story always opens full, even for signed-out readers.
   return (
-    <AuthProvider>
-      <Suspense fallback={<FeedSkeleton />}>
+    <Suspense fallback={<FeedSkeleton />}>
         <FeedApp
           stories={stories}
           pulse={pulse}
@@ -81,10 +79,12 @@ export default async function SharedStoryPage({ params }: { params: Promise<{ id
           serverPro={serverPro}
           generated={generated}
           feedDate={feedDate}
+          priceDisplay={priceDisplay}
+          feedError={feedError}
+          initialStory={story}
           initialStoryId={story.id}
           unlockedId={story.id}
         />
-      </Suspense>
-    </AuthProvider>
+    </Suspense>
   );
 }

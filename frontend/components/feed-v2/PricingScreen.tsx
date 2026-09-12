@@ -1,40 +1,50 @@
-import Link from 'next/link';
-import ProCheckoutButton from './ProCheckoutButton';
+'use client';
 
-const PLANS = [
-  {
-    tag: 'Free',
-    price: '$0',
-    per: '/month',
-    note: 'Everything you need to start catching up.',
-    cta: { label: 'Start reading', href: '/feed' },
-    features: [
-      'A personalized AI and tech news feed',
-      '30 headlines in every new Chrome tab',
-      'Five unique AI summaries every day',
-      'Unlimited original source links',
-      'Topic filters for the stories you follow',
-      'Bookmarks with a free Trace account',
-    ],
-  },
-  {
-    tag: 'Trace Pro',
-    price: '$3',
-    per: '/month',
-    note: 'The whole day, ranked and summarized, every morning.',
-    cta: { label: 'Try Pro free for 3 days', href: '' },
-    features: [
-      'Unlimited AI summaries in the web feed',
-      'The complete ranked daily edition',
-      'Search your complete saved archive',
-      'The complete daily news archive',
-      'Full personalized Pulse: tools, discussions, worth reading',
-      'Read-only Agent Access',
-    ],
-  },
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import ProCheckoutButton from './ProCheckoutButton';
+import { useAuth } from '@/contexts/AuthContext';
+import { hasActiveSubscription } from '@/lib/subscription-access';
+import { SUBSCRIPTION_PRICE_DEFAULT, shortPriceDisplay } from '@/lib/subscription-pricing';
+
+const FREE_FEATURES = [
+  'Your ranked daily feed',
+  '31 headlines in every new Chrome tab',
+  '4 stories as a guest, 7 with a free account',
+  'Unlimited original source links',
+  'Topic filters and For you ranking',
+  'Bookmarks with a free Trace account',
+  'Daily email brief (opt-in)',
+];
+
+const PRO_FEATURES = [
+  'Unlimited summaries in the web feed',
+  'The complete ranked daily edition',
+  'The full daily news archive',
+  'Search your saved archive',
+  'Full personalized Pulse: tools, discussions, worth reading',
+  'Read-only Agent Access',
 ];
 
 export default function PricingScreen() {
+  const { profile } = useAuth();
+  const isPro = hasActiveSubscription(profile);
+  const [priceDisplay, setPriceDisplay] = useState(SUBSCRIPTION_PRICE_DEFAULT);
+
+  // Server-resolved display price (India sees ₹, everyone else USD).
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/subscription/pricing', { credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && typeof data?.priceDisplay === 'string') setPriceDisplay(data.priceDisplay);
+      })
+      .catch(() => null);
+    return () => { cancelled = true; };
+  }, []);
+
+  const proLabel = `Go Pro — ${shortPriceDisplay(priceDisplay)}`;
+
   return (
     <main className="pr">
       <style>{css}</style>
@@ -50,32 +60,38 @@ export default function PricingScreen() {
       <section className="hero">
         <p className="kicker">Pricing</p>
         <h1 className="title">Save 45+ minutes every morning.</h1>
-        <p className="sub">Trace reads 400+ sources overnight, ranks what matters, and hands you the 25 stories worth your time.</p>
+        <p className="sub">Trace reads 400+ sources overnight, ranks what matters, and hands you the stories worth your time.</p>
       </section>
 
       <section className="plans">
-        {PLANS.map((p) => (
-          <article key={p.tag} className={`plan${p.tag === 'Trace Pro' ? ' pro' : ''}`}>
-            <p className="plan-tag">{p.tag}</p>
-            <p className="plan-price">{p.price}<span>{p.per}</span></p>
-            <p className="plan-note">{p.note}</p>
-            <ul className="plan-list">
-              {p.features.map((f) => <li key={f}>{f}</li>)}
-            </ul>
-            {p.tag === 'Trace Pro' ? (
-              <ProCheckoutButton className="btn" label={p.cta.label} busyLabel="Opening checkout…" />
-            ) : (
-              <a href={p.cta.href} className="btn">
-                {p.cta.label}
-              </a>
-            )}
-          </article>
-        ))}
+        <article className="plan">
+          <p className="plan-tag">Free</p>
+          <p className="plan-price">$0<span>/month</span></p>
+          <p className="plan-note">Everything you need to start catching up.</p>
+          <ul className="plan-list">
+            {FREE_FEATURES.map((f) => <li key={f}>{f}</li>)}
+          </ul>
+          <Link href="/feed" className="btn">Start reading</Link>
+        </article>
+
+        <article className="plan pro">
+          <p className="plan-tag">Trace Pro</p>
+          <p className="plan-price">{priceDisplay.replace('/month', '')}<span>/month</span></p>
+          <p className="plan-note">The whole day, ranked and summarized, every morning.</p>
+          <ul className="plan-list">
+            {PRO_FEATURES.map((f) => <li key={f}>{f}</li>)}
+          </ul>
+          {isPro ? (
+            <Link href="/feed?tab=profile" className="btn">You&rsquo;re on Pro — manage plan</Link>
+          ) : (
+            <ProCheckoutButton className="btn" label={proLabel} busyLabel="Opening checkout…" />
+          )}
+        </article>
       </section>
 
       <section className="fine">
         <p>Every plan includes the daily ranked feed, original source links, and the Chrome new tab experience. Pro adds unlimited summaries, the complete archive, full Pulse, and agent access.</p>
-        <p>Cancel anytime, in one click, no retention call.</p>
+        <p>Cancel anytime from Profile — no retention call.</p>
       </section>
 
       <footer className="foot">

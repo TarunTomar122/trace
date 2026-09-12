@@ -6,7 +6,6 @@ import { hasActiveSubscription, subscriptionStatuses } from '@/lib/subscription-
 
 /** Today + yesterday's global edition; pipeline handles source freshness. */
 const GLOBAL_FEED_LOOKBACK_DOCS = 2;
-const GUEST_FEED_INTERESTS = ['ai', 'tech', 'startups', 'engineering', 'markets'] as const;
 const MAX_SUMMARY_BODY_CHARS = 2200;
 const MAX_SUMMARY_SUBTITLE_CHARS = 280;
 const MAX_WHY_IT_MATTERS_CHARS = 420;
@@ -37,8 +36,14 @@ function normalizeFeedRole(role?: string | null): string {
   ) {
     return 'designer';
   }
-  if (normalized === 'pm' || normalized === 'product manager') {
+  if (normalized === 'pm' || normalized === 'product manager' || normalized === 'product') {
     return 'pm';
+  }
+  if (normalized === 'investor' || normalized === 'vc' || normalized === 'venture capitalist') {
+    return 'investor';
+  }
+  if (normalized === 'student' || normalized === 'learning') {
+    return 'student';
   }
   if (normalized === 'reader' || normalized === 'just browsing') {
     return 'developer';
@@ -519,8 +524,8 @@ export async function getPublicBootstrapFeed(roleFromQuery = 'developer'): Promi
     ...feed,
     viewer_profile: {
       role: normalizedRole || 'developer',
-      interests: [...GUEST_FEED_INTERESTS],
-      onboarded: true,
+      interests: [],
+      onboarded: false,
       subscription_status: 'none',
       app_subscription_status: 'none',
       has_access: false,

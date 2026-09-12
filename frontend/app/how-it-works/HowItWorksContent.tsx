@@ -12,7 +12,7 @@ const STEPS = [
     num: 1,
     icon: Newspaper,
     title: "Sources",
-    body: "Trace scans 50+ news sites, communities, and platforms, including TechCrunch, Hacker News, Reddit, Product Hunt, GitHub, and Twitter/X, so you don't have to open each one separately.",
+    body: "Trace scans 400+ news sites, communities, and platforms, including TechCrunch, Hacker News, Reddit, Product Hunt, GitHub, and Twitter/X, so you don't have to open each one separately.",
   },
   {
     num: 2,
@@ -43,7 +43,7 @@ const STEPS = [
 const FAQS = [
   {
     q: "Where do the stories come from?",
-    a: "Trace scans 50+ news sites, communities, and platforms every morning, including TechCrunch, Hacker News, Reddit, Product Hunt, GitHub, and X. Sources are always linked so you can verify anything in one tap.",
+    a: "Trace scans 400+ news sites, communities, and platforms every morning, including TechCrunch, Hacker News, Reddit, Product Hunt, GitHub, and X. Sources are always linked so you can verify anything in one tap.",
   },
   {
     q: "How is this different from an RSS reader?",
@@ -59,7 +59,7 @@ const FAQS = [
   },
   {
     q: "Is there an app or email version?",
-    a: "Trace is web-first today at yourtrace.online/feed, with a Chrome extension for saving stories. Email delivery is on the roadmap.",
+    a: "Trace is web-first today at yourtrace.online/feed, with a Chrome extension that puts the ranked feed in every new tab and an Android app. A daily email brief lands every morning if you turn it on in your profile.",
   },
 ];
 

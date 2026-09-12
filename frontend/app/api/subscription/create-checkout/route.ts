@@ -35,6 +35,14 @@ export async function POST(request: NextRequest) {
     const decodedToken = await adminAuth.verifyIdToken(token);
     const userId = decodedToken.uid;
 
+    // Optional app-relative return path so checkout returns the user to the
+    // story/profile they started from. Reject absolute or protocol-relative URLs.
+    const body = (await request.json().catch(() => null)) as { return_path?: unknown } | null;
+    const rawReturnPath = typeof body?.return_path === 'string' ? body.return_path.trim() : '';
+    const returnPath = /^\/(?!\/)/.test(rawReturnPath) && !rawReturnPath.includes('subscription=success')
+      ? rawReturnPath
+      : '/feed';
+
     // Get user data
     if (!adminDb) throw new Error('Firestore not initialized');
     const userDoc = await adminDb.collection('user_profiles').doc(userId).get();
@@ -53,16 +61,16 @@ export async function POST(request: NextRequest) {
       // Check if subscription already exists
       if (userData?.subscriptionId) {
         return NextResponse.json({ 
-          error: 'Subscription already exists',
+          error: 'Your subscription is already being set up — refresh in a minute.',
+          code: 'processing',
           subscriptionId: userData.subscriptionId,
           subscriptionStatus: userData.subscriptionStatus || 'pending',
-          message: 'Your subscription is being processed. Please refresh the page.'
         }, { status: 400 });
       }
       // If no subscription ID yet, webhook is still processing
       return NextResponse.json({ 
-        error: 'Subscription is being processed',
-        message: 'Your payment was successful. Please wait a moment and refresh the page.',
+        error: 'Your payment went through and Pro is activating — refresh in a minute.',
+        code: 'processing',
         retryAfter: 10
       }, { status: 429 });
     }
@@ -72,7 +80,8 @@ export async function POST(request: NextRequest) {
     const appSub = userData?.appSubscriptionStatus || 'none';
     if (['active', 'trial'].includes(webSub) || ['active', 'trial'].includes(appSub)) {
       return NextResponse.json({ 
-        error: 'User already has an active subscription',
+        error: 'You already have an active Trace Pro subscription.',
+        code: 'already_pro',
         subscriptionStatus: userData?.subscriptionStatus 
       }, { status: 400 });
     }
@@ -80,7 +89,8 @@ export async function POST(request: NextRequest) {
     // Check if they already have a subscription ID (webhook might have processed)
     if (userData?.subscriptionId) {
       return NextResponse.json({ 
-        error: 'Subscription already exists',
+        error: 'Your subscription is already being set up — refresh in a minute.',
+        code: 'processing',
         subscriptionId: userData.subscriptionId,
         subscriptionStatus: userData.subscriptionStatus || 'pending'
       }, { status: 400 });
@@ -95,7 +105,8 @@ export async function POST(request: NextRequest) {
       const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
       if (lastCheckout > twoMinutesAgo) {
         return NextResponse.json({ 
-          error: 'Please wait a moment before trying again',
+          error: 'Please wait a moment before trying again.',
+          code: 'rate_limited',
           retryAfter: 120 
         }, { status: 429 });
       }
@@ -107,8 +118,8 @@ export async function POST(request: NextRequest) {
     if (!DODO_API_KEY || DODO_API_KEY === 'sk_your_key_here') {
       console.error('Missing Dodo Payments configuration');
       return NextResponse.json({ 
-        error: 'Dodo Payments not configured yet. Please set up your Dodo account and add API credentials to environment variables.',
-        needsSetup: true
+        error: 'Checkout is temporarily unavailable. Please try again later.',
+        code: 'unavailable',
       }, { status: 400 });
     }
 
@@ -188,7 +199,7 @@ export async function POST(request: NextRequest) {
           utm_campaign: userData?.utmCampaign || affiliateCookie?.utmCampaign || '',
           utm_medium: userData?.utmMedium || affiliateCookie?.utmMedium || '',
         },
-        return_url: `${process.env.NEXT_PUBLIC_APP_URL}/feed?subscription=success`,
+        return_url: `${(process.env.NEXT_PUBLIC_APP_URL || 'https://www.yourtrace.online').replace('https://yourtrace.online', 'https://www.yourtrace.online')}${returnPath}${returnPath.includes('?') ? '&' : '?'}subscription=success`,
       }),
     });
 
