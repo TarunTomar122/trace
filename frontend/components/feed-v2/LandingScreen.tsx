@@ -202,7 +202,7 @@ export default async function LandingScreen() {
             <ul className="plan-list">
               {FREE_FEATURES.map((f) => <li key={f}>{f}</li>)}
             </ul>
-            <LandingCtaLink href="/feed" location="pricing_free" className="btn-ghost plan-btn">Start reading</LandingCtaLink>
+            <LandingCtaLink href="/feed?utm_source=site&utm_medium=pricing_free" location="pricing_free" className="btn-ghost plan-btn">Start reading free</LandingCtaLink>
           </article>
           <article className="plan plan-pro">
             <p className="plan-tag">Trace Pro</p>

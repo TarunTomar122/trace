@@ -328,7 +328,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               { href: "/blog", label: "All articles" },
               { href: "/compare", label: "Compare guides" },
               { href: "/tools", label: "Free tools" },
-              { href: "/feed", label: "Today's feed" },
+              { href: `/feed?utm_source=blog&utm_medium=bottom_nav&utm_campaign=${post.slug}`, label: "Today&apos;s free edition" },
             ].map((link) => (
               <Link
                 key={link.href}

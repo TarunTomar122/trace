@@ -539,12 +539,27 @@ export default function FeedApp({
       const q = new URLSearchParams(window.location.search);
       const source = q.get('utm_source');
       if (!source) return;
-      const campaign = q.get('utm_campaign') || '';
-      setCampaignWelcome({ source, campaign });
-      trackBlogFeedWelcomeShown({ utm_source: source, utm_campaign: campaign });
+      setCampaignWelcome({ source, campaign: q.get('utm_campaign') || '' });
     } catch { /* private mode etc. */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Show/event only once auth has resolved, and never for signed-in readers.
+  const campaignWelcomeVisible = Boolean(campaignWelcome && !user && !pro && !authLoading);
+  const welcomeTracked = useRef(false);
+  useEffect(() => {
+    if (!campaignWelcomeVisible) return;
+    if (!welcomeTracked.current) {
+      welcomeTracked.current = true;
+      trackBlogFeedWelcomeShown({
+        utm_source: campaignWelcome?.source || '',
+        utm_campaign: campaignWelcome?.campaign || '',
+      });
+    }
+  }, [campaignWelcomeVisible, campaignWelcome]);
+
+  useEffect(() => {
+    if (user) setCampaignWelcome(null);
+  }, [user]);
 
   const feedAlive = useRef(true);
   function flashBurst(id: string) {
@@ -1148,36 +1163,6 @@ export default function FeedApp({
             <span className="activating-spin" /> Activating your subscription…
           </div>
         )}
-        {campaignWelcome && !user && !pro && (
-          <div className="welcome-strip" role="status">
-            <div className="welcome-strip-main">
-              <p className="welcome-strip-title">You&rsquo;re reading the free edition</p>
-              <p className="welcome-strip-sub">First 4 stories are yours. A free account gets 7 a day plus the morning email.</p>
-            </div>
-            <div className="welcome-strip-actions">
-              <button
-                className="welcome-strip-cta"
-                onClick={() => {
-                  trackBlogFeedWelcomeCta(campaignWelcome.source);
-                  void handleSignIn();
-                }}
-                disabled={signingIn}
-              >
-                {signingIn ? 'Signing in…' : 'Create free account'}
-              </button>
-              <button
-                className="welcome-strip-x"
-                aria-label="Dismiss"
-                onClick={() => {
-                  try { sessionStorage.setItem('trace_campaign_welcome_dismissed', '1'); } catch {}
-                  setCampaignWelcome(null);
-                }}
-              >
-                <X size={16} />
-              </button>
-            </div>
-          </div>
-        )}
         {openPulse ? (
           !pro && !pulse.blogs.some((b) => b.id === openPulse.id) ? (
             <PaywallPlate what="Pulse — the builders' radar" ask="pro" dailyOn={dailyOn} proLabel={proLabel} onEnableDaily={enableDailyEmails} />
@@ -1422,6 +1407,36 @@ export default function FeedApp({
                 </button>
               </div>
             </header>
+            {campaignWelcomeVisible && campaignWelcome && (
+              <div className="welcome-strip">
+                <div className="welcome-strip-main" role="status">
+                  <p className="welcome-strip-title">You&rsquo;re reading the free edition</p>
+                  <p className="welcome-strip-sub">First 4 stories are yours. A free account gets 7 a day plus the morning email.</p>
+                </div>
+                <div className="welcome-strip-actions">
+                  <button
+                    className="welcome-strip-cta"
+                    onClick={() => {
+                      trackBlogFeedWelcomeCta(campaignWelcome.source, campaignWelcome.campaign);
+                      void handleSignIn();
+                    }}
+                    disabled={signingIn}
+                  >
+                    {signingIn ? 'Signing in…' : 'Create free account'}
+                  </button>
+                  <button
+                    className="welcome-strip-x"
+                    aria-label="Dismiss free-edition notice"
+                    onClick={() => {
+                      try { sessionStorage.setItem('trace_campaign_welcome_dismissed', '1'); } catch {}
+                      setCampaignWelcome(null);
+                    }}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="cat-strip" role="group" aria-label="Topics">
               <button className={`cat-chip${tab === 'all' ? ' on' : ''}`} onClick={() => go('all')}>All</button>
               {cats.map((c) => (
@@ -2925,13 +2940,7 @@ const css = `
   .xw .welcome-strip { flex-direction: column; align-items: stretch; }
   .xw .welcome-strip-actions { justify-content: space-between; }
 }
-.xw .activating-spin {
-  width: 14px; height: 14px; border-radius: 50%;
-  border: 2px solid var(--line); border-top-color: var(--blue);
-  animation: act-spin 0.8s linear infinite;
-}
-@keyframes act-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .xw .welcome-strip {
+.xw .welcome-strip {
   display: flex; align-items: center; gap: 14px;
   margin: 12px 18px 0; padding: 12px 14px;
   border: 1px solid rgba(29, 155, 240, 0.28); border-radius: 14px;
@@ -2951,14 +2960,20 @@ const css = `
 .xw .welcome-strip-cta:disabled { opacity: 0.7; cursor: wait; }
 .xw .welcome-strip-x {
   border: none; background: transparent; color: var(--text-3);
-  padding: 6px; border-radius: 9999px; cursor: pointer; display: inline-flex;
+  padding: 8px; border-radius: 9999px; cursor: pointer; display: inline-flex;
 }
 .xw .welcome-strip-x:hover { background: var(--hover); color: var(--text); }
 @media (max-width: 687px) {
   .xw .welcome-strip { flex-direction: column; align-items: stretch; }
   .xw .welcome-strip-actions { justify-content: space-between; }
 }
-.xw .activating-spin { animation: none; } }
+.xw .activating-spin {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--line); border-top-color: var(--blue);
+  animation: act-spin 0.8s linear infinite;
+}
+@keyframes act-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .xw .activating-spin { animation: none; } }
 .xw .profile-id { padding: 10px 18px 4px; }
 .xw .profile-name { margin: 0; font-size: 23px; font-weight: 800; line-height: 28px; }
 .xw .profile-handle { margin: 0 0 10px; font-size: 15px; color: var(--text-3); }

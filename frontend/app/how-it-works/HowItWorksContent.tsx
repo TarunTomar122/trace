@@ -96,7 +96,7 @@ export default function HowItWorksContent() {
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link
-              href="/feed"
+              href="/feed?utm_source=site&utm_medium=how_it_works"
               className="inline-flex rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-85"
             >
               Read today&apos;s brief

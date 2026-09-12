@@ -71,7 +71,7 @@ export default function PricingScreen() {
           <ul className="plan-list">
             {FREE_FEATURES.map((f) => <li key={f}>{f}</li>)}
           </ul>
-          <Link href="/feed" className="btn">Start reading</Link>
+          <Link href="/feed?utm_source=site&utm_medium=pricing_free" className="btn">Start reading free</Link>
         </article>
 
         <article className="plan pro">
