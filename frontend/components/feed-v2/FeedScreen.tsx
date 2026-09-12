@@ -6,7 +6,7 @@ import FeedSkeleton from './FeedSkeleton';
 import { loadFeedViewData } from '@/lib/feed-view';
 
 export default async function FeedScreen() {
-  const { stories, pulse, promoted, monthlyReach, generated, serverPro } = await loadFeedViewData();
+  const { stories, pulse, promoted, monthlyReach, generated, serverPro, feedDate } = await loadFeedViewData();
 
   return (
     <AuthProvider>
@@ -18,6 +18,7 @@ export default async function FeedScreen() {
           monthlyReach={monthlyReach}
           serverPro={serverPro}
           generated={generated}
+          feedDate={feedDate}
         />
       </Suspense>
     </AuthProvider>

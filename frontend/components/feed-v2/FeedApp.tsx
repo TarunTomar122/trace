@@ -12,6 +12,7 @@ import {
   trackFeedItemBookmarked,
   trackFeedItemClicked,
   trackFeedViewed,
+  trackFeedOlderLoaded,
   trackPaywallShown,
   trackProfileUpdated,
   trackPromoModalOpened,
@@ -176,8 +177,13 @@ function storeReads(ids: Set<string>): void {
   }
 }
 
+function storyKey(s: { id: string; url: string }): string {
+  const raw = s.url && s.url !== '#' ? s.url : s.id;
+  return raw.replace(/[#?].*$/, '').replace(/\/$/, '');
+}
+
 export default function FeedApp({
-  stories, pulse, promoted = [], monthlyReach = 0, generated, serverPro = false,
+  stories, pulse, promoted = [], monthlyReach = 0, generated, serverPro = false, feedDate = '',
   initialStoryId = null, unlockedId = null,
 }: {
   stories: FeedStory[];
@@ -186,6 +192,8 @@ export default function FeedApp({
   monthlyReach?: number;
   generated: string | null;
   serverPro?: boolean;
+  /** Date id of today's feed doc — cursor start for older stories. */
+  feedDate?: string;
   /** Pre-open a story (shared article page). Falls back to ?story= when present. */
   initialStoryId?: string | null;
   /** This story always opens full — the shared link must work for everyone. */
@@ -217,6 +225,13 @@ export default function FeedApp({
   const [marks, setMarks] = useState<Set<string>>(new Set());
   const [readIds, setReadIds] = useState<Set<string>>(() => readStoredReads());
   const [toast, setToast] = useState<string | null>(null);
+  // Older stories are fetched on demand (24-ish per click) for Pro readers,
+  // paging back through the daily archive docs.
+  const [olderStories, setOlderStories] = useState<FeedStory[]>([]);
+  const [olderBefore, setOlderBefore] = useState<string | null>(feedDate || null);
+  const [olderLoading, setOlderLoading] = useState(false);
+  const [olderDone, setOlderDone] = useState(false);
+  const [olderError, setOlderError] = useState(false);
   const mainRef = useRef<HTMLElement | null>(null);
   const carouselRef = useRef<HTMLDivElement | null>(null);
   const savedScroll = useRef(0);
@@ -488,8 +503,10 @@ export default function FeedApp({
       return next;
     });
     showToast(isMarked ? 'Removed from Bookmarks' : 'Added to Bookmarks');
-    const meta = stories.find((s) => s.id === id) || allPulse.find((t) => t.id === id);
-    trackFeedItemBookmarked(id, stories.some((s) => s.id === id) ? 'story' : 'pulse', {
+    const meta = stories.find((s) => s.id === id)
+      || olderStories.find((s) => s.id === id)
+      || allPulse.find((t) => t.id === id);
+    trackFeedItemBookmarked(id, stories.some((s) => s.id === id) || olderStories.some((s) => s.id === id) ? 'story' : 'pulse', {
       surface: 'feed_v2', action: isMarked ? 'removed' : 'saved',
     });
     if (!user) return; // signed out: local only
@@ -519,6 +536,45 @@ export default function FeedApp({
     } catch { showToast('Could not sync bookmark'); }
   }
 
+  async function loadOlder() {
+    if (olderLoading || olderDone || !pro) return;
+    setOlderLoading(true);
+    setOlderError(false);
+    try {
+      let before = olderBefore || feedDate;
+      let cursor: string | null = before;
+      const added: FeedStory[] = [];
+      // Days can repeat stories across the lookback window; skip those and
+      // keep paging until we actually have fresh cards (max 3 tries).
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const res = await fetch(`/api/feed/older?before=${encodeURIComponent(before)}&limit=24`);
+        if (!res.ok) throw new Error(`older fetch failed (${res.status})`);
+        const data = await res.json() as { stories?: FeedStory[]; nextBefore?: string | null };
+        const batch = Array.isArray(data.stories) ? data.stories : [];
+        const seen = new Set<string>();
+        for (const s of [...stories, ...olderStories, ...added]) seen.add(storyKey(s));
+        for (const s of batch) {
+          const key = storyKey(s);
+          if (!key || seen.has(key)) continue;
+          seen.add(key);
+          added.push(s);
+        }
+        cursor = data.nextBefore ?? null;
+        if (added.length > 0 || !cursor) break;
+        before = cursor;
+      }
+      const base = stories.length + olderStories.length;
+      setOlderStories((cur) => [...cur, ...added.map((s, i) => ({ ...s, rank: base + i + 1 }))]);
+      setOlderBefore(cursor);
+      if (!cursor) setOlderDone(true);
+      trackFeedOlderLoaded(added.length, base + added.length);
+    } catch {
+      setOlderError(true);
+    } finally {
+      setOlderLoading(false);
+    }
+  }
+
   const counts: Record<string, number> = {};
   for (const s of stories) counts[s.cat] = (counts[s.cat] || 0) + 1;
   const cats = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
@@ -540,7 +596,7 @@ export default function FeedApp({
     storeSort(next);
     trackFeedFilterChanged(`sort:${next}`, `sort:${sortMode}`, { surface: 'feed_v2' });
   }
-  const open = storyParam ? stories.find((s) => s.id === storyParam) || null : null;
+  const open = storyParam ? [...stories, ...olderStories].find((s) => s.id === storyParam) || null : null;
   const allPulse = [...pulse.tools, ...pulse.discussions, ...pulse.blogs];
   const openPulse = pulseParam ? allPulse.find((t) => t.id === pulseParam) || null : null;
   const dirty = JSON.stringify(profile) !== JSON.stringify(savedProfile);
@@ -550,11 +606,16 @@ export default function FeedApp({
   const locked = isFree ? visible.slice(FREE_LIMIT) : [];
   const teasers = locked.slice(0, 4);
 
-  const markedStories = stories.filter((s) => marks.has(s.id));
+  const markedStories = [...stories, ...olderStories].filter((s) => marks.has(s.id));
   const markedPulse = allPulse.filter((t) => marks.has(t.id));
 
   // "caught up" when every story in the current list has been opened today.
-  const caughtUp = full.length > 0 && full.every((s) => readIds.has(s.id));
+  // For Pro, hold the card until the archive is exhausted so it never
+  // contradicts the "See older stories" button below.
+  const caughtUp = full.length > 0
+    && full.every((s) => readIds.has(s.id))
+    && (olderStories.length === 0 || olderStories.every((s) => readIds.has(s.id)))
+    && (isFree || olderDone);
 
   // feed viewed (once per mount) + paywall impression (once per session).
   const viewedRef = useRef(false);
@@ -826,22 +887,14 @@ export default function FeedApp({
             </header>
             <div className="feed">
               {full.map((s) => (
-                <article key={s.id} className="post" onClick={() => openStory(s)}>
-                  <div className="post-meta">
-                    <SourceStack sources={s.sources} />
-                    <span className="post-src">{s.source}</span>
-                    <span className="post-time">{s.time}</span>
-                    {s.sources.length > 1 && <span className="post-group">· {s.sources.length} sources</span>}
-                    <span className="post-spacer" />
-                    <span className="post-rank">#{s.rank}</span>
-                  </div>
-                  <h2 className="post-title">{s.title}</h2>
-                  {s.img && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img className="post-img" src={s.img} alt="" loading="lazy" decoding="async" />
-                  )}
-                  <Actions id={s.id} size={18} marked={marks.has(s.id)} onToggleMark={toggleMark} onShare={share} />
-                </article>
+                <StoryCard
+                  key={s.id}
+                  story={s}
+                  onClick={() => openStory(s)}
+                  marked={marks.has(s.id)}
+                  onToggleMark={toggleMark}
+                  onShare={share}
+                />
               ))}
 
               {isFree && locked.length > 0 && (
@@ -860,6 +913,36 @@ export default function FeedApp({
                     </div>
                   ))}
                   <PaywallPlate what="the full ranked feed" lockedCount={locked.length} />
+                </>
+              )}
+
+              {tab === 'all' && !isFree && (
+                <>
+                  {olderStories.length > 0 && (
+                    <div className="older-sep"><span>Earlier stories</span></div>
+                  )}
+                  {olderStories.map((s) => (
+                    <StoryCard
+                      key={s.id}
+                      story={s}
+                      onClick={() => openStory(s)}
+                      marked={marks.has(s.id)}
+                      onToggleMark={toggleMark}
+                      onShare={share}
+                    />
+                  ))}
+                  {!olderDone && (
+                    <button className="load-older" onClick={loadOlder} disabled={olderLoading}>
+                      <Clock size={16} />
+                      {olderLoading ? 'Loading older stories…' : 'See older stories'}
+                    </button>
+                  )}
+                  {olderDone && olderStories.length > 0 && (
+                    <p className="older-end">That&rsquo;s the whole archive — a fresh edition lands every morning.</p>
+                  )}
+                  {olderError && (
+                    <p className="older-error">Couldn&rsquo;t load older stories. Try again.</p>
+                  )}
                 </>
               )}
 
@@ -1148,6 +1231,30 @@ function SourceStack({ sources }: { sources: string[] }) {
         <img key={d} className="fav" src={`https://www.google.com/s2/favicons?domain=${d}&sz=64`} alt="" loading="lazy" />
       ))}
     </span>
+  );
+}
+
+function StoryCard({ story, onClick, marked, onToggleMark, onShare }: {
+  story: FeedStory; onClick: () => void; marked: boolean;
+  onToggleMark: (id: string) => void; onShare: (id: string) => void;
+}) {
+  return (
+    <article className="post" onClick={onClick}>
+      <div className="post-meta">
+        <SourceStack sources={story.sources} />
+        <span className="post-src">{story.source}</span>
+        <span className="post-time">{story.time}</span>
+        {story.sources.length > 1 && <span className="post-group">· {story.sources.length} sources</span>}
+        <span className="post-spacer" />
+        <span className="post-rank">#{story.rank}</span>
+      </div>
+      <h2 className="post-title">{story.title}</h2>
+      {story.img && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className="post-img" src={story.img} alt="" loading="lazy" decoding="async" />
+      )}
+      <Actions id={story.id} size={18} marked={marked} onToggleMark={onToggleMark} onShare={onShare} />
+    </article>
   );
 }
 
@@ -1705,6 +1812,8 @@ const css = `
   .xw .detail-link { margin: 14px; }
   .xw .detail-byline { padding: 14px 14px 0; }
   .xw .detail-takeaways { margin: 12px 14px 4px; }
+  .xw .older-sep { margin: 20px 14px 2px; }
+  .xw .load-older { width: calc(100% - 28px); margin: 16px 14px 24px; }
 }
 
 /* post card */
@@ -1988,6 +2097,21 @@ const css = `
 .xw .caught-up-badge { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 9999px; background: var(--blue); color: #fff; margin-bottom: 12px; }
 .xw .caught-up-title { margin: 0 0 6px; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
 .xw .caught-up-sub { margin: 0; font-size: 14px; color: var(--text-2); }
+
+/* older stories */
+.xw .older-sep { display: flex; align-items: center; gap: 12px; margin: 22px 18px 2px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+.xw .older-sep::before, .xw .older-sep::after { content: ''; height: 1px; background: var(--line); flex: 1; }
+.xw .load-older {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: calc(100% - 36px); margin: 18px 18px 26px; height: 46px;
+  border: 1px solid var(--line); border-radius: 9999px; background: var(--bg);
+  color: var(--text); font-size: 15px; font-weight: 700; font-family: inherit;
+  cursor: pointer; transition: background-color 0.2s ease;
+}
+.xw .load-older:hover:not(:disabled) { background: var(--hover); }
+.xw .load-older:disabled { opacity: 0.7; cursor: wait; }
+.xw .older-end { margin: 16px 18px 34px; text-align: center; font-size: 13.5px; color: var(--text-3); }
+.xw .older-error { margin: 0 18px 24px; text-align: center; font-size: 13.5px; font-weight: 600; color: var(--pink); }
 .xw .toast {
   position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
   background: #0f1419; color: #fff; font-size: 14px; font-weight: 600;

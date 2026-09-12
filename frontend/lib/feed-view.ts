@@ -185,22 +185,21 @@ export interface FeedViewData {
   feedDate: string;
 }
 
-export async function loadFeedViewData(): Promise<FeedViewData> {
-  const [feedResult, promoted, monthlyReach, serverPro] = await Promise.all([
-    getCachedFeed(),
-    getPromotedTools(),
-    getMonthlyReach(),
-    getServerPro(),
-  ]);
-  const feedDate = feedResult?.date || '';
-  const data = feedResult?.data || {};
-  const pulse = data.daily_pulse_roles?.developer || { tools: [], discussions: [], blogs: [] };
-
+/**
+ * Map one daily doc's flat `trending` items (+ `trending_topics` grouping)
+ * into FeedStory cards. Shared by today's feed and the older-stories API.
+ */
+export function mapTrendingToStories(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  trending: any[] | undefined,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  trendingTopics: any[] | undefined,
+): FeedStory[] {
   // Grouping lives in trending_topics (each topic bundles its articles).
   // Match flat trending items to their topic so cards show every outlet.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const urlToTopic = new Map<string, any>();
-  for (const topic of (data.trending_topics || [])) {
+  for (const topic of (trendingTopics || [])) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const a of (topic.articles || [])) {
       if (a?.url && !urlToTopic.has(a.url)) urlToTopic.set(a.url, topic);
@@ -228,7 +227,7 @@ export async function loadFeedViewData(): Promise<FeedViewData> {
   // Home default (Top mode): most-grouped first, recency breaks ties.
   // (Client re-sorts for Recent mode / other tabs; stories carry ts.)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const news: any[] = [...(data.trending || [])]
+  const news: any[] = [...(trending || [])]
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((it: any) => ({
       it,
@@ -242,7 +241,7 @@ export async function loadFeedViewData(): Promise<FeedViewData> {
     .map((m: any) => m.it);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stories: FeedStory[] = news.map((it: any, i: number) => {
+  return news.map((it: any, i: number) => {
     const sa = it.summary?.short_article || {};
     let source = it.source_name || it.source || '';
     let domain = '';
@@ -279,6 +278,20 @@ export async function loadFeedViewData(): Promise<FeedViewData> {
       url: it.url || '#',
     };
   });
+}
+
+export async function loadFeedViewData(): Promise<FeedViewData> {
+  const [feedResult, promoted, monthlyReach, serverPro] = await Promise.all([
+    getCachedFeed(),
+    getPromotedTools(),
+    getMonthlyReach(),
+    getServerPro(),
+  ]);
+  const feedDate = feedResult?.date || '';
+  const data = feedResult?.data || {};
+  const pulse = data.daily_pulse_roles?.developer || { tools: [], discussions: [], blogs: [] };
+
+  const stories = mapTrendingToStories(data.trending, data.trending_topics);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const toPulse = (arr: any[]): PulseItem[] =>

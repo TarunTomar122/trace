@@ -60,7 +60,7 @@ function MissingStory() {
 
 export default async function SharedStoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { stories, pulse, promoted, monthlyReach, generated, serverPro } = await loadFeedViewData();
+  const { stories, pulse, promoted, monthlyReach, generated, serverPro, feedDate } = await loadFeedViewData();
   const story = findSharedStory(stories, id);
 
   if (!story) {
@@ -80,6 +80,7 @@ export default async function SharedStoryPage({ params }: { params: Promise<{ id
           monthlyReach={monthlyReach}
           serverPro={serverPro}
           generated={generated}
+          feedDate={feedDate}
           initialStoryId={story.id}
           unlockedId={story.id}
         />

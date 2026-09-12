@@ -174,6 +174,14 @@ export function trackDailyBriefPreferenceChanged(
   );
 }
 
+export function trackFeedOlderLoaded(addedCount: number, totalCount: number) {
+  posthog.capture(FEED_EVENTS.olderLoaded, {
+    surface: "web",
+    added_count: Math.max(0, addedCount),
+    total_count: Math.max(0, totalCount),
+  });
+}
+
 export function trackFeedItemClicked(itemId: string, itemType: string, source: string) {
   posthog.capture("feed_item_clicked", {
     item_id: itemId,
