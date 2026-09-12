@@ -612,8 +612,7 @@ export default function FeedApp({
   function openStory(s: FeedStory) {
     const blocked = isFree
       && s.id !== unlockedId
-      && !readIds.has(s.id)
-      && stories.filter((x) => readIds.has(x.id)).length >= freeLimit;
+      && !fullIds.has(s.id);
     if (mainRef.current) savedScroll.current = mainRef.current.scrollTop;
     setView({ story: s.id, pulse: null });
     if (!blocked) {
@@ -899,17 +898,18 @@ export default function FeedApp({
   // Signed-out readers get 4 stories/day; a free account gets 7. The quota
   // counts distinct stories opened today (across tabs), so it can't leak.
   const freeLimit = accessPending || user ? FREE_LIMIT_SIGNED_IN : FREE_LIMIT_SIGNED_OUT;
-  const readTodayCount = stories.filter((s) => readIds.has(s.id)).length;
-  const freeLeft = Math.max(0, freeLimit - readTodayCount);
-  const quotaExhausted = isFree && freeLeft === 0;
-  // Quota is judged on reads BEFORE this story: re-opening something you
-  // already read is always free, and a blocked story never counts as read.
+  // Free readers see the first N stories of the view (4 signed out, 7 with
+  // a free account), then a few blurred teasers and the paywall.
+  const full = isFree ? visible.slice(0, freeLimit) : visible;
+  const lockedStories = isFree ? visible.slice(freeLimit) : [];
+  const teasers = lockedStories.slice(0, 4);
+  const fullIds = new Set(full.map((s) => s.id));
+  const viewRank = new Map(visible.map((s, i) => [s.id, i + 1]));
+  // A card that renders as open always opens; only blurred teasers paywall.
   const openBlocked = Boolean(open)
     && isFree
     && open!.id !== unlockedId
-    && !readIds.has(open!.id)
-    && stories.filter((s) => readIds.has(s.id) && s.id !== open!.id).length >= freeLimit;
-  const full = visible;
+    && !fullIds.has(open!.id);
 
   const markedStories = allStories.filter((s) => marks.has(s.id));
   const markedPulse = allPulse.filter((t) => marks.has(t.id));
@@ -932,6 +932,7 @@ export default function FeedApp({
   // contradicts the "See older stories" button below.
   const caughtUp = full.length > 0
     && full.every((s) => readIds.has(s.id))
+    && lockedStories.length === 0
     && (olderStories.length === 0 || olderStories.every((s) => readIds.has(s.id)))
     && (isFree || olderDone);
 
@@ -945,10 +946,10 @@ export default function FeedApp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
-    if (paywallRef.current || !isFree || !quotaExhausted || visible.length === 0) return;
+    if (paywallRef.current || !isFree || lockedStories.length === 0) return;
     paywallRef.current = true;
-    trackPaywallShown('feed_free_limit', { free_limit: freeLimit, read_count: readTodayCount });
-  }, [isFree, quotaExhausted, visible.length, freeLimit, readTodayCount]);
+    trackPaywallShown('feed_free_limit', { free_limit: freeLimit, locked_count: lockedStories.length });
+  }, [isFree, lockedStories.length, freeLimit]);
 
   // detail view open? (URL-driven)
   const detailOpen = !!open || !!openPulse;
@@ -1093,15 +1094,22 @@ export default function FeedApp({
           )
         ) : open ? (
           openBlocked ? (
-            <PaywallPlate
-              what="This story"
-              ask={user ? 'daily' : 'signup'}
-              dailyOn={dailyOn}
-              signingIn={signingIn}
-              proLabel={proLabel}
-              onSignIn={handleSignIn}
-              onEnableDaily={enableDailyEmails}
-            />
+            <>
+              <header className="head">
+                <button className="back" onClick={goBack} aria-label="Back to feed"><ArrowLeft size={20} /></button>
+                <h1 className="head-title">Story</h1>
+                <span className="head-spacer" />
+              </header>
+              <PaywallPlate
+                what="This story"
+                ask={user ? 'daily' : 'signup'}
+                dailyOn={dailyOn}
+                signingIn={signingIn}
+                proLabel={proLabel}
+                onSignIn={handleSignIn}
+                onEnableDaily={enableDailyEmails}
+              />
+            </>
           ) : (
             <Detail story={open} onBack={goBack} onShare={share} marked={marks.has(open.id)} toggleMark={toggleMark} />
           )
@@ -1294,7 +1302,7 @@ export default function FeedApp({
               <h1 className="head-title">{tab === 'all' ? 'Home' : CAT_LABELS[tab] || tab}</h1>
               <span className="head-meta">
                 {isFree
-                  ? (quotaExhausted ? '0 free left' : `${freeLeft} free left`)
+                  ? `${freeLimit} of ${visible.length}`
                   : visible.length + olderForTab.length}
               </span>
               <span className="post-spacer" />
@@ -1337,12 +1345,11 @@ export default function FeedApp({
                   onRetry={() => window.location.reload()}
                 />
               ) : (
-                full.map((s, i) => (
+                full.map((s) => (
                   <StoryCard
                     key={s.id}
                     story={s}
-                    displayRank={i + 1}
-                    locked={isFree && quotaExhausted && !readIds.has(s.id)}
+                    displayRank={viewRank.get(s.id)}
                     onClick={() => openStory(s)}
                     marked={marks.has(s.id)}
                     onToggleMark={toggleMark}
@@ -1351,7 +1358,20 @@ export default function FeedApp({
                 ))
               )}
 
-              {!feedError && isFree && quotaExhausted && visible.some((s) => !readIds.has(s.id)) && (
+              {!feedError && isFree && teasers.map((s) => (
+                <StoryCard
+                  key={s.id}
+                  story={s}
+                  displayRank={viewRank.get(s.id)}
+                  locked
+                  onClick={() => openStory(s)}
+                  marked={marks.has(s.id)}
+                  onToggleMark={toggleMark}
+                  onShare={share}
+                />
+              ))}
+
+              {!feedError && isFree && lockedStories.length > 0 && (
                 <PaywallPlate
                   what="the full ranked feed"
                   ask={user ? 'daily' : 'signup'}
@@ -1984,7 +2004,7 @@ function PaywallPlate({ what, ask, dailyOn, onSignIn, onEnableDaily, signingIn =
         <h2 className="paywall-title">Free account, 7 stories a day</h2>
         <p className="paywall-sub">
           {what === 'the full ranked feed'
-            ? <>You&rsquo;ve read the {FREE_LIMIT_SIGNED_OUT} free stories for today. Sign up free to get <b>7 stories a day</b> plus the daily brief by email.</>
+            ? <>That&rsquo;s your {FREE_LIMIT_SIGNED_OUT} free stories for today. Sign up free to get <b>7 stories a day</b> plus the daily brief by email.</>
             : <>Today&rsquo;s edition continues with a free account — <b>7 stories a day</b> plus the daily brief by email.</>}
         </p>
         <div className="paywall-actions">
