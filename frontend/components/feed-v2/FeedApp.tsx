@@ -232,6 +232,8 @@ export default function FeedApp({
   const [olderLoading, setOlderLoading] = useState(false);
   const [olderDone, setOlderDone] = useState(false);
   const [olderError, setOlderError] = useState(false);
+  // Everything loaded for this session: today's edition plus older batches.
+  const allStories = [...stories, ...olderStories];
   const mainRef = useRef<HTMLElement | null>(null);
   const carouselRef = useRef<HTMLDivElement | null>(null);
   const savedScroll = useRef(0);
@@ -576,7 +578,7 @@ export default function FeedApp({
   }
 
   const counts: Record<string, number> = {};
-  for (const s of stories) counts[s.cat] = (counts[s.cat] || 0) + 1;
+  for (const s of allStories) counts[s.cat] = (counts[s.cat] || 0) + 1;
   const cats = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
   const isProfile = tab === 'profile';
   // sort: Top on Home, Recent elsewhere; the toggle is a persisted preference
@@ -590,13 +592,15 @@ export default function FeedApp({
     const list = tab === 'all' ? [...stories] : stories.filter((s) => s.cat === tab);
     return list.sort(sortMode === 'top' ? byTop : byRecent);
   })();
+  // Older batches shown after the ranked list, narrowed to the active tab.
+  const olderForTab = tab === 'all' ? olderStories : olderStories.filter((s) => s.cat === tab);
   function setSort(next: 'top' | 'recent') {
     if (next === sortMode) return;
     setSortOverride(next);
     storeSort(next);
     trackFeedFilterChanged(`sort:${next}`, `sort:${sortMode}`, { surface: 'feed_v2' });
   }
-  const open = storyParam ? [...stories, ...olderStories].find((s) => s.id === storyParam) || null : null;
+  const open = storyParam ? allStories.find((s) => s.id === storyParam) || null : null;
   const allPulse = [...pulse.tools, ...pulse.discussions, ...pulse.blogs];
   const openPulse = pulseParam ? allPulse.find((t) => t.id === pulseParam) || null : null;
   const dirty = JSON.stringify(profile) !== JSON.stringify(savedProfile);
@@ -606,7 +610,7 @@ export default function FeedApp({
   const locked = isFree ? visible.slice(FREE_LIMIT) : [];
   const teasers = locked.slice(0, 4);
 
-  const markedStories = [...stories, ...olderStories].filter((s) => marks.has(s.id));
+  const markedStories = allStories.filter((s) => marks.has(s.id));
   const markedPulse = allPulse.filter((t) => marks.has(t.id));
 
   // "caught up" when every story in the current list has been opened today.
@@ -719,7 +723,7 @@ export default function FeedApp({
             </a>
           )}
           <nav className="nav">
-            <NavItem icon={Home} label="Home" active={tab === 'all'} onClick={() => go('all')} count={stories.length} />
+            <NavItem icon={Home} label="Home" active={tab === 'all'} onClick={() => go('all')} count={allStories.length} />
             {cats.map((c) => {
               const Icon = CAT_ICONS[c] || Sparkles;
               return <NavItem key={c} icon={Icon} label={CAT_LABELS[c] || c} active={tab === c} onClick={() => go(c)} count={counts[c]} />;
@@ -750,7 +754,7 @@ export default function FeedApp({
               </button>
             )}
           </div>
-          <p className="side-foot">{stories.length} stories · ranked</p>
+          <p className="side-foot">{allStories.length} stories · ranked</p>
         </div>
       </aside>
 
@@ -866,7 +870,7 @@ export default function FeedApp({
           <>
             <header className="head">
               <h1 className="head-title">{tab === 'all' ? 'Home' : CAT_LABELS[tab] || tab}</h1>
-              <span className="head-meta">{isFree ? `5 of ${visible.length}` : visible.length}</span>
+              <span className="head-meta">{isFree ? `5 of ${visible.length}` : visible.length + olderForTab.length}</span>
               <span className="post-spacer" />
               <div className="sort-seg" role="group" aria-label="Sort stories">
                 <button
@@ -916,12 +920,14 @@ export default function FeedApp({
                 </>
               )}
 
-              {tab === 'all' && !isFree && (
+              {!isFree && (tab === 'all' || olderForTab.length > 0) && (
                 <>
-                  {olderStories.length > 0 && (
-                    <div className="older-sep"><span>Earlier stories</span></div>
+                  {olderForTab.length > 0 && (
+                    <div className="older-sep">
+                      <span>{tab === 'all' ? 'Earlier stories' : `Earlier in ${CAT_LABELS[tab] || tab}`}</span>
+                    </div>
                   )}
-                  {olderStories.map((s) => (
+                  {olderForTab.map((s) => (
                     <StoryCard
                       key={s.id}
                       story={s}
@@ -931,16 +937,16 @@ export default function FeedApp({
                       onShare={share}
                     />
                   ))}
-                  {!olderDone && (
+                  {tab === 'all' && !olderDone && (
                     <button className="load-older" onClick={loadOlder} disabled={olderLoading}>
                       <Clock size={16} />
                       {olderLoading ? 'Loading older stories…' : 'See older stories'}
                     </button>
                   )}
-                  {olderDone && olderStories.length > 0 && (
+                  {tab === 'all' && olderDone && olderStories.length > 0 && (
                     <p className="older-end">That&rsquo;s the whole archive — a fresh edition lands every morning.</p>
                   )}
-                  {olderError && (
+                  {tab === 'all' && olderError && (
                     <p className="older-error">Couldn&rsquo;t load older stories. Try again.</p>
                   )}
                 </>
