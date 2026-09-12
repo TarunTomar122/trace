@@ -18,8 +18,8 @@ const links = [
 ] as const;
 
 export default function PublicHeader({
-  ctaLabel = 'Start reading',
-  ctaHref = '/feed',
+  ctaLabel = 'Start reading free',
+  ctaHref = '/feed?utm_source=site&utm_medium=header',
   centerSlot,
   rightSlot,
   showMobileNav = true,

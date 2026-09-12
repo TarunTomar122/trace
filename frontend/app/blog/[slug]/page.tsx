@@ -294,10 +294,10 @@ export default async function BlogPostPage({ params }: PageProps) {
                 Start with Trace
               </Link>
               <Link
-                href="/feed"
+                href={`/feed?utm_source=blog&utm_medium=article_end&utm_campaign=${post.slug}`}
                 className="landing-btn landing-btn-secondary landing-btn-sm"
               >
-                Read today&apos;s feed
+                Read the free edition
               </Link>
             </div>
           </section>

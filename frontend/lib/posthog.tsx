@@ -309,6 +309,14 @@ export function trackLandingCtaExposure(assignment: LandingCtaAssignment) {
   });
 }
 
+export function trackBlogFeedWelcomeShown(props?: Record<string, unknown>) {
+  posthog.capture("blog_feed_welcome_shown", { surface: "feed_v2", ...props });
+}
+
+export function trackBlogFeedWelcomeCta(location: string) {
+  posthog.capture("blog_feed_welcome_cta_clicked", { surface: "feed_v2", location });
+}
+
 export function trackLandingCTAClicked(variant: string, location: string, props?: Record<string, unknown>) {
   posthog.capture("landing_cta_clicked", { variant, location, ...props });
 }
