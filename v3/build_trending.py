@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 from collections import Counter, defaultdict
 import hashlib
+import itertools
 import json
 import os
 import re
@@ -550,16 +551,7 @@ def _cluster_topic_candidates(items: list[dict[str, Any]]) -> list[dict[str, Any
     - Each item's tokens are tracked separately so consensus can be
       recalculated rather than just accumulating.
     """
-    # Words that are too common across articles to be useful cluster signals
-    # even after the main TOPIC_STOPWORDS pass (shorter words, common verbs, etc.)
-    SOFT_STOP = {
-        "using", "used", "make", "made", "made", "take", "taken", "comes",
-        "coming", "going", "gets", "get", "got", "back", "just", "more",
-        "less", "like", "also", "even", "still", "already", "now", "soon",
-        "next", "last", "both", "each", "into", "with", "that", "this",
-        "they", "their", "there", "been", "being", "work", "works", "call",
-        "called", "called", "show", "shows", "showing", "become", "becomes",
-    }
+    SOFT_STOP = TOPIC_SOFT_STOP
 
     clusters: list[dict[str, Any]] = []
 
@@ -624,49 +616,59 @@ def _cluster_topic_candidates(items: list[dict[str, Any]]) -> list[dict[str, Any
     return clusters
 
 
-def _topic_merge_prompt(clusters: list[dict[str, Any]]) -> str:
-    listing: list[dict[str, Any]] = []
-    for i, cluster in enumerate(clusters):
-        items = sorted(
-            cluster.get("items", []) or [],
-            key=lambda x: float(x.get("_trend_score", 0.0)),
-            reverse=True,
-        )
-        listing.append({
-            "index": i + 1,
-            "title": _topic_title(cluster),
-            "interest": str((items[0].get("interest_id") if items else "") or ""),
-            "sources": len({str(x.get("source_name", "")).strip() for x in items if str(x.get("source_name", "")).strip()}),
-            "headlines": [str(x.get("title", ""))[:140] for x in items[:3]],
+TOPIC_SOFT_STOP = {
+    "using", "used", "make", "made", "take", "taken", "comes",
+    "coming", "going", "gets", "get", "got", "back", "just", "more",
+    "less", "like", "also", "even", "still", "already", "now", "soon",
+    "next", "last", "both", "each", "into", "with", "that", "this",
+    "they", "their", "there", "been", "being", "work", "works", "call",
+    "called", "show", "shows", "showing", "become", "becomes",
+}
+
+
+def _merge_candidate_pairs(clusters: list[dict[str, Any]]) -> list[tuple[int, int, set[str]]]:
+    """Deterministic recall: pairs whose topic titles share a named entity or
+    at least two specific tokens. The model only judges these candidates, so
+    it can never invent merges between unrelated topics."""
+    title_tokens = [_topic_tokens(_topic_title(c)) for c in clusters]
+    pairs: list[tuple[int, int, set[str]]] = []
+    for i, j in itertools.combinations(range(len(clusters)), 2):
+        shared = (title_tokens[i] & title_tokens[j]) - TOPIC_SOFT_STOP
+        entity = shared & ENTITY_TOPIC_TOKENS
+        specific = {t for t in shared if len(t) >= 4}
+        if entity or len(specific) >= 2:
+            pairs.append((i, j, shared))
+    return pairs
+
+
+def _topic_merge_prompt(clusters: list[dict[str, Any]], pairs: list[tuple[int, int, set[str]]]) -> str:
+    payload = []
+    for i, j, shared in pairs:
+        items_a = sorted(clusters[i].get("items", []) or [], key=lambda x: -float(x.get("_trend_score", 0.0)))
+        items_b = sorted(clusters[j].get("items", []) or [], key=lambda x: -float(x.get("_trend_score", 0.0)))
+        payload.append({
+            "pair": [i + 1, j + 1],
+            "a": {
+                "title": _topic_title(clusters[i]),
+                "headlines": [str(x.get("title", ""))[:120] for x in items_a[:3]],
+            },
+            "b": {
+                "title": _topic_title(clusters[j]),
+                "headlines": [str(x.get("title", ""))[:120] for x in items_b[:3]],
+            },
+            "shared_words": sorted(shared),
         })
     return (
-        "You merge duplicate news topics in a daily briefing. Each topic already groups articles about "
-        "one story; some topics are the SAME real-world event and must be merged.\n\n"
-        "Merge two topics ONLY when they describe the same concrete event (same actor AND same action or "
-        "announcement) — for example two write-ups of the same CEO statement, the same product launch, or "
-        "the same funding round.\n"
-        "NEVER merge topics that merely share a company, a person, a sector, or a broad theme. "
-        "Same company doing two different things is NOT a merge. If unsure, do not merge.\n\n"
-        'Return JSON: {"merge_groups": [[1,4],[2,7,9]]} listing groups of 2+ indices that must become '
-        'one topic. Every index appears at most once. Return {"merge_groups": []} if nothing should merge.\n\n'
-        f"Topics:\n{json.dumps(listing, ensure_ascii=False)}"
+        "You are a strict news editor. Each item is a candidate pair of topics from a daily briefing, "
+        "with the words their titles share. Decide for each pair: do they describe the SAME concrete "
+        "real-world event (same actor doing the same specific thing at the same time)?\n"
+        "Same company, product family, person, or theme is NOT enough: 'OpenAI launches product A' and "
+        "'OpenAI launches product B' are different events; 'OpenAI launches X' and 'Amazon boosts "
+        "OpenAI's ads' are different events. When unsure, answer false.\n\n"
+        'Return JSON {"verdicts": [{"pair": [1,4], "same_event": true, "event": "short shared event"}]} '
+        "with exactly one verdict per input pair, in order.\n\n"
+        f"Pairs:\n{json.dumps(payload, ensure_ascii=False)}"
     )
-
-
-def _merge_group_is_safe(group: list[dict[str, Any]]) -> bool:
-    """Deterministic backstop for the LLM merge call: a merge only lands when
-    the topics share a named entity or at least two specific tokens. This stops
-    a bad model answer from folding unrelated topics together."""
-    if len(group) < 2:
-        return False
-    token_sets = [set(cluster.get("tokens", set()) or set()) for cluster in group]
-    if any(not tokens for tokens in token_sets):
-        return False
-    shared = set.intersection(*token_sets)
-    if shared & ENTITY_TOPIC_TOKENS:
-        return True
-    specific = {t for t in shared if len(t) >= 4}
-    return len(specific) >= 2
 
 
 def _apply_topic_merges(
@@ -722,15 +724,20 @@ def _merge_related_topics(
     *,
     complete: Callable[[str], str] | None = None,
 ) -> list[dict[str, Any]]:
-    """One cheap LLM call to fold same-event topic clusters together.
+    """Fold same-event topic clusters that the deterministic clusterer split.
 
-    The deterministic clusterer fragments one event across wording variants
-    ("slow the pace" / "pump the brakes" / "speed limits"). This pass sees the
-    final topic titles and asks the model which are the same story, with a
-    token/entity guard and a per-fingerprint cache so 20-minute refreshes are
-    free once the topic set settles. Failures keep the original clusters.
+    Recall comes from deterministic candidate pairs (shared entity or two
+    specific tokens); one cheap LLM call classifies each candidate pair as the
+    same concrete event or not. This keeps precision high — the model can only
+    accept a pair, never invent a merge — and a per-fingerprint cache makes the
+    20-minute refreshes free once the topic set settles. Failures keep the
+    original clusters.
     """
     if len(clusters) < 2 or os.getenv("TRENDING_MERGE_AI", "1").strip() == "0":
+        return clusters
+
+    pairs = _merge_candidate_pairs(clusters)
+    if not pairs:
         return clusters
 
     fingerprint = hashlib.sha256(
@@ -747,48 +754,86 @@ def _merge_related_topics(
         ).encode("utf-8")
     ).hexdigest()[:16]
     cache_key = f"topic_merge:{fingerprint}"
-    groups: list[list[int]] | None = None
+    merge_groups: list[list[int]] | None = None
 
     cached = store.get_cached_synthesis(cache_key)
     if isinstance(cached, dict) and isinstance(cached.get("merge_groups"), list):
-        groups = cached["merge_groups"]
+        merge_groups = cached["merge_groups"]
 
-    if groups is None:
-        prompt = _topic_merge_prompt(clusters)
+    if merge_groups is None:
+        prompt = _topic_merge_prompt(clusters, pairs)
         try:
             if complete is not None:
                 raw = complete(prompt)
             else:
                 from openai import OpenAI as _OpenAI
 
+                model = os.getenv("TRENDING_MERGE_MODEL", "gpt-5-mini")
+                kwargs: dict[str, Any] = (
+                    {"max_completion_tokens": 1500, "reasoning_effort": "minimal"}
+                    if model.startswith("gpt-5")
+                    else {"temperature": 0, "max_tokens": 900}
+                )
                 client = _OpenAI(api_key=os.getenv("OPENAI_API_KEY", "").strip())
                 resp = client.chat.completions.create(
-                    model=os.getenv("TRENDING_MERGE_MODEL", "gpt-4o-mini"),
+                    model=model,
                     messages=[
                         {"role": "system", "content": "You are a strict news editor. Return valid JSON only."},
                         {"role": "user", "content": prompt},
                     ],
-                    temperature=0,
                     response_format={"type": "json_object"},
-                    timeout=30,
+                    timeout=45,
+                    **kwargs,
                 )
                 raw = resp.choices[0].message.content or "{}"
             parsed = json.loads(raw)
-            if not isinstance(parsed.get("merge_groups"), list):
+            verdicts = parsed.get("verdicts")
+            if not isinstance(verdicts, list):
                 return clusters
-            groups = parsed["merge_groups"]
+            candidate_set = {(i, j) for i, j, _ in pairs}
+            accepted: list[list[int]] = []
+            for verdict in verdicts:
+                if not isinstance(verdict, dict) or not verdict.get("same_event"):
+                    continue
+                pair = verdict.get("pair")
+                if not isinstance(pair, list) or len(pair) != 2:
+                    continue
+                try:
+                    i, j = int(pair[0]), int(pair[1])
+                except (TypeError, ValueError):
+                    continue
+                if i == j or not (1 <= i <= len(clusters) and 1 <= j <= len(clusters)):
+                    continue
+                if (min(i, j) - 1, max(i, j) - 1) not in candidate_set:
+                    continue
+                accepted.append([i, j])
+            merge_groups = accepted
         except Exception as exc:
             _log(f"Topic merge AI failed: {exc}")
             return clusters
         try:
             store.cache_synthesis(cache_key, {
-                "merge_groups": groups,
+                "merge_groups": merge_groups,
                 "generated_at": datetime.now(timezone.utc).isoformat(),
             })
         except Exception as exc:
             _log(f"Topic merge cache write failed: {exc}")
 
-    merged = _apply_topic_merges(clusters, groups or [])
+    # Greedy non-overlapping application, strongest shared-token pair first.
+    ranked = sorted(
+        merge_groups or [],
+        key=lambda g: -len({t for t in _topic_tokens(_topic_title(clusters[int(g[0]) - 1])) & _topic_tokens(_topic_title(clusters[int(g[1]) - 1])) if len(t) >= 4}),
+    )
+    used: set[int] = set()
+    final_groups: list[list[int]] = []
+    for group in ranked:
+        idxs = [int(x) for x in group if isinstance(x, (int, float))]
+        if len(idxs) != 2 or any(x < 1 or x > len(clusters) or (x - 1) in used for x in idxs):
+            continue
+        final_groups.append(idxs)
+        used.update(x - 1 for x in idxs)
+
+    merged = _apply_topic_merges(clusters, final_groups)
     if len(merged) < len(clusters):
         _log(f"Topic merge: {len(clusters)} topics -> {len(merged)} after folding same-event clusters")
     return merged
