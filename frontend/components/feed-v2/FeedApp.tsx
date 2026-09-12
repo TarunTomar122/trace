@@ -13,6 +13,7 @@ import {
   trackFeedItemClicked,
   trackFeedViewed,
   trackFeedOlderLoaded,
+  trackDailyBriefPreferenceChanged,
   trackPaywallShown,
   trackProfileUpdated,
   trackPromoModalOpened,
@@ -107,7 +108,8 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const ALL_INTERESTS = ['ai', 'markets', 'ux-design', 'engineering', 'tech', 'startups', 'security', 'open-source', 'policy'];
-const FREE_LIMIT = 5;
+const FREE_LIMIT_SIGNED_OUT = 4;
+const FREE_LIMIT_SIGNED_IN = 7;
 
 function mapRole(r?: string | null): string {
   const s = (r || '').toLowerCase();
@@ -337,6 +339,13 @@ export default function FeedApp({
   const [savingProfile, setSavingProfile] = useState(false);
   const [promoOpen, setPromoOpen] = useState(false);
   const [celebrate, setCelebrate] = useState<null | 'pro' | 'promo'>(null);
+  const [dailyOn, setDailyOn] = useState(false);
+
+  // Reflect the profile's daily-brief preference in the paywall CTA.
+  useEffect(() => {
+    if (!authProfile) return;
+    setDailyOn(authProfile.newsletterOptIn === true || authProfile.dailyNewsletterEnabled === true);
+  }, [authProfile]);
 
   // hydrate bookmarks from the real store when signed in (same store the app uses)
   useEffect(() => {
@@ -577,6 +586,25 @@ export default function FeedApp({
     }
   }
 
+  async function enableDailyEmails() {
+    if (!user) { signInWithGoogle(); return; }
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ newsletterOptIn: true, dailyNewsletterEnabled: true }),
+      });
+      if (!res.ok) throw new Error(`Profile save failed (${res.status})`);
+      setDailyOn(true);
+      trackDailyBriefPreferenceChanged(true, 'feed');
+      showToast('Daily brief on — first one lands tomorrow morning');
+      refreshProfile().catch(() => null);
+    } catch {
+      showToast('Could not enable the daily brief — try again');
+    }
+  }
+
   const counts: Record<string, number> = {};
   for (const s of allStories) counts[s.cat] = (counts[s.cat] || 0) + 1;
   const cats = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
@@ -606,8 +634,10 @@ export default function FeedApp({
   const dirty = JSON.stringify(profile) !== JSON.stringify(savedProfile);
 
   const isFree = !pro;
-  const full = isFree ? visible.slice(0, FREE_LIMIT) : visible;
-  const locked = isFree ? visible.slice(FREE_LIMIT) : [];
+  // Signed-out readers get a 4-story preview; a free account unlocks 7.
+  const freeLimit = accessPending || user ? FREE_LIMIT_SIGNED_IN : FREE_LIMIT_SIGNED_OUT;
+  const full = isFree ? visible.slice(0, freeLimit) : visible;
+  const locked = isFree ? visible.slice(freeLimit) : [];
   const teasers = locked.slice(0, 4);
 
   const markedStories = allStories.filter((s) => marks.has(s.id));
@@ -633,8 +663,8 @@ export default function FeedApp({
   useEffect(() => {
     if (paywallRef.current || pro || locked.length === 0) return;
     paywallRef.current = true;
-    trackPaywallShown('feed_free_limit', { locked_count: locked.length });
-  }, [pro, locked.length]);
+    trackPaywallShown('feed_free_limit', { locked_count: locked.length, free_limit: freeLimit });
+  }, [pro, locked.length, freeLimit]);
 
   // detail view open? (URL-driven)
   const detailOpen = !!open || !!openPulse;
@@ -761,12 +791,20 @@ export default function FeedApp({
       {/* center rail */}
       <main className="main" ref={mainRef}>
         {openPulse ? (
-          !pro && !pulse.blogs.some((b) => b.id === openPulse.id) ? <PaywallPlate what="Pulse — the builders' radar" lockedCount={0} /> : (
+          !pro && !pulse.blogs.some((b) => b.id === openPulse.id) ? (
+            <PaywallPlate what="Pulse — the builders' radar" ask="pro" dailyOn={dailyOn} onEnableDaily={enableDailyEmails} />
+          ) : (
             <PulseDetail item={openPulse} onBack={goBack} onShare={share} marked={marks.has(openPulse.id)} toggleMark={toggleMark} />
           )
         ) : open ? (
-          !pro && open.rank > FREE_LIMIT && open.id !== unlockedId ? (
-            <PaywallPlate what="This story" lockedCount={0} />
+          !pro && open.rank > freeLimit && open.id !== unlockedId ? (
+            <PaywallPlate
+              what="This story"
+              ask={user ? 'daily' : 'signup'}
+              dailyOn={dailyOn}
+              onSignIn={() => signInWithGoogle()}
+              onEnableDaily={enableDailyEmails}
+            />
           ) : (
             <Detail story={open} onBack={goBack} onShare={share} marked={marks.has(open.id)} toggleMark={toggleMark} />
           )
@@ -870,7 +908,7 @@ export default function FeedApp({
           <>
             <header className="head">
               <h1 className="head-title">{tab === 'all' ? 'Home' : CAT_LABELS[tab] || tab}</h1>
-              <span className="head-meta">{isFree ? `5 of ${visible.length}` : visible.length + olderForTab.length}</span>
+              <span className="head-meta">{isFree ? `${freeLimit} of ${visible.length}` : visible.length + olderForTab.length}</span>
               <span className="post-spacer" />
               <div className="sort-seg" role="group" aria-label="Sort stories">
                 <button
@@ -916,7 +954,13 @@ export default function FeedApp({
                       <p className="lock-note"><Lock size={13} /> Unlock with Pro</p>
                     </div>
                   ))}
-                  <PaywallPlate what="the full ranked feed" lockedCount={locked.length} />
+                  <PaywallPlate
+                    what="the full ranked feed"
+                    ask={user ? 'daily' : 'signup'}
+                    dailyOn={dailyOn}
+                    onSignIn={() => signInWithGoogle()}
+                    onEnableDaily={enableDailyEmails}
+                  />
                 </>
               )}
 
@@ -1025,7 +1069,7 @@ function WelcomeModal({ kind, onClose }: { kind: 'pro' | 'promo'; onClose: () =>
   const isPro = kind === 'pro';
   const perks = isPro
     ? [
-      'The full ranked feed, no 5-story cap',
+      'The full ranked feed, no 7-story cap',
       'Full summaries with key points',
       'Pulse: Conversations and Worth reading',
       'Profile-ranked picks plus the daily email brief',
@@ -1455,15 +1499,61 @@ function Detail({ story, onBack, onShare, marked, toggleMark }: { story: FeedSto
   );
 }
 
-function PaywallPlate({ what, lockedCount }: { what: string; lockedCount: number }) {
+function PaywallPlate({ what, ask, dailyOn, onSignIn, onEnableDaily }: {
+  what: string;
+  ask: 'signup' | 'daily' | 'pro';
+  dailyOn: boolean;
+  onSignIn?: () => void;
+  onEnableDaily: () => void;
+}) {
+  if (ask === 'signup') {
+    return (
+      <div className="paywall">
+        <div className="paywall-badge"><Lock size={20} /></div>
+        <h2 className="paywall-title">Free account, 7 stories a day</h2>
+        <p className="paywall-sub">
+          {what === 'the full ranked feed'
+            ? <>You&rsquo;ve read the {FREE_LIMIT_SIGNED_OUT} free stories for today. Sign up free to get <b>7 stories a day</b> plus the daily brief by email.</>
+            : <>Today&rsquo;s edition continues with a free account — <b>7 stories a day</b> plus the daily brief by email.</>}
+        </p>
+        <div className="paywall-actions">
+          <button className="paywall-btn" onClick={onSignIn}>Sign up free with Google</button>
+          <ProCheckoutButton className="paywall-alt" label="Or go Pro — $3/mo" source="paywall_anon_pro" />
+        </div>
+        <p className="paywall-foot">No card needed for the free account. Cancel Pro anytime.</p>
+      </div>
+    );
+  }
+
+  if (ask === 'daily') {
+    return (
+      <div className="paywall">
+        <div className="paywall-badge"><Lock size={20} /></div>
+        <h2 className="paywall-title">That&rsquo;s your 7 for today</h2>
+        <p className="paywall-sub">
+          Go Pro for <b>the full ranked feed</b>, Pulse and the archive — or get the top stories in your inbox every morning.
+        </p>
+        <div className="paywall-actions">
+          <ProCheckoutButton className="paywall-btn" />
+          <button
+            className={`paywall-alt${dailyOn ? ' on' : ''}`}
+            onClick={dailyOn ? undefined : onEnableDaily}
+            disabled={dailyOn}
+          >
+            {dailyOn ? <><Check size={16} /> Daily brief is on</> : 'Get the daily emails'}
+          </button>
+        </div>
+        <p className="paywall-foot">Cancel Pro anytime. The free account stays free.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="paywall">
       <div className="paywall-badge"><Lock size={20} /></div>
       <h2 className="paywall-title">This one&rsquo;s for Pro</h2>
       <p className="paywall-sub">
-        {what === "the full ranked feed"
-          ? <>You&rsquo;ve read the 5 free stories for today. <b>More ranked stories</b> are waiting, plus full summaries, Pulse and your profile.</>
-          : <>{what} is part of <b>Trace Pro</b> — the whole day, ranked and summarized, every morning.</>}
+        <>{what} is part of <b>Trace Pro</b> — the whole day, ranked and summarized, every morning.</>
       </p>
       <ProCheckoutButton className="paywall-btn" />
       <p className="paywall-foot">Cancel anytime. Daily brief by email, every morning.</p>
@@ -1477,7 +1567,7 @@ function CancelModal({ onClose, getToken, onDone }: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const miss = [
-    'Back to 5 free stories a day',
+    'Back to 7 free stories a day',
     'Summaries shrink, key points go away',
     'Pulse locks: no Conversations, no Worth reading',
     'Profile ranking and the daily email brief stop',
@@ -1957,6 +2047,17 @@ const css = `
 }
 .xw .paywall-btn:disabled { opacity: 0.7; cursor: wait; }
 .xw .paywall-btn:hover { background: #1a8cd8; }
+.xw .paywall-actions { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.xw .paywall-alt {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 46px; padding: 0 24px; border-radius: 9999px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--text);
+  font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.xw .paywall-alt:hover:not(:disabled) { background: var(--hover); }
+.xw .paywall-alt:disabled { cursor: default; }
+.xw .paywall-alt.on { color: var(--green); border-color: rgba(0, 186, 124, 0.45); }
 .xw .paywall-foot { margin: 14px 0 0; font-size: 12.5px; color: var(--text-3); }
 
 /* signal — plain text */

@@ -47,7 +47,7 @@ const FAQS = [
   },
   {
     q: "How is this different from an RSS reader?",
-    a: "RSS readers show you everything. Trace groups identical stories into one item, writes a short brief with key takeaways, and ranks the day so the 5 free stories cover what matters. You read one page, not fifty feeds.",
+    a: "RSS readers show you everything. Trace groups identical stories into one item, writes a short brief with key takeaways, and ranks the day so the free stories cover what matters. You read one page, not fifty feeds.",
   },
   {
     q: "What do I get for free?",
