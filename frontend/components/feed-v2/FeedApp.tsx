@@ -2278,7 +2278,7 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
               aria-pressed={dailyOn}
               disabled={!user}
             >
-              {dailyOn ? <><Check size={14} /> On — top stories every morning</> : 'Get the daily emails'}
+              {dailyOn ? <><Check size={14} /> Daily brief is on</> : 'Get the daily emails'}
             </button>
           </div>
           <p className="section-hint">Lands at 10:30 Europe/Berlin. Turn it off anytime.</p>
@@ -2870,7 +2870,8 @@ const css = `
 .xw .pick {
   padding: 8px 16px; border-radius: 9999px; border: 1px solid var(--line);
   background: var(--bg); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer;
-  transition: background-color 0.2s ease; text-decoration: none; display: inline-block;
+  transition: background-color 0.2s ease; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 6px;
 }
 .xw .pick:hover { background: var(--hover); }
 .xw .pick.on { background: var(--line); border-color: var(--line); font-weight: 700; }
