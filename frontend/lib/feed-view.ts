@@ -204,89 +204,93 @@ export function mapTrendingToStories(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   trendingTopics: any[] | undefined,
 ): FeedStory[] {
-  // Grouping lives in trending_topics (each topic bundles its articles).
-  // Match flat trending items to their topic so cards show every outlet.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const urlToTopic = new Map<string, any>();
-  for (const topic of (trendingTopics || [])) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const a of (topic.articles || [])) {
-      if (a?.url && !urlToTopic.has(a.url)) urlToTopic.set(a.url, topic);
+  const domainOf = (url: string): string => {
+    try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; }
+  };
+
+  const coveredUrls = new Set<string>();
+  const topicStories: FeedStory[] = [];
+
+  // One card per grouped topic. The flat trending array can hold several
+  // articles from the same topic; cards must follow the grouping.
+  (trendingTopics || []).forEach((topic, i) => {
+    const articles = (topic?.articles || []).filter((a: { url?: string }) => a?.url);
+    for (const a of articles) coveredUrls.add(a.url);
+    if (!topic?.title && articles.length === 0) return;
+
+    const first = articles[0] || {};
+    const newest = articles.reduce(
+      (best: { published_date?: string }, a: { published_date?: string }) =>
+        (Date.parse(a?.published_date || '') > Date.parse(best?.published_date || '') ? a : best),
+      first,
+    );
+    const sources: string[] = [];
+    for (const a of articles) {
+      const d = domainOf(a.url);
+      if (d && !sources.includes(d)) sources.push(d);
     }
-  }
+    let source = first.source_name || first.source || sources[0] || '';
+    if (!source) source = domainOf(first.url || '');
 
-  // sibling outlet domains covering the same story (real grouping from the pipeline)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function groupSources(it: any): string[] {
-    let domain = '';
-    try { domain = new URL(it.url).hostname.replace(/^www\./, ''); } catch {}
-    const out: string[] = domain ? [domain] : [];
-    const topic = urlToTopic.get(it.url);
-    if (!topic) return out;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const a of (topic.articles || [])) {
-      try {
-        const h = new URL(a.url).hostname.replace(/^www\./, '');
-        if (h && h !== domain && !out.includes(h)) out.push(h);
-      } catch { /* skip bad urls */ }
-    }
-    return out;
-  }
+    const coverage = articles.map((a: { title?: string; source_name?: string; source?: string; url: string; published_date?: string }) => ({
+      title: a.title || '',
+      source: a.source_name || a.source || domainOf(a.url),
+      url: a.url,
+      time: timeAgo(a.published_date),
+    }));
 
-  // Home default (Top mode): most-grouped first, recency breaks ties.
-  // (Client re-sorts for Recent mode / other tabs; stories carry ts.)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const news: any[] = [...(trending || [])]
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .map((it: any) => ({
-      it,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      n: groupSources(it).length,
-      ts: Date.parse(it?.published_date || '') || 0,
-    }))
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .sort((a: any, b: any) => b.n - a.n || b.ts - a.ts)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .map((m: any) => m.it);
+    topicStories.push({
+      id: topic.id || topic.topic_key || `topic-${i}`,
+      rank: i + 1,
+      title: topic.title || first.title || '',
+      body: topic.summary || first.summary?.short_article?.body || first.description || '',
+      takeaways: Array.isArray(topic.key_points) ? topic.key_points : [],
+      img: thumb(topic.thumbnail) || thumb(first.thumbnail),
+      source,
+      sources,
+      sourceNames: source ? [source] : [],
+      coverage,
+      time: timeAgo(newest?.published_date || first.published_date),
+      ts: Date.parse(newest?.published_date || first.published_date || '') || 0,
+      cat: topic.interest_id || first.interest_id || 'tech',
+      url: first.url || '#',
+    });
+  });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return news.map((it: any, i: number) => {
+  // Flat items not folded into a topic stay as their own cards.
+  const standalone: FeedStory[] = [];
+  const seen = new Set<string>();
+  for (const it of trending || []) {
+    const url = String(it?.url || '');
+    if (!url || coveredUrls.has(url) || seen.has(url)) continue;
+    seen.add(url);
     const sa = it.summary?.short_article || {};
     let source = it.source_name || it.source || '';
-    let domain = '';
-    try { domain = new URL(it.url).hostname.replace(/^www\./, ''); } catch {}
+    const domain = domainOf(url);
     if (!source) source = domain;
-    const sources = groupSources(it);
-    // every grouped headline, clickable (timeline in the detail view)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const topic = urlToTopic.get(it.url);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let coverage = topic ? (topic.articles || []).filter((a: any) => a?.url).map((a: any) => {
-      let src = a.source_name || a.source || '';
-      let dom = '';
-      try { dom = new URL(a.url).hostname.replace(/^www\./, ''); } catch {}
-      return { title: a.title || '', source: src || dom, url: a.url, time: timeAgo(a.published_date) };
-    }) : [];
-    if (coverage.length === 0 && it.url) {
-      coverage = [{ title: it.title || '', source, url: it.url, time: timeAgo(it.published_date) }];
-    }
-    return {
-      id: it.id || it.url || String(i),
-      rank: i + 1,
+    standalone.push({
+      id: it.id || url,
+      rank: 0,
       title: it.title || '',
       body: sa.body || it.description || '',
       takeaways: Array.isArray(sa.key_takeaways) ? sa.key_takeaways : [],
       img: thumb(it.thumbnail),
       source,
-      sources,
+      sources: domain ? [domain] : [],
       sourceNames: source ? [source] : [],
-      coverage,
+      coverage: [{ title: it.title || '', source, url, time: timeAgo(it.published_date) }],
       time: timeAgo(it.published_date),
       ts: Date.parse(it?.published_date || '') || 0,
       cat: it.interest_id || 'tech',
-      url: it.url || '#',
-    };
-  });
+      url,
+    });
+  }
+
+  // Home default (Top mode): most-grouped first, recency breaks ties.
+  // (Client re-sorts for Recent mode / other tabs; stories carry ts.)
+  const combined = [...topicStories, ...standalone];
+  combined.sort((a, b) => b.sources.length - a.sources.length || b.ts - a.ts);
+  return combined.map((story, i) => ({ ...story, rank: i + 1 }));
 }
 
 export async function loadFeedViewData(): Promise<FeedViewData> {
@@ -373,6 +377,12 @@ export function findSharedStory(stories: FeedStory[], id: string): FeedStory | n
   return stories.find((s) => {
     if (s.id === id) return true;
     const key = dedupeKey({ url: s.url, id: s.id });
-    return key !== '' && (key === want || key === id);
+    if (key !== '' && (key === want || key === id)) return true;
+    // Topic cards bundle several articles; a shared link to any of them
+    // should open the merged card.
+    return s.coverage.some((c) => {
+      const ck = dedupeKey({ url: c.url, id: '' });
+      return ck !== '' && (ck === want || ck === id);
+    });
   }) || null;
 }
