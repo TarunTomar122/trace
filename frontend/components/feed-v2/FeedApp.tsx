@@ -24,8 +24,9 @@ import {
   trackSummaryOpened,
 } from '@/lib/posthog';
 import { bodyParagraphs } from '@/lib/body-text';
+import { rankStoriesForProfile } from '@/lib/feed-ranking';
 import {
-  Bookmark, Share, ArrowLeft, User, Check, Star, Plus, X, ArrowRight, Flame, Clock,
+  Bookmark, Share, ArrowLeft, User, Check, Star, Plus, X, ArrowRight, Clock,
   Home, Sparkles, TrendingUp, Rocket, Code2, Cpu, PenTool, MessageCircle, BookOpen, Lock,
   type LucideIcon,
 } from 'lucide-react';
@@ -133,17 +134,20 @@ function fmtReach(n: number): string {
 
 const SORT_STORAGE_KEY = 'trace_feed_sort_v1';
 
-function readStoredSort(): null | 'top' | 'recent' {
+function readStoredSort(): null | 'for_you' | 'recent' {
   try {
     if (typeof window === 'undefined') return null;
     const value = window.localStorage.getItem(SORT_STORAGE_KEY);
-    return value === 'top' || value === 'recent' ? value : null;
+    if (value === 'recent') return 'recent';
+    // 'top' is the pre-personalization value; treat it as For you.
+    if (value === 'top' || value === 'for_you') return 'for_you';
+    return null;
   } catch {
     return null;
   }
 }
 
-function storeSort(mode: 'top' | 'recent'): void {
+function storeSort(mode: 'for_you' | 'recent'): void {
   try {
     window.localStorage.setItem(SORT_STORAGE_KEY, mode);
   } catch {
@@ -340,6 +344,7 @@ export default function FeedApp({
   const [promoOpen, setPromoOpen] = useState(false);
   const [celebrate, setCelebrate] = useState<null | 'pro' | 'promo'>(null);
   const [dailyOn, setDailyOn] = useState(false);
+  const [profileNotice, setProfileNotice] = useState<string | null>(null);
 
   // Reflect the profile's daily-brief preference in the paywall CTA.
   useEffect(() => {
@@ -483,6 +488,9 @@ export default function FeedApp({
   async function saveProfile() {
     if (!user || savingProfile) return;
     setSavingProfile(true);
+    const roleChanged = profile.role !== savedProfile.role;
+    const added = profile.interests.filter((i) => !savedProfile.interests.includes(i));
+    const removed = savedProfile.interests.filter((i) => !profile.interests.includes(i));
     try {
       // store the human-readable role label so mapRole() round-trips on reload
       const response = await fetch('/api/profile', {
@@ -498,8 +506,14 @@ export default function FeedApp({
       await refreshProfile().catch(() => null);
       setSavedProfile(profile);
       trackProfileUpdated(['role', 'interests']);
-      showToast('Profile saved — tomorrow’s feed uses it');
+      const parts: string[] = [];
+      if (roleChanged) parts.push(`role → ${ROLE_LABELS[profile.role] || profile.role}`);
+      if (added.length) parts.push(`+${added.length} interest${added.length > 1 ? 's' : ''}`);
+      if (removed.length) parts.push(`−${removed.length} interest${removed.length > 1 ? 's' : ''}`);
+      showToast(parts.length ? `Saved — ${parts.join(', ')} · feed re-ranked` : 'Profile saved — feed re-ranked');
+      setProfileNotice('Saved. Your feed is re-ranked around this — check Home.');
     } catch {
+      setProfileNotice(null);
       showToast('Could not save profile — try again');
     } finally {
       setSavingProfile(false);
@@ -611,18 +625,21 @@ export default function FeedApp({
   const isProfile = tab === 'profile';
   // sort: Top on Home, Recent elsewhere; the toggle is a persisted preference
   // (localStorage) that wins over the per-tab default, across tabs + sessions.
-  const [sortOverride, setSortOverride] = useState<null | 'top' | 'recent'>(() => readStoredSort());
-  const sortMode = sortOverride ?? (tab === 'all' ? 'top' : 'recent');
+  const [sortOverride, setSortOverride] = useState<null | 'for_you' | 'recent'>(() => readStoredSort());
+  const sortMode = sortOverride ?? (tab === 'all' ? 'for_you' : 'recent');
   const byRecent = (a: FeedStory, b: FeedStory) => (b.ts || 0) - (a.ts || 0);
-  const byTop = (a: FeedStory, b: FeedStory) =>
-    b.sources.length - a.sources.length || byRecent(a, b);
   const visible = (() => {
     const list = tab === 'all' ? [...stories] : stories.filter((s) => s.cat === tab);
-    return list.sort(sortMode === 'top' ? byTop : byRecent);
+    if (sortMode === 'recent') return list.sort(byRecent);
+    // For you: coverage order re-ranked by saved interests + role.
+    return rankStoriesForProfile(list, {
+      interests: savedProfile.interests,
+      role: savedProfile.role,
+    });
   })();
   // Older batches shown after the ranked list, narrowed to the active tab.
   const olderForTab = tab === 'all' ? olderStories : olderStories.filter((s) => s.cat === tab);
-  function setSort(next: 'top' | 'recent') {
+  function setSort(next: 'for_you' | 'recent') {
     if (next === sortMode) return;
     setSortOverride(next);
     storeSort(next);
@@ -813,6 +830,8 @@ export default function FeedApp({
             profile={profile} setProfile={setProfile} storyCount={stories.length}
             dirty={dirty} saving={savingProfile} onSave={saveProfile}
             pro={pro} onBack={() => go('all')}
+            notice={profileNotice}
+            onEdit={() => setProfileNotice(null)}
             notify={showToast}
             getToken={async () => (user ? user.getIdToken() : '')}
             onSubscriptionChanged={() => { refreshProfile().catch(() => null); }}
@@ -912,11 +931,11 @@ export default function FeedApp({
               <span className="post-spacer" />
               <div className="sort-seg" role="group" aria-label="Sort stories">
                 <button
-                  className={`sort-opt${sortMode === 'top' ? ' on' : ''}`}
-                  onClick={() => setSort('top')}
-                  aria-pressed={sortMode === 'top'}
+                  className={`sort-opt${sortMode === 'for_you' ? ' on' : ''}`}
+                  onClick={() => setSort('for_you')}
+                  aria-pressed={sortMode === 'for_you'}
                 >
-                  <Flame size={14} /> Top
+                  <Sparkles size={14} /> {user ? 'For you' : 'Top'}
                 </button>
                 <button
                   className={`sort-opt${sortMode === 'recent' ? ' on' : ''}`}
@@ -1615,18 +1634,24 @@ function CancelModal({ onClose, getToken, onDone }: {
   );
 }
 
-function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, pro, onBack, user, authProfile, onSignOut, onSignIn, notify, getToken, onSubscriptionChanged }: {
+function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, pro, onBack, user, authProfile, onSignOut, onSignIn, notify, getToken, onSubscriptionChanged, notice, onEdit }: {
   profile: Profile; setProfile: (p: Profile) => void; storyCount: number;
   dirty: boolean; saving: boolean; onSave: () => void; pro: boolean; onBack: () => void;
   user: { displayName: string | null; email: string | null; photoURL: string | null } | null;
   authProfile: any; onSignOut: () => void; onSignIn: () => void;
   notify: (msg: string) => void; getToken: () => Promise<string>; onSubscriptionChanged: () => void;
+  notice?: string | null; onEdit?: () => void;
 }) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const bio = `${ROLE_LABELS[profile.role] || 'Builder'} following ${profile.interests.length} topics. ${storyCount} stories ranked today.`;
 
+  function update(next: Profile) {
+    onEdit?.();
+    setProfile(next);
+  }
+
   function toggleInterest(t: string) {
-    setProfile({
+    update({
       ...profile,
       interests: profile.interests.includes(t)
         ? profile.interests.filter((x) => x !== t)
@@ -1643,6 +1668,13 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
           <p className="head-sub">{storyCount} stories today</p>
         </div>
       </header>
+      {notice && (
+        <div className="save-note">
+          <span className="save-note-ic"><Check size={14} /></span>
+          <span className="save-note-text">{notice}</span>
+          <button className="save-note-cta" onClick={onBack}>See feed</button>
+        </div>
+      )}
       <div className="detail profile">
         <div className="banner">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1667,7 +1699,7 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
               <button className="save-btn primary" onClick={onSignIn}>Sign in with Google</button>
             )}
             {user && (dirty || saving) && (
-              <button className="save-btn primary" onClick={onSave} disabled={saving}>
+              <button className={`save-btn primary${dirty ? ' pulse' : ''}`} onClick={onSave} disabled={saving}>
                 {saving ? 'Saving…' : 'Save changes'}
               </button>
             )}
@@ -1690,7 +1722,7 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
           <h2 className="section-label">Your role</h2>
           <div className="chip-row">
             {Object.entries(ROLE_LABELS).map(([id, label]) => (
-              <button key={id} className={`pick${profile.role === id ? ' on' : ''}`} onClick={() => setProfile({ ...profile, role: id })}>
+              <button key={id} className={`pick${profile.role === id ? ' on' : ''}`} onClick={() => update({ ...profile, role: id })}>
                 {label}
               </button>
             ))}
@@ -1706,7 +1738,9 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
               </button>
             ))}
           </div>
-          <p className="section-hint">Tomorrow&rsquo;s feed is ranked around these.</p>
+          <p className={`section-hint${dirty ? ' unsaved' : ''}`}>
+            {dirty ? 'Unsaved changes — tap Save changes above.' : 'Your feed re-ranks around these right away.'}
+          </p>
         </div>
 
         <div className="profile-section">
@@ -2177,6 +2211,30 @@ const css = `
 .xw .save-btn:disabled { opacity: 0.6; cursor: default; }
 .xw .save-btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
 .xw .save-btn.primary:hover { background: #1a8cd8; }
+@keyframes save-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(29, 155, 240, 0.45); }
+  50% { box-shadow: 0 0 0 7px rgba(29, 155, 240, 0); }
+}
+.xw .save-btn.pulse { animation: save-pulse 1.6s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) { .xw .save-btn.pulse { animation: none; } }
+.xw .save-note {
+  display: flex; align-items: center; gap: 9px;
+  margin: 10px 18px 0; padding: 10px 12px;
+  border: 1px solid rgba(0, 186, 124, 0.35); background: rgba(0, 186, 124, 0.08);
+  border-radius: 12px; font-size: 13.5px; font-weight: 600; color: var(--text);
+}
+.xw .save-note-ic {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 9999px;
+  background: var(--green); color: #fff; flex-shrink: 0;
+}
+.xw .save-note-text { flex: 1; min-width: 0; }
+.xw .save-note-cta {
+  border: none; background: transparent; color: var(--blue);
+  font-size: 13.5px; font-weight: 700; font-family: inherit;
+  cursor: pointer; white-space: nowrap; padding: 0;
+}
+.xw .save-note-cta:hover { text-decoration: underline; text-underline-offset: 3px; }
 .xw .profile-id { padding: 10px 18px 4px; }
 .xw .profile-name { margin: 0; font-size: 23px; font-weight: 800; line-height: 28px; }
 .xw .profile-handle { margin: 0 0 10px; font-size: 15px; color: var(--text-3); }
@@ -2195,6 +2253,7 @@ const css = `
 .xw .pick:hover { background: var(--hover); }
 .xw .pick.on { background: var(--line); border-color: var(--line); font-weight: 700; }
 .xw .section-hint { margin: 0; padding: 0 0 14px; font-size: 13px; color: var(--text-3); }
+.xw .section-hint.unsaved { color: #c77700; font-weight: 600; }
 
 /* empty state + toast */
 .xw .empty { padding: 56px 24px; text-align: center; }

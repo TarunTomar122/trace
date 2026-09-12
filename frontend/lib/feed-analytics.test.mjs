@@ -14,6 +14,7 @@ test('feed activation events are stable and web-scoped', () => {
     sourceClicked: 'feed_source_clicked',
     filterChanged: 'feed_filter_changed',
     dailyBriefPreferenceChanged: 'daily_brief_preference_changed',
+    olderLoaded: 'feed_older_loaded',
   });
 
   assert.deepEqual(
