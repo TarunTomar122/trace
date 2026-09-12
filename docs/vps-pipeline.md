@@ -29,6 +29,17 @@ Actions keeps push notifications plus manual/replay workflows.
 - The newsletter sends the **top 7 stories** (no builds/conversations sections).
   Pull on the VPS after changing `v3/flows/send_three_feed_newsletter.py`.
 
+## Topic merge pass
+
+- `v3/build_trending.py::_merge_related_topics` runs **one** `gpt-4o-mini` call
+  after topic selection to fold same-event clusters that the deterministic
+  token clusterer splits by wording ("slow the pace" vs "pump the brakes").
+- Guarded: a merge only lands when the topics share a named entity or two
+  specific tokens; failures keep the original clusters.
+- Cached per topic+article fingerprint in `v3_synthesis_cache`, so repeated
+  20-minute refreshes are free. `TRENDING_MERGE_AI=0` disables it,
+  `TRENDING_MERGE_MODEL` overrides the model.
+
 ## Coverage enrichment
 
 - Module: `v3/enrich_coverage.py`. Post-clustering hook in `build_trending`
