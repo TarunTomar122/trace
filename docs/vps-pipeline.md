@@ -16,10 +16,12 @@ Actions keeps push notifications plus manual/replay workflows.
 
 | Unit | Cadence | Command |
 |---|---|---|
-| `trace-pipeline.service/.timer` | every 20 min | `scheduler --jobs trending assemble --audience all --force-pools --enrich-coverage --enrich-top 10` |
+| `trace-pipeline.service/.timer` | every 20 min | `scheduler --jobs trending assemble --audience all --force-pools --enrich-coverage --enrich-top 10 --skip-notifications` |
 | `trace-pulse.service/.timer` | every 3 h | `scheduler --jobs pulse assemble --audience all --force-pools` |
 | `trace-foryou.service/.timer` | daily 03:30 UTC | `scheduler --jobs for_you --audience all` |
 | `trace-newsletter.service/.timer` | daily 10:30 Europe/Berlin | `v3.flows.send_three_feed_newsletter --audience all` |
+
+- Push notifications are sent **only** by the daily Actions job (`v2.flows.send_push_notification`, 09:00 IST). Every high-frequency `trending` run (VPS 20-min + Actions morning/3-hourly) must pass `--skip-notifications` or users get spammed.
 
 - `flock ~/trace/.pipeline.lock` prevents overlap. `RandomizedDelaySec` spreads load.
 - `trace-newsletter.timer` uses `OnCalendar=*-*-* 10:30:00 Europe/Berlin`, so

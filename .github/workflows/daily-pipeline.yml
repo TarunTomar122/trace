@@ -77,7 +77,7 @@ jobs:
           else
             python -u -m v3.scheduler --jobs for_you --audience all
             python -u -m v3.scheduler --jobs pulse --audience all
-            python -u -m v3.scheduler --jobs trending --audience all
+            python -u -m v3.scheduler --jobs trending --audience all --skip-notifications
           fi
 
   pulse-refresh:
@@ -126,7 +126,7 @@ jobs:
 
       - name: Refresh trending only
         run: |
-          python -u -m v3.scheduler --jobs trending --audience all --force-pools
+          python -u -m v3.scheduler --jobs trending --audience all --force-pools --skip-notifications
 
   # Push notifications - morning (9 AM IST)
   push-notification:
