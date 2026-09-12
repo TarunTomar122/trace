@@ -139,7 +139,7 @@ export default async function UseCaseDetailPage({ params }: PageProps) {
             <h2 className="text-2xl font-semibold tracking-tight">
               {page.title.startsWith("Trace for")
                 ? page.title.replace("Trace ", "") + "? Try Trace"
-                : "Try Trace Pro free for 3 days"}
+                : "Go Pro — $2.99/mo"}
             </h2>
             <p className="mt-3 text-white/60 max-w-2xl">
               See how Trace fits your workflow. One brief, under 10 minutes,

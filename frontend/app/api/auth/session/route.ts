@@ -55,7 +55,6 @@ async function ensureUserProfile(
         subscriptionStatus: 'none',
         createdAt: now,
         updatedAt: now,
-        onboardedAt: now,
       });
       return 'created';
     }

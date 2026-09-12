@@ -127,7 +127,7 @@ export default async function SolutionDetailPage({ params }: PageProps) {
               ?
             </h2>
             <p className="mt-3 text-white/60 max-w-2xl">
-              Try Trace Pro free for 3 days and see how Trace cuts through the noise.
+              Go Pro — $2.99/mo and see how Trace cuts through the noise.
               One brief, under 10 minutes, and you&apos;re caught up.
             </p>
             <Link
@@ -135,7 +135,7 @@ export default async function SolutionDetailPage({ params }: PageProps) {
               className="mt-5 inline-block rounded-full bg-[#2563eb] px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#1d4ed8]"
               style={{ boxShadow: "0 10px 24px rgba(37, 99, 235, 0.22)" }}
             >
-              Start your free trial →
+              Go Pro →
             </Link>
           </section>
 

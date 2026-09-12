@@ -411,7 +411,7 @@ export function PublicInlineUnlockBanner({
               {storyCount} more stories waiting for you
             </p>
             <p className="mt-0.5 text-xs text-secondary/55">
-              Try Trace Pro free for 3 days for unlimited articles, key takeaways,
+              Go Pro — $2.99/mo for unlimited articles, key takeaways,
               and source links.
             </p>
           </div>

@@ -118,8 +118,8 @@ Store the key securely as TRACE_AGENT_KEY. Never commit or print it. After setup
     return (
       <div className="border border-[#d9dded] bg-white p-6 sm:p-8">
         <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#2557d6]">Pro feature</p>
-        <h3 className="mt-3 text-[22px] font-semibold tracking-[-0.02em]">Start your 3-day Pro trial to connect an agent</h3>
-        <p className="mt-2 max-w-xl text-[14px] leading-[1.7] text-[#6d7280]">No charge for 3 days. Your key keeps working only while Pro or the trial is active.</p>
+        <h3 className="mt-3 text-[22px] font-semibold tracking-[-0.02em]">Go Pro to connect an agent</h3>
+        <p className="mt-2 max-w-xl text-[14px] leading-[1.7] text-[#6d7280]">Cancel anytime. Your key keeps working only while Pro or the trial is active.</p>
         <Link href="/feed?tab=profile" className="mt-5 inline-flex bg-[#2557d6] px-5 py-3 text-[14px] font-semibold text-white hover:bg-[#1d48b4]">Go Pro</Link>
       </div>
     );

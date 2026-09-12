@@ -108,7 +108,14 @@ export default function OnboardingPage() {
         <button className="ob-save" onClick={save} disabled={busy || !user}>
           {busy ? 'Saving…' : 'Build my feed'}
         </button>
-        <button className="ob-skip" onClick={() => router.replace('/feed')} disabled={busy}>
+        <button
+          className="ob-skip"
+          onClick={() => {
+            try { sessionStorage.setItem('trace_onboarding_skipped', '1'); } catch {}
+            router.replace('/feed');
+          }}
+          disabled={busy}
+        >
           Skip for now
         </button>
       </div>

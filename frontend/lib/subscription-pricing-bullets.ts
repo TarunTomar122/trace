@@ -1,4 +1,4 @@
-/** Trace Pro bullets — keep aligned with the homepage pricing section (`LandingPageClient`). */
+/** Trace Pro bullets — keep aligned with the homepage and pricing page copy. */
 export const LANDING_PRICING_BULLET_POINTS = [
   'Know what changed before your first meeting',
   'One clear version of each story — no duplicate links',

@@ -12,7 +12,7 @@ function friendlyCheckoutError(status: number, error?: string): string {
   if (/already has an active subscription/i.test(msg)) {
     return 'You’re already on Pro — manage your plan in Profile.';
   }
-  if (/already exists/i.test(msg) || /being processed/i.test(msg)) {
+  if (/already exists/i.test(msg) || /being processed/i.test(msg) || /being set up/i.test(msg)) {
     return 'Your subscription is already being set up — refresh in a minute.';
   }
   if (/not configured|unavailable/i.test(msg)) {

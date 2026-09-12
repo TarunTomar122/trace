@@ -158,15 +158,19 @@ function storeSort(mode: 'for_you' | 'recent'): void {
 
 const READ_STORAGE_KEY = 'trace_feed_read_v1';
 
+function readStorageKey(uid?: string | null): string {
+  return `${READ_STORAGE_KEY}:${uid || 'guest'}`;
+}
+
 function todayKey(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function readStoredReads(): Set<string> {
+function readStoredReads(uid?: string | null): Set<string> {
   try {
     if (typeof window === 'undefined') return new Set();
-    const raw = window.localStorage.getItem(READ_STORAGE_KEY);
+    const raw = window.localStorage.getItem(readStorageKey(uid));
     if (!raw) return new Set();
     const parsed = JSON.parse(raw) as { date?: string; ids?: string[] };
     if (parsed.date !== todayKey() || !Array.isArray(parsed.ids)) return new Set();
@@ -176,9 +180,9 @@ function readStoredReads(): Set<string> {
   }
 }
 
-function storeReads(ids: Set<string>): void {
+function storeReads(uid: string | null | undefined, ids: Set<string>): void {
   try {
-    window.localStorage.setItem(READ_STORAGE_KEY, JSON.stringify({ date: todayKey(), ids: [...ids].slice(-200) }));
+    window.localStorage.setItem(readStorageKey(uid), JSON.stringify({ date: todayKey(), ids: [...ids].slice(-200) }));
   } catch {
     // private mode etc. — read state just won't persist
   }
@@ -288,7 +292,7 @@ export default function FeedApp({
   const [marks, setMarks] = useState<Set<string>>(new Set());
   const [bookmarks, setBookmarks] = useState<StoredBookmark[]>([]);
   const [bookmarkQuery, setBookmarkQuery] = useState('');
-  const [readIds, setReadIds] = useState<Set<string>>(() => readStoredReads());
+  const [readIds, setReadIds] = useState<Set<string>>(() => readStoredReads(null));
   const [toast, setToast] = useState<string | null>(null);
   // Older stories are fetched on demand (24-ish per click) for Pro readers,
   // paging back through the daily archive docs.
@@ -390,15 +394,9 @@ export default function FeedApp({
   }, []);
 
   useEffect(() => {
-    if (!proReturnPending || authLoading) return;
+    if (!proReturnPending || authLoading || !user) return;
     if (verifyStarted.current) return;
     verifyStarted.current = true;
-    if (!user) {
-      setProReturnPending(false);
-      setActivating(false);
-      showToast('Payment received — sign in again to activate Pro');
-      return;
-    }
     let cancelled = false;
     (async () => {
       let active = pro;
@@ -449,27 +447,49 @@ export default function FeedApp({
     let cancelled = false;
     const timer = setTimeout(() => {
       (async () => {
+        let unsynced: StoredBookmark[] = [];
         const guest = readGuestBookmarks();
         if (guest.length) {
           try {
             const token = await user.getIdToken();
-            await Promise.allSettled(guest.map((b) => fetch('/api/bookmarks', {
+            const results = await Promise.allSettled(guest.map((b) => fetch('/api/bookmarks', {
               method: 'POST',
               headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
               body: JSON.stringify({ item_id: b.item_id, item_metadata: b.item_metadata }),
             })));
-            writeGuestBookmarks([]);
-          } catch { /* keep the local copies if the sync fails */ }
+            const allLanded = results.every((r) => r.status === 'fulfilled' && r.value.ok);
+            if (allLanded) {
+              writeGuestBookmarks([]);
+            } else {
+              // Keep the local copies that did not land so nothing is lost.
+              unsynced = guest.filter((_, i) => {
+                const r = results[i];
+                return r.status !== 'fulfilled' || !r.value.ok;
+              });
+              writeGuestBookmarks(unsynced);
+            }
+          } catch {
+            unsynced = guest;
+          }
         }
         try {
           const token = await user.getIdToken();
           const q = pro && bookmarkQuery.trim() ? `&q=${encodeURIComponent(bookmarkQuery.trim())}` : '';
           const res = await fetch(`/api/bookmarks?limit=100${q}`, { headers: { Authorization: `Bearer ${token}` } });
-          if (!res.ok || cancelled) return;
+          if (cancelled) return;
+          if (res.status === 403) {
+            // Server disagrees about Pro (e.g. revoked) — drop the filter and say so.
+            showToast('Saved search is a Pro feature');
+            setBookmarkQuery('');
+            return;
+          }
+          if (!res.ok) return;
           const data = await res.json();
           const rows: StoredBookmark[] = Array.isArray(data.bookmarks) ? data.bookmarks : [];
-          setBookmarks(rows);
-          setMarks(new Set(rows.map((b) => b.item_id)));
+          const known = new Set(rows.map((b) => b.item_id));
+          const merged = [...rows, ...unsynced.filter((b) => !known.has(b.item_id))];
+          setBookmarks(merged);
+          setMarks(new Set(merged.map((b) => b.item_id)));
         } catch { /* offline is fine, local state still works */ }
       })();
     }, 250);
@@ -509,7 +529,7 @@ export default function FeedApp({
   useEffect(() => {
     if (onboardRedirected.current) return;
     if (!user || !profileResolved || !authProfile) return;
-    if (authProfile.onboarded === false) {
+    if (authProfile.onboarded === false && sessionStorage.getItem('trace_onboarding_skipped') !== '1') {
       onboardRedirected.current = true;
       router.replace('/onboarding');
     }
@@ -601,7 +621,7 @@ export default function FeedApp({
         if (cur.has(s.id)) return cur;
         const next = new Set(cur);
         next.add(s.id);
-        storeReads(next);
+        storeReads(user?.uid, next);
         return next;
       });
     }
@@ -690,12 +710,14 @@ export default function FeedApp({
   }
 
   function bookmarkMetadata(id: string) {
+    const pulseMeta = allPulse.find((t) => t.id === id);
     const meta = stories.find((s) => s.id === id)
       || olderStories.find((s) => s.id === id)
-      || allPulse.find((t) => t.id === id);
+      || (initialStory && initialStory.id === id ? initialStory : undefined)
+      || pulseMeta;
     return {
       title: meta?.title || id,
-      type: 'article',
+      type: pulseMeta ? 'discussion' : 'article',
       url: meta?.url || '',
       thumbnail: meta?.img || undefined,
       source: meta?.source || '',
@@ -705,14 +727,14 @@ export default function FeedApp({
 
   async function toggleMark(id: string) {
     const isMarked = marks.has(id);
-    const apply = (marked: boolean) => {
-      setMarks((cur) => {
-        const next = new Set(cur);
-        if (marked) next.delete(id); else next.add(id);
-        return next;
-      });
+    const previousMarks = marks;
+    const previousBookmarks = bookmarks;
+    const apply = (cur: Set<string>): Set<string> => {
+      const next = new Set(cur);
+      if (isMarked) next.delete(id); else next.add(id);
+      return next;
     };
-    apply(isMarked);
+    setMarks(apply);
     const isStory = stories.some((s) => s.id === id) || olderStories.some((s) => s.id === id);
     trackFeedItemBookmarked(id, isStory ? 'story' : 'pulse', {
       surface: 'feed_v2', action: isMarked ? 'removed' : 'saved',
@@ -752,7 +774,9 @@ export default function FeedApp({
       }
       showToast(isMarked ? 'Removed from Bookmarks' : 'Added to Bookmarks');
     } catch {
-      apply(isMarked); // revert the optimistic toggle
+      // Restore both the mark set and the stored-row list.
+      setMarks(previousMarks);
+      setBookmarks(previousBookmarks);
       showToast('Could not sync bookmark — try again');
     }
   }
@@ -938,10 +962,15 @@ export default function FeedApp({
       if (cur.has(openStoryId)) return cur;
       const next = new Set(cur);
       next.add(openStoryId);
-      storeReads(next);
+      storeReads(user?.uid, next);
       return next;
     });
-  }, [openStoryId, openBlocked]);
+  }, [openStoryId, openBlocked, user?.uid]);
+
+  // Reads are per-account: switching users must not inherit the quota.
+  useEffect(() => {
+    setReadIds(readStoredReads(user?.uid || null));
+  }, [user?.uid]);
 
   // tools carousel cards (rendered twice for a seamless infinite loop).
   const toolCards = (dup: string) => (
@@ -1203,7 +1232,14 @@ export default function FeedApp({
                     {b.item_metadata?.description ? (
                       <p className="post-desc">{b.item_metadata.description}</p>
                     ) : null}
-                    <Actions id={b.item_id} size={18} marked={marks.has(b.item_id)} onToggleMark={toggleMark} onShare={share} />
+                    <Actions
+                      id={b.item_id}
+                      size={18}
+                      marked={marks.has(b.item_id)}
+                      onToggleMark={toggleMark}
+                      onShare={share}
+                      shareKind={b.item_metadata?.type === 'discussion' ? 'pulse' : 'story'}
+                    />
                   </article>
                 );
               })}
@@ -1279,7 +1315,7 @@ export default function FeedApp({
                 </button>
               </div>
             </header>
-            <div className="cat-strip" role="tablist" aria-label="Topics">
+            <div className="cat-strip" role="group" aria-label="Topics">
               <button className={`cat-chip${tab === 'all' ? ' on' : ''}`} onClick={() => go('all')}>All</button>
               {cats.map((c) => (
                 <button key={c} className={`cat-chip${tab === c ? ' on' : ''}`} onClick={() => go(c)}>
@@ -1315,7 +1351,7 @@ export default function FeedApp({
                 ))
               )}
 
-              {!feedError && isFree && quotaExhausted && visible.length > 0 && (
+              {!feedError && isFree && quotaExhausted && visible.some((s) => !readIds.has(s.id)) && (
                 <PaywallPlate
                   what="the full ranked feed"
                   ask={user ? 'daily' : 'signup'}
@@ -1467,7 +1503,7 @@ function WelcomeModal({ kind, onClose }: { kind: 'pro' | 'promo'; onClose: () =>
         <button className="promo-pay" onClick={onClose} autoFocus>
           {isPro ? 'Start exploring' : 'Nice'}
         </button>
-        {isPro && <p className="promo-support">$3/mo · cancel anytime in Profile</p>}
+        {isPro && <p className="promo-support">$2.99/mo · cancel anytime in Profile</p>}
       </div>
     </div>
   );
@@ -1859,7 +1895,7 @@ function PulseDetail({ item, onBack, onShare, marked, toggleMark }: { item: Puls
           <p key={pi} className="detail-body" style={pi > 0 ? { marginTop: 14 } : undefined}>{renderBold(para)}</p>
         ))}
         <div className="detail-actions">
-          <Actions id={item.id} size={20} marked={marked} onToggleMark={toggleMark} onShare={onShare} />
+          <Actions id={item.id} size={20} marked={marked} onToggleMark={toggleMark} onShare={onShare} shareKind="pulse" />
         </div>
         <a className="detail-link" href={item.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(item.id, 'pulse', item.source || '')}>Open at {item.source} ›</a>
       </div>
@@ -2178,7 +2214,7 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
           <h2 className="section-label">Membership</h2>
             <div className="chip-row">
               <span className="pick on">{pro ? "Pro member" : "Free plan"}</span>
-              {!pro && <a className="pick" href="https://www.yourtrace.online/subscribe" target="_blank" rel="noreferrer">Go Pro — $3/mo</a>}
+              {!pro && <a className="pick" href="/subscribe">Go Pro — $2.99/mo</a>}
               {pro && <button className="pick pick-danger" onClick={() => setCancelOpen(true)}>Cancel plan</button>}
             </div>
             <p className="section-hint">Pro unlocks the whole day, Pulse and your profile.</p>
@@ -2367,8 +2403,8 @@ const css = `
 }
 .xw .sort-opt.on { background: #fff; color: var(--text); box-shadow: 0 1px 3px rgba(15,20,25,0.12); }
 .xw .head-spacer { width: 34px; }
-.xw .back {
-  width: 42px; height: 42px; border-radius: 9999px; border: none;
+ .xw .back {
+  width: 44px; height: 44px; border-radius: 9999px; border: none;
   background: transparent; color: var(--text); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: background-color 0.2s ease; margin-left: -8px;

@@ -13,7 +13,7 @@ export default function EditorialArticleShell({
 }) {
   return (
     <div className="landing-page min-h-screen bg-background text-foreground">
-      <PublicHeader ctaLabel="Start reading" ctaHref="/feed?view=pulse" />
+      <PublicHeader ctaLabel="Start reading" ctaHref="/feed" />
       <article className="editorial-static-article">{children}</article>
       {slug ? <StickyBlogBar slug={slug} /> : null}
       <Footer />

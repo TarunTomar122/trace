@@ -51,7 +51,7 @@ const FAQS = [
   },
   {
     q: "What do I get for free?",
-    a: "The top 5 ranked stories every day, full briefs included. Pro ($3/mo) unlocks the whole day, Pulse discussions and tools, bookmarks that sync, and your personalized ranking.",
+    a: "The top ranked stories every day, full briefs included. Pro ($2.99/mo) unlocks the whole day, Pulse discussions and tools, bookmarks that sync, and your personalized ranking.",
   },
   {
     q: "How does personalization work?",

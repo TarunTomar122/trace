@@ -36,7 +36,7 @@ export function InlineTraceCTA({ slug, blurb }: { slug: string; blurb?: string }
           onClick={() => trackBlogCtaClicked(slug, "inline_cta", "subscribe")}
           className="inline-flex items-center rounded-full border border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:border-gray-400 dark:border-gray-700 dark:text-gray-200"
         >
-          Get Pro — $3/mo
+          Get Pro — $2.99/mo
         </Link>
       </div>
     </div>
