@@ -126,6 +126,7 @@ class TrendingSourceConfigTests(unittest.TestCase):
                 {
                     "url": "https://example.com/posts/infrastructure-launch",
                     "title": "Infrastructure launch",
+                    "description": "",
                     "published_date": "2026-07-23T18:40:38+00:00",
                     "og_image": "",
                 }
@@ -137,6 +138,7 @@ class TrendingSourceConfigTests(unittest.TestCase):
                 {
                     "url": "https://example.org/blog/production-ai-engineering",
                     "title": "Production AI engineering",
+                    "description": "",
                     "published_date": "2026-07-23T16:07:03+00:00",
                     "og_image": "",
                 }

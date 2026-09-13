@@ -2,7 +2,7 @@ import type { FeedItem, TrendingTopic } from '@/lib/firestore';
 import { dedupeByStoryTitle, isSameStoryTitle } from '@/lib/feed-story-dedupe';
 
 /** Rolling freshness window for news feed sections (trending, topics, for_you). */
-export const FEED_CONTENT_MAX_AGE_HOURS = 24;
+export const FEED_CONTENT_MAX_AGE_HOURS = 36;
 
 const MAX_AGE_MS = FEED_CONTENT_MAX_AGE_HOURS * 60 * 60 * 1000;
 

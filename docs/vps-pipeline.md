@@ -40,15 +40,43 @@ Actions keeps push notifications plus manual/replay workflows.
   model can only select merges — never invent one — and 3+-way splits fold in
   one pass. Multi-topic groups are connected components: a group can chain
   candidate edges (A-B and B-C merge A and C even without a direct signal).
+  Deterministic token and embedding gates run at apply time (both on fresh and
+  cached verdicts), so a company-only pair like an incident vs an IPO plan is
+  rejected even when the model endorses it.
 - Malformed output (bad JSON, truncated response, unusable groups) is a no-op
   that keeps the deterministic clusters and is never cached; a valid empty
   partition is cached. Merged topics recompute `popularity_score` with the
   native scorer and re-sort, so ranking and enrichment treat them
   identically.
-- Cached per topic+article fingerprint under `topic_merge:v2:` in
-  `v3_synthesis_cache`, so repeated 20-minute refreshes are free once the topic
-  set settles. `TRENDING_MERGE_AI=0|false|off|no` disables it;
-  `TRENDING_MERGE_MODEL` overrides the model (default `gpt-5-mini`).
+- Cached per topic+article fingerprint under `topic_merge:v3:` in
+  `v3_synthesis_cache` — including the validated merge components — so repeated
+  20-minute refreshes are free once the topic set settles (no repeat
+  embeddings). `TRENDING_MERGE_AI=0|false|off|no` disables it;
+  `TRENDING_MERGE_MODEL` overrides the model (default `gpt-5-mini`); 
+  `TRENDING_MERGE_EMBED_MODEL` overrides the embedding model.
+
+## Markets depth
+
+- The feed keeps a guaranteed share of markets topics so general market/macro
+  stories are not crowded out by multi-source AI clusters:
+  `TRENDING_MARKETS_FLOOR` (topic slots, default 18) and
+  `TRENDING_MARKETS_FLAT_FLOOR` (flat/mobile list, default 8). Remaining slots
+  go to the globally best clusters; both lists keep score order (the floor
+  reserves a place, not the lead). The floors are up to the cap: the per-entity
+  topic cap still applies, so a single brand cannot take the reserved slots.
+  Invalid env values fall back to defaults instead of failing the build.
+- 24 markets sources (CNBC Markets/Investing/US Markets/Business, Bloomberg
+  Technology, CNBC Top News/Technology, WIRED Business, Semafor, Business
+  Insider, Fortune, Quartz, Benzinga, LA Times Business, Time Business,
+  TechCrunch Fintech, BLS/BEA releases, Yahoo Finance (+Markets/Top Stories),
+  The Register Business, The Conversation Business, Vox Economy).
+- Freshness window is 36h (`max_age_hours`), so market stories from the prior
+  session still make the edition. Keyword filters are whole-word and
+  apostrophe-normalized (so "nfl" does not match "Inflation").
+- The topic merge pass uses a title-embedding gate (`TRENDING_MERGE_EMBED_MIN`,
+  default 0.65, model `TRENDING_MERGE_EMBED_MODEL`) for merges that share only
+  a company name: paraphrases like "slow the pace" vs "pump the brakes" score
+  ~0.75 and merge, while an incident vs an IPO plan score ~0.47 and stay split.
 
 ## Coverage enrichment
 

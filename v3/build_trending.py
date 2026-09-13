@@ -52,9 +52,9 @@ from v3.lib.diversity import (  # noqa: E402
 )
 
 CONFIG_PATH = "v3/config/trending_sources.json"
-DEFAULT_LIMIT_PER_SOURCE = 10
+DEFAULT_LIMIT_PER_SOURCE = 15
 DEFAULT_MAX_AGE_HOURS = 12
-DEFAULT_MAX_FEED_ITEMS = 24
+DEFAULT_MAX_FEED_ITEMS = 30
 DEFAULT_DISCOVERY_TOPICS = [
     "openai",
     "google ai",
@@ -91,30 +91,6 @@ PROMO_CONTENT_KEYWORDS = (
     "we may earn a commission",
     "buy now",
 )
-TECH_SIGNAL_KEYWORDS = (
-    "ai",
-    "openai",
-    "anthropic",
-    "claude",
-    "chatgpt",
-    "gemini",
-    "google",
-    "apple",
-    "microsoft",
-    "meta",
-    "amazon",
-    "nvidia",
-    "chip",
-    "model",
-    "startup",
-    "software",
-    "security",
-    "cyber",
-    "developer",
-    "cloud",
-    "data center",
-    "robot",
-)
 OFF_TOPIC_NEWS_KEYWORDS = (
     "war",
     "ceasefire",
@@ -136,6 +112,10 @@ OFF_TOPIC_NEWS_KEYWORDS = (
     "red carpet",
     "box office",
     "kpop",
+    "middle east",
+    "brics",
+    "nfl",
+    "peace",
 )
 STRONG_TECH_TERMS = (
     "ai",
@@ -277,6 +257,22 @@ def _normalize_trending_interest_id(raw: str) -> str:
     return CANONICAL_TRENDING_INTEREST_MAP.get(value, value)
 
 
+def _env_int(name: str, default: str) -> int:
+    try:
+        return int(os.getenv(name, default) or default)
+    except (TypeError, ValueError):
+        _log(f"Ignoring invalid {name}={os.getenv(name)!r}; using {default}")
+        return int(default)
+
+
+def _env_float(name: str, default: str) -> float:
+    try:
+        return float(os.getenv(name, default) or default)
+    except (TypeError, ValueError):
+        _log(f"Ignoring invalid {name}={os.getenv(name)!r}; using {default}")
+        return float(default)
+
+
 def _log(msg: str) -> None:
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{ts}] [v3-trending] {msg}")
@@ -302,18 +298,53 @@ def _load_config() -> dict[str, Any]:
         return json.load(f)
 
 
+def _normalize_title_text(title: str) -> str:
+    # Feeds mix straight and curly quotes; normalize so filters like
+    # "here's why" match either spelling.
+    return (
+        str(title or "")
+        .lower()
+        .replace("\u2019", "'")
+        .replace("\u2018", "'")
+        .replace("\u201c", '"')
+        .replace("\u201d", '"')
+    )
+
+
+def _keyword_patterns(keyword: str) -> list[str]:
+    kw = _normalize_title_text(keyword).strip()
+    if not kw:
+        return []
+    base = re.escape(kw)
+    # Lookarounds instead of \b: keywords ending in punctuation ("check?")
+    # still match. A trailing "s" is optional so "podcast" also catches
+    # "podcasts" without needing every plural in the config.
+    return [rf"(?<!\w){base}s?(?!\w)"]
+
+
 def _title_matches_keywords(title: str, keywords: list[str]) -> bool:
     if not keywords:
         return True
-    lower = title.lower()
-    return any(kw.lower() in lower for kw in keywords)
+    lower = _normalize_title_text(title)
+    # Whole-word matching keeps short include terms from over-matching
+    # ("market" must not match "marketing", "rate" must not match "rated").
+    return any(
+        re.search(pattern, lower)
+        for kw in keywords
+        for pattern in _keyword_patterns(kw)
+    )
 
 
 def _title_has_excluded_keywords(title: str, keywords: list[str]) -> bool:
     if not keywords:
         return False
-    lower = title.lower()
-    return any(kw.lower() in lower for kw in keywords)
+    lower = _normalize_title_text(title)
+    # Word boundaries: "nfl" must not match "Inflation", "deal" not "dealer".
+    return any(
+        re.search(pattern, lower)
+        for kw in keywords
+        for pattern in _keyword_patterns(kw)
+    )
 
 
 def _parse_dt(value: str) -> datetime | None:
@@ -357,14 +388,16 @@ def _looks_promotional(title: str, content: str = "") -> bool:
 def _is_off_topic_for_trending(title: str, content: str = "") -> bool:
     """Filter macro/world headlines unless they also have clear tech signal."""
     text = f"{title or ''} {content or ''}".lower()
-    has_tech = any(k in text for k in TECH_SIGNAL_KEYWORDS)
-    has_off_topic = any(k in text for k in OFF_TOPIC_NEWS_KEYWORDS)
+
+    def _has(words: tuple[str, ...]) -> bool:
+        return any(re.search(rf"\b{re.escape(w)}\b", text) for w in words)
+
+    has_off_topic = _has(OFF_TOPIC_NEWS_KEYWORDS)
     if not has_off_topic:
         return False
 
     # If geopolitical markers exist, require stronger tech terms to keep item.
-    strong = any(k in text for k in STRONG_TECH_TERMS)
-    if strong:
+    if _has(STRONG_TECH_TERMS):
         return False
 
     return True
@@ -394,7 +427,7 @@ def _candidate_score(
     # Lightweight quality signals.
     tl = title.lower()
     if any(
-        tok in tl
+        re.search(rf"\b{tok}\b", tl)
         for tok in (
             "openai",
             "ai",
@@ -448,8 +481,9 @@ def _rank_candidates(
         if _looks_promotional(title, content[:600]):
             continue
 
-        # Keep trending focused on tech/AI/startup signal.
-        if _is_off_topic_for_trending(title, content[:800]):
+        # Judge off-topic intent from the headline only: macro stories that
+        # merely mention war or oil in the body still belong in markets.
+        if _is_off_topic_for_trending(title):
             continue
 
         # Skip very short content (likely not real articles)
@@ -580,15 +614,14 @@ def _cluster_topic_candidates(items: list[dict[str, Any]]) -> list[dict[str, Any
             # so broad themes like travel, markets, or policy do not snowball.
             entity_overlap = shared & ENTITY_TOPIC_TOKENS
 
-            # Require at least 2 overlapping specific tokens.
+            # A shared brand alone is too weak: entity + one generic word like
+            # "AI" merged distinct OpenAI stories. Require either two specific
+            # (>3-char) shared tokens, or an entity plus a second specific one.
             specific_shared = {t for t in shared if len(t) >= 4}
-            if len(specific_shared) < 2 and len(shared) < 2:
-                continue
-
-            # If there is no named entity/brand overlap, force a tighter match.
-            # This keeps unrelated "airport delays", "trade policy", etc. from
-            # ending up in one topic just because they share generic nouns.
-            if not entity_overlap and len(specific_shared) < 3:
+            if entity_overlap:
+                if len(specific_shared) < 2:
+                    continue
+            elif len(specific_shared) < 3:
                 continue
 
             score = float(len(shared)) + len(shared) / max(1, len(tokens | consensus))
@@ -637,6 +670,10 @@ def _merge_candidate_pairs(clusters: list[dict[str, Any]]) -> list[tuple[int, in
         shared = (title_tokens[i] & title_tokens[j]) - TOPIC_SOFT_STOP
         entity = shared & ENTITY_TOPIC_TOKENS
         specific = {t for t in shared if len(t) >= 4}
+        # Entity-only pairs stay candidates so paraphrases ("pump the brakes"
+        # vs "slow the pace") reach the model; precision is enforced later by
+        # the component token backstop and the title-embedding gate, which
+        # rejects company-only pairs like an incident vs an IPO plan.
         if entity or len(specific) >= 2:
             pairs.append((i, j, shared))
     return pairs
@@ -669,7 +706,8 @@ def _topic_merge_prompt(
         "(the same actor doing the same specific thing at the same time).\n"
         "Same company, product family, person, or theme is NOT enough: 'OpenAI launches product A' and "
         "'OpenAI launches product B' are different events; 'OpenAI launches X' and 'Amazon boosts "
-        "OpenAI's ads' are different events. When unsure, leave the topic ungrouped.\n\n"
+        "OpenAI's ads' are different events; an OpenAI model incident and an OpenAI IPO plan are "
+        "different events. When unsure, leave the topic ungrouped.\n\n"
         "Rules: every number may appear in at most one group; a group needs 2+ numbers; "
         "omit topics that are not part of a same-event group.\n\n"
         'Return JSON {"groups": [[1, 4], [2, 3]]} or {"groups": []} when no topics describe '
@@ -721,9 +759,45 @@ def _validated_merge_groups(raw: Any, n_clusters: int) -> list[list[int]] | None
     return cleaned or None
 
 
+def _title_embedding_similarity(titles: list[str]) -> float | None:
+    """Min pairwise cosine similarity between topic titles, or None if the
+    embeddings call is unavailable."""
+    if len(titles) < 2:
+        return None
+    try:
+        from openai import OpenAI as _OpenAI
+
+        client = _OpenAI(api_key=os.getenv("OPENAI_API_KEY", "").strip())
+        resp = client.embeddings.create(
+            model=os.getenv("TRENDING_MERGE_EMBED_MODEL", "text-embedding-3-small"),
+            input=titles,
+            timeout=15,
+        )
+        vectors = [d.embedding for d in resp.data]
+    except Exception as exc:
+        _log(f"Topic merge embeddings failed: {exc}")
+        return None
+
+    def _cosine(a: list[float], b: list[float]) -> float:
+        dot = sum(x * y for x, y in zip(a, b))
+        na = math.sqrt(sum(x * x for x in a))
+        nb = math.sqrt(sum(y * y for y in b))
+        if na == 0.0 or nb == 0.0:
+            return 0.0
+        return dot / (na * nb)
+
+    return min(
+        _cosine(vectors[i], vectors[j])
+        for i in range(len(vectors))
+        for j in range(i + 1, len(vectors))
+    )
+
+
 def _merge_components(
     groups: list[list[int]],
     candidate_set: set[tuple[int, int]],
+    clusters: list[dict[str, Any]],
+    embed_fn: Callable[[list[str]], float | None] | None = None,
 ) -> list[list[int]]:
     """Connected components of the deterministic candidate edges the model
     endorsed. This is the only path a merge can take: an edge that is not a
@@ -748,6 +822,10 @@ def _merge_components(
         if ra != rb:
             parent[rb] = ra
 
+    tokens_by_index: dict[int, set[str]] = {
+        i + 1: set(clusters[i].get("tokens") or set()) for i in range(len(clusters))
+    }
+
     for group in groups:
         for a, b in itertools.combinations(sorted(group), 2):
             if (a - 1, b - 1) in candidate_set:
@@ -756,7 +834,44 @@ def _merge_components(
     components: dict[int, list[int]] = {}
     for x in parent:
         components.setdefault(find(x), []).append(x)
-    return [sorted(c) for c in components.values() if len(c) >= 2]
+
+    # Deterministic backstop: a merged component must share at least two
+    # specific tokens across all members, or (when the wording differs) clear
+    # title-embedding similarity. The model endorsed OpenAI's model incident
+    # and OpenAI's IPO plan as one event; they share only "openai" and score
+    # ~0.47 cosine, below the gate. Paraphrases like "slow the pace" vs "pump
+    # the brakes" score ~0.75 and still merge.
+    embed_threshold = _env_float("TRENDING_MERGE_EMBED_MIN", "0.65")
+    similarity_fn = embed_fn or _title_embedding_similarity
+    safe: list[list[int]] = []
+    for members in components.values():
+        if len(members) < 2:
+            continue
+        ordered = sorted(members)
+        token_sets = [tokens_by_index[x] for x in ordered]
+        shared: set[str] = set.intersection(*token_sets) if token_sets else set()
+        specific = {t for t in shared if len(t) >= 4 and t not in TOPIC_SOFT_STOP}
+        if len(specific) >= 2:
+            safe.append(ordered)
+            continue
+        # Compare representative headlines, not the generated two-word topic
+        # titles: "Researcher and Anthropic" carries no semantic signal.
+        titles = []
+        for x in ordered:
+            items = sorted(
+                clusters[x - 1].get("items", []) or [],
+                key=lambda i: -float(i.get("_trend_score", 0.0)),
+            )
+            titles.append(str(items[0].get("title", "")) if items else _topic_title(clusters[x - 1]))
+        similarity = similarity_fn(titles)
+        if similarity is not None and similarity >= embed_threshold:
+            safe.append(ordered)
+            continue
+        _log(
+            "Topic merge: rejected component "
+            f"{ordered} (shared_specific={sorted(specific)}, similarity={similarity})"
+        )
+    return safe
 
 
 def _apply_topic_merges(
@@ -817,6 +932,7 @@ def _merge_related_topics(
     clusters: list[dict[str, Any]],
     *,
     complete: Callable[[str], str] | None = None,
+    embed: Callable[[list[str]], float | None] | None = None,
 ) -> list[dict[str, Any]]:
     """Fold same-event topic clusters that the deterministic clusterer split.
 
@@ -851,12 +967,18 @@ def _merge_related_topics(
             sort_keys=True,
         ).encode("utf-8")
     ).hexdigest()[:16]
-    cache_key = f"topic_merge:v2:{fingerprint}"
+    cache_key = f"topic_merge:v3:{fingerprint}"
     groups: list[list[int]] | None = None
+    cached_components: list[list[int]] | None = None
 
     cached = store.get_cached_synthesis(cache_key)
     if isinstance(cached, dict) and cached.get("ok") is True:
         groups = _validated_merge_groups(cached.get("groups"), len(clusters))
+        raw_components = cached.get("components")
+        if groups is not None and isinstance(raw_components, list):
+            cleaned = _validated_merge_groups(raw_components, len(clusters))
+            if cleaned is not None:
+                cached_components = cleaned
 
     if groups is None:
         prompt = _topic_merge_prompt(clusters, pairs)
@@ -903,7 +1025,20 @@ def _merge_related_topics(
         except Exception as exc:
             _log(f"Topic merge cache write failed: {exc}")
 
-    components = _merge_components(groups, candidate_set)
+    if cached_components is not None:
+        components = cached_components
+    else:
+        components = _merge_components(groups, candidate_set, clusters, embed_fn=embed)
+        if components and groups:
+            try:
+                cached = store.get_cached_synthesis(cache_key)
+                if isinstance(cached, dict) and cached.get("ok") is True:
+                    store.cache_synthesis(cache_key, {
+                        **cached,
+                        "components": components,
+                    })
+            except Exception as exc:
+                _log(f"Topic merge component cache write failed: {exc}")
     if not components:
         return clusters
 
@@ -1588,9 +1723,24 @@ def _cluster_primary_entity(cluster: dict[str, Any]) -> str:
         for w in words:
             if w in ENTITY_TOPIC_TOKENS:
                 counts[w] += 1
-    if not counts:
-        return "other"
-    return counts.most_common(1)[0][0]
+    if counts:
+        return counts.most_common(1)[0][0]
+    # Entity-less stories (general markets, macro, economy) must not all share
+    # one bucket: the per-entity topic cap would then cap all of them at two
+    # slots. Cap by their own most distinctive token instead, and give
+    # token-less clusters a unique key so each stays independently selectable.
+    consensus: set[str] = cluster.get("consensus_tokens") or set()
+    tokens: set[str] = consensus or set(cluster.get("tokens") or set())
+    specific = sorted(
+        (t for t in tokens if len(t) >= 4 and t not in TOPIC_SOFT_STOP and t not in ENTITY_TOPIC_TOKENS),
+        key=lambda t: (-len(t), t),
+    )
+    if specific:
+        return f"token:{specific[0]}"
+    items = cluster.get("items", []) or []
+    if items:
+        return f"cluster:{items[0].get('url', '')}"
+    return "other"
 
 
 def _dedupe_items_by_url(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1603,6 +1753,15 @@ def _dedupe_items_by_url(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         seen.add(url)
         out.append(item)
     return out
+
+
+def _cluster_interest(cluster: dict[str, Any]) -> str:
+    counts: Counter[str] = Counter(
+        str(item.get("interest_id", "")).strip()
+        for item in (cluster.get("items") or [])
+        if str(item.get("interest_id", "")).strip()
+    )
+    return counts.most_common(1)[0][0] if counts else ""
 
 
 def _build_trending_topics_payload(
@@ -1642,14 +1801,42 @@ def _build_trending_topics_payload(
     max_topics_per_entity = 2
     entity_counts: defaultdict[str, int] = defaultdict(int)
     selected: list[dict[str, Any]] = []
-    for cluster in scored_clusters:
+
+    # Reserve a minimum number of markets slots so general market/macro
+    # stories are not crowded out by multi-source AI clusters. Remaining
+    # slots go to the globally best clusters, and the final list is re-sorted
+    # by popularity so the lead story is unchanged.
+    markets_floor = _env_int("TRENDING_MARKETS_FLOOR", "18")
+
+    def _take(cluster: dict[str, Any]) -> None:
         entity = _cluster_primary_entity(cluster)
-        if entity_counts[entity] >= max_topics_per_entity:
-            continue
-        selected.append(cluster)
         entity_counts[entity] += 1
+        selected.append(cluster)
+
+    if markets_floor > 0:
+        reserved = min(markets_floor, max_topics)
+        for cluster in scored_clusters:
+            if len(selected) >= reserved:
+                break
+            if _cluster_interest(cluster) != "markets":
+                continue
+            if entity_counts[_cluster_primary_entity(cluster)] >= max_topics_per_entity:
+                continue
+            _take(cluster)
+
+    selected_ids = {id(cluster) for cluster in selected}
+    for cluster in scored_clusters:
         if len(selected) >= max_topics:
             break
+        if id(cluster) in selected_ids:
+            continue
+        if entity_counts[_cluster_primary_entity(cluster)] >= max_topics_per_entity:
+            continue
+        _take(cluster)
+    selected.sort(
+        key=lambda c: float(c.get("popularity_score", 0.0)),
+        reverse=True,
+    )
 
     selected = _merge_related_topics(store, selected)
 
@@ -2224,7 +2411,32 @@ def build_global_feed(
         item for item in all_candidates
         if str(item.get("source_name", "")).strip().lower() not in {"hacker news", "hacker news best"}
     ]
-    _log(f"Loaded {len(all_candidates)} trending pool candidates")
+    # Apply the current config filters to already-pooled items too, so a filter
+    # change takes effect immediately instead of waiting for items to age out
+    # (pool items are attributed to whichever feed ingested the URL first).
+    config_filters = {
+        str(src.get("name", "")): (
+            list(src.get("title_keywords", []) or []),
+            list(src.get("exclude_title_keywords", []) or []),
+        )
+        for src in config.get("sources", [])
+    }
+    filtered_candidates: list[dict[str, Any]] = []
+    for item in all_candidates:
+        rules = config_filters.get(str(item.get("source_name", "")))
+        if rules is None:
+            filtered_candidates.append(item)
+            continue
+        title = str(item.get("title", "") or "")
+        title_keywords, exclude_title_keywords = rules
+        if title_keywords and not _title_matches_keywords(title, title_keywords):
+            continue
+        if exclude_title_keywords and _title_has_excluded_keywords(title, exclude_title_keywords):
+            continue
+        filtered_candidates.append(item)
+    dropped_by_config = len(all_candidates) - len(filtered_candidates)
+    all_candidates = filtered_candidates
+    _log(f"Loaded {len(all_candidates)} trending pool candidates (config-filtered={dropped_by_config})")
 
     source_weights = {
         str(src.get("name", "")): float(src.get("source_weight", 1.0))
@@ -2253,9 +2465,15 @@ def build_global_feed(
         source_overrides={
             "Hacker News": 2,
             "CNBC Top News": 2,
+            "CNBC Markets": 2,
+            "CNBC US Markets": 2,
+            "CNBC Investing": 2,
+            "CNBC Business": 2,
         },
     )
-    ranked = ranked[:DEFAULT_MAX_FEED_ITEMS]
+    # Keep headroom beyond the flat cap: the markets floor is applied after
+    # the model classifies interests, so more candidates are needed here.
+    ranked = ranked[:DEFAULT_MAX_FEED_ITEMS + 12]
     _log(
         "After filtering and story-dedup: "
         f"{len(ranked)} articles "
@@ -2320,18 +2538,38 @@ def build_global_feed(
         "notifications_sent": 0,
     }
 
-    feed_items: list[dict[str, Any]] = []
+    # Apply the model's interest classification before selecting the flat
+    # list, then guarantee markets depth there too (mobile uses it directly).
     for item in ranked:
-        url = item.get("url", "")
-        summary = summary_map.get(url)
+        summary = summary_map.get(str(item.get("url", "")))
         if not summary:
             continue
-        classified_interest = _normalize_trending_interest_id(
+        item["interest_id"] = _normalize_trending_interest_id(
             str(summary.get("interest_id", "")).strip()
             or str(item.get("interest_id", "")).strip()
         )
-        item["interest_id"] = classified_interest
-        feed_items.append(_build_feed_item(item, summary))
+
+    summarized = [i for i in ranked if summary_map.get(str(i.get("url", "")))]
+    flat_markets_floor = _env_int("TRENDING_MARKETS_FLAT_FLOOR", "8")
+    if flat_markets_floor > 0:
+        guaranteed = [
+            i for i in summarized if str(i.get("interest_id", "")) == "markets"
+        ][:flat_markets_floor]
+        guaranteed_ids = {id(i) for i in guaranteed}
+        remainder = sorted(
+            (i for i in summarized if id(i) not in guaranteed_ids),
+            key=lambda i: -float(i.get("_trend_score", 0.0)),
+        )
+        flat_items = (guaranteed + remainder)[:DEFAULT_MAX_FEED_ITEMS]
+        # Guaranteed markets slots reserve a place, not the lead.
+        flat_items.sort(key=lambda i: -float(i.get("_trend_score", 0.0)))
+    else:
+        flat_items = summarized[:DEFAULT_MAX_FEED_ITEMS]
+
+    feed_items: list[dict[str, Any]] = [
+        _build_feed_item(item, summary_map[str(item.get("url", ""))])
+        for item in flat_items
+    ]
 
     for item in ranked_for_topics:
         url = str(item.get("url", "")).strip()
@@ -2352,7 +2590,7 @@ def build_global_feed(
         store=store,
         ranked_items=ranked_for_topics,
         summary_map=summary_map,
-        max_topics=20,
+        max_topics=36,
         enrich=bool(getattr(args, "enrich_coverage", False)),
         enrich_top=int(getattr(args, "enrich_top", 10) or 10),
         enrich_max_per_topic=int(getattr(args, "enrich_max_per_topic", 4) or 4),

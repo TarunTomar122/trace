@@ -222,7 +222,11 @@ RULES:
   use product-design, tech, or engineering only when AI is incidental and
   not the core development
   startup funding/M&A/ecosystem/founder news -> startups
-  earnings/public markets/company strategy/M&A at large companies -> markets
+  earnings, IPOs and going-public plans, public markets, large-company
+  strategy, M&A at large companies, macro (inflation, Fed/rates, jobs,
+  housing, trade/tariffs), and large-company stock moves -> markets, even
+  for AI companies (e.g. an OpenAI IPO plan or Nvidia earnings are markets,
+  not ai)
   developer tools/infra/security/platform engineering -> engineering
   app redesigns/product changes/UX/interface decisions -> product-design
   ad platforms/SEO/GTM/distribution -> marketing
@@ -609,7 +613,9 @@ def _cache_bucket(feed_type: str, technical_depth: str = "", output_format: str 
     output_format: 'cards' for learning cards, '' for prose (default)
     """
     if feed_type == "trending":
-        return "trending_v9"  # stronger relevance gate for professional/news lane fit
+        # v10: markets/macro lane guidance added, so cached classifications
+        # from v9 must regenerate under the new prompt.
+        return "trending_v10"  # stronger relevance gate for professional/news lane fit
     if feed_type == "deep_dives":
         if technical_depth == "deep":
             return "deep_dive_v6_deep"

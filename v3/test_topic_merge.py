@@ -8,6 +8,8 @@ from v3.build_trending import (
     _cluster_popularity_score,
     _merge_candidate_pairs,
     _merge_components,
+    _title_has_excluded_keywords,
+    _title_matches_keywords,
     _merge_related_topics,
     _topic_tokens_for_item,
     _validated_merge_groups,
@@ -40,6 +42,14 @@ def make_cluster(title, url, source="Source", interest="ai"):
         "token_counts": Counter(tokens),
         "consensus_tokens": set(),
     }
+
+
+def high_similarity(_titles):
+    return 1.0
+
+
+def low_similarity(_titles):
+    return 0.2
 
 
 def anthropic_clusters():
@@ -75,7 +85,7 @@ class TopicMergeTests(unittest.TestCase):
         def complete(_prompt):
             return json.dumps({"groups": [[1, 2]]})
 
-        merged = _merge_related_topics(store, clusters, complete=complete)
+        merged = _merge_related_topics(store, clusters, complete=complete, embed=high_similarity)
         self.assertEqual(len(merged), 1)
         self.assertEqual(len(merged[0]["items"]), 2)
 
@@ -86,7 +96,7 @@ class TopicMergeTests(unittest.TestCase):
         def complete(_prompt):
             return json.dumps({"groups": [[1, 2, 3]]})
 
-        merged = _merge_related_topics(store, clusters, complete=complete)
+        merged = _merge_related_topics(store, clusters, complete=complete, embed=high_similarity)
         self.assertEqual(len(merged), 1)
         self.assertEqual(len(merged[0]["items"]), 3)
 
@@ -97,11 +107,30 @@ class TopicMergeTests(unittest.TestCase):
         def complete(_prompt):
             return json.dumps({"groups": [[1, 2]]})
 
-        merged = _merge_related_topics(store, clusters, complete=complete)
+        merged = _merge_related_topics(store, clusters, complete=complete, embed=high_similarity)
         score = float(merged[0].get("popularity_score", 0.0))
         self.assertGreater(score, 0.0)
         self.assertEqual(score, _cluster_popularity_score(merged[0]))
         self.assertEqual(merged[0]["consensus_tokens"], {t for t, cnt in merged[0]["token_counts"].items() if cnt >= 2})
+
+    def test_entity_only_pairs_reach_the_gate(self):
+        # Entity-only pairs must stay candidates (paraphrases need the model),
+        # but the component gate must reject them when they are not the same
+        # event. See test_components_reject_entity_only_over_merge.
+        clusters = [
+            make_cluster(
+                "OpenAI's rogue AI tried to hack another company in May",
+                "https://theverge.com/rogue",
+                "The Verge",
+            ),
+            make_cluster(
+                "Sam Altman says OpenAI going public in 2026 would be 'ill-advised'",
+                "https://theverge.com/ipo",
+                "The Verge",
+            ),
+        ]
+        pairs = _merge_candidate_pairs(clusters)
+        self.assertIn((0, 1), {(i, j) for i, j, _s in pairs})
 
     def test_guard_rejects_unrelated_topics(self):
         store = FakeStore()
@@ -128,7 +157,7 @@ class TopicMergeTests(unittest.TestCase):
             calls["n"] += 1
             return json.dumps({"groups": [[1, 2]]})
 
-        merged = _merge_related_topics(store, clusters, complete=complete)
+        merged = _merge_related_topics(store, clusters, complete=complete, embed=high_similarity)
         self.assertEqual(len(merged), 2)
         self.assertEqual(calls["n"], 0)
 
@@ -139,7 +168,7 @@ class TopicMergeTests(unittest.TestCase):
         def complete(_prompt):
             return "not json"
 
-        merged = _merge_related_topics(store, clusters, complete=complete)
+        merged = _merge_related_topics(store, clusters, complete=complete, embed=high_similarity)
         self.assertEqual(len(merged), 2)
         self.assertEqual(store.cache, {})
 
@@ -159,10 +188,10 @@ class TopicMergeTests(unittest.TestCase):
                 calls["n"] += 1
                 return p
 
-            merged = _merge_related_topics(store, anthropic_clusters(), complete=complete)
+            merged = _merge_related_topics(store, anthropic_clusters(), complete=complete, embed=high_similarity)
             self.assertEqual(len(merged), 2, payload)
             self.assertEqual(store.cache, {}, payload)
-            _merge_related_topics(store, anthropic_clusters(), complete=complete)
+            _merge_related_topics(store, anthropic_clusters(), complete=complete, embed=high_similarity)
             self.assertEqual(calls["n"], 2, payload)
 
     def test_cached_non_finite_groups_are_ignored_and_recomputed(self):
@@ -173,12 +202,12 @@ class TopicMergeTests(unittest.TestCase):
             calls["n"] += 1
             return json.dumps({"groups": [[1, 2]]})
 
-        _merge_related_topics(store, anthropic_clusters(), complete=complete)
+        _merge_related_topics(store, anthropic_clusters(), complete=complete, embed=high_similarity)
         self.assertEqual(calls["n"], 1)
         for key in list(store.cache):
             store.cache[key] = {"groups": [[float("nan"), 2]], "ok": True}
 
-        merged = _merge_related_topics(store, anthropic_clusters(), complete=complete)
+        merged = _merge_related_topics(store, anthropic_clusters(), complete=complete, embed=high_similarity)
         self.assertEqual(calls["n"], 2)
         self.assertEqual(len(merged), 1)
 
@@ -190,9 +219,9 @@ class TopicMergeTests(unittest.TestCase):
             calls["n"] += 1
             return json.dumps({"groups": []})
 
-        merged = _merge_related_topics(store, anthropic_clusters(), complete=complete)
+        merged = _merge_related_topics(store, anthropic_clusters(), complete=complete, embed=high_similarity)
         self.assertEqual(len(merged), 2)
-        merged = _merge_related_topics(store, anthropic_clusters(), complete=complete)
+        merged = _merge_related_topics(store, anthropic_clusters(), complete=complete, embed=high_similarity)
         self.assertEqual(len(merged), 2)
         self.assertEqual(calls["n"], 1)
 
@@ -205,8 +234,8 @@ class TopicMergeTests(unittest.TestCase):
             calls["n"] += 1
             return json.dumps({"groups": [[1, 2]]})
 
-        _merge_related_topics(store, clusters, complete=complete)
-        _merge_related_topics(store, anthropic_clusters(), complete=complete)
+        _merge_related_topics(store, clusters, complete=complete, embed=high_similarity)
+        _merge_related_topics(store, anthropic_clusters(), complete=complete, embed=high_similarity)
         self.assertEqual(calls["n"], 1)
 
     def test_legacy_or_tampered_cache_is_ignored_and_recomputed(self):
@@ -217,13 +246,13 @@ class TopicMergeTests(unittest.TestCase):
             calls["n"] += 1
             return json.dumps({"groups": [[1, 2]]})
 
-        _merge_related_topics(store, anthropic_clusters(), complete=complete)
+        _merge_related_topics(store, anthropic_clusters(), complete=complete, embed=high_similarity)
         self.assertEqual(calls["n"], 1)
         for key in list(store.cache):
             # Old pairwise format / missing ok flag / tampered groups.
             store.cache[key] = {"merge_groups": [[1, 2, 3]], "verdicts": []}
 
-        merged = _merge_related_topics(store, anthropic_clusters(), complete=complete)
+        merged = _merge_related_topics(store, anthropic_clusters(), complete=complete, embed=high_similarity)
         self.assertEqual(calls["n"], 2)
         self.assertEqual(len(merged), 1)
 
@@ -238,6 +267,7 @@ class TopicMergeTests(unittest.TestCase):
                     store,
                     anthropic_clusters(),
                     complete=lambda _p: calls.__setitem__("n", calls["n"] + 1) or json.dumps({"groups": [[1, 2]]}),
+                    embed=high_similarity,
                 )
                 self.assertEqual(len(merged), 2, value)
                 self.assertEqual(calls["n"], 0, value)
@@ -246,6 +276,7 @@ class TopicMergeTests(unittest.TestCase):
                 FakeStore(),
                 anthropic_clusters(),
                 complete=lambda _p: json.dumps({"groups": [[1, 2]]}),
+                embed=high_similarity,
             )
             self.assertEqual(len(merged), 1)
         finally:
@@ -260,13 +291,57 @@ class TopicMergeTests(unittest.TestCase):
         self.assertEqual(len(merged), 1)
         self.assertEqual(len(merged[0]["items"]), 2)
 
+    @staticmethod
+    def _token_clusters(*token_sets):
+        return [
+            {
+                "items": [],
+                "tokens": set(tokens),
+                "token_counts": Counter(tokens),
+                "consensus_tokens": set(),
+            }
+            for tokens in token_sets
+        ]
+
     def test_components_only_follow_candidate_edges(self):
+        clusters = self._token_clusters(
+            {"anthropic", "amodei", "slow"},
+            {"anthropic", "amodei", "brakes"},
+            {"anthropic", "amodei", "limits"},
+        )
         # A group of three merges fully when 1-2 and 2-3 are candidates.
-        self.assertEqual(_merge_components([[1, 2, 3]], {(0, 1), (1, 2)}), [[1, 2, 3]])
+        self.assertEqual(_merge_components([[1, 2, 3]], {(0, 1), (1, 2)}, clusters), [[1, 2, 3]])
         # A single endorsed edge merges only that pair.
-        self.assertEqual(_merge_components([[1, 2, 3]], {(0, 1)}), [[1, 2]])
+        self.assertEqual(_merge_components([[1, 2, 3]], {(0, 1)}, clusters), [[1, 2]])
         # No candidate edges: the forged group is inert.
-        self.assertEqual(_merge_components([[1, 2, 3]], set()), [])
+        self.assertEqual(_merge_components([[1, 2, 3]], set(), clusters), [])
+
+    def test_components_reject_entity_only_over_merge(self):
+        # Regression: the model endorsed "OpenAI model incident" and
+        # "OpenAI IPO plan" as one event; they only share the company name.
+        clusters = self._token_clusters(
+            {"openai", "rogue", "hack"},
+            {"openai", "altman", "ipo"},
+            {"openai", "chips", "earnings"},
+        )
+        self.assertEqual(
+            _merge_components([[1, 2, 3]], {(0, 1), (1, 2)}, clusters, embed_fn=low_similarity),
+            [],
+        )
+
+    def test_components_allow_paraphrase_when_embeddings_agree(self):
+        clusters = self._token_clusters(
+            {"anthropic", "slow"},
+            {"anthropic", "brakes"},
+        )
+        self.assertEqual(
+            _merge_components([[1, 2]], {(0, 1)}, clusters, embed_fn=high_similarity),
+            [[1, 2]],
+        )
+        self.assertEqual(
+            _merge_components([[1, 2]], {(0, 1)}, clusters, embed_fn=low_similarity),
+            [],
+        )
 
     def test_merge_resorts_by_recomputed_popularity(self):
         store = FakeStore()
@@ -285,11 +360,23 @@ class TopicMergeTests(unittest.TestCase):
         def complete(_prompt):
             return json.dumps({"groups": [[1, 2]]})
 
-        merged = _merge_related_topics(store, clusters, complete=complete)
+        merged = _merge_related_topics(store, clusters, complete=complete, embed=high_similarity)
         self.assertEqual(len(merged), 2)
         self.assertEqual(len(merged[0]["items"]), 3)
         self.assertEqual(len(merged[1]["items"]), 2)
         self.assertGreater(merged[0]["popularity_score"], merged[1]["popularity_score"])
+
+    def test_title_keyword_matching(self):
+        # Whole-word includes: "market" must not match "marketing".
+        self.assertTrue(_title_matches_keywords("Stocks fall on Fed fears", ["stock", "fed"]))
+        self.assertFalse(_title_matches_keywords("Marketing teams adopt AI", ["market"]))
+        # Optional plural: singular config keyword matches plural headlines.
+        self.assertTrue(_title_matches_keywords("Podcasts to watch", ["podcast"]))
+        self.assertTrue(_title_matches_keywords("Reviews of the new Pixel", ["review"]))
+        # Punctuated keywords still match.
+        self.assertTrue(_title_has_excluded_keywords("$5K Trump check? Peanuts", ["check?"]))
+        # Curly quotes normalize for apostrophe filters.
+        self.assertTrue(_title_has_excluded_keywords("Mortgage eating my paycheck \u2014 here\u2019s what Dave says", ["here's what"]))
 
     def test_validated_groups_normalization(self):
         self.assertIsNone(_validated_merge_groups("not json", 3))
