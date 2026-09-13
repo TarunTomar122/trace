@@ -91,9 +91,11 @@ Actions keeps push notifications plus manual/replay workflows.
   crypto price predictions. Classification also follows the story's primary
   subject, not a secondary mention: an AI company's compute deal stays `ai`
   even when the headline mentions an upcoming IPO.
-- Freshness window is 36h (`max_age_hours`), so market stories from the prior
-  session still make the edition. Keyword filters are whole-word and
-  apostrophe-normalized (so "nfl" does not match "Inflation").
+- Freshness window is 36h (`max_age_hours`), widened to 72h on Saturday/Sunday
+  UTC (`_effective_max_age_hours`) so Friday's startup/design stories survive
+  the quiet weekend; the pool deactivation window follows the same value.
+  Keyword filters are whole-word and apostrophe-normalized (so "nfl" does not
+  match "Inflation").
 - The topic merge pass uses a title-embedding gate (`TRENDING_MERGE_EMBED_MIN`,
   default 0.65, model `TRENDING_MERGE_EMBED_MODEL`) for merges that share only
   a company name: paraphrases like "slow the pace" vs "pump the brakes" score

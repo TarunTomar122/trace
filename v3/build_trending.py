@@ -401,6 +401,25 @@ def _parse_dt(value: str) -> datetime | None:
         return None
 
 
+def _effective_max_age_hours(
+    config: dict[str, Any],
+    override: int | None = None,
+    now: datetime | None = None,
+) -> int:
+    """Base freshness window, widened on weekends.
+
+    Startup and design feeds publish little on Saturdays/Sundays, so a 36h
+    window on Sunday evening leaves those lanes below their floors. Weekend
+    runs use 72h so Friday's stories still make the edition; recency scoring
+    keeps the newest stories on top either way.
+    """
+    base = int(config.get("max_age_hours") or override or DEFAULT_MAX_AGE_HOURS)
+    current = now or datetime.now(timezone.utc)
+    if current.weekday() >= 5:
+        return max(base, 72)
+    return base
+
+
 def _filter_by_max_age_hours(
     items: list[dict[str, Any]],
     max_age_hours: int,
@@ -2490,7 +2509,7 @@ def build_global_feed(
     This is much more efficient than per-user generation.
     """
     target_date = args.date.strip() or _today_ist()
-    max_age_hours = int(config.get("max_age_hours") or args.max_age_hours or DEFAULT_MAX_AGE_HOURS)
+    max_age_hours = _effective_max_age_hours(config)
     max_age_days = max(1, max_age_hours // 24 + 1)
     previous_global_feed = store.load_global_feed(target_date)
     previous_topics = previous_global_feed.get("trending_topics", [])

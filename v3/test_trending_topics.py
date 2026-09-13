@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import unittest
 
+from datetime import datetime, timezone
+
 from v3.build_trending import (
     _cluster_topic_candidates,
+    _effective_max_age_hours,
     _looks_like_entertainment,
     _looks_like_market_blog,
     _topic_tokens_for_item,
@@ -58,6 +61,19 @@ class TrendingTopicClusteringTests(unittest.TestCase):
         self.assertTrue(_looks_like_market_blog("Toncoin (TON) Price Prediction 2025, 2026, 2027-2030"))
         self.assertTrue(_looks_like_market_blog("Where Will XRP Be in 3 Years?"))
         self.assertTrue(_looks_like_market_blog("She Inherited Her Father's $400,000 401(k). One Direct Rollover Turned"))
+
+    def test_weekend_freshness_window(self) -> None:
+        config = {"max_age_hours": 36}
+        wednesday = datetime(2026, 9, 16, 12, 0, tzinfo=timezone.utc)
+        saturday = datetime(2026, 9, 12, 12, 0, tzinfo=timezone.utc)
+        sunday = datetime(2026, 9, 13, 20, 0, tzinfo=timezone.utc)
+        self.assertEqual(_effective_max_age_hours(config, now=wednesday), 36)
+        self.assertEqual(_effective_max_age_hours(config, now=saturday), 72)
+        self.assertEqual(_effective_max_age_hours(config, now=sunday), 72)
+        # explicit override still wins when the config has no window
+        self.assertEqual(
+            _effective_max_age_hours({}, override=24, now=wednesday), 24,
+        )
 
     def test_entertainment_filter_drops_culture_items(self) -> None:
         self.assertTrue(_looks_like_entertainment("Three Batman Movies Return to Theaters Next Week"))
