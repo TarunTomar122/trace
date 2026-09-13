@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   getLandingCtaAssignment,
@@ -31,13 +31,17 @@ export default function LandingCtaLink({
 }) {
   const isExperiment = location === 'hero';
   const [assignment, setAssignment] = useState<LandingCtaAssignment>('control');
+  const exposureTracked = useRef(false);
 
   useEffect(() => {
     if (!isExperiment) return;
     const timer = window.setTimeout(() => {
       const nextAssignment = getLandingCtaAssignment();
       setAssignment(nextAssignment);
-      trackLandingCtaExposure(nextAssignment);
+      if (!exposureTracked.current) {
+        exposureTracked.current = true;
+        trackLandingCtaExposure(nextAssignment);
+      }
     }, 0);
     return () => window.clearTimeout(timer);
   }, [isExperiment]);
@@ -56,7 +60,6 @@ export default function LandingCtaLink({
       className={className}
       prefetch={prefetch}
       onClick={() => {
-        if (isExperiment) trackLandingCtaExposure(assignment);
         trackLandingCTAClicked(variant, location, { destination, ...experimentProps });
       }}
     >
