@@ -81,6 +81,12 @@ export default function BlogPage() {
               Expert guides on tech news aggregation, productivity, AI tools, and building better information diets.
               Written for developers, founders, and anyone drowning in tabs.
             </p>
+            <Link
+              href="/feed?utm_source=blog&utm_medium=hero&utm_campaign=blog_index"
+              className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#0f1419] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#29313a]"
+            >
+              Read today&apos;s tech brief <ArrowRight size={16} aria-hidden="true" />
+            </Link>
           </div>
         </div>
       </section>
