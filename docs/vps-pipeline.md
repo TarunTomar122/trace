@@ -65,11 +65,20 @@ Actions keeps push notifications plus manual/replay workflows.
   reserves a place, not the lead). The floors are up to the cap: the per-entity
   topic cap still applies, so a single brand cannot take the reserved slots.
   Invalid env values fall back to defaults instead of failing the build.
-- 24 markets sources (CNBC Markets/Investing/US Markets/Business, Bloomberg
+- 22 markets sources (CNBC Markets/Investing/US Markets/Business, Bloomberg
   Technology, CNBC Top News/Technology, WIRED Business, Semafor, Business
   Insider, Fortune, Quartz, Benzinga, LA Times Business, Time Business,
-  TechCrunch Fintech, BLS/BEA releases, Yahoo Finance (+Markets/Top Stories),
-  The Register Business, The Conversation Business, Vox Economy).
+  TechCrunch Fintech, BLS/BEA releases, Yahoo Finance Markets, The Register
+  Business, The Conversation Business, Vox Economy). Yahoo's general and
+  top-stories feeds were removed: they syndicate investment-advice blogs that
+  are not market news.
+- Cross-source blog/listicle filter (`MARKET_BLOG_KEYWORDS` in
+  `v3/build_trending.py`) drops advice titles from any finance brand:
+  "Could Upstart 10x From Here?", "Rivian vs. Lucid: This Stock Is Clearly
+  the Better Buy", "If You'd Invested $5,000...", 401(k)/retirement advice,
+  crypto price predictions. Classification also follows the story's primary
+  subject, not a secondary mention: an AI company's compute deal stays `ai`
+  even when the headline mentions an upcoming IPO.
 - Freshness window is 36h (`max_age_hours`), so market stories from the prior
   session still make the edition. Keyword filters are whole-word and
   apostrophe-normalized (so "nfl" does not match "Inflation").

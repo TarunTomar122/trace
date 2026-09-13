@@ -85,6 +85,45 @@ PROMO_TITLE_KEYWORDS = (
     "app cleaner",
     "uninstaller",
 )
+MARKET_BLOG_KEYWORDS = (
+    "if you'd invested",
+    "if you had invested",
+    "here's how much",
+    "here's exactly",
+    "how much you",
+    "could 10x",
+    "10x from here",
+    "where will",
+    "is it too late",
+    "will it",
+    "vs.",
+    " vs ",
+    "better buy",
+    "better stock",
+    "the better",
+    "retiring in",
+    "401(k)",
+    "dividend stock",
+    "dividend stocks",
+    "passive income",
+    "inherited",
+    "top stocks",
+    "stocks to buy",
+    "penny stocks",
+    "price prediction",
+    "buy now",
+    "3 essential",
+    "5 essential",
+    "essential financial",
+    "should you",
+    "could be the next",
+    "could be the most",
+    "might be the next",
+    "here's what to do",
+    "what to do",
+    "cramer",
+)
+
 PROMO_CONTENT_KEYWORDS = (
     "affiliate",
     "sponsored",
@@ -385,6 +424,13 @@ def _looks_promotional(title: str, content: str = "") -> bool:
     return False
 
 
+def _looks_like_market_blog(title: str) -> bool:
+    """Drop investment-advice/listicle blog posts that syndicators publish
+    under finance brands ("Could Upstart 10x From Here?", "Rivian vs. Lucid:
+    This Stock Is Clearly the Better Buy"). These are not market news."""
+    return _title_has_excluded_keywords(title, list(MARKET_BLOG_KEYWORDS))
+
+
 def _is_off_topic_for_trending(title: str, content: str = "") -> bool:
     """Filter macro/world headlines unless they also have clear tech signal."""
     text = f"{title or ''} {content or ''}".lower()
@@ -477,8 +523,10 @@ def _rank_candidates(
         content = item.get("content", "") or ""
         source_name = item.get("source_name", "") or ""
 
-        # Skip promotional content
+        # Skip promotional content and investment-advice blog posts.
         if _looks_promotional(title, content[:600]):
+            continue
+        if _looks_like_market_blog(title):
             continue
 
         # Judge off-topic intent from the headline only: macro stories that
@@ -1806,7 +1854,7 @@ def _build_trending_topics_payload(
     # stories are not crowded out by multi-source AI clusters. Remaining
     # slots go to the globally best clusters, and the final list is re-sorted
     # by popularity so the lead story is unchanged.
-    markets_floor = _env_int("TRENDING_MARKETS_FLOOR", "18")
+    markets_floor = _env_int("TRENDING_MARKETS_FLOOR", "12")
 
     def _take(cluster: dict[str, Any]) -> None:
         entity = _cluster_primary_entity(cluster)

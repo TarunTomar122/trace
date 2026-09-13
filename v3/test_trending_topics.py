@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from v3.build_trending import _cluster_topic_candidates, _topic_tokens_for_item
+from v3.build_trending import _cluster_topic_candidates, _looks_like_market_blog, _topic_tokens_for_item
 
 
 class TrendingTopicClusteringTests(unittest.TestCase):
@@ -42,6 +42,24 @@ class TrendingTopicClusteringTests(unittest.TestCase):
 
         self.assertEqual(len(clusters), 1)
         self.assertEqual(len(clusters[0]["items"]), 2)
+
+
+    def test_market_blog_filter_drops_advice_listicles(self) -> None:
+        # Real titles that were wrongly featured as markets news.
+        self.assertTrue(_looks_like_market_blog("Could Upstart 10x From Here? The AI Fintech Platform Could Be the Most"))
+        self.assertTrue(_looks_like_market_blog("If You'd Invested $5,000 in VGT 10 Years Ago, Here's Exactly How Much"))
+        self.assertTrue(_looks_like_market_blog("Rivian vs. Lucid: This Stock Is Clearly the Better Buy"))
+        self.assertTrue(_looks_like_market_blog("Retiring in 2027? 3 Essential Financial Moves to Make"))
+        self.assertTrue(_looks_like_market_blog("Toncoin (TON) Price Prediction 2025, 2026, 2027-2030"))
+        self.assertTrue(_looks_like_market_blog("Where Will XRP Be in 3 Years?"))
+        self.assertTrue(_looks_like_market_blog("She Inherited Her Father's $400,000 401(k). One Direct Rollover Turned"))
+
+    def test_market_blog_filter_keeps_real_market_news(self) -> None:
+        self.assertFalse(_looks_like_market_blog("Stocks stumble on inflation fears"))
+        self.assertFalse(_looks_like_market_blog("Larry Ellison nixes plan to offload $7.5 billion of Oracle stock"))
+        self.assertFalse(_looks_like_market_blog("Pay is back on the rise for job switchers"))
+        self.assertFalse(_looks_like_market_blog("Bank exits squeeze truck financing for mid-size fleets"))
+        self.assertFalse(_looks_like_market_blog("Anthropic has chosen the Nasdaq for its IPO listing"))
 
 
 if __name__ == "__main__":
