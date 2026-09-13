@@ -253,7 +253,7 @@ export const comparePages: ComparePage[] = [
       },
       {
         label: "Personalization",
-        trace: "Tailored to your role and interests",
+        trace: "Tailored to your interests",
         alternative: "One feed for everyone",
       },
       {

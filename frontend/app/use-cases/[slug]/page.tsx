@@ -131,7 +131,7 @@ export default async function UseCaseDetailPage({ params }: PageProps) {
             <p className="mt-3 text-sm leading-relaxed text-[#6b7280]">
               Instead of checking the same publications and community feeds separately,
               you start with one ordered brief. Related coverage stays grouped, source links
-              remain available, and the topics most relevant to this role move to the front.
+              remain available, and the topics you pick move to the front.
             </p>
           </section>
 

@@ -175,7 +175,7 @@ export function isValidThumbnail(url?: string | null): boolean {
   if (v.includes('placeholder') || v.includes('ui-avatars.com')) return false;
   // YouTube stills are named ...default.jpg (hqdefault, maxresdefault), so only
   // reject "default" when it is a whole token in the path or filename.
-  if (/(^|[\/_.=-])default([\/_.=-]|$)/.test(v)) return false;
+  if (/(^|[\/_.=?-])default([\/_.=&-]|$)/.test(v)) return false;
   if (v.length < 10) return false;
   return true;
 }

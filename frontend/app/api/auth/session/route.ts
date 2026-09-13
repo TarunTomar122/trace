@@ -59,7 +59,7 @@ async function ensureUserProfile(
       return 'created';
     }
     // Existing profiles keep whatever onboarding state they have — the web
-    // onboarding step flips it when the reader picks role + interests.
+    // onboarding step flips it when the reader picks interests.
     return 'exists';
   } catch (error) {
     console.error('[api/auth/session] ensureUserProfile failed:', error);

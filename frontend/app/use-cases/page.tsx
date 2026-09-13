@@ -42,7 +42,7 @@ export default function UseCasesHubPage() {
             </h1>
             <p className="mt-5 max-w-xl text-[16px] leading-[1.8] text-[#6b7280]">
               Whether you&apos;re a founder, developer, PM, or investor — Trace adapts to how you work.
-              Pick your role and see what a day with Trace looks like.
+              Pick your interests and see what a day with Trace looks like.
             </p>
             <div className="mt-6 flex flex-wrap gap-2 text-sm">
               <Link href="/solutions" className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-[#6b7280] transition-colors hover:text-[#111827]">

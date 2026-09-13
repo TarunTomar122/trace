@@ -5,6 +5,7 @@ import { hasActiveSubscription } from '@/lib/subscription-access';
 import { resolveSubscriptionOfferFromHeaders } from '@/lib/subscription-offer';
 import { SUBSCRIPTION_PRICE_DEFAULT } from '@/lib/subscription-pricing';
 import type { FeedStory, PulseItem } from '@/components/feed-v2/FeedApp';
+import { imageUrlHasPlaceholderToken } from './media-url';
 
 // Server-side feed data builders shared by /feed (FeedScreen) and
 // /story/[id] (shared article page renders the real feed chrome).
@@ -155,11 +156,8 @@ const getMonthlyReach = unstable_cache(
 
 export function thumb(url?: string | null): string | null {
   if (!url || typeof url !== 'string' || url.length < 10) return null;
-  if (url.includes('placeholder')) return null;
   if (!/^https?:\/\//.test(url)) return null;
-  // YouTube stills are named ...default.jpg (hqdefault, maxresdefault), so only
-  // reject "default" when it is a whole token in the path or filename.
-  if (/(^|[\/_.=-])default([\/_.=-]|$)/i.test(url)) return null;
+  if (imageUrlHasPlaceholderToken(url)) return null;
   return url;
 }
 

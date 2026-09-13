@@ -1,3 +1,4 @@
+import { imageUrlHasPlaceholderToken } from './media-url';
 /**
  * Generates a fallback image URL based on article title/topic.
  * Uses Unsplash's free image URLs with relevant search terms.
@@ -202,7 +203,7 @@ export function getFallbackImage(title: string): string {
 export function isValidThumbnail(url?: string | null): boolean {
   if (!url || typeof url !== 'string') return false;
   if (url.length < 10) return false;
-  if (url.includes('placeholder') || url.includes('default')) return false;
+  if (imageUrlHasPlaceholderToken(url)) return false;
   return true;
 }
 
