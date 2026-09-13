@@ -810,13 +810,15 @@ export default function FeedApp({
     if (olderLoading || olderDone || !pro) return;
     setOlderLoading(true);
     setOlderError(false);
+    const wantCat = tab === 'all' ? '' : tab;
     try {
       let before = olderBefore || feedDate;
       let cursor: string | null = before;
       const added: FeedStory[] = [];
       // Days can repeat stories across the lookback window; skip those and
-      // keep paging until we actually have fresh cards (max 3 tries).
-      for (let attempt = 0; attempt < 3; attempt++) {
+      // keep paging until the ACTIVE tab actually gets fresh cards, so a
+      // category tab doesn't page past days that only had other topics.
+      for (let attempt = 0; attempt < 6; attempt++) {
         const res = await fetch(`/api/feed/older?before=${encodeURIComponent(before)}&limit=24`);
         if (!res.ok) throw new Error(`older fetch failed (${res.status})`);
         const data = await res.json() as { stories?: FeedStory[]; nextBefore?: string | null };
@@ -830,7 +832,8 @@ export default function FeedApp({
           added.push(s);
         }
         cursor = data.nextBefore ?? null;
-        if (added.length > 0 || !cursor) break;
+        const gainedForTab = wantCat ? added.some((s) => s.cat === wantCat) : added.length > 0;
+        if (gainedForTab || !cursor) break;
         before = cursor;
       }
       const base = stories.length + olderStories.length;
@@ -1472,7 +1475,7 @@ export default function FeedApp({
                 />
               )}
 
-              {!isFree && (tab === 'all' || olderForTab.length > 0) && (
+              {!isFree && (
                 <>
                   {olderForTab.length > 0 && (
                     <div className="older-sep">
@@ -1490,16 +1493,24 @@ export default function FeedApp({
                       onShare={share}
                     />
                   ))}
-                  {tab === 'all' && !olderDone && (
+                  {!olderDone && (
                     <button className="load-older" onClick={loadOlder} disabled={olderLoading}>
                       <Clock size={16} />
-                      {olderLoading ? 'Loading older stories…' : 'See older stories'}
+                      {olderLoading
+                        ? 'Loading older stories…'
+                        : tab === 'all'
+                          ? 'See older stories'
+                          : `See older ${CAT_LABELS[tab] || tab} stories`}
                     </button>
                   )}
-                  {tab === 'all' && olderDone && olderStories.length > 0 && (
-                    <p className="older-end">That&rsquo;s the whole archive — a fresh edition lands every morning.</p>
+                  {olderDone && olderStories.length > 0 && (
+                    <p className="older-end">
+                      {tab === 'all'
+                        ? 'That’s the whole archive — a fresh edition lands every morning.'
+                        : `That’s every ${CAT_LABELS[tab] || tab} story in the archive.`}
+                    </p>
                   )}
-                  {tab === 'all' && olderError && (
+                  {olderError && (
                     <p className="older-error">Couldn&rsquo;t load older stories. Try again.</p>
                   )}
                 </>
