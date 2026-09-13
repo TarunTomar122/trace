@@ -101,7 +101,9 @@ const CAT_ICONS: Record<string, LucideIcon> = {
   startups: Rocket,
 };
 
-export const ALL_INTERESTS = ['ai', 'markets', 'ux-design', 'engineering', 'tech', 'startups', 'security', 'open-source', 'policy'];
+// The lanes Trace actually publishes. Extras from older profiles (engineering,
+// security, open-source, policy) are ignored and dropped on the next save.
+export const ALL_INTERESTS = ['ai', 'markets', 'tech', 'ux-design', 'startups'];
 const FREE_LIMIT_SIGNED_OUT = 4;
 const FREE_LIMIT_SIGNED_IN = 7;
 
@@ -488,7 +490,7 @@ export default function FeedApp({
     const hydrated = {
       name: user.displayName || authProfile?.name || 'Reader',
       email: user.email || '',
-      interests: (authProfile?.interests as string[]) || [],
+      interests: ((authProfile?.interests as string[]) || []).filter((i) => ALL_INTERESTS.includes(i)),
     };
     setProfile(hydrated);
     setSavedProfile(hydrated);
@@ -1195,7 +1197,6 @@ export default function FeedApp({
             getToken={async () => (user ? user.getIdToken() : '')}
             onSubscriptionChanged={() => { refreshProfile().catch(() => null); }}
             user={user ? { displayName: user.displayName, email: user.email, photoURL: user.photoURL } : null}
-            authProfile={authProfile}
             onSignOut={() => { signOut(); go('all'); }}
             onSignIn={handleSignIn}
           />
@@ -2215,11 +2216,11 @@ function CancelModal({ onClose, getToken, onDone }: {
   );
 }
 
-function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, pro, onBack, user, authProfile, onSignOut, onSignIn, notify, getToken, onSubscriptionChanged, notice, signingIn = false, onEdit, dailyOn = false, onToggleDaily }: {
+function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, pro, onBack, user, onSignOut, onSignIn, notify, getToken, onSubscriptionChanged, notice, signingIn = false, onEdit, dailyOn = false, onToggleDaily }: {
   profile: Profile; setProfile: (p: Profile) => void; storyCount: number;
   dirty: boolean; saving: boolean; onSave: () => void; pro: boolean; onBack: () => void;
   user: { displayName: string | null; email: string | null; photoURL: string | null } | null;
-  authProfile: any; onSignOut: () => void; onSignIn: () => void;
+  onSignOut: () => void; onSignIn: () => void;
   notify: (msg: string) => void; getToken: () => Promise<string>; onSubscriptionChanged: () => void;
   notice?: string | null; signingIn?: boolean; onEdit?: () => void;
   dailyOn?: boolean; onToggleDaily?: () => void;
@@ -2246,8 +2247,8 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
       <header className="head">
         <button className="back" onClick={onBack} aria-label="Back"><ArrowLeft size={20} /></button>
         <div>
-          <h1 className="head-title">{profile.name}</h1>
-          <p className="head-sub">{storyCount} stories today</p>
+          <h1 className="head-title">Profile</h1>
+          <p className="head-sub">{storyCount} stories ranked today</p>
         </div>
       </header>
       {notice && (
@@ -2258,7 +2259,7 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
         </div>
       )}
       <div className="detail profile">
-        <div className="avatar-row">
+        <div className="profile-hero">
           {user?.photoURL ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={user.photoURL} alt="" className="avatar" />
@@ -2266,95 +2267,126 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
             // eslint-disable-next-line @next/next/no-img-element
             <img src="/trace.webp" alt="" className="avatar" />
           )}
-          <div className="avatar-actions">
-            {user ? (
-              <button className="save-btn" onClick={onSignOut}>Sign out</button>
-            ) : (
-              <button className="save-btn primary" onClick={onSignIn} disabled={signingIn}>
-                {signingIn ? 'Signing in…' : 'Sign in with Google'}
-              </button>
-            )}
-            {user && (dirty || saving) && (
-              <button className={`save-btn primary${dirty ? ' pulse' : ''}`} onClick={onSave} disabled={saving}>
-                {saving ? 'Saving…' : 'Save changes'}
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="profile-id">
-          <h1 className="profile-name">{user ? (user.displayName || profile.name) : 'Signed out'}</h1>
-          <p className="profile-handle">{user ? `@${(user.email || '').split('@')[0]}` : 'Sign in to personalize your feed'}</p>
-          <p className="profile-bio">{bio}</p>
-          <div className="profile-stats">
-            <span><b>{storyCount}</b> stories today</span>
-            <span className="post-dot">·</span>
-            <span><b>{profile.interests.length}</b> interests</span>
-          </div>
-        </div>
-
-        <div className="profile-section">
-          <h2 className="section-label">Your interests</h2>
-          <div className="chip-row">
-            {ALL_INTERESTS.map((t) => (
-              <button key={t} className={`pick${profile.interests.includes(t) ? ' on' : ''}`} onClick={() => toggleInterest(t)}>
-                {CAT_LABELS[t] || t[0].toUpperCase() + t.slice(1)}
-              </button>
-            ))}
-          </div>
-          <p className={`section-hint${dirty ? ' unsaved' : ''}`}>
-            {dirty ? 'Unsaved changes — tap Save changes above.' : 'Used only to order your For You feed — nothing else. Changes re-rank right away.'}
-          </p>
-        </div>
-
-        <div className="profile-section">
-          <h2 className="section-label">Daily email brief</h2>
-          <div className="chip-row">
-            <button
-              className={`pick${dailyOn ? ' on' : ''}`}
-              onClick={onToggleDaily}
-              aria-pressed={dailyOn}
-              disabled={!user}
-            >
-              {dailyOn ? <><Check size={14} /> Daily brief is on</> : 'Get the daily emails'}
-            </button>
-          </div>
-          <p className="section-hint">Lands at 10:30 Europe/Berlin. Turn it off anytime.</p>
-        </div>
-
-        <div className="profile-section">
-          <h2 className="section-label">Membership</h2>
-            <div className="chip-row">
-              <span className="pick on">{pro ? "Pro member" : "Free plan"}</span>
-              {!pro && <a className="pick" href="/subscribe">Go Pro — $2.99/mo</a>}
-              {pro && <button className="pick pick-danger" onClick={() => setCancelOpen(true)}>Cancel plan</button>}
+          <div className="profile-hero-main">
+            <div className="profile-hero-top">
+              <div className="profile-hero-id">
+                <h1 className="profile-name">{user ? (user.displayName || profile.name) : 'Signed out'}</h1>
+                <p className="profile-handle">
+                  {user ? `@${(user.email || '').split('@')[0]}` : 'Sign in to personalize your feed'}
+                  {user ? <span className={`profile-plan${pro ? ' pro' : ''}`}>{pro ? 'Pro member' : 'Free plan'}</span> : null}
+                </p>
+              </div>
+              {user && (dirty || saving) && (
+                <button className={`save-btn primary${dirty ? ' pulse' : ''}`} onClick={onSave} disabled={saving}>
+                  {saving ? 'Saving…' : 'Save changes'}
+                </button>
+              )}
             </div>
-            <p className="section-hint">Pro unlocks the whole day, Pulse and your profile.</p>
+            <p className="profile-bio">{bio}</p>
+            <div className="profile-stats">
+              <span><b>{storyCount}</b> stories today</span>
+              <span className="post-dot">·</span>
+              <span><b>{profile.interests.length}</b> interests</span>
+            </div>
           </div>
-          {cancelOpen && (
-            <CancelModal
-              onClose={() => setCancelOpen(false)}
-              getToken={getToken}
-              onDone={() => {
-                setCancelOpen(false);
-                onSubscriptionChanged();
-                notify('Cancelled. Pro stays active until the end of your billing period.');
-              }}
-            />
-          )}
-
-        <div className="profile-section">
-          <h2 className="section-label">Agent access</h2>
-          <div className="chip-row">
-            <span className="pick on">{pro ? "MCP + brief API" : "Pro only"}</span>
-            <a className="pick" href="/agents">Setup guide</a>
-          </div>
-          <p className="section-hint">
-            {pro
-              ? "Connect Claude, Codex, or Cursor to your ranked feed over one read-only key. Grab it in the setup guide."
-              : "Pro connects your AI agent to the ranked feed, Pulse, and archive over MCP. One key, read-only."}
-          </p>
         </div>
+
+        <section className="p-group">
+          <h2 className="p-group-title">Interests</h2>
+          <p className="p-group-sub">We use these only to order your For You feed — nothing else, no emails and no hidden filtering.</p>
+          <div className="p-checks">
+            {ALL_INTERESTS.map((t) => {
+              const on = profile.interests.includes(t);
+              return (
+                <button key={t} className={`p-check${on ? ' on' : ''}`} onClick={() => toggleInterest(t)} aria-pressed={on}>
+                  <span className="p-check-label">{CAT_LABELS[t] || t[0].toUpperCase() + t.slice(1)}</span>
+                  <span className="p-check-ic" aria-hidden="true">{on ? <Check size={14} strokeWidth={3} /> : null}</span>
+                </button>
+              );
+            })}
+          </div>
+          {dirty ? <p className="p-footnote unsaved">Unsaved changes — tap Save changes.</p> : null}
+        </section>
+
+        <section className="p-group">
+          <h2 className="p-group-title">Preferences</h2>
+          <div className="p-card">
+            <div className="p-row">
+              <div className="p-row-main">
+                <span className="p-row-title">Daily email brief</span>
+                <span className="p-row-sub">One email at 10:30 Europe/Berlin. Turn it off anytime.</span>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={dailyOn}
+                aria-label="Daily email brief"
+                className={`p-switch${dailyOn ? ' on' : ''}`}
+                onClick={onToggleDaily}
+                disabled={!user}
+              >
+                <span className="p-switch-knob" />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="p-group">
+          <h2 className="p-group-title">Membership</h2>
+          <div className="p-card">
+            <div className="p-row">
+              <div className="p-row-main">
+                <span className="p-row-title">{pro ? 'Pro member' : 'Free plan'}</span>
+                <span className="p-row-sub">Pro unlocks the whole day, Pulse and your profile.</span>
+              </div>
+              {pro ? (
+                <button className="p-link danger" onClick={() => setCancelOpen(true)}>Cancel plan</button>
+              ) : (
+                <a className="p-link" href="/subscribe">Go Pro — $2.99/mo</a>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className="p-group">
+          <h2 className="p-group-title">Agent access</h2>
+          <div className="p-card">
+            <div className="p-row">
+              <div className="p-row-main">
+                <span className="p-row-title">{pro ? 'MCP + brief API' : 'Pro only'}</span>
+                <span className="p-row-sub">
+                  {pro
+                    ? 'Connect Claude, Codex, or Cursor to your ranked feed over one read-only key.'
+                    : 'Pro connects your AI agent to the ranked feed, Pulse, and archive over MCP.'}
+                </span>
+              </div>
+              <a className="p-link" href="/agents">{pro ? 'Setup guide' : 'Learn more'}</a>
+            </div>
+          </div>
+        </section>
+
+        <section className="p-group p-group-last">
+          {user ? (
+            <button className="p-signout" onClick={onSignOut}>Sign out</button>
+          ) : (
+            <button className="save-btn primary p-signin" onClick={onSignIn} disabled={signingIn}>
+              {signingIn ? 'Signing in…' : 'Sign in with Google'}
+            </button>
+          )}
+        </section>
       </div>
+
+      {cancelOpen && (
+        <CancelModal
+          onClose={() => setCancelOpen(false)}
+          getToken={getToken}
+          onDone={() => {
+            setCancelOpen(false);
+            onSubscriptionChanged();
+            notify('Cancelled. Pro stays active until the end of your billing period.');
+          }}
+        />
+      )}
     </>
   );
 }
@@ -2838,7 +2870,6 @@ const css = `
 .xw .rail-sum { font-size: 13px; line-height: 19px; color: var(--text-2); }
 
 /* profile view */
-.xw .avatar-row { display: flex; align-items: flex-end; justify-content: space-between; padding: 14px 18px 0; }
 .xw .avatar { width: 92px; height: 92px; border-radius: 50%; border: 4px solid #fff; background: #fff; object-fit: contain; }
 .xw .save-btn {
   display: inline-flex; align-items: center; gap: 6px;
@@ -2948,26 +2979,84 @@ const css = `
 }
 @keyframes act-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .xw .activating-spin { animation: none; } }
-.xw .profile-id { padding: 10px 18px 4px; }
-.xw .profile-name { margin: 0; font-size: 23px; font-weight: 800; line-height: 28px; }
-.xw .profile-handle { margin: 0 0 10px; font-size: 15px; color: var(--text-3); }
-.xw .profile-bio { margin: 0 0 10px; font-size: 15px; line-height: 20px; }
+.xw .profile-hero { display: flex; gap: 16px; padding: 20px 18px 6px; }
+.xw .profile-hero .avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.xw .profile-hero-main { flex: 1; min-width: 0; }
+.xw .profile-hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.xw .profile-hero-id { min-width: 0; }
+.xw .profile-name { margin: 0; font-size: 24px; font-weight: 800; line-height: 29px; letter-spacing: -0.02em; }
+.xw .profile-handle { margin: 2px 0 0; font-size: 14.5px; color: var(--text-3); }
+.xw .profile-plan { margin-left: 8px; font-size: 13px; font-weight: 700; color: var(--text-3); }
+.xw .profile-plan.pro { color: var(--blue); }
+.xw .profile-bio { margin: 10px 0 8px; font-size: 15px; line-height: 20px; }
 .xw .profile-stats { display: flex; gap: 6px; align-items: baseline; font-size: 14px; color: var(--text-3); }
 .xw .profile-stats b { color: var(--text); font-weight: 700; }
-.xw .profile-section { padding: 16px 18px 4px; border-bottom: 1px solid var(--line); }
-.xw .profile-section:last-child { border-bottom: none; }
-.xw .section-label { margin: 0 0 10px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); }
-.xw .chip-row { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 12px; }
-.xw .pick {
-  padding: 8px 16px; border-radius: 9999px; border: 1px solid var(--line);
-  background: var(--bg); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer;
-  transition: background-color 0.2s ease; text-decoration: none;
-  display: inline-flex; align-items: center; gap: 6px;
+.xw .p-group { padding: 20px 18px 0; }
+.xw .p-group-last { padding-bottom: 32px; }
+.xw .p-group-title { margin: 0 0 4px; font-size: 17px; font-weight: 800; letter-spacing: -0.01em; }
+.xw .p-group-sub { margin: 0 0 12px; font-size: 13.5px; line-height: 1.5; color: var(--text-3); }
+.xw .p-checks { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.xw .p-check {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; padding: 13px 16px; border: none; border-top: 1px solid var(--line);
+  background: var(--bg); color: var(--text); font-family: inherit; font-size: 15px;
+  font-weight: 500; text-align: left; cursor: pointer;
+  transition: background-color 0.15s ease;
 }
-.xw .pick:hover { background: var(--hover); }
-.xw .pick.on { background: var(--line); border-color: var(--line); font-weight: 700; }
-.xw .section-hint { margin: 0; padding: 0 0 14px; font-size: 13px; color: var(--text-3); }
-.xw .section-hint.unsaved { color: #c77700; font-weight: 600; }
+.xw .p-check:first-child { border-top: none; }
+.xw .p-check:hover { background: var(--hover); }
+.xw .p-check.on { font-weight: 700; }
+.xw .p-check-ic {
+  width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #cfd9de;
+  display: grid; place-items: center; color: #fff; flex-shrink: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.xw .p-check.on .p-check-ic { background: var(--blue); border-color: var(--blue); }
+.xw .p-footnote { margin: 10px 0 0; font-size: 13px; color: var(--text-3); }
+.xw .p-footnote.unsaved { color: #c77700; font-weight: 600; }
+.xw .p-card { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.xw .p-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; }
+.xw .p-row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.xw .p-row-title { font-size: 15px; font-weight: 600; }
+.xw .p-row-sub { font-size: 13px; line-height: 1.45; color: var(--text-3); }
+.xw .p-link {
+  border: none; background: none; padding: 0; color: var(--blue);
+  font-family: inherit; font-size: 14px; font-weight: 700; text-decoration: none;
+  cursor: pointer; white-space: nowrap;
+}
+.xw .p-link:hover { text-decoration: underline; }
+.xw .p-link.danger { color: var(--pink); }
+.xw .p-switch {
+  position: relative; width: 46px; height: 28px; flex-shrink: 0; border: none;
+  border-radius: 9999px; background: #cfd9de; cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.xw .p-switch:disabled { opacity: 0.5; cursor: default; }
+.xw .p-switch.on { background: var(--green); }
+.xw .p-switch-knob {
+  position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(15, 20, 25, 0.25);
+  transition: transform 0.2s var(--ease-smooth-out);
+}
+.xw .p-switch.on .p-switch-knob { transform: translateX(18px); }
+.xw .p-signout {
+  width: 100%; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px;
+  background: var(--bg); color: var(--pink); font-family: inherit; font-size: 15px;
+  font-weight: 700; cursor: pointer; transition: background-color 0.15s ease;
+}
+.xw .p-signout:hover { background: rgba(249, 24, 128, 0.06); }
+.xw .p-signin { width: 100%; }
+@media (prefers-reduced-motion: reduce) {
+  .xw .p-switch, .xw .p-switch-knob, .xw .p-check, .xw .p-check-ic { transition: none; }
+}
+@media (max-width: 687px) {
+  .xw .profile-hero { padding: 16px 14px 4px; gap: 12px; }
+  .xw .profile-hero .avatar { width: 60px; height: 60px; }
+  .xw .profile-hero-top { flex-wrap: wrap; }
+  .xw .profile-name { font-size: 21px; line-height: 26px; }
+  .xw .p-group { padding: 18px 14px 0; }
+  .xw .p-group-last { padding-bottom: 28px; }
+}
 .xw .bm-search {
   border: 1px solid var(--line); border-radius: 9999px; background: var(--hover);
   padding: 7px 14px; font-size: 13.5px; font-family: inherit; color: var(--text);
