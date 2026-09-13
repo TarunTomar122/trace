@@ -28,6 +28,7 @@ import {
 } from '@/lib/posthog';
 import { bodyParagraphs } from '@/lib/body-text';
 import { rankStoriesForProfile } from '@/lib/feed-ranking';
+import { normalizeFeedTab, partitionFeedCats } from '@/lib/feed-links';
 import {
   Bookmark, Share, ArrowLeft, User, Check, Star, Plus, X, ArrowRight, Clock,
   Home, Sparkles, TrendingUp, Rocket, Code2, Cpu, PenTool, MessageCircle, BookOpen, Lock,
@@ -269,10 +270,12 @@ export default function FeedApp({
     pulse: params.get('pulse'),
   }));
 
-  const [tab, setTab] = useState<string>(() => {
-    const requested = params.get('tab');
-    return requested === 'profile' || requested === 'bookmarks' ? requested : 'all';
-  });
+  const [tab, setTab] = useState<string>(() =>
+    normalizeFeedTab(
+      params.get('tab') ?? params.get('q'),
+      stories.map((s) => s.cat),
+    ),
+  );
   const [marks, setMarks] = useState<Set<string>>(new Set());
   const [bookmarks, setBookmarks] = useState<StoredBookmark[]>([]);
   const [bookmarkQuery, setBookmarkQuery] = useState('');
@@ -496,15 +499,17 @@ export default function FeedApp({
     setSavedProfile(hydrated);
   }, [user, authProfile]);
 
-  // browser back/forward: sync view from URL (no server fetch)
+  // browser back/forward: sync view and lane from URL (no server fetch)
   useEffect(() => {
+    const cats = stories.map((s) => s.cat);
     const onPop = () => {
       const q = new URLSearchParams(window.location.search);
       setView({ story: q.get('story'), pulse: q.get('pulse') });
+      setTab(normalizeFeedTab(q.get('tab') ?? q.get('q'), cats));
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
-  }, []);
+  }, [stories]);
 
   // Membership is already resolved server-side (session cookie), so paint
   // immediately after mount instead of blocking on Firebase init. The gate
@@ -686,8 +691,16 @@ export default function FeedApp({
     setTab(t);
     if (view.story || view.pulse) {
       setView({ story: null, pulse: null });
-      window.history.replaceState(null, '', base());
     }
+    // Lane links are shareable: /feed?tab=markets (older /feed?q= works too).
+    const q = new URLSearchParams(window.location.search);
+    q.delete('story');
+    q.delete('pulse');
+    q.delete('q');
+    if (t === 'all') q.delete('tab');
+    else q.set('tab', t);
+    const qs = q.toString();
+    window.history.replaceState(null, '', qs ? `${base()}?${qs}` : base());
   }
 
   function share(id: string, kind: 'story' | 'pulse' = 'story') {
@@ -893,6 +906,12 @@ export default function FeedApp({
   const counts: Record<string, number> = {};
   for (const s of allStories) counts[s.cat] = (counts[s.cat] || 0) + 1;
   const cats = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+  // Home is the reader's lanes only; other lanes stay one click away in the
+  // rail. Signed-out readers (no saved interests) see everything.
+  const { mine: myCats, others: otherCats } = partitionFeedCats(cats, savedProfile.interests);
+  const homeStories = myCats.length
+    ? stories.filter((s) => myCats.includes(s.cat))
+    : stories;
   const isProfile = tab === 'profile';
   // sort: Top on Home, Recent elsewhere; the toggle is a persisted preference
   // (localStorage) that wins over the per-tab default, across tabs + sessions.
@@ -900,15 +919,22 @@ export default function FeedApp({
   const sortMode = sortOverride ?? (tab === 'all' ? 'for_you' : 'recent');
   const byRecent = (a: FeedStory, b: FeedStory) => (b.ts || 0) - (a.ts || 0);
   const visible = (() => {
-    const list = tab === 'all' ? [...stories] : stories.filter((s) => s.cat === tab);
+    const list = tab === 'all' ? [...homeStories] : stories.filter((s) => s.cat === tab);
     if (sortMode === 'recent') return list.sort(byRecent);
-    // For you: coverage order re-ranked by saved interests.
-    return rankStoriesForProfile(list, {
-      interests: savedProfile.interests,
-    });
+    // For you: coverage re-ranked around saved interests, then interleaved
+    // across lanes with a per-user, per-day seed so it never reads like a
+    // single-topic feed and still varies day to day.
+    return rankStoriesForProfile(
+      list,
+      { interests: savedProfile.interests },
+      { seed: `${user?.uid || 'guest'}:${feedDate || 'today'}` },
+    );
   })();
-  // Older batches shown after the ranked list, narrowed to the active tab.
-  const olderForTab = tab === 'all' ? olderStories : olderStories.filter((s) => s.cat === tab);
+  // Older batches shown after the ranked list, narrowed to the active tab
+  // (and to the reader's lanes on Home, matching the fresh list).
+  const olderForTab = tab === 'all'
+    ? (myCats.length ? olderStories.filter((s) => myCats.includes(s.cat)) : olderStories)
+    : olderStories.filter((s) => s.cat === tab);
   function setSort(next: 'for_you' | 'recent') {
     if (next === sortMode) return;
     setSortOverride(next);
@@ -1099,11 +1125,25 @@ export default function FeedApp({
             </a>
           )}
           <nav className="nav">
-            <NavItem icon={Home} label="Home" active={tab === 'all'} onClick={() => go('all')} count={allStories.length} />
-            {cats.map((c) => {
-              const Icon = CAT_ICONS[c] || Sparkles;
-              return <NavItem key={c} icon={Icon} label={CAT_LABELS[c] || c} active={tab === c} onClick={() => go(c)} count={counts[c]} />;
-            })}
+            <NavItem icon={Home} label="Home" active={tab === 'all'} onClick={() => go('all')} count={homeStories.length} />
+            {myCats.length === 0
+              ? cats.map((c) => {
+                  const Icon = CAT_ICONS[c] || Sparkles;
+                  return <NavItem key={c} icon={Icon} label={CAT_LABELS[c] || c} active={tab === c} onClick={() => go(c)} count={counts[c]} />;
+                })
+              : myCats.map((c) => {
+                  const Icon = CAT_ICONS[c] || Sparkles;
+                  return <NavItem key={c} icon={Icon} label={CAT_LABELS[c] || c} active={tab === c} onClick={() => go(c)} count={counts[c]} />;
+                })}
+            {myCats.length > 0 && otherCats.length > 0 && (
+              <>
+                <div className="nav-group-label">Others</div>
+                {otherCats.map((c) => {
+                  const Icon = CAT_ICONS[c] || Sparkles;
+                  return <NavItem key={c} icon={Icon} label={CAT_LABELS[c] || c} active={tab === c} onClick={() => go(c)} count={counts[c]} />;
+                })}
+              </>
+            )}
             <div className="nav-group-label">Pulse</div>
             <NavItem icon={MessageCircle} label="Conversations" active={tab === 'conversations'} onClick={() => go('conversations')} count={pulse.discussions.length} />
             <NavItem icon={BookOpen} label="Worth reading" active={tab === 'reading'} onClick={() => go('reading')} count={pulse.blogs.length} />
@@ -1417,7 +1457,7 @@ export default function FeedApp({
             )}
             <div className="cat-strip" role="group" aria-label="Topics">
               <button className={`cat-chip${tab === 'all' ? ' on' : ''}`} onClick={() => go('all')}>All</button>
-              {cats.map((c) => (
+              {[...myCats, ...otherCats].map((c) => (
                 <button key={c} className={`cat-chip${tab === c ? ' on' : ''}`} onClick={() => go(c)}>
                   {CAT_LABELS[c] || c}
                 </button>
@@ -1435,6 +1475,13 @@ export default function FeedApp({
                   title="No stories yet today"
                   sub="A new edition lands every morning. Check back in a bit."
                   onRetry={() => window.location.reload()}
+                />
+              ) : tab === 'all' && visible.length === 0 ? (
+                <EmptyFeed
+                  title="Nothing in your topics yet"
+                  sub="Home shows only the topics you picked. Add more, or open another tag from the rail."
+                  onRetry={() => go('profile')}
+                  retryLabel="Edit topics"
                 />
               ) : (
                 full.map((s) => (
