@@ -302,6 +302,11 @@ export function getLandingCtaAssignment(): LandingCtaAssignment {
 }
 
 export function trackLandingCtaExposure(assignment: LandingCtaAssignment) {
+  if (typeof window !== "undefined") {
+    const exposureKey = `trace_exposure_${LANDING_CTA_EXPERIMENT_ID}`;
+    if (window.localStorage.getItem(exposureKey) === "1") return;
+    window.localStorage.setItem(exposureKey, "1");
+  }
   posthog.capture("landing_cta_exposure", {
     surface: "landing",
     experiment_id: LANDING_CTA_EXPERIMENT_ID,
