@@ -221,7 +221,9 @@ RULES:
   workflow changes.
   use product-design, tech, or engineering only when AI is incidental and
   not the core development
-  startup funding/M&A/ecosystem/founder news -> startups
+  funding rounds, raises, valuations, and ecosystem/founder news -> startups,
+  even when the company is an AI, chip, or deep-tech company; use ai only
+  when the story's core is the model, product, or research itself
   Classify by the story's primary subject, not a secondary mention.
   earnings, IPOs and going-public plans, public markets, M&A at large
   companies, macro (inflation, Fed/rates, jobs, housing, trade/tariffs),
@@ -231,7 +233,9 @@ RULES:
   capacity ahead of an IPO" -> ai; "chooses Nasdaq for its IPO listing" ->
   markets; "Nvidia earnings beat" -> markets; "Anthropic safety essay" -> ai
   developer tools/infra/security/platform engineering -> engineering
-  app redesigns/product changes/UX/interface decisions -> product-design
+  app redesigns/product changes/UX/interface decisions, design systems,
+  accessibility, and UX research -> product-design
+  consumer devices, hardware, operating systems, and platform software -> tech
   ad platforms/SEO/GTM/distribution -> marketing
   payments/banking/trading/crypto/financial platforms -> fintech
   use tech for broad consumer tech/platform/device/software stories when no narrower lane fits
@@ -616,9 +620,9 @@ def _cache_bucket(feed_type: str, technical_depth: str = "", output_format: str 
     output_format: 'cards' for learning cards, '' for prose (default)
     """
     if feed_type == "trending":
-        # v11: classify by primary subject (an AI story that merely mentions
-        # an IPO stays ai), so v10 cached classifications regenerate.
-        return "trending_v11"  # stronger relevance gate for professional/news lane fit
+        # v13: funding rounds at AI/deep-tech startups classify as startups,
+        # so v12 cached classifications regenerate.
+        return "trending_v13"  # stronger relevance gate for professional/news lane fit
     if feed_type == "deep_dives":
         if technical_depth == "deep":
             return "deep_dive_v6_deep"

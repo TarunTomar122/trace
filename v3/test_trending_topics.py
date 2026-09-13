@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import unittest
 
-from v3.build_trending import _cluster_topic_candidates, _looks_like_market_blog, _topic_tokens_for_item
+from v3.build_trending import (
+    _cluster_topic_candidates,
+    _looks_like_entertainment,
+    _looks_like_market_blog,
+    _topic_tokens_for_item,
+)
 
 
 class TrendingTopicClusteringTests(unittest.TestCase):
@@ -53,6 +58,23 @@ class TrendingTopicClusteringTests(unittest.TestCase):
         self.assertTrue(_looks_like_market_blog("Toncoin (TON) Price Prediction 2025, 2026, 2027-2030"))
         self.assertTrue(_looks_like_market_blog("Where Will XRP Be in 3 Years?"))
         self.assertTrue(_looks_like_market_blog("She Inherited Her Father's $400,000 401(k). One Direct Rollover Turned"))
+
+    def test_entertainment_filter_drops_culture_items(self) -> None:
+        self.assertTrue(_looks_like_entertainment("Three Batman Movies Return to Theaters Next Week"))
+        self.assertTrue(_looks_like_entertainment("Universal Studios Japan Celebrates Halloween With First R-Rated Attraction"))
+        self.assertTrue(_looks_like_entertainment("The band's album review is a return to form"))
+        self.assertTrue(_looks_like_entertainment("Marvel's next film festival slate revealed"))
+        self.assertFalse(_looks_like_entertainment("Apple Develops Game Controllers for iPhone"))
+        self.assertFalse(_looks_like_entertainment("Waymo Calls Police on Armed Riders"))
+        # Real news that the earlier single-word list would have dropped.
+        self.assertFalse(_looks_like_entertainment("Adobe Premiere Pro adds AI-powered text editing"))
+        self.assertFalse(_looks_like_entertainment("AMC Theaters posts record quarterly revenue"))
+        self.assertFalse(_looks_like_entertainment("Google Photos brings AI albums to more users"))
+        self.assertFalse(_looks_like_entertainment("US trailer orders fall for a third month"))
+
+    def test_investment_spam_filter(self) -> None:
+        self.assertTrue(_looks_like_market_blog("Want in on Anthropic Before the IPO? Buy These 8 Stocks"))
+        self.assertTrue(_looks_like_market_blog("Could Upstart 10x From Here?"))
 
     def test_market_blog_filter_keeps_real_market_news(self) -> None:
         self.assertFalse(_looks_like_market_blog("Stocks stumble on inflation fears"))

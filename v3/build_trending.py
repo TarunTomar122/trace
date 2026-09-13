@@ -80,7 +80,8 @@ PROMO_TITLE_KEYWORDS = (
     "review",
     "cheapest",
     "stacks up",
-    "vs ",
+    "vs.",
+    "versus",
     "comparison",
     "app cleaner",
     "uninstaller",
@@ -111,6 +112,8 @@ MARKET_BLOG_KEYWORDS = (
     "stocks to buy",
     "penny stocks",
     "price prediction",
+    "buy these",
+    "want in on",
     "buy now",
     "3 essential",
     "5 essential",
@@ -279,7 +282,7 @@ CANONICAL_TRENDING_INTEREST_MAP = {
     "product-design": "ux-design",
     "experience": "ux-design",
     "design": "ux-design",
-    "marketing": "startups",
+    "marketing": "tech",
     "fintech": "markets",
     "web3": "markets",
     "leadership": "markets",
@@ -415,9 +418,10 @@ def _filter_by_max_age_hours(
 
 
 def _looks_promotional(title: str, content: str = "") -> bool:
-    tl = (title or "").lower()
     cl = (content or "").lower()
-    if any(k in tl for k in PROMO_TITLE_KEYWORDS):
+    # Word-boundary matching: "deal" must not match "dealer" and "vs." must
+    # not match "TVs". Content keywords stay substring (affiliate disclaimers).
+    if _title_has_excluded_keywords(title, list(PROMO_TITLE_KEYWORDS)):
         return True
     if any(k in cl for k in PROMO_CONTENT_KEYWORDS):
         return True
@@ -429,6 +433,32 @@ def _looks_like_market_blog(title: str) -> bool:
     under finance brands ("Could Upstart 10x From Here?", "Rivian vs. Lucid:
     This Stock Is Clearly the Better Buy"). These are not market news."""
     return _title_has_excluded_keywords(title, list(MARKET_BLOG_KEYWORDS))
+
+
+ENTERTAINMENT_KEYWORDS = (
+    "box office",
+    "box-office",
+    "movie trailer",
+    "film festival",
+    "album review",
+    "season finale",
+    "comic con",
+    "comic-con",
+    "halloween",
+    "universal studios",
+    "marvel",
+    "star wars",
+    "batman",
+    "grammy",
+    "oscars",
+)
+
+
+def _looks_like_entertainment(title: str) -> bool:
+    """Culture/entertainment coverage occasionally rides along in tech feeds
+    (movie returns, album reviews, theme-park attractions); it is not news
+    for any of our lanes."""
+    return _title_has_excluded_keywords(title, list(ENTERTAINMENT_KEYWORDS))
 
 
 def _is_off_topic_for_trending(title: str, content: str = "") -> bool:
@@ -527,6 +557,8 @@ def _rank_candidates(
         if _looks_promotional(title, content[:600]):
             continue
         if _looks_like_market_blog(title):
+            continue
+        if _looks_like_entertainment(title):
             continue
 
         # Judge off-topic intent from the headline only: macro stories that
@@ -1761,6 +1793,15 @@ def _build_topic_articles(
     return out
 
 
+_ENTITY_ALIASES = {
+    "iphone": "apple", "ipad": "apple", "ios": "apple", "mac": "apple",
+    "macos": "apple", "airpods": "apple", "ipados": "apple",
+    "galaxy": "samsung", "pixel": "google", "android": "google",
+    "windows": "microsoft", "xbox": "microsoft", "surface": "microsoft",
+    "playstation": "sony", "nintendo": "nintendo",
+}
+
+
 def _cluster_primary_entity(cluster: dict[str, Any]) -> str:
     counts: Counter[str] = Counter()
     for item in cluster.get("items", []) or []:
@@ -1769,6 +1810,7 @@ def _cluster_primary_entity(cluster: dict[str, Any]) -> str:
             continue
         words = re.findall(r"[a-z0-9]+", title)
         for w in words:
+            w = _ENTITY_ALIASES.get(w, w)
             if w in ENTITY_TOPIC_TOKENS:
                 counts[w] += 1
     if counts:
@@ -1850,27 +1892,38 @@ def _build_trending_topics_payload(
     entity_counts: defaultdict[str, int] = defaultdict(int)
     selected: list[dict[str, Any]] = []
 
-    # Reserve a minimum number of markets slots so general market/macro
-    # stories are not crowded out by multi-source AI clusters. Remaining
-    # slots go to the globally best clusters, and the final list is re-sorted
-    # by popularity so the lead story is unchanged.
-    markets_floor = _env_int("TRENDING_MARKETS_FLOOR", "12")
+    # Reserve minimum slots per lane so single-interest clusters are not
+    # crowded out by multi-source AI clusters. Remaining slots go to the
+    # globally best clusters, and the final list is re-sorted by popularity
+    # so the lead story is unchanged.
+    interest_floors = {
+        "markets": _env_int("TRENDING_MARKETS_FLOOR", "12"),
+        "tech": _env_int("TRENDING_TECH_FLOOR", "8"),
+        "startups": _env_int("TRENDING_STARTUPS_FLOOR", "8"),
+        "ux-design": _env_int("TRENDING_DESIGN_FLOOR", "6"),
+    }
+
+    selected_ids: set[int] = set()
 
     def _take(cluster: dict[str, Any]) -> None:
         entity = _cluster_primary_entity(cluster)
         entity_counts[entity] += 1
         selected.append(cluster)
+        selected_ids.add(id(cluster))
 
-    if markets_floor > 0:
-        reserved = min(markets_floor, max_topics)
+    for lane, floor in interest_floors.items():
+        if floor <= 0:
+            continue
+        lane_taken = sum(1 for c in selected if _cluster_interest(c) == lane)
         for cluster in scored_clusters:
-            if len(selected) >= reserved:
+            if lane_taken >= floor or len(selected) >= max_topics:
                 break
-            if _cluster_interest(cluster) != "markets":
+            if _cluster_interest(cluster) != lane or id(cluster) in selected_ids:
                 continue
             if entity_counts[_cluster_primary_entity(cluster)] >= max_topics_per_entity:
                 continue
             _take(cluster)
+            lane_taken += 1
 
     selected_ids = {id(cluster) for cluster in selected}
     for cluster in scored_clusters:
@@ -2521,7 +2574,7 @@ def build_global_feed(
     )
     # Keep headroom beyond the flat cap: the markets floor is applied after
     # the model classifies interests, so more candidates are needed here.
-    ranked = ranked[:DEFAULT_MAX_FEED_ITEMS + 12]
+    ranked = ranked[:DEFAULT_MAX_FEED_ITEMS + 42]
     _log(
         "After filtering and story-dedup: "
         f"{len(ranked)} articles "
@@ -2598,18 +2651,30 @@ def build_global_feed(
         )
 
     summarized = [i for i in ranked if summary_map.get(str(i.get("url", "")))]
-    flat_markets_floor = _env_int("TRENDING_MARKETS_FLAT_FLOOR", "8")
-    if flat_markets_floor > 0:
-        guaranteed = [
-            i for i in summarized if str(i.get("interest_id", "")) == "markets"
-        ][:flat_markets_floor]
-        guaranteed_ids = {id(i) for i in guaranteed}
+    flat_floors = {
+        "markets": _env_int("TRENDING_MARKETS_FLAT_FLOOR", "8"),
+        "tech": _env_int("TRENDING_TECH_FLAT_FLOOR", "4"),
+        "startups": _env_int("TRENDING_STARTUPS_FLAT_FLOOR", "4"),
+        "ux-design": _env_int("TRENDING_DESIGN_FLAT_FLOOR", "3"),
+    }
+    if any(v > 0 for v in flat_floors.values()):
+        guaranteed: list[dict[str, Any]] = []
+        guaranteed_ids: set[int] = set()
+        for lane, floor in flat_floors.items():
+            if floor <= 0:
+                continue
+            lane_items = [
+                i for i in summarized
+                if str(i.get("interest_id", "")) == lane and id(i) not in guaranteed_ids
+            ][:floor]
+            guaranteed.extend(lane_items)
+            guaranteed_ids.update(id(i) for i in lane_items)
         remainder = sorted(
             (i for i in summarized if id(i) not in guaranteed_ids),
             key=lambda i: -float(i.get("_trend_score", 0.0)),
         )
         flat_items = (guaranteed + remainder)[:DEFAULT_MAX_FEED_ITEMS]
-        # Guaranteed markets slots reserve a place, not the lead.
+        # Guaranteed slots reserve a place, not the lead.
         flat_items.sort(key=lambda i: -float(i.get("_trend_score", 0.0)))
     else:
         flat_items = summarized[:DEFAULT_MAX_FEED_ITEMS]
@@ -2638,7 +2703,7 @@ def build_global_feed(
         store=store,
         ranked_items=ranked_for_topics,
         summary_map=summary_map,
-        max_topics=36,
+        max_topics=48,
         enrich=bool(getattr(args, "enrich_coverage", False)),
         enrich_top=int(getattr(args, "enrich_top", 10) or 10),
         enrich_max_per_topic=int(getattr(args, "enrich_max_per_topic", 4) or 4),

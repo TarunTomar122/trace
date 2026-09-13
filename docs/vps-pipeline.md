@@ -55,16 +55,28 @@ Actions keeps push notifications plus manual/replay workflows.
   `TRENDING_MERGE_MODEL` overrides the model (default `gpt-5-mini`); 
   `TRENDING_MERGE_EMBED_MODEL` overrides the embedding model.
 
-## Markets depth
+## Interest depth (markets, tech, startups, design)
 
-- The feed keeps a guaranteed share of markets topics so general market/macro
-  stories are not crowded out by multi-source AI clusters:
-  `TRENDING_MARKETS_FLOOR` (topic slots, default 18) and
-  `TRENDING_MARKETS_FLAT_FLOOR` (flat/mobile list, default 8). Remaining slots
-  go to the globally best clusters; both lists keep score order (the floor
-  reserves a place, not the lead). The floors are up to the cap: the per-entity
-  topic cap still applies, so a single brand cannot take the reserved slots.
-  Invalid env values fall back to defaults instead of failing the build.
+- The feed reserves topic slots per lane so single-interest clusters are not
+  crowded out by multi-source AI clusters: `TRENDING_MARKETS_FLOOR` (12),
+  `TRENDING_TECH_FLOOR` (8), `TRENDING_STARTUPS_FLOOR` (8),
+  `TRENDING_DESIGN_FLOOR` (6 topic slots; `ux-design`), plus flat/mobile-list
+  floors (`TRENDING_MARKETS_FLAT_FLOOR` 8, `TRENDING_TECH_FLAT_FLOOR` 4,
+  `TRENDING_STARTUPS_FLAT_FLOOR` 4, `TRENDING_DESIGN_FLAT_FLOOR` 3). Remaining
+  slots go to the globally best clusters; both lists keep score order (a floor
+  reserves a place, not the lead) and the per-entity topic cap still applies.
+  `max_topics` is 48. Invalid env values fall back to defaults instead of
+  failing the build.
+- Lanes are enforced on the model's classified interest, so a story's lane
+  follows its subject, not its source.
+- Startup/design sources: Sifted, Tech.eu, EU-Startups, AlleyWatch, BetaKit,
+  TechCrunch Venture, The Next Web, SaaStr, Startup Daily, e27, TechNode,
+  The Recursive, UKTN, Crunchbase, TechCrunch Startups; Smashing Magazine,
+  Nielsen Norman Group, Design Milk, Core77, Creative Bloq, Webdesigner Depot.
+  Tech adds Engadget, Gizmodo, Tom's Hardware, MacRumors, CNET News.
+- Cross-source quality filters drop entertainment/culture items, investment
+  advice/listicles ("Buy These 8 Stocks"), and finance-brand blogs from any
+  lane.
 - 22 markets sources (CNBC Markets/Investing/US Markets/Business, Bloomberg
   Technology, CNBC Top News/Technology, WIRED Business, Semafor, Business
   Insider, Fortune, Quartz, Benzinga, LA Times Business, Time Business,

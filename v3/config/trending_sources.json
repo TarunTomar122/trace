@@ -250,7 +250,15 @@
       "name": "TechCrunch Startups",
       "url": "https://techcrunch.com/category/startups/feed/",
       "type": "rss",
-      "source_weight": 1.1
+      "source_weight": 1.1,
+      "exclude_title_keywords": [
+        "disrupt",
+        "exhibit",
+        "side event",
+        "tickets",
+        "apply",
+        "final call"
+      ]
     },
     {
       "interest_id": "tech",
@@ -932,6 +940,218 @@
         "data center",
         "data centers"
       ],
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "startups",
+      "name": "Sifted",
+      "url": "https://sifted.eu/feed",
+      "type": "rss",
+      "source_weight": 1.05
+    },
+    {
+      "interest_id": "startups",
+      "name": "Tech.eu",
+      "url": "https://tech.eu/feed/",
+      "type": "rss",
+      "source_weight": 1.05
+    },
+    {
+      "interest_id": "startups",
+      "name": "EU-Startups",
+      "url": "https://www.eu-startups.com/feed/",
+      "type": "rss",
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "startups",
+      "name": "AlleyWatch",
+      "url": "https://www.alleywatch.com/feed/",
+      "type": "rss",
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "startups",
+      "name": "BetaKit",
+      "url": "https://betakit.com/feed/",
+      "type": "rss",
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "startups",
+      "name": "TechCrunch Venture",
+      "url": "https://techcrunch.com/category/venture/feed/",
+      "type": "rss",
+      "source_weight": 1.1
+    },
+    {
+      "interest_id": "startups",
+      "name": "The Next Web",
+      "url": "https://thenextweb.com/feed",
+      "type": "rss",
+      "source_weight": 1.05
+    },
+    {
+      "interest_id": "startups",
+      "name": "SaaStr",
+      "url": "https://www.saastr.com/feed/",
+      "type": "rss",
+      "exclude_title_keywords": [
+        "podcast",
+        "webinar",
+        "sponsored"
+      ],
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "ux-design",
+      "name": "Smashing Magazine",
+      "url": "https://www.smashingmagazine.com/feed/",
+      "type": "rss",
+      "source_weight": 1.05
+    },
+    {
+      "interest_id": "ux-design",
+      "name": "Nielsen Norman Group",
+      "url": "https://www.nngroup.com/feed/rss/",
+      "type": "rss",
+      "source_weight": 1.1
+    },
+    {
+      "interest_id": "ux-design",
+      "name": "Design Milk",
+      "url": "https://design-milk.com/feed/",
+      "type": "rss",
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "ux-design",
+      "name": "Core77",
+      "url": "https://www.core77.com/blog/rss.xml",
+      "type": "rss",
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "ux-design",
+      "name": "Creative Bloq",
+      "url": "https://www.creativebloq.com/feeds.xml",
+      "type": "rss",
+      "exclude_title_keywords": [
+        "giveaway",
+        "discount",
+        "coupon"
+      ],
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "tech",
+      "name": "Engadget",
+      "url": "https://www.engadget.com/rss.xml",
+      "type": "rss",
+      "source_weight": 1.1
+    },
+    {
+      "interest_id": "tech",
+      "name": "Gizmodo",
+      "url": "https://gizmodo.com/feed",
+      "type": "rss",
+      "source_weight": 1.05,
+      "title_keywords": [
+        "ai",
+        "apple",
+        "google",
+        "microsoft",
+        "meta",
+        "amazon",
+        "nvidia",
+        "chip",
+        "chips",
+        "robot",
+        "robots",
+        "phone",
+        "phones",
+        "app",
+        "apps",
+        "software",
+        "security",
+        "privacy",
+        "data center",
+        "electric vehicle",
+        "tesla",
+        "spacex",
+        "satellite",
+        "openai",
+        "anthropic",
+        "iphone",
+        "ipad",
+        "android",
+        "samsung",
+        "pixel",
+        "playstation",
+        "nintendo"
+      ]
+    },
+    {
+      "interest_id": "tech",
+      "name": "Tom's Hardware",
+      "url": "https://www.tomshardware.com/feeds/all",
+      "type": "rss",
+      "source_weight": 1.05
+    },
+    {
+      "interest_id": "tech",
+      "name": "MacRumors",
+      "url": "https://feeds.macrumors.com/MacRumors-All",
+      "type": "rss",
+      "source_weight": 1.1
+    },
+    {
+      "interest_id": "tech",
+      "name": "CNET News",
+      "url": "https://www.cnet.com/rss/news/",
+      "type": "rss",
+      "source_weight": 1.05
+    },
+    {
+      "interest_id": "startups",
+      "name": "Startup Daily",
+      "url": "https://www.startupdaily.net/feed/",
+      "type": "rss",
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "startups",
+      "name": "e27",
+      "url": "https://e27.co/feed/",
+      "type": "rss",
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "startups",
+      "name": "TechNode",
+      "url": "https://technode.com/feed/",
+      "type": "rss",
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "startups",
+      "name": "The Recursive",
+      "url": "https://therecursive.com/feed/",
+      "type": "rss",
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "startups",
+      "name": "UKTN",
+      "url": "https://www.uktech.news/feed",
+      "type": "rss",
+      "source_weight": 1.0
+    },
+    {
+      "interest_id": "ux-design",
+      "name": "Webdesigner Depot",
+      "url": "https://www.webdesignerdepot.com/feed/",
+      "type": "rss",
       "source_weight": 1.0
     }
   ]
