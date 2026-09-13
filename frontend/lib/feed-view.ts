@@ -155,8 +155,11 @@ const getMonthlyReach = unstable_cache(
 
 export function thumb(url?: string | null): string | null {
   if (!url || typeof url !== 'string' || url.length < 10) return null;
-  if (url.includes('placeholder') || url.includes('default')) return null;
+  if (url.includes('placeholder')) return null;
   if (!/^https?:\/\//.test(url)) return null;
+  // YouTube stills are named ...default.jpg (hqdefault, maxresdefault), so only
+  // reject "default" when it is a whole token in the path or filename.
+  if (/(^|[\/_.=-])default([\/_.=-]|$)/i.test(url)) return null;
   return url;
 }
 

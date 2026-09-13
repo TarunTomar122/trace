@@ -80,7 +80,6 @@ export interface PulseItem {
 interface Profile {
   name: string;
   email: string;
-  role: string;
   interests: string[];
 }
 
@@ -102,28 +101,9 @@ const CAT_ICONS: Record<string, LucideIcon> = {
   startups: Rocket,
 };
 
-export const ROLE_LABELS: Record<string, string> = {
-  engineer: 'Engineer',
-  designer: 'Designer',
-  founder: 'Founder',
-  pm: 'Product',
-  investor: 'Investor',
-  student: 'Student',
-};
-
 export const ALL_INTERESTS = ['ai', 'markets', 'ux-design', 'engineering', 'tech', 'startups', 'security', 'open-source', 'policy'];
 const FREE_LIMIT_SIGNED_OUT = 4;
 const FREE_LIMIT_SIGNED_IN = 7;
-
-function mapRole(r?: string | null): string {
-  const s = (r || '').toLowerCase();
-  if (s.includes('founder')) return 'founder';
-  if (s.includes('design')) return 'designer';
-  if (s.includes('product')) return 'pm';
-  if (s.includes('invest')) return 'investor';
-  if (s.includes('student') || s.includes('learn')) return 'student';
-  return 'engineer';
-}
 
 function renderBold(text: string): React.ReactNode {
   const parts = text.split('**');
@@ -427,7 +407,7 @@ export default function FeedApp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proReturnPending, authLoading, user, authProfile]);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [profile, setProfile] = useState<Profile>({ name: '', email: '', role: 'engineer', interests: [] });
+  const [profile, setProfile] = useState<Profile>({ name: '', email: '', interests: [] });
   const [savedProfile, setSavedProfile] = useState<Profile>(profile);
   const [savingProfile, setSavingProfile] = useState(false);
   const [promoOpen, setPromoOpen] = useState(false);
@@ -508,7 +488,6 @@ export default function FeedApp({
     const hydrated = {
       name: user.displayName || authProfile?.name || 'Reader',
       email: user.email || '',
-      role: mapRole(authProfile?.role),
       interests: (authProfile?.interests as string[]) || [],
     };
     setProfile(hydrated);
@@ -573,7 +552,7 @@ export default function FeedApp({
     if (burstTimer.current) clearTimeout(burstTimer.current);
   }, []);
 
-  // First sign-in: send readers through the role/interests step once.
+  // First sign-in: send readers through the interests step once.
   const onboardRedirected = useRef(false);
   useEffect(() => {
     if (onboardRedirected.current) return;
@@ -725,30 +704,26 @@ export default function FeedApp({
   async function saveProfile() {
     if (!user || savingProfile) return;
     setSavingProfile(true);
-    const roleChanged = profile.role !== savedProfile.role;
     const added = profile.interests.filter((i) => !savedProfile.interests.includes(i));
     const removed = savedProfile.interests.filter((i) => !profile.interests.includes(i));
     try {
-      // store the human-readable role label so mapRole() round-trips on reload
       const response = await fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
         body: JSON.stringify({
-          role: ROLE_LABELS[profile.role] || profile.role,
           interests: profile.interests,
         }),
       });
       if (!response.ok) throw new Error(`Profile save failed (${response.status})`);
       await refreshProfile().catch(() => null);
       setSavedProfile(profile);
-      trackProfileUpdated(['role', 'interests']);
+      trackProfileUpdated(['interests']);
       const parts: string[] = [];
-      if (roleChanged) parts.push(`role → ${ROLE_LABELS[profile.role] || profile.role}`);
       if (added.length) parts.push(`+${added.length} interest${added.length > 1 ? 's' : ''}`);
       if (removed.length) parts.push(`−${removed.length} interest${removed.length > 1 ? 's' : ''}`);
       showToast(parts.length ? `Saved — ${parts.join(', ')} · feed re-ranked` : 'Profile saved — feed re-ranked');
-      setProfileNotice('Saved. Your feed is re-ranked around this — check Home.');
+      setProfileNotice('Saved. Your For You feed is re-ordered around these — check Home.');
     } catch {
       setProfileNotice(null);
       showToast('Could not save profile — try again');
@@ -922,10 +897,9 @@ export default function FeedApp({
   const visible = (() => {
     const list = tab === 'all' ? [...stories] : stories.filter((s) => s.cat === tab);
     if (sortMode === 'recent') return list.sort(byRecent);
-    // For you: coverage order re-ranked by saved interests + role.
+    // For you: coverage order re-ranked by saved interests.
     return rankStoriesForProfile(list, {
       interests: savedProfile.interests,
-      role: savedProfile.role,
     });
   })();
   // Older batches shown after the ranked list, narrowed to the active tab.
@@ -2240,7 +2214,7 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
   dailyOn?: boolean; onToggleDaily?: () => void;
 }) {
   const [cancelOpen, setCancelOpen] = useState(false);
-  const bio = `${ROLE_LABELS[profile.role] || 'Builder'} following ${profile.interests.length} topics. ${storyCount} stories ranked today.`;
+  const bio = `Following ${profile.interests.length} topics. ${storyCount} stories ranked today.`;
 
   function update(next: Profile) {
     onEdit?.();
@@ -2308,17 +2282,6 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
         </div>
 
         <div className="profile-section">
-          <h2 className="section-label">Your role</h2>
-          <div className="chip-row">
-            {Object.entries(ROLE_LABELS).map(([id, label]) => (
-              <button key={id} className={`pick${profile.role === id ? ' on' : ''}`} onClick={() => update({ ...profile, role: id })}>
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="profile-section">
           <h2 className="section-label">Your interests</h2>
           <div className="chip-row">
             {ALL_INTERESTS.map((t) => (
@@ -2328,7 +2291,7 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
             ))}
           </div>
           <p className={`section-hint${dirty ? ' unsaved' : ''}`}>
-            {dirty ? 'Unsaved changes — tap Save changes above.' : 'Your feed re-ranks around these right away.'}
+            {dirty ? 'Unsaved changes — tap Save changes above.' : 'Used only to order your For You feed — nothing else. Changes re-rank right away.'}
           </p>
         </div>
 

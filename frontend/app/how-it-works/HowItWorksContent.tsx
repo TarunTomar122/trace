@@ -55,7 +55,7 @@ const FAQS = [
   },
   {
     q: "How does personalization work?",
-    a: "Set your role and interests in your profile and tomorrow's feed is ranked around them. No black box: the same transparent ranking, weighted to your topics.",
+    a: "Pick your interests in your profile and your For You feed is ordered around them — they only change ordering, nothing else. No black box: the same transparent ranking, weighted to your topics.",
   },
   {
     q: "Is there an app or email version?",

@@ -30,7 +30,7 @@ const HOW_IT_WORKS = [
   },
   {
     title: 'Make it yours',
-    body: 'Your role and interests decide what appears first, in what order, and what gets skipped. Every morning, ranked for you.',
+    body: 'Pick the topics you care about and your For You feed re-orders around them. Every morning, ranked for you.',
   },
 ];
 
@@ -83,11 +83,11 @@ export const LANDING_FAQ = [
   },
   {
     q: 'How is this different from a news aggregator?',
-    a: 'Aggregators hand you a firehose and make ranking your job. Trace hands you the stories that mattered, grouped across outlets, summarized with key points, and ranked for your role. You open it, you read it, you are caught up in under 10 minutes.',
+    a: 'Aggregators hand you a firehose and make ranking your job. Trace hands you the stories that mattered, grouped across outlets, summarized with key points, and ranked around your topics. You open it, you read it, you are caught up in under 10 minutes.',
   },
   {
     q: 'How does personalization work?',
-    a: 'Set your role and interests in your profile and your feed re-ranks around them right away: an engineer sees releases and tooling first, a founder sees markets and launches. Same transparent ranking, weighted to your topics. No engagement bait, no outrage optimization.',
+    a: 'Pick your interests in your profile and your For You feed re-orders around them right away — they only change ordering, nothing else. Same transparent ranking, weighted to your topics. No engagement bait, no outrage optimization.',
   },
   {
     q: 'What is Pulse?',

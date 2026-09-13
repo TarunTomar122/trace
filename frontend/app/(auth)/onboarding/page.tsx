@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { ALL_INTERESTS, ROLE_LABELS } from '@/components/feed-v2/FeedApp';
+import { ALL_INTERESTS } from '@/components/feed-v2/FeedApp';
 
 const CAT_LABELS: Record<string, string> = {
   ai: 'AI',
@@ -17,20 +17,9 @@ const CAT_LABELS: Record<string, string> = {
   policy: 'Policy',
 };
 
-function mapRole(r?: string | null): string {
-  const s = (r || '').toLowerCase();
-  if (s.includes('founder')) return 'founder';
-  if (s.includes('design')) return 'designer';
-  if (s.includes('product')) return 'pm';
-  if (s.includes('invest')) return 'investor';
-  if (s.includes('student') || s.includes('learn')) return 'student';
-  return 'engineer';
-}
-
 export default function OnboardingPage() {
   const { user, profile, profileResolved, refreshProfile } = useAuth();
   const router = useRouter();
-  const [role, setRole] = useState('engineer');
   const [interests, setInterests] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +28,6 @@ export default function OnboardingPage() {
   useEffect(() => {
     if (hydrated || !profileResolved) return;
     if (profile) {
-      setRole(mapRole(profile.role));
       setInterests(Array.isArray(profile.interests) ? (profile.interests as string[]).filter((i) => ALL_INTERESTS.includes(i)) : []);
     }
     setHydrated(true);
@@ -59,7 +47,6 @@ export default function OnboardingPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
         body: JSON.stringify({
-          role: ROLE_LABELS[role] || role,
           interests,
           onboarded: true,
           onboardedAt: new Date().toISOString(),
@@ -79,19 +66,8 @@ export default function OnboardingPage() {
       <style>{css}</style>
       <div className="ob-card">
         <p className="ob-kicker">Welcome to Trace</p>
-        <h1 className="ob-title">Two picks and your feed is yours.</h1>
-        <p className="ob-sub">Your role and interests decide what floats to the top. You can change them anytime from Profile.</p>
-
-        <section className="ob-section">
-          <h2 className="ob-label">Your role</h2>
-          <div className="ob-chips">
-            {Object.entries(ROLE_LABELS).map(([id, label]) => (
-              <button key={id} className={`ob-chip${role === id ? ' on' : ''}`} onClick={() => setRole(id)} aria-pressed={role === id}>
-                {label}
-              </button>
-            ))}
-          </div>
-        </section>
+        <h1 className="ob-title">Pick a few topics and your feed is yours.</h1>
+        <p className="ob-sub">Interests only order your For You feed — they don&apos;t hide stories or change what we email you. You can change them anytime from Profile.</p>
 
         <section className="ob-section">
           <h2 className="ob-label">Interests <span className="ob-optional">pick any</span></h2>
@@ -102,6 +78,7 @@ export default function OnboardingPage() {
               </button>
             ))}
           </div>
+          <p className="ob-hint">These only re-order your For You feed. Nothing else.</p>
         </section>
 
         {error ? <p className="ob-error" role="alert">{error}</p> : null}
@@ -136,6 +113,7 @@ const css = `
 .ob-section { margin-bottom: 24px; }
 .ob-label { margin: 0 0 12px; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #536471; }
 .ob-optional { font-weight: 500; letter-spacing: 0; text-transform: none; color: #71767b; margin-left: 6px; }
+.ob-hint { margin: 12px 0 0; font-size: 13.5px; line-height: 1.5; color: #71767b; }
 .ob-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .ob-chip {
   padding: 10px 16px; border-radius: 9999px; border: 1px solid #eff3f4;

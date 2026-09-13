@@ -172,7 +172,10 @@ export function isValidThumbnail(url?: string | null): boolean {
   const v = url.trim().toLowerCase();
   if (!v.startsWith('http://') && !v.startsWith('https://')) return false;
   if (v.endsWith('.svg')) return false;
-  if (v.includes('placeholder') || v.includes('ui-avatars.com') || v.includes('default')) return false;
+  if (v.includes('placeholder') || v.includes('ui-avatars.com')) return false;
+  // YouTube stills are named ...default.jpg (hqdefault, maxresdefault), so only
+  // reject "default" when it is a whole token in the path or filename.
+  if (/(^|[\/_.=-])default([\/_.=-]|$)/.test(v)) return false;
   if (v.length < 10) return false;
   return true;
 }
