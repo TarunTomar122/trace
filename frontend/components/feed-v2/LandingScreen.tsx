@@ -280,6 +280,30 @@ export default async function LandingScreen() {
         </div>
       </section>
 
+      <section className="section discovery-links" aria-labelledby="explore-trace-title">
+        <p className="kicker">Explore the workflow</p>
+        <h2 className="section-title" id="explore-trace-title">Start with the problem you are trying to solve.</h2>
+        <p className="section-sub">Practical guides for choosing a news workflow, reducing reading backlog, and staying current with less noise.</p>
+        <div className="discovery-grid">
+          <Link href="/solutions" className="discovery-card">
+            <strong>Solutions</strong>
+            <span>Find a better workflow for information overload and daily briefings.</span>
+          </Link>
+          <Link href="/use-cases" className="discovery-card">
+            <strong>Use cases</strong>
+            <span>See how founders, developers, PMs, and investors use Trace.</span>
+          </Link>
+          <Link href="/compare" className="discovery-card">
+            <strong>Compare tools</strong>
+            <span>Understand the trade-offs between Trace, RSS readers, and news apps.</span>
+          </Link>
+          <Link href="/blog" className="discovery-card">
+            <strong>Guides</strong>
+            <span>Read practical advice on tech reading, AI tools, and information diets.</span>
+          </Link>
+        </div>
+      </section>
+
       <section className="final-cta">
         <h2 className="hero-title" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)' }}>
           Tomorrow morning, be the person who already knows.
@@ -403,7 +427,15 @@ const css = `
 .lp .faq-item summary:hover { background: var(--hover); }
 .lp .faq-item p { margin: 0; padding: 0 20px 18px; font-size: 15px; line-height: 1.65; color: var(--text-2); }
 
-.lp .final-cta { max-width: 760px; margin: 0 auto; padding: 40px 20px 72px; text-align: center; }
+.lp .discovery-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 24px; }
+.discovery-card { display: flex; flex-direction: column; gap: 8px; padding: 20px; border: 1px solid var(--line); border-radius: 14px; color: var(--ink); text-decoration: none; transition: border-color 160ms ease, transform 160ms ease; }
+.discovery-card:hover { border-color: var(--blue); transform: translateY(-2px); }
+.discovery-card strong { font-size: 16px; }
+.discovery-card span { color: var(--text-2); font-size: 14px; line-height: 1.55; }
+@media (max-width: 760px) { .discovery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .discovery-grid { grid-template-columns: 1fr; } }
+
+.final-cta { max-width: 760px; margin: 0 auto; padding: 40px 20px 72px; text-align: center; }
 .lp .final-cta .hero-ctas { margin-top: 26px; }
 
 .lp .footer { border-top: 1px solid var(--line); }
