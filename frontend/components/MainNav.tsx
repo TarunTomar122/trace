@@ -106,7 +106,7 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
               {user ? (
                 <div className="flex items-center gap-3">
                   <Link
-                    href="/profile"
+                    href="/feed?tab=profile"
                     className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
                     {user.photoURL && (
@@ -138,7 +138,7 @@ export default function MainNav({ showBanner = false }: MainNavProps) {
             <div className="md:hidden flex items-center gap-2">
               {user ? (
                 <Link
-                  href="/profile"
+                  href="/feed?tab=profile"
                   className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                 >
                   {user.photoURL && (

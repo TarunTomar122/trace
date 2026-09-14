@@ -47,7 +47,7 @@ export default function Header({
 
           <div className="flex items-center gap-3">
             {user && (
-              <Link href="/profile" className="p-1">
+              <Link href="/feed?tab=profile" className="p-1">
                 {user.photoURL ? (
                     <Image src={user.photoURL} alt="Profile" width={32} height={32} className="w-8 h-8 rounded-full" unoptimized />
                 ) : (

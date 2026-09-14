@@ -41,7 +41,7 @@ export default function TraceInsightCard({
       {showCta && (
         <div className="mt-4">
           <Link
-            href="/profile"
+            href="/feed?tab=profile"
             className="inline-flex items-center gap-2 text-xs font-medium text-primary hover:underline"
           >
             Tune your preferences

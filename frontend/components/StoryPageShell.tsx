@@ -60,12 +60,12 @@ export default function StoryPageShell({
             <div className="story-page-header-end">
               {shareButton}
               {user?.photoURL ? (
-                <Link href="/profile" prefetch={false}>
+                <Link href="/feed?tab=profile" prefetch={false}>
                   <img src={user.photoURL} alt="Profile" className="h-8 w-8 rounded-full ring-2 ring-white" />
                 </Link>
               ) : (
                 <Link
-                  href="/profile"
+                  href="/feed?tab=profile"
                   prefetch={false}
                   className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2563eb] text-white shadow-[0_4px_14px_rgba(37,99,235,0.25)]"
                 >
