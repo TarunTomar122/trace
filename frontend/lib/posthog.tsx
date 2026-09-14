@@ -278,6 +278,7 @@ export function trackFeedSubscribeDialogShown(properties?: Record<string, unknow
 }
 
 export const LANDING_CTA_EXPERIMENT_ID = "landing_cta_copy_20260911";
+export const HOMEPAGE_DISCOVERY_EXPERIMENT_ID = "homepage_discovery_links_20260913";
 
 export type LandingCtaAssignment = "control" | "variant";
 
@@ -328,6 +329,22 @@ export function trackBlogFeedWelcomeCta(source: string, campaign?: string) {
 
 export function trackLandingCTAClicked(variant: string, location: string, props?: Record<string, unknown>) {
   posthog.capture("landing_cta_clicked", { variant, location, ...props });
+}
+
+export function trackLandingDiscoveryExposure(link: string) {
+  posthog.capture("landing_discovery_exposure", {
+    experiment_id: HOMEPAGE_DISCOVERY_EXPERIMENT_ID,
+    link,
+    surface: "landing",
+  });
+}
+
+export function trackLandingDiscoveryClick(link: string) {
+  posthog.capture("landing_discovery_clicked", {
+    experiment_id: HOMEPAGE_DISCOVERY_EXPERIMENT_ID,
+    link,
+    surface: "landing",
+  });
 }
 
 export function trackBlogCtaClicked(postSlug: string, location: string, destination: string) {

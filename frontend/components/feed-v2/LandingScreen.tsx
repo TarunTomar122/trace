@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import HomeEditionPreview from '@/app/HomeEditionPreview';
 import LandingCtaLink from '@/app/LandingCtaLink';
+import LandingDiscoveryLink from '@/app/LandingDiscoveryLink';
 import Footer from '@/components/Footer';
 import { adminFirestore } from '@/lib/firebase-admin';
 
@@ -134,7 +135,7 @@ export default async function LandingScreen() {
           <nav className="nav-links">
             <a href="/how-it-works">How it works</a>
             <Link href="/subscribe">Pricing</Link>
-            <a href="/blog">Blog</a>
+            <Link href="/blog">Blog</Link>
             <LandingCtaLink href="/feed" location="nav_signin" className="nav-signin">Sign in</LandingCtaLink>
             <LandingCtaLink href="/feed" location="nav" className="nav-cta">Open the feed</LandingCtaLink>
           </nav>
@@ -285,22 +286,22 @@ export default async function LandingScreen() {
         <h2 className="section-title" id="explore-trace-title">Start with the problem you are trying to solve.</h2>
         <p className="section-sub">Practical guides for choosing a news workflow, reducing reading backlog, and staying current with less noise.</p>
         <div className="discovery-grid">
-          <Link href="/solutions" className="discovery-card">
+          <LandingDiscoveryLink href="/solutions" slug="solutions" className="discovery-card">
             <strong>Solutions</strong>
             <span>Find a better workflow for information overload and daily briefings.</span>
-          </Link>
-          <Link href="/use-cases" className="discovery-card">
+          </LandingDiscoveryLink>
+          <LandingDiscoveryLink href="/use-cases" slug="use-cases" className="discovery-card">
             <strong>Use cases</strong>
             <span>See how founders, developers, PMs, and investors use Trace.</span>
-          </Link>
-          <Link href="/compare" className="discovery-card">
+          </LandingDiscoveryLink>
+          <LandingDiscoveryLink href="/compare" slug="compare" className="discovery-card">
             <strong>Compare tools</strong>
             <span>Understand the trade-offs between Trace, RSS readers, and news apps.</span>
-          </Link>
-          <Link href="/blog" className="discovery-card">
+          </LandingDiscoveryLink>
+          <LandingDiscoveryLink href="/blog" slug="blog" className="discovery-card">
             <strong>Guides</strong>
             <span>Read practical advice on tech reading, AI tools, and information diets.</span>
-          </Link>
+          </LandingDiscoveryLink>
         </div>
       </section>
 
