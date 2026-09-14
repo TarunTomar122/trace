@@ -1280,10 +1280,7 @@ export default function FeedApp({
                     <span className="post-rank">#{s.rank}</span>
                   </div>
                   <h2 className="post-title">{s.title}</h2>
-                  {s.img && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img className="post-img" src={s.img} alt="" loading="lazy" decoding="async" />
-                  )}
+                  <FeedImage src={s.img} className="post-img" />
                   <Actions id={s.id} size={18} marked={marks.has(s.id)} onToggleMark={toggleMark} onShare={share} />
                 </article>
               ))}
@@ -1908,10 +1905,7 @@ function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = fal
         <span className="post-rank">#{rank}</span>
       </div>
       <h2 className="post-title">{story.title}</h2>
-      {story.img && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img className="post-img" src={story.img} alt="" loading="lazy" decoding="async" />
-      )}
+      <FeedImage src={story.img} className="post-img" />
       <Actions id={story.id} size={18} marked={marked} onToggleMark={onToggleMark} onShare={onShare} burst={burst} />
     </article>
   );
@@ -1926,6 +1920,28 @@ function EmptyFeed({ title, sub, onRetry, retryLabel = 'Retry' }: {
       <p className="empty-sub">{sub}</p>
       <button className="empty-retry" onClick={onRetry}>{retryLabel}</button>
     </div>
+  );
+}
+
+/** Feed image: loads without a referer (many outlets 403 on hotlinks),
+ * fades in when ready, and collapses entirely when the URL is dead so a
+ * broken thumbnail never leaves an empty block in the card. */
+function FeedImage({ src, className, alt = '' }: { src?: string | null; className: string; alt?: string }) {
+  const [status, setStatus] = useState<'loading' | 'ok' | 'failed'>('loading');
+  if (!src || status === 'failed') return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      className={className}
+      src={src}
+      alt={alt}
+      loading="lazy"
+      decoding="async"
+      referrerPolicy="no-referrer"
+      data-status={status}
+      onLoad={() => setStatus('ok')}
+      onError={() => setStatus('failed')}
+    />
   );
 }
 
@@ -2026,10 +2042,7 @@ function PulseFeed({ items, title, mode, onOpen, marks, toggleMark, share }: {
               )}
             </h2>
             {mode === 'inline' && (t.sum || t.sub) ? <p className="post-desc">{t.sum || t.sub}</p> : null}
-            {t.img && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img className="post-img" src={t.img} alt="" loading="lazy" decoding="async" />
-            )}
+            <FeedImage src={t.img} className="post-img" />
             <Actions id={t.id} size={18} marked={marks.has(t.id)} onToggleMark={toggleMark} onShare={share} shareKind="pulse" />
           </article>
         ))}
@@ -2056,10 +2069,7 @@ function PulseDetail({ item, onBack, onShare, marked, toggleMark }: { item: Puls
           {item.signal && <span className="signal">{item.signal}</span>}
           <span className="post-spacer" />
         </div>
-        {item.img && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img className="detail-img" src={item.img} alt="" />
-        )}
+        <FeedImage src={item.img} className="detail-img" />
         <h1 className="detail-title">{item.title}</h1>
         {bodyParagraphs(item.sum).map((para, pi) => (
           <p key={pi} className="detail-body" style={pi > 0 ? { marginTop: 14 } : undefined}>{renderBold(para)}</p>
@@ -2092,10 +2102,7 @@ function Detail({ story, onBack, onShare, marked, toggleMark }: { story: FeedSto
           <span className="post-rank">#{story.rank}</span>
         </div>
         <h1 className="detail-title">{story.title}</h1>
-        {story.img && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img className="detail-img" src={story.img} alt="" />
-        )}
+        <FeedImage src={story.img} className="detail-img" />
         {bodyParagraphs(story.body).map((para, pi) => (
           <p key={pi} className="detail-body" style={pi > 0 ? { marginTop: 14 } : undefined}>{renderBold(para)}</p>
         ))}
@@ -2704,6 +2711,19 @@ const css = `
   width: 100%; aspect-ratio: 16 / 10; max-height: 510px; object-fit: cover;
   border-radius: 16px; margin: 10px 0 6px; display: block;
   background: var(--hover);
+}
+.xw .post-img[data-status='loading'],
+.xw .detail-img[data-status='loading'] {
+  background: linear-gradient(100deg, var(--hover) 40%, #eef3f5 50%, var(--hover) 60%);
+  background-size: 200% 100%;
+  animation: img-shimmer 1.2s linear infinite;
+}
+.xw .post-img[data-status='ok'],
+.xw .detail-img[data-status='ok'] { animation: img-in 260ms var(--ease-smooth-out); }
+@keyframes img-shimmer { to { background-position: -200% 0; } }
+@keyframes img-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .xw .post-img, .xw .detail-img { animation: none !important; }
 }
 .xw .post-sources { margin: 8px 0 0; font-size: 13px; line-height: 16px; color: var(--text-3); }
 .xw .post-sum { margin: 6px 0 0; font-size: 14px; line-height: 20px; color: var(--text-2); }

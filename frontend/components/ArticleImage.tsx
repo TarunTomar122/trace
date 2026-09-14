@@ -68,6 +68,7 @@ export function ArticleImage({
       {...props}
       src={src}
       alt={alt}
+      referrerPolicy="no-referrer"
       onLoad={onLoad}
       onError={onError}
     />
