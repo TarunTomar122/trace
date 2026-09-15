@@ -48,6 +48,8 @@ function normalizeText(value?: string | null): string {
   return (value || '').replace(/\s+/g, ' ').trim()
 }
 
+// Only emit lastModified when we have a source-backed content date. A deployment
+// timestamp on every URL makes the whole sitemap look freshly changed every day.
 function isIndexableArticle(candidate: SitemapArticleCandidate): boolean {
   const title = normalizeText(candidate.title).toLowerCase()
   const shortArticle = candidate.summary?.short_article
@@ -87,7 +89,6 @@ async function getPublicArticlePages(baseUrl: string): Promise<MetadataRoute.Sit
         const id = `${pool.prefix}_${doc.id}`
         pages.push({
           url: `${baseUrl}/articles/${id}`,
-          lastModified: new Date(),
           changeFrequency: 'weekly',
           priority: 0.7,
         })
@@ -110,101 +111,86 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
-      lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 1,
     },
     {
       url: `${baseUrl}/compare`,
-      lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.9,
     },
     {
       url: `${baseUrl}/solutions`,
-      lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.9,
     },
     {
       url: `${baseUrl}/use-cases`,
-      lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.9,
     },
     {
       url: `${baseUrl}/resources`,
-      lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.85,
     },
     {
       url: `${baseUrl}/agents`,
-      lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.9,
     },
     {
       url: `${baseUrl}/newsletters`,
-      lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.85,
     },
     {
       url: `${baseUrl}/how-it-works`,
-      lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.8,
     },
     {
       url: `${baseUrl}/privacy-policy`,
-      lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.5,
     },
     {
       url: `${baseUrl}/terms`,
-      lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.5,
     },
     {
       url: `${baseUrl}/contact`,
-      lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.5,
     },
     {
       url: `${baseUrl}/delete-account`,
-      lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.5,
     },
     {
       url: `${baseUrl}/blog`,
-      lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
       url: `${baseUrl}/tools`,
-      lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.7,
     },
   ];
 
   const blogCategoryArchives: MetadataRoute.Sitemap = [
-    { url: `${baseUrl}/blog/category/comparisons`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.8 },
-    { url: `${baseUrl}/blog/category/guides`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.8 },
-    { url: `${baseUrl}/blog/category/ai-tools`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.8 },
-    { url: `${baseUrl}/blog/category/research`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.8 },
+    { url: `${baseUrl}/blog/category/comparisons`, changeFrequency: 'weekly' as const, priority: 0.8 },
+    { url: `${baseUrl}/blog/category/guides`, changeFrequency: 'weekly' as const, priority: 0.8 },
+    { url: `${baseUrl}/blog/category/ai-tools`, changeFrequency: 'weekly' as const, priority: 0.8 },
+    { url: `${baseUrl}/blog/category/research`, changeFrequency: 'weekly' as const, priority: 0.8 },
   ];
 
   const blogPages: MetadataRoute.Sitemap = [
     ...blogPosts.map((post) => ({
       url: `${baseUrl}/blog/${post.slug}`,
-      lastModified: new Date(),
       changeFrequency: 'monthly' as const,
       priority: 0.7,
     })),
@@ -221,28 +207,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const compareDetailPages: MetadataRoute.Sitemap = comparePages.map((page) => ({
     url: `${baseUrl}/compare/${page.slug}`,
-    lastModified: new Date(),
     changeFrequency: 'weekly' as const,
     priority: 0.72,
   }));
 
   const solutionsDetailPages: MetadataRoute.Sitemap = solutionsContent.map((page) => ({
     url: `${baseUrl}/solutions/${page.slug}`,
-    lastModified: new Date(),
     changeFrequency: 'weekly' as const,
     priority: 0.72,
   }));
 
   const useCasesDetailPages: MetadataRoute.Sitemap = useCasesContent.map((page) => ({
     url: `${baseUrl}/use-cases/${page.slug}`,
-    lastModified: new Date(),
     changeFrequency: 'weekly' as const,
     priority: 0.72,
   }));
 
   const newslettersDetailPages: MetadataRoute.Sitemap = newslettersContent.map((page) => ({
     url: `${baseUrl}/newsletters/${page.slug}`,
-    lastModified: new Date(),
     changeFrequency: 'weekly' as const,
     priority: 0.72,
   }));
