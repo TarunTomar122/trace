@@ -76,7 +76,9 @@ Actions keeps push notifications plus manual/replay workflows.
   Tech adds Engadget, Gizmodo, Tom's Hardware, MacRumors, CNET News.
 - Cross-source quality filters drop entertainment/culture items, investment
   advice/listicles ("Buy These 8 Stocks"), and finance-brand blogs from any
-  lane.
+  lane. Video/podcast player pages are skipped at ingest, and only items with
+  a usable summary enter topic clustering, so a failed summary can no longer
+  leak a story into its source's lane (a Bloomberg video in Markets).
 - 22 markets sources (CNBC Markets/Investing/US Markets/Business, Bloomberg
   Technology, CNBC Top News/Technology, WIRED Business, Semafor, Business
   Insider, Fortune, Quartz, Benzinga, LA Times Business, Time Business,

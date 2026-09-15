@@ -219,6 +219,52 @@ class TrendingSourcePipelineTests(unittest.TestCase):
         self.assertTrue(item["is_active"])
         self.assertLessEqual(len(item["content"]), 10000)
 
+    def test_video_and_podcast_pages_are_filtered(self) -> None:
+        store = MemoryPoolStore()
+        source = {
+            "name": "Video Feed",
+            "url": "https://video.example/feed.xml",
+            "type": "rss",
+            "interest_id": "markets",
+            "source_weight": 1.0,
+        }
+        config = {"max_age_hours": 12, "discovery": {"enabled": False}, "sources": [source]}
+
+        def _fetch(url: str, limit: int) -> ExtractResult:
+            del limit
+            return ExtractResult(
+                source_url=url,
+                source_type="rss",
+                articles=[
+                    {
+                        "url": "https://video.example/news/videos/2026/09/agentic-ai",
+                        "title": "Scientist on safety issues with agentic AI",
+                        "published_date": "2026-07-23T18:40:38+00:00",
+                        "og_image": "",
+                    },
+                    {
+                        "url": "https://video.example/posts/real-story",
+                        "title": "Real market story",
+                        "published_date": "2026-07-23T18:40:38+00:00",
+                        "og_image": "",
+                    },
+                ],
+            )
+
+        with (
+            patch("v3.build_trending.fetch_article_links", side_effect=_fetch),
+            patch(
+                "v3.build_trending.fetch_content",
+                return_value={"content": "Substantive content. " * 40, "image": "", "source": "http"},
+            ),
+        ):
+            stats = refresh_pool(store, config, limit_per_source=5)
+
+        self.assertEqual(stats["new_items"], 1)
+        self.assertEqual(stats["filtered"], 1)
+        self.assertIn("https://video.example/posts/real-story", store.items)
+        self.assertNotIn("https://video.example/news/videos/2026/09/agentic-ai", store.items)
+
     def test_second_refresh_is_idempotent(self) -> None:
         store = MemoryPoolStore()
         config = {**self.config, "sources": [self.good_source]}

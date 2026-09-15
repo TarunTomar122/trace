@@ -67,6 +67,17 @@ DEFAULT_YT_LIMIT_PER_TOPIC = 3
 HN_SEARCH_URL = "https://hn.algolia.com/api/v1/search_by_date"
 HN_TIMEOUT = 20
 YT_TIMEOUT = 15
+# Pages that are players, not articles: they summarize poorly and would
+# otherwise fall back to the source's lane tag (e.g. a Bloomberg video in
+# Markets because Bloomberg Technology is a markets source).
+NON_ARTICLE_URL_HINTS = (
+    "/news/videos/",
+    "/videos/",
+    "/video/",
+    "/podcasts/",
+    "/podcast/",
+)
+
 PROMO_TITLE_KEYWORDS = (
     "deal",
     "deals",
@@ -2387,6 +2398,11 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
                     stats["filtered"] += 1
                 continue
 
+            if any(hint in url for hint in NON_ARTICLE_URL_HINTS):
+                with stats_lock:
+                    stats["filtered"] += 1
+                continue
+
             if url in existing_urls:
                 with stats_lock:
                     stats["skipped"] += 1
@@ -2637,6 +2653,14 @@ def build_global_feed(
         feed_type="trending", max_workers=8,
     )
     summary_map = presummary.get("summary_map", {}) or {}
+
+    # Items without a usable summary keep their source's lane tag, which then
+    # leaks into the topic lanes (a video in Markets). Only cluster stories we
+    # can actually summarize and render.
+    ranked_for_topics = [
+        item for item in ranked_for_topics
+        if isinstance(summary_map.get(str(item.get("url", ""))), dict)
+    ]
 
     # ------------------------------------------------------------------
     # PHASE 2c: Build feed items
