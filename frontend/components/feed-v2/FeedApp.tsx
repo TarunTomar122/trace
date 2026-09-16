@@ -51,6 +51,7 @@ export interface PromotedTool {
 
 export interface FeedStory {
   id: string;
+  threadId?: string;
   rank: number;
   title: string;
   body: string;
@@ -1276,6 +1277,7 @@ export default function FeedApp({
                     <span className="post-src">{s.source}</span>
                     <span className="post-time">{s.time}</span>
                     {s.sources.length > 1 && <span className="post-group">· {s.sources.length} sources</span>}
+                    {s.threadId && <span className="post-group">· Ongoing story</span>}
                     <span className="post-spacer" />
                     <span className="post-rank">#{s.rank}</span>
                   </div>
@@ -1886,6 +1888,7 @@ function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = fal
           <SourceStack sources={story.sources} />
           <span className="post-time">{story.time}</span>
           {story.sources.length > 1 && <span className="post-group">· {story.sources.length} sources</span>}
+          {story.threadId && <span className="post-group">· Ongoing story</span>}
           <span className="post-spacer" />
           <span className="post-rank">#{rank}</span>
         </div>
@@ -1901,6 +1904,7 @@ function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = fal
         <span className="post-src">{story.source}</span>
         <span className="post-time">{story.time}</span>
         {story.sources.length > 1 && <span className="post-group">· {story.sources.length} sources</span>}
+        {story.threadId && <span className="post-group">· Ongoing story</span>}
         <span className="post-spacer" />
         <span className="post-rank">#{rank}</span>
       </div>
@@ -2098,6 +2102,7 @@ function Detail({ story, onBack, onShare, marked, toggleMark }: { story: FeedSto
           <span className="post-dot">·</span>
           <span className="post-time">{story.time}</span>
           {story.sources.length > 1 && <span className="post-group">· {story.sources.length} sources</span>}
+          {story.threadId && <span className="post-group">· Ongoing story</span>}
           <span className="post-spacer" />
           <span className="post-rank">#{story.rank}</span>
         </div>

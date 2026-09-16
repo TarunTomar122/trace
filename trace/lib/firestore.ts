@@ -148,12 +148,15 @@ function dedupeFeedItems(items: FeedItem[]): FeedItem[] {
 
 function dedupeTrendingTopics(items: TrendingTopic[]): TrendingTopic[] {
   const seen = new Set<string>();
+  const seenUrls = new Set<string>();
   const out: TrendingTopic[] = [];
   for (const topic of items) {
     const titleKey = normalizeTitle(topic.title);
     const key = String(topic.topic_key || topic.id || '').trim() || titleKey;
-    if (!key || seen.has(key)) continue;
+    const urls = (topic.articles || []).map((article) => canonicalUrlKey(article.url)).filter(Boolean);
+    if (!key || seen.has(key) || urls.some((url) => seenUrls.has(url))) continue;
     seen.add(key);
+    urls.forEach((url) => seenUrls.add(url));
     out.push(topic);
   }
   return out;
@@ -331,6 +334,7 @@ export interface TopicTimelineEvent {
 
 export interface TrendingTopic {
   id: string;
+  thread_id?: string;
   topic_key: string;
   title: string;
   summary: string;

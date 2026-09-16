@@ -1,5 +1,5 @@
 """
-V3 Firestore operations.
+V3 storage operations through the configured Firestore-compatible backend.
 
 Collections:
   v3_for_you_pool       — raw articles for "For You" feed
@@ -55,7 +55,7 @@ def _today_ist() -> str:
 
 
 class V3Store:
-    """Thin wrapper over FirestoreStore for v3-specific collections."""
+    """Thin wrapper over the configured backend for v3-specific collections."""
 
     def __init__(self) -> None:
         self._base = FirestoreStore()

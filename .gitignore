@@ -4,6 +4,7 @@ __pycache__/
 *.pyo
 .DS_Store
 .env
+.environment
 *.env.local
 agent/feeds/
 agent/memory/daily/

@@ -389,21 +389,6 @@ type FeedSection =
   | { type: 'pulse_empty' }
   | { type: 'deck_end' };
 
-function getSectionTimestamp(section: FeedSection): number {
-  if (section.type === 'trending') {
-    const t = section.topic;
-    const raw = t.last_updated_at || t.first_seen_at;
-    if (raw) { const ms = new Date(raw).getTime(); if (!isNaN(ms)) return ms; }
-    return 0;
-  }
-  if (section.type === 'foryou') {
-    const raw = section.item.published_date;
-    if (raw) { const ms = new Date(raw).getTime(); if (!isNaN(ms)) return ms; }
-    return 0;
-  }
-  return 0;
-}
-
 function isUserInterested(section: FeedSection, interestSet: Set<string>): boolean {
   const raw = section.type === 'trending'
     ? section.topic.interest_id
@@ -415,12 +400,17 @@ function isUserInterested(section: FeedSection, interestSet: Set<string>): boole
 }
 
 function rankSections(sections: FeedSection[], interestSet: Set<string>): FeedSection[] {
-  return [...sections].sort((a, b) => {
-    const aInterested = isUserInterested(a, interestSet) ? 0 : 1;
-    const bInterested = isUserInterested(b, interestSet) ? 0 : 1;
-    if (aInterested !== bInterested) return aInterested - bInterested;
-    return getSectionTimestamp(b) - getSectionTimestamp(a);
-  });
+  // The backend has already ranked canonical topics. Preserve that order
+  // inside the personalized interested/suggested groups instead of replacing
+  // it with a client-side recency sort.
+  return sections
+    .map((section, index) => ({ section, index }))
+    .sort((a, b) => {
+      const aInterested = isUserInterested(a.section, interestSet) ? 0 : 1;
+      const bInterested = isUserInterested(b.section, interestSet) ? 0 : 1;
+      return aInterested - bInterested || a.index - b.index;
+    })
+    .map(({ section }) => section);
 }
 
 function buildInterleavedFeed(
@@ -476,8 +466,8 @@ function buildInterleavedFeed(
     for (const item of discoverForYou) {
       sections.push({ type: 'foryou', item });
     }
-    // Discover is all non-interested, just sort newest first
-    return [...sections].sort((a, b) => getSectionTimestamp(b) - getSectionTimestamp(a));
+    // Discover keeps the backend order for the suggested stories.
+    return sections;
   }
 
   if (filter !== 'all') {
@@ -498,11 +488,11 @@ function buildInterleavedFeed(
     for (const item of filteredForYou) {
       sections.push({ type: 'foryou', item });
     }
-    // Single interest filter — just sort newest first
-    return [...sections].sort((a, b) => getSectionTimestamp(b) - getSectionTimestamp(a));
+    // Single-interest views keep the backend order for that lane.
+    return sections;
   }
 
-  // "All" filter — interested + newest first, then suggested + newest
+  // "All" filter — interested first, then suggested, preserving backend rank.
   for (const topic of trending) {
     sections.push({ type: 'trending', topic });
   }

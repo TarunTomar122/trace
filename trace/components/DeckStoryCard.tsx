@@ -216,7 +216,7 @@ export function DeckStoryCard({
   }, [shareBusy, shareTitle, shareOverview, shareUrl, thumbnail]);
 
   const metaLine = isTrending && topic
-    ? `${topic.source_count ?? 1} source${(topic.source_count ?? 1) === 1 ? '' : 's'} · ${topic.article_count ?? 1} update${(topic.article_count ?? 1) === 1 ? '' : 's'}`
+    ? `${topic.thread_id ? 'Ongoing story · ' : ''}${topic.source_count ?? 1} source${(topic.source_count ?? 1) === 1 ? '' : 's'} · ${topic.article_count ?? 1} update${(topic.article_count ?? 1) === 1 ? '' : 's'}`
     : (() => {
         const sourceCount = item?.metadata?.source_count || item?.sources?.length || 1;
         const isCurated = item?.metadata?.curated === true || item?.feed_type === 'curated';

@@ -97,6 +97,8 @@ export function dedupeTrendingTopics(items: TrendingTopic[]): TrendingTopic[] {
       String(topic.topic_key || topic.id || '').trim() || normalizeTitle(topic.title || '');
     if (!topicKey || seenTopic.has(topicKey)) continue;
 
+    const topicUrls = (topic.articles || []).map((article) => canonicalUrlKey(article.url)).filter(Boolean);
+    if (topicUrls.some((url) => seenUrl.has(url))) continue;
     const articles = (topic.articles || []).filter((article) => {
       const urlKey = canonicalUrlKey(article.url);
       if (urlKey && seenUrl.has(urlKey)) return false;

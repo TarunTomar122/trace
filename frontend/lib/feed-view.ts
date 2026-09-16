@@ -242,6 +242,7 @@ export function mapTrendingToStories(
 
     topicStories.push({
       id: topic.id || topic.topic_key || `topic-${i}`,
+      threadId: topic.thread_id || undefined,
       rank: i + 1,
       title: topic.title || first.title || '',
       body: topic.summary || first.summary?.short_article?.body || first.description || '',
@@ -287,10 +288,11 @@ export function mapTrendingToStories(
     });
   }
 
-  // Home default (Top mode): most-grouped first, recency breaks ties.
-  // (Client re-sorts for Recent mode / other tabs; stories carry ts.)
+  // The backend has already ranked canonical topics. Keep that order here so
+  // web Top/For-you views do not silently replace the Jev + coverage ranking
+  // with a client-side source-count sort. Recent mode still re-sorts by `ts`
+  // in FeedApp when the reader explicitly asks for it.
   const combined = [...topicStories, ...standalone];
-  combined.sort((a, b) => b.sources.length - a.sources.length || b.ts - a.ts);
   return combined.map((story, i) => ({ ...story, rank: i + 1 }));
 }
 

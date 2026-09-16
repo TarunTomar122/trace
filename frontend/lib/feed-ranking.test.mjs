@@ -54,6 +54,18 @@ test('recency breaks score ties', () => {
   assert.equal(ranked[0].ts, 200);
 });
 
+test('backend rank breaks otherwise equal personalized scores', () => {
+  const ranked = rankStoriesForProfile(
+    [
+      story({ rank: 2, ts: 100 }),
+      story({ rank: 1, ts: 100 }),
+    ],
+    { interests: [], role: null },
+    { diversify: false },
+  );
+  assert.equal(ranked[0].rank, 1);
+});
+
 test('empty profile keeps coverage ordering and does not mutate input', () => {
   const input = [
     story({ cat: 'tech', sources: ['a'] }),

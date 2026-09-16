@@ -298,6 +298,7 @@ export interface TopicTimelineEvent {
 
 export interface TrendingTopic {
   id: string;
+  thread_id?: string;
   topic_key: string;
   title: string;
   summary: string;

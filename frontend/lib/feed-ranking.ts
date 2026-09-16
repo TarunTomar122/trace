@@ -8,6 +8,8 @@ export type SortableStory = {
   cat: string;
   ts: number;
   sources: string[];
+  /** Backend rank used only as a stable tie-break after personalization. */
+  rank?: number;
 };
 
 export type RankOptions = {
@@ -96,6 +98,7 @@ export function rankStoriesForProfile<T extends SortableStory>(
         (a, b) =>
           b.score - a.score ||
           (b.story.ts || 0) - (a.story.ts || 0) ||
+          (a.story.rank || Number.MAX_SAFE_INTEGER) - (b.story.rank || Number.MAX_SAFE_INTEGER) ||
           a.index - b.index,
       )
       .map((row) => row.story);
@@ -114,6 +117,7 @@ export function rankStoriesForProfile<T extends SortableStory>(
       (a, b) =>
         b.score - a.score ||
         (b.story.ts || 0) - (a.story.ts || 0) ||
+        (a.story.rank || Number.MAX_SAFE_INTEGER) - (b.story.rank || Number.MAX_SAFE_INTEGER) ||
         a.index - b.index,
     );
   }

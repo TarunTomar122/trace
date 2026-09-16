@@ -29,32 +29,37 @@ Actions keeps push notifications plus manual/replay workflows.
 - The newsletter sends the **top 7 stories** (no builds/conversations sections).
   Pull on the VPS after changing `v3/flows/send_three_feed_newsletter.py`.
 
-## Topic merge pass
+## Story grouping
 
-- `v3/build_trending.py::_merge_related_topics` runs **one** `gpt-5-mini` call
-  after topic selection to fold same-event clusters that the deterministic
-  token clusterer splits by wording ("slow the pace" vs "pump the brakes").
-- Contract: the model returns a partition (`{"groups": [[1,4],[2,3]]}`) of the
-  deterministic candidate topics (sharing a rare token — a name/brand derived
-  from corpus document frequency, no hardcoded brand list — or two specific
-  tokens). Every applied merge connection must be a candidate edge, so the
-  model can only select merges — never invent one — and 3+-way splits fold in
-  one pass. Multi-topic groups are connected components: a group can chain
-  candidate edges (A-B and B-C merge A and C even without a direct signal).
-  Deterministic token and embedding gates run at apply time (both on fresh and
-  cached verdicts), so a company-only pair like an incident vs an IPO plan is
-  rejected even when the model endorses it.
-- Malformed output (bad JSON, truncated response, unusable groups) is a no-op
-  that keeps the deterministic clusters and is never cached; a valid empty
-  partition is cached. Merged topics recompute `popularity_score` with the
-  native scorer and re-sort, so ranking and enrichment treat them
-  identically.
-- Cached per topic+article fingerprint under `topic_merge:v3:` in
-  `v3_synthesis_cache` — including the validated merge components — so repeated
-  20-minute refreshes are free once the topic set settles (no repeat
-  embeddings). `TRENDING_MERGE_AI=0|false|off|no` disables it;
-  `TRENDING_MERGE_MODEL` overrides the model (default `gpt-5-mini`); 
-  `TRENDING_MERGE_EMBED_MODEL` overrides the embedding model.
+- After summaries are available, `v3/build_trending.py` embeds each article's
+  title and short summary, retrieves the top candidate neighbors, and sends
+  those pairs to TypeSafe Jev in small batches.
+- Jev returns a strict `same_card` probability plus a four-way relationship:
+  `same_concrete_event`, `same_ongoing_event_update`,
+  `related_different_event`, or `unrelated`. A merge requires
+  `same_card >= 0.70` and `same_concrete_event`; ongoing updates remain
+  separate cards and receive a shared `thread_id` for timeline linkage.
+- Exact URL duplicates, freshness, source caps, lane floors, entity caps, and
+  deterministic ranking stay in code. Semantic title dedupe is not used for
+  trending; if embeddings or Jev fail, articles remain singleton topics.
+- Decisions are cached in `v3_synthesis_cache` using a content fingerprint,
+  model names, thresholds, and `jev-story-grouping-v1`. `TYPESAFE_API_KEY` is
+  read from the process environment only. `TRENDING_GROUP_TOP_K`,
+  `TRENDING_GROUP_MAX_PAIRS`, `TRENDING_GROUP_JEV_BATCH`,
+  `TRENDING_GROUP_EMBED_MIN`, and `TRENDING_GROUP_SAME_CARD_MIN` provide
+  conservative operational tuning knobs.
+
+## Story ranking
+
+- Jev scores each canonical topic for importance, novelty, usefulness, general
+  interest, and evidence quality. The final order is source count, article
+  count, weighted Jev score, then the existing popularity and recency signals.
+- Confidence is stored for diagnostics, not used as a default rank gate. If a
+  complete batch cannot be validated, the run keeps the existing deterministic
+  order. Successful results use the same seven-day synthesis cache.
+- Local runs load the gitignored `.environment`; the VPS should expose
+  `TYPESAFE_API_KEY` through its existing chmod-600 `.env` or systemd
+  environment before enabling this code there.
 
 ## Interest depth (markets, tech, startups, design)
 
@@ -102,10 +107,6 @@ Actions keeps push notifications plus manual/replay workflows.
   the quiet weekend; the pool deactivation window follows the same value.
   Keyword filters are whole-word and apostrophe-normalized (so "nfl" does not
   match "Inflation").
-- The topic merge pass uses a title-embedding gate (`TRENDING_MERGE_EMBED_MIN`,
-  default 0.65, model `TRENDING_MERGE_EMBED_MODEL`) for merges that share only
-  a company name: paraphrases like "slow the pace" vs "pump the brakes" score
-  ~0.75 and merge, while an incident vs an IPO plan score ~0.47 and stay split.
 
 ## Coverage enrichment
 
