@@ -922,13 +922,11 @@ export default function FeedApp({
   const visible = (() => {
     const list = tab === 'all' ? [...homeStories] : stories.filter((s) => s.cat === tab);
     if (sortMode === 'recent') return list.sort(byRecent);
-    // For you: coverage re-ranked around saved interests, then interleaved
-    // across lanes with a per-user, per-day seed so it never reads like a
-    // single-topic feed and still varies day to day.
+    // For you: profile lanes and source coverage remain the personalization
+    // signals; the backend Jev rank orders stories inside those lanes.
     return rankStoriesForProfile(
       list,
-      { interests: savedProfile.interests },
-      { seed: `${user?.uid || 'guest'}:${feedDate || 'today'}` },
+      { interests: savedProfile.interests, role: authProfile?.role },
     );
   })();
   // Older batches shown after the ranked list, narrowed to the active tab
@@ -1208,7 +1206,7 @@ export default function FeedApp({
               />
             </>
           ) : (
-            <Detail story={open} onBack={goBack} onShare={share} marked={marks.has(open.id)} toggleMark={toggleMark} />
+            <Detail story={open} displayRank={viewRank.get(open.id)} onBack={goBack} onShare={share} marked={marks.has(open.id)} toggleMark={toggleMark} />
           )
         ) : storyParam ? (
           <EmptyFeed
@@ -2087,7 +2085,7 @@ function PulseDetail({ item, onBack, onShare, marked, toggleMark }: { item: Puls
   );
 }
 
-function Detail({ story, onBack, onShare, marked, toggleMark }: { story: FeedStory; onBack: () => void; onShare: (id: string) => void; marked: boolean; toggleMark: (id: string) => void }) {
+function Detail({ story, displayRank, onBack, onShare, marked, toggleMark }: { story: FeedStory; displayRank?: number; onBack: () => void; onShare: (id: string) => void; marked: boolean; toggleMark: (id: string) => void }) {
   return (
     <>
       <header className="head">
@@ -2104,7 +2102,7 @@ function Detail({ story, onBack, onShare, marked, toggleMark }: { story: FeedSto
           {story.sources.length > 1 && <span className="post-group">· {story.sources.length} sources</span>}
           {story.threadId && <span className="post-group">· Ongoing story</span>}
           <span className="post-spacer" />
-          <span className="post-rank">#{story.rank}</span>
+          <span className="post-rank">#{displayRank ?? story.rank}</span>
         </div>
         <h1 className="detail-title">{story.title}</h1>
         <FeedImage src={story.img} className="detail-img" />

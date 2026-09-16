@@ -13,17 +13,12 @@ export type SortableStory = {
 };
 
 export type RankOptions = {
-  /**
-   * Stable seed (e.g. userId + date). Same seed -> same order, different
-   * seeds -> different lane order and small score jitter, so the feed feels
-   * fresh day to day without churning within a session.
-   */
-  seed?: string;
-  /** Set false for the legacy pure score order. */
+  /** Set false to skip lane interleaving. */
   diversify?: boolean;
 };
 
 export const ROLE_PRIMARY_INTERESTS: Record<string, string[]> = {
+  developer: ['engineering', 'tech', 'ai'],
   engineer: ['engineering', 'tech', 'ai'],
   designer: ['ux-design', 'products'],
   pm: ['products', 'startups', 'markets'],
@@ -44,32 +39,6 @@ export function storyBoost(cat: string, interests: string[], roleInterests: stri
   return roleInterests.includes(cat) ? 2 : 0;
 }
 
-function fnv1a(text: string): number {
-  let hash = 2166136261;
-  for (let i = 0; i < text.length; i += 1) {
-    hash ^= text.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
-function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function shuffleInPlace<T>(items: T[], rand: () => number): void {
-  for (let i = items.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rand() * (i + 1));
-    [items[i], items[j]] = [items[j], items[i]];
-  }
-}
-
 export function rankStoriesForProfile<T extends SortableStory>(
   stories: T[],
   profile: { interests?: string[] | null; role?: string | null },
@@ -80,7 +49,6 @@ export function rankStoriesForProfile<T extends SortableStory>(
     (cat) => !interests.includes(cat),
   );
   const diversify = options.diversify !== false;
-  const rand = diversify && options.seed ? mulberry32(fnv1a(options.seed)) : null;
 
   const rows = stories.map((story, index) => ({
     story,
@@ -88,17 +56,27 @@ export function rankStoriesForProfile<T extends SortableStory>(
     lane: story.cat || 'other',
     score:
       (story.sources?.length || 0) +
-      storyBoost(story.cat, interests, roleInterests) +
-      (rand ? rand() * 0.9 : 0),
+      storyBoost(story.cat, interests, roleInterests),
   }));
+
+  const byRank = (a: (typeof rows)[number], b: (typeof rows)[number]) =>
+    (a.story.rank || Number.MAX_SAFE_INTEGER) - (b.story.rank || Number.MAX_SAFE_INTEGER);
+
+  // Without a profile, “Top” should be the backend Jev order, not a seeded
+  // client shuffle. Coverage and recency remain safe fallbacks for old data.
+  if (interests.length === 0 && roleInterests.length === 0) {
+    return rows
+      .sort((a, b) => byRank(a, b) || b.score - a.score || (b.story.ts || 0) - (a.story.ts || 0) || a.index - b.index)
+      .map((row) => row.story);
+  }
 
   if (!diversify) {
     return rows
       .sort(
         (a, b) =>
           b.score - a.score ||
+          byRank(a, b) ||
           (b.story.ts || 0) - (a.story.ts || 0) ||
-          (a.story.rank || Number.MAX_SAFE_INTEGER) - (b.story.rank || Number.MAX_SAFE_INTEGER) ||
           a.index - b.index,
       )
       .map((row) => row.story);
@@ -106,30 +84,36 @@ export function rankStoriesForProfile<T extends SortableStory>(
 
   const byLane = new Map<string, typeof rows>();
   const laneBest = new Map<string, number>();
+  const laneRank = new Map<string, number>();
   for (const row of rows) {
     const list = byLane.get(row.lane) || [];
     list.push(row);
     byLane.set(row.lane, list);
     laneBest.set(row.lane, Math.max(laneBest.get(row.lane) ?? -Infinity, row.score));
+    laneRank.set(row.lane, Math.min(laneRank.get(row.lane) ?? Number.MAX_SAFE_INTEGER, row.story.rank || Number.MAX_SAFE_INTEGER));
   }
   for (const list of byLane.values()) {
     list.sort(
       (a, b) =>
         b.score - a.score ||
+        byRank(a, b) ||
         (b.story.ts || 0) - (a.story.ts || 0) ||
-        (a.story.rank || Number.MAX_SAFE_INTEGER) - (b.story.rank || Number.MAX_SAFE_INTEGER) ||
         a.index - b.index,
     );
   }
 
-  // Lanes the reader chose come first (seeded order so the lead lane varies),
-  // then role-primary lanes, then every other lane by its best story.
-  const chosenLanes = [...new Set(interests)];
-  if (rand) shuffleInPlace(chosenLanes, rand);
+  // Lanes the reader chose come first, then role-primary lanes, then every
+  // other lane. Coverage chooses the lane; Jev rank breaks coverage ties.
+  const chosenLanes = [...new Set(interests)].sort(
+    (a, b) => (laneBest.get(b) ?? -Infinity) - (laneBest.get(a) ?? -Infinity) ||
+      (laneRank.get(a) ?? Number.MAX_SAFE_INTEGER) - (laneRank.get(b) ?? Number.MAX_SAFE_INTEGER) ||
+      a.localeCompare(b),
+  );
   const tailLanes = [...byLane.keys()]
     .filter((lane) => !chosenLanes.includes(lane) && !roleInterests.includes(lane))
     .sort(
       (a, b) => (laneBest.get(b) ?? -Infinity) - (laneBest.get(a) ?? -Infinity) ||
+        (laneRank.get(a) ?? Number.MAX_SAFE_INTEGER) - (laneRank.get(b) ?? Number.MAX_SAFE_INTEGER) ||
         a.localeCompare(b),
     );
   const laneOrder = [...chosenLanes, ...roleInterests, ...tailLanes];

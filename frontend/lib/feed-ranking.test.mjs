@@ -43,6 +43,15 @@ test('role-primary topics get a smaller boost than explicit interests', () => {
   assert.equal(storyBoost('markets', ['ai'], rolePrimaryInterests('engineer')), 0);
 });
 
+test('developer profiles receive engineering lane priority', () => {
+  const ranked = rankStoriesForProfile(
+    [story({ cat: 'markets', sources: ['a'] }), story({ cat: 'engineering', sources: ['a'] })],
+    { interests: [], role: 'developer' },
+    { diversify: false },
+  );
+  assert.equal(ranked[0].cat, 'engineering');
+});
+
 test('recency breaks score ties', () => {
   const ranked = rankStoriesForProfile(
     [
@@ -109,24 +118,22 @@ test('unselected lanes are interleaved too, not appended in one block', () => {
   );
 });
 
-test('the seed varies lane order but stays stable for the same seed', () => {
+test('profile lane order is deterministic and uses backend rank for ties', () => {
   const input = [
-    story({ cat: 'ai', sources: ['a'] }),
-    story({ cat: 'markets', sources: ['a'] }),
-    story({ cat: 'tech', sources: ['a'] }),
-    story({ cat: 'ux-design', sources: ['a'] }),
-    story({ cat: 'startups', sources: ['a'] }),
+    story({ cat: 'ai', sources: ['a'], rank: 4 }),
+    story({ cat: 'ai', sources: ['a'], rank: 1 }),
+    story({ cat: 'markets', sources: ['a'], rank: 2 }),
   ];
-  const profile = { interests: ['ai', 'markets', 'tech', 'ux-design', 'startups'] };
-  const a1 = rankStoriesForProfile(input, profile, { seed: 'u1:2026-09-13' });
-  const a2 = rankStoriesForProfile(input, profile, { seed: 'u1:2026-09-13' });
-  assert.deepEqual(a1.map((s) => s.cat), a2.map((s) => s.cat));
-  const seeds = new Set(
-    ['a', 'b', 'c', 'd', 'e', 'f'].map((seed) =>
-      rankStoriesForProfile(input, profile, { seed }).map((s) => s.cat).join(','),
-    ),
+  const ranked = rankStoriesForProfile(input, { interests: ['ai', 'markets'] });
+  assert.deepEqual(ranked.map((s) => s.rank), [1, 2, 4]);
+});
+
+test('signed-out Top keeps the backend Jev order', () => {
+  const ranked = rankStoriesForProfile(
+    [story({ rank: 3, sources: ['a', 'b', 'c'] }), story({ rank: 1, sources: ['a'] })],
+    { interests: [], role: null },
   );
-  assert.ok(seeds.size > 1);
+  assert.equal(ranked[0].rank, 1);
 });
 
 test('diversify:false keeps the legacy pure score order', () => {
