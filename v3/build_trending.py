@@ -190,25 +190,27 @@ STRONG_TECH_TERMS = (
 
 # Entity tokens used only for topic diversity/capping.
 # This prevents one company (e.g., Apple) from taking too many topic slots.
-ENTITY_TOPIC_TOKENS = {
-    "apple",
-    "openai",
-    "google",
-    "meta",
-    "microsoft",
-    "amazon",
-    "nvidia",
-    "tesla",
-    "xai",
-    "anthropic",
-    "alibaba",
-    "bytedance",
-    "tiktok",
-    "uber",
-    "netflix",
-    "spacex",
-    "samsung",
-}
+# Named entities are discovered from the corpus, not a hardcoded brand list:
+# a token that appears in only a few of the day's titles is a name/unique word
+# ("Spotify", "Amodei", "H200"), while generic nouns ("music", "launch") show
+# up everywhere. See _document_frequencies / _rare_tokens.
+RARE_TOKEN_MAX_DF = 3
+RARE_TOKEN_SHARE = 0.03
+
+
+def _document_frequencies(items: list[dict[str, Any]]) -> Counter[str]:
+    df: Counter[str] = Counter()
+    for item in items:
+        for token in _topic_tokens(str(item.get("title", "") or "")):
+            df[token] += 1
+    return df
+
+
+def _rare_tokens(df: Counter[str], total: int) -> set[str]:
+    """Tokens rare enough to behave like names: low document frequency."""
+    limit = max(RARE_TOKEN_MAX_DF, int(total * RARE_TOKEN_SHARE))
+    return {token for token, count in df.items() if count <= limit}
+
 
 TOPIC_STOPWORDS = set(DIVERSITY_STOPWORDS) | {
     # Generic news language
@@ -685,7 +687,10 @@ def _topic_tokens_for_item(item: dict[str, Any]) -> set[str]:
     return title_tokens
 
 
-def _cluster_topic_candidates(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _cluster_topic_candidates(
+    items: list[dict[str, Any]],
+    rare_tokens: set[str] | None = None,
+) -> list[dict[str, Any]]:
     """Cluster ranked candidates into tighter topics via token overlap.
 
     Key design decisions:
@@ -697,6 +702,8 @@ def _cluster_topic_candidates(items: list[dict[str, Any]]) -> list[dict[str, Any
       recalculated rather than just accumulating.
     """
     SOFT_STOP = TOPIC_SOFT_STOP
+    if rare_tokens is None:
+        rare_tokens = _rare_tokens(_document_frequencies(items), len(items))
 
     clusters: list[dict[str, Any]] = []
 
@@ -722,16 +729,14 @@ def _cluster_topic_candidates(items: list[dict[str, Any]]) -> list[dict[str, Any
             # Brand / entity overlap is the strongest signal that two titles are
             # about the same story. Without it, require a much tighter token match
             # so broad themes like travel, markets, or policy do not snowball.
-            entity_overlap = shared & ENTITY_TOPIC_TOKENS
-
-            # A shared brand alone is too weak: entity + one generic word like
-            # "AI" merged distinct OpenAI stories. Require either two specific
-            # (>3-char) shared tokens, or an entity plus a second specific one.
+            # Require two specific (>3-char) shared tokens, and when only two
+            # are shared at least one must be a rare token (a name/brand). That
+            # keeps "airport delays"/"trade policy" style generic-noun matches
+            # out while letting a single-brand story join its own cluster.
             specific_shared = {t for t in shared if len(t) >= 4}
-            if entity_overlap:
-                if len(specific_shared) < 2:
-                    continue
-            elif len(specific_shared) < 3:
+            if len(specific_shared) < 2:
+                continue
+            if len(specific_shared) < 3 and not (shared & rare_tokens):
                 continue
 
             score = float(len(shared)) + len(shared) / max(1, len(tokens | consensus))
@@ -770,21 +775,30 @@ TOPIC_SOFT_STOP = {
 }
 
 
-def _merge_candidate_pairs(clusters: list[dict[str, Any]]) -> list[tuple[int, int, set[str]]]:
+def _merge_candidate_pairs(
+    clusters: list[dict[str, Any]],
+    rare_tokens: set[str] | None = None,
+) -> list[tuple[int, int, set[str]]]:
     """Deterministic recall: pairs whose topic titles share a named entity or
     at least two specific tokens. The model only judges these candidates, so
     it can never invent merges between unrelated topics."""
-    title_tokens = [_topic_tokens(_topic_title(c)) for c in clusters]
+    # Cluster tokens (union of member titles) give better recall than the
+    # generated two-word topic titles: two clusters about the same launch can
+    # otherwise share only the brand word and never become candidates.
+    cluster_tokens = [
+        set(c.get("tokens") or set()) - TOPIC_SOFT_STOP for c in clusters
+    ]
+    if rare_tokens is None:
+        all_items = [i for c in clusters for i in (c.get("items") or [])]
+        rare_tokens = _rare_tokens(_document_frequencies(all_items), len(all_items))
     pairs: list[tuple[int, int, set[str]]] = []
     for i, j in itertools.combinations(range(len(clusters)), 2):
-        shared = (title_tokens[i] & title_tokens[j]) - TOPIC_SOFT_STOP
-        entity = shared & ENTITY_TOPIC_TOKENS
+        shared = cluster_tokens[i] & cluster_tokens[j]
         specific = {t for t in shared if len(t) >= 4}
-        # Entity-only pairs stay candidates so paraphrases ("pump the brakes"
-        # vs "slow the pace") reach the model; precision is enforced later by
-        # the component token backstop and the title-embedding gate, which
-        # rejects company-only pairs like an incident vs an IPO plan.
-        if entity or len(specific) >= 2:
+        # A shared rare token (name/brand) is enough to ask the model; it can
+        # only accept, and the component backstop plus embedding gate reject
+        # company-only pairs like an incident vs an IPO plan.
+        if (shared & rare_tokens) or len(specific) >= 2:
             pairs.append((i, j, shared))
     return pairs
 
@@ -1043,6 +1057,7 @@ def _merge_related_topics(
     *,
     complete: Callable[[str], str] | None = None,
     embed: Callable[[list[str]], float | None] | None = None,
+    rare_tokens: set[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Fold same-event topic clusters that the deterministic clusterer split.
 
@@ -1059,7 +1074,7 @@ def _merge_related_topics(
     }:
         return clusters
 
-    pairs = _merge_candidate_pairs(clusters)
+    pairs = _merge_candidate_pairs(clusters, rare_tokens)
     if not pairs:
         return clusters
     candidate_set = {(i, j) for i, j, _shared in pairs}
@@ -1077,7 +1092,7 @@ def _merge_related_topics(
             sort_keys=True,
         ).encode("utf-8")
     ).hexdigest()[:16]
-    cache_key = f"topic_merge:v3:{fingerprint}"
+    cache_key = f"topic_merge:v5:{fingerprint}"
     groups: list[list[int]] | None = None
     cached_components: list[list[int]] | None = None
 
@@ -1823,36 +1838,29 @@ def _build_topic_articles(
     return out
 
 
-_ENTITY_ALIASES = {
-    "iphone": "apple", "ipad": "apple", "ios": "apple", "mac": "apple",
-    "macos": "apple", "airpods": "apple", "ipados": "apple",
-    "galaxy": "samsung", "pixel": "google", "android": "google",
-    "windows": "microsoft", "xbox": "microsoft", "surface": "microsoft",
-    "playstation": "sony", "nintendo": "nintendo",
-}
-
-
-def _cluster_primary_entity(cluster: dict[str, Any]) -> str:
+def _cluster_primary_entity(
+    cluster: dict[str, Any],
+    rare_tokens: set[str] | None = None,
+) -> str:
+    """Key for the per-entity topic cap: the most common rare token (name or
+    brand) across the cluster's titles, discovered from the corpus rather than
+    a hardcoded list."""
     counts: Counter[str] = Counter()
     for item in cluster.get("items", []) or []:
-        title = str(item.get("title", "") or "").lower()
-        if not title:
-            continue
-        words = re.findall(r"[a-z0-9]+", title)
-        for w in words:
-            w = _ENTITY_ALIASES.get(w, w)
-            if w in ENTITY_TOPIC_TOKENS:
-                counts[w] += 1
+        title = str(item.get("title", "") or "")
+        for token in _topic_tokens(title):
+            if rare_tokens is not None and token not in rare_tokens:
+                continue
+            counts[token] += 1
     if counts:
         return counts.most_common(1)[0][0]
-    # Entity-less stories (general markets, macro, economy) must not all share
-    # one bucket: the per-entity topic cap would then cap all of them at two
-    # slots. Cap by their own most distinctive token instead, and give
+    # No rare token: cap by the cluster's own most distinctive token, and give
     # token-less clusters a unique key so each stays independently selectable.
-    consensus: set[str] = cluster.get("consensus_tokens") or set()
-    tokens: set[str] = consensus or set(cluster.get("tokens") or set())
+    tokens: set[str] = set(cluster.get("consensus_tokens") or set()) or set(
+        cluster.get("tokens") or set()
+    )
     specific = sorted(
-        (t for t in tokens if len(t) >= 4 and t not in TOPIC_SOFT_STOP and t not in ENTITY_TOPIC_TOKENS),
+        (t for t in tokens if len(t) >= 4 and t not in TOPIC_SOFT_STOP),
         key=lambda t: (-len(t), t),
     )
     if specific:
@@ -1896,7 +1904,8 @@ def _build_trending_topics_payload(
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    clusters = _cluster_topic_candidates(ranked_items)
+    rare_tokens = _rare_tokens(_document_frequencies(ranked_items), len(ranked_items))
+    clusters = _cluster_topic_candidates(ranked_items, rare_tokens)
     if not clusters:
         return [], {"topics": 0, "overview_generated": 0, "overview_cached": 0}
 
@@ -1936,7 +1945,7 @@ def _build_trending_topics_payload(
     selected_ids: set[int] = set()
 
     def _take(cluster: dict[str, Any]) -> None:
-        entity = _cluster_primary_entity(cluster)
+        entity = _cluster_primary_entity(cluster, rare_tokens)
         entity_counts[entity] += 1
         selected.append(cluster)
         selected_ids.add(id(cluster))
@@ -1950,7 +1959,7 @@ def _build_trending_topics_payload(
                 break
             if _cluster_interest(cluster) != lane or id(cluster) in selected_ids:
                 continue
-            if entity_counts[_cluster_primary_entity(cluster)] >= max_topics_per_entity:
+            if entity_counts[_cluster_primary_entity(cluster, rare_tokens)] >= max_topics_per_entity:
                 continue
             _take(cluster)
             lane_taken += 1
@@ -1961,7 +1970,7 @@ def _build_trending_topics_payload(
             break
         if id(cluster) in selected_ids:
             continue
-        if entity_counts[_cluster_primary_entity(cluster)] >= max_topics_per_entity:
+        if entity_counts[_cluster_primary_entity(cluster, rare_tokens)] >= max_topics_per_entity:
             continue
         _take(cluster)
     selected.sort(
@@ -1969,7 +1978,7 @@ def _build_trending_topics_payload(
         reverse=True,
     )
 
-    selected = _merge_related_topics(store, selected)
+    selected = _merge_related_topics(store, selected, rare_tokens=rare_tokens)
 
     enrich_stats: dict[str, int] = {}
     if enrich:

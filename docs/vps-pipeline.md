@@ -35,7 +35,8 @@ Actions keeps push notifications plus manual/replay workflows.
   after topic selection to fold same-event clusters that the deterministic
   token clusterer splits by wording ("slow the pace" vs "pump the brakes").
 - Contract: the model returns a partition (`{"groups": [[1,4],[2,3]]}`) of the
-  deterministic candidate topics (titles sharing an entity or two specific
+  deterministic candidate topics (sharing a rare token — a name/brand derived
+  from corpus document frequency, no hardcoded brand list — or two specific
   tokens). Every applied merge connection must be a candidate edge, so the
   model can only select merges — never invent one — and 3+-way splits fold in
   one pass. Multi-topic groups are connected components: a group can chain
@@ -76,7 +77,10 @@ Actions keeps push notifications plus manual/replay workflows.
   Tech adds Engadget, Gizmodo, Tom's Hardware, MacRumors, CNET News.
 - Cross-source quality filters drop entertainment/culture items, investment
   advice/listicles ("Buy These 8 Stocks"), and finance-brand blogs from any
-  lane. Video/podcast player pages are skipped at ingest, and only items with
+  lane. Named entities are discovered per run: tokens appearing in only a few
+  of the day's titles (`_rare_tokens`, <=3 or 3% of titles) behave like brands
+  for clustering and merge candidates, so new names never need a whitelist
+  update. Video/podcast player pages are skipped at ingest, and only items with
   a usable summary enter topic clustering, so a failed summary can no longer
   leak a story into its source's lane (a Bloomberg video in Markets).
 - 22 markets sources (CNBC Markets/Investing/US Markets/Business, Bloomberg
