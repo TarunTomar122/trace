@@ -35,6 +35,13 @@ NEWSLETTER_TOP_STORIES = 7
 EDITORIAL_VERSION = "builder_digest_v15"
 EDITORIAL_MODEL = os.getenv("NEWSLETTER_WRITE_MODEL", "gpt-5-mini")
 
+from v3.build_trending import (  # noqa: E402
+    _document_frequencies,
+    _rare_tokens,
+    _topic_tokens,
+)
+
+
 def _today_ist() -> str:
     ist = timezone(timedelta(hours=5, minutes=30))
     return datetime.now(ist).strftime("%Y-%m-%d")
@@ -117,13 +124,26 @@ def _candidate_stories(feed: dict[str, Any]) -> list[dict[str, Any]]:
             candidates.append(story)
             used_urls.add(url)
 
+    # Every article inside a topic is already represented by that topic, so a
+    # flat row for one of them would surface the same event again.
+    topic_urls: set[str] = set()
+    if isinstance(topics, list):
+        for topic in topics:
+            if not isinstance(topic, dict):
+                continue
+            for article in topic.get("articles", []) or []:
+                if isinstance(article, dict):
+                    url = str(article.get("url", "")).strip()
+                    if url:
+                        topic_urls.add(url)
+
     rows = feed.get("trending", [])
     if isinstance(rows, list):
         for row in rows:
             if not isinstance(row, dict) or row.get("interest_id") not in NEWSLETTER_INTERESTS:
                 continue
             url = str(row.get("url", "")).strip()
-            if url and url not in used_urls:
+            if url and url not in used_urls and url not in topic_urls:
                 row = dict(row)
                 row["_coverage"] = coverage.get(url, 1)
                 candidates.append(row)
@@ -140,9 +160,30 @@ def _pick_items(feed: dict[str, Any]) -> list[dict[str, Any]]:
     by_coverage = sorted(
         eligible, key=lambda r: (-int(r.get("_coverage") or 1), eligible.index(r))
     )
+    # Same-event guard: two topics about the same debate (e.g. Zuckerberg/
+    # Huang, Trump/hoax) must not all make the email. A shared rare token
+    # (name/brand) plus a second shared word, or three shared words, is the
+    # same deterministic rule the feed uses for merge candidates.
+    df = _document_frequencies([{"title": r.get("title", "")} for r in eligible])
+    rare = _rare_tokens(df, len(eligible))
+    covered_tokens: list[set[str]] = []
+
     for row in by_coverage:
         url = str(row.get("url", "")).strip()
         if not url or url in used_urls:
+            continue
+        tokens = _topic_tokens(str(row.get("title", "") or ""))
+        duplicate = False
+        # Compare against skipped stories too, so a third angle on an event
+        # already represented (via a skipped second one) is still caught.
+        for prev in covered_tokens:
+            shared = tokens & prev
+            specific = {t for t in shared if len(t) >= 4}
+            if len(specific) >= 3 or ((shared & rare) and len(specific) >= 2):
+                duplicate = True
+                break
+        covered_tokens.append(tokens)
+        if duplicate:
             continue
         selected.append({**row, "newsletter_group": "top_stories"})
         used_urls.add(url)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import unittest
 
+from collections import Counter
 from datetime import datetime, timezone
 
 from v3.build_trending import (
@@ -11,6 +12,7 @@ from v3.build_trending import (
     _effective_max_age_hours,
     _looks_like_entertainment,
     _looks_like_market_blog,
+    _split_incoherent_clusters,
     _topic_tokens_for_item,
 )
 
@@ -61,6 +63,37 @@ class TrendingTopicClusteringTests(unittest.TestCase):
         self.assertTrue(_looks_like_market_blog("Toncoin (TON) Price Prediction 2025, 2026, 2027-2030"))
         self.assertTrue(_looks_like_market_blog("Where Will XRP Be in 3 Years?"))
         self.assertTrue(_looks_like_market_blog("She Inherited Her Father's $400,000 401(k). One Direct Rollover Turned"))
+
+    def test_incoherent_cluster_splits_into_components(self) -> None:
+        # Two unrelated stories that greedy consensus bridged together must
+        # come apart, so a topic never mixes two events.
+        cluster = {
+            "items": [
+                {"title": "Spotify adds toggle for excluding kids music", "metadata": {}},
+                {"title": "KitchenAid mixer ships an illuminated glass bowl", "metadata": {}},
+            ],
+            "tokens": {"spotify", "toggle", "kids", "music", "kitchenaid", "mixer", "glass", "bowl"},
+            "token_counts": Counter(),
+            "consensus_tokens": set(),
+        }
+        rare = {"spotify", "kitchenaid"}
+        out = _split_incoherent_clusters([cluster], rare)
+        self.assertEqual(len(out), 2)
+        self.assertEqual(sum(len(c["items"]) for c in out), 2)
+
+    def test_coherent_cluster_is_kept_whole(self) -> None:
+        cluster = {
+            "items": [
+                {"title": "Spotify adds toggle for excluding kids music", "metadata": {}},
+                {"title": "Spotify launches kids music toggle for parents", "metadata": {}},
+            ],
+            "tokens": {"spotify", "toggle", "kids", "music"},
+            "token_counts": Counter(),
+            "consensus_tokens": set(),
+        }
+        out = _split_incoherent_clusters([cluster], {"spotify"})
+        self.assertEqual(len(out), 1)
+        self.assertEqual(len(out[0]["items"]), 2)
 
     def test_weekend_freshness_window(self) -> None:
         config = {"max_age_hours": 36}

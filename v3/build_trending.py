@@ -775,6 +775,67 @@ TOPIC_SOFT_STOP = {
 }
 
 
+def _split_incoherent_clusters(
+    clusters: list[dict[str, Any]],
+    rare_tokens: set[str],
+) -> list[dict[str, Any]]:
+    """Split clusters into pairwise-connected components.
+
+    Greedy clustering can bridge two events through a shared word (an OpenAI
+    acquisition item landing next to Apple Home camera items), which then
+    produced a topic whose title and first article described different
+    stories. Every surviving cluster is connected by the same predicate used
+    to join items, so no item rides along on a bridge.
+    """
+    out: list[dict[str, Any]] = []
+    for cluster in clusters:
+        items = cluster.get("items") or []
+        if len(items) <= 1:
+            out.append(cluster)
+            continue
+        token_sets = [_topic_tokens_for_item(item) for item in items]
+        parent = list(range(len(items)))
+
+        def find(x: int) -> int:
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+
+        def union(a: int, b: int) -> None:
+            ra, rb = find(a), find(b)
+            if ra != rb:
+                parent[rb] = ra
+
+        for i, j in itertools.combinations(range(len(items)), 2):
+            shared = token_sets[i] & token_sets[j] - TOPIC_SOFT_STOP
+            specific = {t for t in shared if len(t) >= 4}
+            if len(specific) >= 2 and (len(specific) >= 3 or (shared & rare_tokens)):
+                union(i, j)
+
+        components: dict[int, list[int]] = {}
+        for idx in range(len(items)):
+            components.setdefault(find(idx), []).append(idx)
+        if len(components) == 1:
+            out.append(cluster)
+            continue
+        for members in components.values():
+            group_items = [items[idx] for idx in members]
+            token_counts: Counter[str] = Counter()
+            tokens: set[str] = set()
+            for item in group_items:
+                item_tokens = _topic_tokens_for_item(item)
+                tokens.update(item_tokens)
+                token_counts.update(item_tokens)
+            out.append({
+                "items": group_items,
+                "tokens": tokens,
+                "token_counts": token_counts,
+                "consensus_tokens": {t for t, c in token_counts.items() if c >= 2},
+            })
+    return out
+
+
 def _merge_candidate_pairs(
     clusters: list[dict[str, Any]],
     rare_tokens: set[str] | None = None,
@@ -1906,6 +1967,7 @@ def _build_trending_topics_payload(
 
     rare_tokens = _rare_tokens(_document_frequencies(ranked_items), len(ranked_items))
     clusters = _cluster_topic_candidates(ranked_items, rare_tokens)
+    clusters = _split_incoherent_clusters(clusters, rare_tokens)
     if not clusters:
         return [], {"topics": 0, "overview_generated": 0, "overview_cached": 0}
 
