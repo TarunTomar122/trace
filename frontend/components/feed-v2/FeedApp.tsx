@@ -32,7 +32,7 @@ import { bodyParagraphs } from '@/lib/body-text';
 import { rankStoriesForProfile } from '@/lib/feed-ranking';
 import { normalizeFeedTab, partitionFeedCats } from '@/lib/feed-links';
 import {
-  Bookmark, Share, ArrowLeft, User, Check, Star, Plus, X, ArrowRight, Clock,
+  Bookmark, Share, ArrowLeft, User, Check, Star, Plus, X, Clock,
   Home, Sparkles, TrendingUp, Rocket, Code2, Cpu, PenTool, MessageCircle, BookOpen, Lock,
   type LucideIcon,
 } from 'lucide-react';
@@ -887,25 +887,6 @@ export default function FeedApp({
     }
   }
 
-  async function enableDailyEmails() {
-    if (!user) { void handleSignIn(); return; }
-    try {
-      const res = await fetch('/api/profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ newsletterOptIn: true, dailyNewsletterEnabled: true }),
-      });
-      if (!res.ok) throw new Error(`Profile save failed (${res.status})`);
-      setDailyOn(true);
-      trackDailyBriefPreferenceChanged(true, 'feed');
-      showToast('Daily brief on — first one lands tomorrow morning');
-      refreshProfile().catch(() => null);
-    } catch {
-      showToast('Could not enable the daily brief — try again');
-    }
-  }
-
   const counts: Record<string, number> = {};
   for (const s of allStories) counts[s.cat] = (counts[s.cat] || 0) + 1;
   const cats = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
@@ -1068,6 +1049,7 @@ export default function FeedApp({
         <span className="tool-card-title">Stocksbrew - Understand any US stock in minutes</span>
         <span className="tool-card-sub">Reads fundamentals, earnings and news, then tells you exactly what to do.</span>
       </a>
+      <PromoSlot key={`promo-${dup}`} monthlyReach={monthlyReach} placement="pulse_mobile" onOpen={() => setPromoOpen(true)} compact />
       {promoted.map((p) => (
         <a key={`${p.id}-${dup}`} className="tool-card" href={p.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(p.id, 'promo', '')}>
           <span className="tool-card-top">
@@ -1185,7 +1167,7 @@ export default function FeedApp({
         )}
         {openPulse ? (
           !pro && !pulse.blogs.some((b) => b.id === openPulse.id) ? (
-            <PaywallPlate what="Pulse — the builders' radar" ask="pro" dailyOn={dailyOn} proLabel={proLabel} onEnableDaily={enableDailyEmails} />
+            <PaywallPlate what="Pulse — the builders' radar" ask="pro" proLabel={proLabel} />
           ) : (
             <PulseDetail item={openPulse} onBack={goBack} onShare={share} marked={marks.has(openPulse.id)} toggleMark={toggleMark} />
           )
@@ -1200,11 +1182,9 @@ export default function FeedApp({
               <PaywallPlate
                 what="This story"
                 ask={user ? 'daily' : 'signup'}
-                dailyOn={dailyOn}
                 signingIn={signingIn}
                 proLabel={proLabel}
                 onSignIn={handleSignIn}
-                onEnableDaily={enableDailyEmails}
               />
             </>
           ) : (
@@ -1358,12 +1338,9 @@ export default function FeedApp({
               <div className="tools-carousel" ref={carouselRef}>
                 <div className="tools-track">
                   <div className="tools-group">{toolCards('a')}</div>
-                  <div className="tools-group" aria-hidden="true">{toolCards('b')}</div>
+                  <div className="tools-group" aria-hidden="true" inert>{toolCards('b')}</div>
                 </div>
               </div>
-            </div>
-            <div className="promo-mobile-wrap">
-              <PromoSlot monthlyReach={monthlyReach} placement="pulse_mobile" onOpen={() => setPromoOpen(true)} />
             </div>
             {/* mobile only: Worth reading lives inside the Pulse tab, above Conversations */}
             <div className="pulse-mobile-extra">
@@ -1503,6 +1480,7 @@ export default function FeedApp({
                   story={s}
                   displayRank={viewRank.get(s.id)}
                   locked
+                  lockedLabel={user ? 'Buy Pro to see full stories and daily email' : 'Sign up to see full stories'}
                   onClick={() => openStory(s)}
                   marked={marks.has(s.id)}
                   onToggleMark={toggleMark}
@@ -1514,11 +1492,9 @@ export default function FeedApp({
                 <PaywallPlate
                   what="the full ranked feed"
                   ask={user ? 'daily' : 'signup'}
-                  dailyOn={dailyOn}
                   signingIn={signingIn}
                   proLabel={proLabel}
                   onSignIn={handleSignIn}
-                  onEnableDaily={enableDailyEmails}
                 />
               )}
 
@@ -1820,20 +1796,35 @@ function topTools(tools: PulseItem[]): PulseItem[] {
   return picked.slice(0, 3);
 }
 
-function PromoSlot({ monthlyReach, placement, onOpen }: { monthlyReach: number; placement: string; onOpen: () => void }) {
+function PromoSlot({ monthlyReach, placement, onOpen, compact = false }: { monthlyReach: number; placement: string; onOpen: () => void; compact?: boolean }) {
+  const reach = monthlyReach > 0 ? fmtReach(monthlyReach) : null;
   return (
-    <button className="promo-slot" onClick={() => {
-      const props = { placement, cta: 'feature_my_tool' };
-      trackPromoCtaClicked(props);
-      trackPromoModalOpened(props);
-      onOpen();
-    }}>
-      <span className="promo-badge"><Rocket size={20} /></span>
-      <span className="promo-copy">
-        <span className="promo-headline">{monthlyReach > 0 ? `Get discovered by ${fmtReach(monthlyReach)} monthly tech readers` : 'Get discovered by thousands of monthly tech readers'}</span>
-        <span className="promo-cta">$19/month · Feature my tool <ArrowRight size={13} /></span>
-      </span>
-    </button>
+    <div className={`promo-slot${compact ? ' promo-slot-compact' : ''}`}>
+      <div className="promo-slot-copy">
+        <span className="promo-headline">{reach ? `Feature your tool to ${reach} monthly tech readers` : "Feature your tool to Trace's tech audience"}</span>
+        <span className="promo-subline">$19/month · 30 days on Trace</span>
+      </div>
+      <div className="promo-slot-actions">
+        <button className="promo-cta" type="button" onClick={() => {
+          const props = { placement, cta: 'feature_my_tool' };
+          trackPromoCtaClicked(props);
+          trackPromoModalOpened(props);
+          onOpen();
+        }}>
+          Feature my tool
+        </button>
+        <a
+          className="promo-proof-link"
+          href="https://us.posthog.com/shared/nvQIXZmOZ9ZJLv_WNXFS9sYW0nn52Q"
+          target="_blank"
+          rel="noreferrer"
+          aria-label="View Trace’s public audience dashboard"
+          onClick={() => trackPromoCtaClicked({ placement, cta: 'view_audience_proof' })}
+        >
+          View audience proof
+        </a>
+      </div>
+    </div>
   );
 }
 
@@ -1872,10 +1863,10 @@ function SourceStack({ sources }: { sources: string[] }) {
   );
 }
 
-function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = false, displayRank, burst = false }: {
+function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = false, lockedLabel, displayRank, burst = false }: {
   story: FeedStory; onClick: () => void; marked: boolean;
   onToggleMark: (id: string) => void; onShare: (id: string) => void;
-  locked?: boolean; displayRank?: number; burst?: boolean;
+  locked?: boolean; lockedLabel?: string; displayRank?: number; burst?: boolean;
 }) {
   const rank = displayRank ?? story.rank;
   const onKey = (e: React.KeyboardEvent) => {
@@ -1903,7 +1894,7 @@ function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = fal
           <span className="post-rank">#{rank}</span>
         </div>
         <h2 className="post-title locked-title">{story.title}</h2>
-        <p className="lock-note"><Lock size={13} /> Unlock with Pro or a free account</p>
+        <p className="lock-note"><Lock size={13} /> {lockedLabel || 'Sign up to see full stories'}</p>
       </article>
     );
   }
@@ -2160,12 +2151,10 @@ function Detail({ story, displayRank, onBack, onShare, marked, toggleMark }: { s
   );
 }
 
-function PaywallPlate({ what, ask, dailyOn, onSignIn, onEnableDaily, signingIn = false, proLabel = 'Go Pro' }: {
+function PaywallPlate({ what, ask, onSignIn, signingIn = false, proLabel = 'Go Pro' }: {
   what: string;
   ask: 'signup' | 'daily' | 'pro';
-  dailyOn: boolean;
   onSignIn?: () => void;
-  onEnableDaily: () => void;
   signingIn?: boolean;
   proLabel?: string;
 }) {
@@ -2173,19 +2162,16 @@ function PaywallPlate({ what, ask, dailyOn, onSignIn, onEnableDaily, signingIn =
     return (
       <div className="paywall">
         <div className="paywall-badge"><Lock size={20} /></div>
-        <h2 className="paywall-title">Free account, 7 stories a day</h2>
+        <h2 className="paywall-title">Sign up to see full stories</h2>
         <p className="paywall-sub">
           {what === 'the full ranked feed'
-            ? <>That&rsquo;s your {FREE_LIMIT_SIGNED_OUT} free stories for today. Sign up free to get <b>7 stories a day</b> plus the daily brief by email.</>
-            : <>Today&rsquo;s edition continues with a free account — <b>7 stories a day</b> plus the daily brief by email.</>}
+            ? <>Create a free account to keep reading. Free accounts get <b>7 stories a day</b>.</>
+            : <>Create a free account to read this story. Free accounts get <b>7 stories a day</b>.</>}
         </p>
-        <div className="paywall-actions">
-          <button className="paywall-btn" onClick={onSignIn} disabled={signingIn}>
-            {signingIn ? 'Signing in…' : 'Sign up free with Google'}
-          </button>
-          <ProCheckoutButton className="paywall-alt" label={proLabel} source="paywall_anon_pro" />
-        </div>
-        <p className="paywall-foot">No card needed for the free account. Cancel Pro anytime.</p>
+        <button className="paywall-btn" onClick={onSignIn} disabled={signingIn}>
+          {signingIn ? 'Signing in…' : 'Sign up free with Google'}
+        </button>
+        <p className="paywall-foot">No card needed.</p>
       </div>
     );
   }
@@ -2194,21 +2180,12 @@ function PaywallPlate({ what, ask, dailyOn, onSignIn, onEnableDaily, signingIn =
     return (
       <div className="paywall">
         <div className="paywall-badge"><Lock size={20} /></div>
-        <h2 className="paywall-title">That&rsquo;s your 7 for today</h2>
+        <h2 className="paywall-title">Buy Pro to see full stories</h2>
         <p className="paywall-sub">
-          Go Pro for <b>the full ranked feed</b>, Pulse and the archive — or get the top stories in your inbox every morning.
+          Get the complete ranked feed and the daily email brief with Pro.
         </p>
-        <div className="paywall-actions">
-          <ProCheckoutButton className="paywall-btn" label={proLabel} />
-          <button
-            className={`paywall-alt${dailyOn ? ' on' : ''}`}
-            onClick={dailyOn ? undefined : onEnableDaily}
-            disabled={dailyOn}
-          >
-            {dailyOn ? <><Check size={16} /> Daily brief is on</> : 'Get the daily emails'}
-          </button>
-        </div>
-        <p className="paywall-foot">Cancel Pro anytime. The free account stays free.</p>
+        <ProCheckoutButton className="paywall-btn" label={proLabel} />
+        <p className="paywall-foot">Cancel anytime. The free account stays free.</p>
       </div>
     );
   }
@@ -2696,13 +2673,10 @@ const css = `
 .xw .post-desc { margin: 6px 0 0; font-size: 15px; line-height: 22px; color: var(--text); overflow-wrap: break-word; }
 .xw .pulse-mobile-extra { display: none; }
 .xw .tools-carousel-wrap { display: none; }
-.xw .promo-mobile-wrap { display: none; }
 @media (max-width: 687px) {
   .xw .pulse-mobile-extra { display: block; border-top: 1px solid var(--line); }
   .xw .pulse-mobile-extra .feed { padding-bottom: 0; }
   .xw .tools-carousel-wrap { display: block; border-bottom: 1px solid var(--line); padding: 18px 0 14px; position: sticky; top: 0; z-index: 50; background: var(--bg); }
-  .xw .promo-mobile-wrap { display: block; border-bottom: 1px solid var(--line); padding: 4px 0 2px; }
-  .xw .promo-mobile-wrap .promo-slot { margin: 10px 14px; width: calc(100% - 28px); min-height: 0; }
   .xw .tools-carousel-title { display: flex; align-items: baseline; justify-content: space-between; font-size: 17px; font-weight: 800; letter-spacing: -0.01em; padding: 0 14px 10px; }
   .xw .tools-carousel { overflow-x: auto; padding: 2px 14px 6px; scrollbar-width: none; }
   .xw .tools-carousel::-webkit-scrollbar { display: none; }
@@ -2714,10 +2688,22 @@ const css = `
     padding: 12px; display: flex; flex-direction: column; gap: 6px;
     text-decoration: none; color: inherit;
   }
+  .xw .promo-slot.promo-slot-compact {
+    flex: 0 0 218px; min-width: 218px; max-width: 218px; width: 218px;
+    padding: 12px; border: 1px solid var(--line); border-radius: 14px; gap: 8px;
+    box-sizing: border-box;
+  }
+  .xw .promo-slot-compact .promo-headline {
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    font-size: 14px; line-height: 18px;
+  }
+  .xw .promo-slot-compact .promo-subline { font-size: 12px; line-height: 16px; }
+  .xw .promo-slot-compact .promo-slot-actions { margin-top: auto; }
+  .xw .promo-slot-compact .promo-cta { width: 100%; }
   .xw .tool-card-top { display: flex; align-items: center; gap: 6px; }
   .xw .tool-card-title { font-size: 14px; font-weight: 700; line-height: 18px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .xw .tool-card-sub { font-size: 12.5px; line-height: 17px; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .xw .tool-card-meta { font-size: 11.5px; font-weight: 600; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .xw .tool-card-sub,
+  .xw .tool-card-meta { display: none; }
 }
 .xw .post-title { margin: 0 0 4px; font-size: 18px; font-weight: 700; line-height: 23px; }
 .xw .locked-title { filter: blur(4px); user-select: none; }
@@ -2870,23 +2856,32 @@ const css = `
 .xw .rail-sub { display: block; font-size: 13px; font-weight: 400; line-height: 18px; color: var(--text-2); overflow-wrap: break-word; }
 .xw .rail-ad { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: var(--blue); background: rgba(29,155,240,0.1); border: 1px solid rgba(29,155,240,0.35); border-radius: 4px; padding: 1px 4px; vertical-align: 1px; white-space: nowrap; }
 .xw .promo-slot {
-  display: flex; flex-direction: row; gap: 12px; align-items: flex-start; text-align: left;
-  margin: 6px 12px 14px; padding: 16px; width: calc(100% - 24px); min-height: 104px;
-  border: 1px solid #CFD9DE; border-radius: 16px; background: #fff;
-  cursor: pointer; color: inherit; font: inherit;
+  display: flex; flex-direction: column; align-items: stretch; gap: 15px;
+  margin: 0; padding: 18px 16px; width: 100%; min-height: 0;
+  border-top: 1px solid var(--line);
+  background: #fff; color: var(--text);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.xw .promo-slot:hover { border-color: #0F1419; box-shadow: 0 2px 10px rgba(15,20,25,0.12); }
-.xw .promo-badge {
-  width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(29,155,240,0.12); color: var(--blue);
+.xw .promo-slot:hover { border-top-color: #c3d0d8; }
+.xw .promo-slot-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.xw .promo-slot-actions { display: flex; flex-direction: row; align-items: center; gap: 14px; flex-wrap: wrap; }
+.xw .promo-cta:focus-visible,
+.xw .promo-proof-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 10px; }
+.xw .promo-headline { color: var(--text); font-size: 17px; font-weight: 700; line-height: 22px; letter-spacing: -0.01em; }
+.xw .promo-subline { color: var(--text-2); font-size: 13px; line-height: 18px; }
+.xw .promo-cta {
+  min-height: 38px; width: auto; border: 0; border-radius: 9999px; padding: 9px 16px;
+  background: var(--blue); color: #fff; cursor: pointer; font: inherit; font-size: 13px;
+  font-weight: 700; line-height: 18px; white-space: nowrap;
+  transition: background-color 0.15s ease, transform 0.15s ease;
 }
-.xw .promo-copy { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.xw .promo-headline { font-size: 15px; font-weight: 800; line-height: 20px; letter-spacing: -0.008em; }
-.xw .promo-reach { font-size: 13px; font-weight: 700; color: var(--blue); line-height: 18px; }
-.xw .promo-cta { display: inline-flex; align-items: center; gap: 3px; font-size: 13px; font-weight: 400; color: var(--text-2); line-height: 18px; }
-.xw .promo-slot:hover .promo-cta { color: #0F1419; }
+.xw .promo-cta:hover { background: #0d8ed8; }
+.xw .promo-cta:active { transform: translateY(1px); }
+.xw .promo-proof-link {
+  color: var(--text-3); font-size: 12px; font-weight: 600; line-height: 16px;
+  text-decoration: none; white-space: nowrap;
+}
+.xw .promo-proof-link:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
 .xw .promo-overlay {
   position: fixed; inset: 0; z-index: 400; background: rgba(15,20,25,0.45);
   display: flex; align-items: center; justify-content: center; padding: 20px;

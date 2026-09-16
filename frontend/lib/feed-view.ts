@@ -82,8 +82,8 @@ const getPromotedTools = unstable_cache(
   { revalidate: 300 },
 );
 
-// Unique visitors to /feed over the last 30 days (PostHog $pageview),
-// falling back to the signed-in monthly-active count from Firestore.
+// Unique visitors to yourtrace.online over the last 30 days (PostHog
+// $pageview), falling back to the signed-in monthly-active count from Firestore.
 async function monthlyActiveCount(): Promise<number> {
   try {
     const { adminFirestore } = await import('@/lib/firebase-admin');
@@ -102,7 +102,7 @@ async function monthlyActiveCount(): Promise<number> {
 
 let cachedPhProject: string | null = null;
 
-async function siteVisitorsLastMonth(): Promise<number> {
+async function siteVisitorsLast30Days(): Promise<number> {
   const personalKey = process.env.POSTHOG_PERSONAL_API_KEY;
   if (!personalKey) return 0;
   const host = (process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com').replace(/\/$/, '');
@@ -125,7 +125,7 @@ async function siteVisitorsLastMonth(): Promise<number> {
         query: {
           kind: 'HogQLQuery',
           query:
-            "SELECT count(DISTINCT distinct_id) AS visitors FROM events WHERE event = '$pageview' AND timestamp >= toStartOfMonth(now() - INTERVAL 1 MONTH) AND timestamp < toStartOfMonth(now())",
+            "SELECT count(DISTINCT distinct_id) AS visitors FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 30 DAY AND timestamp < now() AND properties.$host ILIKE '%yourtrace.online%'",
         },
       }),
       signal: AbortSignal.timeout(15_000),
@@ -139,18 +139,13 @@ async function siteVisitorsLastMonth(): Promise<number> {
   }
 }
 
-// PostHog is the truth. Until the Vercel key lands, the Firestore count
-// understates reach, so floor the fallback at a conservative 1.5K.
-const FALLBACK_REACH = 1500;
-
 const getMonthlyReach = unstable_cache(
   async (): Promise<number> => {
-    const visitors = await siteVisitorsLastMonth();
+    const visitors = await siteVisitorsLast30Days();
     if (visitors > 0) return visitors;
-    const actives = await monthlyActiveCount();
-    return Math.max(actives, FALLBACK_REACH);
+    return monthlyActiveCount();
   },
-  ['monthly-reach'],
+  ['monthly-reach-v2'],
   { revalidate: 21600 },
 );
 
