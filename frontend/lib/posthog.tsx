@@ -220,6 +220,14 @@ export function trackPromoModalOpened(props?: Record<string, unknown>) {
   posthog.capture("promo_modal_opened", { surface: "web", ...props });
 }
 
+export function trackPromoCtaClicked(props?: Record<string, unknown>) {
+  posthog.capture("promo_cta_clicked", { surface: "web", ...props });
+}
+
+export function trackPromoIntent(props?: Record<string, unknown>) {
+  posthog.capture("promo_intent", { surface: "web", ...props });
+}
+
 export function trackPromoSubmitted(props?: Record<string, unknown>) {
   posthog.capture("promo_submitted", { surface: "web", ...props });
 }

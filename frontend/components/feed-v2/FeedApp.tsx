@@ -19,6 +19,8 @@ import {
   trackDailyBriefPreferenceChanged,
   trackPaywallShown,
   trackProfileUpdated,
+  trackPromoCtaClicked,
+  trackPromoIntent,
   trackPromoModalOpened,
   trackPromoSubmitted,
   trackPurchaseCompleted,
@@ -1361,7 +1363,7 @@ export default function FeedApp({
               </div>
             </div>
             <div className="promo-mobile-wrap">
-              <PromoSlot monthlyReach={monthlyReach} onOpen={() => setPromoOpen(true)} />
+              <PromoSlot monthlyReach={monthlyReach} placement="pulse_mobile" onOpen={() => setPromoOpen(true)} />
             </div>
             {/* mobile only: Worth reading lives inside the Pulse tab, above Conversations */}
             <div className="pulse-mobile-extra">
@@ -1604,7 +1606,7 @@ export default function FeedApp({
             </a>
           </div>
           <RailSection items={topTools(pulse.tools)} />
-          <PromoSlot monthlyReach={monthlyReach} onOpen={() => setPromoOpen(true)} />
+          <PromoSlot monthlyReach={monthlyReach} placement="tools_rail" onOpen={() => setPromoOpen(true)} />
         </div>
       </aside>
 
@@ -1693,6 +1695,11 @@ function PromoteModal({ onClose, onSignIn, signedIn, getToken }: {
 
   async function pay() {
     if (busy) return;
+    trackPromoIntent({
+      intent_stage: 'submit_attempt',
+      signed_in: signedIn,
+      fields_filled: [link, title, subtext].filter((value) => value.trim()).length,
+    });
     if (!signedIn) { onSignIn(); return; }
     setBusy(true);
     setError(null);
@@ -1813,9 +1820,14 @@ function topTools(tools: PulseItem[]): PulseItem[] {
   return picked.slice(0, 3);
 }
 
-function PromoSlot({ monthlyReach, onOpen }: { monthlyReach: number; onOpen: () => void }) {
+function PromoSlot({ monthlyReach, placement, onOpen }: { monthlyReach: number; placement: string; onOpen: () => void }) {
   return (
-    <button className="promo-slot" onClick={() => { trackPromoModalOpened(); onOpen(); }}>
+    <button className="promo-slot" onClick={() => {
+      const props = { placement, cta: 'feature_my_tool' };
+      trackPromoCtaClicked(props);
+      trackPromoModalOpened(props);
+      onOpen();
+    }}>
       <span className="promo-badge"><Rocket size={20} /></span>
       <span className="promo-copy">
         <span className="promo-headline">{monthlyReach > 0 ? `Get discovered by ${fmtReach(monthlyReach)} monthly tech readers` : 'Get discovered by thousands of monthly tech readers'}</span>
