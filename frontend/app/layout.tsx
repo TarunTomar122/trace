@@ -32,7 +32,7 @@ const newsreader = Newsreader({
 export const metadata: Metadata = {
   title: "Trace: AI and tech news in five minutes",
   description:
-    "Trace groups AI and technology news into a short personalized feed wherever you read.",
+    "Trace turns AI and technology news into a short daily briefing, with the context behind launches, company changes, security updates, and trends.",
   keywords: ["AI news", "technology news", "AI summaries", "daily tech briefing", "Chrome new tab news", "news aggregator"],
   authors: [{ name: "Trace", url: "https://www.yourtrace.online" }],
   creator: "Trace",
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
     siteName: "Trace",
     title: "Trace: AI and tech news in five minutes",
     description:
-      "Trace groups AI and technology news into a short personalized feed wherever you read.",
+      "Trace turns AI and technology news into a short daily briefing, with the context behind launches, company changes, security updates, and trends.",
     images: [
       {
         url: "https://www.yourtrace.online/opengraph-image",
@@ -67,7 +67,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Trace: AI and tech news in five minutes",
     description:
-      "A short personalized feed for model launches, company changes, layoffs, security, and new technology trends.",
+      "A short daily briefing with context on model launches, company changes, layoffs, security, and new technology trends.",
     images: ["https://www.yourtrace.online/twitter-image"],
   },
   robots: {
@@ -110,7 +110,7 @@ export default function RootLayout({
         "@id": "https://www.yourtrace.online/#website",
         "url": "https://www.yourtrace.online",
         "name": "Trace",
-        "description": "Trace groups AI and technology news into a short personalized feed wherever you read."
+        "description": "Trace turns AI and technology news into a short daily briefing, with the context behind launches, company changes, security updates, and trends."
       },
       {
         "@type": "Organization",
