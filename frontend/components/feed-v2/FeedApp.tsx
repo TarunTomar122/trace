@@ -2676,7 +2676,7 @@ const css = `
 @media (max-width: 687px) {
   .xw .pulse-mobile-extra { display: block; border-top: 1px solid var(--line); }
   .xw .pulse-mobile-extra .feed { padding-bottom: 0; }
-  .xw .tools-carousel-wrap { display: block; border-bottom: 1px solid var(--line); padding: 18px 0 14px; position: sticky; top: 0; z-index: 50; background: var(--bg); }
+  .xw .tools-carousel-wrap { display: block; border-bottom: 1px solid var(--line); padding: 18px 0 14px; background: var(--bg); }
   .xw .tools-carousel-title { display: flex; align-items: baseline; justify-content: space-between; font-size: 17px; font-weight: 800; letter-spacing: -0.01em; padding: 0 14px 10px; }
   .xw .tools-carousel { overflow-x: auto; padding: 2px 14px 6px; scrollbar-width: none; }
   .xw .tools-carousel::-webkit-scrollbar { display: none; }
@@ -2702,7 +2702,7 @@ const css = `
   .xw .promo-slot-compact .promo-cta { width: 100%; }
   .xw .tool-card-top { display: flex; align-items: center; gap: 6px; }
   .xw .tool-card-title { font-size: 14px; font-weight: 700; line-height: 18px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .xw .tool-card-sub,
+  .xw .tool-card-sub { font-size: 12.5px; line-height: 17px; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .xw .tool-card-meta { display: none; }
 }
 .xw .post-title { margin: 0 0 4px; font-size: 18px; font-weight: 700; line-height: 23px; }
