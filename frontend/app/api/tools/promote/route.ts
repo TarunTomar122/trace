@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { captureServerEvent } from '@/lib/posthog-server';
 
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
     const email = userData.email || decoded.email || '';
     const name = userData.name || userData.displayName || (email ? email.split('@')[0] : '');
 
-    const toolRef = adminDb.collection('promoted_tools').doc();
+    const toolRef = adminDb.collection('promoted_tools').doc(randomUUID());
     await toolRef.set({
       url: rawUrl,
       host: hostOf(rawUrl),
