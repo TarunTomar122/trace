@@ -1,0 +1,51 @@
+{
+  "runId": "20260917T033000Z-daily-operator",
+  "capturedAt": "2026-09-17T03:30:00Z",
+  "operator": "trace-daily-growth",
+  "status": "completed",
+  "baseline": {
+    "periodDays": 28,
+    "capturedAt": "2026-09-17T03:24:12.581309+00:00",
+    "pageviews": 2570,
+    "landingDiscoveryExposure": 45,
+    "landingCtaClicked": 66,
+    "userSignedUp": 28,
+    "feedViewed": 173,
+    "feedItemClicked": 53,
+    "paymentSucceededUsers": 11,
+    "subscriptionRenewedUsers": 10
+  },
+  "diagnosis": {
+    "trafficMode": "low; experiment-arm sample data is underpowered",
+    "activeExperiments": 4,
+    "searchConsole": "unavailable",
+    "localDb": "healthy"
+  },
+  "action": "Preserved controls and the live SEO metadata variant; no pricing change or new low-frequency split shipped. Updated the homepage metadata experiment with complete lifecycle fields and verified the deployed public surface.",
+  "evidence": {
+    "posthogSnapshot": ".growth/latest.json",
+    "posthogPersonalApi": "not available to cron; persisted snapshot used",
+    "localDbHealth": "https://db.yourtrace.online/health HTTP 200",
+    "homepage": "https://www.yourtrace.online/ HTTP 200; truthful daily briefing/WebSite metadata present",
+    "robots": "HTTP 200",
+    "sitemap": "HTTP 200; 108 URLs",
+    "canonical": "https://www.yourtrace.online",
+    "seoCheck": "183 routes / 198 source files passed",
+    "seoHomeTest": "passed",
+    "appIconTests": "passed",
+    "build": "passed"
+  },
+  "experimentId": "seo-homepage-briefing-metadata-2026-09-16",
+  "day7Review": "2026-09-23T05:02:51Z",
+  "hardDay10Decision": "2026-09-26T05:02:51Z",
+  "decision": "hold",
+  "decisionReason": "Day 1; no causal arm data and Search Console unavailable. Preserve control and reassess at day 7; final lifecycle decision is hard at day 10.",
+  "commit": "0d0af38e99d5ba3eeecb29b0420755d0f6f62141",
+  "deployment": "live homepage verified; hosting SHA not exposed",
+  "blockers": [
+    "PostHog personal API key unavailable in cron",
+    "Search Console unavailable",
+    "repository-wide lint has pre-existing errors outside this change"
+  ],
+  "nextCheck": "2026-09-23T05:02:51Z"
+}
