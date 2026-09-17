@@ -1,0 +1,245 @@
+{
+  "runId": "20260917T060215Z-watchdog",
+  "capturedAt": "2026-09-17T06:02:15.392516+00:00",
+  "operator": "trace-experiment-watchdog",
+  "status": "completed",
+  "activeExperiments": 5,
+  "posthogSnapshot": {
+    "path": ".growth/latest.json",
+    "capturedAt": "2026-09-17T05:48:14.576207+00:00",
+    "periodDays": 28,
+    "aggregateEvents": {
+      "landing_cta_exposure": {
+        "events": 78,
+        "users": 88
+      },
+      "landing_cta_clicked": {
+        "events": 66,
+        "users": 85
+      },
+      "user_signed_up": {
+        "events": 28,
+        "users": 28
+      },
+      "payment_succeeded": {
+        "events": 11,
+        "users": 19
+      }
+    }
+  },
+  "experiments": [
+    {
+      "experimentId": "homepage_discovery_links_20260913",
+      "firstExposureAt": "2026-09-13T05:04:34Z",
+      "firstExposureAgeDays": 4.0401,
+      "exposedUsersPerArm": {
+        "unassigned": 44
+      },
+      "sevenDayExposureVelocity": {
+        "unassigned": 6.286
+      },
+      "daysRemainingToHardDay10": 5.9599,
+      "srm": "not applicable: no concurrent arms",
+      "contamination": "not computable: no assignment identity",
+      "primaryOutcomes": null,
+      "guardrails": {
+        "pageHealth": {
+          "root": 200,
+          "feed": 200,
+          "robots": 200,
+          "sitemap": 200
+        },
+        "signup": "aggregate/non-causal or unavailable",
+        "paidConversion": "aggregate/non-causal or unavailable",
+        "feedInteraction": "not arm-linked",
+        "retention": "unavailable",
+        "errors": "unavailable",
+        "pricingPaymentDestructiveChanges": "untouched"
+      },
+      "interimReviewDue": false,
+      "hardDay10FinalDue": false,
+      "evidenceBand": "instrumentation/directional mode; non-causal baseline/post comparison",
+      "decision": "hold",
+      "action": "Continue the reversible qualified-traffic/instrumentation action; preserve control and do not promote underpowered or non-causal evidence."
+    },
+    {
+      "experimentId": "landing_cta_copy_20260911",
+      "firstExposureAt": "2026-09-11T05:00:16Z",
+      "firstExposureAgeDays": 6.043,
+      "exposedUsersPerArm": {
+        "control": 38,
+        "variant": 36
+      },
+      "sevenDayExposureVelocity": {
+        "control": 5.429,
+        "variant": 5.714
+      },
+      "daysRemainingToHardDay10": 3.957,
+      "srm": {
+        "observedUsers": [
+          38,
+          36
+        ],
+        "expectedUsersPerArm": 37,
+        "chiSquare": 0.1081,
+        "status": "clean"
+      },
+      "contamination": {
+        "crossArmUsers": 0,
+        "status": "none observed in persisted exposure identities; current outcome events not arm-linked"
+      },
+      "primaryOutcomes": {
+        "control": {
+          "exposedUsers": 38,
+          "convertedUsers": 11,
+          "rate": 0.2895
+        },
+        "variant": {
+          "exposedUsers": 36,
+          "convertedUsers": 2,
+          "rate": 0.0556
+        }
+      },
+      "guardrails": {
+        "pageHealth": {
+          "root": 200,
+          "feed": 200,
+          "robots": 200,
+          "sitemap": 200
+        },
+        "signup": "aggregate/non-causal or unavailable",
+        "paidConversion": "aggregate/non-causal or unavailable",
+        "feedInteraction": "not arm-linked",
+        "retention": "unavailable",
+        "errors": "unavailable",
+        "pricingPaymentDestructiveChanges": "untouched"
+      },
+      "interimReviewDue": false,
+      "hardDay10FinalDue": false,
+      "evidenceBand": "directional only (30-99 exposed/arm)",
+      "decision": "hold",
+      "action": "Continue the reversible qualified-traffic/instrumentation action; preserve control and do not promote underpowered or non-causal evidence."
+    },
+    {
+      "experimentId": "seo-homepage-briefing-metadata-2026-09-16",
+      "firstExposureAt": null,
+      "firstExposureAgeDays": null,
+      "exposedUsersPerArm": null,
+      "sevenDayExposureVelocity": null,
+      "daysRemainingToHardDay10": 8.9587,
+      "srm": "not applicable: SEO pre/post comparison",
+      "contamination": "not applicable: no user assignment",
+      "primaryOutcomes": null,
+      "guardrails": {
+        "pageHealth": {
+          "root": 200,
+          "feed": 200,
+          "robots": 200,
+          "sitemap": 200
+        },
+        "signup": "aggregate/non-causal or unavailable",
+        "paidConversion": "aggregate/non-causal or unavailable",
+        "feedInteraction": "not arm-linked",
+        "retention": "unavailable",
+        "errors": "unavailable",
+        "pricingPaymentDestructiveChanges": "untouched"
+      },
+      "interimReviewDue": false,
+      "hardDay10FinalDue": false,
+      "evidenceBand": "technical SEO mode; non-causal",
+      "decision": "hold",
+      "action": "Continue the reversible qualified-traffic/instrumentation action; preserve control and do not promote underpowered or non-causal evidence."
+    },
+    {
+      "experimentId": "seo-sitemap-freshness-20260915",
+      "firstExposureAt": null,
+      "firstExposureAgeDays": null,
+      "exposedUsersPerArm": null,
+      "sevenDayExposureVelocity": null,
+      "daysRemainingToHardDay10": 7.9588,
+      "srm": "not applicable: SEO pre/post comparison",
+      "contamination": "not applicable: no user assignment",
+      "primaryOutcomes": null,
+      "guardrails": {
+        "pageHealth": {
+          "root": 200,
+          "feed": 200,
+          "robots": 200,
+          "sitemap": 200
+        },
+        "signup": "aggregate/non-causal or unavailable",
+        "paidConversion": "aggregate/non-causal or unavailable",
+        "feedInteraction": "not arm-linked",
+        "retention": "unavailable",
+        "errors": "unavailable",
+        "pricingPaymentDestructiveChanges": "untouched"
+      },
+      "interimReviewDue": false,
+      "hardDay10FinalDue": false,
+      "evidenceBand": "technical SEO mode; non-causal",
+      "decision": "hold",
+      "action": "Continue the reversible qualified-traffic/instrumentation action; preserve control and do not promote underpowered or non-causal evidence."
+    },
+    {
+      "experimentId": "stale_internal_links_20260914",
+      "firstExposureAt": null,
+      "firstExposureAgeDays": null,
+      "exposedUsersPerArm": null,
+      "sevenDayExposureVelocity": null,
+      "daysRemainingToHardDay10": 6.9602,
+      "srm": "not applicable: route-set comparison",
+      "contamination": "not applicable: technical route comparison",
+      "primaryOutcomes": {
+        "control": {
+          "brokenLinks": 5,
+          "destinationHealth": "failed"
+        },
+        "postChange": {
+          "brokenLinks": 0,
+          "destinationHealth": "HTTP 200",
+          "routesChecked": 183,
+          "sourceFilesChecked": 198
+        }
+      },
+      "guardrails": {
+        "pageHealth": {
+          "root": 200,
+          "feed": 200,
+          "robots": 200,
+          "sitemap": 200
+        },
+        "signup": "aggregate/non-causal or unavailable",
+        "paidConversion": "aggregate/non-causal or unavailable",
+        "feedInteraction": "not arm-linked",
+        "retention": "unavailable",
+        "errors": "unavailable",
+        "pricingPaymentDestructiveChanges": "untouched"
+      },
+      "interimReviewDue": false,
+      "hardDay10FinalDue": false,
+      "evidenceBand": "technical validation; non-causal",
+      "decision": "hold",
+      "action": "Continue the reversible qualified-traffic/instrumentation action; preserve control and do not promote underpowered or non-causal evidence."
+    }
+  ],
+  "action": {
+    "type": "qualified_traffic_and_instrumentation",
+    "description": "Keep existing reversible homepage/feed entry points live, preserve CTA split, and verify scoped exposure identity; no pricing, payment, or destructive changes.",
+    "triggeredBecause": "Traffic remains below promotion thresholds and arm-linked guardrails are incomplete.",
+    "reversible": true
+  },
+  "interimReviewsDue": [],
+  "finalDecisionsDue": [],
+  "verification": {
+    "localDbHealth": 200,
+    "liveHealth": {
+      "homepage": 200,
+      "feed": 200,
+      "robots": 200,
+      "sitemap": 200,
+      "localDb": 200
+    },
+    "git": "main clean except pre-existing untracked env/lock files; origin/main aligned at 59c7988",
+    "searchConsole": "unavailable"
+  }
+}
