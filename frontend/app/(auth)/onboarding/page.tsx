@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { ALL_INTERESTS } from '@/components/feed-v2/FeedApp';
+import { trackDailyBriefPreferenceChanged, trackOnboardingCompleted } from '@/lib/posthog';
 
 const CAT_LABELS: Record<string, string> = {
   ai: 'AI',
@@ -24,6 +25,7 @@ export default function OnboardingPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [dailyBrief, setDailyBrief] = useState(true);
 
   useEffect(() => {
     if (hydrated || !profileResolved) return;
@@ -50,11 +52,19 @@ export default function OnboardingPage() {
           interests,
           onboarded: true,
           onboardedAt: new Date().toISOString(),
+          newsletterOptIn: dailyBrief,
+          dailyNewsletterEnabled: dailyBrief,
         }),
       });
       if (!res.ok) throw new Error(`save failed (${res.status})`);
+      trackOnboardingCompleted({
+        interests_count: interests.length,
+        hobbies_count: 0,
+        daily_brief_enabled: dailyBrief,
+      });
+      if (dailyBrief) trackDailyBriefPreferenceChanged(true, 'onboarding');
       await refreshProfile().catch(() => null);
-      router.replace('/feed');
+      router.replace('/feed?from=onboarding');
     } catch {
       setError('Could not save your setup — try again.');
       setBusy(false);
@@ -67,7 +77,7 @@ export default function OnboardingPage() {
       <div className="ob-card">
         <p className="ob-kicker">Welcome to Trace</p>
         <h1 className="ob-title">Pick a few topics and your feed is yours.</h1>
-        <p className="ob-sub">Interests only order your For You feed — they don&apos;t hide stories or change what we email you. You can change them anytime from Profile.</p>
+        <p className="ob-sub">Interests only order your For You feed — they don&apos;t hide stories. You can change them anytime from Profile.</p>
 
         <section className="ob-section">
           <h2 className="ob-label">Interests <span className="ob-optional">pick any</span></h2>
@@ -78,7 +88,22 @@ export default function OnboardingPage() {
               </button>
             ))}
           </div>
-          <p className="ob-hint">These only re-order your For You feed. Nothing else.</p>
+          <p className="ob-hint">These only re-order your For You feed.</p>
+        </section>
+
+        <section className="ob-section ob-email">
+          <button
+            type="button"
+            className={`ob-email-toggle${dailyBrief ? ' on' : ''}`}
+            onClick={() => setDailyBrief((v) => !v)}
+            aria-pressed={dailyBrief}
+          >
+            <span className="ob-email-copy">
+              <strong>Get tomorrow&apos;s brief by email</strong>
+              <span>7 ranked stories every morning at 10:30 Europe/Berlin. One tap to turn off.</span>
+            </span>
+            <span className="ob-email-check" aria-hidden="true">{dailyBrief ? '✓' : ''}</span>
+          </button>
         </section>
 
         {error ? <p className="ob-error" role="alert">{error}</p> : null}
@@ -135,4 +160,24 @@ const css = `
   color: #536471; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer;
 }
 .ob-skip:hover { color: #0f1419; }
+.ob-email-toggle {
+  width: 100%; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 14px 16px; border-radius: 16px; border: 1px solid #cfe8fb; background: #f0f9ff;
+  text-align: left; cursor: pointer; font-family: inherit;
+}
+.ob-email-toggle.on { border-color: #00ba7c; background: #f0fdf7; }
+.ob-email-copy { display: flex; flex-direction: column; gap: 4px; }
+.ob-email-copy strong { font-size: 15px; color: #0f1419; }
+.ob-email-copy span { font-size: 13px; line-height: 1.45; color: #536471; }
+.ob-email-check {
+  width: 24px; height: 24px; border-radius: 9999px; border: 2px solid #1d9bf0;
+  display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #1d9bf0; flex-shrink: 0;
+}
+.ob-email-toggle.on .ob-email-check { background: #00ba7c; border-color: #00ba7c; color: #fff; }
+@media (max-width: 687px) {
+  .ob { padding: 24px 14px calc(32px + env(safe-area-inset-bottom)); }
+  .ob-title { font-size: 1.65rem; }
+  .ob-email-toggle { padding: 12px 14px; }
+  .ob-save, .ob-skip { min-height: 48px; }
+}
 `;

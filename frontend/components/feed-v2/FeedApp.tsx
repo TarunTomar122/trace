@@ -27,10 +27,47 @@ import {
   trackShareInitiated,
   trackSubscriptionCancelled,
   trackSummaryOpened,
+  trackRetentionCaughtUpShare,
+  trackRetentionExtensionClicked,
+  trackRetentionMilestoneShown,
+  trackRetentionThreadFollowed,
 } from '@/lib/posthog';
 import { bodyParagraphs } from '@/lib/body-text';
 import { rankStoriesForProfile } from '@/lib/feed-ranking';
 import { normalizeFeedTab, partitionFeedCats } from '@/lib/feed-links';
+import {
+  buildCaughtUpShareText,
+  buildCaughtUpShareUrl,
+  computeSinceLastVisit,
+  checkNewMilestone,
+  dismissExtensionCta,
+  markMilestoneSeen,
+  pickStoryOfDay,
+  readFollowedThreads,
+  readLastVisit,
+  readMilestoneSeen,
+  toggleFollowedThread,
+  writeLastVisit,
+  type ReadingStreak,
+  type WeeklyWrapSummary,
+} from '@/lib/retention';
+import {
+  ActivityHeatmapPanel,
+  AgentRetentionCard,
+  CaughtUpLaunchpad,
+  EditionBar,
+  EmailEditionBanner,
+  MilestoneModal,
+  PulseAfternoonHook,
+  SinceLastVisitBanner,
+  StoryOfDayCard,
+  StreakPill,
+  ThreadFollowButton,
+  WeeklyWrapPanel,
+  retentionCss,
+  shouldShowExtensionCta,
+  useCaughtUpShare,
+} from './retention/RetentionPanels';
 import {
   Bookmark, Share, ArrowLeft, User, Check, Star, Plus, X, Clock,
   Home, Sparkles, TrendingUp, Rocket, Code2, Cpu, PenTool, MessageCircle, BookOpen, Lock,
@@ -421,13 +458,87 @@ export default function FeedApp({
   const [promoOpen, setPromoOpen] = useState(false);
   const [celebrate, setCelebrate] = useState<null | 'pro' | 'promo'>(null);
   const [dailyOn, setDailyOn] = useState(false);
+  const [dailyBusy, setDailyBusy] = useState(false);
   const [profileNotice, setProfileNotice] = useState<string | null>(null);
+  const [streak, setStreak] = useState<ReadingStreak | null>(null);
+  const [weeklyWrap, setWeeklyWrap] = useState<WeeklyWrapSummary | null>(null);
+  const [followedThreads, setFollowedThreads] = useState<Set<string>>(() => new Set());
+  const [milestoneDays, setMilestoneDays] = useState<number | null>(null);
+  const [emailEditionBanner, setEmailEditionBanner] = useState(false);
+  const [showExtensionCta, setShowExtensionCta] = useState(true);
+  const streakRecorded = useRef(false);
+  const visitSnapRef = useRef({ uid: user?.uid, feedDate, readIds });
+  visitSnapRef.current = { uid: user?.uid, feedDate, readIds };
 
   // Reflect the profile's daily-brief preference in the paywall CTA.
   useEffect(() => {
     if (!authProfile) return;
     setDailyOn(authProfile.newsletterOptIn === true || authProfile.dailyNewsletterEnabled === true);
   }, [authProfile]);
+
+  useEffect(() => {
+    setFollowedThreads(readFollowedThreads(user?.uid));
+    setShowExtensionCta(shouldShowExtensionCta(user?.uid));
+    streakRecorded.current = false;
+  }, [user?.uid]);
+
+  const [onboardingWelcome, setOnboardingWelcome] = useState(false);
+  useEffect(() => {
+    const from = params.get('from');
+    if (from === 'email' || from === 'brief') {
+      setEmailEditionBanner(true);
+    } else if (from === 'onboarding') {
+      setOnboardingWelcome(true);
+    }
+    if (from) {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('from');
+        window.history.replaceState(null, '', `${url.pathname}${url.search}`);
+      } catch { /* ignore */ }
+    }
+  }, [params]);
+
+  useEffect(() => {
+    if (!user) {
+      setStreak(null);
+      setWeeklyWrap(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const [streakRes, wrapRes] = await Promise.all([
+          fetch('/api/retention/streak', { credentials: 'same-origin' }),
+          fetch('/api/retention/weekly-wrap', { credentials: 'same-origin' }),
+        ]);
+        if (cancelled) return;
+        if (streakRes.ok) {
+          const data = await streakRes.json();
+          const s = data.streak as ReadingStreak;
+          setStreak(s);
+          const milestone = checkNewMilestone(s.current_streak, readMilestoneSeen(user.uid));
+          if (milestone) {
+            setMilestoneDays(milestone);
+            markMilestoneSeen(milestone, user.uid);
+            trackRetentionMilestoneShown(milestone);
+          }
+        }
+        if (wrapRes.ok) {
+          const data = await wrapRes.json();
+          setWeeklyWrap(data.wrap as WeeklyWrapSummary | null);
+        }
+      } catch { /* offline etc. */ }
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  useEffect(() => {
+    return () => {
+      const snap = visitSnapRef.current;
+      writeLastVisit(snap.uid, snap.feedDate, [...snap.readIds]);
+    };
+  }, []);
 
   // hydrate bookmarks from the real store when signed in (same store the app uses).
   // Guests keep theirs on this device so the tab isn't a lie; on sign-in we
@@ -866,10 +977,11 @@ export default function FeedApp({
     }
   }
 
-  async function toggleDailyEmails() {
+  async function toggleDailyEmails(location: 'onboarding' | 'feed' | 'profile' = 'profile') {
     if (!user) { void handleSignIn(); return; }
     const next = !dailyOn;
     setDailyOn(next);
+    setDailyBusy(true);
     try {
       const res = await fetch('/api/profile', {
         method: 'PATCH',
@@ -878,14 +990,25 @@ export default function FeedApp({
         body: JSON.stringify({ newsletterOptIn: next, dailyNewsletterEnabled: next }),
       });
       if (!res.ok) throw new Error(`Profile save failed (${res.status})`);
-      trackDailyBriefPreferenceChanged(next, 'profile');
+      trackDailyBriefPreferenceChanged(next, location);
       showToast(next ? 'Daily brief on — see you tomorrow morning' : 'Daily brief off');
       refreshProfile().catch(() => null);
     } catch {
       setDailyOn(!next);
       showToast('Could not update the daily brief — try again');
+    } finally {
+      setDailyBusy(false);
     }
   }
+
+  function toggleThreadFollow(threadId: string) {
+    const on = toggleFollowedThread(threadId, user?.uid);
+    setFollowedThreads(readFollowedThreads(user?.uid));
+    if (on) trackRetentionThreadFollowed(threadId);
+    showToast(on ? 'Following this story thread' : 'Unfollowed thread');
+  }
+
+  const shareCaughtUp = useCaughtUpShare(streak?.current_streak || 0, readIds.size);
 
   const counts: Record<string, number> = {};
   for (const s of allStories) counts[s.cat] = (counts[s.cat] || 0) + 1;
@@ -996,9 +1119,11 @@ export default function FeedApp({
   // contradicts the "See older stories" button below.
   const caughtUp = full.length > 0
     && full.every((s) => readIds.has(s.id))
-    && lockedStories.length === 0
-    && (olderStories.length === 0 || olderStories.every((s) => readIds.has(s.id)))
-    && (isFree || olderDone);
+    && (isFree || (
+      lockedStories.length === 0
+      && (olderStories.length === 0 || olderStories.every((s) => readIds.has(s.id)))
+      && olderDone
+    ));
 
   // feed viewed (once per mount) + paywall impression (once per session).
   const viewedRef = useRef(false);
@@ -1018,6 +1143,12 @@ export default function FeedApp({
   // detail view open? (URL-driven)
   const detailOpen = !!open || !!openPulse;
 
+  const storyOfDay = tab === 'all' && !detailOpen ? pickStoryOfDay(homeStories) : null;
+  const sinceLastVisit = tab === 'all' && !detailOpen
+    ? computeSinceLastVisit(stories, readLastVisit(user?.uid), feedDate, savedProfile.interests)
+    : null;
+  const pulseAfternoonItems = [...pulse.discussions, ...pulse.tools].slice(0, 3);
+
   // Viewing a story counts as reading it — covers shared links and
   // back-button restores too, not just taps in the list.
   const openStoryId = open ? open.id : null;
@@ -1030,7 +1161,23 @@ export default function FeedApp({
       storeReads(user?.uid, next);
       return next;
     });
-  }, [openStoryId, openBlocked, user?.uid]);
+    if (!user || streakRecorded.current) return;
+    streakRecorded.current = true;
+    fetch('/api/retention/streak', { method: 'POST', credentials: 'same-origin' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data?.streak) return;
+        const s = data.streak as ReadingStreak;
+        setStreak(s);
+        const milestone = checkNewMilestone(s.current_streak, readMilestoneSeen(user.uid));
+        if (milestone) {
+          setMilestoneDays(milestone);
+          markMilestoneSeen(milestone, user.uid);
+          trackRetentionMilestoneShown(milestone);
+        }
+      })
+      .catch(() => null);
+  }, [openStoryId, openBlocked, user?.uid, user]);
 
   // Reads are per-account: switching users must not inherit the quota.
   useEffect(() => {
@@ -1107,6 +1254,7 @@ export default function FeedApp({
               <span className="wordmark">Trace</span>
             </a>
           )}
+          <StreakPill streak={streak?.current_streak || 0} className="side" />
           <nav className="nav">
             <NavItem icon={Home} label="Home" active={tab === 'all'} onClick={() => go('all')} count={homeStories.length} />
             {myCats.length === 0
@@ -1214,7 +1362,9 @@ export default function FeedApp({
             onEdit={() => setProfileNotice(null)}
             notify={showToast}
             dailyOn={dailyOn}
-            onToggleDaily={toggleDailyEmails}
+            onToggleDaily={() => toggleDailyEmails('profile')}
+            streak={streak}
+            weeklyWrap={weeklyWrap}
             getToken={async () => (user ? user.getIdToken() : '')}
             onSubscriptionChanged={() => { refreshProfile().catch(() => null); }}
             user={user ? { displayName: user.displayName, email: user.email, photoURL: user.photoURL } : null}
@@ -1371,6 +1521,7 @@ export default function FeedApp({
           <>
             <header className="head">
               <h1 className="head-title">{tab === 'all' ? 'Home' : CAT_LABELS[tab] || tab}</h1>
+              <StreakPill streak={streak?.current_streak || 0} className="mobile-head" />
               <span className="head-meta">
                 {isFree
                   ? `${freeLimit} of ${visible.length}`
@@ -1401,6 +1552,26 @@ export default function FeedApp({
                 </button>
               </div>
             </header>
+            <div className="ret-stack">
+              {emailEditionBanner && (
+                <EmailEditionBanner onDismiss={() => setEmailEditionBanner(false)} />
+              )}
+              {onboardingWelcome ? (
+                <SinceLastVisitBanner summary={{
+                  totalNew: stories.length,
+                  byCategory: [],
+                  updatedThreads: 0,
+                  isFirstVisit: true,
+                }} />
+              ) : null}
+              {tab === 'all' && !feedError && stories.length > 0 && (
+                <EditionBar feedDate={feedDate} storyCount={stories.length} />
+              )}
+              {!onboardingWelcome && sinceLastVisit && <SinceLastVisitBanner summary={sinceLastVisit} />}
+              {storyOfDay && storyOfDay.id !== full[0]?.id && (
+                <StoryOfDayCard story={storyOfDay} onOpen={() => openStory(storyOfDay)} />
+              )}
+            </div>
             {campaignWelcomeVisible && campaignWelcome && (
               <div className="welcome-strip">
                 <div className="welcome-strip-main" role="status">
@@ -1470,6 +1641,9 @@ export default function FeedApp({
                     marked={marks.has(s.id)}
                     onToggleMark={toggleMark}
                     onShare={share}
+                    isStoryOfDay={storyOfDay?.id === s.id}
+                    threadFollowing={s.threadId ? followedThreads.has(s.threadId) : false}
+                    onToggleThreadFollow={s.threadId ? () => toggleThreadFollow(s.threadId!) : undefined}
                   />
                 ))
               )}
@@ -1540,16 +1714,52 @@ export default function FeedApp({
               )}
 
               {caughtUp && (
-                <div className="caught-up">
-                  <span className="caught-up-badge"><Check size={18} /></span>
-                  <p className="caught-up-title">You&rsquo;re all caught up</p>
-                  <p className="caught-up-sub">You read all the good stuff. A fresh edition lands tomorrow morning.</p>
-                </div>
+                <CaughtUpLaunchpad
+                  streak={streak?.current_streak || 0}
+                  storiesRead={readIds.size}
+                  dailyOn={dailyOn}
+                  dailyBusy={dailyBusy}
+                  onToggleDaily={() => toggleDailyEmails('feed')}
+                  onShare={async () => {
+                    trackRetentionCaughtUpShare(streak?.current_streak || 0, readIds.size);
+                    if (typeof navigator.share === 'function') {
+                      try {
+                        await navigator.share({
+                          title: 'Trace',
+                          text: buildCaughtUpShareText(streak?.current_streak || 0, readIds.size),
+                          url: buildCaughtUpShareUrl(),
+                        });
+                        return;
+                      } catch { /* cancelled or failed — fall through */ }
+                    }
+                    shareCaughtUp();
+                    showToast('Share link copied');
+                  }}
+                  onOpenPulse={() => go('conversations')}
+                  showExtension={showExtensionCta}
+                  onDismissExtension={() => {
+                    dismissExtensionCta(user?.uid);
+                    setShowExtensionCta(false);
+                    trackRetentionExtensionClicked('caught_up');
+                  }}
+                  pulsePreview={pulseAfternoonItems}
+                />
+              )}
+              {!caughtUp && tab === 'all' && readIds.size > 0 && (
+                <PulseAfternoonHook
+                  items={pulseAfternoonItems}
+                  onOpen={() => go('conversations')}
+                  onOpenItem={(item) => openPulseItem(item)}
+                />
               )}
             </div>
           </>
         )}
       </main>
+
+      {milestoneDays !== null && (
+        <MilestoneModal days={milestoneDays} onClose={() => setMilestoneDays(null)} />
+      )}
 
       {/* right rail: two pulse cards */}
       <aside className="right">
@@ -1863,10 +2073,11 @@ function SourceStack({ sources }: { sources: string[] }) {
   );
 }
 
-function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = false, lockedLabel, displayRank, burst = false }: {
+function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = false, lockedLabel, displayRank, burst = false, isStoryOfDay = false, threadFollowing = false, onToggleThreadFollow }: {
   story: FeedStory; onClick: () => void; marked: boolean;
   onToggleMark: (id: string) => void; onShare: (id: string) => void;
   locked?: boolean; lockedLabel?: string; displayRank?: number; burst?: boolean;
+  isStoryOfDay?: boolean; threadFollowing?: boolean; onToggleThreadFollow?: () => void;
 }) {
   const rank = displayRank ?? story.rank;
   const onKey = (e: React.KeyboardEvent) => {
@@ -1899,13 +2110,21 @@ function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = fal
     );
   }
   return (
-    <article className="post" role="button" tabIndex={0} aria-label={story.title} onClick={onClick} onKeyDown={onKey}>
+    <article className={`post${isStoryOfDay ? ' post-sotd-inline' : ''}`} role="button" tabIndex={0} aria-label={story.title} onClick={onClick} onKeyDown={onKey}>
       <div className="post-meta">
         <SourceStack sources={story.sources} />
         <span className="post-src">{story.source}</span>
         <span className="post-time">{story.time}</span>
         {story.sources.length > 1 && <span className="post-group">· {story.sources.length} sources</span>}
-        {story.threadId && <span className="post-group">· Ongoing story</span>}
+        {story.threadId && (
+          <span className="post-group">
+            · Ongoing story
+            {onToggleThreadFollow ? (
+              <ThreadFollowButton threadId={story.threadId} following={threadFollowing} onToggle={onToggleThreadFollow} />
+            ) : null}
+          </span>
+        )}
+        {isStoryOfDay && <span className="post-group post-sotd-tag">· Story of the day</span>}
         <span className="post-spacer" />
         <span className="post-rank">#{rank}</span>
       </div>
@@ -2262,7 +2481,7 @@ function CancelModal({ onClose, getToken, onDone }: {
   );
 }
 
-function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, pro, onBack, user, onSignOut, onSignIn, notify, getToken, onSubscriptionChanged, notice, signingIn = false, onEdit, dailyOn = false, onToggleDaily }: {
+function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, pro, onBack, user, onSignOut, onSignIn, notify, getToken, onSubscriptionChanged, notice, signingIn = false, onEdit, dailyOn = false, onToggleDaily, streak = null, weeklyWrap = null }: {
   profile: Profile; setProfile: (p: Profile) => void; storyCount: number;
   dirty: boolean; saving: boolean; onSave: () => void; pro: boolean; onBack: () => void;
   user: { displayName: string | null; email: string | null; photoURL: string | null } | null;
@@ -2270,6 +2489,8 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
   notify: (msg: string) => void; getToken: () => Promise<string>; onSubscriptionChanged: () => void;
   notice?: string | null; signingIn?: boolean; onEdit?: () => void;
   dailyOn?: boolean; onToggleDaily?: () => void;
+  streak?: ReadingStreak | null;
+  weeklyWrap?: WeeklyWrapSummary | null;
 }) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const bio = `Following ${profile.interests.length} topics. ${storyCount} stories ranked today.`;
@@ -2337,6 +2558,9 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
           </div>
         </div>
 
+        {user ? <ActivityHeatmapPanel streak={streak} /> : null}
+        {user ? <WeeklyWrapPanel wrap={weeklyWrap} /> : null}
+
         <section className="p-group">
           <h2 className="p-group-title">Interests</h2>
           <p className="p-group-sub">We use these only to order your For You feed — nothing else, no emails and no hidden filtering.</p>
@@ -2396,19 +2620,7 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
 
         <section className="p-group">
           <h2 className="p-group-title">Agent access</h2>
-          <div className="p-card">
-            <div className="p-row">
-              <div className="p-row-main">
-                <span className="p-row-title">{pro ? 'MCP + brief API' : 'Pro only'}</span>
-                <span className="p-row-sub">
-                  {pro
-                    ? 'Connect Claude, Codex, or Cursor to your ranked feed over one read-only key.'
-                    : 'Pro connects your AI agent to the ranked feed, Pulse, and archive over MCP.'}
-                </span>
-              </div>
-              <a className="p-link" href="/agents">{pro ? 'Setup guide' : 'Learn more'}</a>
-            </div>
-          </div>
+          <AgentRetentionCard pro={pro} />
         </section>
 
         <section className="p-group p-group-last">
@@ -3194,4 +3406,7 @@ const css = `
   .xw .save-note-ic,
   .xw .welcome-strip { animation: none !important; transition: none !important; }
 }
+${retentionCss}
+.xw .post-sotd-inline { border-left: 3px solid var(--pink); padding-left: 12px; }
+.xw .post-sotd-tag { color: var(--pink); font-weight: 700; }
 `;

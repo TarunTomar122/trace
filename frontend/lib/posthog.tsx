@@ -371,3 +371,19 @@ export function trackFeedProWelcomeShown(props?: Record<string, unknown>) {
     ...props,
   });
 }
+
+export function trackRetentionMilestoneShown(days: number) {
+  posthog.capture("retention_milestone_shown", { days, surface: "web" });
+}
+
+export function trackRetentionCaughtUpShare(streak: number, storiesRead: number) {
+  posthog.capture("retention_caught_up_shared", { streak, stories_read: storiesRead, surface: "web" });
+}
+
+export function trackRetentionExtensionClicked(placement: string) {
+  posthog.capture("retention_extension_clicked", { placement, surface: "web" });
+}
+
+export function trackRetentionThreadFollowed(threadId: string) {
+  posthog.capture("retention_thread_followed", { thread_id: threadId, surface: "web" });
+}
