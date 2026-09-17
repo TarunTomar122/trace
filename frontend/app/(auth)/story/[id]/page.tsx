@@ -59,7 +59,7 @@ function MissingStory() {
 
 export default async function SharedStoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { stories, pulse, promoted, monthlyReach, generated, serverPro, feedDate, priceDisplay, feedError } = await loadFeedViewData();
+  const { stories, headlines, pulse, promoted, monthlyReach, generated, serverPro, feedDate, priceDisplay, feedError } = await loadFeedViewData();
   const story = findSharedStory(stories, id) || await findStoryInArchive(id);
 
   if (!story) {
@@ -73,6 +73,7 @@ export default async function SharedStoryPage({ params }: { params: Promise<{ id
     <Suspense fallback={<FeedSkeleton />}>
         <FeedApp
           stories={stories}
+          headlines={headlines}
           pulse={pulse}
           promoted={promoted}
           monthlyReach={monthlyReach}

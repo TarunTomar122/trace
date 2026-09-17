@@ -10,7 +10,7 @@ function normalizeTitle(title: string): string {
   return title.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-function canonicalUrlKey(url?: string | null): string {
+export function canonicalUrlKey(url?: string | null): string {
   if (!url) return '';
   try {
     const parsed = new URL(url);
@@ -87,31 +87,85 @@ export function dedupeFeedItems(items: FeedItem[]): FeedItem[] {
   return out;
 }
 
+function topicKeyOf(topic: TrendingTopic): string {
+  return String(topic.topic_key || topic.id || '').trim() || normalizeTitle(topic.title || '');
+}
+
+function mergeTopicArticles(
+  target: TrendingTopic,
+  extraArticles: FeedItem[],
+  extra?: TrendingTopic,
+): void {
+  const seen = new Set(
+    (target.articles || []).map((article) => canonicalUrlKey(article.url)).filter(Boolean),
+  );
+  const before = (target.articles || []).length;
+  if (!target.articles) target.articles = [];
+  for (const article of extraArticles) {
+    const key = canonicalUrlKey(article.url);
+    if (key && seen.has(key)) continue;
+    if (key) seen.add(key);
+    target.articles.push(article);
+  }
+  if (extra && extraArticles.length > before) {
+    if (extra.title) target.title = extra.title;
+    if (extra.summary) target.summary = extra.summary;
+    if (extra.thumbnail) target.thumbnail = extra.thumbnail;
+    if (extra.key_points?.length) target.key_points = extra.key_points;
+  }
+  target.article_count = target.articles.length;
+}
+
+function topicsOverlap(a: TrendingTopic, b: TrendingTopic): boolean {
+  if (a.thread_id && b.thread_id && a.thread_id === b.thread_id) return true;
+  if (a.title && b.title && isSameStoryTitle(a.title, b.title)) return true;
+  const aUrls = new Set(
+    (a.articles || []).map((article) => canonicalUrlKey(article.url)).filter(Boolean),
+  );
+  return (b.articles || []).some((article) => {
+    const key = canonicalUrlKey(article.url);
+    return Boolean(key && aUrls.has(key));
+  });
+}
+
 export function dedupeTrendingTopics(items: TrendingTopic[]): TrendingTopic[] {
-  const seenTopic = new Set<string>();
-  const seenUrl = new Set<string>();
   const out: TrendingTopic[] = [];
+  const alias = new Map<string, TrendingTopic>();
 
   for (const topic of items) {
-    const topicKey =
-      String(topic.topic_key || topic.id || '').trim() || normalizeTitle(topic.title || '');
-    if (!topicKey || seenTopic.has(topicKey)) continue;
+    const topicKey = topicKeyOf(topic);
+    if (!topicKey) continue;
 
-    const topicUrls = (topic.articles || []).map((article) => canonicalUrlKey(article.url)).filter(Boolean);
-    if (topicUrls.some((url) => seenUrl.has(url))) continue;
-    const articles = (topic.articles || []).filter((article) => {
-      const urlKey = canonicalUrlKey(article.url);
-      if (urlKey && seenUrl.has(urlKey)) return false;
-      if (urlKey) seenUrl.add(urlKey);
-      return true;
-    });
-    if (articles.length === 0) continue;
+    const existing = alias.get(topicKey) || out.find((candidate) => topicsOverlap(candidate, topic));
+    if (existing) {
+      mergeTopicArticles(existing, topic.articles || [], topic);
+      alias.set(topicKey, existing);
+      continue;
+    }
 
-    seenTopic.add(topicKey);
-    out.push({ ...topic, articles });
+    const clone: TrendingTopic = { ...topic, articles: [...(topic.articles || [])] };
+    out.push(clone);
+    alias.set(topicKey, clone);
   }
 
-  return out;
+  return out.filter((topic) => (topic.articles?.length ?? 0) > 0);
+}
+
+function findTopicForItem(topics: TrendingTopic[], item: FeedItem): TrendingTopic | undefined {
+  const title = item.title || '';
+  const urlKey = canonicalUrlKey(item.url);
+  return topics.find((topic) => {
+    if (urlKey && (topic.articles || []).some((article) => canonicalUrlKey(article.url) === urlKey)) {
+      return true;
+    }
+    if (title && isSameStoryTitle(title, topic.title || '')) return true;
+    return Boolean(
+      title
+      && (topic.articles || []).some(
+        (article) => Boolean(article.title) && isSameStoryTitle(title, article.title),
+      ),
+    );
+  });
 }
 
 export function applyFeedDedupe<
@@ -119,10 +173,22 @@ export function applyFeedDedupe<
     for_you?: FeedItem[];
     trending?: FeedItem[];
     trending_topics?: TrendingTopic[];
+    headlines?: Array<{ id?: string; label?: string; topic_ids?: string[]; topicIds?: string[] }>;
   },
 >(feed: T): T {
   const forYou = dedupeByStoryTitle(dedupeFeedItems(feed.for_you || []));
   const trendingTopics = dedupeTrendingTopics(feed.trending_topics || []);
+
+  const leftoverTrending: FeedItem[] = [];
+  for (const item of dedupeFeedItems(feed.trending || [])) {
+    const match = findTopicForItem(trendingTopics, item);
+    if (match) {
+      mergeTopicArticles(match, [item]);
+      continue;
+    }
+    leftoverTrending.push(item);
+  }
+
   const topicArticleUrls = new Set<string>();
   for (const topic of trendingTopics) {
     for (const article of topic.articles || []) {
@@ -144,24 +210,29 @@ export function applyFeedDedupe<
     return true;
   });
 
-  const trendingFiltered = dedupeByStoryTitle(dedupeFeedItems(feed.trending || [])).filter((item) => {
-    const urlKey = canonicalUrlKey(item.url);
-    return !urlKey || !topicArticleUrls.has(urlKey);
-  });
-
-  const trendingDeduped = dedupeFeedItems(
-    trendingFiltered.filter((item) => {
-      const title = item.title || '';
-      if (!title) return true;
-      return !topicTitleList.some((topicTitle) => isSameStoryTitle(title, topicTitle));
+  const trendingDeduped = dedupeByStoryTitle(
+    leftoverTrending.filter((item) => {
+      const urlKey = canonicalUrlKey(item.url);
+      return !urlKey || !topicArticleUrls.has(urlKey);
     }),
   );
+
+  const topicIds = new Set(trendingTopics.map((topic) => topic.id).filter(Boolean));
+  const headlines = Array.isArray(feed.headlines)
+    ? feed.headlines
+      .map((headline) => {
+        const ids = (headline.topic_ids || headline.topicIds || []).filter((id) => topicIds.has(id));
+        return { ...headline, topic_ids: ids, topicIds: ids };
+      })
+      .filter((headline) => (headline.topic_ids || []).length >= 2)
+    : undefined;
 
   return {
     ...feed,
     for_you: forYouDeduped,
     trending: trendingDeduped,
     trending_topics: trendingTopics,
+    ...(headlines ? { headlines } : {}),
   };
 }
 

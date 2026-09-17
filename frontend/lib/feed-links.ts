@@ -7,6 +7,7 @@ export const FEED_TAB_LABELS: Record<string, string> = {
   tech: 'Tech',
   'ux-design': 'Design',
   startups: 'Startups',
+  conversations: 'Top HN',
 };
 
 const FEED_TAB_ALIASES: Record<string, string> = {
@@ -36,6 +37,18 @@ const FEED_TAB_ALIASES: Record<string, string> = {
   bookmarks: 'bookmarks',
   saved: 'bookmarks',
   profile: 'profile',
+  conversations: 'conversations',
+  pulse: 'conversations',
+  discussion: 'conversations',
+  discussions: 'conversations',
+  reading: 'conversations',
+  'worth-reading': 'conversations',
+  blogs: 'conversations',
+  hn: 'conversations',
+  'top-hn': 'conversations',
+  tophn: 'conversations',
+  'hacker-news': 'conversations',
+  hackernews: 'conversations',
 };
 
 /**
@@ -50,7 +63,7 @@ export function normalizeFeedTab(
   const raw = String(value || '').trim().toLowerCase();
   if (!raw) return 'all';
   const mapped = FEED_TAB_ALIASES[raw] || raw;
-  if (mapped === 'profile' || mapped === 'bookmarks' || mapped === 'all') {
+  if (mapped === 'profile' || mapped === 'bookmarks' || mapped === 'all' || mapped === 'conversations') {
     return mapped;
   }
   if (availableCats) {

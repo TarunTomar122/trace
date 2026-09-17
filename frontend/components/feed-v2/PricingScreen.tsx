@@ -22,7 +22,7 @@ const PRO_FEATURES = [
   'The complete ranked daily edition',
   'The full daily news archive',
   'Search your saved archive',
-  'Full personalized Pulse: tools, discussions, worth reading',
+  'Full personalized Pulse: tools and discussions',
   'Read-only Agent Access',
 ];
 

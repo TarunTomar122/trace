@@ -333,6 +333,11 @@ export interface V3UserFeed {
   build_pulse?: FeedItem[];
   trending: FeedItem[];
   trending_topics?: TrendingTopic[];
+  headlines?: Array<{
+    id: string;
+    label: string;
+    topic_ids: string[];
+  }>;
   assembled_at?: string;
   metadata?: {
     for_you_count?: number;

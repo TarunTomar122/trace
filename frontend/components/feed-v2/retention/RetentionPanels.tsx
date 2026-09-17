@@ -2,65 +2,80 @@
 
 import { useEffect, useState } from 'react';
 import {
-  Bell, Check, Chrome, Clock, Flame, Share2, Sparkles, Star, X, Zap,
-  MessageCircle, Bot, TrendingUp,
+  ArrowRight, Bell, Check, Chrome, Flame, Share2, Sparkles, Star, Zap,
+  Bot, TrendingUp,
 } from 'lucide-react';
 import type { FeedStory, PulseItem } from '../FeedApp';
 import {
   buildCaughtUpShareText,
   buildCaughtUpShareUrl,
   buildHeatmapDays,
-  CAT_DISPLAY,
   CHROME_EXTENSION_URL,
   dismissExtensionCta,
-  editionNumber,
-  formatEditionCountdown,
-  formatEditionDate,
   isExtensionCtaDismissed,
   isSunday,
-  msUntilNextEdition,
   type ReadingStreak,
-  type SinceLastVisitSummary,
   type WeeklyWrapSummary,
 } from '@/lib/retention';
 
 export const retentionCss = `
-.xw .ret-edition-bar {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 10px 16px; margin: 0 0 8px; border: 1px solid var(--line); border-radius: 14px;
-  background: linear-gradient(135deg, #f7fbff 0%, #fff 60%);
-}
-.xw .ret-edition-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.xw .ret-edition-kicker { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--blue); }
-.xw .ret-edition-title { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
-.xw .ret-edition-sub { font-size: 12.5px; color: var(--text-2); }
-.xw .ret-countdown {
-  flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 12px; border-radius: 9999px; background: #fff; border: 1px solid var(--line);
-  font-size: 12px; font-weight: 700; color: var(--text-2);
-}
-.xw .ret-since {
-  margin: 0 0 10px; padding: 12px 14px; border-radius: 14px;
-  border: 1px solid rgba(29, 155, 240, 0.22); background: rgba(29, 155, 240, 0.06);
-}
-.xw .ret-since-title { margin: 0 0 4px; font-size: 14px; font-weight: 800; color: var(--text); }
-.xw .ret-since-sub { margin: 0; font-size: 13px; line-height: 1.45; color: var(--text-2); }
 .xw .ret-sotd {
-  margin: 0 0 12px; padding: 14px 16px; border-radius: 16px;
-  border: 1px solid rgba(249, 24, 128, 0.2); background: linear-gradient(135deg, #fff5fa 0%, #fff 55%);
+  margin: 0; padding: 22px 0 26px;
+  border: none; border-bottom: 1px solid var(--line); border-radius: 0;
+  background: transparent; font-family: inherit; color: inherit;
   cursor: pointer; text-align: left; width: 100%;
-  transition: border-color var(--t-quick), transform var(--t-quick);
+  box-sizing: border-box;
+  transition: background-color 0.2s ease;
 }
-.xw .ret-sotd:hover { border-color: rgba(249, 24, 128, 0.45); transform: translateY(-1px); }
-.xw .ret-sotd-kicker { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pink); margin-bottom: 6px; }
-.xw .ret-sotd-title { margin: 0; font-size: 17px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.25; color: var(--text); }
-.xw .ret-sotd-meta { margin: 6px 0 0; font-size: 12.5px; color: var(--text-2); }
+.xw .ret-sotd:hover { background: var(--hover); }
+.xw .ret-sotd:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+.xw .ret-sotd-kicker {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 0 18px;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--pink); margin: 0 0 16px;
+}
+.xw .ret-sotd-shot {
+  display: block; width: 100%; max-width: none; height: 340px;
+  margin: 0 0 22px; object-fit: cover; object-position: center 28%;
+  border-radius: 0; background: var(--hover);
+}
+.xw .ret-sotd-copy { min-width: 0; padding: 0 18px; }
+.xw .ret-sotd-title {
+  display: block; margin: 0;
+  font-size: 28px; font-weight: 800; letter-spacing: -0.035em;
+  line-height: 1.16; color: var(--text);
+}
+.xw .ret-sotd-dek {
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden; margin: 10px 0 0;
+  font-size: 16px; line-height: 1.45; color: var(--text-2);
+}
+.xw .ret-sotd-meta {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px;
+  margin: 12px 0 0; font-size: 13px; font-weight: 600; color: var(--text-2);
+}
+.xw .ret-sotd-faves { display: inline-flex; align-items: center; }
+.xw .ret-sotd-faves img {
+  width: 16px; height: 16px; border-radius: 9999px; background: #fff;
+  box-shadow: 0 0 0 1px var(--line);
+}
+.xw .ret-sotd-faves img + img { margin-left: -5px; }
+.xw .ret-sotd.lead .ret-sotd-title { font-size: 28px; letter-spacing: -0.035em; }
+.xw .ret-sotd.lead .ret-sotd-dek { font-size: 16px; -webkit-line-clamp: 3; }
+.xw .ret-sotd.locked .ret-sotd-shot { opacity: 0.55; filter: grayscale(0.3); }
+.xw .ret-sotd.locked .ret-sotd-title { color: var(--text-2); }
+.xw .ret-streak-slot {
+  padding: 0 12px 8px; flex-shrink: 0;
+}
 .xw .ret-streak-pill {
-  display: inline-flex; align-items: center; gap: 5px; margin-left: 8px;
+  display: inline-flex; align-items: center; gap: 5px;
   padding: 4px 10px; border-radius: 9999px; background: rgba(255, 122, 0, 0.1);
-  color: #e65100; font-size: 12px; font-weight: 800;
+  color: #e65100; font-size: 12px; font-weight: 800; line-height: 1;
+  width: max-content; max-width: 100%; box-sizing: border-box; white-space: nowrap;
 }
-.xw .ret-streak-pill.side { margin: 8px 0 0; margin-left: 0; width: fit-content; }
+.xw aside.side .ret-streak-slot { display: block; }
+.xw header.head .ret-streak-pill { display: none; }
 .xw .ret-thread-btn {
   display: inline-flex; align-items: center; gap: 4px; margin-left: 6px;
   padding: 2px 8px; border-radius: 9999px; border: 1px solid var(--line);
@@ -90,24 +105,91 @@ export const retentionCss = `
 .xw .ret-btn.ghost { background: transparent; color: var(--text-2); border: 1px dashed var(--line); }
 .xw .ret-btn:disabled { opacity: 0.65; cursor: wait; }
 .xw .ret-pulse-hook {
-  margin: 0 0 20px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: #fafbfc;
+  margin: 0; padding: 0;
+  border: none; border-radius: 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: transparent; overflow: visible;
 }
-.xw .ret-pulse-hook-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
-.xw .ret-pulse-hook-title { font-size: 13px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-2); }
+.xw .ret-pulse-hook-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.xw .ret-pulse-hook-kicker {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pink);
+}
+.xw .ret-pulse-hook-tagline { font-size: 12px; font-weight: 600; color: var(--text-3); letter-spacing: 0; text-transform: none; }
+.xw .ret-pulse-hook-link {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 0; border: none; background: transparent;
+  font-size: 13px; font-weight: 700; color: var(--blue); cursor: pointer;
+  font-family: inherit; white-space: nowrap;
+}
+.xw .ret-pulse-hook-link:hover { text-decoration: underline; }
 .xw .ret-pulse-hook-item {
-  display: flex; align-items: flex-start; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line);
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 16px 18px;
+  border-top: 1px solid var(--line);
   text-decoration: none; color: inherit;
+  transition: background var(--t-quick);
 }
-.xw .ret-pulse-hook-item:first-of-type { border-top: none; padding-top: 0; }
-.xw .ret-pulse-hook-item strong { display: block; font-size: 14px; font-weight: 700; line-height: 1.3; }
-.xw .ret-pulse-hook-item span { font-size: 12px; color: var(--text-2); }
-.xw .ret-heatmap { margin-bottom: 16px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: #fafbfc; }
-.xw .ret-heatmap-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.xw .ret-heatmap-streak { display: flex; align-items: center; gap: 6px; font-size: 22px; font-weight: 800; }
-.xw .ret-heatmap-streak span { font-size: 13px; font-weight: 600; color: var(--text-2); }
-.xw .ret-heatmap-best { font-size: 12px; color: var(--text-3); }
-.xw .ret-heatmap-grid { display: flex; flex-wrap: wrap; gap: 4px; }
-.xw .ret-heatmap-dot { width: 12px; height: 12px; border-radius: 3px; background: rgba(0,0,0,0.07); }
+.xw .ret-pulse-hook-item:first-of-type { border-top: none; }
+.xw .ret-pulse-hook-item:hover { background: var(--hover); }
+.xw .ret-pulse-hook-item:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+.xw .ret-pulse-hook-thumb {
+  flex: 0 0 88px; width: 88px; height: 88px; object-fit: cover;
+  object-position: center 30%;
+  border-radius: 14px; display: block; background: var(--hover);
+  box-shadow: 0 0 0 1px rgba(15, 20, 25, 0.06);
+}
+.xw .ret-pulse-hook-thumb-fallback {
+  display: flex; align-items: center; justify-content: center;
+  background: #fff4ee;
+}
+.xw .ret-pulse-hook-fav { width: 28px; height: 28px; border-radius: 8px; }
+.xw .ret-pulse-hook-copy { flex: 1; min-width: 0; }
+.xw .ret-pulse-hook-rank {
+  display: block; margin-bottom: 6px;
+  font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em; color: var(--text-3);
+}
+.xw .ret-pulse-hook-body strong {
+  display: block; font-size: 16px; font-weight: 800; letter-spacing: -0.02em;
+  line-height: 1.35; color: var(--text);
+}
+.xw .ret-pulse-hook-meta { display: block; margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--text-2); }
+.xw .ret-heatmap {
+  margin: 0; padding: 14px 18px 16px;
+  border: none; border-radius: 0;
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  background: transparent;
+}
+.xw .ret-heatmap-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  margin-bottom: 10px;
+}
+.xw .ret-heatmap-kicker {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
+  text-transform: uppercase; color: #e65100;
+}
+.xw .ret-heatmap-streak {
+  display: flex; align-items: center; gap: 6px;
+  margin: 0 0 10px; padding: 0;
+  font-size: 15px; font-weight: 800; letter-spacing: -0.02em; color: var(--text);
+}
+.xw .ret-heatmap-streak strong { font-size: 16px; font-weight: 800; }
+.xw .ret-heatmap-streak span { font-size: 14px; font-weight: 600; color: var(--text-2); }
+.xw .ret-heatmap-best { font-size: 12px; font-weight: 600; color: var(--text-3); }
+.xw .ret-heatmap-grid {
+  display: grid; grid-template-columns: repeat(15, 1fr); gap: 3px;
+  max-width: 280px;
+}
+.xw .ret-heatmap-dot {
+  width: 100%; aspect-ratio: 1; border-radius: 0;
+  background: var(--line);
+}
 .xw .ret-heatmap-dot.on { background: #ff7a00; }
 .xw .ret-weekly { margin-bottom: 16px; padding: 16px; border-radius: 16px; border: 1px solid rgba(0, 186, 124, 0.25); background: rgba(0, 186, 124, 0.06); }
 .xw .ret-weekly-kicker { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--green); margin-bottom: 6px; }
@@ -116,13 +198,6 @@ export const retentionCss = `
 .xw .ret-agent-card { margin-bottom: 16px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: linear-gradient(135deg, #f8f5ff 0%, #fff 70%); }
 .xw .ret-agent-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; margin-bottom: 4px; }
 .xw .ret-agent-sub { margin: 0 0 10px; font-size: 13px; line-height: 1.45; color: var(--text-2); }
-.xw .ret-email-banner {
-  margin: 0 0 10px; padding: 12px 14px; border-radius: 14px;
-  border: 1px solid rgba(0, 186, 124, 0.3); background: rgba(0, 186, 124, 0.07);
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
-}
-.xw .ret-email-banner p { margin: 0; font-size: 13px; line-height: 1.4; color: var(--text-2); }
-.xw .ret-email-banner b { color: var(--text); }
 .xw .ret-milestone-overlay {
   position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center;
   background: rgba(15, 20, 25, 0.55); padding: 20px;
@@ -134,137 +209,133 @@ export const retentionCss = `
 .xw .ret-milestone-flame { font-size: 48px; line-height: 1; margin-bottom: 8px; }
 .xw .ret-milestone-title { margin: 0 0 6px; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
 .xw .ret-milestone-sub { margin: 0 0 18px; font-size: 14px; color: var(--text-2); line-height: 1.45; }
-.xw .ret-streak-pill.mobile-head { display: none; }
-.xw .ret-stack { display: flex; flex-direction: column; gap: 8px; }
 @media (max-width: 1100px) {
-  .xw .ret-streak-pill.side { display: none; }
-  .xw .ret-streak-pill.mobile-head { display: inline-flex; margin: 0; flex-shrink: 0; }
+  .xw aside.side .ret-streak-slot { display: none; }
+  .xw header.head .ret-streak-pill { display: inline-flex; margin: 0; flex-shrink: 0; }
 }
 @media (max-width: 687px) {
   .xw .head { flex-wrap: wrap; height: auto; min-height: 53px; padding: 8px 14px; gap: 6px 10px; }
   .xw .head-meta { margin-left: 0; font-size: 12px; }
   .xw .head .sort-seg { margin-left: auto; }
-  .xw .ret-stack { padding: 0 14px; gap: 10px; }
-  .xw .feed .ret-launchpad,
-  .xw .feed .ret-pulse-hook { margin-left: 14px; margin-right: 14px; width: calc(100% - 28px); box-sizing: border-box; }
-  .xw .ret-edition-bar {
-    flex-direction: column; align-items: stretch; gap: 10px;
-    margin: 0; padding: 12px 14px;
-  }
-  .xw .ret-countdown { width: 100%; justify-content: center; box-sizing: border-box; }
-  .xw .ret-edition-title { font-size: 14px; line-height: 1.3; }
-  .xw .ret-edition-sub { font-size: 12px; }
-  .xw .ret-since, .xw .ret-email-banner, .xw .ret-sotd, .xw .ret-pulse-hook, .xw .ret-launchpad { margin: 0; }
-  .xw .ret-sotd { padding: 12px 14px; }
-  .xw .ret-sotd-title { font-size: 16px; }
+  .xw .feed .ret-launchpad { margin-left: 14px; margin-right: 14px; width: calc(100% - 28px); box-sizing: border-box; }
+  .xw .ret-pulse-hook { margin: 0; }
+  .xw .ret-pulse-hook-head { padding: 12px 14px 10px; }
+  .xw .ret-pulse-hook-item { padding: 14px; gap: 12px; }
+  .xw .ret-pulse-hook-thumb { flex-basis: 76px; width: 76px; height: 76px; border-radius: 12px; }
+  .xw .ret-sotd { margin: 0; padding: 18px 0 22px; width: 100%; }
+  .xw .ret-sotd, .xw .ret-launchpad { margin-top: 0; }
+  .xw .ret-sotd-kicker { padding: 0 14px; margin-bottom: 14px; }
+  .xw .ret-sotd-shot { width: 100%; max-width: none; height: 240px; margin: 0 0 18px; }
+  .xw .ret-sotd-copy { padding: 0 14px; }
+  .xw .ret-sotd-title { font-size: 22px; }
+  .xw .ret-sotd-dek { font-size: 14.5px; -webkit-line-clamp: 2; }
+  .xw .ret-sotd.lead .ret-sotd-title { font-size: 22px; }
   .xw .ret-launchpad { padding: 20px 16px; margin-bottom: 20px; }
   .xw .ret-launchpad-actions { max-width: none; width: 100%; }
   .xw .ret-btn { width: 100%; min-height: 44px; box-sizing: border-box; }
-  .xw .ret-email-banner { flex-direction: column; align-items: stretch; }
   .xw .ret-thread-btn { min-height: 28px; padding: 4px 10px; }
-  .xw .ret-heatmap, .xw .ret-weekly, .xw .ret-agent-card { margin-left: 0; margin-right: 0; }
+  .xw .ret-heatmap { padding: 12px 14px 14px; }
+  .xw .ret-heatmap-grid { max-width: none; gap: 2px; }
+  .xw .ret-weekly, .xw .ret-agent-card { margin-left: 0; margin-right: 0; }
   .xw .ret-milestone-overlay {
     padding: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom));
     align-items: flex-end;
   }
   .xw .ret-milestone-card { border-radius: 20px 20px 0 0; width: 100%; max-width: none; }
 }
+@media (prefers-reduced-motion: reduce) {
+  .xw .ret-sotd { transition: none; }
+}
 `;
 
-export function EditionBar({ feedDate, storyCount }: { feedDate: string; storyCount: number }) {
-  const [countdown, setCountdown] = useState(() => formatEditionCountdown(msUntilNextEdition()));
-
-  useEffect(() => {
-    const tick = () => setCountdown(formatEditionCountdown(msUntilNextEdition()));
-    const id = window.setInterval(tick, 30000);
-    tick();
-    return () => window.clearInterval(id);
-  }, []);
-
-  const num = editionNumber(feedDate);
-  const label = formatEditionDate(feedDate);
-
-  return (
-    <div className="ret-edition-bar">
-      <div className="ret-edition-main">
-        <span className="ret-edition-kicker">Today&apos;s edition</span>
-        <span className="ret-edition-title">Edition #{num} · {label}</span>
-        <span className="ret-edition-sub">{storyCount} stories ranked across outlets</span>
-      </div>
-      <span className="ret-countdown" title="Next edition drops at 10:30 Europe/Berlin">
-        <Clock size={14} /> {countdown}
-      </span>
-    </div>
-  );
+export function storyDek(story: FeedStory): string {
+  const raw = String(story.body || story.takeaways.find(Boolean) || '')
+    .replace(/\*\*/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!raw) return '';
+  if (raw.length <= 220) return raw;
+  const cut = raw.slice(0, 220);
+  const at = cut.lastIndexOf(' ');
+  return `${(at > 140 ? cut.slice(0, at) : cut).trim()}…`;
 }
 
-export function SinceLastVisitBanner({ summary }: { summary: SinceLastVisitSummary }) {
-  if (summary.isFirstVisit) {
-    return (
-      <div className="ret-since">
-        <p className="ret-since-title">Welcome to today&apos;s edition</p>
-        <p className="ret-since-sub">
-          {summary.totalNew > 0
-            ? `${summary.totalNew} stories ranked for you — start with Story of the day below.`
-            : 'Your ranked briefing is ready.'}
-        </p>
-      </div>
-    );
-  }
-  if (summary.totalNew <= 0 && summary.updatedThreads <= 0) return null;
-
-  const catLine = summary.byCategory
-    .slice(0, 3)
-    .map(({ cat, count }) => `${count} in ${CAT_DISPLAY[cat] || cat}`)
-    .join(' · ');
-
+export function StoryOfDayCard({
+  story,
+  onOpen,
+  kicker = 'Story of the day',
+  size = 'hero',
+  following = false,
+  onToggleFollow,
+  locked = false,
+}: {
+  story: FeedStory;
+  onOpen: () => void;
+  kicker?: string;
+  size?: 'hero' | 'lead';
+  following?: boolean;
+  onToggleFollow?: () => void;
+  locked?: boolean;
+}) {
+  const dek = storyDek(story);
+  const favs = story.sources.slice(0, 4);
   return (
-    <div className="ret-since">
-      <p className="ret-since-title">Since your last visit</p>
-      <p className="ret-since-sub">
-        {summary.totalNew > 0 ? (
-          <><b>{summary.totalNew} new</b>{catLine ? ` — ${catLine}` : ''}</>
-        ) : (
-          'Your followed threads have updates'
-        )}
-        {summary.updatedThreads > 0 ? ` · ${summary.updatedThreads} ongoing ${summary.updatedThreads === 1 ? 'story' : 'stories'}` : ''}
-      </p>
-    </div>
-  );
-}
-
-export function EmailEditionBanner({ onDismiss }: { onDismiss?: () => void }) {
-  return (
-    <div className="ret-email-banner">
-      <p><b>From your morning brief</b> — today&apos;s ranked edition is ready.</p>
-      {onDismiss ? (
-        <button className="ret-thread-btn" onClick={onDismiss} aria-label="Dismiss">
-          <X size={12} />
-        </button>
+    <button type="button" className={`ret-sotd${size === 'lead' ? ' lead' : ''}${locked ? ' locked' : ''}`} onClick={onOpen}>
+      <div className="ret-sotd-kicker"><Star size={12} fill="currentColor" /> {kicker}</div>
+      {story.img ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          className="ret-sotd-shot"
+          src={story.img}
+          alt=""
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={(event) => { event.currentTarget.style.display = 'none'; }}
+        />
       ) : null}
-    </div>
-  );
-}
-
-export function StoryOfDayCard({ story, onOpen }: { story: FeedStory; onOpen: () => void }) {
-  return (
-    <button type="button" className="ret-sotd" onClick={onOpen}>
-      <div className="ret-sotd-kicker"><Star size={12} fill="currentColor" /> Story of the day</div>
-      <p className="ret-sotd-title">{story.title}</p>
-      <p className="ret-sotd-meta">
-        #{story.rank}
-        {story.sources.length > 1 ? ` · ${story.sources.length} sources` : ''}
-        {story.threadId ? ' · Ongoing' : ''}
-      </p>
+      <div className="ret-sotd-copy">
+        <span className="ret-sotd-title">{story.title}</span>
+        {locked ? (
+          <span className="ret-sotd-dek">Sign up to read the full story</span>
+        ) : dek ? (
+          <span className="ret-sotd-dek">{dek}</span>
+        ) : null}
+        <span className="ret-sotd-meta">
+          {favs.length > 0 ? (
+            <span className="ret-sotd-faves" aria-hidden="true">
+              {favs.map((domain) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={domain} src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`} alt="" />
+              ))}
+            </span>
+          ) : null}
+          {story.source ? <span>{story.source}</span> : null}
+          {story.time ? <span>· {story.time}</span> : null}
+          {story.sources.length > 1 ? <span>· {story.sources.length} sources</span> : null}
+          {story.threadId ? (
+            <>
+              <span>· Ongoing</span>
+              {onToggleFollow ? (
+                <ThreadFollowButton
+                  threadId={story.threadId}
+                  following={following}
+                  onToggle={onToggleFollow}
+                />
+              ) : null}
+            </>
+          ) : null}
+        </span>
+      </div>
     </button>
   );
 }
 
-export function StreakPill({ streak, className = '' }: { streak: number; className?: string }) {
+export function StreakPill({ streak }: { streak: number }) {
   if (streak <= 0) return null;
   return (
-    <span className={`ret-streak-pill${className ? ` ${className}` : ''}`}>
-      <Flame size={14} fill="currentColor" /> {streak}-day streak
+    <span className="ret-streak-pill">
+      <Flame size={14} fill="currentColor" aria-hidden="true" />
+      {streak}-day streak
     </span>
   );
 }
@@ -356,6 +427,40 @@ export function CaughtUpLaunchpad({
   );
 }
 
+function pulseHost(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+
+function PulseHookThumb({ item }: { item: PulseItem }) {
+  const [failed, setFailed] = useState(false);
+  if (item.img && !failed) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        className="ret-pulse-hook-thumb"
+        src={item.img}
+        alt=""
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  const host = pulseHost(item.url);
+  return (
+    <span className="ret-pulse-hook-thumb ret-pulse-hook-thumb-fallback" aria-hidden="true">
+      {host ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className="ret-pulse-hook-fav" src={`https://www.google.com/s2/favicons?domain=${host}&sz=64`} alt="" />
+      ) : null}
+    </span>
+  );
+}
+
 export function PulseAfternoonHook({
   items,
   onOpen,
@@ -366,13 +471,20 @@ export function PulseAfternoonHook({
   onOpenItem: (item: PulseItem) => void;
 }) {
   if (!items.length) return null;
+  const preview = items.slice(0, 2);
   return (
-    <div className="ret-pulse-hook">
+    <section className="ret-pulse-hook" aria-label="Pulse trending">
       <div className="ret-pulse-hook-head">
-        <span className="ret-pulse-hook-title"><Zap size={13} /> Afternoon pulse</span>
-        <button type="button" className="ret-thread-btn on" onClick={onOpen}>See all</button>
+        <span className="ret-pulse-hook-kicker">
+          <Zap size={12} fill="currentColor" />
+          Pulse
+          <span className="ret-pulse-hook-tagline">· trending now</span>
+        </span>
+        <button type="button" className="ret-pulse-hook-link" onClick={onOpen}>
+          See all <ArrowRight size={14} />
+        </button>
       </div>
-      {items.slice(0, 2).map((item) => (
+      {preview.map((item, i) => (
         <a
           key={item.id}
           className="ret-pulse-hook-item"
@@ -381,38 +493,43 @@ export function PulseAfternoonHook({
           rel="noreferrer"
           onClick={(e) => { e.preventDefault(); onOpenItem(item); }}
         >
-          <MessageCircle size={14} style={{ marginTop: 2, flexShrink: 0, color: '#1d9bf0' }} />
-          <span>
-            <strong>{item.title}</strong>
-            <span>{item.signal || item.source}</span>
+          <PulseHookThumb item={item} />
+          <span className="ret-pulse-hook-copy">
+            <span className="ret-pulse-hook-rank">{String(i + 1).padStart(2, '0')}</span>
+            <span className="ret-pulse-hook-body">
+              <strong>{item.title}</strong>
+              <span className="ret-pulse-hook-meta">{item.signal || item.sub || item.source}</span>
+            </span>
           </span>
         </a>
       ))}
-    </div>
+    </section>
   );
 }
 
 export function ActivityHeatmapPanel({ streak }: { streak: ReadingStreak | null }) {
   if (!streak) return null;
   const days = buildHeatmapDays(streak.streak_history || []);
+  const count = streak.current_streak;
   return (
-    <div className="ret-heatmap">
+    <section className="ret-heatmap" aria-label="Reading streak">
       <div className="ret-heatmap-head">
-        <div className="ret-heatmap-streak">
-          <Flame size={18} color="#ff7a00" fill="#ff7a00" />
-          {streak.current_streak}
-          <span>day streak</span>
-        </div>
+        <span className="ret-heatmap-kicker">Last 30 days</span>
         {streak.longest_streak > 0 ? (
-          <span className="ret-heatmap-best">best {streak.longest_streak}</span>
+          <span className="ret-heatmap-best">Best {streak.longest_streak}</span>
         ) : null}
       </div>
-      <div className="ret-heatmap-grid">
+      <p className="ret-heatmap-streak">
+        <Flame size={15} color="#ff7a00" fill="#ff7a00" aria-hidden="true" />
+        <strong>{count}</strong>
+        <span>day streak</span>
+      </p>
+      <div className="ret-heatmap-grid" role="img" aria-label={`${days.filter((d) => d.active).length} active days in the last 30`}>
         {days.map((d) => (
           <span key={d.date} className={`ret-heatmap-dot${d.active ? ' on' : ''}`} title={d.date} />
         ))}
       </div>
-    </div>
+    </section>
   );
 }
 

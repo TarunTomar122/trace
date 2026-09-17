@@ -135,3 +135,15 @@ export function rankStoriesForProfile<T extends SortableStory>(
   }
   return out;
 }
+
+/** Random sample from the top of a ranked list — used for a fresh Home For You slice. */
+export function sampleStoriesForFeed<T>(ranked: T[], cap: number, poolSize = 30): T[] {
+  if (ranked.length <= cap) return [...ranked];
+  const pool = ranked.slice(0, Math.min(poolSize, ranked.length));
+  const picked = [...pool];
+  for (let i = picked.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [picked[i], picked[j]] = [picked[j], picked[i]];
+  }
+  return picked.slice(0, cap);
+}

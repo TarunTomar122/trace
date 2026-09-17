@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   rankStoriesForProfile,
   rolePrimaryInterests,
+  sampleStoriesForFeed,
   storyBoost,
 } from './feed-ranking.ts';
 
@@ -146,4 +147,21 @@ test('diversify:false keeps the legacy pure score order', () => {
     { diversify: false },
   );
   assert.equal(ranked[0].cat, 'ai');
+});
+
+test('sampleStoriesForFeed returns cap items from the ranked pool', () => {
+  const ranked = Array.from({ length: 20 }, (_, i) => story({ rank: i + 1 }));
+  const sample = sampleStoriesForFeed(ranked, 10, 15);
+  assert.equal(sample.length, 10);
+  const ids = new Set(sample.map((s) => s.rank));
+  assert.equal(ids.size, 10);
+  for (const item of sample) {
+    assert.ok(item.rank <= 15);
+  }
+});
+
+test('sampleStoriesForFeed preserves order when pool is smaller than cap', () => {
+  const ranked = [story({ rank: 1 }), story({ rank: 2 })];
+  const sample = sampleStoriesForFeed(ranked, 10);
+  assert.deepEqual(sample.map((s) => s.rank), [1, 2]);
 });

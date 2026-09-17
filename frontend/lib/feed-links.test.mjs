@@ -16,7 +16,7 @@ test('lane links accept slugs and friendly aliases', () => {
   assert.equal(normalizeFeedTab('ai', CATS), 'ai');
 });
 
-test('home, bookmarks and profile keep working', () => {
+test('home, bookmarks, profile and conversations keep working', () => {
   assert.equal(normalizeFeedTab('all', CATS), 'all');
   assert.equal(normalizeFeedTab('home', CATS), 'all');
   assert.equal(normalizeFeedTab('', CATS), 'all');
@@ -24,6 +24,12 @@ test('home, bookmarks and profile keep working', () => {
   assert.equal(normalizeFeedTab('bookmarks', CATS), 'bookmarks');
   assert.equal(normalizeFeedTab('saved', CATS), 'bookmarks');
   assert.equal(normalizeFeedTab('profile', CATS), 'profile');
+  assert.equal(normalizeFeedTab('conversations', CATS), 'conversations');
+  assert.equal(normalizeFeedTab('pulse', CATS), 'conversations');
+  assert.equal(normalizeFeedTab('reading', CATS), 'conversations');
+  assert.equal(normalizeFeedTab('worth-reading', CATS), 'conversations');
+  assert.equal(normalizeFeedTab('hn', CATS), 'conversations');
+  assert.equal(normalizeFeedTab('top-hn', CATS), 'conversations');
 });
 
 test('stale links for missing categories fall back to home', () => {
@@ -38,6 +44,7 @@ test('unknown categories are trusted when no catalog is provided', () => {
 test('labels for metadata', () => {
   assert.equal(feedTabLabel('markets'), 'Markets');
   assert.equal(feedTabLabel('ux-design'), 'Design');
+  assert.equal(feedTabLabel('conversations'), 'Top HN');
   assert.equal(feedTabLabel('other'), 'Top');
 });
 

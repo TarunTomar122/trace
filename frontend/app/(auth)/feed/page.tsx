@@ -14,7 +14,7 @@ export async function generateMetadata({
   const sp = await searchParams;
   const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   const tab = normalizeFeedTab(first(sp.tab) ?? first(sp.q));
-  if (tab === 'all' || tab === 'profile' || tab === 'bookmarks') return {};
+  if (tab === 'all' || tab === 'profile' || tab === 'bookmarks' || tab === 'conversations') return {};
   const label = feedTabLabel(tab);
   const title = `${label} news | Trace`;
   const description = `Today's ${label.toLowerCase()} stories, ranked across outlets and summarized with key points.`;

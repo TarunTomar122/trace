@@ -50,10 +50,6 @@ export default function LandingCtaLink({
   const experimentProps = isExperiment
     ? { experiment_id: LANDING_CTA_EXPERIMENT_ID, experiment_variant: assignment }
     : {};
-  const renderedChildren = isExperiment && assignment === 'variant'
-    ? 'Start reading in 5 minutes'
-    : children;
-
   return (
     <Link
       href={href}
@@ -75,7 +71,7 @@ export default function LandingCtaLink({
         trackLandingCTAClicked(variant, location, { destination, ...experimentProps });
       }}
     >
-      {renderedChildren}
+      {children}
     </Link>
   );
 }

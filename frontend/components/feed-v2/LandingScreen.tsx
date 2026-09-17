@@ -92,7 +92,7 @@ export const LANDING_FAQ = [
   },
   {
     q: 'What is Pulse?',
-    a: 'Pulse is the builders’ radar next to your feed: trending GitHub repos with star counts, Hacker News discussions with points, and worth-reading blog posts. Full Pulse is part of Pro.',
+    a: 'Pulse is the builders’ radar next to your feed: trending GitHub repos with star counts, and Hacker News discussions with points. Full Pulse is part of Pro.',
   },
   {
     q: 'Can I cancel Pro anytime?',
@@ -136,8 +136,14 @@ export default async function LandingScreen() {
             <a href="/how-it-works">How it works</a>
             <Link href="/subscribe">Pricing</Link>
             <Link href="/blog">Blog</Link>
-            <LandingCtaLink href="/feed" location="nav_signin" className="nav-signin">Sign in</LandingCtaLink>
-            <LandingCtaLink href="/feed" location="nav" className="nav-cta">Open the feed</LandingCtaLink>
+            <a
+              href={CHROME_EXTENSION_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="nav-cta"
+            >
+              Download Chrome extension
+            </a>
           </nav>
         </div>
       </header>
@@ -148,8 +154,7 @@ export default async function LandingScreen() {
           Tech news from multiple sources, grouped, summarized, and ranked in one feed.
         </p>
         <div className="hero-ctas">
-          <LandingCtaLink href="/feed" location="hero" className="btn-primary">Open the feed</LandingCtaLink>
-          <a href={CHROME_EXTENSION_URL} target="_blank" rel="noreferrer" className="btn-ghost">Add Chrome Extension</a>
+          <LandingCtaLink href="/feed" location="hero" className="btn-primary">Open feed</LandingCtaLink>
         </div>
 
         <div className="logos">
@@ -174,9 +179,6 @@ export default async function LandingScreen() {
         ) : (
           <p className="section-sub">A fresh ranked edition lands every morning.</p>
         )}
-        <div className="demo-cta">
-          <LandingCtaLink href="/feed" location="demo" className="btn-primary">Open the live feed</LandingCtaLink>
-        </div>
       </section>
 
       <section className="section" id="how">
@@ -282,25 +284,21 @@ export default async function LandingScreen() {
       </section>
 
       <section className="section discovery-links" aria-labelledby="explore-trace-title">
-        <p className="kicker">Explore the workflow</p>
-        <h2 className="section-title" id="explore-trace-title">Start with the problem you are trying to solve.</h2>
-        <p className="section-sub">Practical guides for choosing a news workflow, reducing reading backlog, and staying current with less noise.</p>
+        <p className="kicker">Explore Trace</p>
+        <h2 className="section-title" id="explore-trace-title">How it works, pricing, and the blog.</h2>
+        <p className="section-sub">The only three places you need after the feed: how Trace works, what it costs, and the writing behind it.</p>
         <div className="discovery-grid">
-          <LandingDiscoveryLink href="/solutions" slug="solutions" className="discovery-card">
-            <strong>Solutions</strong>
-            <span>Find a better workflow for information overload and daily briefings.</span>
+          <LandingDiscoveryLink href="/how-it-works" slug="how-it-works" className="discovery-card">
+            <strong>How it works</strong>
+            <span>See how Trace finds the signal, groups coverage, and ranks a daily edition.</span>
           </LandingDiscoveryLink>
-          <LandingDiscoveryLink href="/use-cases" slug="use-cases" className="discovery-card">
-            <strong>Use cases</strong>
-            <span>See how founders, developers, PMs, and investors use Trace.</span>
-          </LandingDiscoveryLink>
-          <LandingDiscoveryLink href="/compare" slug="compare" className="discovery-card">
-            <strong>Compare tools</strong>
-            <span>Understand the trade-offs between Trace, RSS readers, and news apps.</span>
+          <LandingDiscoveryLink href="/subscribe" slug="pricing" className="discovery-card">
+            <strong>Pricing</strong>
+            <span>Free to start reading. Pro unlocks the full day, Pulse, and the archive.</span>
           </LandingDiscoveryLink>
           <LandingDiscoveryLink href="/blog" slug="blog" className="discovery-card">
-            <strong>Guides</strong>
-            <span>Read practical advice on tech reading, AI tools, and information diets.</span>
+            <strong>Blog</strong>
+            <span>Guides on tech reading, AI tools, and staying current with less noise.</span>
           </LandingDiscoveryLink>
         </div>
       </section>
@@ -310,8 +308,7 @@ export default async function LandingScreen() {
           Tomorrow morning, be the person who already knows.
         </h2>
         <div className="hero-ctas">
-          <LandingCtaLink href="/feed" location="final" className="btn-primary">Open the feed</LandingCtaLink>
-          <a href={ANDROID_URL} target="_blank" rel="noreferrer" className="btn-ghost">Get the Android app</a>
+          <a href={ANDROID_URL} target="_blank" rel="noreferrer" className="btn-primary">Get the Android app</a>
         </div>
       </section>
 
@@ -333,7 +330,7 @@ const css = `
   font-size: 15px; line-height: 20px;
 }
 .lp .nav { border-bottom: 1px solid var(--line); position: sticky; top: 0; background: rgba(255,255,255,0.85); backdrop-filter: blur(12px); z-index: 100; }
-.lp .nav-in { max-width: 1100px; margin: 0 auto; padding: 0 20px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+.lp .nav-in { max-width: 1100px; margin: 0 auto; padding: 0 20px; min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .lp .brand { display: flex; align-items: center; gap: 9px; text-decoration: none; color: var(--ink); }
 .lp .brand-logo { height: 28px; width: auto; }
 .lp .wordmark { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; }
@@ -344,12 +341,11 @@ const css = `
   background: var(--blue); color: #fff !important; padding: 8px 16px; border-radius: 9999px; font-weight: 700;
 }
 .lp .nav-cta:hover { background: #1a8cd8; }
-@media (max-width: 640px) {
-  .lp .nav-in { height: auto; padding: 10px 14px; }
+@media (max-width: 860px) {
+  .lp .nav-in { height: auto; padding: 10px 14px; flex-wrap: wrap; }
   .lp .nav-links { gap: 12px; overflow-x: auto; scrollbar-width: none; }
   .lp .nav-links::-webkit-scrollbar { display: none; }
   .lp .nav-links a { white-space: nowrap; }
-  .lp .nav-signin { display: none; }
 }
 
 .lp .hero { max-width: 860px; margin: 0 auto; padding: 84px 20px 40px; text-align: center; }
@@ -405,7 +401,16 @@ const css = `
 .lp .plan-btn { width: 100%; height: 46px; display: flex; }
 
 .lp .founder { max-width: 620px; margin: 0 auto; }
-.lp .founder .kicker { margin-bottom: 16px; }
+.lp .kicker {
+  margin: 0 0 14px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.lp .founder .kicker { margin-bottom: 16px; text-align: left; }
 .lp .founder-head { display: flex; align-items: center; justify-content: space-between; gap: 22px; margin-bottom: 22px; }
 .lp .founder .section-title { text-align: left; }
 .lp .founder-title { margin: 0; }
@@ -428,13 +433,14 @@ const css = `
 .lp .faq-item summary:hover { background: var(--hover); }
 .lp .faq-item p { margin: 0; padding: 0 20px 18px; font-size: 15px; line-height: 1.65; color: var(--text-2); }
 
-.lp .discovery-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 24px; }
-.discovery-card { display: flex; flex-direction: column; gap: 8px; padding: 20px; border: 1px solid var(--line); border-radius: 14px; color: var(--ink); text-decoration: none; transition: border-color 160ms ease, transform 160ms ease; }
-.discovery-card:hover { border-color: var(--blue); transform: translateY(-2px); }
-.discovery-card strong { font-size: 16px; }
-.discovery-card span { color: var(--text-2); font-size: 14px; line-height: 1.55; }
-@media (max-width: 760px) { .discovery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 480px) { .discovery-grid { grid-template-columns: 1fr; } }
+.lp .discovery-links { padding-top: 72px; padding-bottom: 72px; }
+.lp .discovery-links .section-title { max-width: 22ch; margin-left: auto; margin-right: auto; line-height: 1.15; }
+.lp .discovery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 8px; }
+.lp .discovery-card { display: flex; flex-direction: column; gap: 10px; padding: 24px; border: 1px solid var(--line); border-radius: 16px; color: var(--ink); text-decoration: none; transition: border-color 160ms ease, transform 160ms ease; min-height: 148px; }
+.lp .discovery-card:hover { border-color: var(--blue); transform: translateY(-2px); }
+.lp .discovery-card strong { font-size: 17px; letter-spacing: -0.02em; }
+.lp .discovery-card span { color: var(--text-2); font-size: 14.5px; line-height: 1.55; }
+@media (max-width: 760px) { .lp .discovery-grid { grid-template-columns: 1fr; } }
 
 .final-cta { max-width: 760px; margin: 0 auto; padding: 40px 20px 72px; text-align: center; }
 .lp .final-cta .hero-ctas { margin-top: 26px; }

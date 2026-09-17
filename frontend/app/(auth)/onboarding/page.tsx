@@ -64,7 +64,7 @@ export default function OnboardingPage() {
       });
       if (dailyBrief) trackDailyBriefPreferenceChanged(true, 'onboarding');
       await refreshProfile().catch(() => null);
-      router.replace('/feed?from=onboarding');
+      router.replace('/feed');
     } catch {
       setError('Could not save your setup — try again.');
       setBusy(false);

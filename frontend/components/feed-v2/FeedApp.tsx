@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveFeedAccess, hasActiveSubscription } from '@/lib/subscription-access';
@@ -34,20 +34,19 @@ import {
 } from '@/lib/posthog';
 import { bodyParagraphs } from '@/lib/body-text';
 import { rankStoriesForProfile } from '@/lib/feed-ranking';
-import { normalizeFeedTab, partitionFeedCats } from '@/lib/feed-links';
+import { flattenRows, layoutFeed, omitStoryFromRows, resolveHeadlines, takeFeedRows, type HeadlineRef } from '@/lib/story-headlines';
+import { feedTabLabel, normalizeFeedTab, partitionFeedCats } from '@/lib/feed-links';
 import {
   buildCaughtUpShareText,
   buildCaughtUpShareUrl,
-  computeSinceLastVisit,
   checkNewMilestone,
   dismissExtensionCta,
   markMilestoneSeen,
+  pickLatestStory,
   pickStoryOfDay,
   readFollowedThreads,
-  readLastVisit,
   readMilestoneSeen,
   toggleFollowedThread,
-  writeLastVisit,
   type ReadingStreak,
   type WeeklyWrapSummary,
 } from '@/lib/retention';
@@ -55,12 +54,10 @@ import {
   ActivityHeatmapPanel,
   AgentRetentionCard,
   CaughtUpLaunchpad,
-  EditionBar,
-  EmailEditionBanner,
   MilestoneModal,
   PulseAfternoonHook,
-  SinceLastVisitBanner,
   StoryOfDayCard,
+  storyDek,
   StreakPill,
   ThreadFollowButton,
   WeeklyWrapPanel,
@@ -70,7 +67,7 @@ import {
 } from './retention/RetentionPanels';
 import {
   Bookmark, Share, ArrowLeft, User, Check, Star, Plus, X, Clock,
-  Home, Sparkles, TrendingUp, Rocket, Code2, Cpu, PenTool, MessageCircle, BookOpen, Lock,
+  Home, Sparkles, TrendingUp, Rocket, Code2, Cpu, PenTool, MessageCircle, Lock,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -90,6 +87,8 @@ export interface PromotedTool {
 
 export interface FeedStory {
   id: string;
+  /** Topic ids absorbed when same-event cards were folded into this one. */
+  mergedIds?: string[];
   threadId?: string;
   rank: number;
   title: string;
@@ -104,6 +103,7 @@ export interface FeedStory {
   ts: number;
   cat: string;
   url: string;
+  tags?: string[];
 }
 
 export interface PulseItem {
@@ -147,6 +147,10 @@ const CAT_ICONS: Record<string, LucideIcon> = {
 export const ALL_INTERESTS = ['ai', 'markets', 'tech', 'ux-design', 'startups'];
 const FREE_LIMIT_SIGNED_OUT = 4;
 const FREE_LIMIT_SIGNED_IN = 7;
+/** Max stories shown per Home / category tab in today's edition. */
+const PER_TAB_STORY_CAP = 10;
+/** Max tool rows on the desktop right rail (promoted + house + pulse combined). */
+const RAIL_TOOLS_CAP = 3;
 
 function renderBold(text: string): React.ReactNode {
   const parts = text.split('**');
@@ -265,10 +269,11 @@ function bookmarkedAgo(iso?: string): string {
 }
 
 export default function FeedApp({
-  stories, pulse, promoted = [], monthlyReach = 0, generated, serverPro = false, feedDate = '',
+  stories, headlines = [], pulse, promoted = [], monthlyReach = 0, generated, serverPro = false, feedDate = '',
   priceDisplay = '', feedError = false, initialStory = null, initialStoryId = null, unlockedId = null,
 }: {
   stories: FeedStory[];
+  headlines?: HeadlineRef[];
   pulse: { tools: PulseItem[]; discussions: PulseItem[]; blogs: PulseItem[] };
   promoted?: PromotedTool[];
   monthlyReach?: number;
@@ -464,11 +469,8 @@ export default function FeedApp({
   const [weeklyWrap, setWeeklyWrap] = useState<WeeklyWrapSummary | null>(null);
   const [followedThreads, setFollowedThreads] = useState<Set<string>>(() => new Set());
   const [milestoneDays, setMilestoneDays] = useState<number | null>(null);
-  const [emailEditionBanner, setEmailEditionBanner] = useState(false);
   const [showExtensionCta, setShowExtensionCta] = useState(true);
   const streakRecorded = useRef(false);
-  const visitSnapRef = useRef({ uid: user?.uid, feedDate, readIds });
-  visitSnapRef.current = { uid: user?.uid, feedDate, readIds };
 
   // Reflect the profile's daily-brief preference in the paywall CTA.
   useEffect(() => {
@@ -482,14 +484,8 @@ export default function FeedApp({
     streakRecorded.current = false;
   }, [user?.uid]);
 
-  const [onboardingWelcome, setOnboardingWelcome] = useState(false);
   useEffect(() => {
     const from = params.get('from');
-    if (from === 'email' || from === 'brief') {
-      setEmailEditionBanner(true);
-    } else if (from === 'onboarding') {
-      setOnboardingWelcome(true);
-    }
     if (from) {
       try {
         const url = new URL(window.location.href);
@@ -532,13 +528,6 @@ export default function FeedApp({
     })();
     return () => { cancelled = true; };
   }, [user]);
-
-  useEffect(() => {
-    return () => {
-      const snap = visitSnapRef.current;
-      writeLastVisit(snap.uid, snap.feedDate, [...snap.readIds]);
-    };
-  }, []);
 
   // hydrate bookmarks from the real store when signed in (same store the app uses).
   // Guests keep theirs on this device so the tab isn't a lie; on sign-in we
@@ -624,6 +613,20 @@ export default function FeedApp({
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, [stories]);
+
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const raw = q.get('tab') ?? q.get('q');
+    if (!raw) return;
+    const mapped = normalizeFeedTab(raw, stories.map((s) => s.cat));
+    if (mapped !== 'conversations') return;
+    const slug = raw.trim().toLowerCase();
+    if (slug === 'conversations') return;
+    q.delete('q');
+    q.set('tab', 'conversations');
+    const qs = q.toString();
+    window.history.replaceState(null, '', qs ? `${pathname || '/feed'}?${qs}` : (pathname || '/feed'));
+  }, [pathname, stories]);
 
   // Membership is already resolved server-side (session cookie), so paint
   // immediately after mount instead of blocking on Firebase init. The gate
@@ -824,7 +827,7 @@ export default function FeedApp({
       : `${window.location.origin}/story/${id}`;
     if (navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(url).then(
-        () => showToast(kind === 'pulse' ? 'Link copied — opens in the Pulse tab' : 'Link copied — anyone can open this story'),
+        () => showToast(kind === 'pulse' ? 'Link copied' : 'Link copied — anyone can open this story'),
         () => showToast(url),
       );
     } else showToast(url);
@@ -1025,16 +1028,30 @@ export default function FeedApp({
   const [sortOverride, setSortOverride] = useState<null | 'for_you' | 'recent'>(() => readStoredSort());
   const sortMode = sortOverride ?? (tab === 'all' ? 'for_you' : 'recent');
   const byRecent = (a: FeedStory, b: FeedStory) => (b.ts || 0) - (a.ts || 0);
-  const visible = (() => {
-    const list = tab === 'all' ? [...homeStories] : stories.filter((s) => s.cat === tab);
-    if (sortMode === 'recent') return list.sort(byRecent);
-    // For you: profile lanes and source coverage remain the personalization
-    // signals; the backend Jev rank orders stories inside those lanes.
-    return rankStoriesForProfile(
-      list,
-      { interests: savedProfile.interests, role: authProfile?.role },
-    );
-  })();
+  const rankedForTab = useMemo(() => {
+    const list = tab === 'all'
+      ? homeStories
+      : stories.filter((s) => s.cat === tab);
+    return sortMode === 'recent'
+      ? [...list].sort(byRecent)
+      : rankStoriesForProfile(
+        list,
+        { interests: savedProfile.interests, role: authProfile?.role },
+      );
+  }, [tab, sortMode, homeStories, stories, savedProfile.interests, authProfile?.role]);
+  const pulsePool = useMemo(
+    () => pulse.discussions.filter((item) => item.id && item.title),
+    [pulse.discussions],
+  );
+  const tabHeadlines = useMemo(
+    () => resolveHeadlines(rankedForTab, headlines, pulsePool),
+    [rankedForTab, headlines, pulsePool],
+  );
+  const feedRows = useMemo(
+    () => takeFeedRows(layoutFeed(rankedForTab, tabHeadlines, pulsePool), PER_TAB_STORY_CAP),
+    [rankedForTab, tabHeadlines, pulsePool],
+  );
+  const visible = useMemo(() => flattenRows(feedRows), [feedRows]);
   // Older batches shown after the ranked list, narrowed to the active tab
   // (and to the reader's lanes on Home, matching the fresh list).
   const olderForTab = tab === 'all'
@@ -1085,12 +1102,18 @@ export default function FeedApp({
   // Signed-out readers get 4 stories/day; a free account gets 7. The quota
   // counts distinct stories opened today (across tabs), so it can't leak.
   const freeLimit = accessPending || user ? FREE_LIMIT_SIGNED_IN : FREE_LIMIT_SIGNED_OUT;
+  const isStoryLane = tab !== 'all' && tab !== 'bookmarks' && tab !== 'profile'
+    && tab !== 'conversations' && tab !== 'reading';
+  const laneFree = isFree && isStoryLane;
+  // Home keeps the daily quota. Category tabs show the top story plus one more.
+  const unlockedCap = laneFree ? 2 : freeLimit;
   // Free readers see the first N stories of the view (4 signed out, 7 with
   // a free account), then a few blurred teasers and the paywall.
-  const full = isFree ? visible.slice(0, freeLimit) : visible;
-  const lockedStories = isFree ? visible.slice(freeLimit) : [];
-  const teasers = lockedStories.slice(0, 4);
+  const full = isFree ? visible.slice(0, unlockedCap) : visible;
+  const lockedStories = isFree ? visible.slice(unlockedCap) : [];
+  const teasers = lockedStories.slice(0, laneFree ? 2 : 4);
   const fullIds = new Set(full.map((s) => s.id));
+  const showIds = new Set([...fullIds, ...teasers.map((s) => s.id)]);
   const viewRank = new Map(visible.map((s, i) => [s.id, i + 1]));
   // A card that renders as open always opens; only blurred teasers paywall.
   const openBlocked = Boolean(open)
@@ -1114,16 +1137,15 @@ export default function FeedApp({
   const extraBookmarks = bookmarks.filter((b) => !matchedBookmarkIds.has(b.item_id));
   const bookmarkCount = richMarkedStories.length + richMarkedPulse.length + extraBookmarks.length;
 
-  // "caught up" when every story in the current list has been opened today.
-  // For Pro, hold the card until the archive is exhausted so it never
-  // contradicts the "See older stories" button below.
-  const caughtUp = full.length > 0
+  // "caught up" only after a Pro reader has opened every story they can
+  // see, including the archive. Free readers still have locked stories
+  // behind the paywall, so celebrating would be a lie.
+  const caughtUp = !isFree
+    && full.length > 0
     && full.every((s) => readIds.has(s.id))
-    && (isFree || (
-      lockedStories.length === 0
-      && (olderStories.length === 0 || olderStories.every((s) => readIds.has(s.id)))
-      && olderDone
-    ));
+    && lockedStories.length === 0
+    && (olderStories.length === 0 || olderStories.every((s) => readIds.has(s.id)))
+    && olderDone;
 
   // feed viewed (once per mount) + paywall impression (once per session).
   const viewedRef = useRef(false);
@@ -1143,10 +1165,30 @@ export default function FeedApp({
   // detail view open? (URL-driven)
   const detailOpen = !!open || !!openPulse;
 
-  const storyOfDay = tab === 'all' && !detailOpen ? pickStoryOfDay(homeStories) : null;
-  const sinceLastVisit = tab === 'all' && !detailOpen
-    ? computeSinceLastVisit(stories, readLastVisit(user?.uid), feedDate, savedProfile.interests)
-    : null;
+  const canFeature = !detailOpen
+    && tab !== 'bookmarks' && tab !== 'profile'
+    && tab !== 'conversations' && tab !== 'reading';
+  const featuredPool = isFree ? full : rankedForTab;
+  const featuredStory = !canFeature
+    ? null
+    : sortMode === 'recent'
+      ? pickLatestStory(featuredPool)
+      : pickStoryOfDay(featuredPool);
+  const categoryLeadCats = myCats.length
+    ? myCats
+    : [...new Set(rankedForTab.map((s) => s.cat))];
+  const categoryLeads = tab === 'all' && featuredStory && sortMode !== 'recent'
+    ? categoryLeadCats.flatMap((cat) => {
+        const pool = featuredPool.filter((s) => s.cat === cat);
+        const lead = pickStoryOfDay(pool);
+        return lead && lead.id !== featuredStory.id ? [lead] : [];
+      })
+    : [];
+  const pinnedStories = featuredStory ? [featuredStory, ...categoryLeads] : [];
+  const listRows = omitStoryFromRows(
+    feedRows,
+    pinnedStories.flatMap((story) => [story.id, ...(story.mergedIds || [])]),
+  );
   const pulseAfternoonItems = [...pulse.discussions, ...pulse.tools].slice(0, 3);
 
   // Viewing a story counts as reading it — covers shared links and
@@ -1210,7 +1252,7 @@ export default function FeedApp({
           {p.sub ? <span className="tool-card-sub">{p.sub}</span> : null}
         </a>
       ))}
-      {pulse.tools.map((t) => (
+      {topTools(pulse.tools).map((t) => (
         <a key={`${t.id}-${dup}`} className="tool-card" href={t.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(t.id, 'pulse', t.source || '')}>
           <span className="tool-card-top">
             {domainOf(t.url) ? (
@@ -1231,7 +1273,7 @@ export default function FeedApp({
   }
 
   return (
-    <div className="xw">
+    <div className="xw" data-feed-ui="editorial">
       <style>{css}</style>
 
       {/* mobile bottom nav */}
@@ -1254,30 +1296,33 @@ export default function FeedApp({
               <span className="wordmark">Trace</span>
             </a>
           )}
-          <StreakPill streak={streak?.current_streak || 0} className="side" />
+          {(streak?.current_streak ?? 0) > 0 ? (
+            <div className="ret-streak-slot">
+              <StreakPill streak={streak?.current_streak ?? 0} />
+            </div>
+          ) : null}
           <nav className="nav">
-            <NavItem icon={Home} label="Home" active={tab === 'all'} onClick={() => go('all')} count={homeStories.length} />
+            <NavItem icon={Home} label="Home" active={tab === 'all'} onClick={() => go('all')} />
             {myCats.length === 0
               ? cats.map((c) => {
                   const Icon = CAT_ICONS[c] || Sparkles;
-                  return <NavItem key={c} icon={Icon} label={CAT_LABELS[c] || c} active={tab === c} onClick={() => go(c)} count={counts[c]} />;
+                  return <NavItem key={c} icon={Icon} label={CAT_LABELS[c] || c} active={tab === c} onClick={() => go(c)} />;
                 })
               : myCats.map((c) => {
                   const Icon = CAT_ICONS[c] || Sparkles;
-                  return <NavItem key={c} icon={Icon} label={CAT_LABELS[c] || c} active={tab === c} onClick={() => go(c)} count={counts[c]} />;
+                  return <NavItem key={c} icon={Icon} label={CAT_LABELS[c] || c} active={tab === c} onClick={() => go(c)} />;
                 })}
             {myCats.length > 0 && otherCats.length > 0 && (
               <>
                 <div className="nav-group-label">Others</div>
                 {otherCats.map((c) => {
                   const Icon = CAT_ICONS[c] || Sparkles;
-                  return <NavItem key={c} icon={Icon} label={CAT_LABELS[c] || c} active={tab === c} onClick={() => go(c)} count={counts[c]} />;
+                  return <NavItem key={c} icon={Icon} label={CAT_LABELS[c] || c} active={tab === c} onClick={() => go(c)} />;
                 })}
               </>
             )}
             <div className="nav-group-label">Pulse</div>
-            <NavItem icon={MessageCircle} label="Conversations" active={tab === 'conversations'} onClick={() => go('conversations')} count={pulse.discussions.length} />
-            <NavItem icon={BookOpen} label="Worth reading" active={tab === 'reading'} onClick={() => go('reading')} count={pulse.blogs.length} />
+            <NavItem icon={MessageCircle} label={feedTabLabel('conversations')} active={tab === 'conversations' || tab === 'reading'} onClick={() => go('conversations')} />
             <div className="nav-div" />
             <NavItem icon={Bookmark} label="Bookmarks" active={tab === 'bookmarks'} onClick={() => go('bookmarks')} />
           </nav>
@@ -1314,7 +1359,7 @@ export default function FeedApp({
           </div>
         )}
         {openPulse ? (
-          !pro && !pulse.blogs.some((b) => b.id === openPulse.id) ? (
+          !pro ? (
             <PaywallPlate what="Pulse — the builders' radar" ask="pro" proLabel={proLabel} />
           ) : (
             <PulseDetail item={openPulse} onBack={goBack} onShare={share} marked={marks.has(openPulse.id)} toggleMark={toggleMark} />
@@ -1341,14 +1386,14 @@ export default function FeedApp({
         ) : storyParam ? (
           <EmptyFeed
             title="Story not found"
-            sub="It may have rolled out of today’s edition."
+            sub="It may no longer be in today’s feed."
             onRetry={goBack}
             retryLabel="Back to the feed"
           />
         ) : pulseParam ? (
           <EmptyFeed
             title="Pulse item not found"
-            sub="It may have rolled out of today’s edition."
+            sub="It may no longer be in today’s feed."
             onRetry={goBack}
             retryLabel="Back to the feed"
           />
@@ -1412,7 +1457,6 @@ export default function FeedApp({
                     <span className="post-rank">#{s.rank}</span>
                   </div>
                   <h2 className="post-title">{s.title}</h2>
-                  <FeedImage src={s.img} className="post-img" />
                   <Actions id={s.id} size={18} marked={marks.has(s.id)} onToggleMark={toggleMark} onShare={share} />
                 </article>
               ))}
@@ -1457,10 +1501,6 @@ export default function FeedApp({
                       <span className="post-spacer" />
                     </div>
                     <h2 className="post-title">{b.item_metadata?.title || b.item_id}</h2>
-                    {b.item_metadata?.thumbnail ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img className="post-img" src={b.item_metadata.thumbnail} alt="" loading="lazy" decoding="async" />
-                    ) : null}
                     {b.item_metadata?.description ? (
                       <p className="post-desc">{b.item_metadata.description}</p>
                     ) : null}
@@ -1477,11 +1517,11 @@ export default function FeedApp({
               })}
             </div>
           </>
-        ) : tab === 'conversations' ? (
+        ) : tab === 'conversations' || tab === 'reading' ? (
           <>
             <header className="head">
-              <h1 className="head-title">Pulse</h1>
-              <span className="head-meta">{pulse.tools.length + pulse.discussions.length + pulse.blogs.length}</span>
+              <h1 className="head-title">{feedTabLabel('conversations')}</h1>
+              <span className="head-meta">{pulse.discussions.length}</span>
             </header>
             <div className="tools-carousel-wrap">
               <div className="tools-carousel-title"><span>Tools</span><span className="head-meta">{promoted.length + pulse.tools.length}</span></div>
@@ -1492,41 +1532,34 @@ export default function FeedApp({
                 </div>
               </div>
             </div>
-            {/* mobile only: Worth reading lives inside the Pulse tab, above Conversations */}
-            <div className="pulse-mobile-extra">
-              <PulseFeed
-                items={pulse.blogs}
-                title="Worth reading"
-                mode="detail"
-                onOpen={openPulseItem}
-                marks={marks} toggleMark={toggleMark} share={share}
-              />
-            </div>
             <PulseFeed
               items={pulse.discussions}
-              title="Conversations"
+              title={feedTabLabel('conversations')}
+              hideHeader
               mode="inline"
               marks={marks} toggleMark={toggleMark} share={share}
             />
           </>
-        ) : tab === 'reading' ? (
-          <PulseFeed
-            items={pulse.blogs}
-            title="Worth reading"
-            mode="detail"
-            onOpen={openPulseItem}
-            marks={marks} toggleMark={toggleMark} share={share}
-          />
         ) : (
           <>
+            <div className="cat-strip" role="group" aria-label="Topics">
+              <div className="cat-strip-track">
+                <button className={`cat-chip${tab === 'all' ? ' on' : ''}`} onClick={() => go('all')}>All</button>
+                {[...myCats, ...otherCats].map((c) => (
+                  <button key={c} className={`cat-chip${tab === c ? ' on' : ''}`} onClick={() => go(c)}>
+                    {CAT_LABELS[c] || c}
+                  </button>
+                ))}
+              </div>
+            </div>
             <header className="head">
               <h1 className="head-title">{tab === 'all' ? 'Home' : CAT_LABELS[tab] || tab}</h1>
-              <StreakPill streak={streak?.current_streak || 0} className="mobile-head" />
               <span className="head-meta">
                 {isFree
-                  ? `${freeLimit} of ${visible.length}`
-                  : visible.length + olderForTab.length}
+                  ? `${Math.min(unlockedCap, visible.length)} of ${visible.length}`
+                  : String(visible.length)}
               </span>
+              <StreakPill streak={streak?.current_streak || 0} />
               <span className="post-spacer" />
               <div className="sort-seg" role="group" aria-label="Sort stories" ref={sortSegRef}>
                 {sortPill && (
@@ -1552,26 +1585,32 @@ export default function FeedApp({
                 </button>
               </div>
             </header>
-            <div className="ret-stack">
-              {emailEditionBanner && (
-                <EmailEditionBanner onDismiss={() => setEmailEditionBanner(false)} />
-              )}
-              {onboardingWelcome ? (
-                <SinceLastVisitBanner summary={{
-                  totalNew: stories.length,
-                  byCategory: [],
-                  updatedThreads: 0,
-                  isFirstVisit: true,
-                }} />
-              ) : null}
-              {tab === 'all' && !feedError && stories.length > 0 && (
-                <EditionBar feedDate={feedDate} storyCount={stories.length} />
-              )}
-              {!onboardingWelcome && sinceLastVisit && <SinceLastVisitBanner summary={sinceLastVisit} />}
-              {storyOfDay && storyOfDay.id !== full[0]?.id && (
-                <StoryOfDayCard story={storyOfDay} onOpen={() => openStory(storyOfDay)} />
-              )}
-            </div>
+            {featuredStory && (
+              <StoryOfDayCard
+                story={featuredStory}
+                kicker={
+                  sortMode === 'recent'
+                    ? (tab === 'all' ? 'Latest' : `Latest in ${CAT_LABELS[tab] || tab}`)
+                    : (tab === 'all' ? 'Story of the day' : `Top in ${CAT_LABELS[tab] || tab}`)
+                }
+                onOpen={() => openStory(featuredStory)}
+                following={featuredStory.threadId ? followedThreads.has(featuredStory.threadId) : false}
+                onToggleFollow={featuredStory.threadId ? () => toggleThreadFollow(featuredStory.threadId!) : undefined}
+                locked={isFree && !fullIds.has(featuredStory.id)}
+              />
+            )}
+            {categoryLeads.map((story) => (
+              <StoryOfDayCard
+                key={`lead-${story.id}`}
+                story={story}
+                size="lead"
+                kicker={`Top in ${CAT_LABELS[story.cat] || story.cat}`}
+                onOpen={() => openStory(story)}
+                following={story.threadId ? followedThreads.has(story.threadId) : false}
+                onToggleFollow={story.threadId ? () => toggleThreadFollow(story.threadId!) : undefined}
+                locked={isFree && !fullIds.has(story.id)}
+              />
+            ))}
             {campaignWelcomeVisible && campaignWelcome && (
               <div className="welcome-strip">
                 <div className="welcome-strip-main" role="status">
@@ -1602,25 +1641,17 @@ export default function FeedApp({
                 </div>
               </div>
             )}
-            <div className="cat-strip" role="group" aria-label="Topics">
-              <button className={`cat-chip${tab === 'all' ? ' on' : ''}`} onClick={() => go('all')}>All</button>
-              {[...myCats, ...otherCats].map((c) => (
-                <button key={c} className={`cat-chip${tab === c ? ' on' : ''}`} onClick={() => go(c)}>
-                  {CAT_LABELS[c] || c}
-                </button>
-              ))}
-            </div>
             <div className="feed">
               {feedError ? (
                 <EmptyFeed
-                  title="Couldn’t load today’s edition"
+                  title="Couldn’t load the feed"
                   sub="Something went wrong on our side. Try again in a moment."
                   onRetry={() => window.location.reload()}
                 />
               ) : stories.length === 0 ? (
                 <EmptyFeed
                   title="No stories yet today"
-                  sub="A new edition lands every morning. Check back in a bit."
+                  sub="We add stories throughout the day. Check back in a bit."
                   onRetry={() => window.location.reload()}
                 />
               ) : tab === 'all' && visible.length === 0 ? (
@@ -1630,37 +1661,85 @@ export default function FeedApp({
                   onRetry={() => go('profile')}
                   retryLabel="Edit topics"
                 />
-              ) : (
-                full.map((s) => (
-                  <StoryCard
-                    key={s.id}
-                    story={s}
-                    displayRank={viewRank.get(s.id)}
-                    burst={burstId === s.id}
-                    onClick={() => openStory(s)}
-                    marked={marks.has(s.id)}
-                    onToggleMark={toggleMark}
-                    onShare={share}
-                    isStoryOfDay={storyOfDay?.id === s.id}
-                    threadFollowing={s.threadId ? followedThreads.has(s.threadId) : false}
-                    onToggleThreadFollow={s.threadId ? () => toggleThreadFollow(s.threadId!) : undefined}
-                  />
-                ))
-              )}
-
-              {!feedError && isFree && teasers.map((s) => (
-                <StoryCard
-                  key={s.id}
-                  story={s}
-                  displayRank={viewRank.get(s.id)}
-                  locked
-                  lockedLabel={user ? 'Buy Pro to see full stories and daily email' : 'Sign up to see full stories'}
-                  onClick={() => openStory(s)}
-                  marked={marks.has(s.id)}
-                  onToggleMark={toggleMark}
-                  onShare={share}
+              ) : visible.length === 0 ? (
+                <EmptyFeed
+                  title={`No ${CAT_LABELS[tab] || tab} stories today`}
+                  sub="Nothing in this topic made today's top 10. Try Home or another tag."
+                  onRetry={() => go('all')}
+                  retryLabel="Back to Home"
                 />
-              ))}
+              ) : (
+                listRows.map((row, rowIndex) => {
+                  const renderCard = (s: FeedStory, grouped: boolean, showImage = !grouped) => {
+                    if (!showIds.has(s.id)) return null;
+                    const locked = isFree && !fullIds.has(s.id);
+                    return (
+                      <StoryCard
+                        key={s.id}
+                        story={s}
+                        displayRank={viewRank.get(s.id)}
+                        hideRank={grouped}
+                        showImage={showImage}
+                        locked={locked}
+                        lockedLabel={locked ? (user ? 'Buy Pro to see full stories and daily email' : 'Sign up to see full stories') : undefined}
+                        burst={burstId === s.id}
+                        onClick={() => openStory(s)}
+                        marked={marks.has(s.id)}
+                        onToggleMark={toggleMark}
+                        onShare={share}
+                        threadFollowing={s.threadId ? followedThreads.has(s.threadId) : false}
+                        onToggleThreadFollow={s.threadId ? () => toggleThreadFollow(s.threadId!) : undefined}
+                      />
+                    );
+                  };
+                  if (row.kind === 'story') return renderCard(row.story, false);
+                  const members = row.stories.filter((s) => showIds.has(s.id));
+                  if (members.length < 2) {
+                    return <Fragment key={row.id}>{members.map((s) => renderCard(s, false))}</Fragment>;
+                  }
+                  const tone = listRows.slice(0, rowIndex).filter((entry) => entry.kind === 'headline').length % 4;
+                  return (
+                    <HeadlineSection key={row.id} label={row.label} tone={tone}>
+                      {members.map((s) => renderCard(s, true, true))}
+                      {row.related.map((item) => {
+                        const pulseItem = pulsePool.find((entry) => entry.id === item.id);
+                        if (!pulseItem) return null;
+                        const kind = 'Conversation';
+                        return (
+                          <article
+                            key={pulseItem.id}
+                            className="post headline-related"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => openPulseItem(pulseItem)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                openPulseItem(pulseItem);
+                              }
+                            }}
+                          >
+                            <div className="post-row">
+                              {pulseItem.img ? <FeedImage src={pulseItem.img} className="post-thumb post-thumb-sm" alt="" /> : null}
+                              <div className="post-copy">
+                                <h2 className="post-title">{pulseItem.title}</h2>
+                                <div className="post-meta">
+                                  {domainOf(pulseItem.url) ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img className="fav-solo" src={`https://www.google.com/s2/favicons?domain=${domainOf(pulseItem.url)}&sz=64`} alt="" loading="lazy" />
+                                  ) : null}
+                                  <span className="post-src">{pulseItem.source || kind}</span>
+                                  <span className="post-group">· {kind}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </HeadlineSection>
+                  );
+                })
+              )}
 
               {!feedError && isFree && lockedStories.length > 0 && (
                 <PaywallPlate
@@ -1669,6 +1748,15 @@ export default function FeedApp({
                   signingIn={signingIn}
                   proLabel={proLabel}
                   onSignIn={handleSignIn}
+                  compact={laneFree}
+                />
+              )}
+
+              {!feedError && !caughtUp && tab === 'all' && visible.length > 0 && readIds.size > 0 && pulseAfternoonItems.length > 0 && (
+                <PulseAfternoonHook
+                  items={pulseAfternoonItems}
+                  onOpen={() => go('conversations')}
+                  onOpenItem={(item) => openPulseItem(item)}
                 />
               )}
 
@@ -1703,7 +1791,7 @@ export default function FeedApp({
                   {olderDone && olderStories.length > 0 && (
                     <p className="older-end">
                       {tab === 'all'
-                        ? 'That’s the whole archive — a fresh edition lands every morning.'
+                        ? 'That’s the whole archive for now.'
                         : `That’s every ${CAT_LABELS[tab] || tab} story in the archive.`}
                     </p>
                   )}
@@ -1745,13 +1833,6 @@ export default function FeedApp({
                   pulsePreview={pulseAfternoonItems}
                 />
               )}
-              {!caughtUp && tab === 'all' && readIds.size > 0 && (
-                <PulseAfternoonHook
-                  items={pulseAfternoonItems}
-                  onOpen={() => go('conversations')}
-                  onOpenItem={(item) => openPulseItem(item)}
-                />
-              )}
             </div>
           </>
         )}
@@ -1768,30 +1849,49 @@ export default function FeedApp({
             <h2 className="rail-title">Tools</h2>
             <span className="rail-meta">{generated ? `updated ${generated}` : 'hourly'}</span>
           </div>
-          {promoted.length > 0 && (
-            <div className="rail-items">
-              {promoted.map((p) => (
-                <a key={p.id} className="pulse-row" href={p.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(p.id, 'promo', '')}>
-                  <RailLogo item={{ url: p.url, source: '' } as PulseItem} />
+          <div className="rail-items">
+            {railToolSlots(promoted, pulse.tools).map((slot) => {
+              if (slot.kind === 'promoted') {
+                const p = slot.item;
+                return (
+                  <a key={p.id} className="pulse-row" href={p.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(p.id, 'promo', '')}>
+                    <RailLogo item={{ url: p.url, source: '' } as PulseItem} />
+                    <span className="pulse-main">
+                      <span className="pulse-title">{p.title} <span className="rail-ad">AD</span></span>
+                      {p.sub ? <span className="rail-sub">{p.sub}</span> : null}
+                    </span>
+                  </a>
+                );
+              }
+              if (slot.kind === 'house') {
+                return (
+                  <a key="house-stocksbrew" className="pulse-row" href="https://stocksbrew.online" target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked('house-stocksbrew', 'house_ad', 'stocksbrew')}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img className="fav-solo" style={{ borderRadius: 5, alignSelf: 'flex-start', marginTop: 2 }} src="https://www.google.com/s2/favicons?domain=stocksbrew.online&sz=64" alt="" loading="lazy" />
+                    <span className="pulse-main">
+                      <span className="pulse-title">Stocksbrew - Understand any US stock in minutes <span className="rail-ad">AD</span></span>
+                      <span className="rail-sub">Stocksbrew reads fundamentals, earnings and news for you then tells you exactly what to do with your stocks.</span>
+                    </span>
+                  </a>
+                );
+              }
+              const t = slot.item;
+              return (
+                <a key={t.id} className="pulse-row" href={t.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(t.id, 'pulse', t.source || '')}>
+                  <RailLogo item={t} />
                   <span className="pulse-main">
-                    <span className="pulse-title">{p.title} <span className="rail-ad">AD</span></span>
-                    {p.sub ? <span className="rail-sub">{p.sub}</span> : null}
+                    <span className="pulse-title">{t.title}</span>
+                    {(t.sub || (!isGithubItem(t) && t.signal)) ? (
+                      <span className="rail-sub">{t.sub || t.signal}</span>
+                    ) : null}
+                    {isGithubItem(t) && t.signal ? (
+                      <span className="rail-stars"><Star size={12} /> {t.signal}</span>
+                    ) : null}
                   </span>
                 </a>
-              ))}
-            </div>
-          )}
-          <div className="rail-items">
-            <a className="pulse-row" href="https://stocksbrew.online" target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked('house-stocksbrew', 'house_ad', 'stocksbrew')}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img className="fav-solo" style={{ borderRadius: 5, alignSelf: 'flex-start', marginTop: 2 }} src="https://www.google.com/s2/favicons?domain=stocksbrew.online&sz=64" alt="" loading="lazy" />
-              <span className="pulse-main">
-                <span className="pulse-title">Stocksbrew - Understand any US stock in minutes <span className="rail-ad">AD</span></span>
-                <span className="rail-sub">Stocksbrew reads fundamentals, earnings and news for you then tells you exactly what to do with your stocks.</span>
-              </span>
-            </a>
+              );
+            })}
           </div>
-          <RailSection items={topTools(pulse.tools)} />
           <PromoSlot monthlyReach={monthlyReach} placement="tools_rail" onOpen={() => setPromoOpen(true)} />
         </div>
       </aside>
@@ -1799,7 +1899,7 @@ export default function FeedApp({
       {/* mobile bottom nav */}
       <nav className="bottom-nav">
         <button className={`bn-item${tab === 'all' ? ' on' : ''}`} onClick={() => go('all')}><Home size={24} /><span>Home</span></button>
-        <button className={`bn-item${tab === 'conversations' ? ' on' : ''}`} onClick={() => go('conversations')}><MessageCircle size={24} /><span>Pulse</span></button>
+        <button className={`bn-item${tab === 'conversations' || tab === 'reading' ? ' on' : ''}`} onClick={() => go('conversations')}><MessageCircle size={24} /><span>{feedTabLabel('conversations')}</span></button>
         <button className={`bn-item${tab === 'bookmarks' ? ' on' : ''}`} onClick={() => go('bookmarks')}><Bookmark size={24} /><span>Saved</span></button>
         <button className={`bn-item${isProfile ? ' on' : ''}`} onClick={() => go('profile')}><User size={24} /><span>Profile</span></button>
       </nav>
@@ -1829,7 +1929,7 @@ function WelcomeModal({ kind, onClose }: { kind: 'pro' | 'promo'; onClose: () =>
     ? [
       'The full ranked feed, no 7-story cap',
       'Full summaries with key points',
-      'Pulse: Conversations and Worth reading',
+      'Pulse: Top HN',
       'Profile-ranked picks plus the daily email brief',
     ]
     : [
@@ -1935,11 +2035,10 @@ function PromoteModal({ onClose, onSignIn, signedIn, getToken }: {
   );
 }
 
-function NavItem({ icon: Icon, label, active, onClick, count }: { icon: LucideIcon; label: string; active: boolean; onClick: () => void; count?: number }) {
+function NavItem({ icon: Icon, label, active, onClick }: { icon: LucideIcon; label: string; active: boolean; onClick: () => void }) {
   return (
     <button className={`nav-item${active ? ' active' : ''}`} onClick={onClick}>
       <span className="nav-with-ic"><Icon size={22} /> {label}</span>
-      {count !== undefined && <span key={count} className="nav-count">{count}</span>}
     </button>
   );
 }
@@ -2000,10 +2099,29 @@ function topTools(tools: PulseItem[]): PulseItem[] {
   if (ph) picked.push(ph);
   if (other) picked.push(other);
   for (const t of [...rest, ...gh, ...list]) {
-    if (picked.length >= 3) break;
+    if (picked.length >= RAIL_TOOLS_CAP) break;
     if (!picked.includes(t)) picked.push(t);
   }
-  return picked.slice(0, 3);
+  return picked.slice(0, RAIL_TOOLS_CAP);
+}
+
+type RailToolSlot =
+  | { kind: 'promoted'; item: PromotedTool }
+  | { kind: 'house' }
+  | { kind: 'pulse'; item: PulseItem };
+
+function railToolSlots(promoted: PromotedTool[], tools: PulseItem[]): RailToolSlot[] {
+  const slots: RailToolSlot[] = [];
+  for (const p of promoted) {
+    if (slots.length >= RAIL_TOOLS_CAP) break;
+    slots.push({ kind: 'promoted', item: p });
+  }
+  if (slots.length < RAIL_TOOLS_CAP) slots.push({ kind: 'house' });
+  for (const t of topTools(tools)) {
+    if (slots.length >= RAIL_TOOLS_CAP) break;
+    slots.push({ kind: 'pulse', item: t });
+  }
+  return slots;
 }
 
 function PromoSlot({ monthlyReach, placement, onOpen, compact = false }: { monthlyReach: number; placement: string; onOpen: () => void; compact?: boolean }) {
@@ -2038,28 +2156,6 @@ function PromoSlot({ monthlyReach, placement, onOpen, compact = false }: { month
   );
 }
 
-function RailSection({ items }: { items: PulseItem[] }) {
-  if (!items?.length) return null;
-  return (
-    <div className="rail-items">
-      {items.map((t) => (
-        <a key={t.id} className="pulse-row" href={t.url} target="_blank" rel="noreferrer" onClick={() => trackFeedItemClicked(t.id, 'pulse', t.source || '')}>
-          <RailLogo item={t} />
-          <span className="pulse-main">
-            <span className="pulse-title">{t.title}</span>
-            {(t.sub || (!isGithubItem(t) && t.signal)) ? (
-              <span className="rail-sub">{t.sub || t.signal}</span>
-            ) : null}
-            {isGithubItem(t) && t.signal ? (
-              <span className="rail-stars"><Star size={12} /> {t.signal}</span>
-            ) : null}
-          </span>
-        </a>
-      ))}
-    </div>
-  );
-}
-
 function SourceStack({ sources }: { sources: string[] }) {
   const shown = sources.slice(0, 3);
   if (shown.length === 0) return <span className="post-spacer" />;
@@ -2073,11 +2169,11 @@ function SourceStack({ sources }: { sources: string[] }) {
   );
 }
 
-function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = false, lockedLabel, displayRank, burst = false, isStoryOfDay = false, threadFollowing = false, onToggleThreadFollow }: {
+function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = false, lockedLabel, displayRank, burst = false, hideRank = false, showImage = true, threadFollowing = false, onToggleThreadFollow }: {
   story: FeedStory; onClick: () => void; marked: boolean;
   onToggleMark: (id: string) => void; onShare: (id: string) => void;
   locked?: boolean; lockedLabel?: string; displayRank?: number; burst?: boolean;
-  isStoryOfDay?: boolean; threadFollowing?: boolean; onToggleThreadFollow?: () => void;
+  hideRank?: boolean; showImage?: boolean; threadFollowing?: boolean; onToggleThreadFollow?: () => void;
 }) {
   const rank = displayRank ?? story.rank;
   const onKey = (e: React.KeyboardEvent) => {
@@ -2086,51 +2182,48 @@ function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = fal
       onClick();
     }
   };
-  if (locked) {
-    return (
-      <article
-        className="post locked"
-        role="button"
-        tabIndex={0}
-        aria-label={`Locked story: ${story.title}`}
-        onClick={onClick}
-        onKeyDown={onKey}
-      >
-        <div className="post-meta">
-          <SourceStack sources={story.sources} />
-          <span className="post-time">{story.time}</span>
-          {story.sources.length > 1 && <span className="post-group">· {story.sources.length} sources</span>}
-          {story.threadId && <span className="post-group">· Ongoing story</span>}
-          <span className="post-spacer" />
-          <span className="post-rank">#{rank}</span>
-        </div>
-        <h2 className="post-title locked-title">{story.title}</h2>
-        <p className="lock-note"><Lock size={13} /> {lockedLabel || 'Sign up to see full stories'}</p>
-      </article>
-    );
-  }
+  const dek = locked ? '' : storyDek(story);
+  const thumb = showImage && story.img
+    ? <FeedImage src={story.img} className={`post-thumb${locked ? ' locked-thumb' : ''}`} alt="" />
+    : null;
   return (
-    <article className={`post${isStoryOfDay ? ' post-sotd-inline' : ''}`} role="button" tabIndex={0} aria-label={story.title} onClick={onClick} onKeyDown={onKey}>
-      <div className="post-meta">
-        <SourceStack sources={story.sources} />
-        <span className="post-src">{story.source}</span>
-        <span className="post-time">{story.time}</span>
-        {story.sources.length > 1 && <span className="post-group">· {story.sources.length} sources</span>}
-        {story.threadId && (
-          <span className="post-group">
-            · Ongoing story
-            {onToggleThreadFollow ? (
-              <ThreadFollowButton threadId={story.threadId} following={threadFollowing} onToggle={onToggleThreadFollow} />
-            ) : null}
-          </span>
-        )}
-        {isStoryOfDay && <span className="post-group post-sotd-tag">· Story of the day</span>}
-        <span className="post-spacer" />
-        <span className="post-rank">#{rank}</span>
+    <article
+      className={`post${locked ? ' locked' : ''}`}
+      role="button"
+      tabIndex={0}
+      aria-label={locked ? `Locked story: ${story.title}` : story.title}
+      onClick={onClick}
+      onKeyDown={onKey}
+    >
+      <div className="post-row">
+        {thumb}
+        <div className="post-copy">
+          <h2 className={`post-title${locked ? ' locked-title' : ''}`}>{story.title}</h2>
+          {locked ? (
+            <p className="lock-note"><Lock size={13} /> {lockedLabel || 'Sign up to see full stories'}</p>
+          ) : dek ? (
+            <p className="post-dek">{dek}</p>
+          ) : null}
+          <div className="post-meta">
+            <SourceStack sources={story.sources} />
+            {locked ? null : <span className="post-src">{story.source}</span>}
+            <span className="post-time">{story.time}</span>
+            {story.sources.length > 1 && <span className="post-group">· {story.sources.length} sources</span>}
+            {story.threadId && (
+              <span className="post-group">
+                · Ongoing story
+                {!locked && onToggleThreadFollow ? (
+                  <ThreadFollowButton threadId={story.threadId} following={threadFollowing} onToggle={onToggleThreadFollow} />
+                ) : null}
+              </span>
+            )}
+            {!hideRank && <><span className="post-spacer" /><span className="post-rank">#{rank}</span></>}
+          </div>
+          {locked ? null : (
+            <Actions id={story.id} size={18} marked={marked} onToggleMark={onToggleMark} onShare={onShare} burst={burst} />
+          )}
+        </div>
       </div>
-      <h2 className="post-title">{story.title}</h2>
-      <FeedImage src={story.img} className="post-img" />
-      <Actions id={story.id} size={18} marked={marked} onToggleMark={onToggleMark} onShare={onShare} burst={burst} />
     </article>
   );
 }
@@ -2144,6 +2237,19 @@ function EmptyFeed({ title, sub, onRetry, retryLabel = 'Retry' }: {
       <p className="empty-sub">{sub}</p>
       <button className="empty-retry" onClick={onRetry}>{retryLabel}</button>
     </div>
+  );
+}
+
+function HeadlineSection({ label, tone, children }: { label: string; tone: number; children: ReactNode }) {
+  return (
+    <section className={`headline tone-${tone}`} aria-label={label}>
+      <header className="headline-head">
+        <h2 className="headline-title">{label}</h2>
+      </header>
+      <div className="headline-stories">
+        {children}
+      </div>
+    </section>
   );
 }
 
@@ -2198,16 +2304,19 @@ function Actions({ id, size = 18, marked, onToggleMark, onShare, shareKind = 'st
   );
 }
 
-function PulseFeed({ items, title, mode, onOpen, marks, toggleMark, share }: {
+function PulseFeed({ items, title, mode, onOpen, marks, toggleMark, share, hideHeader = false }: {
   items: PulseItem[]; title: string; mode: 'inline' | 'detail'; onOpen?: (t: PulseItem) => void;
   marks: Set<string>; toggleMark: (id: string) => void; share: (id: string) => void;
+  hideHeader?: boolean;
 }) {
   return (
     <>
-      <header className="head">
-        <h1 className="head-title">{title}</h1>
-        <span className="head-meta">{items.length}</span>
-      </header>
+      {hideHeader ? null : (
+        <header className="head">
+          <h1 className="head-title">{title}</h1>
+          <span className="head-meta">{items.length}</span>
+        </header>
+      )}
       <div className="feed">
         {items.map((t) => (
           <article
@@ -2243,31 +2352,35 @@ function PulseFeed({ items, title, mode, onOpen, marks, toggleMark, share }: {
                 : undefined
             }
           >
-            <div className="post-meta">
-              {domainOf(t.url) ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img className="fav-solo" src={`https://www.google.com/s2/favicons?domain=${domainOf(t.url)}&sz=64`} alt="" loading="lazy" />
-              ) : null}
-              <span className="post-src">{t.source}</span>
-              {t.signal && <span className="signal">{t.signal}</span>}
-              <span className="post-spacer" />
+            <div className="post-row">
+              {t.img ? <FeedImage src={t.img} className="post-thumb" alt="" /> : null}
+              <div className="post-copy">
+                <h2 className="post-title">
+                  {mode === 'inline' ? (
+                    <a
+                      className="post-link"
+                      href={t.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() => trackFeedItemClicked(t.id, 'discussion', t.source || '')}
+                    >{t.title}</a>
+                  ) : (
+                    t.title
+                  )}
+                </h2>
+                <div className="post-meta">
+                  {domainOf(t.url) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img className="fav-solo" src={`https://www.google.com/s2/favicons?domain=${domainOf(t.url)}&sz=64`} alt="" loading="lazy" />
+                  ) : null}
+                  <span className="post-src">{t.source}</span>
+                  {t.signal && <span className="signal">{t.signal}</span>}
+                  <span className="post-spacer" />
+                </div>
+                {t.sum || t.sub ? <p className="post-dek">{t.sum || t.sub}</p> : null}
+                <Actions id={t.id} size={18} marked={marks.has(t.id)} onToggleMark={toggleMark} onShare={share} shareKind="pulse" />
+              </div>
             </div>
-            <h2 className="post-title">
-              {mode === 'inline' ? (
-                <a
-                  className="post-link"
-                  href={t.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={() => trackFeedItemClicked(t.id, 'discussion', t.source || '')}
-                >{t.title}</a>
-              ) : (
-                t.title
-              )}
-            </h2>
-            {mode === 'inline' && (t.sum || t.sub) ? <p className="post-desc">{t.sum || t.sub}</p> : null}
-            <FeedImage src={t.img} className="post-img" />
-            <Actions id={t.id} size={18} marked={marks.has(t.id)} onToggleMark={toggleMark} onShare={share} shareKind="pulse" />
           </article>
         ))}
       </div>
@@ -2293,11 +2406,11 @@ function PulseDetail({ item, onBack, onShare, marked, toggleMark }: { item: Puls
           {item.signal && <span className="signal">{item.signal}</span>}
           <span className="post-spacer" />
         </div>
-        <FeedImage src={item.img} className="detail-img" />
         <h1 className="detail-title">{item.title}</h1>
         {bodyParagraphs(item.sum).map((para, pi) => (
           <p key={pi} className="detail-body" style={pi > 0 ? { marginTop: 14 } : undefined}>{renderBold(para)}</p>
         ))}
+        {item.img ? <FeedImage src={item.img} className="detail-img detail-img-below" alt="" /> : null}
         <div className="detail-actions">
           <Actions id={item.id} size={20} marked={marked} onToggleMark={toggleMark} onShare={onShare} shareKind="pulse" />
         </div>
@@ -2327,13 +2440,12 @@ function Detail({ story, displayRank, onBack, onShare, marked, toggleMark }: { s
           <span className="post-rank">#{displayRank ?? story.rank}</span>
         </div>
         <h1 className="detail-title">{story.title}</h1>
-        <FeedImage src={story.img} className="detail-img" />
         {bodyParagraphs(story.body).map((para, pi) => (
           <p key={pi} className="detail-body" style={pi > 0 ? { marginTop: 14 } : undefined}>{renderBold(para)}</p>
         ))}
         {story.takeaways.length > 0 && (
           <div className="detail-takeaways">
-            <h2 className="section-label">Key points</h2>
+            <h2 className="section-label">What to know</h2>
             <ul className="takeaway-list">
               {story.takeaways.map((t, j) => (
                 <li key={j}>{renderBold(t)}</li>
@@ -2341,6 +2453,7 @@ function Detail({ story, displayRank, onBack, onShare, marked, toggleMark }: { s
             </ul>
           </div>
         )}
+        {story.img ? <FeedImage src={story.img} className="detail-img detail-img-below" alt="" /> : null}
         {story.coverage.length > 0 && (
           <div className="detail-coverage">
             <h2 className="section-label">Coverage · {story.coverage.length} sources</h2>
@@ -2370,16 +2483,18 @@ function Detail({ story, displayRank, onBack, onShare, marked, toggleMark }: { s
   );
 }
 
-function PaywallPlate({ what, ask, onSignIn, signingIn = false, proLabel = 'Go Pro' }: {
+function PaywallPlate({ what, ask, onSignIn, signingIn = false, proLabel = 'Go Pro', compact = false }: {
   what: string;
   ask: 'signup' | 'daily' | 'pro';
   onSignIn?: () => void;
   signingIn?: boolean;
   proLabel?: string;
+  compact?: boolean;
 }) {
+  const cls = compact ? 'paywall compact' : 'paywall';
   if (ask === 'signup') {
     return (
-      <div className="paywall">
+      <div className={cls}>
         <div className="paywall-badge"><Lock size={20} /></div>
         <h2 className="paywall-title">Sign up to see full stories</h2>
         <p className="paywall-sub">
@@ -2397,7 +2512,7 @@ function PaywallPlate({ what, ask, onSignIn, signingIn = false, proLabel = 'Go P
 
   if (ask === 'daily') {
     return (
-      <div className="paywall">
+      <div className={cls}>
         <div className="paywall-badge"><Lock size={20} /></div>
         <h2 className="paywall-title">Buy Pro to see full stories</h2>
         <p className="paywall-sub">
@@ -2410,7 +2525,7 @@ function PaywallPlate({ what, ask, onSignIn, signingIn = false, proLabel = 'Go P
   }
 
   return (
-    <div className="paywall">
+    <div className={cls}>
       <div className="paywall-badge"><Lock size={20} /></div>
       <h2 className="paywall-title">This one&rsquo;s for Pro</h2>
       <p className="paywall-sub">
@@ -2435,7 +2550,7 @@ function CancelModal({ onClose, getToken, onDone }: {
   const miss = [
     'Back to 7 free stories a day',
     'Summaries shrink, key points go away',
-    'Pulse locks: no Conversations, no Worth reading',
+    'Pulse locks: no Top HN',
     'Profile ranking and the daily email brief stop',
   ];
   async function confirm() {
@@ -2695,10 +2810,17 @@ const css = `
   .xw .bn-item.on { color: var(--text); }
   .xw .feed { padding-bottom: 104px; }
   .xw .cat-strip {
-    display: flex; gap: 8px; overflow-x: auto; padding: 10px 14px;
-    border-bottom: 1px solid var(--line); scrollbar-width: none;
+    display: block;
+    position: sticky; top: 0; z-index: 40;
+    border-bottom: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   }
-  .xw .cat-strip::-webkit-scrollbar { display: none; }
+  .xw .cat-strip-track {
+    display: flex; gap: 8px; overflow-x: auto; padding: 10px 14px;
+    scrollbar-width: none;
+  }
+  .xw .cat-strip-track::-webkit-scrollbar { display: none; }
   .xw .cat-chip {
     white-space: nowrap; padding: 8px 14px; border-radius: 9999px;
     border: 1px solid var(--line); background: var(--bg);
@@ -2708,9 +2830,12 @@ const css = `
 }
 @media (max-width: 687px) {
   .xw .main { width: 100%; max-width: 100%; border-left: none; border-right: none; }
-  .xw .post { padding: 14px 14px 4px; }
-  .xw .post-title { font-size: 17px; }
-  .xw .post-img { border-radius: 12px; margin-top: 8px; }
+  .xw .post { padding: 16px 14px 10px; }
+  .xw .post-title { font-size: 18px; }
+  .xw .post-thumb { width: 104px; height: 104px; flex-basis: 104px; border-radius: 12px; }
+  .xw .post-dek { font-size: 14px; -webkit-line-clamp: 2; }
+  .xw .headline-title { font-size: 18px; }
+  .xw .headline { margin: 8px 8px 14px; }
   .xw .feed { padding-bottom: 104px; }
   .xw .detail { padding-bottom: calc(120px + env(safe-area-inset-bottom)); }
   .xw .head { padding: 0 14px; }
@@ -2720,12 +2845,15 @@ const css = `
   .xw .detail-actions { padding: 2px 14px; }
   .xw .detail-link { margin: 14px; }
   .xw .detail-byline { padding: 14px 14px 0; }
-  .xw .detail-takeaways { margin: 12px 14px 4px; }
+  .xw .detail-takeaways { margin: 16px 0 0; padding: 0 0 4px; }
+  .xw .detail-takeaways .section-label { margin: 0 14px 8px; }
+  .xw .takeaway-list { padding: 0 14px; }
+  .xw .detail-img-below { margin: 14px 14px 8px; width: calc(100% - 28px); }
 }
 
 /* left sidebar */
-.xw .side { width: 275px; flex-shrink: 0; height: 100vh; }
-@media (max-width: 1100px) { .xw .side { display: none; } }
+.xw aside.side { width: 275px; flex-shrink: 0; height: 100vh; }
+@media (max-width: 1100px) { .xw aside.side { display: none; } }
 .xw .side-inner {
   position: sticky; top: 0; height: 100vh; overflow-y: auto;
   scrollbar-width: none; padding: 8px; display: flex; flex-direction: column;
@@ -2832,9 +2960,10 @@ const css = `
 @media (max-width: 687px) {
   .xw .act-ic { width: 44px; height: 44px; }
   .xw .toast { bottom: 72px; }
-  .xw .post { padding: 14px 14px 4px; }
-  .xw .post-title { font-size: 17px; }
-  .xw .post-img { border-radius: 12px; margin-top: 8px; }
+  .xw .post { padding: 16px 14px 10px; }
+  .xw .headline-head { padding: 14px 14px 8px; }
+  .xw .headline-title { font-size: 18px; }
+  .xw .post-title { font-size: 18px; }
   .xw .feed { padding-bottom: 104px; }
   .xw .detail { padding-bottom: calc(120px + env(safe-area-inset-bottom)); }
   .xw .head { padding: 0 14px; }
@@ -2845,14 +2974,17 @@ const css = `
   .xw .detail-actions { padding: 2px 14px; }
   .xw .detail-link { margin: 14px; }
   .xw .detail-byline { padding: 14px 14px 0; }
-  .xw .detail-takeaways { margin: 12px 14px 4px; }
+  .xw .detail-takeaways { margin: 16px 0 0; padding: 0 0 4px; }
+  .xw .detail-takeaways .section-label { margin: 0 14px 8px; }
+  .xw .takeaway-list { padding: 0 14px; }
+  .xw .detail-img-below { margin: 14px 14px 8px; width: calc(100% - 28px); }
   .xw .older-sep { margin: 20px 14px 2px; }
-  .xw .load-older { width: calc(100% - 28px); margin: 16px 14px 24px; }
+  .xw .load-older { width: 100%; margin: 0; padding: 16px 14px; }
 }
 
 /* post card */
 .xw .post {
-  padding: 14px 18px 6px;
+  padding: 18px 18px 10px;
   border-bottom: 1px solid var(--line);
   cursor: pointer;
   transition: background-color 0.2s ease;
@@ -2861,9 +2993,34 @@ const css = `
 .xw .post:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 .xw .post.locked { cursor: default; }
 .xw .post.locked:hover { background: transparent; }
-.xw .post-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-.xw .post-src { font-size: 13px; font-weight: 700; color: var(--text-2); }
-.xw .post-time { font-size: 13px; color: var(--text-3); }
+.xw .headline {
+  margin: 10px 12px 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  background: #f6f8fa;
+  box-shadow: 0 1px 0 rgba(15, 20, 25, 0.04);
+}
+.xw .headline.tone-0 { background: #f3f7fb; border-color: #d5e4f0; }
+.xw .headline.tone-1 { background: #f7f5f1; border-color: #e3dccf; }
+.xw .headline.tone-2 { background: #f3f7f4; border-color: #d3e4d8; }
+.xw .headline.tone-3 { background: #f7f3f6; border-color: #e4d5df; }
+.xw .headline-head {
+  padding: 14px 14px 10px;
+}
+.xw .headline-title {
+  margin: 0;
+  font-size: 20px; font-weight: 800; letter-spacing: -0.03em;
+  line-height: 1.28; color: var(--text);
+}
+.xw .headline-stories { padding: 0 0 6px; }
+.xw .headline .post { border-bottom: none; background: transparent; padding: 12px 12px 10px; }
+.xw .headline .post + .post { border-top: 1px solid rgba(15, 20, 25, 0.08); }
+.xw .headline .post:hover { background: rgba(255, 255, 255, 0.55); }
+.xw .headline-related .post-title { font-size: 16px; font-weight: 650; }
+.xw .post-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; margin-bottom: 6px; }
+.xw .post-src { font-size: 13px; font-weight: 700; color: var(--text-2); white-space: nowrap; }
+.xw .post-time { font-size: 13px; color: var(--text-3); white-space: nowrap; }
 .xw .post-spacer { flex: 1; }
 .xw .post-rank { font-size: 13px; font-weight: 500; color: var(--text-3); font-variant-numeric: tabular-nums; }
 .xw .post-group { font-size: 13px; color: var(--text-3); white-space: nowrap; }
@@ -2883,11 +3040,8 @@ const css = `
 .xw .post-link { color: inherit; text-decoration: none; }
 .xw .post-link:hover { text-decoration: underline; text-decoration-color: var(--text-3); text-underline-offset: 3px; }
 .xw .post-desc { margin: 6px 0 0; font-size: 15px; line-height: 22px; color: var(--text); overflow-wrap: break-word; }
-.xw .pulse-mobile-extra { display: none; }
 .xw .tools-carousel-wrap { display: none; }
 @media (max-width: 687px) {
-  .xw .pulse-mobile-extra { display: block; border-top: 1px solid var(--line); }
-  .xw .pulse-mobile-extra .feed { padding-bottom: 0; }
   .xw .tools-carousel-wrap { display: block; border-bottom: 1px solid var(--line); padding: 18px 0 14px; background: var(--bg); }
   .xw .tools-carousel-title { display: flex; align-items: baseline; justify-content: space-between; font-size: 17px; font-weight: 800; letter-spacing: -0.01em; padding: 0 14px 10px; }
   .xw .tools-carousel { overflow-x: auto; padding: 2px 14px 6px; scrollbar-width: none; }
@@ -2917,7 +3071,22 @@ const css = `
   .xw .tool-card-sub { font-size: 12.5px; line-height: 17px; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .xw .tool-card-meta { display: none; }
 }
-.xw .post-title { margin: 0 0 4px; font-size: 18px; font-weight: 700; line-height: 23px; }
+.xw .post-title { margin: 0 0 8px; font-size: 22px; font-weight: 800; line-height: 1.22; letter-spacing: -0.03em; }
+.xw .post-dek {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; margin: 0 0 10px;
+  font-size: 15px; line-height: 1.45; color: var(--text-2);
+}
+.xw .post-row { display: flex; flex-direction: row; align-items: flex-start; gap: 16px; }
+.xw .post-copy { flex: 1; min-width: 0; }
+.xw .post-thumb {
+  flex: 0 0 140px; width: 140px; height: 140px; object-fit: cover;
+  object-position: center 30%;
+  border-radius: 12px; display: block; background: var(--hover);
+  box-shadow: 0 0 0 1px rgba(15, 20, 25, 0.06);
+}
+.xw .post-thumb-sm { flex-basis: 56px; width: 56px; height: 56px; border-radius: 10px; box-shadow: none; }
+.xw .post-thumb.locked-thumb { opacity: 0.5; filter: grayscale(0.35); }
 .xw .locked-title { filter: blur(4px); user-select: none; }
 .xw .lock-note { display: flex; align-items: center; gap: 6px; margin: 8px 0 10px; font-size: 13px; font-weight: 650; color: var(--text-2); }
 .xw .post-img {
@@ -2926,17 +3095,21 @@ const css = `
   background: var(--hover);
 }
 .xw .post-img[data-status='loading'],
+.xw .post-thumb[data-status='loading'],
+.xw .headline-shot[data-status='loading'],
 .xw .detail-img[data-status='loading'] {
   background: linear-gradient(100deg, var(--hover) 40%, #eef3f5 50%, var(--hover) 60%);
   background-size: 200% 100%;
   animation: img-shimmer 1.2s linear infinite;
 }
 .xw .post-img[data-status='ok'],
+.xw .post-thumb[data-status='ok'],
+.xw .headline-shot[data-status='ok'],
 .xw .detail-img[data-status='ok'] { animation: img-in 260ms var(--ease-smooth-out); }
 @keyframes img-shimmer { to { background-position: -200% 0; } }
 @keyframes img-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  .xw .post-img, .xw .detail-img { animation: none !important; }
+  .xw .post-img, .xw .post-thumb, .xw .headline-shot, .xw .detail-img { animation: none !important; }
 }
 .xw .post-sources { margin: 8px 0 0; font-size: 13px; line-height: 16px; color: var(--text-3); }
 .xw .post-sum { margin: 6px 0 0; font-size: 14px; line-height: 20px; color: var(--text-2); }
@@ -2987,10 +3160,14 @@ const css = `
 .xw .detail-img { width: calc(100% - 36px); max-height: 510px; object-fit: cover; border-radius: 16px; margin: 12px 18px 4px; }
 .xw .detail-sources { margin: 0 18px 4px; font-size: 13px; line-height: 16px; color: var(--text-3); }
 .xw .detail-body { margin: 12px 18px 4px; font-size: 16px; line-height: 25px; color: var(--text); }
-.xw .detail-takeaways { margin: 14px 18px 14px; border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px 18px; background: var(--hover); }
-.xw .detail-takeaways .section-label { margin-left: 2px; }
-.xw .detail-takeaways .section-label { margin: 0 0 8px; }
-.xw .takeaway-list { margin: 0; padding: 0; list-style: none; }
+.xw .detail-takeaways { margin: 20px 0 0; padding: 0 0 4px; border: none; border-radius: 0; background: transparent; }
+.xw .detail-img-below { margin: 16px 18px 8px; }
+.xw .detail-takeaways .section-label {
+  margin: 0 18px 8px; padding: 0;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-3);
+}
+.xw .takeaway-list { margin: 0; padding: 0 18px; list-style: none; }
 .xw .takeaway-list li { font-size: 15px; line-height: 22px; color: var(--text); padding: 4px 0 4px 18px; position: relative; }
 .xw .takeaway-list li::before { content: ''; position: absolute; left: 2px; top: 12px; width: 6px; height: 6px; border-radius: 50%; background: var(--blue); }
 .xw .detail-actions { padding: 2px 18px; border-bottom: 1px solid var(--line); }
@@ -3006,6 +3183,7 @@ const css = `
   margin: 3rem auto; max-width: 30rem; text-align: center; padding: 0 24px;
   animation: t-panel-in var(--t-slow) var(--ease-smooth-out);
 }
+.xw .paywall.compact { margin: 20px auto 28px; }
 @keyframes t-panel-in {
   from { opacity: 0; transform: translateY(12px); filter: blur(var(--blur-small)); }
   to { opacity: 1; transform: translateY(0); filter: blur(0); }
@@ -3209,36 +3387,8 @@ const css = `
 }
 .xw .welcome-strip {
   display: flex; align-items: center; gap: 14px;
-  margin: 12px 18px 0; padding: 12px 14px;
-  border: 1px solid rgba(29, 155, 240, 0.28); border-radius: 14px;
-  background: rgba(29, 155, 240, 0.06);
-  animation: t-panel-in var(--t-slow) var(--ease-smooth-out);
-}
-.xw .welcome-strip-main { flex: 1; min-width: 0; }
-.xw .welcome-strip-title { margin: 0 0 2px; font-size: 14.5px; font-weight: 800; letter-spacing: -0.01em; }
-.xw .welcome-strip-sub { margin: 0; font-size: 13px; color: var(--text-2); }
-.xw .welcome-strip-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.xw .welcome-strip-cta {
-  border: none; border-radius: 9999px; background: var(--blue); color: #fff;
-  font-size: 13.5px; font-weight: 700; font-family: inherit;
-  padding: 9px 16px; cursor: pointer; white-space: nowrap;
-}
-.xw .welcome-strip-cta:hover { background: #1a8cd8; }
-.xw .welcome-strip-cta:disabled { opacity: 0.7; cursor: wait; }
-.xw .welcome-strip-x {
-  border: none; background: transparent; color: var(--text-3);
-  padding: 6px; border-radius: 9999px; cursor: pointer; display: inline-flex;
-}
-.xw .welcome-strip-x:hover { background: var(--hover); color: var(--text); }
-@media (max-width: 687px) {
-  .xw .welcome-strip { flex-direction: column; align-items: stretch; }
-  .xw .welcome-strip-actions { justify-content: space-between; }
-}
-.xw .welcome-strip {
-  display: flex; align-items: center; gap: 14px;
-  margin: 12px 18px 0; padding: 12px 14px;
-  border: 1px solid rgba(29, 155, 240, 0.28); border-radius: 14px;
-  background: rgba(29, 155, 240, 0.06);
+  margin: 0; padding: 10px 16px 12px;
+  border: none; border-radius: 0; background: transparent;
   animation: t-panel-in var(--t-slow) var(--ease-smooth-out);
 }
 .xw .welcome-strip-main { flex: 1; min-width: 0; }
@@ -3258,7 +3408,7 @@ const css = `
 }
 .xw .welcome-strip-x:hover { background: var(--hover); color: var(--text); }
 @media (max-width: 687px) {
-  .xw .welcome-strip { flex-direction: column; align-items: stretch; }
+  .xw .welcome-strip { flex-direction: column; align-items: stretch; margin: 0 -14px; padding: 10px 14px 12px; }
   .xw .welcome-strip-actions { justify-content: space-between; }
 }
 .xw .activating-spin {
@@ -3375,9 +3525,10 @@ const css = `
 .xw .older-sep::before, .xw .older-sep::after { content: ''; height: 1px; background: var(--line); flex: 1; }
 .xw .load-older {
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  width: calc(100% - 36px); margin: 18px 18px 26px; height: 46px;
-  border: 1px solid var(--line); border-radius: 9999px; background: var(--bg);
-  color: var(--text); font-size: 15px; font-weight: 700; font-family: inherit;
+  width: 100%; margin: 0; height: auto; padding: 18px;
+  border: none; border-top: 1px solid var(--line); border-radius: 0;
+  background: transparent; color: var(--text);
+  font-size: 15px; font-weight: 700; font-family: inherit;
   cursor: pointer; transition: background-color 0.2s ease;
 }
 .xw .load-older:hover:not(:disabled) { background: var(--hover); }
@@ -3407,6 +3558,72 @@ const css = `
   .xw .welcome-strip { animation: none !important; transition: none !important; }
 }
 ${retentionCss}
-.xw .post-sotd-inline { border-left: 3px solid var(--pink); padding-left: 12px; }
-.xw .post-sotd-tag { color: var(--pink); font-weight: 700; }
+.xw .ret-sotd { padding: 22px 0 26px; }
+.xw .ret-sotd-kicker { padding: 0 18px; margin-bottom: 16px; }
+.xw .ret-sotd-shot,
+.xw .ret-sotd.lead .ret-sotd-shot { width: 100%; max-width: none; height: 340px; margin: 0 0 22px; }
+.xw .ret-sotd-copy { padding: 0 18px; }
+@media (max-width: 687px) {
+  .xw, .xw .main { height: 100dvh; }
+  .xw .head {
+    height: auto; min-height: 53px; flex-wrap: wrap;
+    padding: 10px 14px 8px; gap: 8px 10px; align-items: center;
+  }
+  .xw .head-title { font-size: 18px; }
+  .xw .head .sort-seg { margin-left: auto; }
+  .xw .post { padding: 16px 14px 12px; }
+  .xw .post-row {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "thumb title title"
+      "thumb dek dek"
+      "meta meta actions";
+    column-gap: 12px;
+    row-gap: 8px;
+    align-items: start;
+  }
+  .xw .post-row:not(:has(.post-thumb)) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "title title" "dek dek" "meta actions";
+  }
+  .xw .post-row:has(.post-thumb-sm) { grid-template-columns: 56px minmax(0, 1fr) auto; }
+  .xw .post-copy { display: contents; padding: 0; }
+  .xw .post-thumb {
+    grid-area: thumb;
+    width: 88px; height: 88px; flex: none;
+    max-width: none; border-radius: 10px;
+    box-shadow: 0 0 0 1px rgba(15, 20, 25, 0.06);
+  }
+  .xw .post-thumb-sm { width: 56px; height: 56px; border-radius: 10px; }
+  .xw .post-title {
+    grid-area: title; align-self: start;
+    font-size: 18px; margin: 0; line-height: 1.25;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .xw .post-dek, .xw .lock-note { grid-area: dek; margin: 0; font-size: 14px; }
+  .xw .post-meta { grid-area: meta; margin: 0; min-width: 0; align-self: center; }
+  .xw .post-copy > .actions { grid-area: actions; margin: 0; align-self: center; flex-shrink: 0; }
+  .xw .post-rank { display: none; }
+  .xw .headline {
+    margin: 0; border: none; border-radius: 0; border-bottom: 1px solid var(--line);
+    box-shadow: none; background: transparent;
+  }
+  .xw .headline-head { padding: 14px 14px 8px; }
+  .xw .headline .post { padding: 14px 14px 12px; }
+  .xw .ret-sotd { padding: 18px 0 22px; }
+  .xw .ret-sotd-kicker { padding: 0 14px; margin-bottom: 14px; }
+  .xw .ret-sotd-shot,
+  .xw .ret-sotd.lead .ret-sotd-shot { height: 200px; margin: 0 0 16px; }
+  .xw .ret-sotd-copy { padding: 0 14px; }
+  .xw .ret-sotd-title { font-size: 22px; }
+  .xw .ret-pulse-hook-head { padding: 12px 14px 10px; }
+  .xw .ret-pulse-hook-item { flex-direction: column; padding: 14px 0 16px; gap: 12px; }
+  .xw .ret-pulse-hook-copy { padding: 0 14px; }
+  .xw .ret-pulse-hook-thumb {
+    width: 100%; max-width: none; height: 180px; flex: none;
+    border-radius: 0; box-shadow: none;
+  }
+  .xw .ret-pulse-hook-body strong { font-size: 18px; }
+}
 `;

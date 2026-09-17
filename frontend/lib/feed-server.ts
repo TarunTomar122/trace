@@ -1,6 +1,7 @@
 import { adminFirestore } from '@/lib/firebase-admin';
 import { unstable_cache } from 'next/cache';
 import { applyFeedDedupe } from '@/lib/feed-dedupe';
+import { resolveHeadlines } from '@/lib/story-headlines';
 import type { FeedItem, TopicTimelineEvent, TrendingTopic, V3UserFeed } from '@/lib/firestore';
 import { hasActiveSubscription, subscriptionStatuses } from '@/lib/subscription-access';
 
@@ -13,7 +14,7 @@ const MAX_KEY_TAKEAWAYS = 4;
 const MAX_SOURCES = 5;
 const MAX_SIGNALS = 6;
 const MAX_TOPIC_TIMELINE = 6;
-const MAX_TOPIC_ARTICLES = 3;
+const MAX_TOPIC_ARTICLES = 12;
 
 function normalizeFeedRole(role?: string | null): string {
   const normalized = String(role || '').trim().toLowerCase();
@@ -362,6 +363,8 @@ async function buildFullFeedBodyUncached(normalizedRole: string): Promise<FeedBo
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let trendingTopics: any[] = [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let headlines: any[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let roleBasedForYou: any[] = [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let pulse: any[] = [];
@@ -402,6 +405,7 @@ async function buildFullFeedBodyUncached(normalizedRole: string): Promise<FeedBo
         if (trending.length === 0) {
           trending = candidateTrending;
           trendingTopics = candidateTopics;
+          if (Array.isArray(globalData.headlines)) headlines = globalData.headlines;
         }
         if (dailyPulse) break;
       }
@@ -411,6 +415,9 @@ async function buildFullFeedBodyUncached(normalizedRole: string): Promise<FeedBo
       const latestGlobalData = globalSnapshot.docs[0].data();
       trending = Array.isArray(latestGlobalData.trending) ? latestGlobalData.trending : [];
       trendingTopics = Array.isArray(latestGlobalData.trending_topics) ? latestGlobalData.trending_topics : [];
+      if (!headlines.length && Array.isArray(latestGlobalData.headlines)) {
+        headlines = latestGlobalData.headlines;
+      }
       const buckets = extractRoleBuckets(latestGlobalData, normalizedRole);
 
       if (roleBasedForYou.length === 0 && buckets.roleFeed.length > 0) roleBasedForYou = buckets.roleFeed;
@@ -483,6 +490,14 @@ async function buildFullFeedBodyUncached(normalizedRole: string): Promise<FeedBo
     build_pulse: buildPulse.map(sanitizeFeedItem),
     trending: trending.map(sanitizeFeedItem),
     trending_topics: trendingTopics.map(sanitizeTrendingTopic),
+    headlines: resolveHeadlines(
+      trendingTopics.map((topic) => ({ id: String(topic.id || ''), title: String(topic.title || '') })),
+      headlines,
+    ).map((headline) => ({
+      id: headline.id,
+      label: headline.label,
+      topic_ids: headline.topicIds,
+    })),
     assembled_at: assembledAt,
     metadata,
   };

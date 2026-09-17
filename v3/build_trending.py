@@ -50,6 +50,7 @@ from v3.lib.diversity import (  # noqa: E402
     STOPWORDS as DIVERSITY_STOPWORDS,
     dedupe_trending_latest_story,
 )
+from v3.lib.story_headlines import build_headlines  # noqa: E402
 
 CONFIG_PATH = "v3/config/trending_sources.json"
 DEFAULT_LIMIT_PER_SOURCE = 15
@@ -2880,6 +2881,8 @@ def build_global_feed(
         _log("No articles to process")
         store.write_global_feed_section(target_date, "trending", [])
         store.write_global_feed_section(target_date, "trending_topics", [])
+        store.write_global_feed_section(target_date, "headlines", [])
+        store.write_global_feed_section(target_date, "home_briefings", [])
         return {
             "items": 0,
             "topics": 0,
@@ -3018,12 +3021,18 @@ def build_global_feed(
     )
 
     # Write to global feed location
+    headlines = build_headlines(store, trending_topics)
+    _log(f"Built {len(headlines)} storyline headlines")
+
     store.write_global_feed_section(target_date, "trending", feed_items)
     store.write_global_feed_section(target_date, "trending_topics", trending_topics)
+    store.write_global_feed_section(target_date, "headlines", headlines)
+    store.write_global_feed_section(target_date, "home_briefings", [])
     stats["items"] = len(feed_items)
     stats["topics"] = int(topic_stats.get("topics", 0))
     stats["topic_overview_generated"] = int(topic_stats.get("overview_generated", 0))
     stats["topic_overview_cached"] = int(topic_stats.get("overview_cached", 0))
+    stats["headlines"] = len(headlines)
 
     if not args.skip_notifications:
         notification_stats = send_interest_notifications(

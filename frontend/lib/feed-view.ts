@@ -5,7 +5,10 @@ import { hasActiveSubscription } from '@/lib/subscription-access';
 import { resolveSubscriptionOfferFromHeaders } from '@/lib/subscription-offer';
 import { SUBSCRIPTION_PRICE_DEFAULT } from '@/lib/subscription-pricing';
 import type { FeedStory, PulseItem } from '@/components/feed-v2/FeedApp';
+import { parseHeadlines, type HeadlineRef } from '@/lib/story-headlines';
 import { imageUrlHasPlaceholderToken } from './media-url';
+import { isSameStoryTitle } from '@/lib/feed-story-dedupe';
+import { canonicalUrlKey } from '@/lib/feed-dedupe';
 
 // Server-side feed data builders shared by /feed (FeedScreen) and
 // /story/[id] (shared article page renders the real feed chrome).
@@ -156,6 +159,14 @@ export function thumb(url?: string | null): string | null {
   return url;
 }
 
+function firstThumb(...urls: Array<string | null | undefined>): string | null {
+  for (const url of urls) {
+    const value = thumb(url);
+    if (value) return value;
+  }
+  return null;
+}
+
 export function timeAgo(iso?: string): string {
   if (!iso) return '';
   const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
@@ -179,6 +190,7 @@ export async function getServerPro(): Promise<boolean> {
 
 export interface FeedViewData {
   stories: FeedStory[];
+  headlines: HeadlineRef[];
   pulse: { tools: PulseItem[]; discussions: PulseItem[]; blogs: PulseItem[] };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   promoted: any[];
@@ -235,6 +247,14 @@ export function mapTrendingToStories(
       time: timeAgo(a.published_date),
     }));
 
+    let img = firstThumb(topic.thumbnail, first.thumbnail, first.og_image, first.image);
+    if (!img) {
+      for (const article of articles) {
+        img = firstThumb(article.thumbnail, article.og_image, article.image);
+        if (img) break;
+      }
+    }
+
     topicStories.push({
       id: topic.id || topic.topic_key || `topic-${i}`,
       threadId: topic.thread_id || undefined,
@@ -242,7 +262,7 @@ export function mapTrendingToStories(
       title: topic.title || first.title || '',
       body: topic.summary || first.summary?.short_article?.body || first.description || '',
       takeaways: Array.isArray(topic.key_points) ? topic.key_points : [],
-      img: thumb(topic.thumbnail) || thumb(first.thumbnail),
+      img,
       source,
       sources,
       sourceNames: source ? [source] : [],
@@ -251,6 +271,7 @@ export function mapTrendingToStories(
       ts: Date.parse(newest?.published_date || first.published_date || '') || 0,
       cat: topic.interest_id || first.interest_id || 'tech',
       url: first.url || '#',
+      tags: Array.isArray(topic.tags) ? topic.tags.filter((t: unknown) => typeof t === 'string') : [],
     });
   });
 
@@ -271,7 +292,7 @@ export function mapTrendingToStories(
       title: it.title || '',
       body: sa.body || it.description || '',
       takeaways: Array.isArray(sa.key_takeaways) ? sa.key_takeaways : [],
-      img: thumb(it.thumbnail),
+      img: firstThumb(it.thumbnail, it.og_image, it.image),
       source,
       sources: domain ? [domain] : [],
       sourceNames: source ? [source] : [],
@@ -287,8 +308,85 @@ export function mapTrendingToStories(
   // web Top/For-you views do not silently replace the Jev + coverage ranking
   // with a client-side source-count sort. Recent mode still re-sorts by `ts`
   // in FeedApp when the reader explicitly asks for it.
-  const combined = [...topicStories, ...standalone];
-  return combined.map((story, i) => ({ ...story, rank: i + 1 }));
+  return foldSameEventStories([...topicStories, ...standalone]);
+}
+
+function coverageUrls(story: FeedStory): string[] {
+  return [story.url, ...story.coverage.map((link) => link.url)].filter(Boolean);
+}
+
+function sameEventStory(a: FeedStory, b: FeedStory): boolean {
+  if (a.threadId && b.threadId && a.threadId === b.threadId) return true;
+  const aUrls = new Set(coverageUrls(a).map((url) => canonicalUrlKey(url)).filter(Boolean));
+  for (const url of coverageUrls(b)) {
+    const key = canonicalUrlKey(url);
+    if (key && aUrls.has(key)) return true;
+  }
+  if (isSameStoryTitle(a.title, b.title)) return true;
+  if (a.coverage.some((link) => link.title && isSameStoryTitle(link.title, b.title))) return true;
+  if (b.coverage.some((link) => link.title && isSameStoryTitle(link.title, a.title))) return true;
+  return false;
+}
+
+function mergeStoryCoverage(target: FeedStory, extra: FeedStory): void {
+  const extraRicher = extra.coverage.length > target.coverage.length;
+  if (extraRicher) {
+    target.title = extra.title || target.title;
+    target.body = extra.body || target.body;
+    target.takeaways = extra.takeaways.length ? extra.takeaways : target.takeaways;
+    target.source = extra.source || target.source;
+    if (extra.img) target.img = extra.img;
+    target.cat = extra.cat || target.cat;
+    if (extra.tags?.length) target.tags = extra.tags;
+    target.url = extra.url || target.url;
+  } else if (!target.img && extra.img) {
+    target.img = extra.img;
+  }
+  if (!target.body && extra.body) target.body = extra.body;
+  if (!target.takeaways.length && extra.takeaways.length) target.takeaways = extra.takeaways;
+
+  const seen = new Set(target.coverage.map((link) => canonicalUrlKey(link.url)).filter(Boolean));
+  for (const link of extra.coverage) {
+    const key = canonicalUrlKey(link.url);
+    if (key && seen.has(key)) continue;
+    if (key) seen.add(key);
+    target.coverage.push(link);
+  }
+  for (const domain of extra.sources) {
+    if (domain && !target.sources.includes(domain)) target.sources.push(domain);
+  }
+  for (const name of extra.sourceNames) {
+    if (name && !target.sourceNames.includes(name)) target.sourceNames.push(name);
+  }
+  if (!target.threadId && extra.threadId) target.threadId = extra.threadId;
+  if (extra.ts > target.ts) {
+    target.ts = extra.ts;
+    if (extra.time) target.time = extra.time;
+  }
+  const merged = new Set(target.mergedIds || []);
+  merged.add(extra.id);
+  for (const id of extra.mergedIds || []) merged.add(id);
+  target.mergedIds = [...merged];
+}
+
+/** Fold same-event singletons and split clusters into one coverage card. */
+export function foldSameEventStories(stories: FeedStory[]): FeedStory[] {
+  const out: FeedStory[] = [];
+  for (const story of stories) {
+    const match = out.find((existing) => sameEventStory(existing, story));
+    if (match) {
+      mergeStoryCoverage(match, story);
+      continue;
+    }
+    out.push({
+      ...story,
+      coverage: [...story.coverage],
+      sources: [...story.sources],
+      sourceNames: [...story.sourceNames],
+      mergedIds: story.mergedIds ? [...story.mergedIds] : undefined,
+    });
+  }
+  return out.map((story, i) => ({ ...story, rank: i + 1 }));
 }
 
 export async function loadFeedViewData(): Promise<FeedViewData> {
@@ -311,6 +409,7 @@ export async function loadFeedViewData(): Promise<FeedViewData> {
   }
 
   const stories = mapTrendingToStories(data.trending, data.trending_topics);
+  const headlines = parseHeadlines(data.headlines);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const toPulse = (arr: any[]): PulseItem[] =>
@@ -322,12 +421,13 @@ export async function loadFeedViewData(): Promise<FeedViewData> {
       source: t.source || t.source_name || '',
       signal: t.signal || '',
       url: t.url || '#',
-      img: thumb(t.thumbnail),
+      img: firstThumb(t.thumbnail, t.og_image, t.image),
       read: t.reading_time_minutes || null,
     }));
 
   return {
     stories,
+    headlines,
     pulse: {
       tools: toPulse(pulse.tools),
       discussions: toPulse(pulse.discussions),
@@ -368,7 +468,7 @@ export async function findStoryInArchive(id: string, maxDays = 10): Promise<Feed
 
 /** Find one story by shared id (exact id, then URL-key fallback like StoryShare). */
 export function findSharedStory(stories: FeedStory[], id: string): FeedStory | null {
-  const direct = stories.find((s) => s.id === id);
+  const direct = stories.find((s) => s.id === id || (s.mergedIds || []).includes(id));
   if (direct) return direct;
   const want = id.replace(/[#?].*$/, '').replace(/\/$/, '');
   if (!want) return null;
