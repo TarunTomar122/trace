@@ -60,6 +60,18 @@ export default function LandingCtaLink({
       className={className}
       prefetch={prefetch}
       onClick={() => {
+        if (isExperiment && !exposureTracked.current) {
+          const nextAssignment = getLandingCtaAssignment();
+          setAssignment(nextAssignment);
+          exposureTracked.current = true;
+          trackLandingCtaExposure(nextAssignment);
+          trackLandingCTAClicked(variant, location, {
+            destination,
+            experiment_id: LANDING_CTA_EXPERIMENT_ID,
+            experiment_variant: nextAssignment,
+          });
+          return;
+        }
         trackLandingCTAClicked(variant, location, { destination, ...experimentProps });
       }}
     >
