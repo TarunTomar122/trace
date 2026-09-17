@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   hasActiveSubscription,
   resolveFeedAccess,
+  toDateMaybe,
 } from './subscription-access.ts';
 
 test('recognizes active access from either web or app subscriptions', () => {
@@ -128,4 +129,15 @@ test('auth hydration stays pending before the current user resolves', () => {
     }),
     { hasAccess: false, pending: true, verificationFailed: false },
   );
+});
+
+test('parses checkout timestamps from Date, ISO, and Firestore-like values without throwing', () => {
+  const iso = '2026-09-17T18:00:00.000Z';
+  assert.equal(toDateMaybe(new Date(iso))?.toISOString(), iso);
+  assert.equal(toDateMaybe(iso)?.toISOString(), iso);
+  assert.equal(toDateMaybe({ seconds: Date.parse(iso) / 1000 })?.toISOString(), iso);
+  assert.equal(toDateMaybe({ _seconds: Date.parse(iso) / 1000 })?.toISOString(), iso);
+  assert.equal(toDateMaybe({ toDate: () => new Date(iso) })?.toISOString(), iso);
+  assert.equal(toDateMaybe({}), null);
+  assert.equal(toDateMaybe('not-a-date'), null);
 });

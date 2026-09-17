@@ -146,7 +146,7 @@ const CAT_ICONS: Record<string, LucideIcon> = {
 // security, open-source, policy) are ignored and dropped on the next save.
 export const ALL_INTERESTS = ['ai', 'markets', 'tech', 'ux-design', 'startups'];
 const FREE_LIMIT_SIGNED_OUT = 4;
-const FREE_LIMIT_SIGNED_IN = 7;
+const FREE_LIMIT_SIGNED_IN = 5;
 /** Max stories shown per Home / category tab in today's edition. */
 const PER_TAB_STORY_CAP = 10;
 /** Max tool rows on the desktop right rail (promoted + house + pulse combined). */
@@ -1099,7 +1099,7 @@ export default function FeedApp({
 
   const proLabel = priceDisplay ? `Go Pro — ${shortPriceDisplay(priceDisplay)}` : 'Go Pro';
   const isFree = !pro;
-  // Signed-out readers get 4 stories/day; a free account gets 7. The quota
+  // Signed-out readers get 4 stories/day; a free account gets 5. The quota
   // counts distinct stories opened today (across tabs), so it can't leak.
   const freeLimit = accessPending || user ? FREE_LIMIT_SIGNED_IN : FREE_LIMIT_SIGNED_OUT;
   const isStoryLane = tab !== 'all' && tab !== 'bookmarks' && tab !== 'profile'
@@ -1615,7 +1615,7 @@ export default function FeedApp({
               <div className="welcome-strip">
                 <div className="welcome-strip-main" role="status">
                   <p className="welcome-strip-title">You&rsquo;re reading the free edition</p>
-                  <p className="welcome-strip-sub">First 4 stories are yours. A free account gets 7 a day plus the morning email.</p>
+                  <p className="welcome-strip-sub">First 4 stories are yours. A free account gets 5 a day plus the morning email.</p>
                 </div>
                 <div className="welcome-strip-actions">
                   <button
@@ -2454,6 +2454,9 @@ function Detail({ story, displayRank, onBack, onShare, marked, toggleMark }: { s
           </div>
         )}
         {story.img ? <FeedImage src={story.img} className="detail-img detail-img-below" alt="" /> : null}
+        <div className="detail-actions">
+          <Actions id={story.id} size={20} marked={marked} onToggleMark={toggleMark} onShare={onShare} />
+        </div>
         {story.coverage.length > 0 && (
           <div className="detail-coverage">
             <h2 className="section-label">Coverage · {story.coverage.length} sources</h2>
@@ -2475,11 +2478,21 @@ function Detail({ story, displayRank, onBack, onShare, marked, toggleMark }: { s
             </ol>
           </div>
         )}
-        <div className="detail-actions">
-          <Actions id={story.id} size={20} marked={marked} onToggleMark={toggleMark} onShare={onShare} />
-        </div>
       </div>
     </>
+  );
+}
+
+function PaywallPerks({ items }: { items: { emoji: string; text: string }[] }) {
+  return (
+    <ul className="paywall-perks">
+      {items.map((item) => (
+        <li key={item.text}>
+          <span className="perk-ic" aria-hidden="true">{item.emoji}</span>
+          <span>{item.text}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -2499,13 +2512,18 @@ function PaywallPlate({ what, ask, onSignIn, signingIn = false, proLabel = 'Go P
         <h2 className="paywall-title">Sign up to see full stories</h2>
         <p className="paywall-sub">
           {what === 'the full ranked feed'
-            ? <>Create a free account to keep reading. Free accounts get <b>7 stories a day</b>.</>
-            : <>Create a free account to read this story. Free accounts get <b>7 stories a day</b>.</>}
+            ? 'Create a free account to keep reading.'
+            : 'Create a free account to read this story.'}
         </p>
+        <PaywallPerks items={[
+          { emoji: '☀️', text: 'Daily morning brief in your inbox' },
+          { emoji: '📌', text: 'Follow stories as they develop' },
+          { emoji: '🔖', text: 'Save stories and pick up later' },
+        ]} />
         <button className="paywall-btn" onClick={onSignIn} disabled={signingIn}>
           {signingIn ? 'Signing in…' : 'Sign up free with Google'}
         </button>
-        <p className="paywall-foot">No card needed.</p>
+        <p className="paywall-foot">Free accounts get 5 stories a day. No card needed.</p>
       </div>
     );
   }
@@ -2516,8 +2534,13 @@ function PaywallPlate({ what, ask, onSignIn, signingIn = false, proLabel = 'Go P
         <div className="paywall-badge"><Lock size={20} /></div>
         <h2 className="paywall-title">Buy Pro to see full stories</h2>
         <p className="paywall-sub">
-          Get the complete ranked feed and the daily email brief with Pro.
+          Get the complete ranked feed with Pro.
         </p>
+        <PaywallPerks items={[
+          { emoji: '☀️', text: 'Daily morning brief in your inbox' },
+          { emoji: '🤖', text: 'Agent access in Claude, Codex, or Cursor' },
+          { emoji: '📌', text: 'Follow stories as they develop' },
+        ]} />
         <ProCheckoutButton className="paywall-btn" label={proLabel} />
         <p className="paywall-foot">Cancel anytime. The free account stays free.</p>
       </div>
@@ -2531,6 +2554,11 @@ function PaywallPlate({ what, ask, onSignIn, signingIn = false, proLabel = 'Go P
       <p className="paywall-sub">
         <>{what} is part of <b>Trace Pro</b> — the whole day, ranked and summarized, every morning.</>
       </p>
+      <PaywallPerks items={[
+        { emoji: '☀️', text: 'Daily morning brief in your inbox' },
+        { emoji: '🤖', text: 'Agent access in Claude, Codex, or Cursor' },
+        { emoji: '📌', text: 'Follow stories as they develop' },
+      ]} />
       <ProCheckoutButton className="paywall-btn" label={proLabel} />
       <p className="paywall-foot">Cancel anytime. Daily brief by email, every morning.</p>
     </div>
@@ -2548,7 +2576,7 @@ function CancelModal({ onClose, getToken, onDone }: {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
   const miss = [
-    'Back to 7 free stories a day',
+    'Back to 5 free stories a day',
     'Summaries shrink, key points go away',
     'Pulse locks: no Top HN',
     'Profile ranking and the daily email brief stop',
@@ -3194,8 +3222,22 @@ const css = `
   display: flex; align-items: center; justify-content: center;
 }
 .xw .paywall-title { margin: 0 0 8px; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
-.xw .paywall-sub { margin: 0 auto 20px; font-size: 15px; line-height: 22px; color: var(--text-2); max-width: 42ch; }
+.xw .paywall-sub { margin: 0 auto 14px; font-size: 15px; line-height: 22px; color: var(--text-2); max-width: 42ch; }
 .xw .paywall-sub b { color: var(--ink); }
+.xw .paywall-perks {
+  list-style: none; margin: 0 auto 20px; padding: 0;
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  column-gap: 10px;
+  row-gap: 10px;
+}
+.xw .paywall-perks li { display: contents; }
+.xw .paywall-perks .perk-ic { width: auto; flex-shrink: 0; text-align: center; line-height: 20px; }
+.xw .paywall-perks li span:last-child {
+  font-size: 14.5px; line-height: 20px; color: var(--text); text-align: left;
+}
+.xw .paywall.compact .paywall-perks { margin-bottom: 16px; }
 .xw .paywall-btn {
   display: inline-block; height: 46px; line-height: 46px; padding: 0 28px;
   border: none; border-radius: 9999px; background: var(--blue); color: #fff;

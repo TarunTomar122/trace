@@ -21,7 +21,7 @@ export function InlineTraceCTA({ slug, blurb }: { slug: string; blurb?: string }
       </h3>
       <p className="mt-2 leading-relaxed text-gray-600 dark:text-gray-400">
         {blurb ||
-          "Trace reads 400+ tech sources every morning and hands you one ranked briefing with AI summaries. No setup, no feed to configure. A free account gets 7 stories a day plus the morning email."}
+          "Trace reads 400+ tech sources every morning and hands you one ranked briefing with AI summaries. No setup, no feed to configure. A free account gets 5 stories a day plus the morning email."}
       </p>
       <div className="mt-5 flex flex-wrap gap-3">
         <Link

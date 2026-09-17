@@ -8,9 +8,11 @@ export type SubscriptionAccessProfile = {
 
 type FirestoreTimestampLike = {
   toDate?: () => Date;
+  seconds?: number;
+  _seconds?: number;
 };
 
-function toDateMaybe(value: unknown): Date | null {
+export function toDateMaybe(value: unknown): Date | null {
   if (!value) return null;
   if (value instanceof Date) {
     return Number.isNaN(value.getTime()) ? null : value;
@@ -24,6 +26,13 @@ function toDateMaybe(value: unknown): Date | null {
       } catch {
         return null;
       }
+    }
+    const seconds = typeof timestamp.seconds === 'number'
+      ? timestamp.seconds
+      : timestamp._seconds;
+    if (typeof seconds === 'number') {
+      const date = new Date(seconds * 1000);
+      return Number.isNaN(date.getTime()) ? null : date;
     }
   }
   if (typeof value === 'string' || typeof value === 'number') {

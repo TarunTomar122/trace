@@ -38,7 +38,7 @@ const HOW_IT_WORKS = [
 const FREE_FEATURES = [
   'A personalized AI and tech news feed',
   '31 headlines in every new Chrome tab',
-  '4 stories as a guest, 7 with a free account',
+  '4 stories as a guest, 5 with a free account',
   'Unlimited original source links',
   'Topic filters and For you ranking',
   'Bookmarks with a free Trace account',
@@ -72,7 +72,7 @@ const AGENT_STEPS = [
 export const LANDING_FAQ = [
   {
     q: 'Is Trace free?',
-    a: 'Yes. Guests get 4 stories a day; a free account gets 7, plus the daily email brief if you want it. Pro ($2.99/mo) unlocks the whole day: every brief, full Pulse, and the archive.',
+    a: 'Yes. Guests get 4 stories a day; a free account gets 5, plus the daily email brief if you want it. Pro ($2.99/mo) unlocks the whole day: every brief, full Pulse, and the archive.',
   },
   {
     q: 'What counts as one AI summary?',
@@ -136,14 +136,6 @@ export default async function LandingScreen() {
             <a href="/how-it-works">How it works</a>
             <Link href="/subscribe">Pricing</Link>
             <Link href="/blog">Blog</Link>
-            <a
-              href={CHROME_EXTENSION_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="nav-cta"
-            >
-              Download Chrome extension
-            </a>
           </nav>
         </div>
       </header>
@@ -169,16 +161,20 @@ export default async function LandingScreen() {
       <section className="section" id="demo">
         <h2 className="section-title">Your next Chrome tab</h2>
         {editionFeed?.trending?.length ? (
-          <>
-            <p className="section-sub">This is the actual feed, live. Tap any story to start reading.</p>
-            <div className="demo-wrap">
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              <HomeEditionPreview feed={editionFeed} variant="x" />
-            </div>
-          </>
+          <div className="demo-wrap">
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            <HomeEditionPreview feed={editionFeed} variant="x" />
+          </div>
         ) : (
           <p className="section-sub">A fresh ranked edition lands every morning.</p>
         )}
+        <div className="demo-cta">
+          <a href={CHROME_EXTENSION_URL} target="_blank" rel="noreferrer" className="btn-primary">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="btn-logo" src="https://cdn.simpleicons.org/googlechrome/ffffff" alt="" width={18} height={18} />
+            Download Chrome extension
+          </a>
+        </div>
       </section>
 
       <section className="section" id="how">
@@ -337,10 +333,6 @@ const css = `
 .lp .nav-links { display: flex; align-items: center; gap: 20px; }
 .lp .nav-links a { color: var(--text-2); text-decoration: none; font-size: 14px; font-weight: 550; }
 .lp .nav-links a:hover { color: var(--ink); }
-.lp .nav-cta {
-  background: var(--blue); color: #fff !important; padding: 8px 16px; border-radius: 9999px; font-weight: 700;
-}
-.lp .nav-cta:hover { background: #1a8cd8; }
 @media (max-width: 860px) {
   .lp .nav-in { height: auto; padding: 10px 14px; flex-wrap: wrap; }
   .lp .nav-links { gap: 12px; overflow-x: auto; scrollbar-width: none; }
@@ -353,12 +345,13 @@ const css = `
 .lp .hero-sub { margin: 0 auto 28px; max-width: 560px; font-size: 18px; line-height: 1.55; color: var(--text-2); }
 .lp .hero-ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
 .lp .btn-primary {
-  display: inline-flex; align-items: center; justify-content: center;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   height: 48px; padding: 0 28px; border-radius: 9999px;
   background: var(--blue); color: #fff; font-size: 16px; font-weight: 700; text-decoration: none;
   transition: background-color 0.2s ease;
 }
 .lp .btn-primary:hover { background: #1a8cd8; }
+.lp .btn-logo { width: 18px; height: 18px; flex-shrink: 0; }
 .lp .btn-ghost {
   display: inline-flex; align-items: center; justify-content: center;
   height: 48px; padding: 0 28px; border-radius: 9999px;
@@ -376,6 +369,7 @@ const css = `
 .lp .section-sub { margin: 0 auto 36px; text-align: center; font-size: 16.5px; color: var(--text-2); max-width: 520px; line-height: 1.55; }
 
 .lp .section#demo { max-width: 1280px; }
+.lp .section#demo .section-title { margin-bottom: 28px; }
 .lp .demo-wrap { max-width: 100%; margin: 0 auto; border: 1px solid var(--line); border-radius: 24px; overflow: hidden; --foreground: #0f1419; --secondary: #536471; --background: #ffffff; --surface: #ffffff; }
 .lp .demo-cta { text-align: center; margin-top: 24px; }
 .lp .agent-snippet { max-width: 640px; margin: 28px auto 0; background: #0f1419; border-radius: 14px; padding: 16px 18px; overflow-x: auto; }

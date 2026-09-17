@@ -3,6 +3,7 @@ import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
 import { resolveSubscriptionOffer } from '@/lib/subscription-offer';
 import { captureServerEvent } from '@/lib/posthog-server';
+import { toDateMaybe } from '@/lib/subscription-access';
 
 function readAffiliateCookie(raw: string | undefined) {
   if (!raw) return null;
@@ -99,11 +100,9 @@ export async function POST(request: NextRequest) {
     // Check for recent checkout attempt (within last 2 minutes) to prevent duplicates
     // But only if they don't have a subscription ID yet
     if (userData?.lastCheckoutCreatedAt && !userData?.subscriptionId) {
-      const lastCheckout = userData.lastCheckoutCreatedAt.toDate 
-        ? userData.lastCheckoutCreatedAt.toDate() 
-        : new Date((userData.lastCheckoutCreatedAt as any).toDate());
+      const lastCheckout = toDateMaybe(userData.lastCheckoutCreatedAt);
       const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
-      if (lastCheckout > twoMinutesAgo) {
+      if (lastCheckout && lastCheckout > twoMinutesAgo) {
         return NextResponse.json({ 
           error: 'Please wait a moment before trying again.',
           code: 'rate_limited',

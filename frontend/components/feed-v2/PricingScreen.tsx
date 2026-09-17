@@ -10,7 +10,7 @@ import { SUBSCRIPTION_PRICE_DEFAULT, shortPriceDisplay } from '@/lib/subscriptio
 const FREE_FEATURES = [
   'Your ranked daily feed',
   '31 headlines in every new Chrome tab',
-  '4 stories as a guest, 7 with a free account',
+  '4 stories as a guest, 5 with a free account',
   'Unlimited original source links',
   'Topic filters and For you ranking',
   'Bookmarks with a free Trace account',

@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'crypto';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminFirestore } from '@/lib/firebase-admin';
-import { hasActiveSubscription } from '@/lib/subscription-access';
+import { hasActiveSubscription, toDateMaybe } from '@/lib/subscription-access';
 
 const AGENT_KEY_COLLECTION = 'agent_access_keys';
 const AGENT_KEY_PREFIX = 'trace_agent_';
@@ -44,7 +44,7 @@ export async function getAgentKeyStatus(uid: string) {
   return {
     configured: Boolean(data.tokenHash && !data.revokedAt),
     tokenPrefix: typeof data.tokenPrefix === 'string' ? data.tokenPrefix : null,
-    createdAt: data.createdAt?.toDate?.()?.toISOString?.() || null,
+    createdAt: toDateMaybe(data.createdAt)?.toISOString() || null,
   };
 }
 

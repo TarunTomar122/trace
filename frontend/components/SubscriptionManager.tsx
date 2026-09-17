@@ -22,7 +22,7 @@ import {
   SUBSCRIPTION_PRICE_INDIA,
 } from '@/lib/subscription-pricing';
 import SubscriptionPrice from '@/components/SubscriptionPrice';
-import { hasActiveSubscription } from '@/lib/subscription-access';
+import { hasActiveSubscription, toDateMaybe } from '@/lib/subscription-access';
 
 interface SubscriptionStatus {
   subscriptionStatus: string;
@@ -73,29 +73,17 @@ function guessClientPricingPreview(): PricingPreview {
   return DEFAULT_PRICING_PREVIEW;
 }
 
-function toDateOrNull(value: unknown): Date | null {
-  if (!value) return null;
-  if (value instanceof Date) return value;
-  if (typeof value === 'object' && value !== null) {
-    const maybeTimestamp = value as { seconds?: number; toDate?: () => Date };
-    if (typeof maybeTimestamp.toDate === 'function') return maybeTimestamp.toDate();
-    if (typeof maybeTimestamp.seconds === 'number') return new Date(maybeTimestamp.seconds * 1000);
-  }
-  const parsed = new Date(String(value));
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
 function buildSubscriptionStatus(profile: UserProfile): SubscriptionStatus {
   const status = profile?.subscriptionStatus || 'none';
   return {
     subscriptionStatus: status,
     subscriptionId: profile?.subscriptionId || null,
     planId: profile?.planId || null,
-    trialEndDate: toDateOrNull(profile?.trialEndDate),
-    nextBillingDate: toDateOrNull(profile?.nextBillingDate),
-    lastPaymentDate: toDateOrNull(profile?.lastPaymentDate),
-    cancelledAt: toDateOrNull(profile?.cancelledAt),
-    willCancelAt: toDateOrNull(profile?.willCancelAt),
+    trialEndDate: toDateMaybe(profile?.trialEndDate),
+    nextBillingDate: toDateMaybe(profile?.nextBillingDate),
+    lastPaymentDate: toDateMaybe(profile?.lastPaymentDate),
+    cancelledAt: toDateMaybe(profile?.cancelledAt),
+    willCancelAt: toDateMaybe(profile?.willCancelAt),
     hasAccess: hasActiveSubscription(profile),
   };
 }
@@ -137,11 +125,11 @@ export default function SubscriptionManager() {
         subscriptionStatus: data.subscriptionStatus || 'none',
         subscriptionId: data.subscriptionId || null,
         planId: data.planId || null,
-        trialEndDate: toDateOrNull(data.trialEndDate),
-        nextBillingDate: toDateOrNull(data.nextBillingDate),
-        lastPaymentDate: toDateOrNull(data.lastPaymentDate),
-        cancelledAt: toDateOrNull(data.cancelledAt),
-        willCancelAt: toDateOrNull(data.willCancelAt),
+        trialEndDate: toDateMaybe(data.trialEndDate),
+        nextBillingDate: toDateMaybe(data.nextBillingDate),
+        lastPaymentDate: toDateMaybe(data.lastPaymentDate),
+        cancelledAt: toDateMaybe(data.cancelledAt),
+        willCancelAt: toDateMaybe(data.willCancelAt),
         hasAccess: Boolean(data.hasAccess),
       });
       setIsLoading(false);
@@ -176,9 +164,9 @@ export default function SubscriptionManager() {
       // Check for abandoned checkout (older than 15 minutes)
       let showAbandonedWarning = false;
       if (status === 'none' && profile.lastCheckoutCreatedAt) {
-        const checkoutTime = new Date(profile.lastCheckoutCreatedAt.seconds * 1000);
+        const checkoutTime = toDateMaybe(profile.lastCheckoutCreatedAt);
         const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-        if (checkoutTime > fifteenMinutesAgo) {
+        if (checkoutTime && checkoutTime > fifteenMinutesAgo) {
           showAbandonedWarning = true;
         }
       }
