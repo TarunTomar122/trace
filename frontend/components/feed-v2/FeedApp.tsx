@@ -1004,10 +1004,19 @@ export default function FeedApp({
     }
   }
 
-  function toggleThreadFollow(threadId: string) {
+  function toggleThreadFollow(story: FeedStory) {
+    const threadId = story.threadId;
+    if (!threadId) return;
     const on = toggleFollowedThread(threadId, user?.uid);
     setFollowedThreads(readFollowedThreads(user?.uid));
-    if (on) trackRetentionThreadFollowed(threadId);
+    trackRetentionThreadFollowed({
+      threadId,
+      following: on,
+      storyId: story.id,
+      title: story.title,
+      cat: story.cat,
+      tab,
+    });
     showToast(on ? 'Following this story thread' : 'Unfollowed thread');
   }
 
@@ -1595,7 +1604,7 @@ export default function FeedApp({
                 }
                 onOpen={() => openStory(featuredStory)}
                 following={featuredStory.threadId ? followedThreads.has(featuredStory.threadId) : false}
-                onToggleFollow={featuredStory.threadId ? () => toggleThreadFollow(featuredStory.threadId!) : undefined}
+                onToggleFollow={featuredStory.threadId ? () => toggleThreadFollow(featuredStory) : undefined}
                 locked={isFree && !fullIds.has(featuredStory.id)}
               />
             )}
@@ -1607,7 +1616,7 @@ export default function FeedApp({
                 kicker={`Top in ${CAT_LABELS[story.cat] || story.cat}`}
                 onOpen={() => openStory(story)}
                 following={story.threadId ? followedThreads.has(story.threadId) : false}
-                onToggleFollow={story.threadId ? () => toggleThreadFollow(story.threadId!) : undefined}
+                onToggleFollow={story.threadId ? () => toggleThreadFollow(story) : undefined}
                 locked={isFree && !fullIds.has(story.id)}
               />
             ))}
@@ -1688,7 +1697,7 @@ export default function FeedApp({
                         onToggleMark={toggleMark}
                         onShare={share}
                         threadFollowing={s.threadId ? followedThreads.has(s.threadId) : false}
-                        onToggleThreadFollow={s.threadId ? () => toggleThreadFollow(s.threadId!) : undefined}
+                        onToggleThreadFollow={s.threadId ? () => toggleThreadFollow(s) : undefined}
                       />
                     );
                   };

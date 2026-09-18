@@ -384,6 +384,21 @@ export function trackRetentionExtensionClicked(placement: string) {
   posthog.capture("retention_extension_clicked", { placement, surface: "web" });
 }
 
-export function trackRetentionThreadFollowed(threadId: string) {
-  posthog.capture("retention_thread_followed", { thread_id: threadId, surface: "web" });
+export function trackRetentionThreadFollowed(input: {
+  threadId: string;
+  following: boolean;
+  storyId?: string;
+  title?: string;
+  cat?: string;
+  tab?: string;
+}) {
+  posthog.capture("retention_thread_followed", {
+    thread_id: input.threadId,
+    following: input.following,
+    story_id: input.storyId || '',
+    title: input.title || '',
+    cat: input.cat || '',
+    tab: input.tab || '',
+    surface: "web",
+  });
 }
