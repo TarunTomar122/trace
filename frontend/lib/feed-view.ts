@@ -9,13 +9,14 @@ import { parseHeadlines, type HeadlineRef } from '@/lib/story-headlines';
 import { imageUrlHasPlaceholderToken } from './media-url';
 import { isSameStoryTitle } from '@/lib/feed-story-dedupe';
 import { canonicalUrlKey } from '@/lib/feed-dedupe';
+import { slotsFromRankedItems } from '@/lib/feed-topic-order';
 
 // Server-side feed data builders shared by /feed (FeedScreen) and
 // /story/[id] (shared article page renders the real feed chrome).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Doc = Record<string, any>;
 
-// Shared request cache: feed data is at most 5 minutes stale.
+// Shared request cache: feed data is at most 60 seconds stale.
 const getCachedFeed = unstable_cache(
   async (): Promise<{ date: string; data: Doc } | null> => {
     try {
@@ -48,8 +49,8 @@ const getCachedFeed = unstable_cache(
       return null;
     }
   },
-  ['global-feed'],
-  { revalidate: 300 },
+  ['global-feed-v2'],
+  { revalidate: 60 },
 );
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -205,6 +206,10 @@ export interface FeedViewData {
 /**
  * Map one daily doc's flat `trending` items (+ `trending_topics` grouping)
  * into FeedStory cards. Shared by today's feed and the older-stories API.
+ *
+ * Walk the ranked `trending` edition first so a #1 singleton (lab-blog model
+ * launch, etc.) is not buried behind 48 coverage-sorted topic cards. Topic
+ * grouping still wins when a ranked URL already belongs to a cluster.
  */
 export function mapTrendingToStories(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -216,15 +221,13 @@ export function mapTrendingToStories(
     try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; }
   };
 
-  const coveredUrls = new Set<string>();
-  const topicStories: FeedStory[] = [];
+  const topicIndex = new Map<object, number>();
+  (trendingTopics || []).forEach((topic, i) => topicIndex.set(topic, i));
 
-  // One card per grouped topic. The flat trending array can hold several
-  // articles from the same topic; cards must follow the grouping.
-  (trendingTopics || []).forEach((topic, i) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const topicStory = (topic: any, i: number): FeedStory | null => {
     const articles = (topic?.articles || []).filter((a: { url?: string }) => a?.url);
-    for (const a of articles) coveredUrls.add(a.url);
-    if (!topic?.title && articles.length === 0) return;
+    if (!topic?.title && articles.length === 0) return null;
 
     const first = articles[0] || {};
     const newest = articles.reduce(
@@ -255,7 +258,7 @@ export function mapTrendingToStories(
       }
     }
 
-    topicStories.push({
+    return {
       id: topic.id || topic.topic_key || `topic-${i}`,
       threadId: topic.thread_id || undefined,
       rank: i + 1,
@@ -272,21 +275,18 @@ export function mapTrendingToStories(
       cat: topic.interest_id || first.interest_id || 'tech',
       url: first.url || '#',
       tags: Array.isArray(topic.tags) ? topic.tags.filter((t: unknown) => typeof t === 'string') : [],
-    });
-  });
+    };
+  };
 
-  // Flat items not folded into a topic stay as their own cards.
-  const standalone: FeedStory[] = [];
-  const seen = new Set<string>();
-  for (const it of trending || []) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const itemStory = (it: any): FeedStory | null => {
     const url = String(it?.url || '');
-    if (!url || coveredUrls.has(url) || seen.has(url)) continue;
-    seen.add(url);
+    if (!url) return null;
     const sa = it.summary?.short_article || {};
     let source = it.source_name || it.source || '';
     const domain = domainOf(url);
     if (!source) source = domain;
-    standalone.push({
+    return {
       id: it.id || url,
       rank: 0,
       title: it.title || '',
@@ -301,14 +301,18 @@ export function mapTrendingToStories(
       ts: Date.parse(it?.published_date || '') || 0,
       cat: it.interest_id || 'tech',
       url,
-    });
+    };
+  };
+
+  const stories: FeedStory[] = [];
+  for (const slot of slotsFromRankedItems(trending, trendingTopics, (url) => canonicalUrlKey(url) || url)) {
+    const story = slot.kind === 'topic'
+      ? topicStory(slot.topic, topicIndex.get(slot.topic) ?? stories.length)
+      : itemStory(slot.item);
+    if (story) stories.push(story);
   }
 
-  // The backend has already ranked canonical topics. Keep that order here so
-  // web Top/For-you views do not silently replace the Jev + coverage ranking
-  // with a client-side source-count sort. Recent mode still re-sorts by `ts`
-  // in FeedApp when the reader explicitly asks for it.
-  return foldSameEventStories([...topicStories, ...standalone]);
+  return foldSameEventStories(stories);
 }
 
 function coverageUrls(story: FeedStory): string[] {

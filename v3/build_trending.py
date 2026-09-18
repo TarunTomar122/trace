@@ -451,6 +451,34 @@ def _filter_by_max_age_hours(
     return filtered
 
 
+def _looks_like_model_release(title: str, source_name: str = "", content: str = "") -> bool:
+    """True for lab/param-size model launches, not AI-safety incident coverage."""
+    title_text = title or ""
+    haystack = f"{title_text} {content or ''}"
+    if re.search(
+        r"\b(misalignment|jailbreak|incident|incidents|lawsuit|job loss)\b",
+        haystack,
+        re.I,
+    ):
+        return False
+    if re.search(r"ai/?tldr", source_name or "", re.I):
+        return True
+    if re.search(r"\b\d+(?:\.\d+)?\s*b\b", title_text, re.I):
+        return True
+    has_noun = re.search(
+        r"\b(model|llm|foundation model|open[- ]weights?|checkpoint)\b",
+        haystack,
+        re.I,
+    )
+    has_verb = re.search(
+        r"\b(releases?|released|launches?|launched|unveils?|unveiled|"
+        r"ships?|shipped|introduces?|introduced|open[- ]sourc(?:e|ed|ing))\b",
+        title_text,
+        re.I,
+    )
+    return bool(has_noun and has_verb)
+
+
 def _looks_promotional(title: str, content: str = "") -> bool:
     cl = (content or "").lower()
     # Word-boundary matching: "deal" must not match "dealer" and "vs." must
@@ -554,6 +582,9 @@ def _candidate_score(
         )
     ):
         score += 0.5
+
+    if _looks_like_model_release(title, source_name, content[:600]):
+        score += 1.5
 
     if _looks_promotional(title, content[:600]):
         score -= 3.0

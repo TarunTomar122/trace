@@ -147,8 +147,8 @@ const CAT_ICONS: Record<string, LucideIcon> = {
 export const ALL_INTERESTS = ['ai', 'markets', 'tech', 'ux-design', 'startups'];
 const FREE_LIMIT_SIGNED_OUT = 4;
 const FREE_LIMIT_SIGNED_IN = 5;
-/** Max stories shown per Home / category tab in today's edition. */
-const PER_TAB_STORY_CAP = 10;
+/** Max stories shown per Home / AI / Markets / Tech / Startups / Design tab. */
+const PER_TAB_STORY_CAP = 15;
 /** Max tool rows on the desktop right rail (promoted + house + pulse combined). */
 const RAIL_TOOLS_CAP = 3;
 
@@ -1664,7 +1664,7 @@ export default function FeedApp({
               ) : visible.length === 0 ? (
                 <EmptyFeed
                   title={`No ${CAT_LABELS[tab] || tab} stories today`}
-                  sub="Nothing in this topic made today's top 10. Try Home or another tag."
+                  sub="Nothing in this topic made today's edition. Try Home or another tag."
                   onRetry={() => go('all')}
                   retryLabel="Back to Home"
                 />

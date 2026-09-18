@@ -10,7 +10,31 @@ export type SortableStory = {
   sources: string[];
   /** Backend rank used only as a stable tie-break after personalization. */
   rank?: number;
+  title?: string;
+  tags?: string[];
+  source?: string;
+  body?: string;
 };
+
+const MODEL_RELEASE_SKIP = /\b(misalignment|jailbreak|incident|incidents|lawsuit|job loss)\b/i;
+const MODEL_PARAM_SIZE = /\b\d+(?:\.\d+)?\s*b\b/i;
+const MODEL_NOUN = /\b(model|llm|foundation model|open[- ]weights?|checkpoint)\b/i;
+const MODEL_RELEASE_VERB = /\b(releases?|released|launches?|launched|unveils?|unveiled|ships?|shipped|introduces?|introduced|open[- ]sourc(?:e|ed|ing))\b/i;
+
+/** Lab-blog / param-size launches, not AI-safety or incident coverage. */
+export function isModelRelease(story: {
+  title?: string;
+  tags?: string[];
+  source?: string;
+  body?: string;
+}): boolean {
+  const title = String(story.title || '');
+  const haystack = `${title} ${(story.tags || []).join(' ')} ${story.body || ''}`;
+  if (MODEL_RELEASE_SKIP.test(haystack)) return false;
+  if (/ai\/?tldr/i.test(String(story.source || ''))) return true;
+  if (MODEL_PARAM_SIZE.test(title)) return true;
+  return MODEL_NOUN.test(haystack) && MODEL_RELEASE_VERB.test(title);
+}
 
 export type RankOptions = {
   /** Set false to skip lane interleaving. */
@@ -54,6 +78,9 @@ export function rankStoriesForProfile<T extends SortableStory>(
     story,
     index,
     lane: story.cat || 'other',
+    personal: storyBoost(story.cat, interests, roleInterests),
+    model: isModelRelease(story) ? 1 : 0,
+    coverage: story.sources?.length || 0,
     score:
       (story.sources?.length || 0) +
       storyBoost(story.cat, interests, roleInterests),
@@ -61,24 +88,28 @@ export function rankStoriesForProfile<T extends SortableStory>(
 
   const byRank = (a: (typeof rows)[number], b: (typeof rows)[number]) =>
     (a.story.rank || Number.MAX_SAFE_INTEGER) - (b.story.rank || Number.MAX_SAFE_INTEGER);
+  const byRecency = (a: (typeof rows)[number], b: (typeof rows)[number]) =>
+    (b.story.ts || 0) - (a.story.ts || 0);
+  // Model launches sit above same-band coverage noise, then Jev rank / recency.
+  const byPriority = (a: (typeof rows)[number], b: (typeof rows)[number]) =>
+    b.personal - a.personal ||
+    b.model - a.model ||
+    b.coverage - a.coverage ||
+    byRank(a, b) ||
+    byRecency(a, b) ||
+    a.index - b.index;
 
-  // Without a profile, “Top” should be the backend Jev order, not a seeded
-  // client shuffle. Coverage and recency remain safe fallbacks for old data.
+  // Without a profile, “Top” follows the backend Jev order, with a light
+  // bump so model launches are not buried under multi-source incident clusters.
   if (interests.length === 0 && roleInterests.length === 0) {
     return rows
-      .sort((a, b) => byRank(a, b) || b.score - a.score || (b.story.ts || 0) - (a.story.ts || 0) || a.index - b.index)
+      .sort((a, b) => b.model - a.model || byRank(a, b) || b.coverage - a.coverage || byRecency(a, b) || a.index - b.index)
       .map((row) => row.story);
   }
 
   if (!diversify) {
     return rows
-      .sort(
-        (a, b) =>
-          b.score - a.score ||
-          byRank(a, b) ||
-          (b.story.ts || 0) - (a.story.ts || 0) ||
-          a.index - b.index,
-      )
+      .sort(byPriority)
       .map((row) => row.story);
   }
 
@@ -93,13 +124,7 @@ export function rankStoriesForProfile<T extends SortableStory>(
     laneRank.set(row.lane, Math.min(laneRank.get(row.lane) ?? Number.MAX_SAFE_INTEGER, row.story.rank || Number.MAX_SAFE_INTEGER));
   }
   for (const list of byLane.values()) {
-    list.sort(
-      (a, b) =>
-        b.score - a.score ||
-        byRank(a, b) ||
-        (b.story.ts || 0) - (a.story.ts || 0) ||
-        a.index - b.index,
-    );
+    list.sort(byPriority);
   }
 
   // Lanes the reader chose come first, then role-primary lanes, then every

@@ -10,6 +10,7 @@ from v3.build_trending import (
     _effective_max_age_hours,
     _looks_like_entertainment,
     _looks_like_market_blog,
+    _looks_like_model_release,
     _topic_tokens_for_item,
 )
 
@@ -77,6 +78,14 @@ class TrendingTopicClusteringTests(unittest.TestCase):
         self.assertFalse(_looks_like_market_blog("Pay is back on the rise for job switchers"))
         self.assertFalse(_looks_like_market_blog("Bank exits squeeze truck financing for mid-size fleets"))
         self.assertFalse(_looks_like_market_blog("Anthropic has chosen the Nasdaq for its IPO listing"))
+
+    def test_model_release_detector(self) -> None:
+        self.assertTrue(_looks_like_model_release("Bonsai 2 27B"))
+        self.assertTrue(_looks_like_model_release("Jev coding model launches today"))
+        self.assertTrue(_looks_like_model_release("Needle 2", source_name="AI/TLDR Models"))
+        self.assertFalse(
+            _looks_like_model_release("OpenAI Unveils Alarming AI Model Misalignment Incidents")
+        )
 
 
 if __name__ == "__main__":

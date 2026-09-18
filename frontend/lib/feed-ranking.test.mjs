@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  isModelRelease,
   rankStoriesForProfile,
   rolePrimaryInterests,
   sampleStoriesForFeed,
@@ -164,4 +165,38 @@ test('sampleStoriesForFeed preserves order when pool is smaller than cap', () =>
   const ranked = [story({ rank: 1 }), story({ rank: 2 })];
   const sample = sampleStoriesForFeed(ranked, 10);
   assert.deepEqual(sample.map((s) => s.rank), [1, 2]);
+});
+
+test('model launches beat wider-coverage AI news in the same lane', () => {
+  const ranked = rankStoriesForProfile(
+    [
+      story({
+        cat: 'ai',
+        title: 'OpenAI Unveils Alarming AI Model Misalignment Incidents',
+        sources: ['a', 'b', 'c', 'd', 'e'],
+      }),
+      story({ cat: 'ai', title: 'Bonsai 2 27B', sources: ['a'] }),
+    ],
+    { interests: ['ai'] },
+    { diversify: false },
+  );
+  assert.equal(ranked[0].title, 'Bonsai 2 27B');
+});
+
+test('signed-out Top floats a model launch above backend rank', () => {
+  const ranked = rankStoriesForProfile(
+    [
+      story({ rank: 1, title: 'OpenAI Unveils Alarming AI Model Misalignment Incidents', sources: ['a', 'b'] }),
+      story({ rank: 2, title: 'Bonsai 2 27B', sources: ['a'] }),
+    ],
+    { interests: [], role: null },
+  );
+  assert.equal(ranked[0].title, 'Bonsai 2 27B');
+});
+
+test('isModelRelease accepts param-size launches and skips incident coverage', () => {
+  assert.equal(isModelRelease({ title: 'Bonsai 2 27B' }), true);
+  assert.equal(isModelRelease({ title: 'Jev coding model launches today' }), true);
+  assert.equal(isModelRelease({ source: 'AI/TLDR Models', title: 'Needle 2' }), true);
+  assert.equal(isModelRelease({ title: 'OpenAI Unveils Alarming AI Model Misalignment Incidents' }), false);
 });
