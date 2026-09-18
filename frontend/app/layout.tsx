@@ -30,7 +30,7 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: "Trace: AI and tech news in five minutes",
+  title: "Trace: a daily AI briefing in five minutes",
   description:
     "Trace turns AI and technology news into a short daily briefing, with the context behind launches, company changes, security updates, and trends.",
   keywords: ["AI news", "technology news", "AI summaries", "daily tech briefing", "Chrome new tab news", "news aggregator"],
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://www.yourtrace.online",
     siteName: "Trace",
-    title: "Trace: AI and tech news in five minutes",
+    title: "Trace: a daily AI briefing in five minutes",
     description:
       "Trace turns AI and technology news into a short daily briefing, with the context behind launches, company changes, security updates, and trends.",
     images: [
@@ -65,7 +65,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Trace: AI and tech news in five minutes",
+    title: "Trace: a daily AI briefing in five minutes",
     description:
       "A short daily briefing with context on model launches, company changes, layoffs, security, and new technology trends.",
     images: ["https://www.yourtrace.online/twitter-image"],

@@ -66,7 +66,7 @@ export default function BlogPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionSchema) }}
       />
-      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/feed" />
+      <PublicHeader variant="landing" ctaLabel="Start reading free" ctaHref="/feed" />
 
       {/* Hero */}
       <section className="px-4 sm:px-6 lg:px-8">

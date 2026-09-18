@@ -1,5 +1,5 @@
 export const HOME_PRODUCT_DESCRIPTION =
-  'Trace groups AI and technology news into a short personalized feed, so you can catch model launches, company changes, layoffs, security updates, and new trends in five minutes.';
+  'Trace groups AI and technology news into a daily briefing so founders and builders can catch model launches, company changes, and what actually shipped in five minutes.';
 
 export function generateHomeApplicationSchema(): Record<string, unknown> {
   return {

@@ -13,7 +13,7 @@ import LandingScreen from '@/components/feed-v2/LandingScreen';
 import LandingAuthRedirect from './LandingAuthRedirect';
 
 export const metadata: Metadata = {
-  title: "Trace: AI and tech news in five minutes",
+  title: "Trace: a daily AI briefing in five minutes",
   description: HOME_PRODUCT_DESCRIPTION,
   keywords: [
     "AI news aggregator",
@@ -21,13 +21,15 @@ export const metadata: Metadata = {
     "AI news feed",
     "technology news app",
     "daily tech briefing",
+    "daily AI briefing",
+    "AI news for founders",
     "Chrome new tab news",
   ],
   alternates: {
     canonical: "https://www.yourtrace.online/",
   },
   openGraph: {
-    title: "Trace: AI and tech news in five minutes",
+    title: "Trace: a daily AI briefing in five minutes",
     description: HOME_PRODUCT_DESCRIPTION,
     url: "https://www.yourtrace.online",
     type: "website",

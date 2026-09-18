@@ -2,6 +2,7 @@ export type ComparePage = {
   slug: string;
   title: string;
   description: string;
+  relatedRoundup?: { href: string; label: string };
   heroTitle: string;
   heroDescription: string;
   intro: string;
@@ -24,9 +25,13 @@ export type ComparePage = {
 export const comparePages: ComparePage[] = [
   {
     slug: "feedly-alternative",
-    title: "Feedly Alternative For Busy Tech Readers | Trace",
+    title: "Trace vs Feedly | Daily briefing vs RSS | Trace",
     description:
-      "Trace is a Feedly alternative for people who want the point of the story, not another unread queue of links.",
+      "Trace vs Feedly: a finishable daily briefing versus an RSS unread queue. For the full roundup, see Feedly alternatives for tech news.",
+    relatedRoundup: {
+      href: "/blog/feedly-alternatives",
+      label: "Best Feedly alternatives for tech news",
+    },
     heroTitle: "A Feedly alternative for people who do not want another reading backlog",
     heroDescription:
       "Feedly is great if you want to manage sources. Trace is better if you want grouped story context, fast summaries, and fewer tabs.",
@@ -899,9 +904,13 @@ export const comparePages: ComparePage[] = [
   },
   {
     slug: "trace-vs-flipboard",
-    title: "Trace vs Flipboard | Comparison & Alternative | Trace",
+    title: "Trace vs Flipboard | Daily briefing vs magazine | Trace",
     description:
-      "Trace vs Flipboard — a magazine-style news reader vs a daily briefing tool. Which fits your reading habits?",
+      "Trace vs Flipboard: a 5-minute tech briefing versus magazine cards. For every option, see Flipboard alternatives for tech news.",
+    relatedRoundup: {
+      href: "/blog/flipboard-alternatives",
+      label: "Flipboard alternatives for faster tech news",
+    },
     heroTitle: "Trace vs Flipboard: beautiful magazine or fast briefing?",
     heroDescription:
       "Flipboard turns news into a beautiful magazine-like experience. Trace turns news into a fast daily brief. Different aesthetics, different speeds.",
@@ -944,7 +953,7 @@ export const comparePages: ComparePage[] = [
       {
         title: "When Flipboard wins",
         body:
-          "If you read tech news as a leisure activity — something you enjoy doing over coffee on a Sunday — Flipboard's magazine format is genuinely delightful. For the weekday 'what happened since yesterday' question, Trace is faster.",
+          "If you read tech news as a leisure activity — something you enjoy doing over coffee on a Sunday — Flipboard's magazine format is genuinely delightful. For the weekday 'what happened since yesterday' question, Trace is faster. If you are still comparing the whole category, the Flipboard alternatives roundup covers Feedly, Inoreader, and the rest.",
       },
     ],
     faq: [

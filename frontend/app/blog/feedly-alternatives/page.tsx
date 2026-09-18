@@ -345,7 +345,15 @@ export default function BlogPost() {
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             If you want the simplest Feedly alternative with AI summaries, try{" "}
-            <strong>Trace</strong>. If you want power-user features, try{" "}
+            <Link href="/feed?utm_source=blog&utm_medium=verdict&utm_campaign=feedly-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
+              Trace&apos;s daily AI briefing
+            </Link>
+            {" "}
+            (or start from the{" "}
+            <Link href="/?utm_source=blog&utm_medium=verdict&utm_campaign=feedly-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
+              homepage
+            </Link>
+            ). If you want power-user features, try{" "}
             <strong>Inoreader</strong>. If you want open source, try{" "}
             <strong>NewsBlur</strong>.
           </p>

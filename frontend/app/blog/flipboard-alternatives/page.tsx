@@ -67,7 +67,7 @@ export const metadata: Metadata = {
 
 export default function BlogPost() {
   const blogPostSchema = generateBlogPostingSchema({
-    headline: "Flipboard Alternatives: 6 Better News Apps for 2026",
+    headline: "Flipboard alternatives for faster tech news (2026)",
     description:
       "Comprehensive comparison of the best Flipboard alternatives for 2026. Covers Trace, Feedly, Inoreader, NewsBlur, SmartNews, and Artifact with feature comparisons.",
     url: `${SITE_BASE_URL}/blog/flipboard-alternatives`,
@@ -84,6 +84,11 @@ export default function BlogPost() {
   ]);
 
   const faqSchema = generateFAQSchema([
+    {
+      question: "What are the best Flipboard alternatives for tech news?",
+      answer:
+        "For a 5-minute tech catch-up, Trace is the best Flipboard alternative: grouped stories and AI summaries, no magazine cards. Feedly or Inoreader if you want RSS source control. See the comparison table above.",
+    },
     {
       question: "What is the best alternative to Flipboard?",
       answer:
@@ -131,7 +136,7 @@ export default function BlogPost() {
             className={`text-4xl font-bold text-gray-900 dark:text-white mt-2 mb-4 ${spaceGrotesk.variable}`}
             style={{ fontFamily: "var(--font-space-grotesk)" }}
           >
-            Flipboard Alternatives: 6 Better News Apps for 2026
+            Flipboard Alternatives for Faster Tech News (2026)
           </h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
             <span><time dateTime="2026-06-22">June 22, 2026</time></span>
@@ -271,9 +276,9 @@ export default function BlogPost() {
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
             Flipboard is great for casual weekend browsing. But for daily tech news,
-            you need speed and depth, not beauty. <Link href="/feed?utm_source=blog&utm_medium=verdict&utm_campaign=flipboard-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Trace</Link> gives you
-            AI-curated tech news in 10 minutes. <strong>Feedly</strong> gives you RSS
-            control. Both are free and both are faster than Flipboard.
+            you need speed and depth, not beauty. <Link href="/feed?utm_source=blog&utm_medium=verdict&utm_campaign=flipboard-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Trace&apos;s daily AI briefing</Link> is the
+            5-minute catch-up — or start from the <Link href="/?utm_source=blog&utm_medium=verdict&utm_campaign=flipboard-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">homepage</Link>. <strong>Feedly</strong> gives you RSS
+            control. Both are faster than Flipboard.
           </p>
 
           <hr className="my-10 border-gray-200 dark:border-gray-800" />
@@ -282,9 +287,9 @@ export default function BlogPost() {
               Read Next
             </h3>
             <ul className="space-y-2">
-              <li><Link href="/blog/stay-on-top-of-ai-news-without-twitter" className="text-blue-600 dark:text-blue-400 hover:underline">How founders stay on top of AI news without Twitter →</Link></li>
-              <li><Link href="/blog/replace-tech-newsletters-with-a-5-minute-briefing" className="text-blue-600 dark:text-blue-400 hover:underline">Replace tech newsletters with a 5-minute briefing →</Link></li>
-              <li><Link href="/blog/feedly-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Best Feedly alternatives for tech news →</Link></li>
+              <li><Link href="/blog/ai-news-for-non-technical-founders" className="text-blue-600 dark:text-blue-400 hover:underline">AI news for non-technical founders →</Link></li>
+              <li><Link href="/blog/daily-ai-briefing-for-founders" className="text-blue-600 dark:text-blue-400 hover:underline">A daily AI briefing for founders →</Link></li>
+              <li><Link href="/blog/how-to-follow-ai-model-releases" className="text-blue-600 dark:text-blue-400 hover:underline">How to follow AI model releases →</Link></li>
             </ul>
           </div>
         </div>

@@ -178,16 +178,22 @@ export default async function UseCaseDetailPage({ params }: PageProps) {
               {slug === "for-founders" && (
                 <>
                   <Link
+                    href="/blog/ai-news-for-non-technical-founders"
+                    className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-sm text-[#6b7280] transition-colors hover:text-[#111827]"
+                  >
+                    AI news if you don't code
+                  </Link>
+                  <Link
+                    href="/blog/daily-ai-briefing-for-founders"
+                    className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-sm text-[#6b7280] transition-colors hover:text-[#111827]"
+                  >
+                    Daily AI briefing
+                  </Link>
+                  <Link
                     href="/blog/stay-on-top-of-ai-news-without-twitter"
                     className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-sm text-[#6b7280] transition-colors hover:text-[#111827]"
                   >
                     AI news without Twitter
-                  </Link>
-                  <Link
-                    href="/blog/replace-tech-newsletters-with-a-5-minute-briefing"
-                    className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-sm text-[#6b7280] transition-colors hover:text-[#111827]"
-                  >
-                    Replace newsletters
                   </Link>
                 </>
               )}

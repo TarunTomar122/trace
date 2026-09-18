@@ -32,7 +32,7 @@ export const standaloneBlogPosts: StandaloneBlogPost[] = [
   },
   {
     slug: "flipboard-alternatives",
-    title: "Flipboard Alternatives: 6 Better News Apps for 2026",
+    title: "Flipboard alternatives for faster tech news (2026)",
     tag: "Comparisons",
     category: "comparisons",
     excerpt: "Skip Flipboard's magazine cards. Compare six faster tech-news apps — Trace, Feedly, Inoreader — with AI summaries and a 5-minute catch-up.",

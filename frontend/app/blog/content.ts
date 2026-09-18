@@ -26,6 +26,216 @@ export type BlogPost = {
 
 export const blogPosts: BlogPost[] = [
   {
+    slug: "ai-news-for-non-technical-founders",
+    title: "AI news for non-technical founders",
+    subtitle: "You do not need to read papers. You need to know what shipped, who bundled it, and whether a customer will ask.",
+    tag: "For Founders",
+    category: "guides",
+    excerpt:
+      "A plain-language AI news routine for non-technical founders: model releases, product launches, and company moves — without X, LinkedIn, or engineering Twitter.",
+    author: "Trace Editorial",
+    readTime: "8 min read",
+    date: "September 18, 2026",
+    image: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&h=630&fit=crop&auto=format",
+    ctaHeading: "Read today's AI news in plain language",
+    ctaBlurb:
+      "Trace is a daily AI briefing for people who run companies, not train models. First 4 stories free. No RSS, no Twitter lists.",
+    ctaButton: "Open today's briefing",
+    relatedSlugs: [
+      "daily-ai-briefing-for-founders",
+      "how-to-follow-ai-model-releases",
+      "stay-on-top-of-ai-news-without-twitter",
+    ],
+    sources: [
+      { title: "News Platform Fact Sheet", url: "https://www.pewresearch.org/journalism/fact-sheet/news-platform-fact-sheet/", publisher: "Pew Research Center" },
+      { title: "Trace for founders", url: "https://www.yourtrace.online/use-cases/for-founders", publisher: "Trace" },
+    ],
+    faqs: [
+      {
+        question: "What AI news should a non-technical founder actually follow?",
+        answer:
+          "Named model and product launches, pricing or distribution changes, competitor shipping notes, and regulation your buyers will mention. Skip papers, leaderboard screenshots, and culture essays unless you are buying a model this quarter.",
+      },
+      {
+        question: "How do I follow AI if I am not an engineer?",
+        answer:
+          "Use a briefing written like a morning note to the company: the name of the thing, who shipped it, and whether it changes a product you use or sell against. Click through once a week, not every morning.",
+      },
+      {
+        question: "Is this different from AI Twitter or LinkedIn?",
+        answer:
+          "Yes. Those are recap and dunk networks. A briefing groups the launch post plus independent write-ups so you know what shipped, then ends. See how founders stay on top of AI news without Twitter.",
+      },
+    ],
+    sections: [
+      {
+        paragraphs: [
+          "Most 'keep up with AI' advice assumes you want to become slightly more technical. That is the wrong job. A non-technical founder needs to not get blindsided on a sales call, a board slide, or a hire who asks 'are we using the new model yet?'",
+          "You can ignore architecture. You cannot ignore a named release that is now the default in a tool your team or your competitor already uses. The rest is noise dressed up as diligence.",
+          "This pairs with [a daily AI briefing for founders](/blog/daily-ai-briefing-for-founders) and [how to follow AI model releases](/blog/how-to-follow-ai-model-releases). If social is the leak, start with [AI news without Twitter](/blog/stay-on-top-of-ai-news-without-twitter).",
+        ],
+      },
+      {
+        heading: "The three questions that replace the feed",
+        paragraphs: [
+          "Before you open anything, decide the filter. If a story cannot answer one of these, it is not founder news:",
+        ],
+        bullets: [
+          "Did a lab, platform, or well-funded company ship something with a name?",
+          "Does it change a tool you already pay for, sell against, or might buy?",
+          "Will a customer, investor, or hire reasonably bring it up this week?",
+        ],
+      },
+      {
+        heading: "What 'AI development' means when you don't write code",
+        paragraphs: [
+          "You are not tracking papers. You are tracking distribution: who bundled the model into Copilot, Cursor, a CRM, or a support bot. A research drop without a product path can wait. A quiet pricing change in a tool your team lives in cannot.",
+          "Company news belongs in the same pile. A partnership, a shutdown, or a policy change at OpenAI, Anthropic, Google, or Microsoft will show up in customer language faster than a new eval chart.",
+        ],
+      },
+      {
+        heading: "A 5-minute stack that is not X or LinkedIn",
+        paragraphs: [
+          "One briefing. Ranked. Grouped so the same launch is not seven tabs. Stop when the list ends. That is the whole system.",
+          "Open [today's Trace edition](/feed) before Slack. Guests get 4 stories; a free account gets 5 plus the morning email. If you still want one specialist newsletter, keep it — not eight. The [newsletter replacement guide](/blog/replace-tech-newsletters-with-a-5-minute-briefing) is the unsubscribe pass.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "how-to-follow-ai-model-releases",
+    title: "How to follow AI model releases",
+    subtitle: "Hear about Claude, Gemini, and the next Bonsai without living in launch-day Twitter.",
+    tag: "For Founders",
+    category: "guides",
+    excerpt:
+      "How to follow AI model releases without X: one grouped briefing for the launch post, the company blog, and two independent write-ups — then stop.",
+    author: "Trace Editorial",
+    readTime: "8 min read",
+    date: "September 18, 2026",
+    image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&h=630&fit=crop&auto=format",
+    ctaHeading: "See if a model shipped overnight",
+    ctaBlurb:
+      "Trace ranks model launches with the rest of the day's tech news. First 4 stories free. No lists to curate.",
+    ctaButton: "Open today's briefing",
+    relatedSlugs: [
+      "ai-news-for-non-technical-founders",
+      "daily-ai-briefing-for-founders",
+      "stay-on-top-of-ai-news-without-twitter",
+    ],
+    sources: [
+      { title: "News Platform Fact Sheet", url: "https://www.pewresearch.org/journalism/fact-sheet/news-platform-fact-sheet/", publisher: "Pew Research Center" },
+      { title: "Trace for founders", url: "https://www.yourtrace.online/use-cases/for-founders", publisher: "Trace" },
+    ],
+    faqs: [
+      {
+        question: "Where do AI model releases get announced first?",
+        answer:
+          "Usually the company blog and X at the same time. X is faster and noisier. The blog is precise and easy to miss if you do not follow 40 accounts. A briefing that groups both plus two write-ups is the adult version.",
+      },
+      {
+        question: "How can I hear about new AI models without Twitter?",
+        answer:
+          "Follow the launch as a story, not as a firehose. You want the name, who shipped it, what it claims, and whether a product you use already bundled it. Trace surfaces those as ranked stories so you do not need lists.",
+      },
+      {
+        question: "Do I need every model drop or only the big labs?",
+        answer:
+          "Big labs plus anything that landed in a tool your team or competitors already use. A small-model launch matters when it is in production, not when it wins a toy leaderboard.",
+      },
+    ],
+    sections: [
+      {
+        paragraphs: [
+          "Model launches are the classic founder miss. The company blog is accurate and late to your eyeballs. X is early and unusable. Newsletters recap it the next morning, after Slack has already started.",
+          "You do not need to be first. You need to be sure: what it is called, who shipped it, and whether it changes a demo, a vendor, or a hiring conversation this week.",
+          "Non-technical founders should read this next to [AI news for non-technical founders](/blog/ai-news-for-non-technical-founders). The daily habit lives in [a daily AI briefing for founders](/blog/daily-ai-briefing-for-founders).",
+        ],
+      },
+      {
+        heading: "Treat a launch as one story, not forty posts",
+        paragraphs: [
+          "A useful launch page has three layers: the official post, one independent write-up, and whether anyone has it in a product yet. Quote-tweets and screenshot wars are not a fourth layer. They are the reason people think they 'followed AI' and still cannot say what shipped.",
+          "[Today's Trace edition](/feed) groups that coverage so Claude, Gemini, or a smaller drop is one card. Guests get 4 stories free.",
+        ],
+      },
+      {
+        heading: "A weekday check that survives launch day",
+        paragraphs: [
+          "Morning: open the briefing, look for a named model or product. If nothing shipped, close it. Do not go hunting.",
+          "Launch day: allow one extra click — the official post or the pricing page. Not the timeline.",
+          "If you currently use Flipboard or Feedly to 'stay cultured,' those tools are browsing apps. They are slow at 'did a model ship.' The [Flipboard alternatives](/blog/flipboard-alternatives) roundup is for that switch.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "daily-ai-briefing-for-founders",
+    title: "A daily AI briefing for founders",
+    subtitle: "Five minutes, one list, a stop condition — so you can skip X, LinkedIn, and the newsletter pile.",
+    tag: "For Founders",
+    category: "guides",
+    excerpt:
+      "Build a daily AI briefing for founders: a finishable 5-minute list of model releases, company news, and what actually changed — not another feed.",
+    author: "Trace Editorial",
+    readTime: "7 min read",
+    date: "September 18, 2026",
+    image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&h=630&fit=crop&auto=format",
+    ctaHeading: "Open the briefing this is about",
+    ctaBlurb:
+      "Trace is the daily AI briefing: ranked stories from 400+ sources, grouped, done. First 4 stories free.",
+    ctaButton: "Open today's briefing",
+    relatedSlugs: [
+      "ai-news-for-non-technical-founders",
+      "how-to-follow-ai-model-releases",
+      "replace-tech-newsletters-with-a-5-minute-briefing",
+    ],
+    sources: [
+      { title: "News Platform Fact Sheet", url: "https://www.pewresearch.org/journalism/fact-sheet/news-platform-fact-sheet/", publisher: "Pew Research Center" },
+      { title: "Trace for founders", url: "https://www.yourtrace.online/use-cases/for-founders", publisher: "Trace" },
+    ],
+    faqs: [
+      {
+        question: "What is a daily AI briefing?",
+        answer:
+          "A finishable list of what changed in AI and tech since yesterday — grouped across sources, written in plain language, with a natural endpoint. It is not a feed, a newsletter pile, or a Twitter list.",
+      },
+      {
+        question: "How long should a founder spend on AI news each day?",
+        answer:
+          "Five to ten minutes if the grouping is done for you. Longer only once a week, on purpose, for one click-through. If you cannot tell when you are done, the tool is entertainment.",
+      },
+      {
+        question: "Can I get the briefing by email?",
+        answer:
+          "Yes. A single morning email that points at the same list is useful. Eight overlapping recaps are not. A free Trace account includes the daily email if you want it.",
+      },
+    ],
+    sections: [
+      {
+        paragraphs: [
+          "A daily AI briefing is a job description, not an app category. The job: know what shipped overnight, in five minutes, then go run the company. Most products you already use — X, LinkedIn, Flipboard, eight Substacks — refuse to end.",
+          "Founders who are not technical need this more, not less. You do not have a research slack. You have customer calls. The briefing has to read like a note to the company, not a paper.",
+          "How to fill it: [AI news for non-technical founders](/blog/ai-news-for-non-technical-founders) is the filter. [How to follow AI model releases](/blog/how-to-follow-ai-model-releases) is the launch-day version. [Trace for founders](/use-cases/for-founders) is the product-shaped version of the same habit.",
+        ],
+      },
+      {
+        heading: "Rules for a briefing that actually ends",
+        paragraphs: [
+          "One surface. Ranked, not chronological. Related coverage grouped. A stop condition you can feel — when the list is over, you are caught up.",
+          "That is what the [Trace homepage](/) is for, and what [today's edition](/feed) is. Guests get 4 stories; a free account gets 5 plus email. No RSS setup.",
+        ],
+      },
+      {
+        heading: "Where the hours currently go",
+        paragraphs: [
+          "X for launches. LinkedIn for delayed recaps. Newsletters because you swore off social. Flipboard because it looks like reading. You rebuilt the same firehose four times.",
+          "Kill three of those this week. Keep the briefing. If a magazine app is the leftover habit, the [Flipboard alternatives](/blog/flipboard-alternatives) page is the switch. If RSS is the leftover, use the [Feedly alternatives](/blog/feedly-alternatives) roundup — or skip RSS and stay on the briefing.",
+        ],
+      },
+    ],
+  },
+  {
     slug: "stay-on-top-of-ai-news-without-twitter",
     title: "How founders stay on top of AI news without Twitter",
     subtitle: "Model releases, company moves, and what actually changed — without X, LinkedIn, or a 40-tab morning.",
@@ -42,9 +252,9 @@ export const blogPosts: BlogPost[] = [
       "Open Trace and read what shipped overnight: model launches, company news, and the one or two developments that actually matter. No X, no LinkedIn, no RSS setup.",
     ctaButton: "Open today's briefing",
     relatedSlugs: [
+      "ai-news-for-non-technical-founders",
+      "daily-ai-briefing-for-founders",
       "replace-tech-newsletters-with-a-5-minute-briefing",
-      "how-to-stay-updated-with-tech-news",
-      "best-tech-news-aggregator-apps",
     ],
     sources: [
       { title: "News Platform Fact Sheet", url: "https://www.pewresearch.org/journalism/fact-sheet/news-platform-fact-sheet/", publisher: "Pew Research Center" },
@@ -156,9 +366,9 @@ export const blogPosts: BlogPost[] = [
       "Trace is a finishable morning edition — model releases, AI development, and company news grouped from 400+ sources. First 4 stories free. No new inbox folder.",
     ctaButton: "Open today's briefing",
     relatedSlugs: [
+      "daily-ai-briefing-for-founders",
+      "ai-news-for-non-technical-founders",
       "stay-on-top-of-ai-news-without-twitter",
-      "how-to-stay-updated-with-tech-news",
-      "feedly-alternatives",
     ],
     sources: [
       { title: "News Platform Fact Sheet", url: "https://www.pewresearch.org/journalism/fact-sheet/news-platform-fact-sheet/", publisher: "Pew Research Center" },
@@ -490,7 +700,7 @@ export const blogPosts: BlogPost[] = [
   },
   {
     slug: "best-tech-news-aggregator-apps",
-    title: "The 7 Best Tech News Aggregator Apps in 2026",
+    title: "7 tech news aggregators compared (2026)",
     subtitle: "Stop jumping between 47 tabs. These tools curate, summarize, and deliver tech news so you actually stay informed.",
     tag: "Tools & Comparisons",
     category: "comparisons",
@@ -506,7 +716,7 @@ export const blogPosts: BlogPost[] = [
         paragraphs: [
           "If you work in tech, you know the drill. You have 15 tabs open — TechCrunch, The Verge, Hacker News, Reddit, a few Twitter lists, maybe a Discord server or two. You scroll through each one, read three headlines, forget two of them, and somehow still miss the one story everyone's talking about at lunch.",
           "The problem isn't access to information. It's that nobody designed a system to filter, group, and contextualize it for you. That's where tech news aggregators come in — tools that pull stories from dozens of sources, group related coverage, and often use AI to summarize and prioritize what matters.",
-          "After testing over 15 tech news aggregation tools in 2026, we've narrowed the field to the 7 best options. Whether you want a traditional RSS reader, an AI-powered digest, a minimalist daily briefing, or a visual browsing experience, there's something here for you. Each tool was evaluated on source diversity, story grouping quality, AI accuracy, reading experience, noise filtering, and value for price.",
+          "After testing over 15 tech news aggregation tools in 2026, we've narrowed the field to the 7 best options. If you want the product, not another roundup, the [daily AI briefing on Trace](/) is the no-setup version — [today's edition](/feed) is free to start. Each tool below was evaluated on source diversity, story grouping quality, AI accuracy, reading experience, noise filtering, and value for price.",
           "We also tested for the things that matter in daily use: how quickly you can get through your morning catch-up, whether the mobile experience holds up, and whether the tool surfaces genuinely new information or just recycles the same 10 headlines you've already seen on Twitter."
         ]
       },
@@ -930,7 +1140,7 @@ export const blogPosts: BlogPost[] = [
   },
   {
     slug: "ai-news-digest-tools",
-    title: "The Best AI-Powered News Digest Tools in 2026",
+    title: "Best AI news digest tools in 2026",
     subtitle: "AI summaries are everywhere now. These are the tools that actually get them right — with context, accuracy, and usefulness.",
     tag: "AI & Tech",
     category: "ai-tools",
@@ -1178,7 +1388,7 @@ export const blogPosts: BlogPost[] = [
   },
   {
     slug: "best-rss-reader-apps",
-    title: "The 5 Best RSS Reader Apps in 2026 (Free & Paid)",
+    title: "5 RSS readers compared (2026)",
     subtitle: "RSS is still the best way to follow specific sources without algorithms. Here are the top RSS readers for every use case.",
     tag: "Tools & Comparisons",
     category: "comparisons",

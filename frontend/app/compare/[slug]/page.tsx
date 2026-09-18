@@ -107,7 +107,7 @@ export default async function CompareDetailPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
-      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/feed" />
+      <PublicHeader variant="landing" ctaLabel="Start reading free" ctaHref="/feed" />
       <main className="px-4 sm:px-6">
         <article className="mx-auto max-w-5xl pt-16 pb-20 sm:pt-24">
           <div className="max-w-3xl">
@@ -192,6 +192,14 @@ export default async function CompareDetailPage({ params }: PageProps) {
               Related comparisons
             </h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {page.relatedRoundup && (
+                <Link
+                  href={page.relatedRoundup.href}
+                  className="public-content-card p-5 text-[15px] font-semibold leading-6 text-foreground transition-colors hover:text-accent"
+                >
+                  {page.relatedRoundup.label}
+                </Link>
+              )}
               {relatedPages.map((related) => (
                 <Link
                   key={related.slug}
@@ -205,7 +213,7 @@ export default async function CompareDetailPage({ params }: PageProps) {
             <div className="mt-5 flex flex-wrap gap-2 text-sm">
               <Link href="/compare" className="public-chip">More comparisons</Link>
               <Link href="/blog" className="public-chip">Blog</Link>
-              <Link href="/tools" className="public-chip">Free tools</Link>
+              <Link href="/feed" className="public-chip">Today's briefing</Link>
             </div>
           </section>
         </article>
