@@ -91,6 +91,13 @@ class TrendingSourceConfigTests(unittest.TestCase):
             self.assertGreaterEqual(source["source_weight"], 1.0)
             self.assertIn(source["type"], {"rss", "atom"})
 
+        tldr = by_name["AI/TLDR Models"]
+        self.assertEqual(tldr["url"], "https://ai-tldr.dev/feed.json")
+        self.assertEqual(tldr["type"], "ai_tldr")
+        self.assertEqual(tldr["interest_id"], "ai")
+        self.assertIn("model", tldr["include_categories"])
+        self.assertEqual(set(tldr["include_importance"]), {"seismic", "major"})
+
     def test_parser_normalizes_representative_rss_and_atom_items(self) -> None:
         rss = """\
         <rss version="2.0">

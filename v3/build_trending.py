@@ -51,6 +51,7 @@ from v3.lib.diversity import (  # noqa: E402
     dedupe_trending_latest_story,
 )
 from v3.lib.story_headlines import build_headlines  # noqa: E402
+from v3.lib.ai_tldr import select_model_releases as _select_ai_tldr_model_releases  # noqa: E402
 
 CONFIG_PATH = "v3/config/trending_sources.json"
 DEFAULT_LIMIT_PER_SOURCE = 15
@@ -2389,6 +2390,21 @@ def _iso_from_hn_date(value: str) -> str:
         return ""
 
 
+def _fetch_ai_tldr_model_releases(src: dict[str, Any], limit: int) -> list[dict[str, str]]:
+    payload = _safe_json_get(str(src.get("url") or ""), timeout=20)
+    items = payload.get("items") if isinstance(payload, dict) else None
+    if not isinstance(items, list):
+        return []
+    include_categories = src.get("include_categories")
+    include_importance = src.get("include_importance")
+    return _select_ai_tldr_model_releases(
+        [item for item in items if isinstance(item, dict)],
+        include_categories=include_categories if isinstance(include_categories, list) else None,
+        include_importance=include_importance if isinstance(include_importance, list) else None,
+        limit=limit,
+    )
+
+
 def _safe_json_get(url: str, timeout: int = 20) -> dict[str, Any]:
     req = Request(
         url,
@@ -2622,8 +2638,11 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
         _log(f"Fetching {src_name} ({src['url']})")
 
         try:
-            result = fetch_article_links(src["url"], limit=limit_per_source)
-            articles = result.articles if hasattr(result, "articles") else []
+            if str(src.get("type") or "").strip() == "ai_tldr":
+                articles = _fetch_ai_tldr_model_releases(src, limit_per_source)
+            else:
+                result = fetch_article_links(src["url"], limit=limit_per_source)
+                articles = result.articles if hasattr(result, "articles") else []
         except Exception as exc:
             _log(f"  ERROR fetching {src_name}: {exc}")
             with stats_lock:

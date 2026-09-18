@@ -274,6 +274,15 @@
       ]
     },
     {
+      "interest_id": "ai",
+      "name": "AI/TLDR Models",
+      "url": "https://ai-tldr.dev/feed.json",
+      "type": "ai_tldr",
+      "source_weight": 1.25,
+      "include_categories": ["model"],
+      "include_importance": ["seismic", "major"]
+    },
+    {
       "interest_id": "tech",
       "name": "MIT Technology Review AI",
       "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed/",
