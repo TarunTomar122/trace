@@ -18,7 +18,7 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "NewsBlur Alternatives: 6 Options (2026) | Trace",
   description:
-    "Looking for NewsBlur alternatives? We tested 6 options including Trace, Feedly, Inoreader, and Miniflux. Find the right RSS reader for 2026.",
+    "Want NewsBlur's privacy without the setup? Compare 6 RSS and briefing apps — Trace, Feedly, Inoreader, Miniflux — for 2026.",
   keywords: [
     "newsblur alternatives",
     "newsblur alternative free",

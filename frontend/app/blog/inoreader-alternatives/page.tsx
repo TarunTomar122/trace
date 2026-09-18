@@ -18,7 +18,7 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "Inoreader Alternatives: 6 Better Options (2026) | Trace",
   description:
-    "Looking for Inoreader alternatives? We tested 6 options including Trace, Feedly, and NewsBlur. Find the right news reader for your workflow in 2026.",
+    "Outgrowing Inoreader's rules engine? Compare 6 readers — Trace, Feedly, NewsBlur — if you want a briefing without building filters.",
   keywords: [
     "inoreader alternatives",
     "inoreader alternative free",

@@ -18,7 +18,7 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "SmartNews Alternatives: 6 Better News Apps for 2026 | Trace",
   description:
-    "Looking for SmartNews alternatives? We tested 6 options with better AI curation, tech coverage, and developer-focused features. Find your next news app in 2026.",
+    "SmartNews is fast but thin on tech. Compare 6 alternatives with AI curation, grouped stories, and coverage founders actually need.",
   keywords: [
     "smartnews alternatives",
     "smartnews alternative app",

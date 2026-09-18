@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
 import { StructuredDataList } from "@/components/StructuredData";
 import EditorialArticleShell from "@/components/EditorialArticleShell";
+import { InlineTraceCTA } from "@/components/BlogCTA";
 import {
   SITE_BASE_URL,
   generateBlogPostingSchema,
@@ -16,9 +17,9 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Feedly Alternatives: 7 Better Options (2026) | Trace",
+  title: "Best Feedly alternatives for tech news (2026) | Trace",
   description:
-    "Looking for Feedly alternatives? We tested 7 free options including Trace, Inoreader, and NewsBlur. Find the right RSS reader for developers and founders in 2026.",
+    "Outgrowing Feedly? Compare 7 readers — Trace, Inoreader, NewsBlur — for founders who want AI summaries without managing RSS.",
   keywords: [
     "feedly alternatives",
     "feedly alternatives free",
@@ -36,14 +37,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "article",
-    title: "Feedly Alternatives: 7 Free Options That Are Actually Better (2026)",
+    title: "Best Feedly alternatives for tech news (2026)",
     description:
-      "We tested 7 free Feedly alternatives so you don&apos;t have to. Find the right RSS reader for developers and power users.",
+      "Outgrowing Feedly? Compare 7 readers — Trace, Inoreader, NewsBlur — if you want AI summaries without managing RSS.",
     url: `${SITE_BASE_URL}/blog/feedly-alternatives`,
     siteName: "Trace",
     locale: "en_US",
     publishedTime: "2026-05-04T00:00:00Z",
-    modifiedTime: "2026-05-04T00:00:00Z",
+    modifiedTime: "2026-09-18T00:00:00Z",
     authors: ["https://x.com/tarat_211"],
     images: [
       {
@@ -56,9 +57,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Feedly Alternatives: 7 Free Options That Are Actually Better (2026)",
+    title: "Best Feedly alternatives for tech news (2026)",
     description:
-      "We tested 7 free Feedly alternatives so you don&apos;t have to. Find the right RSS reader for developers.",
+      "Outgrowing Feedly? Compare 7 readers for founders who want AI summaries without managing RSS.",
     images: [`${SITE_BASE_URL}/twitter-image`],
     creator: "@tarat_211",
   },
@@ -71,7 +72,7 @@ export default function BlogPost() {
       "Comprehensive comparison of the best free Feedly alternatives for 2026, including Trace, Inoreader, NewsBlur, Miniflux, Reeder, NetNewsWire, and Fluent Reader.",
     url: `${SITE_BASE_URL}/blog/feedly-alternatives`,
     datePublished: "2026-05-04T00:00:00Z",
-    dateModified: "2026-05-04T00:00:00Z",
+    dateModified: "2026-09-18T00:00:00Z",
     authorName: "Tarun Tomar",
     authorUrl: "https://x.com/tarat_211",
   });
@@ -96,12 +97,12 @@ export default function BlogPost() {
     {
       question: "Is Trace better than Feedly?",
       answer:
-        "If you want zero-setup AI summaries from 100+ sources right away, Trace is better than Feedly. It's free on Android with no ads and creates 30-second reads. Feedly is better if you want fine-grained RSS control and are willing to set up sources manually.",
+        "If you want zero-setup AI summaries from 400+ sources right away, Trace is better than Feedly. Guests get 4 stories free on the web; a free account gets 5 plus the morning email. Feedly is better if you want fine-grained RSS control and are willing to set up sources manually.",
     },
     {
       question: "Are there any completely free RSS readers like Feedly?",
       answer:
-        "Yes. Trace (Android), NetNewsWire (Mac/iOS), Fluent Reader (Desktop), and NewsBlur (self-hosted) are all completely free RSS readers. Inoreader and Feedly offer free tiers with limitations. Miniflux is free if you self-host it.",
+        "Yes. Trace (web, first 4 stories free), NetNewsWire (Mac/iOS), Fluent Reader (Desktop), and NewsBlur (self-hosted) are all free to start. Inoreader and Feedly offer free tiers with source limits. Miniflux is free if you self-host it.",
     },
   ]);
 
@@ -199,7 +200,7 @@ export default function BlogPost() {
               <tbody>
                 <tr>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Trace</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free (Android)</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $2.99 Pro</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Quick Catch-Up</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">✓ 30-second reads</td>
                 </tr>
@@ -247,24 +248,24 @@ export default function BlogPost() {
             1. Trace — Best Feedly Alternative for Quick Catch-Up
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            <strong>Price:</strong> Free (Android)
+            <strong>Price:</strong> Free / $2.99 Pro
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             If you&apos;re tired of setting up RSS feeds and just want to stay
             informed, Trace is the best Feedly alternative. It uses AI to
-            aggregate news from 100+ sources and creates 30-second summaries.
+            aggregate news from 400+ sources and groups related coverage into
+            one ranked briefing.
           </p>
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mb-4">
-            <li>No setup required — just download and go</li>
-            <li>AI summaries from 100+ trusted sources</li>
+            <li>No setup required — open the briefing and go</li>
+            <li>AI summaries from 400+ trusted sources</li>
             <li>Personalized feed based on your role</li>
-            <li>Free forever with no ads</li>
+            <li>First 4 stories free; Pro is $2.99/mo</li>
           </ul>
-          <p className="text-gray-600 dark:text-gray-400">
-            <a href="https://play.google.com/store/apps/details?id=online.yourtrace.app" className="text-blue-600 dark:text-blue-400 hover:underline font-medium" rel="noopener noreferrer">
-              Download Trace free on Android →
-            </a>
-          </p>
+          <InlineTraceCTA
+            slug="feedly-alternatives"
+            blurb="Skip the RSS setup. Trace already reads 400+ tech sources and hands you one ranked briefing — model releases, company news, and what actually changed."
+          />
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
             2. Inoreader — Best for Power Users
@@ -361,13 +362,13 @@ export default function BlogPost() {
             </h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/blog/best-ai-news-apps-2026" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  Best AI News Apps in 2026 (That Actually Respect Your Time) →
+                <Link href="/blog/stay-on-top-of-ai-news-without-twitter" className="text-blue-600 dark:text-blue-400 hover:underline">
+                  How founders stay on top of AI news without Twitter →
                 </Link>
               </li>
               <li>
-                <Link href="/blog/free-news-aggregators-for-developers" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  Free News Aggregators for Developers: The Complete Guide →
+                <Link href="/blog/replace-tech-newsletters-with-a-5-minute-briefing" className="text-blue-600 dark:text-blue-400 hover:underline">
+                  Replace tech newsletters with a 5-minute briefing →
                 </Link>
               </li>
               <li>

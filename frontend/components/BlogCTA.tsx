@@ -10,18 +10,28 @@ function feedHref(slug: string, location: string) {
 }
 
 /** Mid-article pitch card. Drop after the Trace section or comparison table. */
-export function InlineTraceCTA({ slug, blurb }: { slug: string; blurb?: string }) {
+export function InlineTraceCTA({
+  slug,
+  blurb,
+  heading,
+  buttonLabel,
+}: {
+  slug: string;
+  blurb?: string;
+  heading?: string;
+  buttonLabel?: string;
+}) {
   return (
     <div className="my-10 rounded-xl border border-blue-100 bg-blue-50/60 p-6 dark:border-blue-900/40 dark:bg-blue-950/20 sm:p-7">
       <p className="text-sm font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-300">
         Free edition
       </p>
       <h3 className="mt-2 text-xl font-bold text-gray-900 dark:text-white">
-        Read today&apos;s edition — first 4 stories free
+        {heading || "Catch up on AI in 5 minutes — skip X and LinkedIn"}
       </h3>
       <p className="mt-2 leading-relaxed text-gray-600 dark:text-gray-400">
         {blurb ||
-          "Trace reads 400+ tech sources every morning and hands you one ranked briefing with AI summaries. No setup, no feed to configure. A free account gets 5 stories a day plus the morning email."}
+          "Trace groups model releases, company news, and what actually changed from 400+ sources. Guests get 4 stories; a free account gets 5 plus the morning email. No RSS, no newsletter pile."}
       </p>
       <div className="mt-5 flex flex-wrap gap-3">
         <Link
@@ -29,7 +39,7 @@ export function InlineTraceCTA({ slug, blurb }: { slug: string; blurb?: string }
           onClick={() => trackBlogCtaClicked(slug, "inline_cta", "feed")}
           className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
         >
-          Read the free edition <ArrowRight size={15} />
+          {buttonLabel || "Open today's briefing"} <ArrowRight size={15} />
         </Link>
         <Link
           href="/subscribe"
@@ -51,14 +61,14 @@ export function StickyBlogBar({ slug }: { slug: string }) {
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur-md dark:border-gray-800 dark:bg-gray-950/95 md:hidden">
       <div className="mx-auto flex max-w-3xl items-center gap-3">
         <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-800 dark:text-gray-100">
-          Today&apos;s free edition — 4 stories, no account
+          5-minute AI briefing — 4 stories free
         </p>
         <Link
           href={feedHref(slug, "sticky_bar")}
           onClick={() => trackBlogCtaClicked(slug, "sticky_bar", "feed")}
           className="inline-flex shrink-0 items-center gap-1 rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
         >
-          Read free <ArrowRight size={14} />
+          Open it <ArrowRight size={14} />
         </Link>
         <button
           onClick={() => setDismissed(true)}

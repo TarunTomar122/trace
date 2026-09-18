@@ -13,6 +13,7 @@ import {
   DEFAULT_OPEN_GRAPH,
   DEFAULT_TWITTER_IMAGE,
   generateBreadcrumbSchema,
+  generateFAQSchema,
   metadataTitle,
   SITE_BASE_URL,
 } from "@/lib/seo";
@@ -141,8 +142,17 @@ export default async function BlogPostPage({ params }: PageProps) {
     "url": canonicalUrl,
   };
 
-  const relatedPosts = blogPosts
-    .filter((p) => p.slug !== post.slug && p.category === post.category)
+  const relatedPosts = (
+    post.relatedSlugs?.length
+      ? post.relatedSlugs
+          .map((slug) => blogPosts.find((candidate) => candidate.slug === slug))
+          .filter((candidate): candidate is (typeof blogPosts)[number] => Boolean(candidate))
+      : [
+          ...blogPosts.filter((p) => p.slug !== post.slug && p.tag === post.tag),
+          ...blogPosts.filter((p) => p.slug !== post.slug && p.tag !== post.tag && p.category === post.category),
+        ]
+  )
+    .filter((p, index, all) => all.findIndex((candidate) => candidate.slug === p.slug) === index)
     .slice(0, 3);
 
   return (
@@ -155,7 +165,13 @@ export default async function BlogPostPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
-      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/feed" />
+      {post.faqs && post.faqs.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(generateFAQSchema(post.faqs)) }}
+        />
+      )}
+      <PublicHeader variant="landing" ctaLabel="Start reading free" ctaHref="/feed" />
 
       <article className="px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-5xl pt-12 sm:pt-18">
@@ -248,7 +264,14 @@ export default async function BlogPostPage({ params }: PageProps) {
                     ))}
                   </ul>
                 )}
-                {index === 1 && <InlineTraceCTA slug={post.slug} />}
+                {index === 1 && (
+                  <InlineTraceCTA
+                    slug={post.slug}
+                    heading={post.ctaHeading}
+                    blurb={post.ctaBlurb}
+                    buttonLabel={post.ctaButton}
+                  />
+                )}
               </section>
             ))}
           </div>
@@ -277,27 +300,41 @@ export default async function BlogPostPage({ params }: PageProps) {
             </section>
           )}
 
+          {post.faqs && post.faqs.length > 0 && (
+            <section className="public-rule mt-14 border-t pt-8">
+              <h2 className="public-kicker mb-5 text-secondary">FAQ</h2>
+              <div className="space-y-6">
+                {post.faqs.map((faq) => (
+                  <div key={faq.question}>
+                    <h3 className="text-[17px] font-semibold leading-snug text-foreground">{faq.question}</h3>
+                    <p className="public-body mt-2">{faq.answer}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* CTA */}
           <section className="public-cta mt-14 p-8 sm:p-10">
             <p className="public-kicker">Trace</p>
             <h2 className="mt-3 text-[1.625rem] font-semibold tracking-[-0.025em] text-foreground">
-              Stay informed without the overwhelm
+              Skip X, LinkedIn, and the newsletter pile
             </h2>
             <p className="public-body mt-4 max-w-xl">
-              Trace groups related stories from 50+ sources into one clean daily briefing. AI summaries, key points, and community context so you catch up in minutes, not hours.
+              Open today&apos;s briefing. Model releases, company news, and what actually changed — grouped from 400+ sources. First 4 stories free.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                href="/subscribe"
+                href={`/feed?utm_source=blog&utm_medium=article_end&utm_campaign=${post.slug}`}
                 className="landing-btn landing-btn-primary landing-btn-sm"
               >
-                Start with Trace
+                Open today&apos;s briefing
               </Link>
               <Link
-                href={`/feed?utm_source=blog&utm_medium=article_end&utm_campaign=${post.slug}`}
+                href="/subscribe"
                 className="landing-btn landing-btn-secondary landing-btn-sm"
               >
-                Read the free edition
+                Get Pro — $2.99/mo
               </Link>
             </div>
           </section>
@@ -328,7 +365,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               { href: "/blog", label: "All articles" },
               { href: "/compare", label: "Compare guides" },
               { href: "/tools", label: "Free tools" },
-              { href: `/feed?utm_source=blog&utm_medium=bottom_nav&utm_campaign=${post.slug}`, label: "Today&apos;s free edition" },
+              { href: `/feed?utm_source=blog&utm_medium=bottom_nav&utm_campaign=${post.slug}`, label: "Today's briefing" },
             ].map((link) => (
               <Link
                 key={link.href}

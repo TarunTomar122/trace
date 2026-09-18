@@ -18,7 +18,7 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "How to Stay Updated on Tech Without Doomscrolling | Trace",
   description:
-    "The average developer spends 2+ hours daily on news apps. Here&apos;s how to cut that to 30 minutes and still know everything that matters without the anxiety.",
+    "The average developer spends 2+ hours daily on news apps. Here's how to cut that to 30 minutes and still know what matters — without the anxiety.",
   keywords: [
     "stay updated tech",
     "developer productivity",
@@ -254,18 +254,18 @@ export default function BlogPost() {
             </h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/blog/best-ai-news-apps-2026" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  Best AI News Apps in 2026 (That Actually Respect Your Time) →
+                <Link href="/blog/stay-on-top-of-ai-news-without-twitter" className="text-blue-600 dark:text-blue-400 hover:underline">
+                  How founders stay on top of AI news without Twitter →
                 </Link>
               </li>
               <li>
-                <Link href="/blog/free-news-aggregators-for-developers" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  Free News Aggregators for Developers: The Complete Guide →
+                <Link href="/blog/replace-tech-newsletters-with-a-5-minute-briefing" className="text-blue-600 dark:text-blue-400 hover:underline">
+                  Replace tech newsletters with a 5-minute briefing →
                 </Link>
               </li>
               <li>
                 <Link href="/blog/feedly-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  Feedly Alternatives: 7 Free Options That Are Actually Better →
+                  Best Feedly alternatives for tech news →
                 </Link>
               </li>
             </ul>

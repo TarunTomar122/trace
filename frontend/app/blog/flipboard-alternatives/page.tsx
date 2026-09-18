@@ -17,9 +17,9 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Flipboard Alternatives: 6 Better News Apps for 2026 | Trace",
+  title: "Flipboard alternatives for faster tech news (2026) | Trace",
   description:
-    "Looking for Flipboard alternatives? We tested 6 options including Trace, Feedly, and Inoreader. Find the right news app for tech professionals in 2026.",
+    "Skip Flipboard's magazine cards. Compare 6 faster tech-news apps — Trace, Feedly, Inoreader — with AI summaries and a 5-minute catch-up.",
   keywords: [
     "flipboard alternatives",
     "flipboard alternative app",
@@ -37,14 +37,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "article",
-    title: "Flipboard Alternatives: 6 Better News Apps for 2026",
+    title: "Flipboard alternatives for faster tech news (2026)",
     description:
-      "We tested 6 Flipboard alternatives for tech professionals who want better curation, AI summaries, and developer-focused coverage.",
+      "Skip Flipboard's magazine cards. Compare 6 faster tech-news apps with AI summaries and a 5-minute catch-up.",
     url: `${SITE_BASE_URL}/blog/flipboard-alternatives`,
     siteName: "Trace",
     locale: "en_US",
     publishedTime: "2026-06-22T00:00:00Z",
-    modifiedTime: "2026-06-22T00:00:00Z",
+    modifiedTime: "2026-09-18T00:00:00Z",
     authors: ["https://x.com/tarat_211"],
     images: [
       {
@@ -57,9 +57,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Flipboard Alternatives: 6 Better News Apps for 2026",
+    title: "Flipboard alternatives for faster tech news (2026)",
     description:
-      "We tested 6 Flipboard alternatives for tech professionals who want better news curation.",
+      "Skip Flipboard's magazine cards. Compare 6 faster tech-news apps with AI summaries and a 5-minute catch-up.",
     images: [`${SITE_BASE_URL}/twitter-image`],
     creator: "@tarat_211",
   },
@@ -72,7 +72,7 @@ export default function BlogPost() {
       "Comprehensive comparison of the best Flipboard alternatives for 2026. Covers Trace, Feedly, Inoreader, NewsBlur, SmartNews, and Artifact with feature comparisons.",
     url: `${SITE_BASE_URL}/blog/flipboard-alternatives`,
     datePublished: "2026-06-22T00:00:00Z",
-    dateModified: "2026-06-22T00:00:00Z",
+    dateModified: "2026-09-18T00:00:00Z",
     authorName: "Tarun Tomar",
     authorUrl: "https://x.com/tarat_211",
   });
@@ -204,7 +204,7 @@ export default function BlogPost() {
 
           <InlineTraceCTA
             slug="flipboard-alternatives"
-            blurb="Switching from Flipboard takes zero setup: Trace already reads 50+ tech sources every morning and hands you one ranked briefing with AI summaries."
+            blurb="Switching from Flipboard takes zero setup: Trace already reads 400+ tech sources every morning and hands you one ranked briefing. Built for founders who want AI and model-release news without a magazine feed."
           />
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
@@ -282,9 +282,9 @@ export default function BlogPost() {
               Read Next
             </h3>
             <ul className="space-y-2">
-              <li><Link href="/blog/best-tech-news-aggregator-apps" className="text-blue-600 dark:text-blue-400 hover:underline">The 7 Best Tech News Aggregator Apps in 2026 →</Link></li>
-              <li><Link href="/blog/feedly-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Feedly Alternatives: 7 Free Options That Are Actually Better →</Link></li>
-              <li><Link href="/blog/google-news-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Google News Alternatives: 6 Better Options for Tech News →</Link></li>
+              <li><Link href="/blog/stay-on-top-of-ai-news-without-twitter" className="text-blue-600 dark:text-blue-400 hover:underline">How founders stay on top of AI news without Twitter →</Link></li>
+              <li><Link href="/blog/replace-tech-newsletters-with-a-5-minute-briefing" className="text-blue-600 dark:text-blue-400 hover:underline">Replace tech newsletters with a 5-minute briefing →</Link></li>
+              <li><Link href="/blog/feedly-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">Best Feedly alternatives for tech news →</Link></li>
             </ul>
           </div>
         </div>

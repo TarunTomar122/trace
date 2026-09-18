@@ -19,7 +19,7 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "Pocket Alternatives: 6 Better Apps for 2026 | Trace",
   description:
-    "Looking for Pocket alternatives? We compare 6 options including Trace, Instapaper, and Raindrop.io. Find the right read-it-later app for 2026.",
+    "Pocket shut down in 2025. Compare 6 read-it-later and briefing apps — Trace, Instapaper, Raindrop — so saved articles actually get read.",
   keywords: [
     "pocket alternatives",
     "pocket alternative app",

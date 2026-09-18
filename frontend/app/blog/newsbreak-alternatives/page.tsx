@@ -19,7 +19,7 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "NewsBreak Alternatives: 6 Cleaner News Apps for 2026 | Trace",
   description:
-    "Looking for NewsBreak alternatives? We compared 6 cleaner options including Trace, Ground News, and SmartNews. Find a higher signal news app with fewer ads for 2026.",
+    "Tired of NewsBreak ads? Compare 6 cleaner apps — Trace, Ground News, SmartNews — for higher-signal news without the clutter.",
   keywords: [
     "newsbreak alternatives",
     "newsbreak alternative app",

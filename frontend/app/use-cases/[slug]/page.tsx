@@ -75,7 +75,7 @@ export default async function UseCaseDetailPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <PublicHeader variant="landing" ctaLabel="Sign in" ctaHref="/feed" />
+      <PublicHeader variant="landing" ctaLabel="Start reading free" ctaHref="/feed" />
       <main className="px-4 sm:px-6">
         <article className="mx-auto max-w-5xl pt-16 pb-20 sm:pt-24">
           <div className="max-w-3xl">
@@ -175,6 +175,22 @@ export default async function UseCaseDetailPage({ params }: PageProps) {
               >
                 Read the Blog
               </Link>
+              {slug === "for-founders" && (
+                <>
+                  <Link
+                    href="/blog/stay-on-top-of-ai-news-without-twitter"
+                    className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-sm text-[#6b7280] transition-colors hover:text-[#111827]"
+                  >
+                    AI news without Twitter
+                  </Link>
+                  <Link
+                    href="/blog/replace-tech-newsletters-with-a-5-minute-briefing"
+                    className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-sm text-[#6b7280] transition-colors hover:text-[#111827]"
+                  >
+                    Replace newsletters
+                  </Link>
+                </>
+              )}
               <Link
                 href="/feed"
                 className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-sm text-[#6b7280] transition-colors hover:text-[#111827]"

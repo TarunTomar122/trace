@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
 import { StructuredDataList } from "@/components/StructuredData";
 import EditorialArticleShell from "@/components/EditorialArticleShell";
+import { InlineTraceCTA } from "@/components/BlogCTA";
 import {
   SITE_BASE_URL,
   generateBlogPostingSchema,
@@ -18,7 +19,7 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "Google News Alternatives for Tech Readers (2026) | Trace",
   description:
-    "Looking for Google News alternatives? We tested 6 options that deliver better tech news curation, AI summaries, and developer-focused coverage in 2026.",
+    "Google News is too noisy for AI and startups. Compare 6 alternatives with grouped stories, AI summaries, and a free 5-minute briefing.",
   keywords: [
     "google news alternatives",
     "google news alternative app",
@@ -236,6 +237,10 @@ export default function BlogPost() {
             <li>Community discussion links (Reddit, Hacker News)</li>
             <li>10-minute morning catch-up, then you&apos;re done</li>
           </ul>
+          <InlineTraceCTA
+            slug="google-news-alternatives"
+            blurb="Google News mixes world headlines with the one AI launch you actually needed. Trace is a finishable tech briefing — model releases, company news, first 4 stories free."
+          />
 
           <h2 className={`text-2xl font-bold text-gray-900 dark:text-white ${spaceGrotesk.variable}`} style={{ fontFamily: "var(--font-space-grotesk)" }}>
             2. Techmeme — Best for Quick Industry Overview
@@ -323,13 +328,13 @@ export default function BlogPost() {
             </h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/blog/best-tech-news-aggregator-apps" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  The 7 Best Tech News Aggregator Apps in 2026 →
+                <Link href="/blog/stay-on-top-of-ai-news-without-twitter" className="text-blue-600 dark:text-blue-400 hover:underline">
+                  How founders stay on top of AI news without Twitter →
                 </Link>
               </li>
               <li>
-                <Link href="/blog/feedly-alternatives" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  Feedly Alternatives: 7 Free Options That Are Actually Better →
+                <Link href="/blog/replace-tech-newsletters-with-a-5-minute-briefing" className="text-blue-600 dark:text-blue-400 hover:underline">
+                  Replace tech newsletters with a 5-minute briefing →
                 </Link>
               </li>
               <li>

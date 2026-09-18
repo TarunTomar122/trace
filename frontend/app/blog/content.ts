@@ -17,9 +17,217 @@ export type BlogPost = {
   image: string;
   sources: { title: string; url: string; publisher?: string }[];
   sections: BlogPostSection[];
+  faqs?: { question: string; answer: string }[];
+  ctaHeading?: string;
+  ctaBlurb?: string;
+  ctaButton?: string;
+  relatedSlugs?: string[];
 };
 
 export const blogPosts: BlogPost[] = [
+  {
+    slug: "stay-on-top-of-ai-news-without-twitter",
+    title: "How founders stay on top of AI news without Twitter",
+    subtitle: "Model releases, company moves, and what actually changed — without X, LinkedIn, or a 40-tab morning.",
+    tag: "For Founders",
+    category: "guides",
+    excerpt:
+      "Stay on top of AI news, model releases, and tech developments in 5 minutes — without scrolling X, LinkedIn, or a pile of newsletters.",
+    author: "Trace Editorial",
+    readTime: "9 min read",
+    date: "September 18, 2026",
+    image: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=1200&h=630&fit=crop&auto=format",
+    ctaHeading: "See today's AI briefing — 4 stories free",
+    ctaBlurb:
+      "Open Trace and read what shipped overnight: model launches, company news, and the one or two developments that actually matter. No X, no LinkedIn, no RSS setup.",
+    ctaButton: "Open today's briefing",
+    relatedSlugs: [
+      "replace-tech-newsletters-with-a-5-minute-briefing",
+      "how-to-stay-updated-with-tech-news",
+      "best-tech-news-aggregator-apps",
+    ],
+    sources: [
+      { title: "News Platform Fact Sheet", url: "https://www.pewresearch.org/journalism/fact-sheet/news-platform-fact-sheet/", publisher: "Pew Research Center" },
+      { title: "Social Media and News Fact Sheet", url: "https://www.pewresearch.org/journalism/fact-sheet/social-media-and-news-fact-sheet/", publisher: "Pew Research Center" },
+      { title: "Trace for founders", url: "https://www.yourtrace.online/use-cases/for-founders", publisher: "Trace" },
+    ],
+    faqs: [
+      {
+        question: "How can a non-technical founder stay on top of AI news?",
+        answer:
+          "You do not need to read papers or follow researchers on X. You need a short daily briefing that groups model releases, company moves, and product launches into one ranked list with plain-language summaries. Five minutes is enough if the grouping is done for you.",
+      },
+      {
+        question: "Is Twitter still the best way to hear about model releases?",
+        answer:
+          "It is still the noisiest. Model launches leak and trend on X, but so do screenshots, rumors, and dunks. A briefing that pulls the launch post, the company blog, and two independent write-ups will tell you what shipped without the pile-on.",
+      },
+      {
+        question: "What should I actually track if I am not an engineer?",
+        answer:
+          "Three things: what a major lab or startup released, whether it changes a product you already use or sell against, and whether customers or investors will ask about it this week. Architecture details can wait.",
+      },
+      {
+        question: "How is this different from a tech newsletter?",
+        answer:
+          "A newsletter arrives on someone else's schedule, recaps yesterday, and sits in your inbox. A briefing is a finishable list of today's stories, grouped across sources, that you can close. See also our guide to replacing newsletters with a 5-minute briefing.",
+      },
+    ],
+    sections: [
+      {
+        paragraphs: [
+          "Most founders I talk to are not trying to become AI researchers. They are trying to not get blindsided. A model ships on a Tuesday. A competitor wires it into a demo by Thursday. A customer asks about it on a sales call Friday. If your only pipeline is X, LinkedIn, and three newsletters, you either saw it six times or not at all.",
+          "You do not need more feeds. You need one place that answers: what changed in AI and tech overnight, who it came from, and whether it matters to the company you are running. That is a 5-minute job if the grouping is done for you. It is a 45-minute job if you are the grouping.",
+          "This is the system we recommend for [busy founders](/use-cases/for-founders) who want to stay on top of model releases and AI development without living on social media. If you also want the broader 'close the tabs' version, read [how to stay updated with tech news](/blog/how-to-stay-updated-with-tech-news).",
+        ],
+      },
+      {
+        heading: "Why X and LinkedIn fail founders",
+        paragraphs: [
+          "X is where launches happen first. That is also why it is a terrible briefing. A model drop is 40 quote-tweets, a screenshot of a leaderboard, three rumors, and a thread that starts 'we're so back.' You cannot tell what shipped. You can only tell that people are loud.",
+          "LinkedIn is slower and more polite, which sounds better until you notice the lag. By the time a thought-leadership post explains the launch, your competitor has already mentioned it on a customer call. LinkedIn is a recap network, not a news network.",
+          "Pew's news-platform research keeps making the same point in different years: a lot of people now get news as a byproduct of scrolling, not as a job they sit down to finish. That is fine for sports. It is a bad operating system for a founder who needs to know when OpenAI, Anthropic, Google, or a well-funded startup actually released something.",
+        ],
+        bullets: [
+          "X is fast and unfiltered — you pay in context-switching and rumor.",
+          "LinkedIn is delayed and packaged — you pay in lag.",
+          "Neither tells you when you are done. There is always another post.",
+        ],
+      },
+      {
+        heading: "What 'staying on top of AI' actually means",
+        paragraphs: [
+          "If you are not training models, you do not need every paper. You need a short list of developments that will show up in product, fundraising, or customer conversations.",
+          "Treat AI news like a briefing for a board meeting, not like a hobby feed. Ask three questions of every story:",
+        ],
+        bullets: [
+          "Did a lab, platform, or well-funded company ship something named?",
+          "Does it change a tool you already use, sell against, or might buy?",
+          "Will a customer, hire, or investor reasonably ask about it this week?",
+        ],
+      },
+      {
+        heading: "A 5-minute founder briefing, not a feed",
+        paragraphs: [
+          "The working version looks like this. You open one surface. You read a ranked list. Related coverage of the same launch is already grouped, so a Claude, Gemini, or smaller-model drop like Bonsai is one story with several sources — not seven tabs. You stop when the list ends.",
+          "That last part is the product. Social apps are designed to continue. A briefing is designed to finish. If you cannot tell when you are caught up, the tool is entertainment, even if the topic is 'AI news.'",
+          "This is what [today's Trace edition](/feed) is for: model releases and company news pulled from 400+ sources, ranked, summarized, and done. Guests get 4 stories; a free account gets 5 plus the morning email. No RSS to curate, no Twitter lists to maintain.",
+        ],
+      },
+      {
+        heading: "Model releases without the dunking",
+        paragraphs: [
+          "A model launch is the classic founder miss. The company blog is precise and late to your eyeballs. X is early and chaotic. Newsletters recap it the next morning, after the Slack chatter has already started.",
+          "What you want is the launch plus two independent write-ups on one page: what it is called, who shipped it, what it claims, and whether anyone serious has used it yet. You can ignore the leaderboard screenshot war. You cannot ignore 'this is now the default in Copilot / Cursor / your competitor's demo.'",
+          "If a story does not change a buying decision, a hiring conversation, or a product bet in the next 30 days, it can wait. That filter alone cuts most AI Twitter down to a handful of items.",
+        ],
+      },
+      {
+        heading: "What to ignore on purpose",
+        paragraphs: [
+          "Founders waste mornings on AI content that feels like work and is not. Skip demo videos with no ship date. Skip 'we ran 12 models on a toy eval' posts unless you are buying a model this quarter. Skip culture-war takes about whether AI will take jobs — you already have a company to run.",
+          "Keep: named releases, pricing changes, distribution deals (who is bundling the model), regulation that affects your buyers, and competitor product posts that mention a new model in production.",
+        ],
+      },
+      {
+        heading: "A weekday routine that survives fundraising",
+        paragraphs: [
+          "Before Slack: open the briefing. Read the top stories in AI and startups. Star anything a customer might mention. Close it.",
+          "Once a week, not every day: pick one story and actually click through — a model card, a pricing page, a launch blog. That is how you stay fluent without becoming a full-time news person.",
+          "If you currently use Flipboard, Feedly, or a magazine-style app to 'stay cultured,' switch the job. Those tools are fine for browsing. They are slow for 'did anything ship that I will get asked about.' The [Flipboard alternatives](/blog/flipboard-alternatives) and [Feedly alternatives](/blog/feedly-alternatives) roundups cover the tradeoffs. If your real problem is inbox, read [replace tech newsletters with a 5-minute briefing](/blog/replace-tech-newsletters-with-a-5-minute-briefing).",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "replace-tech-newsletters-with-a-5-minute-briefing",
+    title: "Replace tech newsletters with a 5-minute briefing",
+    subtitle: "Non-technical founders do not need more inbox. They need one place that says what shipped overnight.",
+    tag: "For Founders",
+    category: "guides",
+    excerpt:
+      "Subscribed to 8 AI newsletters to stay current? You built another job. How non-technical founders replace the pile with a 5-minute morning briefing.",
+    author: "Trace Editorial",
+    readTime: "8 min read",
+    date: "September 18, 2026",
+    image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=1200&h=630&fit=crop&auto=format",
+    ctaHeading: "Try the briefing instead of another subscribe",
+    ctaBlurb:
+      "Trace is a finishable morning edition — model releases, AI development, and company news grouped from 400+ sources. First 4 stories free. No new inbox folder.",
+    ctaButton: "Open today's briefing",
+    relatedSlugs: [
+      "stay-on-top-of-ai-news-without-twitter",
+      "how-to-stay-updated-with-tech-news",
+      "feedly-alternatives",
+    ],
+    sources: [
+      { title: "News Platform Fact Sheet", url: "https://www.pewresearch.org/journalism/fact-sheet/news-platform-fact-sheet/", publisher: "Pew Research Center" },
+      { title: "Trace for founders", url: "https://www.yourtrace.online/use-cases/for-founders", publisher: "Trace" },
+    ],
+    faqs: [
+      {
+        question: "Are tech newsletters a bad way to follow AI?",
+        answer:
+          "One or two specialist letters can be great. Eight overlapping recaps of the same model launch are a second job. If you are deleting half of them unread, the pile is not a system.",
+      },
+      {
+        question: "What should replace a newsletter stack?",
+        answer:
+          "A briefing you can finish: today's stories, already grouped across sources, with a natural endpoint. Keep at most one newsletter that does original reporting you cannot get elsewhere.",
+      },
+      {
+        question: "I am not technical. Will a briefing still make sense?",
+        answer:
+          "It should read like a morning note to the company, not a paper. Names, what shipped, why a customer or competitor might care. If you need the architecture, click through once — not every morning.",
+      },
+      {
+        question: "Can I still get email?",
+        answer:
+          "Yes. A single morning email that points at the same briefing is useful. Eight separate letters that each recap yesterday are not. Trace's free account includes the daily email if you want it.",
+      },
+    ],
+    sections: [
+      {
+        paragraphs: [
+          "The usual founder move is: 'I do not have time for Twitter, so I subscribed to newsletters.' Then there are eight of them. Two are actually good. Four recap the same OpenAI post. One is a VC who forwards headlines. One you opened twice in 2025.",
+          "Newsletters feel responsible because they arrive in a work tool. They are still a feed — just a slower one, with worse grouping, on someone else's clock. You did not save time. You moved the scrolling into Gmail.",
+          "If you are a less-technical founder who just wants to know what shipped in AI and tech, the job is a briefing, not a subscription folder. Pair this with [how founders stay on top of AI without Twitter](/blog/stay-on-top-of-ai-news-without-twitter) if social is the other leak.",
+        ],
+      },
+      {
+        heading: "The newsletter pile is a second job",
+        paragraphs: [
+          "A good newsletter has a point of view. A pile of newsletters has a duplication problem. Model launches, funding rounds, and 'what GPT can do now' posts get rewritten all week. You are not more informed. You are more subscribed.",
+          "There is also lag. Most letters recap yesterday. If your customer asked about a launch at 10am, the recap in your 7am letter from the next day is too late — and the letter from the same morning probably missed it.",
+          "Keep a newsletter when it does original work: interviews, a specific industry, a writer you would pay. Unsubscribe from anything that is mostly 'here are the links we also saw on X.'",
+        ],
+      },
+      {
+        heading: "What a 5-minute briefing has that letters don't",
+        paragraphs: [
+          "Same-day grouping. One story, several sources, one summary. You are not reading TLDR and The Verge and a Substack about the same release.",
+          "A stop condition. When the list ends, you are caught up. Inbox zero on newsletters is a fantasy; a 12-story briefing is a finish line.",
+          "Plain language for people who do not want to live in papers. You should leave knowing the name of the thing, who shipped it, and whether it changes a product you use or sell against. [Trace for founders](/use-cases/for-founders) is built around that job: standup-ready, not researcher-ready.",
+        ],
+      },
+      {
+        heading: "How to migrate off the stack this week",
+        paragraphs: [
+          "Open your inbox. Search 'unsubscribe.' For each tech or AI letter, ask: did this tell me something I did not already see, in the last two weeks? If no, kill it.",
+          "Keep at most one daily and one weekly. Daily should be a pointer to a briefing, not a second copy of the briefing. Weekly can be a longer read for Sunday.",
+          "Replace the rest with [today's Trace edition](/feed). Guests get 4 stories free. A free account gets 5 plus the morning email — one email, same stories, not eight recaps. If you still want an RSS-style tool for a few specific blogs, that is a different job; the [Feedly alternatives](/blog/feedly-alternatives) guide is for that.",
+        ],
+      },
+      {
+        heading: "What to read if you only have five minutes",
+        paragraphs: [
+          "Named model or product launches. Pricing or distribution changes (who bundled the model into a tool your team already uses). Competitor shipping notes. Funding or regulation only when your buyers will mention it.",
+          "Skip: predicted futures, 'we tested 20 chatbots,' and culture essays. Interesting ≠ briefing.",
+          "If a story survives that filter, you are allowed one click-through per morning. Not ten. The point of replacing newsletters is to get the hours back — not to rebuild the pile inside a nicer app.",
+        ],
+      },
+    ],
+  },
   {
     slug: "ai-agent-live-tech-news",
     title: "How to Give an AI Agent Live Tech News Instead of Generic Web Search",
@@ -287,7 +495,7 @@ export const blogPosts: BlogPost[] = [
     tag: "Tools & Comparisons",
     category: "comparisons",
     excerpt:
-      "Looking for the best tech news aggregator? We tested 15+ apps and ranked the top 7 based on curation quality, AI features, source coverage, and reading experience. Feedly, Inoreader, Trace, and more.",
+      "Compare 7 tech news aggregators for 2026 — Trace, Feedly, Inoreader — on AI summaries, source grouping, and whether you can actually finish reading in 10 minutes.",
     author: "Trace Editorial",
     readTime: "14 min read",
     date: "May 5, 2026",
@@ -453,12 +661,12 @@ export const blogPosts: BlogPost[] = [
   },
   {
     slug: "feedly-alternatives",
-    title: "5 Best Feedly Alternatives for Reading Tech News in 2026",
+    title: "Best Feedly alternatives for tech news in 2026",
     subtitle: "Feedly is the default, but it's not perfect. Here are 5 alternatives that might fit your workflow better.",
     tag: "Tools & Comparisons",
     category: "comparisons",
     excerpt:
-      "Looking for a Feedly alternative? Whether you want AI curation, better search, open-source options, or a completely different approach to news, we compared the 5 best alternatives for 2026.",
+      "Outgrowing Feedly? Compare 5 alternatives for 2026 — Trace, Inoreader, NewsBlur — if you want AI summaries without spending your morning managing RSS.",
     author: "Trace Editorial",
     readTime: "11 min read",
     date: "May 5, 2026",
@@ -727,7 +935,7 @@ export const blogPosts: BlogPost[] = [
     tag: "AI & Tech",
     category: "ai-tools",
     excerpt:
-      "Looking for the best AI news digest? We tested 10+ AI-powered news tools to find the ones that summarize accurately, preserve context, and actually help you understand tech news faster. Trace, Perplexity, and more.",
+      "We tested 10+ AI news digest tools on accuracy, context, and time-to-caught-up. Trace, Perplexity, and the few that summarize model launches without the fluff.",
     author: "Trace Editorial",
     readTime: "11 min read",
     date: "May 1, 2026",
@@ -975,7 +1183,7 @@ export const blogPosts: BlogPost[] = [
     tag: "Tools & Comparisons",
     category: "comparisons",
     excerpt:
-      "Looking for the best RSS reader? We compared Feedly, Inoreader, NewsBlur, FreshRSS, and Miniflux across features, pricing, and user experience. Find the right RSS reader for your workflow.",
+      "Feedly, Inoreader, NewsBlur, FreshRSS, and Miniflux compared on features, pricing, and setup. Pick an RSS reader if you want source control — or a briefing if you do not.",
     author: "Trace Editorial",
     readTime: "10 min read",
     date: "April 25, 2026",
@@ -1027,7 +1235,7 @@ export const blogPosts: BlogPost[] = [
     tag: "Developer Tools",
     category: "guides",
     excerpt:
-      "Looking for Hacker News alternatives? Discover 6 platforms that surface developer news differently — from curated newsletters to AI-powered digests and community-driven link aggregators. Find your ideal developer news workflow.",
+      "Six Hacker News alternatives that surface developer news differently — curated newsletters, AI digests, and community aggregators — without living in a comments thread.",
     author: "Trace Editorial",
     readTime: "9 min read",
     date: "April 22, 2026",
@@ -2306,7 +2514,7 @@ export const blogPosts: BlogPost[] = [
     tag: "Tools & Comparisons",
     category: "comparisons",
     excerpt:
-      "Looking for a daily tech news app? Compare seven options by curation, source links, personalization, setup effort, and whether they let you finish reading.",
+      "Compare seven daily tech news apps by curation, source links, setup effort, and whether they let you finish reading. Built for founders and builders who have 10 minutes, not a feed.",
     author: "Trace Editorial",
     readTime: "10 min read",
     date: "August 3, 2026",

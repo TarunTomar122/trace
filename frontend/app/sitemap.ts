@@ -189,11 +189,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   const blogPages: MetadataRoute.Sitemap = [
-    ...blogPosts.map((post) => ({
-      url: `${baseUrl}/blog/${post.slug}`,
-      changeFrequency: 'monthly' as const,
-      priority: 0.7,
-    })),
+    ...blogPosts.map((post) => {
+      const published = Date.parse(post.date)
+      const isRecent = Number.isFinite(published) && published > Date.now() - 45 * 24 * 60 * 60 * 1000
+      return {
+        url: `${baseUrl}/blog/${post.slug}`,
+        lastModified: Number.isFinite(published) ? new Date(published) : new Date(),
+        changeFrequency: (isRecent ? 'weekly' : 'monthly') as 'weekly' | 'monthly',
+        priority: isRecent ? 0.85 : 0.7,
+      }
+    }),
     ...standaloneBlogPosts
       .filter((post) => !blogPosts.some((candidate) => candidate.slug === post.slug))
       .map((post) => ({
