@@ -441,7 +441,7 @@ export default function SubscriptionManager() {
           <div className="flex flex-col justify-center bg-foreground p-7 text-background">
             <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] opacity-65">3 days free</p>
             <p className="mt-2 text-[28px] font-semibold leading-[1.05] tracking-[-0.035em]">Try Trace Pro</p>
-            <p className="mt-2 text-[13px] opacity-70">Then {priceDisplay}/month. Cancel anytime.</p>
+            <p className="mt-2 text-[13px] opacity-70">Then {priceDisplay}. Cancel anytime.</p>
             <button
               onClick={handleSubscribe}
               disabled={isCreatingCheckout}

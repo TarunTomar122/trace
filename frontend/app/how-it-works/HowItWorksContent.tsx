@@ -6,6 +6,7 @@ import {
   TrendingUp,
   Zap,
 } from "lucide-react";
+import { SUBSCRIPTION_PRICE_DEFAULT, shortPriceDisplay } from "@/lib/subscription-pricing";
 
 const STEPS = [
   {
@@ -51,7 +52,7 @@ const FAQS = [
   },
   {
     q: "What do I get for free?",
-    a: "The top ranked stories every day, full briefs included. Pro ($2.99/mo) unlocks the whole day, Pulse discussions and tools, bookmarks that sync, and your personalized ranking.",
+    a: `The top ranked stories every day, full briefs included. Pro (${shortPriceDisplay(SUBSCRIPTION_PRICE_DEFAULT)}) unlocks the whole day, Pulse discussions and tools, bookmarks that sync, and your personalized ranking.`,
   },
   {
     q: "How does personalization work?",

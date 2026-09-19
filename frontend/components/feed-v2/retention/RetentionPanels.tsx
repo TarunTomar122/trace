@@ -151,15 +151,23 @@ export const retentionCss = `
 .xw .ret-pulse-hook-fav { width: 28px; height: 28px; border-radius: 8px; }
 .xw .ret-pulse-hook-copy { flex: 1; min-width: 0; }
 .xw .ret-pulse-hook-rank {
-  display: block; margin-bottom: 6px;
-  font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums;
-  letter-spacing: 0.06em; color: var(--text-3);
+  margin-left: auto; padding-left: 12px;
+  font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums;
+  color: var(--text-3);
 }
 .xw .ret-pulse-hook-body strong {
   display: block; font-size: 16px; font-weight: 800; letter-spacing: -0.02em;
   line-height: 1.35; color: var(--text);
 }
-.xw .ret-pulse-hook-meta { display: block; margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--text-2); }
+.xw .ret-pulse-hook-dek {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; margin-top: 6px;
+  font-size: 13.5px; font-weight: 500; line-height: 1.45; color: var(--text-2);
+}
+.xw .ret-pulse-hook-meta {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--text-2);
+}
 .xw .ret-heatmap {
   margin: 0; padding: 14px 18px 16px;
   border: none; border-radius: 0;
@@ -495,10 +503,15 @@ export function PulseAfternoonHook({
         >
           <PulseHookThumb item={item} />
           <span className="ret-pulse-hook-copy">
-            <span className="ret-pulse-hook-rank">{String(i + 1).padStart(2, '0')}</span>
             <span className="ret-pulse-hook-body">
               <strong>{item.title}</strong>
-              <span className="ret-pulse-hook-meta">{item.signal || item.sub || item.source}</span>
+              {item.sum || item.sub ? (
+                <span className="ret-pulse-hook-dek">{item.sum || item.sub}</span>
+              ) : null}
+              <span className="ret-pulse-hook-meta">
+                {item.signal || item.source}
+                <span className="ret-pulse-hook-rank">#{i + 1}</span>
+              </span>
             </span>
           </span>
         </a>

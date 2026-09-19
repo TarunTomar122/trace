@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import ProCheckoutButton from './ProCheckoutButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasActiveSubscription } from '@/lib/subscription-access';
-import { SUBSCRIPTION_PRICE_DEFAULT, shortPriceDisplay } from '@/lib/subscription-pricing';
+import { SUBSCRIPTION_PRICE_DEFAULT, priceAmountDisplay, shortPriceDisplay } from '@/lib/subscription-pricing';
 
 const FREE_FEATURES = [
   'Your ranked daily feed',
@@ -76,7 +76,7 @@ export default function PricingScreen() {
 
         <article className="plan pro">
           <p className="plan-tag">Trace Pro</p>
-          <p className="plan-price">{priceDisplay.replace('/month', '')}<span>/month</span></p>
+          <p className="plan-price">{priceAmountDisplay(priceDisplay)}<span>/month</span></p>
           <p className="plan-note">The whole day, ranked and summarized, every morning.</p>
           <ul className="plan-list">
             {PRO_FEATURES.map((f) => <li key={f}>{f}</li>)}

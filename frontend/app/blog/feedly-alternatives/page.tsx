@@ -200,7 +200,7 @@ export default function BlogPost() {
               <tbody>
                 <tr>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Trace</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $2.99 Pro</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $5 Pro</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Quick Catch-Up</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">✓ 30-second reads</td>
                 </tr>
@@ -248,7 +248,7 @@ export default function BlogPost() {
             1. Trace — Best Feedly Alternative for Quick Catch-Up
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            <strong>Price:</strong> Free / $2.99 Pro
+            <strong>Price:</strong> Free / $5 Pro
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             If you&apos;re tired of setting up RSS feeds and just want to stay
@@ -260,7 +260,7 @@ export default function BlogPost() {
             <li>No setup required — open the briefing and go</li>
             <li>AI summaries from 400+ trusted sources</li>
             <li>Personalized feed based on your role</li>
-            <li>First 4 stories free; Pro is $2.99/mo</li>
+            <li>First 4 stories free; Pro is $5/mo</li>
           </ul>
           <InlineTraceCTA
             slug="feedly-alternatives"

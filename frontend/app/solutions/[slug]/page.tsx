@@ -5,6 +5,7 @@ import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import { solutionsContent } from "../content";
 import { DEFAULT_OPEN_GRAPH, DEFAULT_TWITTER_IMAGE, metadataTitle } from "@/lib/seo";
+import { SUBSCRIPTION_PRICE_DEFAULT, shortPriceDisplay } from "@/lib/subscription-pricing";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -127,7 +128,7 @@ export default async function SolutionDetailPage({ params }: PageProps) {
               ?
             </h2>
             <p className="mt-3 text-white/60 max-w-2xl">
-              Go Pro — $2.99/mo and see how Trace cuts through the noise.
+              Go Pro — {shortPriceDisplay(SUBSCRIPTION_PRICE_DEFAULT)} and see how Trace cuts through the noise.
               One brief, under 10 minutes, and you&apos;re caught up.
             </p>
             <Link

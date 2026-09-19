@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { ExternalLink, Lock } from "lucide-react";
 import { trackCheckoutClicked } from "@/lib/posthog";
+import { SUBSCRIPTION_PRICE_DEFAULT, shortPriceDisplay } from "@/lib/subscription-pricing";
 import ArticleFeedback from "@/components/ArticleFeedback";
 
 /* ─── Helpers ─── */
@@ -411,7 +412,7 @@ export function PublicInlineUnlockBanner({
               {storyCount} more stories waiting for you
             </p>
             <p className="mt-0.5 text-xs text-secondary/55">
-              Go Pro — $2.99/mo for unlimited articles, key takeaways,
+              Go Pro — {shortPriceDisplay(SUBSCRIPTION_PRICE_DEFAULT)} for unlimited articles, key takeaways,
               and source links.
             </p>
           </div>

@@ -181,7 +181,7 @@ export default function BlogPost() {
               <tbody>
                 <tr>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2 font-medium">Trace</td>
-                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free (Android)</td>
+                  <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Free / $5/mo</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">Developers & Founders</td>
                   <td className="border border-gray-200 dark:border-gray-800 px-4 py-2">✓ 30-second reads</td>
                 </tr>
@@ -231,7 +231,7 @@ export default function BlogPost() {
             1. Trace — Best AI News App for Developers
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            <strong>Price:</strong> Free (Android) | $2.99/month (Web)
+            <strong>Price:</strong> Free (Android) | $5/month (Web)
           </p>
           <p className="text-gray-600 dark:text-gray-400">
             Trace is the best AI news app for developers and founders who need

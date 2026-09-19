@@ -92,7 +92,7 @@ export function resolveSubscriptionOfferFromHeaders(headers: HeaderReader, profi
       : (process.env.SUBSCRIPTION_PRICE_DISPLAY_DEFAULT || SUBSCRIPTION_PRICE_DEFAULT),
     compareAtPriceDisplay: isIndiaOffer
       ? null
-      : (process.env.SUBSCRIPTION_COMPARE_AT_DISPLAY_DEFAULT || SUBSCRIPTION_COMPARE_AT_DEFAULT),
+      : (process.env.SUBSCRIPTION_COMPARE_AT_DISPLAY_DEFAULT || SUBSCRIPTION_COMPARE_AT_DEFAULT || null),
   };
 }
 

@@ -17,6 +17,7 @@ import {
   metadataTitle,
   SITE_BASE_URL,
 } from "@/lib/seo";
+import { SUBSCRIPTION_PRICE_DEFAULT, shortPriceDisplay } from "@/lib/subscription-pricing";
 
 type PageProps = {
   params: Promise<{
@@ -334,7 +335,7 @@ export default async function BlogPostPage({ params }: PageProps) {
                 href="/subscribe"
                 className="landing-btn landing-btn-secondary landing-btn-sm"
               >
-                Get Pro — $2.99/mo
+                Get Pro — {shortPriceDisplay(SUBSCRIPTION_PRICE_DEFAULT)}
               </Link>
             </div>
           </section>

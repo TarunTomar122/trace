@@ -4,7 +4,7 @@ import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type R
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveFeedAccess, hasActiveSubscription } from '@/lib/subscription-access';
-import { shortPriceDisplay } from '@/lib/subscription-pricing';
+import { shortPriceDisplay, SUBSCRIPTION_PRICE_DEFAULT } from '@/lib/subscription-pricing';
 import FeedSkeleton from './FeedSkeleton';
 import ProCheckoutButton from './ProCheckoutButton';
 import {
@@ -281,7 +281,7 @@ export default function FeedApp({
   serverPro?: boolean;
   /** Date id of today's feed doc — cursor start for older stories. */
   feedDate?: string;
-  /** Server-resolved price ("$2.99/month" or "₹49/month") for checkout CTAs. */
+  /** Server-resolved price ("$5/month" or "₹49/month") for checkout CTAs. */
   priceDisplay?: string;
   /** Global feed load failed server-side — show a retry state, not a blank page. */
   feedError?: boolean;
@@ -1032,10 +1032,11 @@ export default function FeedApp({
     ? stories.filter((s) => myCats.includes(s.cat))
     : stories;
   const isProfile = tab === 'profile';
-  // sort: Top on Home, Recent elsewhere; the toggle is a persisted preference
-  // (localStorage) that wins over the per-tab default, across tabs + sessions.
+  // sort: Top by default on every tab (first-time visitors land on the ranked
+  // view, not the chronological one). The toggle is a persisted preference
+  // (localStorage) that wins over that default, across tabs + sessions.
   const [sortOverride, setSortOverride] = useState<null | 'for_you' | 'recent'>(() => readStoredSort());
-  const sortMode = sortOverride ?? (tab === 'all' ? 'for_you' : 'recent');
+  const sortMode = sortOverride ?? 'for_you';
   const byRecent = (a: FeedStory, b: FeedStory) => (b.ts || 0) - (a.ts || 0);
   const rankedForTab = useMemo(() => {
     const list = tab === 'all'
@@ -1424,6 +1425,7 @@ export default function FeedApp({
             user={user ? { displayName: user.displayName, email: user.email, photoURL: user.photoURL } : null}
             onSignOut={() => { signOut(); go('all'); }}
             onSignIn={handleSignIn}
+            proLabel={proLabel}
           />
         ) : tab === 'bookmarks' ? (
           <>
@@ -1922,12 +1924,12 @@ export default function FeedApp({
           getToken={async () => (user ? user.getIdToken() : '')}
         />
       )}
-      {celebrate && <WelcomeModal kind={celebrate} onClose={() => setCelebrate(null)} />}
+      {celebrate && <WelcomeModal kind={celebrate} priceDisplay={priceDisplay} onClose={() => setCelebrate(null)} />}
     </div>
   );
 }
 
-function WelcomeModal({ kind, onClose }: { kind: 'pro' | 'promo'; onClose: () => void }) {
+function WelcomeModal({ kind, onClose, priceDisplay = '' }: { kind: 'pro' | 'promo'; onClose: () => void; priceDisplay?: string }) {
   const isPro = kind === 'pro';
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -1966,7 +1968,7 @@ function WelcomeModal({ kind, onClose }: { kind: 'pro' | 'promo'; onClose: () =>
         <button className="promo-pay" onClick={onClose} autoFocus>
           {isPro ? 'Start exploring' : 'Nice'}
         </button>
-        {isPro && <p className="promo-support">$2.99/mo · cancel anytime in Profile</p>}
+        {isPro && <p className="promo-support">{shortPriceDisplay(priceDisplay || SUBSCRIPTION_PRICE_DEFAULT)} · cancel anytime in Profile</p>}
       </div>
     </div>
   );
@@ -2633,7 +2635,7 @@ function CancelModal({ onClose, getToken, onDone }: {
   );
 }
 
-function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, pro, onBack, user, onSignOut, onSignIn, notify, getToken, onSubscriptionChanged, notice, signingIn = false, onEdit, dailyOn = false, onToggleDaily, streak = null, weeklyWrap = null }: {
+function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, pro, onBack, user, onSignOut, onSignIn, notify, getToken, onSubscriptionChanged, notice, signingIn = false, onEdit, dailyOn = false, onToggleDaily, streak = null, weeklyWrap = null, proLabel = 'Go Pro' }: {
   profile: Profile; setProfile: (p: Profile) => void; storyCount: number;
   dirty: boolean; saving: boolean; onSave: () => void; pro: boolean; onBack: () => void;
   user: { displayName: string | null; email: string | null; photoURL: string | null } | null;
@@ -2643,6 +2645,7 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
   dailyOn?: boolean; onToggleDaily?: () => void;
   streak?: ReadingStreak | null;
   weeklyWrap?: WeeklyWrapSummary | null;
+  proLabel?: string;
 }) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const bio = `Following ${profile.interests.length} topics. ${storyCount} stories ranked today.`;
@@ -2764,7 +2767,7 @@ function ProfileView({ profile, setProfile, storyCount, dirty, saving, onSave, p
               {pro ? (
                 <button className="p-link danger" onClick={() => setCancelOpen(true)}>Cancel plan</button>
               ) : (
-                <a className="p-link" href="/subscribe">Go Pro — $2.99/mo</a>
+                <a className="p-link" href="/subscribe">{proLabel}</a>
               )}
             </div>
           </div>

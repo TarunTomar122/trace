@@ -27,7 +27,7 @@ export default function TermsOfServicePage() {
       title="Terms of Service"
       subtitle="Your rights and responsibilities when using Trace."
     >
-      <p className="text-xs text-[#9ca3af] mb-8">Last Updated: February 17, 2026</p>
+      <p className="text-xs text-[#9ca3af] mb-8">Last Updated: September 19, 2026</p>
       <div className="mb-8 flex flex-wrap gap-2 text-sm">
         <Link href="/blog" className="rounded-full border border-[#e5e7eb] px-3 py-1.5 text-[#6b7280] transition-colors hover:text-[#111827]">
           Research
@@ -129,7 +129,7 @@ export default function TermsOfServicePage() {
           <p className="mb-3">Trace offers the following paid subscription plans:</p>
           <ul className="list-disc pl-5 space-y-1 mb-4">
             <li>Weekly plan at $1.99/week</li>
-            <li>Monthly plan at $2.99/month (regularly $4.99/month)</li>
+            <li>Monthly plan at $5/month</li>
             <li>Yearly plan at $59.99/year</li>
           </ul>
           <p className="mb-4">

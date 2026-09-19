@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, X } from "lucide-react";
 import { trackBlogCtaClicked } from "@/lib/posthog";
+import { SUBSCRIPTION_PRICE_DEFAULT, shortPriceDisplay } from "@/lib/subscription-pricing";
 
 function feedHref(slug: string, location: string) {
   return `/feed?utm_source=blog&utm_medium=${location}&utm_campaign=${slug}`;
@@ -46,7 +47,7 @@ export function InlineTraceCTA({
           onClick={() => trackBlogCtaClicked(slug, "inline_cta", "subscribe")}
           className="inline-flex items-center rounded-full border border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:border-gray-400 dark:border-gray-700 dark:text-gray-200"
         >
-          Get Pro — $2.99/mo
+          Get Pro — {shortPriceDisplay(SUBSCRIPTION_PRICE_DEFAULT)}
         </Link>
       </div>
     </div>
