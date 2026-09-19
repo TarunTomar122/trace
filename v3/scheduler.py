@@ -61,9 +61,8 @@ JOBS = {
         "description": "Build daily newsletter from trending feed",
     },
     "newsletter_send": {
-        "module": "v3.flows.send_three_feed_newsletter",
-        "pool_cadence_days": 0,
-        "description": "Send each opted-in user their personalized daily brief",
+        "module": "v3.flows.send_audience_newsletter",
+        "description": "Send audience newsletters (landing / free / pro buckets)",
     },
 }
 
@@ -129,6 +128,11 @@ def _parse_args() -> argparse.Namespace:
     )
     p.add_argument("--enrich-top", type=int, default=10)
     p.add_argument("--enrich-max-per-topic", type=int, default=4)
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Build the newsletter but do not send it",
+    )
     return p.parse_args()
 
 
@@ -420,12 +424,13 @@ def main() -> None:
 
         if run_all or "newsletter" in requested or "newsletter_send" in requested:
             _log("--- Send newsletter ---")
+            # The audience newsletter resolves its own buckets (landing / free /
+            # pro), so it takes no --user-id or --audience flags.
             nl_send_args = []
             if nl_date:
                 nl_send_args.extend(["--date", nl_date])
-            if args.user_id:
-                nl_send_args.extend(["--user-id", args.user_id])
-            nl_send_args.extend(["--audience", args.audience])
+            if args.dry_run:
+                nl_send_args.append("--dry-run")
             nl_send_rc = _run_module(JOBS["newsletter_send"]["module"], nl_send_args)
             if nl_send_rc != 0:
                 _log(f"ERROR: newsletter send exited with code {nl_send_rc}")

@@ -747,13 +747,14 @@ GROUPING_RELATIONSHIPS = {
     "unrelated": "No meaningful story relationship; generic shared words are insufficient.",
 }
 
-RANKING_PROMPT_VERSION = "jev-story-ranking-v1"
+RANKING_PROMPT_VERSION = "jev-story-ranking-v2"
 RANKING_SCORE_MAX = {
     "importance": 4,
     "novelty": 3,
     "usefulness": 3,
     "general_interest": 3,
     "evidence_quality": 3,
+    "send_worthy": 2,
 }
 RANKING_SCORE_WEIGHTS = {
     "importance": 0.30,
@@ -761,6 +762,7 @@ RANKING_SCORE_WEIGHTS = {
     "usefulness": 0.15,
     "general_interest": 0.20,
     "evidence_quality": 0.15,
+    "send_worthy": 0.0,
 }
 RANKING_QUESTIONS = {
     "importance": {
@@ -812,6 +814,35 @@ RANKING_QUESTIONS = {
             "A concrete report from one source, but limited corroboration or detail.",
             "Concrete details with either credible sourcing or corroboration from multiple sources.",
             "Multiple credible sources or strong primary evidence with specific, consistent facts.",
+        ],
+    },
+    "send_worthy": {
+        "type": "score",
+        "instructions": (
+            "Would a busy builder gain real knowledge from receiving this story in a daily news email? "
+            "Score 0 when the reader learns nothing they can use, even if the story is well written or popular."
+        ),
+        "criteria": [
+            (
+                "No reader value. Reject when the story is: an executive appointment, hire, or staff move; "
+                "an opinion, critique, prediction, or commentary about another company's work; a lawsuit, "
+                "complaint, or dispute with no ruling or consequence; PR, awards, sponsorships, or event "
+                "promotion; shopping content such as deals, discounts, accessory roundups, or buying guides; "
+                "how-to or listicle content; crowdfunding campaigns; celebrity, founder-gossip, or "
+                "personality colour; reaction or media-drama coverage; a single company's stock or earnings "
+                "note that does not change the wider market; or a niche professional detail that only a "
+                "specialist in one team would ever act on."
+            ),
+            (
+                "Borderline: real news with a concrete development, but routine or incremental; only a "
+                "reader deep in that exact niche gains something."
+            ),
+            (
+                "Clear keep: launches of models, products, or features people can use; benchmarks or "
+                "breakthroughs with numbers; funding, acquisitions, or market moves that shift a sector; "
+                "security incidents with impact; policy or regulation taking effect; major geopolitical or "
+                "macroeconomic developments; research results that change what is possible."
+            ),
         ],
     },
 }
@@ -2382,6 +2413,7 @@ def _build_trending_topics_payload(
         last_updated_at = max(dts).isoformat() if dts else ""
 
         hero = items[0]
+        jev_scores = cluster.get("_jev_scores") or {}
         topics.append(
             {
                 "id": topic_id,
@@ -2401,6 +2433,9 @@ def _build_trending_topics_payload(
                 "tags": tags,
                 "timeline": timeline,
                 "articles": _build_topic_articles(items, summary_map),
+                "jev_send_worthy": (
+                    int(jev_scores["send_worthy"]) if "send_worthy" in jev_scores else None
+                ),
             }
         )
 

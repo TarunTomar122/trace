@@ -16,18 +16,42 @@ Actions keeps push notifications plus manual/replay workflows.
 
 | Unit | Cadence | Command |
 |---|---|---|
-| `trace-pipeline.service/.timer` | every 20 min | `scheduler --jobs trending assemble --audience all --force-pools --enrich-coverage --enrich-top 10 --skip-notifications` |
+| `trace-pipeline.service/.timer` | every 20 min (`:00/:20/:40`) | `scheduler --jobs trending assemble --audience all --force-pools --enrich-coverage --enrich-top 10 --skip-notifications` |
 | `trace-pulse.service/.timer` | every 3 h | `scheduler --jobs pulse assemble --audience all --force-pools` |
 | `trace-foryou.service/.timer` | daily 03:30 UTC | `scheduler --jobs for_you --audience all` |
-| `trace-newsletter.service/.timer` | daily 10:30 Europe/Berlin | `v3.flows.send_three_feed_newsletter --audience all` |
+| `trace-newsletter.service/.timer` | daily 10:30 Europe/Berlin | `v3.flows.send_audience_newsletter` |
+
+Checked-in copies: `backend/vps/trace-pipeline.{service,timer}` and `trace-pulse.{service,timer}`. Install with `cp` into `~/.config/systemd/user/` then `systemctl --user daemon-reload`.
 
 - Push notifications are sent **only** by the daily Actions job (`v2.flows.send_push_notification`, 09:00 IST). Every high-frequency `trending` run (VPS 20-min + Actions morning/3-hourly) must pass `--skip-notifications` or users get spammed.
 
 - `flock ~/trace/.pipeline.lock` prevents overlap. `RandomizedDelaySec` spreads load.
+- Pipeline and pulse timers are **calendar-only** (`OnCalendar` + `Persistent=true`), same as foryou/newsletter. Do not use `OnUnitActiveSec` / `OnBootSec`: a user-systemd restart drops that baseline and the timer sits at `NEXT="-"` until someone kicks it. Calendar + Persistent catch up immediately after the manager comes back.
 - `trace-newsletter.timer` uses `OnCalendar=*-*-* 10:30:00 Europe/Berlin`, so
   DST is handled by systemd; `Persistent=true` catches up a missed run.
-- The newsletter sends the **top 7 stories** (no builds/conversations sections).
-  Pull on the VPS after changing `v3/flows/send_three_feed_newsletter.py`.
+- The newsletter is sent by `v3/flows/send_audience_newsletter.py`, which
+  resolves three mutually exclusive buckets and sends **one email per person**:
+  **pro** (8 stories, always on) > **free** (3 stories, on by default, off only
+  after an explicit opt-out) > **landing** (3 stories for email-only homepage
+  signups). Pro/free stories come from the recipient's interests; landing gets
+  the global picks.
+- Lane priority is AI → markets → tech → design → startups, with a 3/2/1/1/1
+  slot shape on pro (2/1 on the 3-story emails). Markets prefers macro stories.
+- Story links point at the app, never the publisher. Retired flows:
+  `send_three_feed_newsletter.py` (shared blast) and `v1/flows/send_free_newsletter.py`
+  (never scheduled).
+- Story quality is a Jev (Typesafe) judgement call: `send_worthy` in
+  `RANKING_QUESTIONS` (`v3/build_trending.py`) scores 0 for appointments,
+  opinion, lawsuits without outcome, PR, shopping/how-to content, crowdfunding,
+  personality colour, and single-company stock notes. The newsletter requests
+  fresh verdicts for any story that has none yet and caches them for 7 days in
+  `v3_synthesis_cache` (`jev-send-worthy-v1`). Edit the rubric there — never
+  add keyword lists.
+- Preview without sending:
+  `python -m v3.flows.send_audience_newsletter --preview --preview-bucket pro`.
+  Demo one address: `--demo-email you@example.com --demo-bucket free`.
+  Pull on the VPS after changing the flow, the template
+  (`v1/templates/audience_newsletter.html`), or the ranking rubric.
 
 ## Story grouping
 
