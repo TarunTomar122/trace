@@ -534,7 +534,10 @@ def _drop_rejected_topics(
         row for row in trending
         if not (
             isinstance(row, dict)
-            and str(row.get("url", "")).strip() in rejected_urls
+            and (
+                str(row.get("url", "")).strip() in rejected_urls
+                or row.get("jev_send_worthy") == 0
+            )
         )
     ]
     dropped = len(trending_topics) - len(kept_topics)

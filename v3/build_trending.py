@@ -850,8 +850,9 @@ RANKING_QUESTIONS = {
                 "an opinion, critique, prediction, or commentary about another company's work; a lawsuit, "
                 "complaint, or dispute with no ruling or consequence; PR, awards, sponsorships, or event "
                 "promotion; shopping content such as deals, discounts, accessory roundups, or buying guides; "
-                "how-to or listicle content; daily puzzle, game or crossword answers and hints; horoscopes, "
-                "quizzes, or other service-journalism filler; crowdfunding campaigns; celebrity, "
+                "how-to or listicle content; explainers, comparisons and 'what is the difference between' "
+                "backgrounders that add no new development; daily puzzle, game or crossword answers and hints; "
+                "horoscopes, quizzes, or other service-journalism filler; crowdfunding campaigns; celebrity, "
                 "founder-gossip, or personality colour; reaction or media-drama coverage; a single company's "
                 "stock or earnings note that does not change the wider market; or a niche professional detail "
                 "that only a specialist in one team would ever act on."
@@ -2857,6 +2858,24 @@ def refresh_pool(store: V3Store, config: dict[str, Any], limit_per_source: int) 
 # Phase 2: Global feed generation (shared by all users)
 # -----------------------------------------------------------------------
 
+def _summary_text_for_verdict(item: dict[str, Any]) -> str:
+    """Plain text for the send-worthy judge; rows carry either shape."""
+    summary = item.get("summary")
+    if isinstance(summary, dict):
+        short = summary.get("short_article") or summary.get("shortarticle")
+        if isinstance(short, dict):
+            for key in ("body", "subtitle"):
+                text = str(short.get(key, "") or "").strip()
+                if text:
+                    return re.sub(r"\s+", " ", text)[:600]
+        for key in ("body", "subtitle", "microcardsummary"):
+            text = str(summary.get(key, "") or "").strip()
+            if text:
+                return re.sub(r"\s+", " ", text)[:600]
+    text = str(item.get("description", "") or "").strip()
+    return re.sub(r"\s+", " ", text)[:600]
+
+
 def _build_feed_item(pool_item: dict[str, Any], summary: dict[str, Any] | None) -> dict[str, Any]:
     url = pool_item.get("url", "")
     domain = urlparse(url).netloc.lower() if url else ""
@@ -3102,6 +3121,42 @@ def build_global_feed(
         _build_feed_item(item, summary_map[str(item.get("url", ""))])
         for item in flat_items
     ]
+
+    # Flat rows never become topics, so the ranking verdict above misses them
+    # entirely: a daily puzzle answer or explainer would ride a lane unchallenged.
+    # Judge them with the same rubric and drop the worthless ones.
+    if feed_items:
+        from v3.lib.send_worthy import judge_send_worthy  # noqa: E402
+
+        try:
+            verdicts = judge_send_worthy(
+                store,
+                [
+                    {
+                        "key": str(row.get("id", "")),
+                        "title": str(row.get("title", "")),
+                        "summary": _summary_text_for_verdict(row),
+                    }
+                    for row in feed_items
+                ],
+            )
+        except Exception as exc:  # never break the build over a judge call
+            _log(f"Row send-worthy judge failed: {type(exc).__name__}")
+            verdicts = {}
+        if verdicts:
+            kept: list[dict[str, Any]] = []
+            dropped = 0
+            for row in feed_items:
+                score = verdicts.get(str(row.get("id", "")))
+                if score is not None:
+                    row["jev_send_worthy"] = score
+                if score == 0:
+                    dropped += 1
+                    continue
+                kept.append(row)
+            if dropped:
+                _log(f"Dropped {dropped} low-value trending row(s) rejected by Jev")
+            feed_items = kept
 
     for item in ranked_for_topics:
         url = str(item.get("url", "")).strip()
