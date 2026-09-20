@@ -8,6 +8,7 @@ import { ArticleImage } from '@/components/ArticleImage';
 import type { FeedItem, V3UserFeed } from '@/lib/firestore';
 import { decodeHtmlEntities } from '@/lib/feed-article-text';
 import { trackLandingCTAClicked } from '@/lib/posthog';
+import { filterSendWorthyTopics } from '@/lib/feed-value';
 
 type DemoStory = {
   id: string;
@@ -26,7 +27,7 @@ function collectStories(feed: V3UserFeed | null): DemoStory[] {
   const items = [
     ...(feed.for_you || []),
     ...(feed.trending || []),
-    ...(feed.trending_topics || []).flatMap((topic) => topic.articles || []),
+    ...filterSendWorthyTopics(feed.trending_topics || []).flatMap((topic) => topic.articles || []),
   ];
   const seen = new Set<string>();
 

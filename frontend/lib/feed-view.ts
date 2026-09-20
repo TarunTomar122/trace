@@ -10,6 +10,7 @@ import { imageUrlHasPlaceholderToken } from './media-url';
 import { isSameStoryTitle } from '@/lib/feed-story-dedupe';
 import { canonicalUrlKey } from '@/lib/feed-dedupe';
 import { slotsFromRankedItems } from '@/lib/feed-topic-order';
+import { filterSendWorthyTopics, rejectedStoryUrls } from './feed-value';
 
 // Server-side feed data builders shared by /feed (FeedScreen) and
 // /story/[id] (shared article page renders the real feed chrome).
@@ -53,8 +54,8 @@ const getCachedFeed = unstable_cache(
   { revalidate: 60 },
 );
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const getPromotedTools = unstable_cache(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async (): Promise<any[]> => {
     try {
       const { adminFirestore } = await import('@/lib/firebase-admin');
@@ -221,8 +222,14 @@ export function mapTrendingToStories(
     try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; }
   };
 
+  // Jev marks stories with no reader value (puzzle answers, executive moves,
+  // opinion pieces) as jev_send_worthy === 0. They must not reach a lane, and
+  // flat rows pointing at their URLs go with them.
+  const usableTopics = filterSendWorthyTopics(trendingTopics || []);
+  const rejectedUrls = rejectedStoryUrls(trendingTopics);
+
   const topicIndex = new Map<object, number>();
-  (trendingTopics || []).forEach((topic, i) => topicIndex.set(topic, i));
+  usableTopics.forEach((topic, i) => topicIndex.set(topic, i));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const topicStory = (topic: any, i: number): FeedStory | null => {
@@ -305,7 +312,11 @@ export function mapTrendingToStories(
   };
 
   const stories: FeedStory[] = [];
-  for (const slot of slotsFromRankedItems(trending, trendingTopics, (url) => canonicalUrlKey(url) || url)) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const usableTrending = (trending || []).filter(
+    (item: any) => !rejectedUrls.has(String(item?.url || '').trim()),
+  );
+  for (const slot of slotsFromRankedItems(usableTrending, usableTopics, (url) => canonicalUrlKey(url) || url)) {
     const story = slot.kind === 'topic'
       ? topicStory(slot.topic, topicIndex.get(slot.topic) ?? stories.length)
       : itemStory(slot.item);

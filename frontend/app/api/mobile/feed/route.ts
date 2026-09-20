@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminFirestore } from '@/lib/firebase-admin';
 import { applyFeedFreshnessAndDedupe } from '@/lib/feed-dedupe';
 import { getBootstrapFeedForUid } from '@/lib/feed-server';
+import { filterSendWorthyTopics, rejectedStoryUrls } from '@/lib/feed-value';
 import type { FeedItem, TrendingTopic } from '@/lib/firestore';
 
 function isFeedItem(value: unknown): value is FeedItem {
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
     if (!feed) return NextResponse.json(null);
 
     let mergedTrending = feed.trending ?? [];
-    let mergedTrendingTopics = feed.trending_topics ?? [];
+    let mergedTrendingTopics = filterSendWorthyTopics(feed.trending_topics ?? []);
 
     if (lookbackDays > 1) {
       const globalSnapshot = await adminFirestore
@@ -72,11 +73,18 @@ export async function GET(request: NextRequest) {
       const allTopics: TrendingTopic[] = [];
       for (const docSnap of globalSnapshot.docs) {
         const data = docSnap.data() as Record<string, unknown>;
+        const rejected = rejectedStoryUrls(
+          Array.isArray(data.trending_topics) ? data.trending_topics : [],
+        );
         if (Array.isArray(data.trending)) {
-          allTrending.push(...data.trending.filter(isFeedItem));
+          allTrending.push(
+            ...data.trending
+              .filter(isFeedItem)
+              .filter((item) => !rejected.has(String(item?.url || '').trim())),
+          );
         }
         if (Array.isArray(data.trending_topics)) {
-          allTopics.push(...data.trending_topics.filter(isTrendingTopic));
+          allTopics.push(...filterSendWorthyTopics(data.trending_topics).filter(isTrendingTopic));
         }
       }
 

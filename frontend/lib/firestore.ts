@@ -314,6 +314,8 @@ export interface TrendingTopic {
   tags?: string[];
   timeline?: TopicTimelineEvent[];
   articles?: FeedItem[];
+  /** Jev verdict: 0 means no reader value (puzzle answers, executive moves). */
+  jev_send_worthy?: number | null;
 }
 
 export interface WorthReadingSummary {

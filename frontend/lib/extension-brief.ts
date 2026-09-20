@@ -1,3 +1,4 @@
+import { filterSendWorthyTopics } from './feed-value.ts';
 import type { FeedItem, V3UserFeed } from './firestore.ts';
 import { decodeHtmlEntities, stripMarkdown } from './feed-article-text.ts';
 import { buildArticleShareUrl } from './article-share-url.ts';
@@ -171,7 +172,7 @@ export function buildExtensionBrief(feed: V3UserFeed): ExtensionBrief {
   const editionItems = [
     ...(feed.for_you || []),
     ...(feed.trending || []),
-    ...(feed.trending_topics || []).flatMap((topic) => topic.articles || []),
+    ...filterSendWorthyTopics(feed.trending_topics || []).flatMap((topic) => topic.articles || []),
   ];
   const edition = buildEdition(editionItems).slice(0, MAX_ARTICLES);
 
