@@ -1,0 +1,14 @@
+[Unit]
+Description=Run Trace pulse every 3 hours
+
+[Timer]
+# Calendar-only. Same reason as trace-pipeline.timer: monotonic
+# OnUnitActiveSec dies across user-systemd restarts.
+OnCalendar=*-*-* 00,03,06,09,12,15,18,21:00:00
+AccuracySec=5min
+RandomizedDelaySec=5min
+Persistent=true
+Unit=trace-pulse.service
+
+[Install]
+WantedBy=timers.target

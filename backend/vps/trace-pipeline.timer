@@ -1,0 +1,16 @@
+[Unit]
+Description=Run Trace pipeline every 20 minutes
+
+[Timer]
+# Calendar-only. Do not use OnBootSec / OnUnitActiveSec / OnStartupSec:
+# after a user-systemd restart those monotonic baselines are gone, the
+# timer shows NEXT="-" and never fires again. OnCalendar survives that
+# restart; Persistent=true runs one catch-up immediately.
+OnCalendar=*-*-* *:00,20,40:00
+AccuracySec=1min
+RandomizedDelaySec=2min
+Persistent=true
+Unit=trace-pipeline.service
+
+[Install]
+WantedBy=timers.target
