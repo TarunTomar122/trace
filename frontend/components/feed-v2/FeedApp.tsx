@@ -35,6 +35,7 @@ import {
 } from '@/lib/posthog';
 import { bodyParagraphs } from '@/lib/body-text';
 import { canonicalUrlKey } from '@/lib/feed-dedupe';
+import { selectBigThings } from '@/lib/big-things';
 import { isModelRelease, rankStoriesForProfile } from '@/lib/feed-ranking';
 import { flattenRows, layoutFeed, omitStoryFromRows, resolveHeadlines, takeFeedRows, type HeadlineRef } from '@/lib/story-headlines';
 import { feedTabLabel, normalizeFeedTab, partitionFeedCats } from '@/lib/feed-links';
@@ -106,6 +107,8 @@ export interface FeedStory {
   cat: string;
   url: string;
   tags?: string[];
+  /** Jev verdict from the pipeline: 0 = no reader value (kept out of Home). */
+  sendWorthy?: number | null;
 }
 
 export interface PulseItem {
@@ -149,11 +152,11 @@ const CAT_ICONS: Record<string, LucideIcon> = {
 export const ALL_INTERESTS = ['ai', 'markets', 'tech', 'ux-design', 'startups'];
 const FREE_LIMIT_SIGNED_OUT = 4;
 const FREE_LIMIT_SIGNED_IN = 5;
-// Max stories shown per Home / AI / Markets / Tech / Startups / Design tab:
-// the feed shows the same edition the email promises — ten big things for
-// Pro, five for everyone else.
-const STORY_CAP_PRO = 10;
-const STORY_CAP_FREE = 5;
+// Home shows the same edition the email promises: ten big things for Pro,
+// five for everyone else. The category tabs keep their longer list.
+const HOME_CAP_PRO = 10;
+const HOME_CAP_FREE = 5;
+const PER_TAB_STORY_CAP = 15;
 /** Max tool rows on the desktop right rail (promoted + house + pulse combined). */
 const RAIL_TOOLS_CAP = 3;
 
@@ -1074,17 +1077,24 @@ export default function FeedApp({
   const [sortOverride, setSortOverride] = useState<null | 'for_you' | 'recent'>(() => readStoredSort());
   const sortMode = sortOverride ?? 'for_you';
   const byRecent = (a: FeedStory, b: FeedStory) => (b.ts || 0) - (a.ts || 0);
+  const storyCap = tab === 'all'
+    ? (pro ? HOME_CAP_PRO : HOME_CAP_FREE)
+    : PER_TAB_STORY_CAP;
   const rankedForTab = useMemo(() => {
     const list = tab === 'all'
       ? homeStories
       : stories.filter((s) => s.cat === tab);
-    return sortMode === 'recent'
-      ? [...list].sort(byRecent)
-      : rankStoriesForProfile(
-        list,
-        { interests: savedProfile.interests, role: authProfile?.role },
-      );
-  }, [tab, sortMode, homeStories, stories, savedProfile.interests, authProfile?.role]);
+    if (sortMode === 'recent') return [...list].sort(byRecent);
+    // Home is the daily edition itself: verdict gate, launches first, lane
+    // quotas. Category tabs keep the per-lane ranking.
+    if (tab === 'all') {
+      return selectBigThings(list, { count: storyCap, lanes: myCats });
+    }
+    return rankStoriesForProfile(
+      list,
+      { interests: savedProfile.interests, role: authProfile?.role },
+    );
+  }, [tab, sortMode, storyCap, homeStories, stories, savedProfile.interests, authProfile?.role, myCats]);
   const pulsePool = useMemo(
     () => pulse.discussions.filter((item) => item.id && item.title),
     [pulse.discussions],
@@ -1093,7 +1103,6 @@ export default function FeedApp({
     () => resolveHeadlines(rankedForTab, headlines, pulsePool),
     [rankedForTab, headlines, pulsePool],
   );
-  const storyCap = pro ? STORY_CAP_PRO : STORY_CAP_FREE;
   const feedRows = useMemo(
     () => takeFeedRows(layoutFeed(rankedForTab, tabHeadlines, pulsePool), storyCap),
     [rankedForTab, tabHeadlines, pulsePool, storyCap],

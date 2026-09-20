@@ -282,6 +282,8 @@ export function mapTrendingToStories(
       cat: topic.interest_id || first.interest_id || 'tech',
       url: first.url || '#',
       tags: Array.isArray(topic.tags) ? topic.tags.filter((t: unknown) => typeof t === 'string') : [],
+      // Carried so the Home edition can drop stories Jev judged worthless.
+      sendWorthy: typeof topic.jev_send_worthy === 'number' ? topic.jev_send_worthy : null,
     };
   };
 
@@ -308,13 +310,15 @@ export function mapTrendingToStories(
       ts: Date.parse(it?.published_date || '') || 0,
       cat: it.interest_id || 'tech',
       url,
+      sendWorthy: typeof it.jev_send_worthy === 'number' ? it.jev_send_worthy : null,
     };
   };
 
   const stories: FeedStory[] = [];
   const usableTrending = (trending || []).filter(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (item: any) => !rejectedUrls.has(String(item?.url || '').trim()),
+    (item: any) =>
+      !rejectedUrls.has(String(item?.url || '').trim()) && item?.jev_send_worthy !== 0,
   );
   for (const slot of slotsFromRankedItems(usableTrending, usableTopics, (url) => canonicalUrlKey(url) || url)) {
     const story = slot.kind === 'topic'
