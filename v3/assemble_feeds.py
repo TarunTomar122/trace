@@ -506,17 +506,53 @@ def _load_exact_user_section(
     return items if isinstance(items, list) else []
 
 
+def _drop_rejected_topics(
+    trending: list[Any],
+    trending_topics: list[Any],
+) -> tuple[list[Any], list[Any]]:
+    """Remove stories Jev judged worthless (puzzle answers, SEO filler, ...).
+
+    The verdict is stored on each topic as ``jev_send_worthy``; a 0 means the
+    reader gains nothing from it, so it must not reach a feed lane either.
+    Flat ``trending`` rows covering the same URLs go with it.
+    """
+    rejected_urls: set[str] = set()
+    kept_topics: list[Any] = []
+    for topic in trending_topics:
+        if not isinstance(topic, dict):
+            kept_topics.append(topic)
+            continue
+        if topic.get("jev_send_worthy") == 0:
+            for article in topic.get("articles", []) or []:
+                url = str((article or {}).get("url", "")).strip()
+                if url:
+                    rejected_urls.add(url)
+            continue
+        kept_topics.append(topic)
+
+    kept_trending = [
+        row for row in trending
+        if not (
+            isinstance(row, dict)
+            and str(row.get("url", "")).strip() in rejected_urls
+        )
+    ]
+    dropped = len(trending_topics) - len(kept_topics)
+    if dropped:
+        _log(f"Dropped {dropped} low-value topic(s) rejected by Jev")
+    return kept_trending, kept_topics
+
+
 def _load_exact_global_trending(
     store: V3Store, target_date: str
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], str]:
     global_feed = store.load_global_feed(target_date)
     trending = global_feed.get("trending", [])
     trending_topics = global_feed.get("trending_topics", [])
-    return (
-        trending if isinstance(trending, list) else [],
-        trending_topics if isinstance(trending_topics, list) else [],
-        target_date,
-    )
+    trending_list = trending if isinstance(trending, list) else []
+    topics_list = trending_topics if isinstance(trending_topics, list) else []
+    trending_list, topics_list = _drop_rejected_topics(trending_list, topics_list)
+    return trending_list, topics_list, target_date
 
 
 def _load_recent_global_trending(
@@ -531,15 +567,21 @@ def _load_recent_global_trending(
         trending = global_feed.get("trending", [])
         trending_topics = global_feed.get("trending_topics", [])
         if trending or trending_topics:
-            return trending, trending_topics, date_key
+            trending_list = trending if isinstance(trending, list) else []
+            topics_list = trending_topics if isinstance(trending_topics, list) else []
+            trending_list, topics_list = _drop_rejected_topics(
+                trending_list, topics_list
+            )
+            return trending_list, topics_list, date_key
 
     # Fall back to exact target date if no recent non-empty snapshot exists.
     global_feed = store.load_global_feed(target_date)
-    return (
-        global_feed.get("trending", []),
-        global_feed.get("trending_topics", []),
-        target_date,
-    )
+    trending = global_feed.get("trending", [])
+    trending_topics = global_feed.get("trending_topics", [])
+    trending_list = trending if isinstance(trending, list) else []
+    topics_list = trending_topics if isinstance(trending_topics, list) else []
+    trending_list, topics_list = _drop_rejected_topics(trending_list, topics_list)
+    return trending_list, topics_list, target_date
 
 
 def _load_users(store: V3Store, args: argparse.Namespace) -> list[dict]:

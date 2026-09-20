@@ -828,10 +828,11 @@ RANKING_QUESTIONS = {
                 "an opinion, critique, prediction, or commentary about another company's work; a lawsuit, "
                 "complaint, or dispute with no ruling or consequence; PR, awards, sponsorships, or event "
                 "promotion; shopping content such as deals, discounts, accessory roundups, or buying guides; "
-                "how-to or listicle content; crowdfunding campaigns; celebrity, founder-gossip, or "
-                "personality colour; reaction or media-drama coverage; a single company's stock or earnings "
-                "note that does not change the wider market; or a niche professional detail that only a "
-                "specialist in one team would ever act on."
+                "how-to or listicle content; daily puzzle, game or crossword answers and hints; horoscopes, "
+                "quizzes, or other service-journalism filler; crowdfunding campaigns; celebrity, "
+                "founder-gossip, or personality colour; reaction or media-drama coverage; a single company's "
+                "stock or earnings note that does not change the wider market; or a niche professional detail "
+                "that only a specialist in one team would ever act on."
             ),
             (
                 "Borderline: real news with a concrete development, but routine or incremental; only a "
@@ -2171,19 +2172,25 @@ def _score_clusters_with_jev(
                 _log(f"Story ranking cache write failed: {type(exc).__name__}")
             decisions[f"t{original_index}"] = result
 
-    if len(decisions) != len(clusters):
+    complete = len(decisions) == len(clusters)
+    if not complete:
         _log(
             f"Story ranking Jev unavailable for {len(clusters) - len(decisions)}/{len(clusters)} topics; "
             "preserving deterministic popularity ranking"
         )
-        return False
+    # Verdicts are still attached for the topics Jev did answer: the send
+    # worthiness gate (newsletter, feed lanes) must not be disarmed just
+    # because one batch failed. Only the *ordering* stays deterministic.
     for index, cluster in enumerate(clusters):
-        result = decisions[f"t{index}"]
+        result = decisions.get(f"t{index}")
+        if not result:
+            continue
         cluster["_jev_scores"] = result["scores"]
         cluster["_jev_confidence"] = result["confidence"]
         cluster["_jev_semantic_score"] = result["semantic_score"]
-    _log(f"Jev ranked {len(clusters)} canonical topics")
-    return True
+    if complete:
+        _log(f"Jev ranked {len(clusters)} canonical topics")
+    return complete
 
 
 def _sort_topic_clusters(
