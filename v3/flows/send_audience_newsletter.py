@@ -751,7 +751,7 @@ def _sections_html(bucket: str, sections: list[tuple[str, list[dict]]]) -> str:
             label = f"Top in {INTEREST_LABELS.get(lane, lane.upper())}"
         top = 18 if index == 0 else 22
         rows.append(
-            f'<tr><td style="padding: {top}px 28px 0 28px;">'
+            f'<tr><td class="nl-p28" style="padding: {top}px 28px 0 28px;">'
             f"{_section_body(label, stories)}"
             "</td></tr>"
         )
