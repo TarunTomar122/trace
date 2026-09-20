@@ -32,7 +32,7 @@ export function InlineTraceCTA({
       </h3>
       <p className="mt-2 leading-relaxed text-gray-600 dark:text-gray-400">
         {blurb ||
-          "Trace groups model releases, company news, and what actually changed from 400+ sources. Guests get 4 stories; a free account gets 5 plus the morning email. No RSS, no newsletter pile."}
+          "Trace groups model releases, company news, and what actually changed from 400+ sources. Guests get 3 stories; a free account gets 5 plus the morning email. No RSS, no newsletter pile."}
       </p>
       <div className="mt-5 flex flex-wrap gap-3">
         <Link
@@ -62,7 +62,7 @@ export function StickyBlogBar({ slug }: { slug: string }) {
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur-md dark:border-gray-800 dark:bg-gray-950/95 md:hidden">
       <div className="mx-auto flex max-w-3xl items-center gap-3">
         <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-800 dark:text-gray-100">
-          5-minute AI briefing — 4 stories free
+          5-minute AI briefing — 3 stories free
         </p>
         <Link
           href={feedHref(slug, "sticky_bar")}

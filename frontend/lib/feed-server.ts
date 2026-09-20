@@ -608,6 +608,14 @@ export async function getBootstrapFeedForUid(uid: string, roleFromQuery = ''): P
     console.log(`[perf][feed-server] getBootstrapFeedForUid uid=${uid.slice(0, 6)} total_ms=${Date.now() - totalStart}`);
   }
 
+  // Opening the feed is the activity signal that DAU/WAU/MAU are built from.
+  // Fire-and-forget: a failed stamp must never slow down or break the feed.
+  void adminFirestore
+    .collection('user_profiles')
+    .doc(uid)
+    .set({ lastActiveAt: new Date() }, { merge: true })
+    .catch((error) => console.error('[feed-server] lastActiveAt stamp failed:', error));
+
   return result;
 }
 

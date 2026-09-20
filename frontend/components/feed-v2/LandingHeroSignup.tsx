@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import SignupCelebration from '@/components/feed-v2/SignupCelebration';
+import { trackNewsletterSignup } from '@/lib/posthog';
 
 type Status = 'idle' | 'loading' | 'ok' | 'error';
 
@@ -27,6 +28,7 @@ export default function LandingHeroSignup() {
       setStatus('ok');
       setMessage(data.message || "You're in!");
       setEmail('');
+      trackNewsletterSignup('landing');
       setCelebrating(true);
     } catch (err) {
       setStatus('error');

@@ -250,6 +250,10 @@ export function trackSubscriptionCancelled(plan: string) {
 }
 
 // Conversion funnel events
+export function trackNewsletterSignup(source: "landing" | "feed_prompt") {
+  posthog.capture("newsletter_signup", { surface: "web", source });
+}
+
 export function trackSummaryOpened(
   itemId: string,
   isPaidUser: boolean,

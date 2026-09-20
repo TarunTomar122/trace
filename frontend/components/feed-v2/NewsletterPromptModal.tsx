@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import SignupCelebration from '@/components/feed-v2/SignupCelebration';
+import { trackNewsletterSignup } from '@/lib/posthog';
 
 /**
  * Email capture for signed-out readers exploring the feed.
@@ -49,6 +50,7 @@ export default function NewsletterPromptModal({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Something went wrong');
+      trackNewsletterSignup('feed_prompt');
       setCelebrating(true);
     } catch (err) {
       setStatus('error');

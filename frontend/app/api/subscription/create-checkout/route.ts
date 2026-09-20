@@ -5,6 +5,15 @@ import { resolveSubscriptionOffer } from '@/lib/subscription-offer';
 import { captureServerEvent } from '@/lib/posthog-server';
 import { toDateMaybe } from '@/lib/subscription-access';
 
+// Dodo takes the trial per checkout; 0 disables it. Kept in step with the
+// client copy in lib/pro-trial.ts so we never promise one we do not grant.
+const PRO_TRIAL_DAYS = (() => {
+  const raw = (process.env.NEXT_PUBLIC_PRO_TRIAL_DAYS ?? '7').trim();
+  const days = Number.parseInt(raw, 10);
+  if (!Number.isFinite(days) || days < 0) return 7;
+  return Math.min(days, 30);
+})();
+
 function readAffiliateCookie(raw: string | undefined) {
   if (!raw) return null;
   try {
@@ -158,49 +167,65 @@ export async function POST(request: NextRequest) {
       }, { merge: true });
     }
     
-    const checkoutResponse = await fetch(`${DODO_BASE_URL}/checkouts`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${DODO_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        product_cart: [
-          {
-            product_id: offer.productId,
-            quantity: 1,
-          }
-        ],
-        ...(offer.isIndiaOffer && {
-          allowed_payment_method_types: ['upi_collect', 'credit', 'debit'],
-          billing_currency: 'INR',
-          billing_address: {
-            country: 'IN',
-          },
-        }),
-        feature_flags: {
-          allow_discount_code: offer.isIndiaOffer,
+    const checkoutPayload = (trialDays: number) => ({
+      product_cart: [
+        {
+          product_id: offer.productId,
+          quantity: 1,
+        }
+      ],
+      ...(offer.isIndiaOffer && {
+        allowed_payment_method_types: ['upi_collect', 'credit', 'debit'],
+        billing_currency: 'INR',
+        billing_address: {
+          country: 'IN',
         },
-        customer: {
-          email: email,
-          name: name,
-        },
-        metadata: {
-          user_id: userId,
-          source: 'trace_app',
-          checkout_country_code: offer.countryCode ?? '',
-          checkout_country_source: offer.countrySource,
-          pricing_offer: offer.isIndiaOffer ? 'india' : 'default',
-          datafast_visitor_id: datafastVisitorId ?? '',
-          affiliate_code: affiliateCode ?? '',
-          affiliate_landing_path: userData?.affiliateLandingPath || affiliateCookie?.landingPath || '',
-          utm_source: userData?.utmSource || affiliateCookie?.utmSource || '',
-          utm_campaign: userData?.utmCampaign || affiliateCookie?.utmCampaign || '',
-          utm_medium: userData?.utmMedium || affiliateCookie?.utmMedium || '',
-        },
-        return_url: `${(process.env.NEXT_PUBLIC_APP_URL || 'https://www.yourtrace.online').replace('https://yourtrace.online', 'https://www.yourtrace.online')}${returnPath}${returnPath.includes('?') ? '&' : '?'}subscription=success`,
       }),
+      ...(trialDays > 0 && {
+        subscription_data: { trial_period_days: trialDays },
+      }),
+      feature_flags: {
+        allow_discount_code: offer.isIndiaOffer,
+      },
+      customer: {
+        email: email,
+        name: name,
+      },
+      metadata: {
+        user_id: userId,
+        source: 'trace_app',
+        checkout_country_code: offer.countryCode ?? '',
+        checkout_country_source: offer.countrySource,
+        pricing_offer: offer.isIndiaOffer ? 'india' : 'default',
+        datafast_visitor_id: datafastVisitorId ?? '',
+        affiliate_code: affiliateCode ?? '',
+        affiliate_landing_path: userData?.affiliateLandingPath || affiliateCookie?.landingPath || '',
+        utm_source: userData?.utmSource || affiliateCookie?.utmSource || '',
+        utm_campaign: userData?.utmCampaign || affiliateCookie?.utmCampaign || '',
+        utm_medium: userData?.utmMedium || affiliateCookie?.utmMedium || '',
+      },
+      return_url: `${(process.env.NEXT_PUBLIC_APP_URL || 'https://www.yourtrace.online').replace('https://yourtrace.online', 'https://www.yourtrace.online')}${returnPath}${returnPath.includes('?') ? '&' : '?'}subscription=success`,
     });
+
+    const createCheckout = (trialDays: number) =>
+      fetch(`${DODO_BASE_URL}/checkouts`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${DODO_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(checkoutPayload(trialDays)),
+      });
+
+    let checkoutResponse = await createCheckout(PRO_TRIAL_DAYS);
+
+    // A rejected trial field must never cost us the sale: retry once without it.
+    if (!checkoutResponse.ok && PRO_TRIAL_DAYS > 0) {
+      const firstError = await checkoutResponse.clone().text();
+      console.error('Dodo rejected the trial field, retrying without it:', firstError.slice(0, 300));
+      await captureServerEvent(userId, 'checkout_trial_rejected', { trial_days: PRO_TRIAL_DAYS });
+      checkoutResponse = await createCheckout(0);
+    }
 
     if (!checkoutResponse.ok) {
       const errorText = await checkoutResponse.text();

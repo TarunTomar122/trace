@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import ProCheckoutButton from './ProCheckoutButton';
+import { PRO_TRIAL_DAYS, PRO_TRIAL_ENABLED } from '@/lib/pro-trial';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasActiveSubscription } from '@/lib/subscription-access';
 import { SUBSCRIPTION_PRICE_DEFAULT, priceAmountDisplay, shortPriceDisplay } from '@/lib/subscription-pricing';
@@ -10,7 +11,7 @@ import { SUBSCRIPTION_PRICE_DEFAULT, priceAmountDisplay, shortPriceDisplay } fro
 const FREE_FEATURES = [
   'Your ranked daily feed',
   '31 headlines in every new Chrome tab',
-  '4 stories as a guest, 5 with a free account',
+  '3 stories a day as a guest, 5 with a free account',
   'Unlimited original source links',
   'Topic filters and For you ranking',
   'Bookmarks with a free Trace account',
@@ -20,6 +21,7 @@ const FREE_FEATURES = [
 const PRO_FEATURES = [
   'Unlimited summaries in the web feed',
   '10 big things in tech and AI, in your inbox every morning',
+  'Every story of the day, not the first 5',
   'The full daily news archive',
   'Search your saved archive',
   'Full personalized Pulse: tools and discussions',
@@ -77,7 +79,11 @@ export default function PricingScreen() {
         <article className="plan pro">
           <p className="plan-tag">Trace Pro</p>
           <p className="plan-price">{priceAmountDisplay(priceDisplay)}<span>/month</span></p>
-          <p className="plan-note">The whole day, ranked and summarized, every morning.</p>
+          <p className="plan-note">
+            {PRO_TRIAL_ENABLED
+              ? `The whole day, ranked and summarized. ${PRO_TRIAL_DAYS} days free, then cancel anytime.`
+              : 'The whole day, ranked and summarized, every morning.'}
+          </p>
           <ul className="plan-list">
             {PRO_FEATURES.map((f) => <li key={f}>{f}</li>)}
           </ul>
