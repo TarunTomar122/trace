@@ -751,6 +751,11 @@ const css = `
 .lp .yg-letter-list .yg-stitle { font-family: Georgia, "Times New Roman", serif; font-size: 14.5px; }
 .lp .yg-letter-list .yg-why { -webkit-line-clamp: 2; }
 .lp .yg-letter-list .yg-meta { margin: 5px 0 0; }
+.lp .yg-letter-more {
+  display: block; margin: 10px 14px 0; padding-top: 9px;
+  border-top: 1px dashed #e4e4e7;
+  font-size: 12px; font-weight: 650; color: var(--text-3);
+}
 .lp .yg-letter-tag {
   font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--text-3);

@@ -124,7 +124,7 @@ function EmailDemo({ stories }: { stories: LandingDemoStory[] }) {
     <div className="yg-frame yg-mail" aria-hidden="true">
       <div className="yg-mail-chrome">
         <span className="yg-dots" />
-        <p>Trace · Your 5-minute brief: AI and Startups</p>
+        <p>Trace · 10 big things in tech and AI</p>
       </div>
       <div className="yg-letter">
         <div className="yg-letter-head">
@@ -132,7 +132,7 @@ function EmailDemo({ stories }: { stories: LandingDemoStory[] }) {
           <span>this morning</span>
         </div>
         <p className="yg-letter-hi">Hey Tarat 👋</p>
-        <p className="yg-letter-lead">Here are <strong>3 big things</strong> that happened today.</p>
+        <p className="yg-letter-lead">Here are <strong>10 big things</strong> that happened today.</p>
         <ol className="yg-letter-list">
           {items.map((story, i) => (
             <li key={story.id}>
@@ -149,6 +149,7 @@ function EmailDemo({ stories }: { stories: LandingDemoStory[] }) {
             </li>
           ))}
         </ol>
+        <span className="yg-letter-more">+ 7 more, every morning</span>
         <span className="yg-letter-cta">View your full feed →</span>
       </div>
     </div>
