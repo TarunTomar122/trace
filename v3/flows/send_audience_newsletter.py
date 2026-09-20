@@ -51,8 +51,8 @@ from v3.build_trending import (  # noqa: E402
 )
 
 APP_URL = "https://yourtrace.online"
-LANDING_COUNT = 3
-FREE_COUNT = 3
+LANDING_COUNT = 5
+FREE_COUNT = 5
 PRO_COUNT = 10
 
 # Lane priority: AI always leads, then markets, tech, design, then startups.
@@ -64,8 +64,8 @@ LANE_ORDER = (
 )
 LANE_PATTERN = {
     "pro": (3, 2, 2, 1, 1, 1),
-    "free": (2, 1),
-    "landing": (2, 1),
+    "free": (2, 1, 1),
+    "landing": (2, 1, 1),
 }
 
 # Subject/headline: "<count> big things today <emoji>", emoji rotating daily.
@@ -103,7 +103,7 @@ INTEREST_LABELS = {
 BUCKETS = {
     "landing": {
         "count": LANDING_COUNT,
-        "headline": "3 big things today",
+        "headline": "5 big things today",
         "intro": (
             "You signed up on Trace with this email. Here is what moved the "
             "needle in tech — nothing else."
@@ -111,7 +111,7 @@ BUCKETS = {
     },
     "free": {
         "count": FREE_COUNT,
-        "headline": "3 big things today",
+        "headline": "5 big things today",
         "intro": (
             "Picked from the last 24 hours, matched to the topics you follow. "
             "Every original source is one tap away in the app."
@@ -449,9 +449,17 @@ def _send_worthy_verdicts(
 
 
 def _ranked(candidates: list[dict]) -> list[dict]:
-    # Multi-source stories first (the "23 sources" credibility signal),
-    # then coverage. Stable sort keeps the Jev-ordered feed position for ties.
-    return sorted(candidates, key=lambda c: (-c["source_count"], -c["coverage"]))
+    # Jev's verdict leads: a "clear keep" (2) beats a "borderline" (1), so the
+    # short emails do not fill up with the first routine story in the lane.
+    # Multi-source coverage breaks ties.
+    def verdict_rank(candidate: dict) -> float:
+        value = candidate.get("send_worthy")
+        return float(value) if isinstance(value, (int, float)) else 1.0
+
+    return sorted(
+        candidates,
+        key=lambda c: (-verdict_rank(c), -c["source_count"], -c["coverage"]),
+    )
 
 
 def _story_groups(feed: dict, verdicts: dict[str, int] | None = None) -> list[dict]:
@@ -730,8 +738,8 @@ def _section_body(label: str, stories: list[dict]) -> str:
 def _sections_html(bucket: str, sections: list[tuple[str, list[dict]]]) -> str:
     """One table row per section.
 
-    The launch panel runs edge to edge inside the card (no side gutters),
-    while every other section keeps the standard 28px text column.
+    The email stays plain text on white — the launch group is set apart by
+    its heading only, no tinted panel.
     """
     rows: list[str] = []
     for index, (lane, stories) in enumerate(sections):
@@ -741,21 +749,12 @@ def _sections_html(bucket: str, sections: list[tuple[str, list[dict]]]) -> str:
             label = "Top stories"
         else:
             label = f"Top in {INTEREST_LABELS.get(lane, lane.upper())}"
-        body = _section_body(label, stories)
-        if lane == MODEL_RELEASE_LANE:
-            rows.append(
-                '<tr><td style="padding: 22px 0 0 0;">'
-                '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
-                'style="background-color: #f3f7fb;">'
-                '<tr><td style="padding: 16px 28px 8px 28px;">'
-                f"{body}"
-                "</td></tr></table></td></tr>"
-            )
-        else:
-            top = 0 if index == 0 else 22
-            rows.append(
-                f'<tr><td style="padding: {top}px 28px 0 28px;">{body}</td></tr>'
-            )
+        top = 18 if index == 0 else 22
+        rows.append(
+            f'<tr><td style="padding: {top}px 28px 0 28px;">'
+            f"{_section_body(label, stories)}"
+            "</td></tr>"
+        )
     return "".join(rows)
 
 
@@ -772,7 +771,7 @@ def _cta_html(bucket: str) -> str:
             '<p style="margin: 0 0 6px 0; font-size: 16px; font-weight: 800; color: #0f1419; '
             f'font-family: {_FONT};">Double this, every morning.</p>'
             '<p style="margin: 0 0 14px 0; font-size: 13.5px; color: #536471; line-height: 1.6; '
-            f'font-family: {_FONT};">Pro sends 10 big things instead of 3, ranked deeper into '
+            f'font-family: {_FONT};">Pro sends 10 big things instead of 5, ranked deeper into '
             "your interests, plus full Pulse and the archive.</p>"
             f'<a href="{APP_URL}/subscribe?from=email" style="display: inline-block; padding: 0 28px; '
             f'background-color: #1d9bf0; color: #ffffff; {base}">Go Pro</a>'
@@ -786,8 +785,8 @@ def _cta_html(bucket: str) -> str:
         f'font-family: {_FONT};">Want the 10 big things?</p>'
         '<p style="margin: 0 0 14px 0; font-size: 13.5px; color: #536471; line-height: 1.6; '
         f'font-family: {_FONT};">Create a free account and pick your topics, so tomorrow&rsquo;s '
-        "brief follows exactly those. Pro reads all 10 big things in tech and AI, every "
-        "morning.</p>"
+        "brief follows exactly those — or go straight to Pro for all 10 big things in "
+        "tech and AI, every morning.</p>"
         f'<a href="{APP_URL}/feed?from=email" style="display: inline-block; padding: 0 28px; '
         f'background-color: #1d9bf0; color: #ffffff; {base}">Personalize it</a>'
         '&nbsp;&nbsp;'
