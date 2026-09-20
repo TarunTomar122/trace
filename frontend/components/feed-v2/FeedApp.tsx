@@ -33,6 +33,7 @@ import {
   trackRetentionThreadFollowed,
 } from '@/lib/posthog';
 import { bodyParagraphs } from '@/lib/body-text';
+import { canonicalUrlKey } from '@/lib/feed-dedupe';
 import { isModelRelease, rankStoriesForProfile } from '@/lib/feed-ranking';
 import { flattenRows, layoutFeed, omitStoryFromRows, resolveHeadlines, takeFeedRows, type HeadlineRef } from '@/lib/story-headlines';
 import { feedTabLabel, normalizeFeedTab, partitionFeedCats } from '@/lib/feed-links';
@@ -1062,18 +1063,20 @@ export default function FeedApp({
     [rankedForTab, tabHeadlines, pulsePool],
   );
   const visible = useMemo(() => flattenRows(feedRows), [feedRows]);
-  // Launches lead the feed, so they get their own heading with everything
-  // else under a second one. Boundaries are story ids because the rendered
-  // rows are not 1:1 with `visible` (headline blocks group several stories).
+  // Launches lead the feed, so they get their own tinted panel with everything
+  // else under a "More stories today" divider. Boundaries are story ids
+  // because the rendered rows are not 1:1 with `visible` (headline blocks
+  // group several stories).
   const releaseHeadings = useMemo(() => {
     const isRelease = (story: FeedStory) => isModelRelease(story);
     const firstRelease = visible.find(isRelease);
-    if (!firstRelease) return { firstId: null, afterId: null };
+    if (!firstRelease) return { firstId: null, afterId: null, ids: new Set<string>() };
     const rest = visible.slice(visible.indexOf(firstRelease) + 1);
     const firstOther = rest.find((story) => !isRelease(story));
     return {
       firstId: firstRelease.id,
       afterId: firstOther ? firstOther.id : null,
+      ids: new Set(visible.filter(isRelease).map((story) => story.id)),
     };
   }, [visible]);
   // Older batches shown after the ranked list, narrowed to the active tab
@@ -1113,8 +1116,11 @@ export default function FeedApp({
     };
   }, [sortMode, tab, mounted]);
 
+  // `?story=` accepts a story id or an article URL. Emails link by URL
+  // because topic ids are recomputed on every trending rebuild.
   const open = storyParam
     ? allStories.find((s) => s.id === storyParam)
+      || findStoryByUrl(allStories, storyParam)
       || (initialStory && initialStory.id === storyParam ? initialStory : null)
     : null;
   const allPulse = [...pulse.tools, ...pulse.discussions, ...pulse.blogs];
@@ -1719,11 +1725,19 @@ export default function FeedApp({
                   };
                   if (row.kind === 'story') {
                     const story = row.story;
+                    // The launch run renders once, as a tinted panel.
+                    if (releaseHeadings.ids.has(story.id)) {
+                      if (story.id !== releaseHeadings.firstId) return null;
+                      return (
+                        <HeadlineSection key="model-releases" label="Model releases" tone={0}>
+                          {visible
+                            .filter((s) => releaseHeadings.ids.has(s.id) && showIds.has(s.id))
+                            .map((s) => renderCard(s, true, true))}
+                        </HeadlineSection>
+                      );
+                    }
                     return (
                       <Fragment key={story.id}>
-                        {story.id === releaseHeadings.firstId && (
-                          <div className="older-sep"><span>Model releases</span></div>
-                        )}
                         {story.id === releaseHeadings.afterId && (
                           <div className="older-sep"><span>More stories today</span></div>
                         )}
@@ -1731,7 +1745,7 @@ export default function FeedApp({
                       </Fragment>
                     );
                   }
-                  const members = row.stories.filter((s) => showIds.has(s.id));
+                  const members = row.stories.filter((s) => showIds.has(s.id) && !releaseHeadings.ids.has(s.id));
                   if (members.length < 2) {
                     return <Fragment key={row.id}>{members.map((s) => renderCard(s, false))}</Fragment>;
                   }
@@ -2311,6 +2325,17 @@ function FeedImage({ src, className, alt = '' }: { src?: string | null; classNam
       onError={() => setStatus('failed')}
     />
   );
+}
+
+/** Resolve a deep link that carries an article URL instead of a story id. */
+function findStoryByUrl(stories: FeedStory[], raw: string): FeedStory | null {
+  const key = canonicalUrlKey(raw);
+  if (!key) return null;
+  for (const story of stories) {
+    if (canonicalUrlKey(story.url) === key) return story;
+    if (story.coverage.some((link) => canonicalUrlKey(link.url) === key)) return story;
+  }
+  return null;
 }
 
 function Actions({ id, size = 18, marked, onToggleMark, onShare, shareKind = 'story', burst = false }: {

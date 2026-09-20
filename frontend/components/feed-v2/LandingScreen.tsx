@@ -57,7 +57,7 @@ const FREE_FEATURES = [
 
 const PRO_FEATURES = [
   'Unlimited AI summaries in the web feed',
-  'The complete ranked daily edition',
+  '10 big things in tech and AI, in your inbox every morning',
   'Search your complete saved archive',
   'The complete daily news archive',
   'Full personalized Pulse',

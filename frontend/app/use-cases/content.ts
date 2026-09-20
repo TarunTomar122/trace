@@ -13,7 +13,7 @@ export const useCasesContent: UseCasePage[] = [
     title: "Trace for Founders",
     shortDescription: "Know what competitors launched, what investors are talking about, and what's trending — all before standup.",
     whyItMatters: "Founders live and die by information asymmetry. Missing a competitor move or market shift costs weeks of runway. But you can't afford 2 hours of morning reading when you're running a company.",
-    dailyRoutine: "Open Trace at 7:30 AM. Read the top 8 stories in your custom brief. Forward 2 items to your team. Done in under 10 minutes. You walk into standup knowing what happened in your market overnight.",
+    dailyRoutine: "Open Trace at 7:30 AM. Read the top 10 stories in your custom brief. Forward 2 items to your team. Done in under 10 minutes. You walk into standup knowing what happened in your market overnight.",
     keyFeatures: ["Competitor and market monitoring", "Investor sentiment tracking", "Custom topic groups for your sector", "One-tap sharing to Slack or email"],
   },
   {

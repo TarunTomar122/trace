@@ -25,7 +25,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from html import escape
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 from dotenv import load_dotenv
 
@@ -53,7 +53,7 @@ from v3.build_trending import (  # noqa: E402
 APP_URL = "https://yourtrace.online"
 LANDING_COUNT = 3
 FREE_COUNT = 3
-PRO_COUNT = 8
+PRO_COUNT = 10
 
 # Lane priority: AI always leads, then markets, tech, design, then startups.
 # Slots follow a 3/2/1/1/1 shape across the matched lanes: the leading lane
@@ -63,10 +63,14 @@ LANE_ORDER = (
     "products", "the-world",
 )
 LANE_PATTERN = {
-    "pro": (3, 2, 1, 1, 1),
+    "pro": (3, 2, 2, 1, 1, 1),
     "free": (2, 1),
     "landing": (2, 1),
 }
+
+# Subject/headline: "<count> big things today <emoji>", emoji rotating daily.
+SUBJECT_EMOJIS = ("\U0001f62e", "\U0001f525", "\U0001f680", "\U0001f440", "\U0001f9e0",
+                  "\u26a1", "\u2728", "\U0001f973", "\U0001f37f", "\U0001f92f")
 
 # Launches get their own heading at the top of the email, ahead of the lane
 # pattern. Slots come out of the same total (8 / 3 / 3).
@@ -99,7 +103,7 @@ INTEREST_LABELS = {
 BUCKETS = {
     "landing": {
         "count": LANDING_COUNT,
-        "headline": "The 3 biggest stories today.",
+        "headline": "3 big things today",
         "intro": (
             "You signed up on Trace with this email. Here is what moved the "
             "needle in tech — nothing else."
@@ -107,7 +111,7 @@ BUCKETS = {
     },
     "free": {
         "count": FREE_COUNT,
-        "headline": "Your 3 stories for today.",
+        "headline": "3 big things today",
         "intro": (
             "Picked from the last 24 hours, matched to the topics you follow. "
             "Every original source is one tap away in the app."
@@ -115,7 +119,7 @@ BUCKETS = {
     },
     "pro": {
         "count": PRO_COUNT,
-        "headline": "Your 8 stories for today.",
+        "headline": "10 big things today",
         "intro": (
             "The complete picture for your interests, ranked from everything "
             "that moved in the last 24 hours."
@@ -678,7 +682,12 @@ def _clamp_summary(text: str, limit: int = 340) -> str:
 
 def _story_html(story: dict) -> str:
     title = escape(story["title"])
-    app_link = f"{APP_URL}/feed?from=email&story={escape(story['topic_id'])}"
+    # Topic ids are recomputed on every trending rebuild (sha of cluster urls),
+    # so an emailed tt_… link is dead within half an hour. The article URL is
+    # stable and the app resolves stories by it.
+    app_link = (
+        f"{APP_URL}/feed?from=email&story={quote(story['url'], safe='')}"
+    )
     summary = escape(story["summary"])
     favicon = _favicon_stack(story["sources"])
     count_word = "source" if story["source_count"] == 1 else "sources"
@@ -708,30 +717,38 @@ def _story_html(story: dict) -> str:
     )
 
 
-def _section_html(label: str, stories: list[dict]) -> str:
+def _section_html(label: str, stories: list[dict], tinted: bool = False) -> str:
     kicker = (
-        f'<p style="margin: 22px 0 2px 0; font-size: 11px; color: #e5484d; font-weight: 800; '
-        f'letter-spacing: 0.12em; text-transform: uppercase; font-family: {_FONT};">'
+        f'<p style="margin: {0 if tinted else 22}px 0 2px 0; font-size: 11px; color: #e5484d; '
+        f'font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; '
+        f'font-family: {_FONT};">'
         f"&#9733; {escape(label)}</p>"
     )
     rows = "".join(_story_html(story) for story in stories)
-    return kicker + rows
+    body = kicker + rows
+    if not tinted:
+        return body
+    # Launches get a subtle panel so the group reads as one block.
+    return (
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
+        'style="background-color: #f3f7fb; border-radius: 16px; margin: 18px 0 0 0;">'
+        '<tr><td style="padding: 16px 16px 10px 16px;">'
+        f"{body}"
+        "</td></tr></table>"
+    )
 
 
 def _sections_html(bucket: str, sections: list[tuple[str, list[dict]]]) -> str:
-    if bucket == "landing":
-        html = ""
-        for lane, stories in sections:
-            label = "Model releases" if lane == MODEL_RELEASE_LANE else "Top stories"
-            html += _section_html(label, stories)
-        return html
     html = ""
     for lane, stories in sections:
         if lane == MODEL_RELEASE_LANE:
-            label = "Model releases"
+            html += _section_html("Model releases", stories, tinted=True)
+        elif bucket == "landing":
+            html += _section_html("Top stories", stories)
         else:
-            label = f"Top in {INTEREST_LABELS.get(lane, lane.upper())}"
-        html += _section_html(label, stories)
+            html += _section_html(
+                f"Top in {INTEREST_LABELS.get(lane, lane.upper())}", stories
+            )
     return html
 
 
@@ -748,8 +765,8 @@ def _cta_html(bucket: str) -> str:
             '<p style="margin: 0 0 6px 0; font-size: 16px; font-weight: 800; color: #0f1419; '
             f'font-family: {_FONT};">Double this, every morning.</p>'
             '<p style="margin: 0 0 14px 0; font-size: 13.5px; color: #536471; line-height: 1.6; '
-            f'font-family: {_FONT};">Pro sends 8 stories instead of 3, ranked deeper into your '
-            "interests, plus full Pulse and the archive.</p>"
+            f'font-family: {_FONT};">Pro sends 10 big things instead of 3, ranked deeper into '
+            "your interests, plus full Pulse and the archive.</p>"
             f'<a href="{APP_URL}/subscribe?from=email" style="display: inline-block; padding: 0 28px; '
             f'background-color: #1d9bf0; color: #ffffff; {base}">Go Pro</a>'
             "</td></tr></table>"
@@ -827,6 +844,15 @@ def _replace_block(html: str, marker: str, content: str) -> str:
     )
 
 
+def _daily_emoji(date: str) -> str:
+    """Same emoji for everyone, different every day."""
+    try:
+        day = datetime.strptime(date, "%Y-%m-%d").timetuple().tm_yday
+    except ValueError:
+        return SUBJECT_EMOJIS[0]
+    return SUBJECT_EMOJIS[day % len(SUBJECT_EMOJIS)]
+
+
 def _render(
     bucket: str,
     sections: list[tuple[str, list[dict]]],
@@ -834,11 +860,12 @@ def _render(
     email: str = "",
 ) -> tuple[str, str, str]:
     cfg = BUCKETS[bucket]
-    subject = f"{cfg['headline'].rstrip('.')} — {_display_date(date)}"
+    headline = f"{cfg['headline']} {_daily_emoji(date)}"
+    subject = f"{headline} — {_display_date(date)}"
     html = _load_template("audience_newsletter.html")
     html = html.replace("{{SUBJECT}}", escape(subject))
     html = html.replace("{{DATE}}", escape(_display_date(date)))
-    html = html.replace("{{HEADLINE}}", escape(cfg["headline"]))
+    html = html.replace("{{HEADLINE}}", escape(headline))
     html = html.replace("{{INTRO}}", escape(cfg["intro"]))
     html = html.replace("{{SECTIONS_HTML}}", _sections_html(bucket, sections))
     html = _replace_block(html, "CTA", _cta_html(bucket))

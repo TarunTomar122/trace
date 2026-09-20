@@ -16,8 +16,8 @@ const FEATURES = [
   {
     id: 'email',
     kicker: 'Email',
-    title: 'A brief that follows your interests',
-    body: 'Pick AI, startups, markets, whatever you actually follow. The email is those stories, with why they matter, not the whole internet.',
+    title: '10 big things in tech and AI, every morning',
+    body: 'Pro reads the 10 biggest things from the last 24 hours, picked for the topics you actually follow — with why they matter, not the whole internet.',
     href: '/feed?tab=profile',
     link: 'Turn it on in your profile',
   },
