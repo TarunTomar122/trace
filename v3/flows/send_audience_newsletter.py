@@ -717,39 +717,46 @@ def _story_html(story: dict) -> str:
     )
 
 
-def _section_html(label: str, stories: list[dict], tinted: bool = False) -> str:
+def _section_body(label: str, stories: list[dict]) -> str:
     kicker = (
-        f'<p style="margin: {0 if tinted else 22}px 0 2px 0; font-size: 11px; color: #e5484d; '
+        '<p style="margin: 0 0 2px 0; font-size: 11px; color: #e5484d; '
         f'font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; '
         f'font-family: {_FONT};">'
         f"&#9733; {escape(label)}</p>"
     )
-    rows = "".join(_story_html(story) for story in stories)
-    body = kicker + rows
-    if not tinted:
-        return body
-    # Launches get a subtle panel so the group reads as one block.
-    return (
-        '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
-        'style="background-color: #f3f7fb; border-radius: 16px; margin: 18px 0 0 0;">'
-        '<tr><td style="padding: 16px 16px 10px 16px;">'
-        f"{body}"
-        "</td></tr></table>"
-    )
+    return kicker + "".join(_story_html(story) for story in stories)
 
 
 def _sections_html(bucket: str, sections: list[tuple[str, list[dict]]]) -> str:
-    html = ""
-    for lane, stories in sections:
+    """One table row per section.
+
+    The launch panel runs edge to edge inside the card (no side gutters),
+    while every other section keeps the standard 28px text column.
+    """
+    rows: list[str] = []
+    for index, (lane, stories) in enumerate(sections):
         if lane == MODEL_RELEASE_LANE:
-            html += _section_html("Model releases", stories, tinted=True)
+            label = "Model releases"
         elif bucket == "landing":
-            html += _section_html("Top stories", stories)
+            label = "Top stories"
         else:
-            html += _section_html(
-                f"Top in {INTEREST_LABELS.get(lane, lane.upper())}", stories
+            label = f"Top in {INTEREST_LABELS.get(lane, lane.upper())}"
+        body = _section_body(label, stories)
+        if lane == MODEL_RELEASE_LANE:
+            rows.append(
+                '<tr><td style="padding: 22px 0 0 0;">'
+                '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
+                'style="background-color: #f3f7fb;">'
+                '<tr><td style="padding: 16px 28px 8px 28px;">'
+                f"{body}"
+                "</td></tr></table></td></tr>"
             )
-    return html
+        else:
+            top = 0 if index == 0 else 22
+            rows.append(
+                f'<tr><td style="padding: {top}px 28px 0 28px;">{body}</td></tr>'
+            )
+    return "".join(rows)
 
 
 def _cta_html(bucket: str) -> str:
@@ -776,12 +783,16 @@ def _cta_html(bucket: str) -> str:
         'style="background-color: #f7f9f9; border-radius: 16px;">'
         '<tr><td align="center" style="padding: 22px 24px;">'
         '<p style="margin: 0 0 6px 0; font-size: 16px; font-weight: 800; color: #0f1419; '
-        f'font-family: {_FONT};">Want this picked for you?</p>'
+        f'font-family: {_FONT};">Want the 10 big things?</p>'
         '<p style="margin: 0 0 14px 0; font-size: 13.5px; color: #536471; line-height: 1.6; '
-        f'font-family: {_FONT};">Create a free account, pick your topics, and tomorrow&rsquo;s '
-        "brief follows exactly those.</p>"
+        f'font-family: {_FONT};">Create a free account and pick your topics, so tomorrow&rsquo;s '
+        "brief follows exactly those. Pro reads all 10 big things in tech and AI, every "
+        "morning.</p>"
         f'<a href="{APP_URL}/feed?from=email" style="display: inline-block; padding: 0 28px; '
         f'background-color: #1d9bf0; color: #ffffff; {base}">Personalize it</a>'
+        '&nbsp;&nbsp;'
+        f'<a href="{APP_URL}/subscribe?from=email" style="display: inline-block; padding: 0 22px; '
+        f'border: 1px solid #cfd9de; color: #0f1419; {base}">Go Pro</a>'
         "</td></tr></table>"
     )
 
