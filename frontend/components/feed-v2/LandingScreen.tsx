@@ -139,7 +139,8 @@ export default function LandingScreen() {
         </div>
         <h1 className="hero-title">10 big things in tech and AI</h1>
         <p className="hero-sub">
-          New models, market moves, and the tech that matters.
+          Trace reads 400+ sources, groups the coverage, and gives you the fastest way to stay
+          updated.
         </p>
         <LandingHeroSignup />
 
