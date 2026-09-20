@@ -312,8 +312,8 @@ export function mapTrendingToStories(
   };
 
   const stories: FeedStory[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const usableTrending = (trending || []).filter(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (item: any) => !rejectedUrls.has(String(item?.url || '').trim()),
   );
   for (const slot of slotsFromRankedItems(usableTrending, usableTopics, (url) => canonicalUrlKey(url) || url)) {
