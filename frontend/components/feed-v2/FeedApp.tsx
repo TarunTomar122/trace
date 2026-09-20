@@ -33,7 +33,7 @@ import {
   trackRetentionThreadFollowed,
 } from '@/lib/posthog';
 import { bodyParagraphs } from '@/lib/body-text';
-import { rankStoriesForProfile } from '@/lib/feed-ranking';
+import { isModelRelease, rankStoriesForProfile } from '@/lib/feed-ranking';
 import { flattenRows, layoutFeed, omitStoryFromRows, resolveHeadlines, takeFeedRows, type HeadlineRef } from '@/lib/story-headlines';
 import { feedTabLabel, normalizeFeedTab, partitionFeedCats } from '@/lib/feed-links';
 import {
@@ -1062,6 +1062,20 @@ export default function FeedApp({
     [rankedForTab, tabHeadlines, pulsePool],
   );
   const visible = useMemo(() => flattenRows(feedRows), [feedRows]);
+  // Launches lead the feed, so they get their own heading with everything
+  // else under a second one. Boundaries are story ids because the rendered
+  // rows are not 1:1 with `visible` (headline blocks group several stories).
+  const releaseHeadings = useMemo(() => {
+    const isRelease = (story: FeedStory) => isModelRelease(story);
+    const firstRelease = visible.find(isRelease);
+    if (!firstRelease) return { firstId: null, afterId: null };
+    const rest = visible.slice(visible.indexOf(firstRelease) + 1);
+    const firstOther = rest.find((story) => !isRelease(story));
+    return {
+      firstId: firstRelease.id,
+      afterId: firstOther ? firstOther.id : null,
+    };
+  }, [visible]);
   // Older batches shown after the ranked list, narrowed to the active tab
   // (and to the reader's lanes on Home, matching the fresh list).
   const olderForTab = tab === 'all'
@@ -1703,7 +1717,20 @@ export default function FeedApp({
                       />
                     );
                   };
-                  if (row.kind === 'story') return renderCard(row.story, false);
+                  if (row.kind === 'story') {
+                    const story = row.story;
+                    return (
+                      <Fragment key={story.id}>
+                        {story.id === releaseHeadings.firstId && (
+                          <div className="older-sep"><span>Model releases</span></div>
+                        )}
+                        {story.id === releaseHeadings.afterId && (
+                          <div className="older-sep"><span>More stories today</span></div>
+                        )}
+                        {renderCard(story, false)}
+                      </Fragment>
+                    );
+                  }
                   const members = row.stories.filter((s) => showIds.has(s.id));
                   if (members.length < 2) {
                     return <Fragment key={row.id}>{members.map((s) => renderCard(s, false))}</Fragment>;

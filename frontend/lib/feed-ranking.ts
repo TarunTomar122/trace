@@ -17,9 +17,15 @@ export type SortableStory = {
 };
 
 const MODEL_RELEASE_SKIP = /\b(misalignment|jailbreak|incident|incidents|lawsuit|job loss)\b/i;
-const MODEL_PARAM_SIZE = /\b\d+(?:\.\d+)?\s*b\b/i;
+// Parameter counts ("70B model") only — never dollar amounts ("$9.2B project").
+const MODEL_PARAM_SIZE = /(?<![$\d.,])\b\d+(?:\.\d+)?\s*b\b/i;
 const MODEL_NOUN = /\b(model|llm|foundation model|open[- ]weights?|checkpoint)\b/i;
 const MODEL_RELEASE_VERB = /\b(releases?|released|launches?|launched|unveils?|unveiled|ships?|shipped|introduces?|introduced|open[- ]sourc(?:e|ed|ing))\b/i;
+// "model" alone is too generic (Tesla Model Y), so a textual match also needs
+// an AI-flavoured word next to it.
+const AI_CONTEXT = /\b(ai|a\.i\.|llm|weights?|tokens?|context|inference|benchmarks?|parameters?|multimodal|agents?|agentic|reasoning|coding|prompts?|checkpoints?|open[- ]weights?)\b/i;
+// Named launches that never say "model": "releases Qwen3.8", "unveils Claude Opus 5".
+const NAMED_LAUNCH = /\b(releases?|released|launches?|launched|unveils?|unveiled|ships?|shipped|introduces?|introduced)\s+(?:[A-Z][\w.-]*\d[\w.-]*|(?:[A-Z][\w.-]*\s+){1,3}\d+(?:\.\d+)?)\b/;
 
 /** Lab-blog / param-size launches, not AI-safety or incident coverage. */
 export function isModelRelease(story: {
@@ -33,7 +39,9 @@ export function isModelRelease(story: {
   if (MODEL_RELEASE_SKIP.test(haystack)) return false;
   if (/ai\/?tldr/i.test(String(story.source || ''))) return true;
   if (MODEL_PARAM_SIZE.test(title)) return true;
-  return MODEL_NOUN.test(haystack) && MODEL_RELEASE_VERB.test(title);
+  const textual = NAMED_LAUNCH.test(title)
+    || (MODEL_NOUN.test(haystack) && MODEL_RELEASE_VERB.test(title));
+  return textual && AI_CONTEXT.test(haystack);
 }
 
 export type RankOptions = {

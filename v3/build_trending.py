@@ -463,20 +463,42 @@ def _looks_like_model_release(title: str, source_name: str = "", content: str = 
         return False
     if re.search(r"ai/?tldr", source_name or "", re.I):
         return True
-    if re.search(r"\b\d+(?:\.\d+)?\s*b\b", title_text, re.I):
+    # Parameter counts ("70B model"), never dollar amounts ("$9.2B project").
+    if re.search(r"(?<![$\d.,])\b\d+(?:\.\d+)?\s*b\b", title_text, re.I):
         return True
     has_noun = re.search(
         r"\b(model|llm|foundation model|open[- ]weights?|checkpoint)\b",
         haystack,
         re.I,
     )
+    # "model" alone is too generic (Tesla Model Y), so every textual path needs
+    # an AI-flavoured word in the copy.
+    ai_context = re.search(
+        r"\b(ai|a\.i\.|llm|weights?|tokens?|context|inference|benchmarks?|"
+        r"parameters?|multimodal|agents?|agentic|reasoning|coding|prompts?|"
+        r"checkpoints?|open[- ]weights?)\b",
+        haystack,
+        re.I,
+    )
+    # Named launches that never say "model": "<verb> Qwen3.8", "<verb> GPT-5".
+    named_launch = re.search(
+        r"\b(releases?|released|launches?|launched|unveils?|unveiled|"
+        r"ships?|shipped|introduces?|introduced)\s+"
+        r"(?:[A-Z][\w.-]*\d[\w.-]*"          # Qwen3.8, GPT-5
+        r"|(?:[A-Z][\w.-]*\s+){1,3}\d+(?:\.\d+)?)\b",  # Claude Opus 5
+        title_text,
+    )
+    # A launch verb in the title is the thing that separates "OpenAI ships a
+    # 70B model" from "Data centre firm raises $3.9B and mentions AI models".
     has_verb = re.search(
         r"\b(releases?|released|launches?|launched|unveils?|unveiled|"
         r"ships?|shipped|introduces?|introduced|open[- ]sourc(?:e|ed|ing))\b",
         title_text,
         re.I,
     )
-    return bool(has_noun and has_verb)
+    if named_launch and ai_context:
+        return True
+    return bool(has_noun and has_verb and ai_context)
 
 
 def _looks_promotional(title: str, content: str = "") -> bool:

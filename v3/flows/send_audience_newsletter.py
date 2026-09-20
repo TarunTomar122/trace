@@ -45,6 +45,7 @@ from v3.lib.store import V3Store  # noqa: E402
 from v3.build_trending import (  # noqa: E402
     RANKING_QUESTIONS,
     _document_frequencies,
+    _looks_like_model_release,
     _rare_tokens,
     _topic_tokens,
 )
@@ -66,6 +67,11 @@ LANE_PATTERN = {
     "free": (2, 1),
     "landing": (2, 1),
 }
+
+# Launches get their own heading at the top of the email, ahead of the lane
+# pattern. Slots come out of the same total (8 / 3 / 3).
+MODEL_RELEASE_LANE = "model-releases"
+MODEL_RELEASE_SLOTS = {"pro": 2, "free": 1, "landing": 1}
 
 # What counts as send-worthy is a judgement call, not a keyword list: Jev
 # (Typesafe) scores every candidate with the shared RANKING_QUESTIONS rubric
@@ -272,6 +278,9 @@ def _candidates(feed: dict) -> list[dict]:
             ),
             "coverage": coverage.get(url, 1),
             "macro": bool(MACRO_RE.search(f"{title} {summary}")),
+            "model_release": _looks_like_model_release(
+                title, _source_name(hero), summary
+            ),
         })
 
     # Raw trending rows not already covered by a topic (singleton lanes).
@@ -297,6 +306,9 @@ def _candidates(feed: dict) -> list[dict]:
             "source_count": 1,
             "coverage": coverage.get(url, 1),
             "macro": bool(MACRO_RE.search(f"{title} {summary}")),
+            "model_release": _looks_like_model_release(
+                title, _source_name(row), summary
+            ),
         })
     return candidates
 
@@ -521,8 +533,20 @@ def _select(
     used: set[str] = set()
     sections: list[tuple[str, list[dict]]] = []
 
+    # Model releases lead the email under their own heading, before the lane
+    # pattern. Only stories the reader's interests already cover qualify.
+    release_slots = MODEL_RELEASE_SLOTS.get(bucket, 0)
+    if release_slots:
+        releases = [g for g in ordered if g.get("model_release")][:release_slots]
+        if releases:
+            for g in releases:
+                used.add(g["topic_id"])
+            sections.append((MODEL_RELEASE_LANE, releases))
+
+    picked = sum(len(stories) for _, stories in sections)
+    remaining = count - picked
+
     pattern = LANE_PATTERN.get(bucket, ())
-    remaining = count
     for position, lane in enumerate(lanes):
         if remaining <= 0:
             break
@@ -696,11 +720,17 @@ def _section_html(label: str, stories: list[dict]) -> str:
 
 def _sections_html(bucket: str, sections: list[tuple[str, list[dict]]]) -> str:
     if bucket == "landing":
-        flat = [story for _, stories in sections for story in stories]
-        return _section_html("Top stories", flat)
+        html = ""
+        for lane, stories in sections:
+            label = "Model releases" if lane == MODEL_RELEASE_LANE else "Top stories"
+            html += _section_html(label, stories)
+        return html
     html = ""
     for lane, stories in sections:
-        label = f"Top in {INTEREST_LABELS.get(lane, lane.upper())}"
+        if lane == MODEL_RELEASE_LANE:
+            label = "Model releases"
+        else:
+            label = f"Top in {INTEREST_LABELS.get(lane, lane.upper())}"
         html += _section_html(label, stories)
     return html
 
