@@ -149,10 +149,14 @@ const CAT_ICONS: Record<string, LucideIcon> = {
 export const ALL_INTERESTS = ['ai', 'markets', 'tech', 'ux-design', 'startups'];
 const FREE_LIMIT_SIGNED_OUT = 4;
 const FREE_LIMIT_SIGNED_IN = 5;
-/** Max stories shown per Home / AI / Markets / Tech / Startups / Design tab. */
-const PER_TAB_STORY_CAP = 15;
+// Max stories shown per Home / AI / Markets / Tech / Startups / Design tab:
+// the feed shows the same edition the email promises — ten big things for
+// Pro, five for everyone else.
+const STORY_CAP_PRO = 10;
+const STORY_CAP_FREE = 5;
 /** Max tool rows on the desktop right rail (promoted + house + pulse combined). */
 const RAIL_TOOLS_CAP = 3;
+
 
 function renderBold(text: string): React.ReactNode {
   const parts = text.split('**');
@@ -1089,9 +1093,10 @@ export default function FeedApp({
     () => resolveHeadlines(rankedForTab, headlines, pulsePool),
     [rankedForTab, headlines, pulsePool],
   );
+  const storyCap = pro ? STORY_CAP_PRO : STORY_CAP_FREE;
   const feedRows = useMemo(
-    () => takeFeedRows(layoutFeed(rankedForTab, tabHeadlines, pulsePool), PER_TAB_STORY_CAP),
-    [rankedForTab, tabHeadlines, pulsePool],
+    () => takeFeedRows(layoutFeed(rankedForTab, tabHeadlines, pulsePool), storyCap),
+    [rankedForTab, tabHeadlines, pulsePool, storyCap],
   );
   const visible = useMemo(() => flattenRows(feedRows), [feedRows]);
   // Launches lead the feed, so they get their own tinted panel with everything

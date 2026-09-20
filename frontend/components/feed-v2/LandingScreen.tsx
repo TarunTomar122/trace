@@ -139,8 +139,7 @@ export default function LandingScreen() {
         </div>
         <h1 className="hero-title">10 big things in tech and AI</h1>
         <p className="hero-sub">
-          The biggest AI and tech news of the last 24 hours — new models, market moves, and the
-          stories shaping the day — ranked from 400+ sources and delivered every morning.
+          New models, market moves, and the tech that matters.
         </p>
         <LandingHeroSignup />
 
