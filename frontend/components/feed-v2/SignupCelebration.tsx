@@ -15,7 +15,7 @@ function localSendTime(): string {
     };
     const now = new Date();
     const berlinToday = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
-    let target = new Date(
+    const utcTarget = new Date(
       Date.UTC(
         berlinToday.getFullYear(),
         berlinToday.getMonth(),
@@ -24,11 +24,8 @@ function localSendTime(): string {
         SEND_MINUTE_BERLIN
       )
     );
-    target = new Date(target.getTime() - offsetHours(target) * 3_600_000);
-    return new Intl.DateTimeFormat(undefined, {
-      hour: 'numeric',
-      minute: '2-digit',
-    }).format(target);
+    const local = new Date(utcTarget.getTime() - offsetHours(utcTarget) * 3_600_000);
+    return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(local);
   } catch {
     return '10:30';
   }
@@ -48,10 +45,11 @@ export default function SignupCelebration({ onClose }: { onClose: () => void }) 
       if (event.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
+    const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
       window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
+      document.body.style.overflow = previous;
     };
   }, [onClose]);
 
@@ -85,59 +83,74 @@ export default function SignupCelebration({ onClose }: { onClose: () => void }) 
   const stop = useCallback((event: React.MouseEvent) => event.stopPropagation(), []);
 
   return (
-    <div className="celebrate-scrim" onClick={onClose} role="presentation">
+    <div
+      className="fixed inset-0 z-[400] flex items-center justify-center bg-black/55 p-3 backdrop-blur-[3px] sm:p-5"
+      onClick={onClose}
+      role="presentation"
+    >
       <div
-        className="celebrate"
+        className="relative max-h-[92vh] w-full max-w-[460px] overflow-y-auto rounded-3xl bg-white p-6 text-center shadow-[0_30px_80px_rgba(15,20,25,0.35)] sm:p-8"
         role="dialog"
         aria-modal="true"
         aria-labelledby="celebrate-title"
         onClick={stop}
       >
-        <button ref={closeRef} className="celebrate-x" onClick={onClose} aria-label="Close">
+        <button
+          ref={closeRef}
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-3 top-3 h-8 w-8 rounded-full border-none bg-[#f7f9f9] text-lg leading-none text-[#536471] transition-colors hover:bg-[#eef2f3] hover:text-[#0f1419]"
+        >
           ×
         </button>
 
-        <p className="celebrate-emoji" aria-hidden="true">🎉</p>
-        <h2 className="celebrate-title" id="celebrate-title">You&rsquo;re in.</h2>
-        <p className="celebrate-lede">
-          Your first <strong>5 big things today</strong> lands tomorrow at{' '}
-          <strong>{hint} your time</strong> (10:30 Berlin), and every morning after that.
+        <p className="mb-1 text-4xl leading-none" aria-hidden="true">🎉</p>
+        <h2 id="celebrate-title" className="mb-2 text-2xl font-extrabold tracking-[-0.03em] sm:text-[26px]">
+          You&rsquo;re in.
+        </h2>
+        <p className="mx-auto mb-4 max-w-[360px] text-[15.5px] leading-relaxed text-[#536471]">
+          Your first <strong className="text-[#0f1419]">5 big things today</strong> lands tomorrow at{' '}
+          <strong className="text-[#0f1419]">{hint} your time</strong> (10:30 Berlin), and every morning after.
         </p>
 
-        <ul className="celebrate-list">
-          <li>
+        <ul className="mb-5 list-none rounded-2xl bg-[#f7f9f9] px-4 py-4 text-left">
+          <li className="flex gap-2.5 text-sm leading-snug text-[#0f1419]">
             <span aria-hidden="true">🤖</span>
             The biggest AI releases and developments of the last 24 hours
           </li>
-          <li>
+          <li className="mt-2.5 flex gap-2.5 text-sm leading-snug text-[#0f1419]">
             <span aria-hidden="true">📈</span>
             The market moves worth knowing, not every ticker
           </li>
-          <li>
+          <li className="mt-2.5 flex gap-2.5 text-sm leading-snug text-[#0f1419]">
             <span aria-hidden="true">🎯</span>
             Picked for you once you pick your topics
           </li>
         </ul>
 
-        <div className="celebrate-upsell">
-          <p className="celebrate-upsell-title">Want 10 instead of 5?</p>
-          <p className="celebrate-upsell-body">
-            Pro sends all <strong>10 big things</strong> every morning, ranked deeper into your
-            interests, plus full Pulse and the archive.
+        <div className="rounded-2xl border border-[#1d9bf0]/25 bg-[#1d9bf0]/5 p-5">
+          <p className="mb-1.5 text-[17px] font-extrabold tracking-[-0.02em]">Want 10 instead of 5?</p>
+          <p className="mb-3.5 text-sm leading-snug text-[#536471]">
+            Pro sends all <strong className="text-[#0f1419]">10 big things</strong> every morning, ranked
+            deeper into your interests, plus full Pulse and the archive.
           </p>
-          <div className="celebrate-actions">
-            <a href="/subscribe?from=email" className="btn-primary celebrate-cta">
+          <div className="flex flex-wrap justify-center gap-2.5">
+            <a
+              href="/subscribe?from=email"
+              className="inline-flex h-11 items-center justify-center rounded-full bg-[#1d9bf0] px-6 text-sm font-bold text-white no-underline transition-colors hover:bg-[#1a8cd8]"
+            >
               Go Pro
             </a>
-            <a href="/feed?from=email" className="celebrate-secondary">
+            <a
+              href="/feed?from=email"
+              className="inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-bold text-[#536471] no-underline transition-colors hover:bg-black/5 hover:text-[#0f1419]"
+            >
               Personalize it free
             </a>
           </div>
         </div>
 
-        <p className="celebrate-foot">
-          One email a day. Unsubscribe any time from the footer.
-        </p>
+        <p className="mt-4 text-xs text-[#71767b]">One email a day. Unsubscribe any time from the footer.</p>
       </div>
     </div>
   );

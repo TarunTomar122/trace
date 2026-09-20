@@ -402,56 +402,6 @@ const css = `
   .lp .proof-label { padding: 0 8px; }
 }
 
-/* Signup celebration */
-.lp .celebrate-scrim {
-  position: fixed; inset: 0; z-index: 400;
-  display: flex; align-items: center; justify-content: center;
-  padding: 20px; background: rgba(15, 20, 25, 0.55); backdrop-filter: blur(3px);
-  animation: lp-fade 0.2s ease-out;
-}
-.lp .celebrate {
-  position: relative; width: 100%; max-width: 460px; max-height: 92vh; overflow-y: auto;
-  background: #fff; border-radius: 24px; padding: 32px 28px 24px;
-  box-shadow: 0 30px 80px rgba(15, 20, 25, 0.35); text-align: center;
-  animation: lp-pop 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.1);
-}
-@keyframes lp-fade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes lp-pop { from { opacity: 0; transform: translateY(12px) scale(0.96); } to { opacity: 1; transform: none; } }
-.lp .celebrate-x {
-  position: absolute; top: 12px; right: 12px; width: 32px; height: 32px;
-  border: none; border-radius: 999px; background: var(--hover); color: var(--text-2);
-  font-size: 19px; line-height: 1; cursor: pointer;
-}
-.lp .celebrate-x:hover { background: #eef2f3; color: var(--ink); }
-.lp .celebrate-emoji { margin: 0 0 6px; font-size: 40px; line-height: 1; }
-.lp .celebrate-title { margin: 0 0 10px; font-size: 26px; font-weight: 800; letter-spacing: -0.03em; }
-.lp .celebrate-lede { margin: 0 auto 18px; max-width: 360px; font-size: 15.5px; line-height: 1.6; color: var(--text-2); }
-.lp .celebrate-lede strong { color: var(--ink); }
-.lp .celebrate-list {
-  margin: 0 0 20px; padding: 16px 18px; list-style: none; text-align: left;
-  background: var(--hover); border-radius: 16px;
-}
-.lp .celebrate-list li { display: flex; gap: 10px; font-size: 14.5px; line-height: 1.5; color: var(--ink); }
-.lp .celebrate-list li + li { margin-top: 10px; }
-.lp .celebrate-list span { flex-shrink: 0; }
-.lp .celebrate-upsell {
-  padding: 20px 18px; border: 1px solid rgba(29, 155, 240, 0.25);
-  background: rgba(29, 155, 240, 0.06); border-radius: 16px;
-}
-.lp .celebrate-upsell-title { margin: 0 0 6px; font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
-.lp .celebrate-upsell-body { margin: 0 0 14px; font-size: 14px; line-height: 1.55; color: var(--text-2); }
-.lp .celebrate-upsell-body strong { color: var(--ink); }
-.lp .celebrate-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-.lp .celebrate-cta { height: 44px; padding: 0 24px; }
-.lp .celebrate-secondary {
-  display: inline-flex; align-items: center; height: 44px; padding: 0 18px;
-  font-size: 14.5px; font-weight: 700; color: var(--text-2); text-decoration: none; border-radius: 999px;
-}
-.lp .celebrate-secondary:hover { color: var(--ink); background: rgba(15, 20, 25, 0.04); }
-.lp .celebrate-foot { margin: 16px 0 0; font-size: 12.5px; color: var(--text-3); }
-@media (max-width: 480px) {
-  .lp .celebrate { padding: 28px 20px 20px; }
-  .lp .celebrate-title { font-size: 23px; }
 }
 .lp .hero-ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
 .lp .btn-primary {

@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { resolveFeedAccess, hasActiveSubscription } from '@/lib/subscription-access';
 import { shortPriceDisplay, SUBSCRIPTION_PRICE_DEFAULT } from '@/lib/subscription-pricing';
 import FeedSkeleton from './FeedSkeleton';
+import NewsletterPromptModal from './NewsletterPromptModal';
 import ProCheckoutButton from './ProCheckoutButton';
 import {
   trackCheckoutClicked,
@@ -326,6 +327,36 @@ export default function FeedApp({
   const [bookmarks, setBookmarks] = useState<StoredBookmark[]>([]);
   const [bookmarkQuery, setBookmarkQuery] = useState('');
   const [readIds, setReadIds] = useState<Set<string>>(() => readStoredReads(null));
+  // Signed-out readers get one gentle email ask per fortnight, after they have
+  // actually engaged (two stories opened), not on arrival.
+  const [nlPrompt, setNlPrompt] = useState(false);
+  const nlPromptArmed = useRef(false);
+  useEffect(() => {
+    if (user || nlPrompt || nlPromptArmed.current) return;
+    try {
+      const seen = Number(window.localStorage.getItem('trace_nl_prompt_at') || 0);
+      if (Date.now() - seen < 14 * 24 * 60 * 60 * 1000) return;
+    } catch {
+      return;
+    }
+    nlPromptArmed.current = true;
+    const delay = readIds.size >= 2 ? 1500 : 45_000;
+    const timer = window.setTimeout(() => setNlPrompt(true), delay);
+    return () => {
+      window.clearTimeout(timer);
+      nlPromptArmed.current = false;
+    };
+  }, [user, nlPrompt, readIds.size]);
+
+  function dismissNewsletterPrompt() {
+    try {
+      window.localStorage.setItem('trace_nl_prompt_at', String(Date.now()));
+    } catch {
+      /* private mode: the modal simply reappears next visit */
+    }
+    nlPromptArmed.current = true;
+    setNlPrompt(false);
+  }
   const [toast, setToast] = useState<string | null>(null);
   const [burstId, setBurstId] = useState<string | null>(null);
   const [campaignWelcome, setCampaignWelcome] = useState<{ source: string; campaign: string } | null>(null);
@@ -1966,6 +1997,10 @@ export default function FeedApp({
         />
       )}
       {celebrate && <WelcomeModal kind={celebrate} priceDisplay={priceDisplay} onClose={() => setCelebrate(null)} />}
+
+      {nlPrompt && !user && (
+        <NewsletterPromptModal onClose={dismissNewsletterPrompt} onSignIn={handleSignIn} />
+      )}
     </div>
   );
 }
