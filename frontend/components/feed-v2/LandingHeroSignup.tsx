@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import SignupCelebration from '@/components/feed-v2/SignupCelebration';
 
 type Status = 'idle' | 'loading' | 'ok' | 'error';
 
@@ -8,6 +9,7 @@ export default function LandingHeroSignup() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState('');
+  const [celebrating, setCelebrating] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -25,6 +27,7 @@ export default function LandingHeroSignup() {
       setStatus('ok');
       setMessage(data.message || "You're in!");
       setEmail('');
+      setCelebrating(true);
     } catch (err) {
       setStatus('error');
       setMessage(err instanceof Error ? err.message : 'Something went wrong');
@@ -57,6 +60,7 @@ export default function LandingHeroSignup() {
         One email every morning, unsubscribe anytime. Or just{' '}
         <a href="/feed">open the feed</a>.
       </p>
+      {celebrating && <SignupCelebration onClose={() => setCelebrating(false)} />}
     </div>
   );
 }

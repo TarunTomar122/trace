@@ -16,6 +16,7 @@ import {
   X
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import LocalDbPanels from './LocalDbPanels';
 import {
   LineChart,
   BarChart,
@@ -1237,6 +1238,8 @@ export default function AnalyticsPage() {
                 </div>
               </div>
             )}
+
+            <LocalDbPanels />
           </div>
         )}
       </main>
