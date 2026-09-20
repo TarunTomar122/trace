@@ -137,9 +137,10 @@ export default function LandingScreen() {
             />
           ))}
         </div>
-        <h1 className="hero-title">The fastest way to catch up on tech and AI news.</h1>
+        <h1 className="hero-title">10 big things in tech and AI</h1>
         <p className="hero-sub">
-          Tech news from multiple sources, grouped, summarized, and ranked in one feed.
+          The biggest AI and tech news of the last 24 hours — new models, market moves, and the
+          stories shaping the day — ranked from 400+ sources and delivered every morning.
         </p>
         <LandingHeroSignup />
 
