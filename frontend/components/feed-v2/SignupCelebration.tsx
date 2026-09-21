@@ -84,7 +84,7 @@ export default function SignupCelebration({ onClose }: { onClose: () => void }) 
 
   return (
     <div
-      className="fixed inset-0 z-[400] flex items-center justify-center bg-black/55 p-3 backdrop-blur-[3px] sm:p-5"
+      className="celebrate-scrim fixed inset-0 z-[9999] flex items-center justify-center bg-[#0f1419]/80 p-3 sm:p-5"
       onClick={onClose}
       role="presentation"
     >
@@ -109,8 +109,8 @@ export default function SignupCelebration({ onClose }: { onClose: () => void }) 
           You&rsquo;re in.
         </h2>
         <p className="mx-auto mb-4 max-w-[360px] text-[15.5px] leading-relaxed text-[#536471]">
-          Your first <strong className="text-[#0f1419]">5 big things today</strong> lands tomorrow at{' '}
-          <strong className="text-[#0f1419]">{hint} your time</strong> (10:30 Berlin), and every morning after.
+          Your first email lands tomorrow at <strong className="text-[#0f1419]">{hint} your time</strong>{' '}
+          (10:30 Berlin), and every morning after.
         </p>
 
         <ul className="mb-5 list-none rounded-2xl bg-[#f7f9f9] px-4 py-4 text-left">
@@ -128,26 +128,19 @@ export default function SignupCelebration({ onClose }: { onClose: () => void }) 
           </li>
         </ul>
 
-        <div className="rounded-2xl border border-[#1d9bf0]/25 bg-[#1d9bf0]/5 p-5">
-          <p className="mb-1.5 text-[17px] font-extrabold tracking-[-0.02em]">Want 10 instead of 5?</p>
-          <p className="mb-3.5 text-sm leading-snug text-[#536471]">
-            Pro sends all <strong className="text-[#0f1419]">10 big things</strong> every morning, ranked
-            deeper into your interests, plus full Pulse and the archive.
-          </p>
-          <div className="flex flex-wrap justify-center gap-2.5">
-            <a
-              href="/subscribe?from=email"
-              className="inline-flex h-11 items-center justify-center rounded-full bg-[#1d9bf0] px-6 text-sm font-bold text-white no-underline transition-colors hover:bg-[#1a8cd8]"
-            >
-              Go Pro
-            </a>
-            <a
-              href="/feed?from=email"
-              className="inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-bold text-[#536471] no-underline transition-colors hover:bg-black/5 hover:text-[#0f1419]"
-            >
-              Personalize it free
-            </a>
-          </div>
+        <div className="flex flex-wrap justify-center gap-2.5">
+          <a
+            href="/feed?from=email"
+            className="inline-flex h-11 items-center justify-center rounded-full bg-[#1d9bf0] px-6 text-sm font-bold text-white no-underline transition-colors hover:bg-[#1a8cd8]"
+          >
+            Open the feed
+          </a>
+          <a
+            href="/subscribe?from=email"
+            className="inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-bold text-[#536471] no-underline transition-colors hover:bg-black/5 hover:text-[#0f1419]"
+          >
+            Go Pro
+          </a>
         </div>
 
         <p className="mt-4 text-xs text-[#71767b]">One email a day. Unsubscribe any time from the footer.</p>

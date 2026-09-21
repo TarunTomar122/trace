@@ -42,6 +42,7 @@ export const LANDING_CSS = `
 
 .lp .hero { position: relative; max-width: 1150px; margin: 0 auto; padding: 96px 20px 56px; text-align: center; }
 .lp .hero > * { position: relative; z-index: 1; }
+.lp .hero { isolation: isolate; }
 .lp .hero-float { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
 .lp .hero-title { margin: 0 auto 18px; max-width: 780px; font-size: clamp(2.4rem, 5.2vw, 4rem); font-weight: 800; letter-spacing: -0.035em; line-height: 1.06; }
 .lp .hero-sub { margin: 0 auto 32px; max-width: 460px; font-size: 19px; line-height: 1.55; color: var(--text-2); }

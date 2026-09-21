@@ -64,7 +64,7 @@ export default function NewsletterPromptModal({
 
   return (
     <div
-      className="fixed inset-0 z-[400] flex items-center justify-center bg-black/55 p-3 backdrop-blur-[3px] sm:p-5"
+      className="celebrate-scrim fixed inset-0 z-[9999] flex items-center justify-center bg-[#0f1419]/80 p-3 sm:p-5"
       onClick={onClose}
       role="presentation"
     >
