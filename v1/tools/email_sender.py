@@ -53,10 +53,39 @@ DKIM_ENABLED = (os.getenv("EMAIL_DKIM", "1") or "1").strip() != "0"
 DKIM_DOMAIN = os.getenv("EMAIL_DKIM_DOMAIN", "mail.yourtrace.online")
 DKIM_SELECTOR = os.getenv("EMAIL_DKIM_SELECTOR", "s1")
 DKIM_KEY_PATH = os.getenv("EMAIL_DKIM_KEY", "/etc/dkimkeys/mail.yourtrace.online.private")
-SMTP_HOST = os.getenv("EMAIL_SMTP_HOST", "127.0.0.1")
-SMTP_PORT = int(os.getenv("EMAIL_SMTP_PORT", "25"))
 SMTP_TIMEOUT = float(os.getenv("EMAIL_SMTP_TIMEOUT", "20"))
+
+
+# Legacy module-level names kept so nothing importing them breaks; the live
+# values come from _smtp_host()/_smtp_port()/_dkim_config() per call.
+SMTP_HOST = "127.0.0.1"
+SMTP_PORT = 25
+DKIM_DOMAIN = "mail.yourtrace.online"
+DKIM_SELECTOR = "s1"
+DKIM_KEY_PATH = "/etc/dkimkeys/mail.yourtrace.online.private"
 SEND_LOG_COLLECTION = "email_sends"
+
+
+def _smtp_host() -> str:
+    return (os.getenv("EMAIL_SMTP_HOST", "127.0.0.1") or "127.0.0.1").strip()
+
+
+def _smtp_port() -> int:
+    try:
+        return int(os.getenv("EMAIL_SMTP_PORT", "25"))
+    except (TypeError, ValueError):
+        return 25
+
+
+def _dkim_config() -> tuple[bool, str, str, str]:
+    enabled = (os.getenv("EMAIL_DKIM", "1") or "1").strip() != "0"
+    domain = (os.getenv("EMAIL_DKIM_DOMAIN", "mail.yourtrace.online") or "").strip()
+    selector = (os.getenv("EMAIL_DKIM_SELECTOR", "s1") or "").strip()
+    key_path = (
+        os.getenv("EMAIL_DKIM_KEY", "/etc/dkimkeys/mail.yourtrace.online.private")
+        or ""
+    ).strip()
+    return enabled, domain, selector, key_path
 
 
 def transport_mode() -> str:
@@ -74,7 +103,7 @@ def _plain_text_from_html(html: str) -> str:
 def _mta_reachable() -> bool:
     """Cheap liveness probe so `auto` never stalls on a dead MTA."""
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=5) as client:
+        with smtplib.SMTP(_smtp_host(), _smtp_port(), timeout=5) as client:
             client.ehlo()
             return True
     except Exception:
@@ -92,12 +121,15 @@ def _dkim_sign(raw: bytes) -> tuple[bytes, str]:
     try:
         import dkim
 
-        with open(DKIM_KEY_PATH, "rb") as handle:
+        enabled, domain, selector, key_path = _dkim_config()
+        if not enabled:
+            return raw, "off"
+        with open(key_path, "rb") as handle:
             private_key = handle.read()
         signature = dkim.sign(
             raw,
-            selector=DKIM_SELECTOR.encode(),
-            domain=DKIM_DOMAIN.encode(),
+            selector=selector.encode(),
+            domain=domain.encode(),
             privkey=private_key,
             include_headers=[
                 b"from",
@@ -142,7 +174,7 @@ def _send_via_smtp(
     raw = message.as_bytes(policy=email_policy.SMTP)
     signed, dkim_status = _dkim_sign(raw)
 
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT) as client:
+    with smtplib.SMTP(_smtp_host(), _smtp_port(), timeout=SMTP_TIMEOUT) as client:
         client.ehlo()
         try:
             client.starttls()
