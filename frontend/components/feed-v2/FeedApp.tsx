@@ -1766,6 +1766,7 @@ export default function FeedApp({
                         locked={locked}
                         lockedLabel={locked && s.id === firstLockedId ? (user ? 'Pro reads all 10' : 'Sign up to read all 10') : locked ? '' : undefined}
                         burst={burstId === s.id}
+                        fullDek={tab === 'conversations'}
                         onClick={() => openStory(s)}
                         marked={marks.has(s.id)}
                         onToggleMark={toggleMark}
@@ -2277,11 +2278,11 @@ function SourceStack({ sources }: { sources: string[] }) {
   );
 }
 
-function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = false, lockedLabel, displayRank, burst = false, hideRank = false, showImage = true, threadFollowing = false, onToggleThreadFollow }: {
+function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = false, lockedLabel, displayRank, burst = false, hideRank = false, showImage = true, fullDek = false, threadFollowing = false, onToggleThreadFollow }: {
   story: FeedStory; onClick: () => void; marked: boolean;
   onToggleMark: (id: string) => void; onShare: (id: string) => void;
   locked?: boolean; lockedLabel?: string; displayRank?: number; burst?: boolean;
-  hideRank?: boolean; showImage?: boolean; threadFollowing?: boolean; onToggleThreadFollow?: () => void;
+  hideRank?: boolean; showImage?: boolean; fullDek?: boolean; threadFollowing?: boolean; onToggleThreadFollow?: () => void;
 }) {
   const rank = displayRank ?? story.rank;
   const onKey = (e: React.KeyboardEvent) => {
@@ -2310,7 +2311,7 @@ function StoryCard({ story, onClick, marked, onToggleMark, onShare, locked = fal
           {locked ? (
             <p className="lock-note"><Lock size={13} /> {lockedLabel || 'Sign up to see full stories'}</p>
           ) : dek ? (
-            <p className="post-dek">{dek}</p>
+            <p className={`post-dek${fullDek ? ' full' : ''}`}>{dek}</p>
           ) : null}
           <div className="post-meta">
             <SourceStack sources={story.sources} />
@@ -2496,7 +2497,7 @@ function PulseFeed({ items, title, mode, onOpen, marks, toggleMark, share, hideH
                   {t.signal && <span className="signal">{t.signal}</span>}
                   <span className="post-spacer" />
                 </div>
-                {t.sum || t.sub ? <p className="post-dek">{t.sum || t.sub}</p> : null}
+                {t.sum || t.sub ? <p className="post-dek full">{t.sum || t.sub}</p> : null}
                 <Actions id={t.id} size={18} marked={marks.has(t.id)} onToggleMark={toggleMark} onShare={share} shareKind="pulse" />
               </div>
             </div>
@@ -3231,6 +3232,9 @@ const css = `
   overflow: hidden; margin: 0 0 10px;
   font-size: 15px; line-height: 1.45; color: var(--text-2);
 }
+/* Discussion cards (Show HN, Top HN): the description is the story, so let
+   it run instead of cutting it at two lines. */
+.xw .post-dek.full { display: block; -webkit-line-clamp: unset; overflow: visible; }
 .xw .post-row { display: flex; flex-direction: row; align-items: flex-start; gap: 16px; }
 .xw .post-copy { flex: 1; min-width: 0; }
 .xw .post-thumb {

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import uuid
 import json
 import os
 import re
@@ -40,7 +41,7 @@ load_dotenv(REPO_ROOT / ".environment")
 from google.cloud import firestore  # noqa: E402
 
 from v1.storage import FirestoreStore, is_user_subscribed  # noqa: E402
-from v1.tools.brevo_client import send_newsletter_email  # noqa: E402
+from v1.tools.email_sender import send_newsletter_email  # noqa: E402
 from v3.lib.send_worthy import (  # noqa: E402
     SEND_WORTHY_PROMPT_VERSION,
     judge_send_worthy,
@@ -751,11 +752,42 @@ def _daily_emoji(date: str) -> str:
     return SUBJECT_EMOJIS[day % len(SUBJECT_EMOJIS)]
 
 
+
+def _instrument_tracking(html: str, track_id: str) -> str:
+    """Route our own links through the tracker and append the open pixel.
+
+    Set EMAIL_TRACKING=0 to send the plain email instead. Links that are
+    themselves an action (unsubscribe, manage settings) are left alone so we
+    do not add a hop or a second counting path.
+    """
+    if not track_id or os.getenv("EMAIL_TRACKING", "1").strip() == "0":
+        return html
+
+    def _wrap(match: "re.Match[str]") -> str:
+        url = match.group(1)
+        if "/api/unsubscribe" in url or "tab=profile" in url:
+            return match.group(0)
+        tracked = (
+            f"{APP_URL}/api/email/track?e=c&t={track_id}&u={quote(url, safe='')}"
+        )
+        return match.group(0).replace(url, tracked)
+
+    html = re.sub(r'href="(https://yourtrace\.online[^"]*)"', _wrap, html)
+    pixel = (
+        f'<img src="{APP_URL}/api/email/track?e=o&t={track_id}" width="1" height="1" '
+        'alt="" style="display:block;width:1px;height:1px;border:0;" />'
+    )
+    if "</body>" in html:
+        return html.replace("</body>", f"{pixel}</body>")
+    return html + pixel
+
+
 def _render(
     bucket: str,
     sections: list[tuple[str, list[dict]]],
     date: str,
     email: str = "",
+    track_id: str = "",
 ) -> tuple[str, str, str]:
     cfg = BUCKETS[bucket]
     headline = f"{cfg['headline']} {_daily_emoji(date)}"
@@ -788,6 +820,7 @@ def _render(
             "Manage email settings</a>"
         )
     html = html.replace("{{FOOTER_LINKS}}", footer)
+    html = _instrument_tracking(html, track_id)
     text = _text_version(cfg, sections)
     return subject, html, text
 
@@ -861,7 +894,10 @@ def _send_one(
             f"{recipient['email']} (interests={list(interests)})"
         )
 
-    subject, html, text = _render(bucket, sections, date, recipient["email"])
+    # Mint the tracking id before rendering so the pixel and the wrapped
+    # links carry the same id the send log will record.
+    track_id = uuid.uuid4().hex
+    subject, html, text = _render(bucket, sections, date, recipient["email"], track_id)
     if dry_run:
         _log(f"[dry-run] {bucket} -> {recipient['email']} | {subject}")
         return {"ok": True}
@@ -872,10 +908,18 @@ def _send_one(
         subject=subject,
         html_content=html,
         text_content=text,
+        bucket=bucket,
+        track_id=track_id,
+        list_unsubscribe=(
+            f"{APP_URL}/api/unsubscribe?email={quote(recipient['email'])}"
+            if bucket == "landing"
+            else f"{APP_URL}/feed?tab=profile"
+        ),
     )
     if res.get("success"):
-        _log(f"sent {bucket} email to {recipient['email']}")
-        return {"ok": True}
+        transport = res.get("transport", "brevo")
+        _log(f"sent {bucket} email to {recipient['email']} via {transport}")
+        return {"ok": True, "transport": transport}
     return {"ok": False, "error": res.get("error", "unknown")}
 
 
@@ -983,6 +1027,7 @@ def send_audience_newsletter(
     sent = failed = 0
     errors: list[str] = []
     cache: dict = {}
+    transports: dict[str, int] = {}
     for bucket in ("pro", "free", "landing"):
         for recipient in buckets[bucket]:
             res = _send_one(
@@ -990,6 +1035,8 @@ def send_audience_newsletter(
             )
             if res["ok"]:
                 sent += 1
+                if res.get("transport"):
+                    transports[res["transport"]] = transports.get(res["transport"], 0) + 1
             else:
                 failed += 1
                 errors.append(f"{bucket}:{recipient['email']}: {res.get('error')}")
@@ -1001,6 +1048,7 @@ def send_audience_newsletter(
         "audience": counts,
         "sent": sent,
         "failed": failed,
+        "transports": transports,
         "errors": errors[:20],
     }
 
